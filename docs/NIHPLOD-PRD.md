@@ -4,7 +4,7 @@
 > 日期：2025年
 > 状态：草案
 
-📎 **相关文档**：[UX 设计文档](./NIHPLOD-UX.md)
+📎 **相关文档**：[UX](./NIHPLOD-UX.md) | [技术栈](./NIHPLOD-TechStack.md) | [API](./NIHPLOD-API.md) | [数据库](./NIHPLOD-Database.md)
 
 ---
 
@@ -171,239 +171,7 @@ NIHPLOD（旎柏）是由艺术品收藏家大卫·纳迈德（David Nahmad）�
 
 ---
 
-## 五、技术方案建议
-
-### 5.1 技术栈推荐
-
-| 层面 | 推荐方案 | 说明 |
-|------|----------|------|
-| 前端框架 | Next.js 14 (App Router) | React 生态，SSR/SSG 支持 |
-| 样式方案 | Tailwind CSS | 原子化 CSS，快速开发 |
-| 动画库 | Framer Motion | React 动画首选 |
-| AI集成 | OpenAI API / Claude API | 护肤顾问功能 |
-| **CMS** | **自建 (Next.js + Prisma + SQLite/PostgreSQL)** | 完全可控 |
-| 数据库 | SQLite (开发) / PostgreSQL (生产) | 轻量 → 可扩展 |
-| 文件存储 | 本地 / 阿里云 OSS / AWS S3 | 图片视频存储 |
-| 部署 | Vercel (前端) + Railway/自有服务器 (后端) | 分离部署 |
-| 分析 | Google Analytics 4 | 用户行为分析 |
-
----
-
-## 六、自建 CMS 系统设计
-
-### 6.1 CMS 功能模块
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    NIHPLOD CMS 管理后台                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   产品管理   │  │   内容管理   │  │   媒体库    │         │
-│  │  Products   │  │   Content   │  │   Media    │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-│                                                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │  AI问答配置  │  │   用户数据   │  │   系统设置   │         │
-│  │   Advisor   │  │   Users     │  │  Settings  │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 6.2 数据模型设计
-
-#### 产品 (Product)
-```typescript
-model Product {
-  id          String   @id @default(cuid())
-  name        String   // 产品名称
-  nameEn      String   // 英文名称
-  slug        String   @unique // URL标识
-  description String   // 产品描述
-  price       Decimal  // 参考价格（仅供展示）
-  purchaseUrl String?  // 外部购买链接（如天猫、京东等）
-  category    Category @relation
-  images      Image[]  // 产品图片
-  ingredients String?  // 成分说明
-  usage       String?  // 使用方法
-  benefits    String[] // 功效标签
-  order       Int      @default(0) // 排序
-  featured    Boolean  @default(false) // 是否推荐
-  published   Boolean  @default(false) // 是否发布
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-```
-
-#### 产品分类 (Category)
-```typescript
-model Category {
-  id       String    @id @default(cuid())
-  name     String    // 分类名称
-  nameEn   String    // 英文名称
-  slug     String    @unique
-  products Product[]
-  order    Int       @default(0)
-}
-```
-
-#### 页面内容 (Page)
-```typescript
-model Page {
-  id        String   @id @default(cuid())
-  title     String   // 页面标题
-  slug      String   @unique // home, story, ritual, contact
-  content   Json     // 页面内容（结构化JSON）
-  seo       Json?    // SEO配置
-  published Boolean  @default(false)
-  updatedAt DateTime @updatedAt
-}
-```
-
-#### 媒体文件 (Media)
-```typescript
-model Media {
-  id        String   @id @default(cuid())
-  filename  String   // 文件名
-  url       String   // 文件URL
-  type      String   // image/video
-  size      Int      // 文件大小
-  width     Int?     // 图片宽度
-  height    Int?     // 图片高度
-  alt       String?  // 替代文本
-  createdAt DateTime @default(now())
-}
-```
-
-#### AI问答配置 (AdvisorQuestion)
-```typescript
-model AdvisorQuestion {
-  id       String   @id @default(cuid())
-  question String   // 问题内容
-  type     String   // single/multiple 单选/多选
-  options  Json     // 选项数组
-  order    Int      // 排序
-  active   Boolean  @default(true)
-}
-```
-
-#### AI产品推荐规则 (RecommendationRule)
-```typescript
-model RecommendationRule {
-  id         String   @id @default(cuid())
-  conditions Json     // 条件组合
-  products   String[] // 推荐产品ID
-  priority   Int      // 优先级
-  message    String?  // 推荐语
-}
-```
-
-### 6.3 API 接口设计
-
-#### 公开 API（前端网站调用）
-```
-GET  /api/products          - 获取产品列表
-GET  /api/products/:slug    - 获取产品详情
-GET  /api/pages/:slug       - 获取页面内容
-GET  /api/categories        - 获取分类列表
-POST /api/advisor/analyze   - AI护肤分析
-```
-
-#### 管理 API（CMS后台调用，需认证）
-```
-# 认证
-POST /api/admin/login       - 管理员登录
-POST /api/admin/logout      - 退出登录
-
-# 产品管理
-GET    /api/admin/products
-POST   /api/admin/products
-PUT    /api/admin/products/:id
-DELETE /api/admin/products/:id
-
-# 内容管理
-GET    /api/admin/pages
-PUT    /api/admin/pages/:slug
-
-# 媒体管理
-GET    /api/admin/media
-POST   /api/admin/media/upload
-DELETE /api/admin/media/:id
-
-# AI配置
-GET    /api/admin/advisor/questions
-PUT    /api/admin/advisor/questions
-GET    /api/admin/advisor/rules
-PUT    /api/admin/advisor/rules
-
-# 系统设置
-GET    /api/admin/settings
-PUT    /api/admin/settings
-```
-
-### 6.4 技术实现方案
-
-```
-项目结构：
-nihplod-website/
-├── app/                      # Next.js App Router
-│   ├── (website)/           # 前台网站
-│   │   ├── page.tsx         # Landing Page
-│   │   ├── home/
-│   │   ├── products/
-│   │   ├── story/
-│   │   ├── ritual/
-│   │   ├── advisor/
-│   │   └── contact/
-│   │
-│   ├── (admin)/             # CMS后台
-│   │   ├── admin/
-│   │   │   ├── page.tsx     # 仪表盘
-│   │   │   ├── products/
-│   │   │   ├── pages/
-│   │   │   ├── media/
-│   │   │   ├── advisor/
-│   │   │   └── settings/
-│   │   └── login/
-│   │
-│   └── api/                 # API路由
-│       ├── products/
-│       ├── pages/
-│       ├── advisor/
-│       └── admin/
-│
-├── components/              # 组件
-│   ├── website/            # 前台组件
-│   └── admin/              # 后台组件
-│
-├── lib/                    # 工具库
-│   ├── prisma.ts          # 数据库连接
-│   ├── auth.ts            # 认证逻辑
-│   └── ai.ts              # AI接口
-│
-├── prisma/
-│   └── schema.prisma      # 数据模型
-│
-└── public/
-    └── uploads/           # 上传文件
-```
-
-### 6.5 安全设计
-
-| 安全措施 | 实现方式 |
-|----------|----------|
-| 管理员认证 | JWT Token + HttpOnly Cookie |
-| 密码存储 | bcrypt 加密 |
-| API 保护 | 中间件验证 Token |
-| 文件上传 | 类型/大小限制，重命名存储 |
-| SQL 注入 | Prisma ORM 参数化查询 |
-| XSS 防护 | React 自动转义 + CSP |
-| CSRF 防护 | SameSite Cookie |
-
----
-
-## 七、AI护肤顾问技术实现
+## 五、AI护肤顾问功能设计
 
 ```
 用户回答 → 数据结构化 → AI Prompt → 生成建议 → 产品匹配
@@ -417,7 +185,7 @@ nihplod-website/
 }
 ```
 
-### 7.1 Prompt 设计示例
+### 6.1 Prompt 设计示例
 
 ```
 系统提示词：
@@ -442,7 +210,7 @@ nihplod-website/
 
 ---
 
-## 八、项目里程碑
+## 六、项目里程碑
 
 | 阶段 | 内容 | 时间 |
 |------|------|------|
@@ -455,15 +223,15 @@ nihplod-website/
 
 ---
 
-## 九、附录
+## 七、附录
 
-### 9.1 竞品参考
+### 8.1 竞品参考
 - Aesop (aesop.com) - 极简美学
 - Nécessaire (necessaire.com) - 科学感
 - Le Labo (lelabofragrances.com) - 小众奢华
 - Byredo (byredo.com) - 北欧极简
 
-### 9.2 素材需求清单
+### 8.2 素材需求清单
 
 | 类型 | 内容 | 数量 |
 |------|------|------|
