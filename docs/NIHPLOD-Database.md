@@ -1,6 +1,6 @@
 # NIHPLOD 数据库设计文档
 
-> 版本：1.5
+> 版本：1.6
 > 日期：2025年12月
 > 状态：✅ 已审核
 
@@ -459,8 +459,64 @@ model Job {
   { "title": "产品系列", "slug": "products" },
   { "title": "护肤仪式", "slug": "ritual" },
   { "title": "联系我们", "slug": "contact" },
-  { "title": "加入我们", "slug": "careers" }
+  { "title": "加入我们", "slug": "careers" },
+  { "title": "隐私政策", "slug": "privacy" }
 ]
+```
+
+**隐私政策页 (privacy) content JSON 结构**:
+```json
+{
+  "hero": {
+    "title": "隐私政策",
+    "titleEn": "PRIVACY POLICY",
+    "tagline": "我们重视您的隐私保护"
+  },
+  "backgroundImage": "/uploads/privacy-bg.jpg",
+  "lastUpdated": "2025年12月",
+  "sections": [
+    {
+      "id": "collection",
+      "title": "一、信息收集",
+      "content": "我们通过联系表单收集以下信息：\n• 您的姓名\n• 您的邮箱地址\n• 您的留言内容"
+    },
+    {
+      "id": "usage",
+      "title": "二、信息使用",
+      "content": "收集的信息仅用于：\n• 回复您的咨询\n• 改进我们的服务"
+    },
+    {
+      "id": "protection",
+      "title": "三、信息保护",
+      "content": "我们采取以下措施保护您的信息：\n• 数据加密存储\n• 严格的访问控制\n• 定期安全审计"
+    },
+    {
+      "id": "sharing",
+      "title": "四、第三方共享",
+      "content": "我们不会将您的个人信息出售、出租或以其他方式与第三方共享。"
+    },
+    {
+      "id": "cookies",
+      "title": "五、Cookie 政策",
+      "content": "我们使用 Umami 进行匿名统计分析，该服务不收集个人身份信息，不使用 Cookie 追踪用户。"
+    },
+    {
+      "id": "rights",
+      "title": "六、您的权利",
+      "content": "您有权：\n• 查询我们持有的您的个人信息\n• 要求更正不准确的信息\n• 要求删除您的个人信息\n\n如需行使这些权利，请通过联系表单与我们联系。"
+    },
+    {
+      "id": "contact",
+      "title": "七、联系我们",
+      "content": "如您对本隐私政策有任何疑问，请通过联系我们页面的留言表单与我们取得联系。"
+    },
+    {
+      "id": "updates",
+      "title": "八、政策更新",
+      "content": "我们可能会不时更新本隐私政策。更新后的政策将在本页面发布，并注明最后更新日期。"
+    }
+  ]
+}
 ```
 
 **产品系列页 (products) content JSON 结构**:

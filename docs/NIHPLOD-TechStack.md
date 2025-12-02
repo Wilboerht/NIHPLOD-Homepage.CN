@@ -1,6 +1,6 @@
 # NIHPLOD 技术栈文档
 
-> 版本：1.5
+> 版本：1.6
 > 日期：2025年12月
 > 状态：✅ 已审核
 
@@ -770,5 +770,418 @@ export async function sendContactNotification(message: {
 │          │                                                  │
 └──────────┴──────────────────────────────────────────────────┘
 ```
+
+---
+
+## 六、图片优化规范
+
+### 6.1 图片格式与尺寸
+
+| 用途 | 推荐格式 | 最大尺寸 | 质量 |
+|------|----------|----------|------|
+| 产品图 | WebP (JPG 兜底) | 1200×1200px | 80% |
+| 背景图 | WebP | 1920×1080px | 75% |
+| 缩略图 | WebP | 400×400px | 80% |
+| OG分享图 | JPG | 1200×630px | 85% |
+
+### 6.2 响应式图片
+
+```tsx
+// 使用 Next.js Image 组件自动优化
+import Image from 'next/image';
+
+<Image
+  src="/uploads/product.jpg"
+  alt="产品图片"
+  width={600}
+  height={600}
+  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+  placeholder="blur"
+  blurDataURL="data:image/jpeg;base64,..."
+/>
+```
+
+### 6.3 上传处理流程
+
+```typescript
+// lib/upload.ts
+import sharp from 'sharp';
+
+export async function processImage(buffer: Buffer, options: {
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
+}) {
+  const { maxWidth = 1200, maxHeight = 1200, quality = 80 } = options;
+
+  return sharp(buffer)
+    .resize(maxWidth, maxHeight, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality })
+    .toBuffer();
+}
+```
+
+---
+
+## 七、缓存策略
+
+### 7.1 页面缓存 (Next.js ISR)
+
+| 页面类型 | 缓存策略 | revalidate |
+|----------|----------|------------|
+| 首页 | ISR | 3600 (1小时) |
+| 品牌故事 | ISR | 86400 (1天) |
+| 产品列表 | ISR | 3600 (1小时) |
+| 产品详情 | ISR | 3600 (1小时) |
+| 护肤仪式 | ISR | 86400 (1天) |
+| 联系我们 | ISR | 86400 (1天) |
+| 招聘页面 | ISR | 3600 (1小时) |
+| AI顾问 | 动态 | - |
+| CMS后台 | 动态 | - |
+
+```typescript
+// app/(website)/products/page.tsx
+export const revalidate = 3600; // 1小时后重新验证
+
+// 或使用 generateStaticParams + revalidate
+export async function generateStaticParams() {
+  const products = await prisma.product.findMany({ select: { slug: true } });
+  return products.map((p) => ({ slug: p.slug }));
+}
+```
+
+### 7.2 API 缓存
+
+```typescript
+// app/api/products/route.ts
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const products = await prisma.product.findMany({ where: { published: true } });
+
+  return NextResponse.json({ products }, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+    },
+  });
+}
+```
+
+### 7.3 静态资源缓存 (Nginx)
+
+```nginx
+# 图片/字体/JS/CSS 缓存 1 年
+location ~* \.(jpg|jpeg|png|webp|gif|ico|woff2|woff|ttf|js|css)$ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+}
+```
+
+---
+
+## 八、安全增强配置
+
+### 8.1 Content Security Policy (CSP)
+
+```typescript
+// next.config.js
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.wx.qq.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https: blob:",
+      "font-src 'self'",
+      "connect-src 'self' https://api.openai.com https://api.anthropic.com",
+      "frame-ancestors 'none'",
+    ].join('; '),
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=()',
+  },
+];
+
+module.exports = {
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }];
+  },
+};
+```
+
+### 8.2 HTTPS 强制跳转 (Nginx)
+
+```nginx
+server {
+    listen 80;
+    server_name nihplod.cn www.nihplod.cn;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name nihplod.cn www.nihplod.cn;
+
+    # HSTS
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+}
+```
+
+---
+
+## 九、数据库备份策略
+
+### 9.1 自动备份脚本
+
+```bash
+#!/bin/bash
+# /scripts/backup-db.sh
+
+BACKUP_DIR="/var/backups/nihplod"
+DATE=$(date +%Y%m%d_%H%M%S)
+DB_NAME="nihplod"
+
+# 创建备份
+pg_dump -U postgres -F c -b -v -f "$BACKUP_DIR/nihplod_$DATE.backup" $DB_NAME
+
+# 保留最近 30 天的备份
+find $BACKUP_DIR -name "*.backup" -mtime +30 -delete
+
+# 可选：上传到云存储
+# aws s3 cp "$BACKUP_DIR/nihplod_$DATE.backup" s3://nihplod-backups/
+```
+
+### 9.2 定时任务 (Cron)
+
+```bash
+# 每天凌晨 3 点备份
+0 3 * * * /scripts/backup-db.sh >> /var/log/backup.log 2>&1
+```
+
+### 9.3 恢复命令
+
+```bash
+# 恢复数据库
+pg_restore -U postgres -d nihplod -v /var/backups/nihplod/nihplod_20251201_030000.backup
+```
+
+---
+
+## 十、错误监控与日志
+
+### 10.1 错误监控 (可选 Sentry)
+
+```bash
+npm install @sentry/nextjs
+```
+
+```typescript
+// sentry.client.config.ts
+import * as Sentry from '@sentry/nextjs';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV,
+  tracesSampleRate: 0.1, // 10% 采样
+  ignoreErrors: [
+    'ResizeObserver loop limit exceeded',
+    'Non-Error promise rejection captured',
+  ],
+});
+```
+
+### 10.2 应用日志
+
+```typescript
+// lib/logger.ts
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+
+export function log(level: typeof LOG_LEVELS[number], message: string, meta?: object) {
+  const timestamp = new Date().toISOString();
+  const logEntry = { timestamp, level, message, ...meta };
+
+  if (process.env.NODE_ENV === 'production') {
+    // 生产环境写入文件或发送到日志服务
+    console.log(JSON.stringify(logEntry));
+  } else {
+    console[level](message, meta);
+  }
+}
+
+// 使用示例
+log('info', '用户提交留言', { email: 'user@example.com' });
+log('error', 'AI 服务调用失败', { error: err.message });
+```
+
+### 10.3 PM2 日志管理
+
+```javascript
+// ecosystem.config.js
+module.exports = {
+  apps: [{
+    name: 'nihplod',
+    script: 'node_modules/next/dist/bin/next',
+    args: 'start',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    error_file: '/var/log/nihplod/error.log',
+    out_file: '/var/log/nihplod/out.log',
+    merge_logs: true,
+    max_size: '10M',    // 日志轮转大小
+    retain: 7,          // 保留 7 个日志文件
+  }],
+};
+```
+
+---
+
+## 十一、性能指标目标
+
+### 11.1 Core Web Vitals 目标
+
+| 指标 | 目标值 | 说明 |
+|------|--------|------|
+| **LCP** (Largest Contentful Paint) | < 2.5s | 最大内容绘制 |
+| **FID** (First Input Delay) | < 100ms | 首次输入延迟 |
+| **CLS** (Cumulative Layout Shift) | < 0.1 | 累计布局偏移 |
+| **TTFB** (Time to First Byte) | < 800ms | 首字节时间 |
+| **FCP** (First Contentful Paint) | < 1.8s | 首次内容绘制 |
+
+### 11.2 优化措施
+
+| 措施 | 影响指标 |
+|------|----------|
+| 使用 Next.js Image 组件 | LCP, CLS |
+| 字体预加载 + font-display: swap | LCP, CLS |
+| 代码分割 + 动态导入 | FID, TTFB |
+| ISR 静态生成 | TTFB, LCP |
+| 预连接关键域名 | LCP |
+
+```tsx
+// app/layout.tsx
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="dns-prefetch" href="https://api.openai.com" />
+</head>
+```
+
+### 11.3 性能监控
+
+```typescript
+// lib/performance.ts
+export function reportWebVitals(metric: {
+  id: string;
+  name: string;
+  value: number;
+}) {
+  // 发送到 Umami 或自定义分析
+  if (typeof window !== 'undefined' && window.umami) {
+    window.umami.track('web-vitals', {
+      metric: metric.name,
+      value: Math.round(metric.value),
+    });
+  }
+}
+```
+
+---
+
+## 十二、微信分享集成
+
+### 12.1 微信 JS-SDK 配置
+
+```typescript
+// lib/wechat.ts
+import crypto from 'crypto';
+
+export async function getWechatSignature(url: string) {
+  const appId = process.env.WECHAT_APP_ID;
+  const appSecret = process.env.WECHAT_APP_SECRET;
+
+  // 获取 access_token
+  const tokenRes = await fetch(
+    `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`
+  );
+  const { access_token } = await tokenRes.json();
+
+  // 获取 jsapi_ticket
+  const ticketRes = await fetch(
+    `https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=${access_token}&type=jsapi`
+  );
+  const { ticket } = await ticketRes.json();
+
+  // 生成签名
+  const noncestr = crypto.randomBytes(16).toString('hex');
+  const timestamp = Math.floor(Date.now() / 1000);
+  const str = `jsapi_ticket=${ticket}&noncestr=${noncestr}&timestamp=${timestamp}&url=${url}`;
+  const signature = crypto.createHash('sha1').update(str).digest('hex');
+
+  return { appId, timestamp, noncestr, signature };
+}
+```
+
+### 12.2 前端调用
+
+```typescript
+// hooks/useWechatShare.ts
+'use client';
+import { useEffect } from 'react';
+
+export function useWechatShare(shareData: {
+  title: string;
+  desc: string;
+  link: string;
+  imgUrl: string;
+}) {
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.wx) return;
+
+    fetch(`/api/wechat/signature?url=${encodeURIComponent(window.location.href)}`)
+      .then(res => res.json())
+      .then(config => {
+        window.wx.config({
+          debug: false,
+          appId: config.appId,
+          timestamp: config.timestamp,
+          nonceStr: config.noncestr,
+          signature: config.signature,
+          jsApiList: ['updateAppMessageShareData', 'updateTimelineShareData'],
+        });
+
+        window.wx.ready(() => {
+          window.wx.updateAppMessageShareData(shareData);
+          window.wx.updateTimelineShareData({
+            title: shareData.title,
+            link: shareData.link,
+            imgUrl: shareData.imgUrl,
+          });
+        });
+      });
+  }, [shareData]);
+}
+```
+
+### 12.3 环境变量
+
+```bash
+# .env
+WECHAT_APP_ID="wx1234567890abcdef"
+WECHAT_APP_SECRET="your-app-secret"
+```
+
+> ⚠️ **注意**：微信分享需要在微信公众平台配置 JS 安全域名为 `nihplod.cn`
 
 ---
