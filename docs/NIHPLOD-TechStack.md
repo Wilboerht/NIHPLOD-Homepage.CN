@@ -4,7 +4,7 @@
 > 日期：2025年12月
 > 状态：✅ 已确定
 
-📎 **相关文档**：[PRD](./NIHPLOD-PRD.md) | [UX](./NIHPLOD-UX.md) | [API](./NIHPLOD-API.md) | [数据库](./NIHPLOD-Database.md)
+📎 **相关文档**：[PRD](./NIHPLOD-PRD.md) | [UX](./NIHPLOD-UX.md) | [API](./NIHPLOD-API.md) | [数据库](./NIHPLOD-Database.md) | [开发计划](./NIHPLOD-DevPlan.md)
 
 ---
 
@@ -64,8 +64,8 @@ nihplod-website/
 │   │   ├── products/        # 产品系列
 │   │   ├── ritual/          # 护肤仪式
 │   │   ├── advisor/         # AI护肤顾问
-│   │   ├── contact/         # 联系我们
-│   │   └── careers/         # 招聘页面
+│   │   ├── contact/         # 联系我们 (悬浮卡片布局)
+│   │   └── careers/         # 招聘页面 (悬浮卡片布局)
 │   │
 │   ├── (admin)/             # CMS后台
 │   │   ├── admin/

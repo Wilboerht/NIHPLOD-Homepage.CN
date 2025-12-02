@@ -4,7 +4,7 @@
 > 日期：2025年12月
 > 状态：草案
 
-📎 **相关文档**：[技术栈文档](./NIHPLOD-TechStack.md) | [数据库文档](./NIHPLOD-Database.md)
+📎 **相关文档**：[PRD](./NIHPLOD-PRD.md) | [UX](./NIHPLOD-UX.md) | [技术栈](./NIHPLOD-TechStack.md) | [数据库](./NIHPLOD-Database.md) | [开发计划](./NIHPLOD-DevPlan.md)
 
 ---
 
@@ -32,10 +32,10 @@ GET /api/products
       "id": "xxx",
       "name": "精华液",
       "nameEn": "Serum",
-      "slug": "serum",
+      "slug": "vital-serum",
       "price": 1280,
       "images": ["/uploads/serum-1.jpg"],
-      "category": { "name": "精华", "slug": "essence" }
+      "category": { "name": "精华", "nameEn": "Serum", "slug": "serum" }
     }
   ]
 }
@@ -78,8 +78,16 @@ GET /api/categories
 ```json
 {
   "categories": [
-    { "id": "xxx", "name": "精华", "nameEn": "Essence", "slug": "essence" },
-    { "id": "xxx", "name": "面霜", "nameEn": "Cream", "slug": "cream" }
+    { "id": "xxx", "name": "泡沫洁面", "nameEn": "Foam Cleanser", "slug": "foam-cleanser" },
+    { "id": "xxx", "name": "面部磨砂", "nameEn": "Face Scrub", "slug": "face-scrub" },
+    { "id": "xxx", "name": "面膜", "nameEn": "Face Mask", "slug": "face-mask" },
+    { "id": "xxx", "name": "精华", "nameEn": "Serum", "slug": "serum" },
+    { "id": "xxx", "name": "面霜", "nameEn": "Face Cream", "slug": "face-cream" },
+    { "id": "xxx", "name": "护手霜", "nameEn": "Hand Cream", "slug": "hand-cream" },
+    { "id": "xxx", "name": "防晒", "nameEn": "Sunscreen", "slug": "sunscreen" },
+    { "id": "xxx", "name": "身体乳", "nameEn": "Body Lotion", "slug": "body-lotion" },
+    { "id": "xxx", "name": "护理油", "nameEn": "Treatment Oil", "slug": "treatment-oil" },
+    { "id": "xxx", "name": "礼盒系列", "nameEn": "Gift Box Series", "slug": "gift-box" }
   ]
 }
 ```
@@ -91,7 +99,7 @@ GET /api/categories
 ```
 GET /api/pages/:slug
 ```
-获取页面内容（home, story, ritual, contact）
+获取页面内容（home, story, ritual, contact, careers）
 
 **响应示例**：
 ```json
@@ -120,11 +128,11 @@ AI 护肤分析
 {
   "answers": {
     "skinType": "combination",
-    "concerns": ["aging", "dryness"],
+    "concern": "aging",
     "sleep": "6-7h",
     "environment": "office",
     "routine": "basic",
-    "expectation": "anti-aging"
+    "preference": "ritual"
   }
 }
 ```

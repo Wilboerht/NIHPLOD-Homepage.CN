@@ -1,10 +1,10 @@
 # NIHPLOD 官方网站产品需求文档 (PRD)
 
 > 版本：1.0
-> 日期：2025年
+> 日期：2025年12月
 > 状态：草案
 
-📎 **相关文档**：[UX](./NIHPLOD-UX.md) | [技术栈](./NIHPLOD-TechStack.md) | [API](./NIHPLOD-API.md) | [数据库](./NIHPLOD-Database.md)
+📎 **相关文档**：[UX](./NIHPLOD-UX.md) | [技术栈](./NIHPLOD-TechStack.md) | [API](./NIHPLOD-API.md) | [数据库](./NIHPLOD-Database.md) | [开发计划](./NIHPLOD-DevPlan.md)
 
 ---
 
@@ -77,7 +77,7 @@ NIHPLOD（旎柏）是由艺术品收藏家大卫·纳迈德（David Nahmad）�
 │     品牌内容页面         │  │      AI SKIN ADVISOR        │
 │                         │  │     （AI护肤问答）           │
 │                         │  │                             │
-│  • 品牌故事 Story       │  │  • 问答流程 (5-7个问题)      │
+│  • 品牌故事 Story       │  │  • 问答流程 (6个问题)        │
 │  • 产品系列 Products    │  │  • AI分析结果               │
 │  • 护肤仪式 Ritual      │  │  • 个性化推荐               │
 │  • 联系我们 Contact     │  │  • 跳转外部购买链接          │

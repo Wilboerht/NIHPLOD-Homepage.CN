@@ -4,7 +4,7 @@
 > 日期：2025年12月
 > 状态：草案
 
-📎 **相关文档**：[技术栈文档](./NIHPLOD-TechStack.md) | [API 文档](./NIHPLOD-API.md)
+📎 **相关文档**：[PRD](./NIHPLOD-PRD.md) | [UX](./NIHPLOD-UX.md) | [技术栈](./NIHPLOD-TechStack.md) | [API](./NIHPLOD-API.md) | [开发计划](./NIHPLOD-DevPlan.md)
 
 ---
 
@@ -82,7 +82,7 @@ model Image {
 model Page {
   id        String   @id @default(cuid())
   title     String   // 页面标题
-  slug      String   @unique // home, story, ritual, contact
+  slug      String   @unique // home, story, ritual, contact, careers
   content   Json     // 页面内容（结构化JSON）
   seo       Json?    // SEO配置
   published Boolean  @default(false)
@@ -206,12 +206,16 @@ model Setting {
 
 ```json
 [
-  { "name": "面霜", "nameEn": "Cream", "slug": "cream", "order": 1 },
-  { "name": "精华", "nameEn": "Essence", "slug": "essence", "order": 2 },
-  { "name": "洁面", "nameEn": "Cleanser", "slug": "cleanser", "order": 3 },
-  { "name": "面膜", "nameEn": "Mask", "slug": "mask", "order": 4 },
-  { "name": "防护", "nameEn": "Protection", "slug": "protection", "order": 5 },
-  { "name": "套装", "nameEn": "Set", "slug": "set", "order": 6 }
+  { "name": "泡沫洁面", "nameEn": "Foam Cleanser", "slug": "foam-cleanser", "order": 1 },
+  { "name": "面部磨砂", "nameEn": "Face Scrub", "slug": "face-scrub", "order": 2 },
+  { "name": "面膜", "nameEn": "Face Mask", "slug": "face-mask", "order": 3 },
+  { "name": "精华", "nameEn": "Serum", "slug": "serum", "order": 4 },
+  { "name": "面霜", "nameEn": "Face Cream", "slug": "face-cream", "order": 5 },
+  { "name": "护手霜", "nameEn": "Hand Cream", "slug": "hand-cream", "order": 6 },
+  { "name": "防晒", "nameEn": "Sunscreen", "slug": "sunscreen", "order": 7 },
+  { "name": "身体乳", "nameEn": "Body Lotion", "slug": "body-lotion", "order": 8 },
+  { "name": "护理油", "nameEn": "Treatment Oil", "slug": "treatment-oil", "order": 9 },
+  { "name": "礼盒系列", "nameEn": "Gift Box Series", "slug": "gift-box", "order": 10 }
 ]
 ```
 
