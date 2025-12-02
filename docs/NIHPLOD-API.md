@@ -116,7 +116,110 @@ GET /api/pages/:slug
 
 ---
 
-### 1.4 AI 护肤顾问
+### 1.4 招聘职位
+
+```
+GET /api/jobs
+```
+获取已发布的职位列表
+
+**响应示例**：
+```json
+{
+  "jobs": [
+    {
+      "id": "xxx",
+      "title": "市场营销经理",
+      "titleEn": "Marketing Manager",
+      "location": "上海",
+      "type": "全职",
+      "description": "负责品牌推广与市场策略制定...",
+      "requirements": "5年以上市场营销经验..."
+    }
+  ]
+}
+```
+
+---
+
+```
+GET /api/jobs/:id
+```
+获取职位详情
+
+---
+
+### 1.5 联系留言
+
+```
+POST /api/contact
+```
+提交联系表单留言
+
+**请求体**：
+```json
+{
+  "name": "张三",
+  "email": "zhangsan@example.com",
+  "content": "您好，我想咨询产品相关问题...",
+  "honeypot": ""
+}
+```
+
+> ⚠️ **防刷机制**：
+> - `honeypot` 字段为蜜罐字段，前端隐藏，如有值则判定为机器人
+> - 服务端实现 IP 限流：同一 IP 每分钟最多 3 次提交
+> - 可选：接入第三方验证码服务（如腾讯验证码）
+
+**响应示例**：
+```json
+{
+  "success": true,
+  "message": "留言已提交，我们会尽快回复您"
+}
+```
+
+**错误响应**：
+```json
+{
+  "error": {
+    "code": "RATE_LIMIT",
+    "message": "提交过于频繁，请稍后再试"
+  }
+}
+```
+
+---
+
+### 1.6 AI 护肤顾问
+
+```
+GET /api/advisor/questions
+```
+获取AI问答的问题列表（仅返回active的问题）
+
+**响应示例**：
+```json
+{
+  "questions": [
+    {
+      "id": "xxx",
+      "question": "你的肌肤类型是？",
+      "fieldName": "skinType",
+      "type": "single",
+      "options": [
+        { "value": "dry", "label": "干性肌肤", "description": "经常感到紧绑、脱皮" },
+        { "value": "oily", "label": "油性肌肤", "description": "容易出油、毛孔粗大" },
+        { "value": "combination", "label": "混合肌肤", "description": "T区油、两颊干" },
+        { "value": "sensitive", "label": "敏感肌肤", "description": "容易泛红、刺痛" }
+      ],
+      "order": 1
+    }
+  ]
+}
+```
+
+---
 
 ```
 POST /api/advisor/analyze
@@ -148,6 +251,33 @@ AI 护肤分析
     }
   ],
   "routineSuggestion": "建议您采用以下护肤步骤..."
+}
+```
+
+---
+
+### 1.7 公开设置
+
+```
+GET /api/settings/public
+```
+获取前台需要的公开设置（社交媒体、联系方式等）
+
+**响应示例**：
+```json
+{
+  "site_name": "NIHPLOD 旎柏",
+  "site_description": "源自摩纳哥的高端护肤品牌",
+  "contact_email": "contact@nihplod.cn",
+  "contact_phone": "400-xxx-xxxx",
+  "contact_address": "中国上海市静安区南京西路XXX号",
+  "social": {
+    "wechat_qrcode": "/uploads/wechat-qr.jpg",
+    "weibo": "https://weibo.com/nihplod",
+    "xiaohongshu": "https://xiaohongshu.com/...",
+    "douyin": "https://douyin.com/...",
+    "instagram": "https://instagram.com/nihplod"
+  }
 }
 ```
 
@@ -187,6 +317,29 @@ POST /api/admin/login
 POST /api/admin/logout
 ```
 退出登录
+
+---
+
+```
+PUT /api/admin/password
+```
+修改密码
+
+**请求体**：
+```json
+{
+  "oldPassword": "当前密码",
+  "newPassword": "新密码"
+}
+```
+
+**响应**：
+```json
+{
+  "success": true,
+  "message": "密码修改成功"
+}
+```
 
 ---
 
@@ -246,7 +399,38 @@ PUT    /api/admin/advisor/rules     - 更新推荐规则
 
 ---
 
-### 2.7 系统设置
+### 2.7 职位管理
+
+```
+GET    /api/admin/jobs              - 获取职位列表（含未发布）
+POST   /api/admin/jobs              - 创建职位
+PUT    /api/admin/jobs/:id          - 更新职位
+DELETE /api/admin/jobs/:id          - 删除职位
+```
+
+---
+
+### 2.8 留言管理
+
+> 📝 **命名说明**：公开API使用 `/api/contact` 提交留言，管理API使用 `/api/admin/contact` 管理留言，数据库模型为 `ContactMessage`，保持语义一致。
+
+```
+GET    /api/admin/contact           - 获取留言列表
+GET    /api/admin/contact/:id       - 获取留言详情
+PUT    /api/admin/contact/:id/read  - 标记为已读
+DELETE /api/admin/contact/:id       - 删除留言
+```
+
+**留言列表参数**：
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| status | string | 可选，`all` / `unread` / `read` |
+| page | number | 分页页码，默认 1 |
+| limit | number | 每页数量，默认 20 |
+
+---
+
+### 2.9 系统设置
 
 ```
 GET    /api/admin/settings          - 获取系统设置

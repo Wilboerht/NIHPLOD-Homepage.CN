@@ -142,7 +142,8 @@ lib/                # 工具函数
    - id, filename, url, type, size, width, height, alt
 
 6. **AdvisorQuestion** - AI问答题目
-   - id, question, type, options (JSON), order, active
+   - id, question, fieldName, type, options (JSON), order, active
+   - fieldName: skinType, concern, sleep, environment, routine, preference
 
 7. **RecommendationRule** - AI推荐规则
    - id, conditions (JSON), productIds, priority, message
@@ -232,6 +233,8 @@ app/api/admin/
 │ • 内容   │                                      │
 │ • 媒体   │                                      │
 │ • AI    │                                      │
+│ • 职位   │                                      │
+│ • 留言   │                                      │
 │ • 设置   │                                      │
 │          │                                      │
 │ 退出登录  │                                      │
@@ -271,6 +274,18 @@ app/api/admin/
 | 2.3.2 | 媒体库上传功能 | P0 | ⭐⭐⭐ |
 | 2.3.3 | 媒体库列表与预览 | P0 | ⭐⭐⭐ |
 | 2.3.4 | AI 问答配置界面 | P1 | ⭐⭐⭐ |
+
+---
+
+### 3.4 职位与留言管理
+
+#### 任务清单
+
+| # | 任务 | 优先级 | AI 辅助度 |
+|---|------|--------|-----------|
+| 2.4.1 | 职位管理 CRUD | P1 | ⭐⭐⭐ |
+| 2.4.2 | 留言列表与已读标记 | P1 | ⭐⭐⭐ |
+| 2.4.3 | 系统设置页面 | P2 | ⭐⭐⭐ |
 
 ---
 
