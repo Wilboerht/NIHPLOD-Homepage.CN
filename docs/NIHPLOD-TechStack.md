@@ -17,7 +17,7 @@
 │                                                                 │
 │   前端框架      Next.js 14 (App Router) + React 18 + TypeScript │
 │   样式方案      Tailwind CSS                                    │
-│   动画方案      Framer Motion + GSAP (ScrollTrigger)            │
+│   动画方案      Framer Motion + GSAP + React Bits               │
 │   后端/API      Next.js API Routes (全栈方案)                   │
 │   数据库        Prisma ORM + PostgreSQL                         │
 │   CMS          自建 (集成在 Next.js 项目中)                      │
@@ -39,7 +39,7 @@
 | 前端框架 | Next.js 14 (App Router) | ✅ 确定 |
 | 语言 | TypeScript | ✅ 确定 |
 | 样式 | Tailwind CSS | ✅ 确定 |
-| 动画 | Framer Motion + GSAP | ✅ 确定 |
+| 动画 | Framer Motion + GSAP + React Bits | ✅ 确定 |
 | 数据库 | PostgreSQL + Prisma | ✅ 确定 |
 | CMS | 自建 | ✅ 确定 |
 | 认证 | 自建 JWT | ✅ 确定 |
