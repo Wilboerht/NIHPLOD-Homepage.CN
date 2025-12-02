@@ -210,7 +210,8 @@ model Setting {
   { "name": "精华", "nameEn": "Essence", "slug": "essence", "order": 2 },
   { "name": "洁面", "nameEn": "Cleanser", "slug": "cleanser", "order": 3 },
   { "name": "面膜", "nameEn": "Mask", "slug": "mask", "order": 4 },
-  { "name": "防护", "nameEn": "Protection", "slug": "protection", "order": 5 }
+  { "name": "防护", "nameEn": "Protection", "slug": "protection", "order": 5 },
+  { "name": "套装", "nameEn": "Set", "slug": "set", "order": 6 }
 ]
 ```
 
@@ -221,7 +222,8 @@ model Setting {
   { "title": "首页", "slug": "home" },
   { "title": "品牌故事", "slug": "story" },
   { "title": "护肤仪式", "slug": "ritual" },
-  { "title": "联系我们", "slug": "contact" }
+  { "title": "联系我们", "slug": "contact" },
+  { "title": "加入我们", "slug": "careers" }
 ]
 ```
 

@@ -59,13 +59,13 @@
 nihplod-website/
 ├── app/                      # Next.js App Router
 │   ├── (website)/           # 前台网站
-│   │   ├── page.tsx         # Landing Page
-│   │   ├── home/
-│   │   ├── products/
-│   │   ├── story/
-│   │   ├── ritual/
-│   │   ├── advisor/
-│   │   └── contact/
+│   │   ├── page.tsx         # Landing Page (首页)
+│   │   ├── story/           # 品牌故事
+│   │   ├── products/        # 产品系列
+│   │   ├── ritual/          # 护肤仪式
+│   │   ├── advisor/         # AI护肤顾问
+│   │   ├── contact/         # 联系我们
+│   │   └── careers/         # 招聘页面
 │   │
 │   ├── (admin)/             # CMS后台
 │   │   ├── admin/

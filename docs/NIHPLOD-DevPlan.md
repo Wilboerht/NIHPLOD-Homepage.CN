@@ -21,6 +21,8 @@
 
 ### 1.2 阶段划分
 
+> 📝 注：本计划将 PRD 中的 Phase 5（测试）和 Phase 6（部署）合并为一个收尾阶段
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        开发阶段总览                                  │
@@ -37,12 +39,13 @@
 │                   • AI配置          • 其他页面                       │
 │                                                                     │
 │                                                     Phase 5         │
-│                                                     收尾部署        │
+│                                                     测试与部署       │
 │                                                     ────────        │
 │                                                     Week 7-8        │
 │                                                                     │
 │                                                     • 响应式优化    │
-│                                                     • 测试修复      │
+│                                                     • 功能测试      │
+│                                                     • 性能优化      │
 │                                                     • 部署上线      │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -119,30 +122,36 @@ lib/                # 工具函数
 ```markdown
 ## 任务：创建 Prisma Schema
 
-根据数据库设计文档，创建以下模型：
+根据数据库设计文档 (NIHPLOD-Database.md)，创建以下模型：
 
 ### 核心模型
 1. **Product** - 产品
-   - id, name, nameEn, slug, description, price, categoryId
-   - images (关联 Media), ingredients, usage, isPublished
-   
-2. **Category** - 产品分类
-   - id, name, nameEn, slug, sortOrder
-   
-3. **Page** - 内容页面
-   - id, slug, title, content (JSON), isPublished
-   
-4. **Media** - 媒体文件
-   - id, filename, url, type, size, alt
-   
-5. **AdvisorQuestion** - AI问答题目
-   - id, question, options (JSON), sortOrder
-   
-6. **AdvisorResult** - 用户问答结果
-   - id, answers (JSON), analysis, recommendations, createdAt
+   - id, name, nameEn, slug, description, price, purchaseUrl, categoryId
+   - images (关联 Image), ingredients, usage, benefits, order, featured, published
 
-7. **Admin** - 管理员
+2. **Category** - 产品分类
+   - id, name, nameEn, slug, order
+
+3. **Image** - 产品图片
+   - id, url, alt, order, productId
+
+4. **Page** - 内容页面
+   - id, title, slug, content (JSON), seo (JSON), published
+
+5. **Media** - 媒体文件
+   - id, filename, url, type, size, width, height, alt
+
+6. **AdvisorQuestion** - AI问答题目
+   - id, question, type, options (JSON), order, active
+
+7. **RecommendationRule** - AI推荐规则
+   - id, conditions (JSON), productIds, priority, message
+
+8. **Admin** - 管理员
    - id, email, password, name
+
+9. **Setting** - 系统设置
+   - id, key, value (JSON)
 
 请生成完整的 schema.prisma 文件。
 ```
@@ -322,13 +331,15 @@ interface FloatingCardLayoutProps {
 
 | # | 任务 | 优先级 | AI 辅助度 |
 |---|------|--------|-----------|
-| 3.2.1 | 首页 (双入口 + 网格背景) | P0 | ⭐⭐⭐ |
-| 3.2.2 | 品牌故事页 | P1 | ⭐⭐⭐ |
-| 3.2.3 | 产品列表页 | P0 | ⭐⭐⭐ |
-| 3.2.4 | 产品详情抽屉 | P0 | ⭐⭐⭐ |
-| 3.2.5 | 护肤仪式页 | P1 | ⭐⭐⭐ |
-| 3.2.6 | 联系我们页 | P2 | ⭐⭐⭐ |
-| 3.2.7 | 招聘页面 | P2 | ⭐⭐⭐ |
+| 3.2.1 | 首页 (双入口 + 网格背景) `/` | P0 | ⭐⭐⭐ |
+| 3.2.2 | 品牌故事页 `/story` (悬浮卡片布局) | P1 | ⭐⭐⭐ |
+| 3.2.3 | 产品列表页 `/products` (悬浮卡片布局) | P0 | ⭐⭐⭐ |
+| 3.2.4 | 产品详情抽屉 (模态框) | P0 | ⭐⭐⭐ |
+| 3.2.5 | 护肤仪式页 `/ritual` (悬浮卡片布局) | P1 | ⭐⭐⭐ |
+| 3.2.6 | 联系我们页 `/contact` (悬浮卡片布局) | P2 | ⭐⭐⭐ |
+| 3.2.7 | 招聘页面 `/careers` (悬浮卡片布局) | P2 | ⭐⭐⭐ |
+
+> 📝 注：品牌故事、产品、护肤仪式、联系我们、招聘页面均采用 UX 文档 1.2 节定义的悬浮卡片布局模式
 
 ---
 
@@ -400,7 +411,7 @@ interface AdvisorState {
 
 ---
 
-## 六、Phase 5：优化与部署 (Week 7-8)
+## 六、Phase 5：测试与部署 (Week 7-8)
 
 ### 6.1 响应式与动画优化
 
@@ -467,7 +478,33 @@ interface AdvisorState {
 
 ---
 
-## 八、风险与应对
+## 八、设计决策记录
+
+### 8.1 招聘页面：合并到官网
+
+**决策**：招聘页面 (`/careers`) 作为官网的一部分，不独立建站
+
+**理由**：
+| 因素 | 说明 |
+|------|------|
+| 品牌定位 | 高端小众品牌，招聘页是品牌形象的延伸 |
+| 招聘规模 | 职位数量少（上海 + 摩纳哥），无需复杂招聘系统 |
+| 功能简单 | 仅需职位展示 + 邮箱投递，无 ATS 需求 |
+| 统一体验 | 与整站视觉风格一致，使用悬浮卡片布局 |
+| 维护成本 | 一套代码库，降低开发和维护成本 |
+
+**可选增强**：
+- 支持 `careers.nihplod.cn` 子域名重定向到 `/careers`（方便招聘链接分享）
+- CMS 后台预留职位管理功能扩展接口
+
+**分离信号**（当出现以下情况时考虑独立）：
+- 职位数量超过 20+ 且频繁更新
+- 需要在线申请、简历筛选、面试管理等 ATS 功能
+- 有校招/社招大规模招聘需求
+
+---
+
+## 九、风险与应对
 
 | 风险 | 概率 | 影响 | 应对措施 |
 |------|------|------|----------|
@@ -478,23 +515,23 @@ interface AdvisorState {
 
 ---
 
-## 九、交付物清单
+## 十、交付物清单
 
-### 9.1 代码交付
+### 10.1 代码交付
 
 - [ ] Next.js 项目源代码
 - [ ] Prisma 数据库迁移文件
 - [ ] 种子数据脚本
 - [ ] 环境变量配置模板
 
-### 9.2 部署交付
+### 10.2 部署交付
 
 - [ ] PM2 ecosystem.config.js
 - [ ] Nginx 配置文件
 - [ ] 部署脚本
 - [ ] 运维文档
 
-### 9.3 文档交付
+### 10.3 文档交付
 
 - [ ] API 接口文档
 - [ ] CMS 使用手册

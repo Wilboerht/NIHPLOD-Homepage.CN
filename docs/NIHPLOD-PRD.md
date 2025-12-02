@@ -185,7 +185,7 @@ NIHPLOD（旎柏）是由艺术品收藏家大卫·纳迈德（David Nahmad）�
 }
 ```
 
-### 6.1 Prompt 设计示例
+### 5.1 Prompt 设计示例
 
 ```
 系统提示词：
@@ -225,13 +225,13 @@ NIHPLOD（旎柏）是由艺术品收藏家大卫·纳迈德（David Nahmad）�
 
 ## 七、附录
 
-### 8.1 竞品参考
+### 7.1 竞品参考
 - Aesop (aesop.com) - 极简美学
 - Nécessaire (necessaire.com) - 科学感
 - Le Labo (lelabofragrances.com) - 小众奢华
 - Byredo (byredo.com) - 北欧极简
 
-### 8.2 素材需求清单
+### 7.2 素材需求清单
 
 | 类型 | 内容 | 数量 |
 |------|------|------|

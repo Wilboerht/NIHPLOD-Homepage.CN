@@ -193,7 +193,18 @@ DELETE /api/admin/products/:id      - 删除产品
 
 ---
 
-### 2.3 内容管理
+### 2.3 分类管理
+
+```
+GET    /api/admin/categories        - 获取分类列表
+POST   /api/admin/categories        - 创建分类
+PUT    /api/admin/categories/:id    - 更新分类
+DELETE /api/admin/categories/:id    - 删除分类
+```
+
+---
+
+### 2.4 内容管理
 
 ```
 GET    /api/admin/pages             - 获取所有页面
@@ -202,7 +213,7 @@ PUT    /api/admin/pages/:slug       - 更新页面内容
 
 ---
 
-### 2.4 媒体管理
+### 2.5 媒体管理
 
 ```
 GET    /api/admin/media             - 获取媒体列表
@@ -216,7 +227,7 @@ DELETE /api/admin/media/:id         - 删除媒体
 
 ---
 
-### 2.5 AI 配置
+### 2.6 AI 配置
 
 ```
 GET    /api/admin/advisor/questions - 获取问题配置
@@ -227,7 +238,7 @@ PUT    /api/admin/advisor/rules     - 更新推荐规则
 
 ---
 
-### 2.6 系统设置
+### 2.7 系统设置
 
 ```
 GET    /api/admin/settings          - 获取系统设置
