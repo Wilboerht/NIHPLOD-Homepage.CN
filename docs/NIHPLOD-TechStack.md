@@ -1,6 +1,6 @@
 # NIHPLOD 技术栈文档
 
-> 版本：1.4
+> 版本：1.5
 > 日期：2025年12月
 > 状态：✅ 已审核
 
@@ -50,6 +50,89 @@
 | Web服务器 | Nginx | ✅ 确定 |
 | SSL | Let's Encrypt | ✅ 确定 |
 | 部署 | 自有服务器 | ✅ 确定 |
+
+### 1.1 核心依赖包清单
+
+```
+# 生产依赖 (dependencies)
+next@14.x                  # Next.js 框架
+react@18.x                 # React
+react-dom@18.x             # React DOM
+typescript                 # TypeScript
+@prisma/client             # Prisma ORM 客户端
+bcryptjs                   # 密码加密
+jsonwebtoken               # JWT 生成与验证
+zod                        # 请求参数验证
+framer-motion              # 动画库
+gsap                       # 高级动画
+nodemailer                 # 邮件发送
+lru-cache                  # IP 限流缓存
+html2canvas                # 结果页图片生成
+sharp                      # 图片处理/压缩
+clsx                       # 样式类名合并
+tailwind-merge             # Tailwind 类名合并
+
+# 开发依赖 (devDependencies)
+prisma                     # Prisma CLI
+@types/node                # Node.js 类型
+@types/react               # React 类型
+@types/bcryptjs            # bcryptjs 类型
+@types/jsonwebtoken        # JWT 类型
+@types/nodemailer          # nodemailer 类型
+tailwindcss                # Tailwind CSS
+postcss                    # PostCSS
+autoprefixer               # 自动前缀
+eslint                     # ESLint
+eslint-config-next         # Next.js ESLint 配置
+prettier                   # 代码格式化
+```
+
+### 1.2 环境变量模板 (.env.example)
+
+```bash
+# ============================================
+# NIHPLOD 官网环境变量配置
+# ============================================
+
+# ---------- 数据库 ----------
+DATABASE_URL="postgresql://user:password@localhost:5432/nihplod?schema=public"
+
+# ---------- JWT 认证 ----------
+JWT_SECRET="your-super-secret-jwt-key-min-32-chars"
+JWT_EXPIRES_IN="7d"
+
+# ---------- 站点配置 ----------
+NEXT_PUBLIC_SITE_URL="https://nihplod.cn"
+NEXT_PUBLIC_SITE_NAME="NIHPLOD 旎柏"
+
+# ---------- 邮件通知 (SMTP) ----------
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="465"
+SMTP_USER="notification@nihplod.cn"
+SMTP_PASSWORD="your-smtp-password"
+SMTP_FROM="NIHPLOD 网站通知 <notification@nihplod.cn>"
+
+# ---------- AI 服务 ----------
+AI_PROVIDER="openai"                    # openai / claude / qwen
+AI_API_KEY="sk-your-api-key"
+AI_MODEL="gpt-4o"                        # gpt-4o / claude-3-opus / qwen-max
+AI_TIMEOUT="30000"                       # 超时时间 (毫秒)
+AI_MAX_TOKENS="1000"                     # 最大 token 数
+
+# ---------- 文件上传 ----------
+UPLOAD_DIR="./public/uploads"
+UPLOAD_MAX_IMAGE_SIZE="5242880"          # 5MB (字节)
+UPLOAD_MAX_VIDEO_SIZE="52428800"         # 50MB (字节)
+
+# ---------- 安全配置 ----------
+RATE_LIMIT_WINDOW="60000"                # 限流窗口 (毫秒)
+RATE_LIMIT_MAX="3"                       # 窗口内最大请求数
+
+# ---------- 可选：验证码 ----------
+# CAPTCHA_PROVIDER="tencent"             # tencent / recaptcha
+# CAPTCHA_APP_ID="your-app-id"
+# CAPTCHA_SECRET_KEY="your-secret-key"
+```
 
 ---
 

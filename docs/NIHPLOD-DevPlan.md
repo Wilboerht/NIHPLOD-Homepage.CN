@@ -1,6 +1,6 @@
 # NIHPLOD 官网 AI 辅助开发计划
 
-> 版本：1.4
+> 版本：1.5
 > 日期：2025年12月
 > 状态：✅ 已审核
 > 开发模式：AI Vibe Coding（人机结对编程）
@@ -69,6 +69,9 @@
 | 1.1.3 | 安装配置 Framer Motion + GSAP + React Bits | P1 | ⭐⭐⭐ |
 | 1.1.4 | 配置 ESLint + Prettier | P1 | ⭐⭐⭐ |
 | 1.1.5 | 创建项目目录结构 | P0 | ⭐⭐ |
+| 1.1.6 | 配置环境变量 (.env.local) | P0 | ⭐⭐ |
+| 1.1.7 | 安装 Zod + 创建验证 Schema | P0 | ⭐⭐⭐ |
+| 1.1.8 | 配置 nodemailer 邮件服务 | P1 | ⭐⭐⭐ |
 
 #### AI Prompt 模板
 
@@ -127,7 +130,7 @@ lib/                # 工具函数
 
 ### 核心模型
 1. **Product** - 产品
-   - id, name, nameEn, slug, description, price, purchaseUrl, categoryId
+   - id, name, nameEn, slug, description, price, capacity, purchaseUrl, categoryId
    - images (关联 Image), ingredients, usage, benefits, order, featured, published
 
 2. **Category** - 产品分类
@@ -142,18 +145,24 @@ lib/                # 工具函数
 5. **Media** - 媒体文件
    - id, filename, url, type, size, width, height, alt
 
-6. **AdvisorQuestion** - AI问答题目
+6. **Job** - 职位
+   - id, title, titleEn, location, type, description, requirements, salary, order, published
+
+7. **ContactMessage** - 联系留言
+   - id, name, email, content, read, createdAt
+
+8. **AdvisorQuestion** - AI问答题目
    - id, question, fieldName, type, options (JSON), order, active
    - fieldName: skinType, concern, sleep, environment, routine, preference
 
-7. **RecommendationRule** - AI推荐规则
+9. **RecommendationRule** - AI推荐规则
    - id, conditions (JSON), productIds, priority, message
 
-8. **Admin** - 管理员
-   - id, email, password, name
+10. **Admin** - 管理员
+    - id, email, password, name
 
-9. **Setting** - 系统设置
-   - id, key, value (JSON)
+11. **Setting** - 系统设置
+    - id, key, value (JSON)
 
 请生成完整的 schema.prisma 文件。
 ```
@@ -260,8 +269,9 @@ app/api/admin/
 | 2.2.1 | 产品列表页 (分页、筛选、排序) | P0 | ⭐⭐⭐ |
 | 2.2.2 | 产品新增/编辑页 | P0 | ⭐⭐⭐ |
 | 2.2.3 | 产品 CRUD API 路由 | P0 | ⭐⭐⭐ |
-| 2.2.4 | 富文本编辑器集成 | P1 | ⭐⭐ |
-| 2.2.5 | 图片上传与关联 | P0 | ⭐⭐ |
+| 2.2.4 | **分类管理 CRUD** | P0 | ⭐⭐⭐ |
+| 2.2.5 | 富文本编辑器集成 | P1 | ⭐⭐ |
+| 2.2.6 | 图片上传与关联 | P0 | ⭐⭐ |
 
 ---
 
@@ -361,10 +371,20 @@ interface FloatingCardLayoutProps {
 | 3.2.1 | 首页 (双入口 + 网格背景) `/` | P0 | ⭐⭐⭐ |
 | 3.2.2 | 品牌故事页 `/story` (悬浮卡片布局) | P1 | ⭐⭐⭐ |
 | 3.2.3 | 产品列表页 `/products` (悬浮卡片布局) | P0 | ⭐⭐⭐ |
-| 3.2.4 | 产品详情抽屉 (模态框) | P0 | ⭐⭐⭐ |
-| 3.2.5 | 护肤仪式页 `/ritual` (悬浮卡片布局) | P1 | ⭐⭐⭐ |
-| 3.2.6 | 联系我们页 `/contact` (悬浮卡片布局) | P2 | ⭐⭐⭐ |
-| 3.2.7 | 招聘页面 `/careers` (悬浮卡片布局) | P2 | ⭐⭐⭐ |
+| 3.2.4 | 产品详情页 `/products/[slug]` (动态路由) | P0 | ⭐⭐⭐ |
+| 3.2.5 | 产品详情抽屉组件 (模态框) | P0 | ⭐⭐⭐ |
+| 3.2.6 | 护肤仪式页 `/ritual` (悬浮卡片布局) | P1 | ⭐⭐⭐ |
+| 3.2.7 | 联系我们页 `/contact` (悬浮卡片布局) | P2 | ⭐⭐⭐ |
+| 3.2.8 | 招聘页面 `/careers` (悬浮卡片布局) | P2 | ⭐⭐⭐ |
+
+### 4.3 错误页面与空状态
+
+| # | 任务 | 优先级 | AI 辅助度 |
+|---|------|--------|-----------|
+| 3.3.1 | 404 错误页面 `/not-found` | P1 | ⭐⭐⭐ |
+| 3.3.2 | 500 错误页面 `/error` | P1 | ⭐⭐⭐ |
+| 3.3.3 | 空状态组件 (产品/职位/留言为空) | P2 | ⭐⭐⭐ |
+| 3.3.4 | 加载骨架屏组件 | P2 | ⭐⭐⭐ |
 
 > 📝 注：品牌故事、产品、护肤仪式、联系我们、招聘页面均采用 UX 文档 1.2 节定义的悬浮卡片布局模式
 
@@ -449,16 +469,28 @@ interface AdvisorState {
 | 5.1.3 | GSAP ScrollTrigger 动画 | P1 | ⭐⭐ |
 | 5.1.4 | 页面过渡动画 | P2 | ⭐⭐ |
 
-### 6.2 测试与部署
+### 6.2 SEO 与可访问性
 
 | # | 任务 | 优先级 | AI 辅助度 |
 |---|------|--------|-----------|
-| 5.2.1 | 功能测试 | P0 | ⭐ |
-| 5.2.2 | 性能优化 (图片、代码分割) | P1 | ⭐⭐ |
-| 5.2.3 | PM2 配置 | P0 | ⭐⭐⭐ |
-| 5.2.4 | Nginx 配置 | P0 | ⭐⭐⭐ |
-| 5.2.5 | SSL 证书配置 | P0 | ⭐⭐⭐ |
-| 5.2.6 | 域名解析与上线 | P0 | ⭐ |
+| 5.2.1 | sitemap.xml 自动生成 | P0 | ⭐⭐⭐ |
+| 5.2.2 | robots.txt 配置 | P0 | ⭐⭐⭐ |
+| 5.2.3 | Schema.org 结构化数据 (Organization + Product) | P1 | ⭐⭐⭐ |
+| 5.2.4 | Open Graph 元标签 | P1 | ⭐⭐⭐ |
+| 5.2.5 | 可访问性检查 (键盘导航、ARIA、对比度) | P1 | ⭐⭐ |
+| 5.2.6 | prefers-reduced-motion 动画降级 | P2 | ⭐⭐⭐ |
+
+### 6.3 测试与部署
+
+| # | 任务 | 优先级 | AI 辅助度 |
+|---|------|--------|-----------|
+| 5.3.1 | 功能测试 | P0 | ⭐ |
+| 5.3.2 | 性能优化 (图片、代码分割) | P1 | ⭐⭐ |
+| 5.3.3 | PM2 配置 | P0 | ⭐⭐⭐ |
+| 5.3.4 | Nginx 配置 | P0 | ⭐⭐⭐ |
+| 5.3.5 | SSL 证书配置 | P0 | ⭐⭐⭐ |
+| 5.3.6 | 域名解析与上线 | P0 | ⭐ |
+| 5.3.7 | Umami 统计部署 | P1 | ⭐⭐⭐ |
 
 ---
 
@@ -549,13 +581,16 @@ interface AdvisorState {
 - [ ] Next.js 项目源代码
 - [ ] Prisma 数据库迁移文件
 - [ ] 种子数据脚本
-- [ ] 环境变量配置模板
+- [ ] 环境变量配置模板 (.env.example)
+- [ ] Zod 验证 Schema
+- [ ] SEO 配置 (sitemap.ts, robots.ts)
 
 ### 10.2 部署交付
 
 - [ ] PM2 ecosystem.config.js
 - [ ] Nginx 配置文件
 - [ ] 部署脚本
+- [ ] Umami Docker 配置
 - [ ] 运维文档
 
 ### 10.3 文档交付
@@ -563,6 +598,7 @@ interface AdvisorState {
 - [ ] API 接口文档
 - [ ] CMS 使用手册
 - [ ] 部署运维手册
+- [ ] 可访问性检查清单
 
 ---
 

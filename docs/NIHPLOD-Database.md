@@ -1,6 +1,6 @@
 # NIHPLOD 数据库设计文档
 
-> 版本：1.4
+> 版本：1.5
 > 日期：2025年12月
 > 状态：✅ 已审核
 
@@ -97,9 +97,17 @@ model Page {
 {
   "title": "品牌故事 - NIHPLOD 旎柏",
   "description": "源自摩纳哥的高端护肤品牌，探索NIHPLOD的品牌故事与理念",
-  "keywords": "NIHPLOD, 旎柏, 摩纳哥, 高端护肤"
+  "keywords": "NIHPLOD, 旎柏, 摩纳哥, 高端护肤",
+  "og": {
+    "title": "品牌故事 - NIHPLOD 旎柏",
+    "description": "源自摩纳哥的高端护肤品牌",
+    "image": "/uploads/og-story.jpg",
+    "type": "website"
+  }
 }
 ```
+
+> **Open Graph 说明**：`og` 字段用于社交媒体分享时的预览卡片（微信、微博等）。
 
 #### 各页面 content JSON 结构
 
@@ -507,6 +515,104 @@ model Job {
 ```
 
 > ⚠️ **说明**：`notification_email` 用于接收留言通知邮件，不对外展示。联系方式仅通过留言表单沟通。
+
+---
+
+## 五、SEO 与搜索引擎优化
+
+### 5.1 sitemap.xml
+
+> Next.js 14 App Router 支持自动生成 sitemap，在 `app/sitemap.ts` 中配置：
+
+```typescript
+// app/sitemap.ts
+import { MetadataRoute } from 'next';
+import { prisma } from '@/lib/prisma';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://nihplod.cn';
+
+  // 静态页面
+  const staticPages = [
+    { url: baseUrl, lastModified: new Date(), changeFrequency: 'weekly', priority: 1.0 },
+    { url: `${baseUrl}/story`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${baseUrl}/products`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${baseUrl}/ritual`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${baseUrl}/advisor`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${baseUrl}/careers`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
+  ];
+
+  // 动态产品页面
+  const products = await prisma.product.findMany({ where: { published: true }, select: { slug: true, updatedAt: true } });
+  const productPages = products.map((product) => ({
+    url: `${baseUrl}/products/${product.slug}`,
+    lastModified: product.updatedAt,
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }));
+
+  return [...staticPages, ...productPages];
+}
+```
+
+### 5.2 robots.txt
+
+```
+# app/robots.ts
+import { MetadataRoute } from 'next';
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: '*',
+      allow: '/',
+      disallow: ['/admin/', '/api/admin/'],
+    },
+    sitemap: 'https://nihplod.cn/sitemap.xml',
+  };
+}
+```
+
+### 5.3 结构化数据 (Schema.org)
+
+#### 组织信息 (首页)
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "NIHPLOD 旎柏",
+  "url": "https://nihplod.cn",
+  "logo": "https://nihplod.cn/logo.png",
+  "description": "源自摩纳哥的高端护肤品牌",
+  "foundingDate": "2008",
+  "sameAs": [
+    "https://weibo.com/nihplod",
+    "https://instagram.com/nihplod"
+  ]
+}
+```
+
+#### 产品信息 (产品详情页)
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "焕活精华液",
+  "image": "https://nihplod.cn/uploads/serum.jpg",
+  "description": "深层滋养，逆转时光",
+  "brand": {
+    "@type": "Brand",
+    "name": "NIHPLOD"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "1280",
+    "priceCurrency": "CNY",
+    "availability": "https://schema.org/InStock"
+  }
+}
+```
 
 ---
 

@@ -1,6 +1,6 @@
 # NIHPLOD API 接口文档
 
-> 版本：1.4
+> 版本：1.5
 > 日期：2025年12月
 > 状态：✅ 已审核
 
@@ -491,10 +491,194 @@ PUT    /api/admin/settings          - 更新系统设置
 | 状态码 | code | 说明 |
 |--------|------|------|
 | 400 | BAD_REQUEST | 请求参数错误 |
+| 400 | VALIDATION_ERROR | 数据验证失败 |
 | 401 | UNAUTHORIZED | 未登录或 Token 过期 |
 | 403 | FORBIDDEN | 无权限 |
 | 404 | NOT_FOUND | 资源不存在 |
+| 429 | RATE_LIMIT | 请求过于频繁 |
 | 500 | SERVER_ERROR | 服务器错误 |
+| 503 | AI_UNAVAILABLE | AI 服务不可用 |
+
+---
+
+## 四、数据验证规则
+
+> 使用 Zod 进行请求参数验证，以下为各接口的验证 Schema：
+
+### 4.1 联系表单验证
+
+```typescript
+// lib/validations/contact.ts
+import { z } from 'zod';
+
+export const contactSchema = z.object({
+  name: z.string()
+    .min(2, '姓名至少 2 个字符')
+    .max(20, '姓名最多 20 个字符')
+    .regex(/^[\u4e00-\u9fa5a-zA-Z\s]+$/, '姓名只能包含中英文和空格'),
+  email: z.string()
+    .email('请输入有效的邮箱地址'),
+  content: z.string()
+    .min(10, '留言内容至少 10 个字符')
+    .max(500, '留言内容最多 500 个字符'),
+  honeypot: z.string()
+    .max(0, '非法请求')  // 蜜罐字段必须为空
+    .optional(),
+});
+```
+
+### 4.2 产品表单验证 (CMS)
+
+```typescript
+// lib/validations/product.ts
+import { z } from 'zod';
+
+export const productSchema = z.object({
+  name: z.string()
+    .min(2, '产品名称至少 2 个字符')
+    .max(50, '产品名称最多 50 个字符'),
+  nameEn: z.string()
+    .min(2, '英文名称至少 2 个字符')
+    .max(100, '英文名称最多 100 个字符')
+    .regex(/^[a-zA-Z\s\-]+$/, '英文名称只能包含英文字母、空格和连字符'),
+  slug: z.string()
+    .min(2, 'URL标识至少 2 个字符')
+    .max(50, 'URL标识最多 50 个字符')
+    .regex(/^[a-z0-9\-]+$/, 'URL标识只能包含小写字母、数字和连字符'),
+  description: z.string()
+    .min(10, '产品描述至少 10 个字符')
+    .max(2000, '产品描述最多 2000 个字符'),
+  price: z.number()
+    .min(0, '价格不能为负数')
+    .max(99999, '价格超出范围'),
+  capacity: z.string()
+    .max(20, '规格最多 20 个字符')
+    .optional(),
+  purchaseUrl: z.string()
+    .url('请输入有效的购买链接')
+    .optional()
+    .or(z.literal('')),
+  categoryId: z.string()
+    .cuid('无效的分类 ID'),
+  ingredients: z.string()
+    .max(2000, '成分说明最多 2000 个字符')
+    .optional(),
+  usage: z.string()
+    .max(1000, '使用方法最多 1000 个字符')
+    .optional(),
+  benefits: z.array(z.string().max(20))
+    .max(10, '功效标签最多 10 个')
+    .optional(),
+  order: z.number()
+    .int('排序必须为整数')
+    .min(0)
+    .default(0),
+  featured: z.boolean().default(false),
+  published: z.boolean().default(false),
+});
+```
+
+### 4.3 职位表单验证 (CMS)
+
+```typescript
+// lib/validations/job.ts
+import { z } from 'zod';
+
+export const jobSchema = z.object({
+  title: z.string()
+    .min(2, '职位名称至少 2 个字符')
+    .max(50, '职位名称最多 50 个字符'),
+  titleEn: z.string()
+    .min(2, '英文名称至少 2 个字符')
+    .max(100, '英文名称最多 100 个字符')
+    .optional(),
+  location: z.enum(['上海', '摩纳哥', '北京', '深圳', '远程'], {
+    errorMap: () => ({ message: '请选择有效的工作地点' }),
+  }),
+  type: z.enum(['全职', '兼职', '实习'], {
+    errorMap: () => ({ message: '请选择有效的职位类型' }),
+  }),
+  description: z.string()
+    .min(20, '职位描述至少 20 个字符')
+    .max(5000, '职位描述最多 5000 个字符'),
+  requirements: z.string()
+    .min(20, '任职要求至少 20 个字符')
+    .max(3000, '任职要求最多 3000 个字符'),
+  salary: z.string()
+    .max(50, '薪资范围最多 50 个字符')
+    .optional(),
+  order: z.number().int().min(0).default(0),
+  published: z.boolean().default(false),
+});
+```
+
+### 4.4 密码修改验证
+
+```typescript
+// lib/validations/auth.ts
+import { z } from 'zod';
+
+export const passwordSchema = z.object({
+  oldPassword: z.string()
+    .min(1, '请输入当前密码'),
+  newPassword: z.string()
+    .min(8, '新密码至少 8 个字符')
+    .max(32, '新密码最多 32 个字符')
+    .regex(/[a-z]/, '密码必须包含小写字母')
+    .regex(/[A-Z]/, '密码必须包含大写字母')
+    .regex(/[0-9]/, '密码必须包含数字'),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email('请输入有效的邮箱'),
+  password: z.string().min(1, '请输入密码'),
+});
+```
+
+### 4.5 AI 问答验证
+
+```typescript
+// lib/validations/advisor.ts
+import { z } from 'zod';
+
+export const advisorAnswersSchema = z.object({
+  answers: z.object({
+    skinType: z.enum(['dry', 'oily', 'combination', 'sensitive', 'unsure'], {
+      errorMap: () => ({ message: '请选择肌肤类型' }),
+    }),
+    concern: z.enum(['aging', 'dull', 'hydration', 'pores', 'sensitive'], {
+      errorMap: () => ({ message: '请选择肌肤关注点' }),
+    }),
+    sleep: z.enum(['less6', '6to7', '7to8', 'more8'], {
+      errorMap: () => ({ message: '请选择睡眠时长' }),
+    }),
+    environment: z.enum(['office', 'outdoor', 'aircon', 'mixed'], {
+      errorMap: () => ({ message: '请选择工作环境' }),
+    }),
+    routine: z.enum(['basic', 'medium', 'advanced', 'irregular'], {
+      errorMap: () => ({ message: '请选择护肤习惯' }),
+    }),
+    preference: z.enum(['simple', 'ritual', 'couple'], {
+      errorMap: () => ({ message: '请选择护肤偏好' }),
+    }),
+  }),
+});
+```
+
+### 4.6 验证错误响应格式
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "数据验证失败",
+    "details": [
+      { "field": "name", "message": "姓名至少 2 个字符" },
+      { "field": "email", "message": "请输入有效的邮箱地址" }
+    ]
+  }
+}
+```
 
 ---
 
