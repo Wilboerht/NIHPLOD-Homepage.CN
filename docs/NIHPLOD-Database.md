@@ -1,8 +1,8 @@
 # NIHPLOD 数据库设计文档
 
-> 版本：1.0
+> 版本：1.2
 > 日期：2025年12月
-> 状态：草案
+> 状态：✅ 已审核
 
 📎 **相关文档**：[PRD](./NIHPLOD-PRD.md) | [UX](./NIHPLOD-UX.md) | [技术栈](./NIHPLOD-TechStack.md) | [API](./NIHPLOD-API.md) | [开发计划](./NIHPLOD-DevPlan.md)
 
@@ -29,6 +29,7 @@ model Product {
   slug        String   @unique // URL标识
   description String   // 产品描述
   price       Decimal  // 参考价格（仅供展示）
+  capacity    String?  // 规格/容量（如 "30ml"、"50g"）
   purchaseUrl String?  // 外部购买链接（如天猫、京东等）
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id])
@@ -195,10 +196,10 @@ model Page {
     "title": "晚间仪式",
     "titleEn": "EVENING RITUAL",
     "steps": [
-      { "order": 1, "name": "卸妆", "nameEn": "REMOVE", "description": "..." },
-      { "order": 2, "name": "洁面", "nameEn": "CLEANSE", "description": "..." },
-      { "order": 3, "name": "精华", "nameEn": "SERUM", "description": "..." },
-      { "order": 4, "name": "面霜", "nameEn": "CREAM", "description": "..." }
+      { "order": 1, "name": "卸妆", "nameEn": "REMOVE", "description": "...", "productSlug": null },
+      { "order": 2, "name": "洁面", "nameEn": "CLEANSE", "description": "...", "productSlug": "foam-cleanser" },
+      { "order": 3, "name": "精华", "nameEn": "SERUM", "description": "...", "productSlug": "vital-serum" },
+      { "order": 4, "name": "面霜", "nameEn": "CREAM", "description": "...", "productSlug": "face-cream" }
     ]
   },
   "coupleSpa": {
@@ -219,19 +220,17 @@ model Page {
     "tagline": "期待与您的每一次相遇"
   },
   "backgroundImage": "/uploads/contact-bg.jpg",
-  "locations": [
-    {
-      "name": "上海办公室",
-      "address": "中国上海市静安区南京西路XXX号",
-      "phone": "+86 21 XXXX XXXX"
+  "form": {
+    "title": "在线留言",
+    "subtitle": "请留下您的信息，我们会尽快与您联系",
+    "fields": {
+      "name": { "label": "您的姓名", "placeholder": "请输入姓名" },
+      "email": { "label": "联系邮箱", "placeholder": "请输入邮箱地址" },
+      "content": { "label": "留言内容", "placeholder": "请输入您想咨询的内容..." }
     },
-    {
-      "name": "摩纳哥总部",
-      "address": "Monaco, Monte Carlo XXXXX",
-      "phone": "+377 XX XX XX XX"
-    }
-  ],
-  "workingHours": "周一至周五 9:00-18:00 (GMT+8)"
+    "submitText": "提交留言",
+    "successMessage": "感谢您的留言，我们会尽快回复您"
+  }
 }
 ```
 
@@ -449,11 +448,34 @@ model Job {
 [
   { "title": "首页", "slug": "home" },
   { "title": "品牌故事", "slug": "story" },
+  { "title": "产品系列", "slug": "products" },
   { "title": "护肤仪式", "slug": "ritual" },
   { "title": "联系我们", "slug": "contact" },
   { "title": "加入我们", "slug": "careers" }
 ]
 ```
+
+**产品系列页 (products) content JSON 结构**:
+```json
+{
+  "hero": {
+    "title": "产品系列",
+    "titleEn": "PRODUCTS",
+    "tagline": "源自海洋的馈赠，融合真脂质体靶向技术"
+  },
+  "backgroundImage": "/uploads/products-bg.jpg",
+  "filterLabel": {
+    "all": "全部",
+    "allEn": "All"
+  },
+  "defaultFilter": "all"
+}
+```
+
+> **筛选逻辑说明**：
+> - 默认加载时 `defaultFilter: "all"` 显示全部产品
+> - 分类按 Category.order 字段升序排列
+> - 产品按 Product.order 字段升序排列
 
 ### 4.3 默认管理员
 
@@ -471,9 +493,7 @@ model Job {
 [
   { "key": "site_name", "value": "NIHPLOD 旎柏" },
   { "key": "site_description", "value": "源自摩纳哥的高端护肤品牌" },
-  { "key": "contact_email", "value": "contact@nihplod.cn" },
-  { "key": "contact_phone", "value": "400-xxx-xxxx" },
-  { "key": "contact_address", "value": "中国上海市..." },
+  { "key": "notification_email", "value": "contact@nihplod.cn" },
   { "key": "ai_provider", "value": "openai" },
   { "key": "ai_api_key", "value": "sk-xxx..." },
   { "key": "ai_model", "value": "gpt-4o" },
@@ -485,6 +505,8 @@ model Job {
   { "key": "social_instagram", "value": "https://instagram.com/nihplod" }
 ]
 ```
+
+> ⚠️ **说明**：`notification_email` 用于接收留言通知邮件，不对外展示。联系方式仅通过留言表单沟通。
 
 ---
 

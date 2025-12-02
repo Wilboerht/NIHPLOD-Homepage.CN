@@ -1,7 +1,8 @@
 # NIHPLOD 官网 AI 辅助开发计划
 
-> 版本：1.0
+> 版本：1.2
 > 日期：2025年12月
+> 状态：✅ 已审核
 > 开发模式：AI Vibe Coding（人机结对编程）
 
 📎 **相关文档**：[PRD](./NIHPLOD-PRD.md) | [UX](./NIHPLOD-UX.md) | [技术栈](./NIHPLOD-TechStack.md) | [API](./NIHPLOD-API.md) | [数据库](./NIHPLOD-Database.md)
@@ -327,7 +328,18 @@ interface FloatingCardLayoutProps {
   backgroundImage: string;
   children: React.ReactNode;
   initialState?: 'expanded' | 'half' | 'minimized';
+  // 响应式配置由 Tailwind CSS 处理，组件内部自适应
 }
+
+### 响应式规范
+| 断点 | 卡片宽度 | 卡片边距 | Tailwind 类 |
+|------|----------|----------|-------------|
+| 移动端 (<768px) | 100% | 0 | `w-full` |
+| 平板 (768-1024px) | 90% | 5% 两侧 | `md:w-[90%] md:mx-auto` |
+| 桌面 (>1024px) | 80%, max 1200px | 居中 | `lg:w-[80%] lg:max-w-[1200px]` |
+
+> **说明**：响应式布局通过 Tailwind CSS 的响应式前缀实现，无需额外 Props 配置。
+> 组件内部使用 `useMediaQuery` hook 可检测断点以调整拖拽阈值等交互参数。
 
 ### 视觉规范
 - 卡片背景：#FAF8F5，90% 透明度

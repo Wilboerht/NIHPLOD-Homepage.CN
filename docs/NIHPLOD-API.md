@@ -1,8 +1,8 @@
 # NIHPLOD API 接口文档
 
-> 版本：1.0
+> 版本：1.2
 > 日期：2025年12月
-> 状态：草案
+> 状态：✅ 已审核
 
 📎 **相关文档**：[PRD](./NIHPLOD-PRD.md) | [UX](./NIHPLOD-UX.md) | [技术栈](./NIHPLOD-TechStack.md) | [数据库](./NIHPLOD-Database.md) | [开发计划](./NIHPLOD-DevPlan.md)
 
@@ -34,6 +34,7 @@ GET /api/products
       "nameEn": "Serum",
       "slug": "vital-serum",
       "price": 1280,
+      "capacity": "30ml",
       "images": ["/uploads/serum-1.jpg"],
       "category": { "name": "精华", "nameEn": "Serum", "slug": "serum" }
     }
@@ -57,6 +58,7 @@ GET /api/products/:slug
   "slug": "serum",
   "description": "...",
   "price": 1280,
+  "capacity": "30ml",
   "purchaseUrl": "https://tmall.com/...",
   "images": [...],
   "ingredients": "...",
@@ -211,7 +213,8 @@ GET /api/advisor/questions
         { "value": "dry", "label": "干性肌肤", "description": "经常感到紧绑、脱皮" },
         { "value": "oily", "label": "油性肌肤", "description": "容易出油、毛孔粗大" },
         { "value": "combination", "label": "混合肌肤", "description": "T区油、两颊干" },
-        { "value": "sensitive", "label": "敏感肌肤", "description": "容易泛红、刺痛" }
+        { "value": "sensitive", "label": "敏感肌肤", "description": "容易泛红、刺痛" },
+        { "value": "unsure", "label": "不确定", "description": "不太清楚自己的肌肤类型" }
       ],
       "order": 1
     }
@@ -250,9 +253,41 @@ AI 护肤分析
       "reason": "针对您的抗老需求..."
     }
   ],
-  "routineSuggestion": "建议您采用以下护肤步骤..."
+  "routineSuggestion": "建议您采用以下护肤步骤...",
+  "source": "ai"
 }
 ```
+
+#### AI 服务降级响应
+
+> 当 AI 服务不可用时（API 超时、配额耗尽、服务异常），系统自动切换到基于规则匹配的推荐模式。
+
+**降级响应示例**：
+```json
+{
+  "analysis": "根据您的肌肤类型和关注点，我们为您推荐以下产品组合。",
+  "recommendations": [
+    {
+      "product": { "id": "xxx", "name": "精华液", ... },
+      "reason": "适合混合性肌肤的抗老护理"
+    }
+  ],
+  "routineSuggestion": "建议您按照以下步骤进行日常护肤：洁面 → 精华 → 面霜 → 防晒（日间）",
+  "source": "fallback",
+  "notice": "当前为智能推荐模式，如需更精准的个性化建议，请稍后重试"
+}
+```
+
+**响应字段说明**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| source | string | `"ai"` = AI生成，`"fallback"` = 规则匹配降级 |
+| notice | string | 仅降级时返回，提示用户当前为备用模式 |
+
+**降级匹配逻辑**：
+1. 根据 `skinType` + `concern` 组合查询 `RecommendationRule` 表
+2. 按 `priority` 降序选取匹配规则
+3. 返回规则关联的产品及预设推荐语
 
 ---
 
@@ -261,16 +296,13 @@ AI 护肤分析
 ```
 GET /api/settings/public
 ```
-获取前台需要的公开设置（社交媒体、联系方式等）
+获取前台需要的公开设置（站点信息、社交媒体等）
 
 **响应示例**：
 ```json
 {
   "site_name": "NIHPLOD 旎柏",
   "site_description": "源自摩纳哥的高端护肤品牌",
-  "contact_email": "contact@nihplod.cn",
-  "contact_phone": "400-xxx-xxxx",
-  "contact_address": "中国上海市静安区南京西路XXX号",
   "social": {
     "wechat_qrcode": "/uploads/wechat-qr.jpg",
     "weibo": "https://weibo.com/nihplod",
@@ -280,6 +312,8 @@ GET /api/settings/public
   }
 }
 ```
+
+> ⚠️ **隐私说明**：不对外公开公司地址、电话等联系方式，用户通过留言表单联系。
 
 ---
 
