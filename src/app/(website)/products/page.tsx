@@ -4,11 +4,18 @@ import prisma from "@/lib/prisma";
 import { ProductsContent } from "./ProductsContent";
 
 export const metadata: Metadata = {
-  title: "产品系列 | NIHPLOD 旎柏",
+  title: "产品系列",
   description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
   openGraph: {
     title: "产品系列 | NIHPLOD 旎柏",
     description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
+    images: ["/images/products-og.jpg"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "产品系列 | NIHPLOD 旎柏",
+    description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
+    images: ["/images/products-og.jpg"],
   },
 };
 

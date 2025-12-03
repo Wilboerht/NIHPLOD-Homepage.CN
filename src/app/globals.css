@@ -16,6 +16,22 @@
     overflow-x: hidden;
   }
 
+  /* 尊重用户的减少动画偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   body {
     color: var(--foreground);
     background: var(--background);
@@ -35,6 +51,64 @@
   *::after {
     max-width: 100vw;
   }
+
+  /* ========== 可访问性增强 ========== */
+
+  /* Focus 可见性 - 键盘导航用户 */
+  :focus-visible {
+    outline: 2px solid #c9a86c;
+    outline-offset: 2px;
+  }
+
+  /* 移除默认 focus 样式，仅保留 focus-visible */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Skip to main content 链接 */
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #c9a86c;
+    color: white;
+    padding: 8px 16px;
+    z-index: 100;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .skip-link:focus {
+    top: 0;
+  }
+
+  /* 屏幕阅读器专用文本 */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* 仅在聚焦时显示的 sr-only */
+  .sr-only-focusable:focus,
+  .sr-only-focusable:active {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* ========== 移动端优化 ========== */
 
   /* 移动端触摸优化 */
   @media (hover: none) {
