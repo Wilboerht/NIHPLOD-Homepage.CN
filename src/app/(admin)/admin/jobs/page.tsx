@@ -1,8 +1,352 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Eye,
+  EyeOff,
+  Briefcase,
+  MapPin,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { Badge } from "@/components/ui/Badge";
+import { Pagination } from "@/components/ui/Pagination";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
+
+interface Job {
+  id: string;
+  title: string;
+  titleEn: string;
+  location: string;
+  type: string;
+  salary: string | null;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const JOB_TYPE_LABELS: Record<string, string> = {
+  fulltime: "全职",
+  parttime: "兼职",
+  intern: "实习",
+};
+
 export default function AdminJobsPage() {
+  const { success, error: showError } = useToast();
+
+  // 状态
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // 删除确认
+  const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // 获取职位列表
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: "10",
+      });
+      if (search) params.set("search", search);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+
+      const res = await fetch(`/api/admin/jobs?${params}`);
+      const data = await res.json();
+
+      if (data.success) {
+        setJobs(data.data.items);
+        setTotal(data.data.pagination.total);
+      }
+    } catch (error) {
+      console.error("获取职位列表失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, statusFilter]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  // 搜索防抖
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // 切换发布状态
+  const togglePublish = async (job: Job) => {
+    try {
+      const res = await fetch(`/api/admin/jobs/${job.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published: !job.published }),
+      });
+
+      if (!res.ok) throw new Error("操作失败");
+
+      success(job.published ? "已取消发布" : "已发布");
+      fetchJobs();
+    } catch {
+      showError("操作失败");
+    }
+  };
+
+  // 删除职位
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/jobs/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("删除失败");
+
+      success("职位已删除");
+      setDeleteTarget(null);
+      fetchJobs();
+    } catch {
+      showError("删除失败");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // 批量操作
+  const handleBatchAction = async (action: "publish" | "unpublish" | "delete") => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      const res = await fetch("/api/admin/jobs/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          action,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error?.message || "操作失败");
+
+      success(data.data.message);
+      setSelectedIds(new Set());
+      fetchJobs();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "操作失败");
+    }
+  };
+
+  // 格式化日期
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("zh-CN");
+  };
+
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">招聘管理</h1>
-      <p className="text-gray-500">页面开发中...</p>
+    <div className="space-y-6">
+      {/* 头部 */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">招聘管理</h1>
+          <p className="mt-1 text-sm text-gray-500">共 {total} 个职位</p>
+        </div>
+        <Link href="/admin/jobs/new">
+          <Button leftIcon={<Plus className="h-4 w-4" />}>新增职位</Button>
+        </Link>
+      </div>
+
+      {/* 工具栏 */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="搜索职位..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 w-60 rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+            />
+          </div>
+          <Select
+            options={[
+              { value: "all", label: "全部状态" },
+              { value: "published", label: "已发布" },
+              { value: "draft", label: "草稿" },
+            ]}
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="w-32"
+          />
+        </div>
+
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">已选 {selectedIds.size} 项</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBatchAction("publish")}
+            >
+              批量发布
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBatchAction("unpublish")}
+            >
+              批量下架
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-red-600 hover:bg-red-50"
+              onClick={() => handleBatchAction("delete")}
+            >
+              批量删除
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* 职位列表 */}
+      <div className="rounded-xl bg-white shadow-sm">
+        {loading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+            <Briefcase className="mb-2 h-12 w-12" />
+            <p className="text-lg">暂无职位</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {jobs.map((job) => (
+              <div
+                key={job.id}
+                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50"
+              >
+                {/* 选择框 */}
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(job.id)}
+                  onChange={(e) => {
+                    const newSelected = new Set(selectedIds);
+                    if (e.target.checked) {
+                      newSelected.add(job.id);
+                    } else {
+                      newSelected.delete(job.id);
+                    }
+                    setSelectedIds(newSelected);
+                  }}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+
+                {/* 职位信息 */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/admin/jobs/${job.id}/edit`}
+                      className="font-medium text-gray-900 hover:text-brand-gold"
+                    >
+                      {job.title}
+                    </Link>
+                    <Badge variant={job.published ? "success" : "default"}>
+                      {job.published ? "已发布" : "草稿"}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {job.location}
+                    </span>
+                    <span>{JOB_TYPE_LABELS[job.type] || job.type}</span>
+                    {job.salary && <span>{job.salary}</span>}
+                  </div>
+                </div>
+
+                {/* 更新时间 */}
+                <div className="hidden text-sm text-gray-500 md:block">
+                  {formatDate(job.updatedAt)}
+                </div>
+
+                {/* 操作按钮 */}
+                <div className="relative flex items-center gap-1">
+                  <Link href={`/admin/jobs/${job.id}/edit`}>
+                    <button className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                      <Edit className="h-4 w-4" />
+                    </button>
+                  </Link>
+                  <button
+                    onClick={() => togglePublish(job)}
+                    className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    title={job.published ? "取消发布" : "发布"}
+                  >
+                    {job.published ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(job)}
+                    className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 分页 */}
+      {total > 10 && (
+        <div className="flex justify-center">
+          <Pagination
+            page={page}
+            pageSize={10}
+            total={total}
+            onChange={setPage}
+          />
+        </div>
+      )}
+
+      {/* 删除确认 */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="确认删除"
+        description={`确定要删除职位「${deleteTarget?.title}」吗？此操作无法撤销。`}
+        confirmText="删除"
+        loading={deleting}
+        type="danger"
+      />
     </div>
   );
 }

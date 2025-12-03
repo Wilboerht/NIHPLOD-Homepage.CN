@@ -1,5 +1,5 @@
 /**
- * AI 婚礼顾问相关类型定义
+ * AI 护肤顾问相关类型定义
  */
 
 export interface AdvisorMessage {
@@ -25,11 +25,11 @@ export interface AdvisorRequest {
 }
 
 export interface AdvisorContext {
-  budget?: string;
-  style?: string;
-  venue?: string;
-  guestCount?: number;
-  date?: string;
+  skinType?: string; // 肤质类型
+  skinConcerns?: string[]; // 肌肤问题
+  ageRange?: string; // 年龄段
+  allergies?: string[]; // 过敏成分
+  currentRoutine?: string; // 当前护肤流程
   preferences?: string[];
 }
 

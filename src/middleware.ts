@@ -32,7 +32,7 @@ const PROTECTED_API_PATHS = [
 ];
 
 // 公开的 API 路径（不需要认证）
-const PUBLIC_API_PATHS = [
+const _PUBLIC_API_PATHS = [
   "/api/admin/login",
   "/api/contact",
   "/api/advisor",

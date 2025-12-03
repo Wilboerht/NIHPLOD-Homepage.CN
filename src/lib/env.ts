@@ -7,7 +7,7 @@
 export const appConfig = {
   name: process.env.NEXT_PUBLIC_APP_NAME || "NIHPLOD",
   url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-  description: process.env.NEXT_PUBLIC_APP_DESCRIPTION || "高端婚礼花艺定制",
+  description: process.env.NEXT_PUBLIC_APP_DESCRIPTION || "逆转时光",
 } as const;
 
 // 数据库配置

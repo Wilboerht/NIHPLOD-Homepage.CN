@@ -1,8 +1,15 @@
+import { Metadata } from "next";
+import { ContactContent } from "./ContactContent";
+
+export const metadata: Metadata = {
+  title: "联系我们 | NIHPLOD 旎柏",
+  description: "有任何问题或建议？欢迎联系 NIHPLOD 旎柏，我们期待与您的每一次交流。",
+  openGraph: {
+    title: "联系我们 | NIHPLOD 旎柏",
+    description: "有任何问题或建议？欢迎联系 NIHPLOD 旎柏，我们期待与您的每一次交流。",
+  },
+};
+
 export default function ContactPage() {
-  return (
-    <div className="container-wide px-s py-xl">
-      <h1 className="font-serif text-brand-charcoal">联系我们</h1>
-      <p className="mt-m text-brand-charcoal/70">页面开发中...</p>
-    </div>
-  );
+  return <ContactContent />;
 }

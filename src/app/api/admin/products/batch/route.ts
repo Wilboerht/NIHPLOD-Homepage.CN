@@ -1,0 +1,86 @@
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { verifyAuth } from "@/lib/auth";
+import { z } from "zod";
+
+// 批量操作 Schema
+const BatchActionSchema = z.object({
+  ids: z.array(z.string()).min(1, "请选择至少一个产品"),
+  action: z.enum(["publish", "unpublish", "delete"]),
+});
+
+// POST /api/admin/products/batch - 批量操作产品
+export async function POST(request: NextRequest) {
+  try {
+    // 验证认证
+    const admin = await verifyAuth(request);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
+        { status: 401 }
+      );
+    }
+
+    // 解析请求体
+    const body = await request.json();
+    const { ids, action } = BatchActionSchema.parse(body);
+
+    let result: { count: number };
+
+    switch (action) {
+      case "publish":
+        result = await prisma.product.updateMany({
+          where: { id: { in: ids } },
+          data: { published: true },
+        });
+        break;
+
+      case "unpublish":
+        result = await prisma.product.updateMany({
+          where: { id: { in: ids } },
+          data: { published: false },
+        });
+        break;
+
+      case "delete":
+        // 删除产品会级联删除关联的图片
+        result = await prisma.product.deleteMany({
+          where: { id: { in: ids } },
+        });
+        break;
+
+      default:
+        return NextResponse.json(
+          { success: false, error: { code: "INVALID_ACTION", message: "无效的操作类型" } },
+          { status: 400 }
+        );
+    }
+
+    const actionMessages = {
+      publish: "发布",
+      unpublish: "取消发布",
+      delete: "删除",
+    };
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        affected: result.count,
+        message: `成功${actionMessages[action]} ${result.count} 个产品`,
+      },
+    });
+  } catch (error) {
+    console.error("批量操作失败:", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { success: false, error: { code: "SERVER_ERROR", message: "批量操作失败" } },
+      { status: 500 }
+    );
+  }
+}
+

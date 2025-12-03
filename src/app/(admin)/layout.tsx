@@ -1,7 +1,11 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, Suspense } from "react";
 import { usePathname } from "next/navigation";
+import { Sidebar, AdminHeader } from "@/components/admin";
+import { useSidebar } from "@/hooks";
+import { cn } from "@/lib/utils";
+import { ToastProvider } from "@/components/ui/Toast";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -14,33 +18,47 @@ interface AdminLayoutProps {
  */
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
+  const { isOpen, isCollapsed, isMobile, toggle, close, toggleCollapse } = useSidebar();
 
   // 登录页面使用独立的简洁布局
   if (pathname === "/login") {
-    return <>{children}</>;
+    return (
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center">加载中...</div>}>
+        {children}
+      </Suspense>
+    );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* TODO: Sidebar 组件 */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-gray-200 bg-white">
-        <div className="flex h-16 items-center justify-center border-b border-gray-200">
-          <span className="font-serif text-xl text-brand-charcoal">NIHPLOD CMS</span>
+    <ToastProvider>
+      <div className="min-h-screen bg-gray-50">
+        {/* 侧边栏 */}
+        <Sidebar
+          isOpen={isOpen}
+          isCollapsed={isCollapsed}
+          isMobile={isMobile}
+          onClose={close}
+          onToggleCollapse={toggleCollapse}
+        />
+
+        {/* 主内容区域 */}
+        <div
+          className={cn(
+            "flex flex-1 flex-col transition-all duration-300",
+            isMobile ? "ml-0" : isCollapsed ? "ml-16" : "ml-64"
+          )}
+        >
+          {/* 顶部导航 */}
+          <AdminHeader onMenuClick={toggle} isMobile={isMobile} />
+
+          {/* 页面内容 */}
+          <main className="flex-1 p-4 md:p-6">
+            <Suspense fallback={<div className="flex items-center justify-center py-8">加载中...</div>}>
+              {children}
+            </Suspense>
+          </main>
         </div>
-        <nav className="p-4">
-          <p className="text-sm text-gray-500">侧边栏占位</p>
-        </nav>
-      </aside>
-
-      {/* 主内容区域 */}
-      <div className="ml-64 flex-1">
-        {/* TODO: AdminHeader 组件 */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
-          <span className="text-sm text-gray-500">顶部导航占位</span>
-        </header>
-
-        <main className="p-6">{children}</main>
       </div>
-    </div>
+    </ToastProvider>
   );
 }

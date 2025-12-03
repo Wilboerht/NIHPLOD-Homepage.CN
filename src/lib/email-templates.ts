@@ -29,7 +29,7 @@ function baseTemplate(content: string): string {
                 NIHPLOD
               </h1>
               <p style="margin: 8px 0 0 0; font-size: 12px; color: ${BRAND_GOLD}; letter-spacing: 2px;">
-                高端婚礼花艺定制
+                逆转时光
               </p>
             </td>
           </tr>

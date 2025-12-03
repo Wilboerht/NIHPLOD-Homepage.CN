@@ -1,97 +1,128 @@
 "use client";
 
+import Link from "next/link";
 import { m } from "framer-motion";
-import {
-  fadeInUp,
-  staggerContainer,
-  defaultTransition,
-  hoverScale,
-  tapScale,
-} from "@/lib/animations";
+import { Sparkles, Package } from "lucide-react";
 
+/**
+ * 首页 - 全屏单页布局
+ */
 export default function Home() {
   return (
-    <section className="flex min-h-[80vh] flex-col items-center justify-center bg-brand-cream">
-      <m.div
-        className="space-y-m text-center"
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-      >
-        {/* 品牌标题 - 使用 serif 字体 */}
+    <div className="fixed inset-0 bottom-16 overflow-hidden bg-brand-cream lg:bottom-20">
+      {/* 背景渐变 */}
+      <div className="absolute inset-0 bg-gradient-to-b from-brand-cream via-brand-cream to-brand-blush/30" />
+
+      {/* 网格装饰线 */}
+      <div className="pointer-events-none absolute inset-0">
+        <m.div
+          className="absolute left-0 right-0 top-1/3 h-px bg-gradient-to-r from-transparent via-brand-gold/20 to-transparent"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 1.2, delay: 0.5 }}
+        />
+        <m.div
+          className="absolute bottom-1/3 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/20 to-transparent"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 1.2, delay: 0.7 }}
+        />
+        <m.div
+          className="absolute bottom-0 left-1/3 top-0 w-px bg-gradient-to-b from-transparent via-brand-gold/15 to-transparent"
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 1.2, delay: 0.9 }}
+        />
+        <m.div
+          className="absolute bottom-0 right-1/3 top-0 w-px bg-gradient-to-b from-transparent via-brand-gold/15 to-transparent"
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 1.2, delay: 1.1 }}
+        />
+      </div>
+
+      {/* 主内容 - 垂直居中 */}
+      <div className="relative z-10 flex h-full flex-col items-center justify-center px-6">
+        {/* 品牌标题 */}
         <m.h1
-          className="font-serif text-brand-charcoal"
-          variants={fadeInUp}
-          transition={defaultTransition}
+          className="font-serif text-4xl tracking-wider text-brand-charcoal md:text-5xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
         >
           NIHPLOD
         </m.h1>
         <m.p
-          className="text-lg uppercase tracking-widest text-brand-charcoal/70"
-          variants={fadeInUp}
-          transition={defaultTransition}
+          className="mt-1 font-serif text-brand-gold"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
         >
-          高端婚礼花艺定制
+          旎柏
+        </m.p>
+
+        {/* 品牌口号 */}
+        <m.p
+          className="mt-3 text-xs uppercase tracking-[0.2em] text-brand-charcoal/50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          源自摩纳哥的高端护肤品牌
         </m.p>
 
         {/* 分隔线 */}
         <m.div
-          className="mx-auto my-l h-px w-24 bg-brand-gold"
-          variants={fadeInUp}
-          transition={defaultTransition}
+          className="my-6 h-px w-12 bg-brand-gold/40"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
         />
 
-        {/* 品牌色展示 */}
+        {/* 双入口 */}
         <m.div
-          className="mt-l flex justify-center gap-s"
-          variants={fadeInUp}
-          transition={defaultTransition}
+          className="grid w-full max-w-md gap-3 md:grid-cols-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
         >
-          {[
-            { color: "bg-brand-gold", name: "Gold" },
-            {
-              color: "bg-brand-cream border border-brand-beige",
-              name: "Cream",
-            },
-            { color: "bg-brand-charcoal", name: "Charcoal" },
-            { color: "bg-brand-blush", name: "Blush" },
-            { color: "bg-brand-beige", name: "Beige" },
-          ].map((item) => (
-            <m.div
-              key={item.name}
-              className="flex cursor-pointer flex-col items-center"
-              whileHover={hoverScale}
-              whileTap={tapScale}
-            >
-              <div className={`h-16 w-16 ${item.color} rounded`} />
-              <span className="mt-2 text-xs text-brand-charcoal/60">{item.name}</span>
-            </m.div>
-          ))}
+          {/* AI 顾问入口 */}
+          <Link href="/advisor" className="group">
+            <div className="flex flex-col items-center rounded-xl bg-brand-gold px-5 py-4 text-white shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
+              <div className="mb-2 rounded-full bg-white/20 p-2">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <span className="font-serif text-base">AI 护肤顾问</span>
+              <span className="mt-0.5 text-xs text-white/70">
+                获取专属护肤方案
+              </span>
+            </div>
+          </Link>
+
+          {/* 产品浏览入口 */}
+          <Link href="/products" className="group">
+            <div className="flex flex-col items-center rounded-xl border border-brand-beige bg-white/80 px-5 py-4 text-brand-charcoal transition-all hover:-translate-y-1 hover:shadow-lg">
+              <div className="mb-2 rounded-full bg-brand-gold/10 p-2">
+                <Package className="h-5 w-5 text-brand-gold" />
+              </div>
+              <span className="font-serif text-base">探索产品</span>
+              <span className="mt-0.5 text-xs text-brand-charcoal/50">
+                浏览全系列产品
+              </span>
+            </div>
+          </Link>
         </m.div>
 
-        {/* 按钮样式展示 */}
-        <m.div
-          className="mt-l flex justify-center gap-m"
-          variants={fadeInUp}
-          transition={defaultTransition}
-        >
-          <m.button className="btn-primary" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            主要按钮
-          </m.button>
-          <m.button className="btn-outline" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            轮廓按钮
-          </m.button>
-        </m.div>
-
-        {/* 配置验证提示 */}
+        {/* 底部装饰 */}
         <m.p
-          className="mt-xl text-sm text-brand-charcoal/50"
-          variants={fadeInUp}
-          transition={{ ...defaultTransition, delay: 0.3 }}
+          className="mt-8 text-[10px] tracking-[0.3em] text-brand-charcoal/25 sm:text-xs"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
         >
-          ✓ 品牌设计系统 + 动画系统配置完成
+          SKINCARE · BEAUTY · ELEGANCE
         </m.p>
-      </m.div>
-    </section>
+      </div>
+    </div>
   );
 }

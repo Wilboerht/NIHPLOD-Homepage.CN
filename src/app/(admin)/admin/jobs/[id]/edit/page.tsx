@@ -1,0 +1,103 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { JobForm } from "@/components/admin/JobForm";
+import { useToast } from "@/components/ui/Toast";
+
+interface JobData {
+  id: string;
+  title: string;
+  titleEn: string;
+  location: string;
+  type: "fulltime" | "parttime" | "intern";
+  description: string;
+  requirements: string;
+  salary: string | null;
+  published: boolean;
+}
+
+export default function EditJobPage() {
+  const router = useRouter();
+  const params = useParams();
+  const jobId = params.id as string;
+  const { error: showError } = useToast();
+
+  const [job, setJob] = useState<JobData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 获取职位数据
+  useEffect(() => {
+    const fetchJob = async () => {
+      try {
+        const res = await fetch(`/api/admin/jobs/${jobId}`);
+        if (!res.ok) {
+          if (res.status === 404) {
+            showError("职位不存在");
+            router.push("/admin/jobs");
+            return;
+          }
+          throw new Error("获取职位失败");
+        }
+        const data = await res.json();
+        setJob(data.data);
+      } catch (error) {
+        console.error("获取职位失败:", error);
+        showError("获取职位失败");
+        router.push("/admin/jobs");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJob();
+  }, [jobId, router, showError]);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!job) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 顶部导航 */}
+      <div className="flex items-center gap-4">
+        <Link
+          href="/admin/jobs"
+          className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">编辑职位</h1>
+          <p className="mt-0.5 text-sm text-gray-500">{job.title}</p>
+        </div>
+      </div>
+
+      {/* 职位表单 */}
+      <JobForm
+        jobId={jobId}
+        initialData={{
+          title: job.title,
+          titleEn: job.titleEn,
+          location: job.location,
+          type: job.type,
+          description: job.description,
+          requirements: job.requirements,
+          salary: job.salary || "",
+          published: job.published,
+        }}
+      />
+    </div>
+  );
+}
+

@@ -1,39 +1,36 @@
 /**
- * AI 顾问相关验证 Schema
+ * AI 护肤顾问相关验证 Schema
  */
 import { z } from "zod";
 
-// 婚礼风格枚举
-export const WeddingStyleEnum = z.enum([
-  "romantic", // 浪漫风
-  "modern", // 现代简约
-  "classic", // 经典传统
-  "garden", // 花园风
-  "bohemian", // 波西米亚
-  "luxury", // 奢华风
-  "rustic", // 乡村风
-  "minimalist", // 极简风
+// 肤质类型枚举
+export const SkinTypeEnum = z.enum([
+  "dry", // 干性肌肤
+  "oily", // 油性肌肤
+  "combination", // 混合性肌肤
+  "sensitive", // 敏感性肌肤
+  "normal", // 中性肌肤
 ]);
 
-// 预算范围枚举
-export const BudgetRangeEnum = z.enum([
-  "under50k", // 5万以下
-  "50k-100k", // 5-10万
-  "100k-200k", // 10-20万
-  "200k-500k", // 20-50万
-  "above500k", // 50万以上
+// 肌肤问题枚举
+export const SkinConcernEnum = z.enum([
+  "aging", // 抗衰老
+  "wrinkles", // 细纹皱纹
+  "dullness", // 肤色暗沉
+  "dryness", // 干燥缺水
+  "acne", // 痘痘粉刺
+  "pores", // 毛孔粗大
+  "spots", // 色斑
+  "sensitivity", // 敏感泛红
 ]);
 
-// 场地类型枚举
-export const VenueTypeEnum = z.enum([
-  "hotel", // 酒店
-  "church", // 教堂
-  "outdoor", // 户外
-  "garden", // 花园
-  "beach", // 海滩
-  "villa", // 别墅
-  "restaurant", // 餐厅
-  "other", // 其他
+// 年龄段枚举
+export const AgeRangeEnum = z.enum([
+  "under25", // 25岁以下
+  "25-30", // 25-30岁
+  "30-40", // 30-40岁
+  "40-50", // 40-50岁
+  "above50", // 50岁以上
 ]);
 
 // AI 顾问消息 Schema
@@ -42,19 +39,57 @@ export const AdvisorMessageSchema = z.object({
   conversationId: z.string().optional(),
 });
 
-// 婚礼偏好问卷 Schema（根据用户需求定制）
+// 护肤偏好问卷 Schema（根据用户需求定制）
 export const AdvisorAnswersSchema = z.object({
-  weddingStyle: WeddingStyleEnum.optional(),
-  budget: BudgetRangeEnum.optional(),
-  venueType: VenueTypeEnum.optional(),
-  guestCount: z.coerce.number().int().min(1).max(1000).optional(),
-  weddingDate: z.string().optional(),
-  colorPreference: z.array(z.string()).max(5).optional(),
-  flowerPreference: z.array(z.string()).max(10).optional(),
+  skinType: SkinTypeEnum.optional(),
+  skinConcerns: z.array(SkinConcernEnum).max(5).optional(),
+  ageRange: AgeRangeEnum.optional(),
+  allergies: z.array(z.string()).max(10).optional(),
+  currentRoutine: z.string().max(500).optional(),
   specialRequirements: z.string().max(500).optional(),
 });
 
-// 婚礼顾问上下文 Schema
+// 问卷式问答 Schema（匹配 advisor-questions.ts 配置）
+export const QuestionnaireAnswersSchema = z.object({
+  skinType: z.enum(["dry", "oily", "combination", "sensitive", "normal", "unknown"]).optional(),
+  primaryConcern: z.enum(["aging", "dull", "hydration", "pores", "sensitive", "acne"]).optional(),
+  ageRange: z.enum(["18-24", "25-30", "31-40", "41-50", "50+"]).optional(),
+  currentRoutine: z.enum(["minimal", "basic", "complete", "advanced", "none"]).optional(),
+  allergies: z.enum(["none", "fragrance", "alcohol", "acid", "multiple", "unknown"]).optional(),
+  budget: z.enum(["budget", "mid", "premium", "luxury"]).optional(),
+});
+
+// 面部分析结果 Schema
+export const FaceAnalysisResultSchema = z.object({
+  skinType: z.object({
+    type: z.string(),
+    confidence: z.number(),
+    description: z.string().optional(),
+  }),
+  skinConditions: z.array(z.object({
+    condition: z.string(),
+    severity: z.enum(["mild", "moderate", "severe"]),
+    area: z.string().optional(),
+    description: z.string().optional(),
+  })),
+  hydration: z.object({
+    level: z.enum(["low", "medium", "high"]),
+    description: z.string().optional(),
+  }),
+  skinAge: z.object({
+    estimated: z.number(),
+    factors: z.array(z.string()).optional(),
+  }).optional(),
+  recommendations: z.array(z.string()).optional(),
+});
+
+// 分析请求 Schema
+export const AnalyzeRequestSchema = z.object({
+  answers: QuestionnaireAnswersSchema,
+  faceAnalysis: FaceAnalysisResultSchema.optional(),
+});
+
+// 护肤顾问上下文 Schema
 export const AdvisorContextSchema = z.object({
   answers: AdvisorAnswersSchema.optional(),
   previousMessages: z
@@ -76,10 +111,13 @@ export const AdvisorRequestSchema = z.object({
 });
 
 // 类型导出
-export type WeddingStyle = z.infer<typeof WeddingStyleEnum>;
-export type BudgetRange = z.infer<typeof BudgetRangeEnum>;
-export type VenueType = z.infer<typeof VenueTypeEnum>;
+export type SkinType = z.infer<typeof SkinTypeEnum>;
+export type SkinConcern = z.infer<typeof SkinConcernEnum>;
+export type AgeRange = z.infer<typeof AgeRangeEnum>;
 export type AdvisorMessageData = z.infer<typeof AdvisorMessageSchema>;
 export type AdvisorAnswers = z.infer<typeof AdvisorAnswersSchema>;
 export type AdvisorContext = z.infer<typeof AdvisorContextSchema>;
 export type AdvisorRequest = z.infer<typeof AdvisorRequestSchema>;
+export type QuestionnaireAnswers = z.infer<typeof QuestionnaireAnswersSchema>;
+export type FaceAnalysisResult = z.infer<typeof FaceAnalysisResultSchema>;
+export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;

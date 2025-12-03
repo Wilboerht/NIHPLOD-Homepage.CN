@@ -32,17 +32,17 @@
 │  Phase 1          Phase 2          Phase 3          Phase 4        │
 │  基础设施          CMS后台          前台页面          AI功能         │
 │  ────────         ────────         ────────         ────────        │
-│  Week 1           Week 2-3         Week 4-5         Week 6          │
+│  Week 1           Week 2-3         Week 4-5         Week 6-7        │
 │                                                                     │
 │  • 项目初始化      • 产品管理        • 首页           • 问答流程      │
-│  • 数据库设计      • 内容管理        • 品牌故事        • AI分析       │
-│  • 认证系统        • 媒体库          • 产品页面        • 结果推荐      │
-│                   • AI配置          • 其他页面                       │
+│  • 数据库设计      • 内容管理        • 品牌故事        • 面部识别      │
+│  • 认证系统        • 媒体库          • 产品页面        • 综合AI分析    │
+│                   • AI配置          • 其他页面        • 结果推荐      │
 │                                                                     │
 │                                                     Phase 5         │
 │                                                     测试与部署       │
 │                                                     ────────        │
-│                                                     Week 7-8        │
+│                                                     Week 8-9        │
 │                                                                     │
 │                                                     • 响应式优化    │
 │                                                     • 功能测试      │
@@ -2496,7 +2496,13 @@ interface UseToast {
 
 ---
 
-## 五、Phase 4：AI 护肤顾问 (Week 6)
+## 五、Phase 4：AI 护肤顾问 (Week 6-7)
+
+> 💡 **功能说明**：AI 护肤顾问包含两个核心功能：
+> 1. **问答流程**：通过 6 道问题了解用户肤质和护肤需求
+> 2. **AI 面部识别**：通过摄像头或上传照片，利用 AI 分析面部肌肤状态
+>
+> 两者结合，综合给出个性化护肤建议和产品推荐。
 
 ### 5.1 问答流程
 
@@ -2726,21 +2732,668 @@ export interface AdvisorContextValue {
 
 ---
 
-### 5.2 AI 分析与结果
+### 5.2 AI 面部识别分析
+
+> 💡 **技术说明**：使用 AI 视觉模型分析用户面部照片，识别肤质特征、问题区域等，结合问答数据综合给出护肤建议。
 
 #### 任务清单
 
 | # | 任务 | 优先级 | AI 辅助度 | 预计耗时 |
 |---|------|--------|-----------|----------|
-| 4.2.1 | AI 分析 API 路由 | P0 | ⭐⭐ | 2h |
-| 4.2.2 | 加载动画 | P1 | ⭐⭐⭐ | 1h |
-| 4.2.3 | 结果展示页面 | P0 | ⭐⭐⭐ | 2.5h |
-| 4.2.4 | 产品推荐匹配 | P0 | ⭐⭐ | 1.5h |
-| 4.2.5 | 保存/分享功能 | P2 | ⭐⭐⭐ | 1.5h |
+| 4.2.1 | 面部拍照/上传组件 | P0 | ⭐⭐ | 3h |
+| 4.2.2 | 面部图像预处理 | P0 | ⭐⭐ | 2h |
+| 4.2.3 | AI 面部分析 API | P0 | ⭐⭐ | 3h |
+| 4.2.4 | 分析结果展示组件 | P0 | ⭐⭐⭐ | 2h |
+| 4.2.5 | 问答+面部综合分析 | P0 | ⭐⭐ | 2h |
 
 ---
 
-#### 4.2.1 AI 分析 API 路由
+#### 4.2.1 面部拍照/上传组件
+
+**子任务**：
+
+| 步骤 | 操作 | 文件 | 验收标准 |
+|------|------|------|----------|
+| 1 | 创建面部分析入口页 | `src/app/(website)/advisor/scan/page.tsx` | 页面渲染 |
+| 2 | 实现摄像头调用 | WebRTC getUserMedia | 摄像头正常 |
+| 3 | 实现拍照功能 | Canvas 截图 | 照片清晰 |
+| 4 | 实现图片上传 | 文件选择器 | 上传成功 |
+| 5 | 添加面部框引导 | 椭圆形引导框 | 引导清晰 |
+| 6 | 添加光线检测提示 | 环境光检测 | 提示正确 |
+| 7 | 移动端适配 | 前置/后置摄像头切换 | 切换正常 |
+
+**面部拍照页面布局**：
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  ← 返回                                              跳过此步   │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│                      📸 AI 肌肤检测                             │
+│                                                                │
+│            拍摄一张素颜照片，AI 将分析您的肌肤状态               │
+│                                                                │
+│        ┌──────────────────────────────────────────┐            │
+│        │                                          │            │
+│        │                                          │            │
+│        │           ╭─────────────────╮            │            │
+│        │           │                 │            │            │
+│        │           │   (摄像头预览)   │            │            │
+│        │           │                 │            │            │
+│        │           │    请将面部     │            │            │
+│        │           │    置于框内     │            │            │
+│        │           │                 │            │            │
+│        │           ╰─────────────────╯            │            │
+│        │                                          │            │
+│        │                                          │            │
+│        └──────────────────────────────────────────┘            │
+│                                                                │
+│                         💡 光线良好                             │
+│                                                                │
+│        ┌───────────┐              ┌───────────┐                │
+│        │  📷 拍照  │              │  📁 上传  │                │
+│        └───────────┘              └───────────┘                │
+│                                                                │
+│                      🔒 照片仅用于分析，不会保存                 │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+```
+
+**拍照组件实现**：
+
+```typescript
+// src/components/website/advisor/FaceCapture.tsx
+'use client';
+
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { Camera, Upload, RefreshCw, Check, X } from 'lucide-react';
+import { m } from 'framer-motion';
+
+interface FaceCaptureProps {
+  onCapture: (imageData: string) => void;
+  onSkip?: () => void;
+}
+
+export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [lightLevel, setLightLevel] = useState<'good' | 'low' | 'unknown'>('unknown');
+  const [error, setError] = useState<string | null>(null);
+
+  // 初始化摄像头
+  const initCamera = useCallback(async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setError(null);
+    } catch (err) {
+      setError('无法访问摄像头，请检查权限设置');
+      console.error('Camera error:', err);
+    }
+  }, [facingMode]);
+
+  // 拍照
+  const takePhoto = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 前置摄像头需要镜像
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+
+    ctx.drawImage(video, 0, 0);
+
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+    setCapturedImage(imageData);
+  }, [facingMode]);
+
+  // 确认使用照片
+  const confirmPhoto = useCallback(() => {
+    if (capturedImage) {
+      onCapture(capturedImage);
+    }
+  }, [capturedImage, onCapture]);
+
+  // 重新拍照
+  const retakePhoto = useCallback(() => {
+    setCapturedImage(null);
+  }, []);
+
+  // 上传图片
+  const handleUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageData = reader.result as string;
+      setCapturedImage(imageData);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  // 切换前后摄像头
+  const toggleCamera = useCallback(() => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  }, [stream]);
+
+  useEffect(() => {
+    initCamera();
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [initCamera]);
+
+  // ... 渲染 UI
+}
+```
+
+---
+
+#### 4.2.2 面部图像预处理
+
+**子任务**：
+
+| 步骤 | 操作 | 文件 | 验收标准 |
+|------|------|------|----------|
+| 1 | 图像尺寸标准化 | 统一为 512x512 | 尺寸正确 |
+| 2 | 图像质量压缩 | JPEG 80% | 大小 < 500KB |
+| 3 | 面部区域裁剪 | 居中裁剪 | 裁剪正确 |
+| 4 | Base64 编码 | 用于 API 传输 | 编码正确 |
+| 5 | 隐私保护处理 | 仅传输必要数据 | 数据最小化 |
+
+**图像预处理工具**：
+
+```typescript
+// src/lib/image-processing.ts
+
+/**
+ * 预处理面部图像用于 AI 分析
+ */
+export async function preprocessFaceImage(imageData: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Canvas context not available'));
+        return;
+      }
+
+      // 目标尺寸
+      const targetSize = 512;
+
+      // 计算裁剪区域（居中正方形）
+      const minDim = Math.min(img.width, img.height);
+      const sx = (img.width - minDim) / 2;
+      const sy = (img.height - minDim) / 2;
+
+      canvas.width = targetSize;
+      canvas.height = targetSize;
+
+      // 绘制并缩放
+      ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+
+      // 导出为 JPEG
+      const processedImage = canvas.toDataURL('image/jpeg', 0.8);
+      resolve(processedImage);
+    };
+    img.onerror = () => reject(new Error('Image loading failed'));
+    img.src = imageData;
+  });
+}
+
+/**
+ * 计算图像亮度（用于光线检测）
+ */
+export function calculateBrightness(imageData: ImageData): number {
+  const data = imageData.data;
+  let sum = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    // 计算灰度值
+    sum += (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+  }
+  return sum / (data.length / 4) / 255; // 0-1 范围
+}
+```
+
+---
+
+#### 4.2.3 AI 面部分析 API
+
+**子任务**：
+
+| 步骤 | 操作 | 文件 | 验收标准 |
+|------|------|------|----------|
+| 1 | 创建面部分析 API | `src/app/api/advisor/face-analyze/route.ts` | API 可调用 |
+| 2 | 集成 AI 视觉模型 | GPT-4V / Claude Vision | 响应正常 |
+| 3 | 设计分析提示词 | 专业护肤分析 | 分析准确 |
+| 4 | 解析 AI 返回结果 | JSON 格式化 | 解析正确 |
+| 5 | 实现降级方案 | 基础图像分析 | 降级正常 |
+| 6 | 添加速率限制 | 防止滥用 | 限制生效 |
+
+**面部分析 API 实现**：
+
+```typescript
+// src/app/api/advisor/face-analyze/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { rateLimit } from '@/lib/ratelimit';
+
+const FaceAnalyzeSchema = z.object({
+  image: z.string().min(1, '请提供图片'),
+});
+
+// 面部分析结果类型
+interface FaceAnalysisResult {
+  skinType: {
+    type: 'dry' | 'oily' | 'combination' | 'normal' | 'sensitive';
+    confidence: number;
+    description: string;
+  };
+  skinConditions: {
+    condition: string;
+    severity: 'mild' | 'moderate' | 'severe';
+    area: string;
+    description: string;
+  }[];
+  skinAge: {
+    estimated: number;
+    factors: string[];
+  };
+  hydration: {
+    level: 'low' | 'medium' | 'high';
+    description: string;
+  };
+  recommendations: string[];
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // 速率限制（面部分析更严格）
+    const ip = request.ip || 'unknown';
+    const { success } = await rateLimit(ip, 'face-analyze', {
+      maxRequests: 5,
+      windowMs: 60 * 60 * 1000, // 每小时 5 次
+    });
+    if (!success) {
+      return NextResponse.json(
+        { error: '分析次数已达上限，请稍后再试' },
+        { status: 429 }
+      );
+    }
+
+    // 验证请求
+    const body = await request.json();
+    const result = FaceAnalyzeSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        { error: '请求参数错误' },
+        { status: 400 }
+      );
+    }
+
+    const { image } = result.data;
+
+    // 调用 AI 视觉模型分析
+    const analysis = await analyzeFaceWithAI(image);
+
+    return NextResponse.json({
+      success: true,
+      data: analysis,
+    });
+  } catch (error) {
+    console.error('Face analysis error:', error);
+    return NextResponse.json(
+      { error: '分析失败，请重试' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 使用 AI 视觉模型分析面部
+ */
+async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResult> {
+  const provider = process.env.AI_VISION_PROVIDER || 'openai';
+
+  if (provider === 'openai') {
+    return analyzeWithGPT4V(imageBase64);
+  } else if (provider === 'anthropic') {
+    return analyzeWithClaudeVision(imageBase64);
+  }
+
+  throw new Error('No AI vision provider configured');
+}
+
+/**
+ * 使用 GPT-4 Vision 分析
+ */
+async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult> {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `你是一位专业的皮肤科医生和护肤专家。请分析用户提供的面部照片，识别肌肤类型、问题和状态。
+
+请以 JSON 格式返回分析结果，包含以下字段：
+- skinType: { type, confidence, description }
+- skinConditions: [{ condition, severity, area, description }]
+- skinAge: { estimated, factors }
+- hydration: { level, description }
+- recommendations: string[]
+
+注意：
+1. 分析要专业、客观、温和
+2. 不要诊断严重皮肤疾病，建议就医
+3. 推荐要具体可执行
+4. 使用中文回复`,
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: '请分析这张面部照片的肌肤状态',
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBase64,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 1000,
+    }),
+  });
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content;
+
+  // 解析 JSON 响应
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('Failed to parse AI response');
+  }
+
+  return JSON.parse(jsonMatch[0]);
+}
+
+/**
+ * 使用 Claude Vision 分析
+ */
+async function analyzeWithClaudeVision(imageBase64: string): Promise<FaceAnalysisResult> {
+  // 类似实现，调用 Anthropic API
+  // ...
+}
+```
+
+---
+
+#### 4.2.4 分析结果展示组件
+
+**子任务**：
+
+| 步骤 | 操作 | 文件 | 验收标准 |
+|------|------|------|----------|
+| 1 | 创建结果展示组件 | `src/components/website/advisor/FaceAnalysisResult.tsx` | 组件正常 |
+| 2 | 展示肤质类型 | 图标 + 文字 | 样式正确 |
+| 3 | 展示肌肤问题 | 问题列表 | 内容清晰 |
+| 4 | 展示肌肤年龄 | 年龄对比 | 展示醒目 |
+| 5 | 展示水分状态 | 进度条指示 | 直观明了 |
+| 6 | 添加结果动画 | 依次展示 | 动画流畅 |
+
+**结果展示布局**：
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                                                                │
+│                      🔬 AI 肌肤分析报告                         │
+│                                                                │
+│  ┌──────────────────┐  ┌─────────────────────────────────────┐ │
+│  │                  │  │  肤质类型                            │ │
+│  │   (用户照片)     │  │  ━━━━━━━━━━━━━━━━━━━━━━━━            │ │
+│  │                  │  │  混合性肌肤 (85% 置信度)              │ │
+│  │                  │  │  T区偏油，两颊偏干                    │ │
+│  └──────────────────┘  └─────────────────────────────────────┘ │
+│                                                                │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  检测到的肌肤状态                                        │   │
+│  │  ─────────────────────────────────────────────────────  │   │
+│  │                                                         │   │
+│  │  💧 水分状态    [━━━━━━━━░░░░░] 65% - 中等               │   │
+│  │                                                         │   │
+│  │  ⚡ 毛孔状态    T区毛孔略显粗大 (轻度)                    │   │
+│  │                                                         │   │
+│  │  ✨ 肤色均匀度  整体均匀，眼下有轻微暗沉                   │   │
+│  │                                                         │   │
+│  │  🌟 肌肤年龄    预估 28 岁 (实际年龄 -2 岁)               │   │
+│  │                                                         │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  💡 护肤建议                                             │   │
+│  │                                                         │   │
+│  │  • T区建议使用控油产品，两颊加强保湿                       │   │
+│  │  • 建议每周 1-2 次深层清洁毛孔                            │   │
+│  │  • 眼周可使用抗氧化精华改善暗沉                           │   │
+│  │                                                         │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                │
+│               ┌──────────────────────────────┐                 │
+│               │      查看推荐产品 →          │                 │
+│               └──────────────────────────────┘                 │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 4.2.5 问答+面部综合分析
+
+**子任务**：
+
+| 步骤 | 操作 | 文件 | 验收标准 |
+|------|------|------|----------|
+| 1 | 创建综合分析 API | `src/app/api/advisor/comprehensive/route.ts` | API 可调用 |
+| 2 | 整合问答数据 | 合并用户回答 | 数据完整 |
+| 3 | 整合面部分析 | 合并 AI 分析 | 分析完整 |
+| 4 | 生成综合报告 | AI 综合分析 | 报告准确 |
+| 5 | 匹配推荐产品 | 多维度匹配 | 推荐精准 |
+| 6 | 生成护肤方案 | 晨间/夜间流程 | 方案完整 |
+
+**综合分析 API 实现**：
+
+```typescript
+// src/app/api/advisor/comprehensive/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+
+const ComprehensiveAnalysisSchema = z.object({
+  // 问答数据
+  answers: z.object({
+    skinType: z.string().optional(),
+    concern: z.string().optional(),
+    sleep: z.string().optional(),
+    environment: z.string().optional(),
+    routine: z.string().optional(),
+    preference: z.string().optional(),
+  }),
+  // 面部分析结果（可选，用户可跳过）
+  faceAnalysis: z.object({
+    skinType: z.object({
+      type: z.string(),
+      confidence: z.number(),
+    }),
+    skinConditions: z.array(z.object({
+      condition: z.string(),
+      severity: z.string(),
+    })),
+    hydration: z.object({
+      level: z.string(),
+    }),
+    skinAge: z.object({
+      estimated: z.number(),
+    }),
+  }).optional(),
+});
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const result = ComprehensiveAnalysisSchema.safeParse(body);
+
+    if (!result.success) {
+      return NextResponse.json({ error: '参数错误' }, { status: 400 });
+    }
+
+    const { answers, faceAnalysis } = result.data;
+
+    // 综合分析肤质
+    const comprehensiveSkinType = determineSkinType(answers, faceAnalysis);
+
+    // 识别主要问题
+    const primaryConcerns = identifyConcerns(answers, faceAnalysis);
+
+    // 生成护肤建议
+    const recommendations = await generateRecommendations(
+      comprehensiveSkinType,
+      primaryConcerns,
+      answers
+    );
+
+    // 匹配推荐产品
+    const products = await matchProducts(
+      comprehensiveSkinType,
+      primaryConcerns
+    );
+
+    // 生成护肤方案
+    const routine = generateSkincareRoutine(products, answers.preference);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        skinProfile: {
+          type: comprehensiveSkinType,
+          concerns: primaryConcerns,
+          ...(faceAnalysis && { skinAge: faceAnalysis.skinAge }),
+        },
+        analysis: recommendations,
+        products,
+        routine,
+        dataSource: faceAnalysis ? 'comprehensive' : 'questionnaire',
+      },
+    });
+  } catch (error) {
+    console.error('Comprehensive analysis error:', error);
+    return NextResponse.json({ error: '分析失败' }, { status: 500 });
+  }
+}
+
+/**
+ * 综合判断肤质（问答 + AI 视觉）
+ */
+function determineSkinType(
+  answers: Record<string, string | undefined>,
+  faceAnalysis?: { skinType: { type: string; confidence: number } }
+) {
+  // 如果有高置信度的面部分析结果，优先使用
+  if (faceAnalysis && faceAnalysis.skinType.confidence > 0.8) {
+    return faceAnalysis.skinType.type;
+  }
+
+  // 如果置信度中等，综合考虑
+  if (faceAnalysis && faceAnalysis.skinType.confidence > 0.5) {
+    // 问答结果与 AI 分析一致，确认使用
+    if (answers.skinType === faceAnalysis.skinType.type) {
+      return answers.skinType;
+    }
+    // 不一致时，偏向 AI 分析（更客观）
+    return faceAnalysis.skinType.type;
+  }
+
+  // 没有面部分析或置信度低，使用问答结果
+  return answers.skinType || 'unknown';
+}
+```
+
+**用户流程整合**：
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AI 护肤顾问流程                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐  │
+│   │  欢迎页  │ ──▶ │ 问答流程 │ ──▶ │ 面部扫描 │ ──▶ │ 分析结果 │  │
+│   │         │     │ (6道题) │     │  (可选)  │     │ + 推荐  │  │
+│   └─────────┘     └─────────┘     └─────────┘     └─────────┘  │
+│                                        │                        │
+│                                        │ 跳过                   │
+│                                        ▼                        │
+│                               ┌─────────────────┐               │
+│                               │ 仅基于问答分析   │               │
+│                               └─────────────────┘               │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 5.3 AI 分析与结果
+
+#### 任务清单
+
+| # | 任务 | 优先级 | AI 辅助度 | 预计耗时 |
+|---|------|--------|-----------|----------|
+| 4.3.1 | AI 分析 API 路由 | P0 | ⭐⭐ | 2h |
+| 4.3.2 | 加载动画 | P1 | ⭐⭐⭐ | 1h |
+| 4.3.3 | 结果展示页面 | P0 | ⭐⭐⭐ | 2.5h |
+| 4.3.4 | 产品推荐匹配 | P0 | ⭐⭐ | 1.5h |
+| 4.3.5 | 保存/分享功能 | P2 | ⭐⭐⭐ | 1.5h |
+
+---
+
+#### 4.3.1 AI 分析 API 路由
 
 **子任务**：
 
@@ -2994,7 +3647,12 @@ export async function fallbackAnalysis(answers: AdvisorAnswers) {
 | | 进度指示器 | ⬜ |
 | | 页面切换动画 | ⬜ |
 | | 答案状态管理 | ⬜ |
-| **AI 分析** | AI 分析 API | ⬜ |
+| **AI 面部识别** | 面部拍照/上传组件 | ⬜ |
+| | 面部图像预处理 | ⬜ |
+| | AI 面部分析 API | ⬜ |
+| | 分析结果展示组件 | ⬜ |
+| | 问答+面部综合分析 | ⬜ |
+| **AI 分析与结果** | AI 分析 API | ⬜ |
 | | 加载动画 | ⬜ |
 | | 结果展示页面 | ⬜ |
 | | 产品推荐匹配 | ⬜ |
@@ -3002,7 +3660,7 @@ export async function fallbackAnalysis(answers: AdvisorAnswers) {
 | **降级方案** | 规则匹配 | ⬜ |
 | | 错误处理 | ⬜ |
 
-**预计总耗时**：约 15-18 小时（2.5-3 个工作日）
+**预计总耗时**：约 27-30 小时（4-5 个工作日）
 
 ---
 
@@ -3497,12 +4155,13 @@ echo "Backup completed: nihplod_$DATE.sql.gz"
 ### 11.1 项目时间线
 
 ```
-Week 1          Week 2-3        Week 4-5        Week 6          Week 7-8
+Week 1          Week 2-3        Week 4-5        Week 6-7        Week 8-9
 ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
 │ Phase 1 │ → │ Phase 2 │ → │ Phase 3 │ → │ Phase 4 │ → │ Phase 5 │
 │ 基础设施 │    │ CMS后台 │    │ 前台页面 │    │ AI顾问  │    │ 测试部署 │
+│         │    │         │    │         │    │+面部识别│    │         │
 └─────────┘    └─────────┘    └─────────┘    └─────────┘    └─────────┘
-   ~40h          ~35h           ~30h           ~18h           ~30h
+   ~40h          ~35h           ~30h           ~30h           ~30h
 ```
 
 ### 11.2 里程碑检查点
@@ -3512,8 +4171,8 @@ Week 1          Week 2-3        Week 4-5        Week 6          Week 7-8
 | **M1** | Week 1 结束 | 基础设施完成 | 项目可运行、数据库可连接、登录可用 |
 | **M2** | Week 3 结束 | CMS 后台完成 | 产品/内容/媒体管理功能可用 |
 | **M3** | Week 5 结束 | 前台页面完成 | 所有页面可访问、响应式正常 |
-| **M4** | Week 6 结束 | AI 顾问完成 | 问答流程完整、推荐结果正确 |
-| **M5** | Week 8 结束 | 项目上线 | 域名可访问、功能正常、监控就绪 |
+| **M4** | Week 7 结束 | AI 顾问完成 | 问答流程+面部识别完整、综合推荐正确 |
+| **M5** | Week 9 结束 | 项目上线 | 域名可访问、功能正常、监控就绪 |
 
 ### 11.3 工时统计
 
@@ -3522,9 +4181,9 @@ Week 1          Week 2-3        Week 4-5        Week 6          Week 7-8
 | Phase 1: 基础设施 | 40h | 5 天 |
 | Phase 2: CMS 后台 | 35h | 4.5 天 |
 | Phase 3: 前台页面 | 30h | 4 天 |
-| Phase 4: AI 顾问 | 18h | 2.5 天 |
+| Phase 4: AI 顾问 (含面部识别) | 30h | 4 天 |
 | Phase 5: 测试部署 | 30h | 4 天 |
-| **总计** | **~153h** | **~20 天 (4 周)** |
+| **总计** | **~165h** | **~21 天 (5 周)** |
 
 > 💡 **说明**：以上为理想工时估算，实际开发中可能因调试、需求变更等因素有所浮动，建议预留 20% 缓冲时间。
 

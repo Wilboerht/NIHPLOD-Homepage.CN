@@ -1,8 +1,15 @@
+import { Metadata } from "next";
+import { PrivacyContent } from "./PrivacyContent";
+
+export const metadata: Metadata = {
+  title: "隐私政策 | NIHPLOD 旎柏",
+  description: "了解 NIHPLOD 旎柏如何收集、使用和保护您的个人信息。",
+  openGraph: {
+    title: "隐私政策 | NIHPLOD 旎柏",
+    description: "了解 NIHPLOD 旎柏如何收集、使用和保护您的个人信息。",
+  },
+};
+
 export default function PrivacyPage() {
-  return (
-    <div className="container-wide px-s py-xl">
-      <h1 className="font-serif text-brand-charcoal">隐私政策</h1>
-      <p className="mt-m text-brand-charcoal/70">页面开发中...</p>
-    </div>
-  );
+  return <PrivacyContent />;
 }

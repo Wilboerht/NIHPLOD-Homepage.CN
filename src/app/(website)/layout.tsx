@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { Header } from "@/components/website";
 
 interface WebsiteLayoutProps {
   children: ReactNode;
@@ -6,30 +7,17 @@ interface WebsiteLayoutProps {
 
 /**
  * 前台网站布局
- * 包含导航栏和页脚
+ * 包含底部固定导航栏
+ * 注意：首页等全屏页面需要自行处理底部导航栏的空间（pb-16 lg:pb-20）
  */
 export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* TODO: Header 组件 */}
-      <header className="sticky top-0 z-50 bg-brand-cream/80 backdrop-blur-md">
-        <nav className="container-wide px-s py-4">
-          <div className="flex items-center justify-between">
-            <span className="font-serif text-xl text-brand-charcoal">NIHPLOD</span>
-            <span className="text-sm text-brand-charcoal/60">导航占位</span>
-          </div>
-        </nav>
-      </header>
-
+    <div className="min-h-screen">
       {/* 主内容区域 */}
-      <main className="flex-1">{children}</main>
+      <main>{children}</main>
 
-      {/* TODO: Footer 组件 */}
-      <footer className="bg-brand-charcoal py-l">
-        <div className="container-wide px-s text-center text-brand-cream/60">
-          <p className="text-sm">© 2024 NIHPLOD. All rights reserved.</p>
-        </div>
-      </footer>
+      {/* 底部固定导航栏 */}
+      <Header />
     </div>
   );
 }
