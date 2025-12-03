@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { Menu, X, Sparkles } from "lucide-react";
@@ -18,6 +19,14 @@ const navItems = [
   { href: "/careers", label: "加入我们" },
 ];
 
+// 默认 Logo
+const DEFAULT_LOGO = "/images/logo.png";
+
+interface HeaderProps {
+  /** 自定义 Logo URL (从设置获取) */
+  logo?: string;
+}
+
 /**
  * 前台导航栏组件（底部固定）
  * 功能：
@@ -26,10 +35,13 @@ const navItems = [
  * - 移动端汉堡菜单（点击展开/收起，动画流畅）
  * - AI 顾问入口（醒目 CTA 按钮）
  */
-export function Header() {
+export function Header({ logo }: HeaderProps) {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+
+  // Logo URL，优先使用传入的，否则使用默认
+  const logoUrl = logo || DEFAULT_LOGO;
 
   // 客户端挂载后才执行
   useEffect(() => {
@@ -178,12 +190,19 @@ export function Header() {
             <Link
               href="/"
               className={cn(
-                "font-serif text-xl tracking-wider text-brand-charcoal transition-colors hover:text-brand-gold lg:text-2xl",
+                "transition-opacity hover:opacity-80",
                 // 移动端居中
                 "absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0"
               )}
             >
-              NIHPLOD
+              <Image
+                src={logoUrl}
+                alt="NIHPLOD"
+                width={120}
+                height={32}
+                className="h-7 w-auto lg:h-8"
+                priority
+              />
             </Link>
 
             {/* 桌面端导航菜单 */}
