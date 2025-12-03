@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { m } from "framer-motion";
 import { Sun, Moon, Heart, Play, ChevronRight } from "lucide-react";
@@ -82,6 +81,16 @@ const eveningSteps = [
 ];
 
 type TabType = "morning" | "evening" | "couple";
+
+// 护肤步骤类型
+interface RitualStep {
+  order: number;
+  name: string;
+  nameEn: string;
+  description: string;
+  duration: string;
+  productSlug: string | null;
+}
 
 /**
  * 护肤仪式页内容组件
@@ -208,7 +217,7 @@ function RitualSteps({
   title: string;
   titleEn: string;
   description: string;
-  steps: typeof morningSteps;
+  steps: RitualStep[];
   icon: React.ReactNode;
 }) {
   return (

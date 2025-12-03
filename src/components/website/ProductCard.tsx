@@ -106,7 +106,7 @@ export function ProductCard({
 
   // 获取当前显示的图片
   const currentImage = images[currentImageIndex] || images[0];
-  const hoverImage = hasMultipleImages ? images[1] : null;
+  const _hoverImage = hasMultipleImages ? images[1] : null;
 
   /**
    * 处理鼠标进入

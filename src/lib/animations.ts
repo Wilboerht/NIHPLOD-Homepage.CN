@@ -201,6 +201,7 @@ export const reducedMotionVariants: Variants = {
  */
 export const reducedMotionTransition = {
   duration: 0.01,
+  ease: "easeOut" as const,
 };
 
 /**

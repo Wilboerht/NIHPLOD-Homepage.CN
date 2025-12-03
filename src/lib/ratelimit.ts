@@ -43,12 +43,12 @@ function startCleanup() {
 
   cleanupTimer = setInterval(() => {
     const now = Date.now();
-    for (const [key, record] of rateLimitCache.entries()) {
+    rateLimitCache.forEach((record, key) => {
       // 删除超过 1 小时未活跃的记录
       if (now - record.windowStart > 60 * 60 * 1000) {
         rateLimitCache.delete(key);
       }
-    }
+    });
   }, CLEANUP_INTERVAL);
 }
 

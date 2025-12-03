@@ -312,7 +312,7 @@ function generateAnalysisSummary(
 async function matchProducts(
   skinType: SkinType,
   concerns: string[],
-  answers: z.infer<typeof AnswersSchema>
+  _answers: z.infer<typeof AnswersSchema>
 ): Promise<RecommendedProduct[]> {
   try {
     // 从数据库查询产品
