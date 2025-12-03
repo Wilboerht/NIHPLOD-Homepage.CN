@@ -97,9 +97,12 @@ export function Header() {
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
               className="fixed bottom-16 left-0 right-0 z-50 rounded-t-2xl bg-white shadow-lg lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="导航菜单"
             >
-              <nav className="container-wide px-s py-4">
-                <ul className="flex flex-col">
+              <nav className="container-wide px-s py-4" aria-label="移动端导航">
+                <ul className="flex flex-col" role="list">
                   {navItems.map((item, index) => (
                     <m.li
                       key={item.href}
@@ -132,8 +135,11 @@ export function Header() {
       )}
 
       {/* 底部导航栏 */}
-      <header className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-beige bg-white/95 backdrop-blur-md">
-        <nav className="container-wide px-s">
+      <header
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-beige bg-white/95 backdrop-blur-md"
+        role="banner"
+      >
+        <nav className="container-wide px-s" aria-label="主导航">
           <div className="flex h-16 items-center justify-between lg:h-20">
             {/* 移动端：汉堡菜单按钮 */}
             <button
@@ -181,7 +187,7 @@ export function Header() {
             </Link>
 
             {/* 桌面端导航菜单 */}
-            <ul className="hidden items-center gap-8 lg:flex">
+            <ul className="hidden items-center gap-8 lg:flex" role="list">
               {navItems.map((item) => (
                 <li key={item.href}>
                   <Link

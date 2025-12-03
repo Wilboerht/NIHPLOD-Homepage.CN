@@ -13,8 +13,15 @@ interface WebsiteLayoutProps {
 export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
   return (
     <div className="min-h-screen">
+      {/* Skip to main content 链接 - 可访问性 */}
+      <a href="#main-content" className="skip-link">
+        跳至主要内容
+      </a>
+
       {/* 主内容区域 */}
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>
+        {children}
+      </main>
 
       {/* 底部固定导航栏 */}
       <Header />

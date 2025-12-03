@@ -1,7 +1,8 @@
 "use client";
 
-import { LazyMotion, domAnimation } from "framer-motion";
+import { LazyMotion, domAnimation, MotionConfig } from "framer-motion";
 import { ReactNode } from "react";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 interface MotionProviderProps {
   children: ReactNode;
@@ -12,6 +13,8 @@ interface MotionProviderProps {
  *
  * 使用 LazyMotion + domAnimation 可以减少 bundle 大小
  * 只加载必要的动画功能
+ *
+ * 自动检测 prefers-reduced-motion 并应用全局降级配置
  *
  * 用法:
  * - 在 layout.tsx 中包裹整个应用
@@ -30,9 +33,20 @@ interface MotionProviderProps {
  * ```
  */
 export function MotionProvider({ children }: MotionProviderProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <LazyMotion features={domAnimation} strict>
-      {children}
+      <MotionConfig
+        reducedMotion={prefersReducedMotion ? "always" : "never"}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0.01 }
+            : undefined
+        }
+      >
+        {children}
+      </MotionConfig>
     </LazyMotion>
   );
 }

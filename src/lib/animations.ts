@@ -181,3 +181,50 @@ export const hoverLift = {
 export const tapScale = {
   scale: 0.98,
 };
+
+// ============================================
+// 降级动画配置 (prefers-reduced-motion)
+// ============================================
+
+/**
+ * 降级动画变体 - 仅使用淡入淡出
+ * 用于 prefers-reduced-motion: reduce 的用户
+ */
+export const reducedMotionVariants: Variants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+};
+
+/**
+ * 降级过渡配置 - 极短时长
+ */
+export const reducedMotionTransition = {
+  duration: 0.01,
+};
+
+/**
+ * 根据用户偏好获取动画变体
+ * @param normalVariants - 正常动画变体
+ * @param prefersReducedMotion - 是否偏好减少动画
+ * @returns 适当的动画变体
+ */
+export function getVariants(
+  normalVariants: Variants,
+  prefersReducedMotion: boolean
+): Variants {
+  return prefersReducedMotion ? reducedMotionVariants : normalVariants;
+}
+
+/**
+ * 根据用户偏好获取过渡配置
+ * @param normalTransition - 正常过渡配置
+ * @param prefersReducedMotion - 是否偏好减少动画
+ * @returns 适当的过渡配置
+ */
+export function getTransition(
+  normalTransition: typeof defaultTransition,
+  prefersReducedMotion: boolean
+): typeof defaultTransition {
+  return prefersReducedMotion ? reducedMotionTransition : normalTransition;
+}

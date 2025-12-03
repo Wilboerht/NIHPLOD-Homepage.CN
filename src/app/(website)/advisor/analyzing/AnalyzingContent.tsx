@@ -191,10 +191,15 @@ export function AnalyzingContent() {
   const currentFact = BRAND_FACTS[factIndex];
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+    <div
+      className="flex min-h-screen flex-col items-center justify-center px-4"
+      role="status"
+      aria-live="polite"
+      aria-label="正在分析您的肌肤状况"
+    >
       <div className="w-full max-w-sm text-center">
         {/* 旋转动画 */}
-        <div className="relative mx-auto mb-8 h-24 w-24">
+        <div className="relative mx-auto mb-8 h-24 w-24" aria-hidden="true">
           {/* 外圈旋转 */}
           <m.div
             className="absolute inset-0 rounded-full border-2 border-brand-gold/30"
@@ -244,7 +249,14 @@ export function AnalyzingContent() {
 
         {/* 进度条 */}
         <div className="mb-8">
-          <div className="mb-2 h-2 overflow-hidden rounded-full bg-brand-beige">
+          <div
+            className="mb-2 h-2 overflow-hidden rounded-full bg-brand-beige"
+            role="progressbar"
+            aria-valuenow={Math.round(Math.min(progress, 100))}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="分析进度"
+          >
             <m.div
               className="h-full rounded-full bg-gradient-to-r from-brand-gold to-brand-gold/80"
               initial={{ width: 0 }}
@@ -252,7 +264,7 @@ export function AnalyzingContent() {
               transition={{ duration: 0.3 }}
             />
           </div>
-          <span className="text-sm text-brand-charcoal/60">
+          <span className="text-sm text-brand-charcoal/60" aria-hidden="true">
             {Math.round(Math.min(progress, 100))}%
           </span>
         </div>
