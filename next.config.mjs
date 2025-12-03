@@ -32,11 +32,55 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // 图片优化配置
+  images: {
+    // 允许的图片域名
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.nihplod.cn',
+      },
+      {
+        protocol: 'https',
+        hostname: 'nihplod.cn',
+      },
+    ],
+    // 启用的图片格式 (优先使用 AVIF，其次 WebP)
+    formats: ['image/avif', 'image/webp'],
+    // 响应式图片断点
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    // 固定尺寸图片断点
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // 最小化缓存时间 (秒)
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30天
+    // 禁用静态导入 (使用动态导入优化)
+    disableStaticImages: false,
+  },
+
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: securityHeaders,
+      },
+      // 静态资源缓存
+      {
+        source: '/uploads/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
       },
     ];
   },

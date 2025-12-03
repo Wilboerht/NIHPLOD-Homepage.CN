@@ -11,3 +11,12 @@ export { Skeleton, TextSkeleton, CardSkeleton, TableRowSkeleton } from "./Skelet
 export { Toast, ToastProvider, useToast } from "./Toast";
 export { TagInput } from "./TagInput";
 export { RichTextEditor } from "./RichTextEditor";
+export {
+  OptimizedImage,
+  PRODUCT_IMAGE_SIZES,
+  FULL_WIDTH_SIZES,
+  CARD_IMAGE_SIZES,
+  THUMBNAIL_SIZES,
+  getResponsiveImageUrl,
+  preloadImage,
+} from "./OptimizedImage";
