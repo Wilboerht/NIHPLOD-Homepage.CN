@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server";
+import { AUTH_COOKIE_NAME } from "@/types/auth";
 
 // POST /api/admin/logout - 管理员登出
 export async function POST() {
-  return NextResponse.json({ message: "Admin Logout API - 待实现" }, { status: 501 });
+  const response = NextResponse.json({
+    success: true,
+    message: "已成功登出",
+  });
+
+  // 清除认证 Cookie
+  response.cookies.set(AUTH_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 0, // 立即过期
+  });
+
+  return response;
 }

@@ -1,4 +1,7 @@
+"use client";
+
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -7,8 +10,16 @@ interface AdminLayoutProps {
 /**
  * 后台管理布局
  * 包含侧边栏和顶部导航
+ * 登录页面使用独立布局
  */
 export default function AdminLayout({ children }: AdminLayoutProps) {
+  const pathname = usePathname();
+
+  // 登录页面使用独立的简洁布局
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* TODO: Sidebar 组件 */}

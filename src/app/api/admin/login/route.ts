@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import { verifyPassword } from "@/lib/password";
 import { signToken } from "@/lib/jwt";
 import { AdminLoginSchema } from "@/schemas/api";
+import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 
 // POST /api/admin/login - 管理员登录
 export async function POST(request: NextRequest) {
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
       where: { email },
     });
 
+    // 使用通用错误信息，避免泄露用户是否存在
     if (!admin) {
       return NextResponse.json(
         {
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证密码
-    const isPasswordValid = await bcrypt.compare(password, admin.password);
+    const isPasswordValid = await verifyPassword(password, admin.password);
     if (!isPasswordValid) {
       return NextResponse.json(
         {
@@ -64,18 +66,23 @@ export async function POST(request: NextRequest) {
     // 计算过期时间（7天）
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
-    return NextResponse.json({
+    // 创建响应
+    const response = NextResponse.json({
       success: true,
       data: {
-        token,
-        expiresAt,
         user: {
           id: admin.id,
           email: admin.email,
           name: admin.name,
         },
+        expiresAt,
       },
     });
+
+    // 设置 HttpOnly Cookie
+    response.cookies.set(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS);
+
+    return response;
   } catch (error) {
     console.error("登录失败:", error);
     return NextResponse.json(
