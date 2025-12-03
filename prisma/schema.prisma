@@ -1,0 +1,178 @@
+// Prisma Schema 定义
+// 文档: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// 产品相关
+// ============================================
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String   // 产品名称（中文）
+  nameEn      String   // 产品名称（英文）
+  slug        String   @unique // URL 标识
+  description String   @db.Text // 产品描述
+  price       Decimal  @db.Decimal(10, 2) // 参考价格
+  capacity    String?  // 规格容量
+  purchaseUrl String?  // 外部购买链接
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  images      Image[]  // 产品图片
+  ingredients String?  @db.Text // 成分说明
+  usage       String?  @db.Text // 使用方法
+  benefits    String[] // 功效标签
+  order       Int      @default(0) // 排序（数字越小越靠前）
+  featured    Boolean  @default(false) // 是否推荐
+  published   Boolean  @default(false) // 是否发布
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([published, order])
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    // 分类名称（中文）
+  nameEn    String    // 分类名称（英文）
+  slug      String    @unique // URL 标识
+  order     Int       @default(0) // 排序
+  products  Product[] // 关联产品
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Image {
+  id        String   @id @default(cuid())
+  url       String   // 图片路径
+  alt       String?  // 替代文本
+  order     Int      @default(0) // 排序
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// ============================================
+// 内容管理
+// ============================================
+
+model Page {
+  id        String   @id @default(cuid())
+  title     String   // 页面标题
+  slug      String   @unique // 页面标识 (home, story, ritual, contact, careers, privacy)
+  content   Json     // 页面内容（结构化 JSON）
+  seo       Json?    // SEO 配置
+  published Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  filename  String   // 原始文件名
+  url       String   // 存储路径
+  type      String   // MIME 类型
+  size      Int      // 文件大小 (bytes)
+  width     Int?     // 图片宽度
+  height    Int?     // 图片高度
+  alt       String?  // 替代文本
+  createdAt DateTime @default(now())
+
+  @@index([type])
+}
+
+// ============================================
+// 职位管理
+// ============================================
+
+model Job {
+  id           String   @id @default(cuid())
+  title        String   // 职位名称（中文）
+  titleEn      String   // 职位名称（英文）
+  location     String   // 工作地点
+  type         String   // 职位类型 (fulltime, parttime, intern)
+  description  String   @db.Text // 职责描述
+  requirements String   @db.Text // 任职要求
+  salary       String?  // 薪资范围（可选）
+  order        Int      @default(0) // 排序
+  published    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([published, order])
+}
+
+
+// ============================================
+// 联系留言
+// ============================================
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String   // 留言人姓名
+  email     String   // 邮箱
+  content   String   @db.Text // 留言内容
+  read      Boolean  @default(false) // 是否已读
+  createdAt DateTime @default(now())
+
+  @@index([read, createdAt(sort: Desc)])
+}
+
+// ============================================
+// AI 护肤顾问
+// ============================================
+
+model AdvisorQuestion {
+  id        String   @id @default(cuid())
+  question  String   // 问题内容
+  fieldName String   // 字段名 (skinType, concern, sleep, environment, routine, preference)
+  type      String   @default("single") // 选择类型 (single, multiple)
+  options   Json     // 选项列表 [{ value: 'dry', label: '干性肌肤', labelEn: 'Dry' }]
+  order     Int      @default(0) // 排序
+  active    Boolean  @default(true) // 是否启用
+  updatedAt DateTime @updatedAt
+
+  @@unique([fieldName])
+  @@index([active, order])
+}
+
+model RecommendationRule {
+  id         String   @id @default(cuid())
+  conditions Json     // 条件组合 { skinType: ['dry'], concern: ['aging'] }
+  productIds String[] // 推荐产品 ID 列表
+  priority   Int      @default(0) // 优先级（数字越大越优先）
+  message    String?  @db.Text // 推荐语
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([priority(sort: Desc)])
+}
+
+// ============================================
+// 系统管理
+// ============================================
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique // 登录邮箱
+  password  String   // 加密密码
+  name      String   // 显示名称
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique // 设置键名
+  value     Json     // 设置值
+  updatedAt DateTime @updatedAt
+}
