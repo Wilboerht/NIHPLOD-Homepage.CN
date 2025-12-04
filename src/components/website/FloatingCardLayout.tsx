@@ -27,13 +27,11 @@ const gradientBackgrounds: Record<string, string> = {
 type CardState = "expanded" | "minimized";
 
 /**
- * 状态高度配置（内容区域占视口高度百分比）
- * 从顶部向下计算
+ * 状态高度配置
+ * expanded: 内容区域占视口高度百分比
+ * minimized: 只显示手柄（0高度，手柄用绝对定位在外面）
  */
-const stateHeights: Record<CardState, number> = {
-  expanded: 0.92,
-  minimized: 0.08, // 只显示底部拉手
-};
+const EXPANDED_HEIGHT_RATIO = 0.92;
 
 interface FloatingCardLayoutProps {
   /** 背景图片 URL */
@@ -48,6 +46,8 @@ interface FloatingCardLayoutProps {
   enableDrag?: boolean;
   /** 是否显示拖动手柄 */
   showHandle?: boolean;
+  /** 页面标题（用于手柄文字） */
+  pageTitle?: string;
   /** 自定义类名 */
   className?: string;
 }
@@ -68,6 +68,7 @@ export function FloatingCardLayout({
   initialState = "minimized",
   enableDrag = true,
   showHandle = true,
+  pageTitle = "查看详情",
   className,
 }: FloatingCardLayoutProps) {
   const [cardState, setCardState] = useState<CardState>(initialState);
@@ -117,7 +118,10 @@ export function FloatingCardLayout({
   // 计算内容区域高度
   const getContentHeight = useCallback(
     (state: CardState) => {
-      return viewportHeight * stateHeights[state];
+      if (state === "minimized") {
+        return 0; // 收起时内容区域高度为0
+      }
+      return viewportHeight * EXPANDED_HEIGHT_RATIO;
     },
     [viewportHeight]
   );
@@ -219,39 +223,42 @@ export function FloatingCardLayout({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* 内容主体 */}
-        <div className="flex h-full flex-col rounded-b-3xl bg-white/95 shadow-2xl backdrop-blur-sm">
-          {/* 内容区域（展开时可滚动，收起时隐藏） */}
-          <div
-            ref={contentRef}
-            className={cn(
-              "flex-1 overscroll-contain px-s py-4",
-              cardState === "expanded" ? "overflow-y-auto" : "overflow-hidden"
-            )}
-          >
-            {children}
+        {/* 内容主体（展开时显示） */}
+        {cardState === "expanded" && (
+          <div className="relative flex h-full flex-col items-center">
+            <div
+              ref={contentRef}
+              className="w-[90%] flex-1 overflow-y-auto overscroll-contain rounded-b-3xl bg-white/95 px-4 py-4 shadow-2xl backdrop-blur-sm"
+            >
+              {children}
+            </div>
           </div>
+        )}
 
-          {/* 底部拖动手柄 - 增大触摸区域 */}
-          {showHandle && (
+        {/* 底部拖动手柄 - 始终显示 */}
+        {showHandle && (
+          <div className={cn(
+            "absolute left-1/2 -translate-x-1/2",
+            cardState === "expanded" ? "-bottom-8" : "top-4"
+          )}>
             <button
               type="button"
-              className="flex w-full cursor-grab items-center justify-center py-4 active:cursor-grabbing"
+              className="flex cursor-grab flex-col items-center justify-center gap-1 rounded-2xl bg-white px-8 py-3 shadow-lg transition-all hover:shadow-xl active:cursor-grabbing"
               onClick={handleHandleClick}
               aria-label="切换内容展开状态"
             >
-              {/* 拖动指示条 */}
-              <div className="mb-1 h-1 w-10 rounded-full bg-brand-beige" />
+              <span className="text-sm font-medium text-brand-charcoal/70">
+                {cardState === "expanded" ? "收起" : pageTitle}
+              </span>
               <m.div
-                className="absolute"
-                animate={{ rotate: cardState === "expanded" ? 180 : 0 }}
+                animate={{ rotate: cardState === "expanded" ? 0 : 180 }}
                 transition={{ duration: 0.2 }}
               >
                 <ChevronUp className="h-6 w-6 text-brand-gold" />
               </m.div>
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </m.div>
     </div>
   );

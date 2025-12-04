@@ -90,7 +90,8 @@ export function StoryContent() {
     <FloatingCardLayout
       backgroundImage="/images/story-bg.jpg"
       backgroundAlt="品牌故事"
-      initialState="minimized"
+      initialState="expanded"
+      pageTitle="品牌故事"
     >
       {/* 页面标题 */}
       <m.div

@@ -73,6 +73,12 @@ export function Header({ logo }: HeaderProps) {
     return pathname.startsWith(href);
   };
 
+  // advisor 页面不显示导航栏
+  const isAdvisorPage = pathname.startsWith("/advisor");
+  if (isAdvisorPage) {
+    return null;
+  }
+
   /**
    * 切换汉堡菜单
    */

@@ -31,10 +31,23 @@ export interface ContactSettings {
   workingHours: string;
 }
 
+export interface HomeGalleryItem {
+  image: string;
+  text: string;
+}
+
+export interface HomeSettings {
+  galleryItems: HomeGalleryItem[];
+  galleryBend: number;
+  galleryOpacity: number; // 画廊透明度 0-100
+  maskOpacity: number; // 蒙版透明度 0-100
+}
+
 export interface AllSettings {
   site: SiteSettings;
   social: SocialSettings;
   contact: ContactSettings;
+  home: HomeSettings;
 }
 
 // ============================================
@@ -61,6 +74,20 @@ const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
   phone: "",
   address: "",
   workingHours: "",
+};
+
+const DEFAULT_HOME_SETTINGS: HomeSettings = {
+  galleryItems: [
+    { image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=600&fit=crop", text: "精华液" },
+    { image: "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=800&h=600&fit=crop", text: "面霜" },
+    { image: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=800&h=600&fit=crop", text: "眼霜" },
+    { image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&h=600&fit=crop", text: "洁面乳" },
+    { image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=600&fit=crop", text: "爽肤水" },
+    { image: "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=800&h=600&fit=crop", text: "面膜" },
+  ],
+  galleryBend: 3,
+  galleryOpacity: 60,
+  maskOpacity: 70,
 };
 
 // ============================================
@@ -137,15 +164,39 @@ export async function getContactSettings(): Promise<ContactSettings> {
 }
 
 /**
+ * 获取首页设置 (服务端)
+ */
+export async function getHomeSettings(): Promise<HomeSettings> {
+  try {
+    const setting = await prisma.setting.findUnique({
+      where: { key: "home" },
+    });
+
+    if (!setting || !setting.value) {
+      return DEFAULT_HOME_SETTINGS;
+    }
+
+    return {
+      ...DEFAULT_HOME_SETTINGS,
+      ...(setting.value as Partial<HomeSettings>),
+    };
+  } catch (error) {
+    console.error("获取首页设置失败:", error);
+    return DEFAULT_HOME_SETTINGS;
+  }
+}
+
+/**
  * 获取所有设置 (服务端)
  */
 export async function getAllSettings(): Promise<AllSettings> {
-  const [site, social, contact] = await Promise.all([
+  const [site, social, contact, home] = await Promise.all([
     getSiteSettings(),
     getSocialSettings(),
     getContactSettings(),
+    getHomeSettings(),
   ]);
 
-  return { site, social, contact };
+  return { site, social, contact, home };
 }
 

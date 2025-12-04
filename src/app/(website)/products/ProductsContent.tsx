@@ -84,7 +84,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       <FloatingCardLayout
         backgroundImage="/images/products-hero.jpg"
         backgroundAlt="NIHPLOD 产品系列"
-        initialState="minimized"
+        initialState="expanded"
+        pageTitle="产品系列"
       >
         {/* 页面标题 */}
         <m.div

@@ -78,7 +78,8 @@ export function CareersContent({ jobs }: CareersContentProps) {
     <FloatingCardLayout
       backgroundImage="/images/careers-bg.jpg"
       backgroundAlt="加入我们"
-      initialState="minimized"
+      initialState="expanded"
+      pageTitle="加入我们"
     >
       {/* 页面标题 */}
       <m.div

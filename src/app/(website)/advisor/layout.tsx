@@ -22,7 +22,7 @@ interface AdvisorLayoutProps {
  */
 export default function AdvisorLayout({ children }: AdvisorLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-brand-cream to-brand-blush/30">
+    <div className="fixed inset-0 overflow-hidden">
       {children}
     </div>
   );

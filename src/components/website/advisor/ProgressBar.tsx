@@ -12,32 +12,28 @@ interface ProgressBarProps {
 }
 
 /**
- * 进度条组件
- * 显示当前问题进度
+ * 进度条组件 - NIHPLOD 品牌风格
  *
- * 功能：
- * - 显示当前步骤 (1/6 格式)
- * - 进度条填充动画
- * - 响应式适配
+ * 采用分段式设计，每段代表一个问题
+ * 简约、优雅、符合高端护肤品牌调性
  */
 export function ProgressBar({
   current,
   total,
-  showPercentage = true,
+  showPercentage = false,
   compact = false,
 }: ProgressBarProps) {
-  const progress = (current / total) * 100;
-
-  // 紧凑模式：仅显示进度条
+  // 紧凑模式：细线进度条
   if (compact) {
+    const progress = (current / total) * 100;
     return (
       <div className="w-full">
-        <div className="h-1 w-full overflow-hidden rounded-full bg-brand-beige/50 md:h-1.5">
+        <div className="h-0.5 w-full overflow-hidden bg-brand-beige/40">
           <m.div
-            className="h-full rounded-full bg-brand-gold"
+            className="h-full bg-brand-gold"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
           />
         </div>
       </div>
@@ -45,52 +41,46 @@ export function ProgressBar({
   }
 
   return (
-    <div className="w-full">
-      {/* 进度文本 - 响应式设计 */}
-      <div className="mb-1.5 flex items-center justify-between text-xs text-brand-charcoal/60 md:mb-2">
-        {/* 步骤指示：移动端简化显示 */}
-        <span className="font-medium">
-          <span className="hidden sm:inline">问题 </span>
-          {current} / {total}
-        </span>
+    <div className="flex w-full items-center gap-3">
+      {/* 分段进度指示器 */}
+      <div className="flex flex-1 items-center gap-1.5 sm:gap-2">
+        {Array.from({ length: total }, (_, i) => {
+          const isCompleted = i + 1 < current;
+          const isCurrent = i + 1 === current;
 
-        {/* 百分比：可选显示，移动端默认隐藏 */}
-        {showPercentage && (
-          <span className="hidden sm:inline">{Math.round(progress)}%</span>
-        )}
+          return (
+            <m.div
+              key={i}
+              className="relative h-1 flex-1 overflow-hidden rounded-full sm:h-1.5"
+              style={{
+                backgroundColor: isCompleted || isCurrent
+                  ? "transparent"
+                  : "rgba(232, 226, 217, 0.5)", // brand-beige/50
+              }}
+            >
+              {/* 已完成或当前段的填充 */}
+              {(isCompleted || isCurrent) && (
+                <m.div
+                  className="absolute inset-0 rounded-full bg-brand-gold"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{
+                    duration: 0.5,
+                    ease: [0.4, 0, 0.2, 1],
+                    delay: isCurrent ? 0.1 : 0,
+                  }}
+                  style={{ transformOrigin: "left" }}
+                />
+              )}
+            </m.div>
+          );
+        })}
       </div>
 
-      {/* 进度条 - 响应式高度 */}
-      <div className="h-1 w-full overflow-hidden rounded-full bg-brand-beige/50 md:h-1.5">
-        <m.div
-          className="h-full rounded-full bg-gradient-to-r from-brand-gold to-brand-gold/80"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{
-            duration: 0.4,
-            ease: [0.4, 0, 0.2, 1], // 自然缓动曲线
-          }}
-        />
-      </div>
-
-      {/* 步骤点指示器（桌面端可见） */}
-      <div className="mt-2 hidden items-center justify-between md:flex">
-        {Array.from({ length: total }, (_, i) => (
-          <m.div
-            key={i}
-            className={`h-2 w-2 rounded-full transition-colors duration-200 ${
-              i + 1 <= current
-                ? "bg-brand-gold"
-                : "bg-brand-beige"
-            }`}
-            initial={{ scale: 0.8 }}
-            animate={{
-              scale: i + 1 === current ? 1.2 : 1,
-            }}
-            transition={{ duration: 0.2 }}
-          />
-        ))}
-      </div>
+      {/* 步骤数字 */}
+      <span className="min-w-[3rem] text-right text-xs tracking-wider text-brand-charcoal/50 sm:text-sm">
+        {current}/{total}
+      </span>
     </div>
   );
 }

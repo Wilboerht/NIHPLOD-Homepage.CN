@@ -4,7 +4,7 @@ import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 
 // 设置 keys
-const SETTING_KEYS = ["site", "social", "contact", "seo", "ai_advisor_settings"] as const;
+const SETTING_KEYS = ["site", "social", "contact", "seo", "ai_advisor_settings", "home"] as const;
 
 // 各设置的默认值
 const DEFAULT_SETTINGS: Record<string, unknown> = {
@@ -39,6 +39,19 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
     model: "gpt-4o-mini",
     maxTokens: 500,
     temperature: 0.7,
+  },
+  home: {
+    galleryItems: [
+      { image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=600&fit=crop", text: "精华液" },
+      { image: "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=800&h=600&fit=crop", text: "面霜" },
+      { image: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=800&h=600&fit=crop", text: "眼霜" },
+      { image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&h=600&fit=crop", text: "洁面乳" },
+      { image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=600&fit=crop", text: "爽肤水" },
+      { image: "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=800&h=600&fit=crop", text: "面膜" },
+    ],
+    galleryBend: 3,
+    galleryOpacity: 60,
+    maskOpacity: 70,
   },
 };
 
@@ -84,6 +97,17 @@ const UpdateSettingsSchema = z.object({
       model: z.string().max(100).optional(),
       maxTokens: z.number().min(100).max(4000).optional(),
       temperature: z.number().min(0).max(2).optional(),
+    })
+    .optional(),
+  home: z
+    .object({
+      galleryItems: z.array(z.object({
+        image: z.string().max(1000),
+        text: z.string().max(100),
+      })).optional(),
+      galleryBend: z.number().min(0).max(10).optional(),
+      galleryOpacity: z.number().min(0).max(100).optional(),
+      maskOpacity: z.number().min(0).max(100).optional(),
     })
     .optional(),
 });

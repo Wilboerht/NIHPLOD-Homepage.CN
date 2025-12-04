@@ -88,7 +88,8 @@ export function PrivacyContent() {
     <FloatingCardLayout
       backgroundImage="/images/privacy-bg.jpg"
       backgroundAlt="隐私政策"
-      initialState="minimized"
+      initialState="expanded"
+      pageTitle="隐私政策"
     >
       {/* 页面标题 */}
       <m.div

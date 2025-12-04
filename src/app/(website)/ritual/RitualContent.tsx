@@ -108,7 +108,8 @@ export function RitualContent() {
     <FloatingCardLayout
       backgroundImage="/images/ritual-bg.jpg"
       backgroundAlt="护肤仪式"
-      initialState="minimized"
+      initialState="expanded"
+      pageTitle="护肤仪式"
     >
       {/* 页面标题 */}
       <m.div

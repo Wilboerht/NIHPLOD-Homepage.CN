@@ -127,7 +127,8 @@ export function ContactContent() {
     <FloatingCardLayout
       backgroundImage="/images/contact-bg.jpg"
       backgroundAlt="联系我们"
-      initialState="minimized"
+      initialState="expanded"
+      pageTitle="联系我们"
     >
       {/* 页面标题 */}
       <m.div
