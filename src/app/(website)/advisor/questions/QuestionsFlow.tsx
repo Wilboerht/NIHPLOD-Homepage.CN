@@ -132,7 +132,7 @@ export function QuestionsFlow() {
   const isLastQuestion = currentIndex === totalQuestions - 1;
 
   return (
-    <div className="relative flex min-h-screen flex-col px-4 py-6 md:px-6">
+    <div className="relative flex h-screen flex-col overflow-hidden px-4 py-6 md:px-6">
       {/* 顶部导航栏 */}
       <header className="flex items-center justify-between">
         {/* 返回按钮 */}

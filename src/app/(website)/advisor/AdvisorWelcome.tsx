@@ -20,7 +20,7 @@ export function AdvisorWelcome() {
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col bg-brand-cream">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-brand-cream">
       {/* 背景装饰 */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {/* 右上角光晕 */}

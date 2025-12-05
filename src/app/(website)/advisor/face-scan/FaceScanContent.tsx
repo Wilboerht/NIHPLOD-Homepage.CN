@@ -53,14 +53,14 @@ export function FaceScanContent() {
   // 等待检查问答数据
   if (!hasAnswers) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center overflow-hidden">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col px-4 py-6 md:px-6">
+    <div className="relative flex h-screen flex-col overflow-hidden px-4 py-6 md:px-6">
       {/* 顶部导航栏 */}
       <header className="flex items-center justify-between">
         {/* 返回按钮 */}

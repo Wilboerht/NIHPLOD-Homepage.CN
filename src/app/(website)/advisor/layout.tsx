@@ -18,11 +18,11 @@ interface AdvisorLayoutProps {
 
 /**
  * AI 护肤顾问布局
- * 独立的全屏布局，不使用网站的底部导航
+ * 独立布局，不使用网站的底部导航
  */
 export default function AdvisorLayout({ children }: AdvisorLayoutProps) {
   return (
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="min-h-screen bg-brand-cream">
       {children}
     </div>
   );

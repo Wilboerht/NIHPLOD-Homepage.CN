@@ -192,7 +192,7 @@ export function AnalyzingContent() {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center px-4"
+      className="flex h-screen flex-col items-center justify-center overflow-hidden px-4"
       role="status"
       aria-live="polite"
       aria-label="正在分析您的肌肤状况"
