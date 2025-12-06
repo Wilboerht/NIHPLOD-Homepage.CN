@@ -24,6 +24,8 @@ interface Option {
   value: string;
   label: string;
   labelEn?: string;
+  description?: string;
+  emoji?: string;
 }
 
 interface Question {
@@ -315,10 +317,18 @@ export default function AdminAdvisorPage() {
                           key={index}
                           className="rounded-lg border border-gray-200 bg-white px-3 py-2"
                         >
-                          <div className="font-medium text-gray-900">
-                            {option.label}
+                          <div className="flex items-center gap-2 font-medium text-gray-900">
+                            {option.emoji && (
+                              <span className="text-lg">{option.emoji}</span>
+                            )}
+                            <span>{option.label}</span>
                           </div>
-                          <div className="text-sm text-gray-500">
+                          {option.description && (
+                            <div className="mt-1 text-sm text-gray-600">
+                              {option.description}
+                            </div>
+                          )}
+                          <div className="mt-1 text-xs text-gray-400">
                             值: {option.value}
                             {option.labelEn && ` | EN: ${option.labelEn}`}
                           </div>

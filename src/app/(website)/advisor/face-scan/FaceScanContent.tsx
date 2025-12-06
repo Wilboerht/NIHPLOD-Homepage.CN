@@ -60,13 +60,13 @@ export function FaceScanContent() {
   }
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden px-4 py-6 md:px-6">
+    <div className="relative flex h-screen flex-col overflow-hidden px-4 py-3 md:px-6 md:py-4">
       {/* 顶部导航栏 */}
-      <header className="flex items-center justify-between">
+      <header className="flex shrink-0 items-center justify-between">
         {/* 返回按钮 */}
         <Link
           href="/advisor/questions"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
           aria-label="返回"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -83,9 +83,9 @@ export function FaceScanContent() {
       </header>
 
       {/* 主内容区域 */}
-      <main className="flex flex-1 flex-col items-center justify-center py-6">
+      <main className="flex min-h-0 flex-1 flex-col items-center justify-center py-3">
         <m.div
-          className="w-full max-w-md"
+          className="flex w-full max-w-md flex-col"
           variants={staggerContainer}
           initial="initial"
           animate="animate"
@@ -94,44 +94,34 @@ export function FaceScanContent() {
           <m.div
             variants={fadeInUp}
             transition={defaultTransition}
-            className="mb-6 text-center"
+            className="mb-3 shrink-0 text-center"
           >
-            {/* 图标 */}
-            <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-brand-gold/10">
-              <Scan className="h-8 w-8 text-brand-gold" />
+            {/* 图标 + 标题 一行显示 */}
+            <div className="flex items-center justify-center gap-3">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-gold/10">
+                <Scan className="h-5 w-5 text-brand-gold" />
+              </div>
+              <h1 className="font-serif text-xl text-brand-charcoal md:text-2xl">
+                AI 肌肤检测
+              </h1>
             </div>
-
-            {/* 标题 */}
-            <h1 className="font-serif text-2xl text-brand-charcoal md:text-3xl">
-              AI 肌肤检测
-            </h1>
-
-            {/* 说明 */}
-            <p className="mt-2 text-sm text-brand-charcoal/60">
-              拍摄一张素颜照片，AI 将分析您的肌肤状态
+            <p className="mt-1 text-sm text-brand-charcoal/60">
+              拍摄素颜照片，AI 将分析您的肌肤状态
             </p>
           </m.div>
 
           {/* 拍照组件 */}
-          <m.div variants={fadeInUp} transition={defaultTransition}>
+          <m.div variants={fadeInUp} transition={defaultTransition} className="min-h-0 flex-1">
             <FaceCapture onCapture={handleCapture} onSkip={handleSkip} />
           </m.div>
 
-          {/* 提示说明 */}
+          {/* 提示说明 - 简化为一行 */}
           <m.div
             variants={fadeInUp}
             transition={defaultTransition}
-            className="mt-6 rounded-xl bg-brand-cream/50 p-4"
+            className="mt-3 shrink-0 text-center text-xs text-brand-charcoal/50"
           >
-            <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
-              📸 拍照小贴士
-            </h3>
-            <ul className="space-y-1 text-xs text-brand-charcoal/60">
-              <li>• 请在光线充足的环境下拍摄</li>
-              <li>• 建议素颜或卸妆后拍摄</li>
-              <li>• 将面部正对镜头，保持自然表情</li>
-              <li>• 确保面部完整显示在框内</li>
-            </ul>
+            💡 请在光线充足的环境下素颜拍摄，将面部正对镜头
           </m.div>
         </m.div>
       </main>

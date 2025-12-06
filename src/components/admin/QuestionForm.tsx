@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -15,6 +15,8 @@ interface Option {
   value: string;
   label: string;
   labelEn?: string;
+  description?: string;
+  emoji?: string;
 }
 
 // 表单 Schema
@@ -26,6 +28,8 @@ const QuestionFormSchema = z.object({
     value: z.string().min(1, "请输入选项值"),
     label: z.string().min(1, "请输入选项标签"),
     labelEn: z.string().optional(),
+    description: z.string().optional(),
+    emoji: z.string().optional(),
   })).min(1, "请添加至少一个选项"),
   active: z.boolean(),
 });
@@ -53,14 +57,29 @@ export function QuestionForm({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState<QuestionFormData>({
+  const getDefaultFormData = (): QuestionFormData => ({
     question: "",
     fieldName: "",
     type: "single",
-    options: [{ value: "", label: "", labelEn: "" }],
+    options: [{ value: "", label: "", labelEn: "", description: "", emoji: "" }],
     active: true,
+  });
+
+  const [formData, setFormData] = useState<QuestionFormData>({
+    ...getDefaultFormData(),
     ...initialData,
   });
+
+  // 当 initialData 或 isOpen 变化时，重新初始化表单
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        ...getDefaultFormData(),
+        ...initialData,
+      });
+      setErrors({});
+    }
+  }, [isOpen, initialData]);
 
   // 更新字段
   const updateField = <K extends keyof QuestionFormData>(key: K, value: QuestionFormData[K]) => {
@@ -78,7 +97,7 @@ export function QuestionForm({
   const addOption = () => {
     setFormData((prev) => ({
       ...prev,
-      options: [...prev.options, { value: "", label: "", labelEn: "" }],
+      options: [...prev.options, { value: "", label: "", labelEn: "", description: "", emoji: "" }],
     }));
   };
 
@@ -163,14 +182,7 @@ export function QuestionForm({
 
   // 重置表单
   const handleClose = () => {
-    setFormData({
-      question: "",
-      fieldName: "",
-      type: "single",
-      options: [{ value: "", label: "", labelEn: "" }],
-      active: true,
-      ...initialData,
-    });
+    setFormData(getDefaultFormData());
     setErrors({});
     onClose();
   };
@@ -233,40 +245,60 @@ export function QuestionForm({
           {errors.options && (
             <p className="mb-2 text-sm text-red-500">{errors.options}</p>
           )}
-          <div className="space-y-3">
+          <div className="space-y-2">
             {formData.options.map((option, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3"
+                className="rounded-lg border border-gray-200 bg-gray-50 p-3"
               >
-                <div className="mt-2 cursor-move text-gray-400">
-                  <GripVertical className="h-4 w-4" />
-                </div>
-                <div className="grid flex-1 gap-3 md:grid-cols-3">
+                <div className="flex items-center gap-2">
+                  {/* 拖拽 */}
+                  <div className="cursor-move text-gray-400">
+                    <GripVertical className="h-4 w-4" />
+                  </div>
+
+                  {/* Emoji */}
                   <Input
-                    placeholder="选项值 (如: dry)"
+                    placeholder="😀"
+                    value={option.emoji || ""}
+                    onChange={(e) => updateOption(index, "emoji", e.target.value)}
+                    className="w-12 shrink-0 text-center"
+                  />
+
+                  {/* 选项值 */}
+                  <Input
+                    placeholder="值"
                     value={option.value}
                     onChange={(e) => updateOption(index, "value", e.target.value)}
+                    className="w-24 shrink-0"
                   />
+
+                  {/* 中文标签 */}
                   <Input
-                    placeholder="中文标签 (如: 干性肌肤)"
+                    placeholder="中文标签"
                     value={option.label}
                     onChange={(e) => updateOption(index, "label", e.target.value)}
+                    className="min-w-0 flex-1"
                   />
+
+                  {/* 描述 */}
                   <Input
-                    placeholder="英文标签 (可选)"
-                    value={option.labelEn || ""}
-                    onChange={(e) => updateOption(index, "labelEn", e.target.value)}
+                    placeholder="描述"
+                    value={option.description || ""}
+                    onChange={(e) => updateOption(index, "description", e.target.value)}
+                    className="min-w-0 flex-1"
                   />
+
+                  {/* 删除 */}
+                  <button
+                    type="button"
+                    onClick={() => removeOption(index)}
+                    disabled={formData.options.length <= 1}
+                    className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeOption(index)}
-                  disabled={formData.options.length <= 1}
-                  className="mt-2 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
               </div>
             ))}
           </div>

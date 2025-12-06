@@ -8,6 +8,8 @@ const OptionSchema = z.object({
   value: z.string().min(1),
   label: z.string().min(1),
   labelEn: z.string().optional(),
+  description: z.string().optional(),
+  emoji: z.string().optional(),
 });
 
 // 更新问题 Schema
