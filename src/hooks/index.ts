@@ -5,3 +5,4 @@ export { useSidebar } from "./useSidebar";
 export { useToast } from "./useToast";
 export { useReducedMotion, getAnimationDuration, getReducedMotionTransition } from "./useReducedMotion";
 export { useWechatShare, type WechatShareConfig, type UseWechatShareReturn } from "./useWechatShare";
+export { useAdvisorQuestions, type Question, type QuestionOption } from "./useAdvisorQuestions";

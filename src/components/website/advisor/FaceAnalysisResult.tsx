@@ -44,6 +44,19 @@ const HYDRATION_CONFIG: Record<string, { percent: number; color: string }> = {
   high: { percent: 90, color: "bg-green-400" },
 };
 
+/** 置信度提示映射 */
+const getConfidenceHint = (confidence: number): { text: string; color: string } => {
+  if (confidence >= 0.8) {
+    return { text: "高置信度", color: "text-green-600" };
+  } else if (confidence >= 0.6) {
+    return { text: "参考价值", color: "text-brand-gold" };
+  } else if (confidence >= 0.4) {
+    return { text: "仅供参考", color: "text-amber-600" };
+  } else {
+    return { text: "建议重拍", color: "text-red-500" };
+  }
+};
+
 /** 动画配置 */
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -78,6 +91,7 @@ export function FaceAnalysisResult({
     percent: 50,
     color: "bg-gray-400",
   };
+  const confidenceHint = getConfidenceHint(result.skinType.confidence);
 
   return (
     <m.div
@@ -130,6 +144,9 @@ export function FaceAnalysisResult({
               />
             </div>
             <span>{Math.round(result.skinType.confidence * 100)}%</span>
+            <span className={`text-xs ${confidenceHint.color}`}>
+              ({confidenceHint.text})
+            </span>
           </div>
           <p className="mt-2 text-sm text-brand-charcoal/70">
             {result.skinType.description}

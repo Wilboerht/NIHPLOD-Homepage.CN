@@ -1,7 +1,7 @@
 "use client";
 
 import { m, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Question } from "@/config/advisor-questions";
+import { type Question } from "@/hooks/useAdvisorQuestions";
 import { OptionCard } from "./OptionCard";
 import {
   slideVariants,

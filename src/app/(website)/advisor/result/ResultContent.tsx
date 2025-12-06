@@ -20,6 +20,7 @@ import {
   X,
   Copy,
   MessageCircle,
+  AlertCircle,
 } from "lucide-react";
 import { FaceAnalysisResult } from "@/components/website/advisor/FaceAnalysisResult";
 import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations";
@@ -579,6 +580,30 @@ export function ResultContent() {
                 </div>
               </div>
             ))}
+          </div>
+        </m.div>
+
+        {/* 免责声明 */}
+        <m.div
+          variants={fadeInUp}
+          transition={defaultTransition}
+          className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4"
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600" />
+            <div className="text-xs leading-relaxed text-amber-800/80">
+              <p className="mb-1 font-medium text-amber-900">温馨提示</p>
+              <p>
+                本分析报告由 AI
+                技术生成，仅供护肤品选购参考，不构成医学诊断或治疗建议。
+                {faceAnalysis && (
+                  <span>
+                    面部照片分析结果受拍摄光线、角度等因素影响，准确度有限。
+                  </span>
+                )}
+                如有皮肤健康问题，请咨询专业皮肤科医生。
+              </p>
+            </div>
           </div>
         </m.div>
 

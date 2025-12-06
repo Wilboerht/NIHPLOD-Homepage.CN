@@ -134,36 +134,63 @@ function buildAnalysisPrompt(
   answers: QuestionnaireAnswers,
   faceAnalysis?: FaceAnalysisResult
 ): string {
-  let prompt = `作为专业护肤顾问，请根据以下用户信息分析其肌肤状态并给出护肤建议：
+  // 获取标签
+  const skinTypeLabel = getSkinTypeLabel(answers.skinType || "");
+  const concernLabel = getConcernLabel(answers.primaryConcern || "");
 
-## 用户问卷回答
-- 自述肤质：${answers.skinType || "未填写"}
-- 主要关注：${answers.primaryConcern || "未填写"}
+  let prompt = `你是一位专业的护肤顾问。请根据以下信息，为用户提供个性化的肌肤分析和护肤建议。
+
+## 重要原则
+1. 这是护肤品推荐场景，不是医疗诊断
+2. 以用户自述为主要依据，AI 面部检测仅作参考
+3. 分析要积极正面，重点在改善方案
+4. 建议要具体、可执行、适合日常护肤
+
+## 用户自述信息（主要依据）
+- 自述肤质：${skinTypeLabel || "未填写"}
+- 主要关注：${concernLabel || "未填写"}
 - 年龄段：${answers.ageRange || "未填写"}
 - 护肤习惯：${answers.currentRoutine || "未填写"}
-- 过敏情况：${answers.allergies || "未填写"}
+- 过敏情况：${answers.allergies || "无"}
 - 预算偏好：${answers.budget || "未填写"}
 `;
 
   if (faceAnalysis) {
+    // 根据置信度决定如何呈现 AI 面部检测结果
+    const confidencePercent = Math.round(faceAnalysis.skinType.confidence * 100);
+    const confidenceNote = faceAnalysis.skinType.confidence >= 0.7
+      ? "（可作为参考）"
+      : "（仅供参考，受照片质量影响）";
+
     prompt += `
-## AI 面部检测结果
-- 检测肤质：${faceAnalysis.skinType.type}（置信度 ${Math.round(faceAnalysis.skinType.confidence * 100)}%）
-- 水分状态：${faceAnalysis.hydration.level}
-${faceAnalysis.skinAge ? `- 肌肤年龄：约 ${faceAnalysis.skinAge.estimated} 岁` : ""}
-${faceAnalysis.skinConditions.length > 0 ? `- 检测到问题：${faceAnalysis.skinConditions.map((c) => c.condition).join("、")}` : ""}
+## AI 面部检测参考${confidenceNote}
+- 检测肤质倾向：${faceAnalysis.skinType.type}（置信度 ${confidencePercent}%）
+- 水分状态观察：${faceAnalysis.hydration.level}
+${faceAnalysis.skinAge && faceAnalysis.skinAge.estimated > 0 ? `- 肌肤状态估算：约 ${faceAnalysis.skinAge.estimated} 岁` : ""}
+${faceAnalysis.skinConditions.length > 0 ? `- 观察到的关注点：${faceAnalysis.skinConditions.map((c) => c.condition).join("、")}` : ""}
+
+注意：当用户自述与 AI 检测有差异时，以用户自述为主（用户更了解自己的日常感受）。
 `;
   }
 
   prompt += `
-请以 JSON 格式返回分析结果：
+## 输出要求
+请以 JSON 格式返回（只返回 JSON，无其他文字）：
 {
-  "skinType": "肤质类型",
-  "concerns": ["关注点1", "关注点2"],
-  "summary": "综合分析摘要",
-  "details": ["详细分析1", "详细分析2", "详细分析3"],
-  "productCategories": ["推荐产品类别1", "推荐产品类别2"]
-}`;
+  "skinType": "综合判断的肤质类型（dry/oily/combination/normal/sensitive）",
+  "concerns": ["主要关注点1", "关注点2"],
+  "summary": "温和正面的综合分析（50-80字，避免负面表述）",
+  "details": [
+    "肤质特点说明",
+    "当前状态分析",
+    "护理重点建议"
+  ],
+  "productCategories": ["推荐的产品类别1", "推荐的产品类别2"]
+}
+
+## 语气示例
+✅ "您的肌肤整体状态良好，T区可能需要适度控油"
+❌ "您的皮肤问题严重，T区出油过多"`;
 
   return prompt;
 }
@@ -178,6 +205,16 @@ async function callAIProvider(
   prompt: string
 ): Promise<string> {
   if (provider === "openai") {
+    const systemMessage = `你是一位专业、温和的护肤顾问。
+
+核心原则：
+1. 你的分析仅用于护肤品推荐，不是医疗诊断
+2. 以积极正面的语气沟通，避免让用户焦虑
+3. 重点在于改善方案，而非问题指责
+4. 所有建议应该是日常护肤范畴
+
+请用中文回答，只返回 JSON 格式。`;
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -187,10 +224,10 @@ async function callAIProvider(
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: "你是专业的护肤顾问，请用中文回答。" },
+          { role: "system", content: systemMessage },
           { role: "user", content: prompt },
         ],
-        max_tokens: 1000,
+        max_tokens: 1200,
         temperature: 0.3,
       }),
     });

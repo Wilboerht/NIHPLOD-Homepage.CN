@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { m } from "framer-motion";
-import { ArrowLeft, ArrowRight, X } from "lucide-react";
-import { advisorQuestions, getTotalQuestions } from "@/config/advisor-questions";
+import { ArrowLeft, ArrowRight, X, Loader2 } from "lucide-react";
+import { useAdvisorQuestions } from "@/hooks/useAdvisorQuestions";
 import { QuestionStep, ProgressBar } from "@/components/website/advisor";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +20,9 @@ type Answers = Record<string, string>;
  */
 export function QuestionsFlow() {
   const router = useRouter();
-  const totalQuestions = getTotalQuestions();
+
+  // 动态获取问题数据
+  const { questions, totalQuestions, loading, source } = useAdvisorQuestions();
 
   // 当前问题索引（从 0 开始）
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -31,17 +33,17 @@ export function QuestionsFlow() {
   // 是否正在过渡动画中
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // 当前问题
-  const currentQuestion = advisorQuestions[currentIndex];
+  // 当前问题（需要处理加载状态）
+  const currentQuestion = questions[currentIndex];
   // 当前问题的已选答案
-  const currentAnswer = answers[currentQuestion.fieldName] || null;
+  const currentAnswer = currentQuestion ? (answers[currentQuestion.fieldName] || null) : null;
 
   /**
    * 选择选项
    */
   const handleSelect = useCallback(
     (value: string) => {
-      if (isTransitioning) return;
+      if (isTransitioning || !currentQuestion) return;
 
       // 保存答案
       setAnswers((prev) => ({
@@ -59,7 +61,7 @@ export function QuestionsFlow() {
         }, 300);
       }
     },
-    [currentIndex, currentQuestion.fieldName, totalQuestions, isTransitioning]
+    [currentIndex, currentQuestion, totalQuestions, isTransitioning]
   );
 
   /**
@@ -94,7 +96,7 @@ export function QuestionsFlow() {
    * 完成问答，跳转到面部识别或结果页
    */
   const handleComplete = useCallback(() => {
-    if (!currentAnswer) return;
+    if (!currentAnswer || !currentQuestion) return;
 
     // 保存最后一个答案
     const finalAnswers = {
@@ -107,7 +109,7 @@ export function QuestionsFlow() {
 
     // 跳转到面部识别页面（可选步骤）
     router.push("/advisor/face-scan");
-  }, [answers, currentAnswer, currentQuestion.fieldName, router]);
+  }, [answers, currentAnswer, currentQuestion, router]);
 
   /**
    * 键盘导航支持
@@ -130,6 +132,37 @@ export function QuestionsFlow() {
   }, [handlePrev, handleNext, handleComplete, currentAnswer, currentIndex, totalQuestions]);
 
   const isLastQuestion = currentIndex === totalQuestions - 1;
+
+  // 加载状态
+  if (loading) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-brand-cream">
+        <m.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
+          <p className="text-sm text-brand-charcoal/60">正在加载问题...</p>
+        </m.div>
+      </div>
+    );
+  }
+
+  // 无问题时显示错误状态
+  if (!currentQuestion || questions.length === 0) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-brand-cream px-6">
+        <p className="text-center text-brand-charcoal/60">暂无问卷问题</p>
+        <Link
+          href="/advisor"
+          className="rounded-full bg-brand-gold px-6 py-3 text-sm font-medium text-white"
+        >
+          返回首页
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden px-4 py-6 md:px-6">
