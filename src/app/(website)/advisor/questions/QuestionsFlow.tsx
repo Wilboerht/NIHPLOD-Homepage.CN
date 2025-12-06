@@ -22,7 +22,7 @@ export function QuestionsFlow() {
   const router = useRouter();
 
   // 动态获取问题数据
-  const { questions, totalQuestions, loading, source } = useAdvisorQuestions();
+  const { questions, totalQuestions, loading, source: _source } = useAdvisorQuestions();
 
   // 当前问题索引（从 0 开始）
   const [currentIndex, setCurrentIndex] = useState(0);

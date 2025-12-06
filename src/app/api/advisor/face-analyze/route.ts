@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import {
+  VISION_ANALYSIS_SYSTEM_PROMPT,
+  VISION_ANALYSIS_USER_PROMPT,
+  CLAUDE_VISION_PROMPT,
+} from "@/config/ai-prompts";
+import { aiLogger } from "@/lib/logger";
 
 /**
  * 面部分析请求 Schema
@@ -123,7 +129,10 @@ export async function POST(request: NextRequest) {
       data: analysis,
     });
   } catch (error) {
-    console.error("Face analysis error:", error);
+    aiLogger.error("Face analysis error", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack?.split("\n").slice(0, 3).join("\n") : undefined,
+    });
 
     // 判断是否为 AI 服务不可用
     if (error instanceof Error && error.message.includes("AI")) {
@@ -160,9 +169,11 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
 
   // 检查是否启用 AI
   if (process.env.AI_ENABLED !== "true") {
-    console.log("AI disabled, using fallback analysis");
+    aiLogger.info("AI disabled, using fallback analysis");
     return getFallbackAnalysis();
   }
+
+  aiLogger.info("Starting face analysis", { provider });
 
   try {
     if (provider === "openai") {
@@ -171,7 +182,10 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
       return await analyzeWithClaudeVision(imageBase64);
     }
   } catch (error) {
-    console.error(`AI analysis failed with ${provider}:`, error);
+    aiLogger.error("AI vision analysis failed, using fallback", {
+      provider,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
     // 降级到基础分析
     return getFallbackAnalysis();
   }
@@ -185,72 +199,11 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
  */
 async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult> {
   const apiKey = process.env.OPENAI_API_KEY;
+  const startTime = Date.now();
 
   if (!apiKey) {
     throw new Error("AI: OpenAI API key not configured");
   }
-
-  const systemPrompt = `你是一位专业的护肤顾问（非医疗诊断）。请根据用户提供的面部照片，从护肤品推荐的角度分析肌肤状态。
-
-## 重要原则
-1. **保守判断**：这是护肤建议，不是医学诊断。当不确定时，选择更中性的判断
-2. **照片局限性**：照片受光线、角度、相机等因素影响，分析仅供参考
-3. **避免医学术语**：不要使用"诊断"、"治疗"、"疾病"等医学术语
-4. **置信度诚实**：如果照片质量差或难以判断，请降低 confidence 值
-
-## 分析维度
-- **肤质**：基于 T 区和脸颊的油光/干燥程度判断
-- **水分状态**：基于肌肤光泽度和纹理判断
-- **常见关注点**：仅识别明显可见的护肤关注点（如毛孔、暗沉、细纹等）
-- **肌肤年龄**：基于可见状态的估算，仅供参考
-
-## 不要做的事
-- ❌ 不要诊断皮肤病（如玫瑰痤疮、湿疹、皮炎等）
-- ❌ 不要判断需要医疗干预的问题
-- ❌ 不要给出过于肯定的结论（除非非常明显）
-- ❌ 不要夸大问题的严重性
-
-## 输出格式
-请严格按以下 JSON 格式返回（只返回 JSON，无其他文字）：
-{
-  "skinType": {
-    "type": "dry|oily|combination|normal|sensitive",
-    "confidence": 0.0-1.0,
-    "description": "基于照片观察的肤质描述（10-30字）"
-  },
-  "skinConditions": [
-    {
-      "condition": "护肤关注点（如：毛孔、暗沉、细纹、痘印）",
-      "severity": "mild|moderate|severe",
-      "area": "主要区域",
-      "description": "客观描述，语气温和"
-    }
-  ],
-  "skinAge": {
-    "estimated": 估算年龄（如果无法判断返回0）,
-    "factors": ["影响因素（如有）"]
-  },
-  "hydration": {
-    "level": "low|medium|high",
-    "description": "水分状态描述"
-  },
-  "recommendations": [
-    "日常护肤建议1",
-    "日常护肤建议2",
-    "日常护肤建议3"
-  ]
-}
-
-## 置信度说明
-- 0.8-1.0：照片清晰，光线良好，特征明显
-- 0.6-0.8：照片较清晰，可以做出合理判断
-- 0.4-0.6：照片一般，判断仅供参考
-- 0.0-0.4：照片质量差或难以判断，建议重拍
-
-## 语气要求
-- 使用"看起来"、"可能"、"建议"等委婉用语
-- 避免"你的皮肤有问题"等负面表述
-- 重点放在改善建议而非问题指责`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -263,14 +216,14 @@ async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult
       messages: [
         {
           role: "system",
-          content: systemPrompt,
+          content: VISION_ANALYSIS_SYSTEM_PROMPT,
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "请分析这张面部照片的肌肤状态",
+              text: VISION_ANALYSIS_USER_PROMPT,
             },
             {
               type: "image_url",
@@ -283,17 +236,27 @@ async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult
         },
       ],
       max_tokens: 1500,
-      temperature: 0.3, // 降低随机性，提高一致性
+      temperature: 0.3,
     }),
   });
 
   if (!response.ok) {
     const error = await response.text();
+    aiLogger.error("OpenAI Vision API error", {
+      status: response.status,
+      error,
+      duration: Date.now() - startTime,
+    });
     throw new Error(`AI: OpenAI API error: ${error}`);
   }
 
   const data = await response.json();
   const content = data.choices[0]?.message?.content;
+
+  aiLogger.info("OpenAI Vision API success", {
+    duration: Date.now() - startTime,
+    tokenUsage: data.usage,
+  });
 
   if (!content) {
     throw new Error("AI: Empty response from OpenAI");
@@ -302,6 +265,7 @@ async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult
   // 解析 JSON 响应
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
+    aiLogger.error("Failed to parse AI response", { content: content.substring(0, 200) });
     throw new Error("AI: Failed to parse AI response as JSON");
   }
 
@@ -317,6 +281,7 @@ async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult
  */
 async function analyzeWithClaudeVision(imageBase64: string): Promise<FaceAnalysisResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  const startTime = Date.now();
 
   if (!apiKey) {
     throw new Error("AI: Anthropic API key not configured");
@@ -354,16 +319,7 @@ async function analyzeWithClaudeVision(imageBase64: string): Promise<FaceAnalysi
             },
             {
               type: "text",
-              text: `你是一位专业的皮肤科医生和护肤专家。请分析这张面部照片的肌肤状态。
-
-请严格按以下 JSON 格式返回（只返回 JSON）：
-{
-  "skinType": { "type": "dry|oily|combination|normal|sensitive", "confidence": 0.0-1.0, "description": "描述" },
-  "skinConditions": [{ "condition": "问题", "severity": "mild|moderate|severe", "area": "区域", "description": "描述" }],
-  "skinAge": { "estimated": 数字, "factors": ["因素"] },
-  "hydration": { "level": "low|medium|high", "description": "描述" },
-  "recommendations": ["建议1", "建议2"]
-}`,
+              text: CLAUDE_VISION_PROMPT,
             },
           ],
         },
@@ -373,11 +329,21 @@ async function analyzeWithClaudeVision(imageBase64: string): Promise<FaceAnalysi
 
   if (!response.ok) {
     const error = await response.text();
+    aiLogger.error("Anthropic Vision API error", {
+      status: response.status,
+      error,
+      duration: Date.now() - startTime,
+    });
     throw new Error(`AI: Anthropic API error: ${error}`);
   }
 
   const data = await response.json();
   const content = data.content[0]?.text;
+
+  aiLogger.info("Anthropic Vision API success", {
+    duration: Date.now() - startTime,
+    tokenUsage: data.usage,
+  });
 
   if (!content) {
     throw new Error("AI: Empty response from Anthropic");
@@ -385,6 +351,7 @@ async function analyzeWithClaudeVision(imageBase64: string): Promise<FaceAnalysi
 
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
+    aiLogger.error("Failed to parse Claude response", { content: content.substring(0, 200) });
     throw new Error("AI: Failed to parse AI response as JSON");
   }
 

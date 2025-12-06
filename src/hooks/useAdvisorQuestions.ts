@@ -97,11 +97,11 @@ export function useAdvisorQuestions(): UseAdvisorQuestionsResult {
         setSource(data.source || "database");
       } else {
         // API 返回空数据，使用本地配置
-        useFallbackQuestions();
+        applyFallbackQuestions();
       }
     } catch (err) {
       console.warn("从 API 获取问题失败，使用本地配置:", err);
-      useFallbackQuestions();
+      applyFallbackQuestions();
     } finally {
       setLoading(false);
     }
@@ -109,8 +109,9 @@ export function useAdvisorQuestions(): UseAdvisorQuestionsResult {
 
   /**
    * 使用本地配置作为降级方案
+   * 注意：此函数名不以 use 开头，因为它不是 React Hook
    */
-  const useFallbackQuestions = () => {
+  const applyFallbackQuestions = () => {
     const localQuestions: Question[] = fallbackQuestions.map((q) => ({
       id: q.id,
       fieldName: q.fieldName,

@@ -20,7 +20,7 @@ interface ProgressBarProps {
 export function ProgressBar({
   current,
   total,
-  showPercentage = false,
+  showPercentage: _showPercentage = false,
   compact = false,
 }: ProgressBarProps) {
   // 紧凑模式：细线进度条

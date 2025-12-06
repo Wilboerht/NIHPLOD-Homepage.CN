@@ -43,9 +43,9 @@ export async function GET() {
     // 如果数据库有数据，使用数据库问题
     if (dbQuestions.length > 0) {
       const questions: QuestionResponse[] = dbQuestions.map((q) => {
-        // 解析选项数据
-        const rawOptions = q.options as QuestionOption[];
-        
+        // 解析选项数据（Prisma JSON 类型需要类型断言）
+        const rawOptions = q.options as unknown as QuestionOption[];
+
         return {
           id: q.id,
           fieldName: q.fieldName,

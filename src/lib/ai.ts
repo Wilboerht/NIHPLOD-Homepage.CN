@@ -4,6 +4,11 @@
 
 import prisma from "./prisma";
 import type { QuestionnaireAnswers, FaceAnalysisResult } from "@/schemas/advisor";
+import {
+  TEXT_ANALYSIS_SYSTEM_PROMPT,
+  buildTextAnalysisPrompt,
+} from "@/config/ai-prompts";
+import { aiLogger } from "./logger";
 
 export interface AIMessage {
   role: "user" | "assistant" | "system";
@@ -44,12 +49,19 @@ export interface AnalysisResult {
 }
 
 /**
- * AI 对话（基础功能）
+ * AI 对话
+ *
+ * ⚠️ 预留接口 - 当前产品设计不需要
+ *
+ * 当前产品流程：问卷 → 面部扫描(可选) → AI分析 → 结果展示
+ * 不涉及对话式交互，分析功能由 analyzeWithAI() 提供
+ *
+ * 此函数为未来可能的对话式交互预留
+ * 如无扩展计划，可删除此函数及相关类型定义
  */
 export async function chat(_messages: AIMessage[]): Promise<AIResponse> {
-  // TODO: 实现 AI 对话
   return {
-    message: "AI 功能待实现",
+    message: "此接口为预留接口，当前产品设计不需要对话功能",
     suggestions: [],
   };
 }
@@ -62,12 +74,17 @@ export async function analyzeWithAI(
   faceAnalysis?: FaceAnalysisResult
 ): Promise<AnalysisResult> {
   const provider = process.env.AI_PROVIDER || "openai";
-  const apiKey = process.env.OPENAI_API_KEY;
   const model = process.env.AI_MODEL || "gpt-4o";
 
+  // 根据 provider 获取对应的 API Key
+  const apiKey = getApiKeyForProvider(provider);
+
   if (!apiKey) {
-    throw new Error("AI API key not configured");
+    aiLogger.error("API key not configured", { provider });
+    throw new Error(`AI API key not configured for provider: ${provider}`);
   }
+
+  aiLogger.info("Starting AI analysis", { provider, model, hasPhoto: !!faceAnalysis });
 
   // 构建提示词
   const prompt = buildAnalysisPrompt(answers, faceAnalysis);
@@ -81,11 +98,34 @@ export async function analyzeWithAI(
   // 匹配推荐产品
   const products = await matchProducts(analysis.concerns, answers);
 
+  aiLogger.info("AI analysis completed", {
+    provider,
+    skinType: analysis.skinType,
+    concerns: analysis.concerns,
+    productCount: products.length,
+  });
+
   return {
     skinAnalysis: analysis,
     recommendations: generateRecommendationText(analysis),
     products,
   };
+}
+
+/**
+ * 根据 provider 获取对应的 API Key
+ */
+function getApiKeyForProvider(provider: string): string | undefined {
+  switch (provider) {
+    case "openai":
+      return process.env.OPENAI_API_KEY;
+    case "deepseek":
+      return process.env.DEEPSEEK_API_KEY;
+    case "anthropic":
+      return process.env.ANTHROPIC_API_KEY;
+    default:
+      return process.env.OPENAI_API_KEY;
+  }
 }
 
 /**
@@ -128,75 +168,25 @@ export async function fallbackAnalysis(
 }
 
 /**
- * 构建 AI 分析提示词
+ * 构建 AI 分析提示词（使用配置文件）
  */
 function buildAnalysisPrompt(
   answers: QuestionnaireAnswers,
   faceAnalysis?: FaceAnalysisResult
 ): string {
-  // 获取标签
-  const skinTypeLabel = getSkinTypeLabel(answers.skinType || "");
-  const concernLabel = getConcernLabel(answers.primaryConcern || "");
-
-  let prompt = `你是一位专业的护肤顾问。请根据以下信息，为用户提供个性化的肌肤分析和护肤建议。
-
-## 重要原则
-1. 这是护肤品推荐场景，不是医疗诊断
-2. 以用户自述为主要依据，AI 面部检测仅作参考
-3. 分析要积极正面，重点在改善方案
-4. 建议要具体、可执行、适合日常护肤
-
-## 用户自述信息（主要依据）
-- 自述肤质：${skinTypeLabel || "未填写"}
-- 主要关注：${concernLabel || "未填写"}
-- 年龄段：${answers.ageRange || "未填写"}
-- 护肤习惯：${answers.currentRoutine || "未填写"}
-- 过敏情况：${answers.allergies || "无"}
-- 预算偏好：${answers.budget || "未填写"}
-`;
-
-  if (faceAnalysis) {
-    // 根据置信度决定如何呈现 AI 面部检测结果
-    const confidencePercent = Math.round(faceAnalysis.skinType.confidence * 100);
-    const confidenceNote = faceAnalysis.skinType.confidence >= 0.7
-      ? "（可作为参考）"
-      : "（仅供参考，受照片质量影响）";
-
-    prompt += `
-## AI 面部检测参考${confidenceNote}
-- 检测肤质倾向：${faceAnalysis.skinType.type}（置信度 ${confidencePercent}%）
-- 水分状态观察：${faceAnalysis.hydration.level}
-${faceAnalysis.skinAge && faceAnalysis.skinAge.estimated > 0 ? `- 肌肤状态估算：约 ${faceAnalysis.skinAge.estimated} 岁` : ""}
-${faceAnalysis.skinConditions.length > 0 ? `- 观察到的关注点：${faceAnalysis.skinConditions.map((c) => c.condition).join("、")}` : ""}
-
-注意：当用户自述与 AI 检测有差异时，以用户自述为主（用户更了解自己的日常感受）。
-`;
-  }
-
-  prompt += `
-## 输出要求
-请以 JSON 格式返回（只返回 JSON，无其他文字）：
-{
-  "skinType": "综合判断的肤质类型（dry/oily/combination/normal/sensitive）",
-  "concerns": ["主要关注点1", "关注点2"],
-  "summary": "温和正面的综合分析（50-80字，避免负面表述）",
-  "details": [
-    "肤质特点说明",
-    "当前状态分析",
-    "护理重点建议"
-  ],
-  "productCategories": ["推荐的产品类别1", "推荐的产品类别2"]
-}
-
-## 语气示例
-✅ "您的肌肤整体状态良好，T区可能需要适度控油"
-❌ "您的皮肤问题严重，T区出油过多"`;
-
-  return prompt;
+  return buildTextAnalysisPrompt({
+    skinTypeLabel: getSkinTypeLabel(answers.skinType || ""),
+    concernLabel: getConcernLabel(answers.primaryConcern || ""),
+    ageRange: answers.ageRange,
+    currentRoutine: answers.currentRoutine,
+    allergies: answers.allergies,
+    budget: answers.budget,
+    faceAnalysis: faceAnalysis,
+  });
 }
 
 /**
- * 调用 AI 服务
+ * 调用 AI 服务（支持 OpenAI、DeepSeek、Anthropic）
  */
 async function callAIProvider(
   provider: string,
@@ -204,43 +194,107 @@ async function callAIProvider(
   model: string,
   prompt: string
 ): Promise<string> {
-  if (provider === "openai") {
-    const systemMessage = `你是一位专业、温和的护肤顾问。
+  const startTime = Date.now();
 
-核心原则：
-1. 你的分析仅用于护肤品推荐，不是医疗诊断
-2. 以积极正面的语气沟通，避免让用户焦虑
-3. 重点在于改善方案，而非问题指责
-4. 所有建议应该是日常护肤范畴
+  try {
+    // OpenAI 和 DeepSeek 使用相同的 API 格式
+    if (provider === "openai" || provider === "deepseek") {
+      const baseUrl = provider === "deepseek"
+        ? (process.env.DEEPSEEK_API_URL || "https://api.deepseek.com/v1")
+        : "https://api.openai.com/v1";
 
-请用中文回答，只返回 JSON 格式。`;
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: provider === "deepseek" ? (process.env.DEEPSEEK_MODEL || "deepseek-chat") : model,
+          messages: [
+            { role: "system", content: TEXT_ANALYSIS_SYSTEM_PROMPT },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 1200,
+          temperature: 0.3,
+        }),
+      });
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemMessage },
-          { role: "user", content: prompt },
-        ],
-        max_tokens: 1200,
-        temperature: 0.3,
-      }),
-    });
+      if (!response.ok) {
+        const errorText = await response.text();
+        aiLogger.error("AI API request failed", {
+          provider,
+          status: response.status,
+          error: errorText,
+          duration: Date.now() - startTime,
+        });
+        throw new Error(`AI API error: ${response.status} - ${errorText}`);
+      }
 
-    if (!response.ok) {
-      throw new Error(`AI API error: ${response.status}`);
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || "";
+
+      aiLogger.info("AI API request successful", {
+        provider,
+        model: provider === "deepseek" ? (process.env.DEEPSEEK_MODEL || "deepseek-chat") : model,
+        duration: Date.now() - startTime,
+        tokenUsage: data.usage,
+      });
+
+      return content;
     }
 
-    const data = await response.json();
-    return data.choices[0]?.message?.content || "";
-  }
+    // Anthropic Claude
+    if (provider === "anthropic") {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: model || "claude-sonnet-4-20250514",
+          max_tokens: 1200,
+          system: TEXT_ANALYSIS_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
 
-  throw new Error(`Unsupported AI provider: ${provider}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        aiLogger.error("Anthropic API request failed", {
+          provider,
+          status: response.status,
+          error: errorText,
+          duration: Date.now() - startTime,
+        });
+        throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const content = data.content[0]?.text || "";
+
+      aiLogger.info("Anthropic API request successful", {
+        provider,
+        model: model || "claude-sonnet-4-20250514",
+        duration: Date.now() - startTime,
+        tokenUsage: data.usage,
+      });
+
+      return content;
+    }
+
+    throw new Error(`Unsupported AI provider: ${provider}`);
+  } catch (error) {
+    aiLogger.error("AI provider call failed", {
+      provider,
+      model,
+      error: error instanceof Error ? error.message : "Unknown error",
+      duration: Date.now() - startTime,
+    });
+    throw error;
+  }
 }
 
 /**
@@ -316,6 +370,24 @@ const BUDGET_TO_PRICE: Record<string, { min: number; max: number }> = {
   mid: { min: 300, max: 1000 },
   premium: { min: 800, max: 2000 },
   luxury: { min: 1500, max: Infinity },
+};
+
+/** 年龄段到推荐功效的映射 */
+const AGE_TO_BENEFITS: Record<string, string[]> = {
+  "18-24": ["控油", "清爽", "补水", "净化", "祛痘"],
+  "25-30": ["补水", "保湿", "提亮", "抗氧化", "防护"],
+  "31-40": ["抗老", "紧致", "淡纹", "修护", "保湿"],
+  "41-50": ["抗皱", "紧致", "淡斑", "滋养", "胶原"],
+  "50+": ["紧致", "滋养", "修护", "抗皱", "弹力"],
+};
+
+/** 护肤习惯到产品复杂度的映射 */
+const ROUTINE_COMPLEXITY: Record<string, number> = {
+  none: 1,      // 刚开始护肤 - 推荐基础单品
+  minimal: 1,   // 极简护肤 - 推荐基础单品
+  basic: 2,     // 基础护肤 - 推荐常规产品
+  complete: 3,  // 完整护肤 - 可推荐进阶产品
+  advanced: 4,  // 进阶护理 - 可推荐专业产品
 };
 
 /**
@@ -445,7 +517,15 @@ async function matchByRules(
 }
 
 /**
- * 计算产品匹配分数
+ * 计算产品匹配分数（优化版 - 多维度评分）
+ *
+ * 评分维度及权重：
+ * - 关注点匹配：+30分/项（最高权重）
+ * - 年龄段匹配：+25分/项（新增）
+ * - 肤质匹配：+20分/项
+ * - 预算匹配：+15分
+ * - 推荐产品：+10分
+ * - 护肤习惯匹配：+5-10分（新增）
  */
 function calculateProductScore(
   product: {
@@ -473,7 +553,20 @@ function calculateProductScore(
     });
   });
 
-  // 2. 肤质匹配（权重中等：每匹配 +20 分）
+  // 2. 年龄段匹配（新增：每匹配 +25 分）
+  if (answers.ageRange) {
+    const ageBenefits = AGE_TO_BENEFITS[answers.ageRange] || [];
+    ageBenefits.forEach((benefit) => {
+      if (productBenefits.some((b) => b.includes(benefit))) {
+        score += 25;
+        if (!matchedBenefits.includes(benefit)) {
+          matchedBenefits.push(benefit);
+        }
+      }
+    });
+  }
+
+  // 3. 肤质匹配（权重中等：每匹配 +20 分）
   if (answers.skinType) {
     const skinBenefits = SKINTYPE_TO_BENEFITS[answers.skinType] || [];
     skinBenefits.forEach((benefit) => {
@@ -486,7 +579,7 @@ function calculateProductScore(
     });
   }
 
-  // 3. 预算匹配（权重中等：匹配 +15 分）
+  // 4. 预算匹配（权重中等：匹配 +15 分）
   if (answers.budget) {
     const priceRange = BUDGET_TO_PRICE[answers.budget];
     const productPrice = typeof product.price === "number"
@@ -497,12 +590,33 @@ function calculateProductScore(
     }
   }
 
-  // 4. 推荐产品加分（+10 分）
+  // 5. 推荐产品加分（+10 分）
   if (product.featured) {
     score += 10;
   }
 
-  // 5. 如果没有任何匹配，给基础分
+  // 6. 护肤习惯匹配（新增：根据复杂度调整）
+  // 新手推荐基础产品，进阶用户可推荐专业产品
+  if (answers.currentRoutine) {
+    const complexity = ROUTINE_COMPLEXITY[answers.currentRoutine] || 2;
+    // 基础产品对新手加分，专业产品对进阶用户加分
+    const hasBasicBenefits = productBenefits.some((b) =>
+      ["保湿", "补水", "清洁", "防晒"].some((basic) => b.includes(basic))
+    );
+    const hasAdvancedBenefits = productBenefits.some((b) =>
+      ["精华", "抗老", "焕肤", "修护"].some((adv) => b.includes(adv))
+    );
+
+    if (complexity <= 2 && hasBasicBenefits) {
+      score += 10; // 新手 + 基础产品
+    } else if (complexity >= 3 && hasAdvancedBenefits) {
+      score += 10; // 进阶 + 专业产品
+    } else {
+      score += 5; // 一般匹配
+    }
+  }
+
+  // 7. 如果没有任何匹配，给基础分
   if (score === 0) {
     score = 5;
   }
