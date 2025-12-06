@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { m } from "framer-motion";
 import { ArrowLeft, ArrowRight, X, Loader2 } from "lucide-react";
 import { useAdvisorQuestions } from "@/hooks/useAdvisorQuestions";
+import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { QuestionStep, ProgressBar } from "@/components/website/advisor";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,8 @@ type Answers = Record<string, string>;
  */
 export function QuestionsFlow() {
   const router = useRouter();
+  const { trackQuestionnaireStart, trackQuestionnaireComplete } = useAdvisorAnalytics();
+  const hasTrackedStart = useRef(false);
 
   // 动态获取问题数据
   const { questions, totalQuestions, loading, source: _source } = useAdvisorQuestions();
@@ -32,6 +35,14 @@ export function QuestionsFlow() {
   const [direction, setDirection] = useState(1);
   // 是否正在过渡动画中
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // 追踪问卷开始
+  useEffect(() => {
+    if (!loading && !hasTrackedStart.current) {
+      trackQuestionnaireStart();
+      hasTrackedStart.current = true;
+    }
+  }, [loading, trackQuestionnaireStart]);
 
   // 当前问题（需要处理加载状态）
   const currentQuestion = questions[currentIndex];
@@ -107,9 +118,12 @@ export function QuestionsFlow() {
     // 将答案存储到 sessionStorage
     sessionStorage.setItem("advisorAnswers", JSON.stringify(finalAnswers));
 
+    // 追踪问卷完成
+    trackQuestionnaireComplete(finalAnswers);
+
     // 跳转到面部识别页面（可选步骤）
     router.push("/advisor/face-scan");
-  }, [answers, currentAnswer, currentQuestion, router]);
+  }, [answers, currentAnswer, currentQuestion, router, trackQuestionnaireComplete]);
 
   /**
    * 键盘导航支持

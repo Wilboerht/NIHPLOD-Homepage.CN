@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { m } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Silk } from "@/components/ui/Silk";
+import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 
 /**
  * AI 护肤顾问欢迎页
@@ -15,6 +17,12 @@ import { Silk } from "@/components/ui/Silk";
  */
 export function AdvisorWelcome() {
   const router = useRouter();
+  const { initSession } = useAdvisorAnalytics();
+
+  // 初始化分析会话
+  useEffect(() => {
+    initSession();
+  }, [initSession]);
 
   const handleStart = () => {
     router.push("/advisor/questions");

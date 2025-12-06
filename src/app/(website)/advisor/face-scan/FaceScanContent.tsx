@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { m } from "framer-motion";
 import { ArrowLeft, Scan, SkipForward } from "lucide-react";
 import { FaceCapture } from "@/components/website/advisor/FaceCapture";
+import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations";
 
 /**
@@ -15,6 +16,8 @@ import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations"
 export function FaceScanContent() {
   const router = useRouter();
   const [hasAnswers, setHasAnswers] = useState(false);
+  const { trackFaceScanStart, trackFaceScanComplete, trackFaceScanSkip } = useAdvisorAnalytics();
+  const hasTrackedStart = useRef(false);
 
   // 检查是否有问答数据
   useEffect(() => {
@@ -25,7 +28,13 @@ export function FaceScanContent() {
       return;
     }
     setHasAnswers(true);
-  }, [router]);
+
+    // 追踪面部扫描开始
+    if (!hasTrackedStart.current) {
+      trackFaceScanStart();
+      hasTrackedStart.current = true;
+    }
+  }, [router, trackFaceScanStart]);
 
   /**
    * 处理照片捕获
@@ -34,10 +43,12 @@ export function FaceScanContent() {
     (imageData: string) => {
       // 保存照片数据到 sessionStorage
       sessionStorage.setItem("advisorFaceImage", imageData);
+      // 追踪面部扫描完成
+      trackFaceScanComplete();
       // 跳转到分析页面
       router.push("/advisor/analyzing");
     },
-    [router]
+    [router, trackFaceScanComplete]
   );
 
   /**
@@ -46,9 +57,11 @@ export function FaceScanContent() {
   const handleSkip = useCallback(() => {
     // 清除可能存在的旧照片数据
     sessionStorage.removeItem("advisorFaceImage");
+    // 追踪跳过面部扫描
+    trackFaceScanSkip();
     // 直接跳转到分析页面
     router.push("/advisor/analyzing");
-  }, [router]);
+  }, [router, trackFaceScanSkip]);
 
   // 等待检查问答数据
   if (!hasAnswers) {

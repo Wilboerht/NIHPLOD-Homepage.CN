@@ -12,6 +12,7 @@ import {
   Settings,
   ListChecks,
   MessageSquare,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -208,6 +209,11 @@ export default function AdminAdvisorPage() {
           <p className="mt-1 text-sm text-gray-500">管理护肤问卷问题和推荐规则</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/admin/advisor/analytics">
+            <Button variant="outline" leftIcon={<BarChart3 className="h-4 w-4" />}>
+              用户统计
+            </Button>
+          </Link>
           <Link href="/admin/advisor/rules">
             <Button variant="outline" leftIcon={<ListChecks className="h-4 w-4" />}>
               推荐规则

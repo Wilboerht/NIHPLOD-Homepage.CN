@@ -157,6 +157,95 @@ model RecommendationRule {
   @@index([priority(sort: Desc)])
 }
 
+// AI 顾问用户行为分析
+model AdvisorSession {
+  id              String    @id @default(cuid())
+  sessionId       String    @unique // 前端生成的会话ID
+
+  // 用户标识（匿名）
+  fingerprint     String?   // 浏览器指纹（可选）
+  userAgent       String?   // 用户代理
+  ip              String?   // IP地址（脱敏存储）
+
+  // 流程状态
+  startedAt       DateTime  @default(now()) // 开始时间
+  completedAt     DateTime? // 完成时间（到达结果页）
+
+  // 问卷数据
+  questionnaireStartedAt  DateTime? // 开始答题时间
+  questionnaireCompletedAt DateTime? // 完成答题时间
+  answers         Json?     // 问卷答案 { skinType, primaryConcern, ... }
+
+  // 面部扫描
+  faceScanStartedAt DateTime? // 开始面扫时间
+  faceScanCompletedAt DateTime? // 完成面扫时间
+  faceScanSkipped Boolean   @default(false) // 是否跳过
+  faceScanUsed    Boolean   @default(false) // 是否使用了面部扫描
+
+  // 分析结果
+  analysisStartedAt DateTime? // 开始分析时间
+  analysisCompletedAt DateTime? // 分析完成时间
+  analysisSource  String?   // 分析来源: ai | fallback
+
+  // 结果页行为
+  resultViewedAt  DateTime? // 查看结果时间
+  resultShared    Boolean   @default(false) // 是否分享
+  shareMethod     String?   // 分享方式: image | link | weibo
+
+  // 来源追踪
+  referrer        String?   // 来源页面
+  utmSource       String?   // UTM来源
+  utmMedium       String?   // UTM媒介
+  utmCampaign     String?   // UTM活动
+
+  // 设备信息
+  deviceType      String?   // desktop | mobile | tablet
+  browser         String?   // 浏览器类型
+  os              String?   // 操作系统
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([createdAt])
+  @@index([faceScanSkipped])
+  @@index([analysisSource])
+}
+
+// 每日统计汇总（用于快速查询）
+model AdvisorDailyStats {
+  id              String   @id @default(cuid())
+  date            DateTime @db.Date @unique // 统计日期
+
+  // 访问量
+  totalSessions   Int      @default(0) // 总会话数
+  uniqueVisitors  Int      @default(0) // 独立访客数（按指纹去重）
+
+  // 漏斗数据
+  startedQuestionnaire  Int @default(0) // 开始问卷
+  completedQuestionnaire Int @default(0) // 完成问卷
+  startedFaceScan      Int @default(0) // 开始面扫
+  completedFaceScan    Int @default(0) // 完成面扫
+  skippedFaceScan      Int @default(0) // 跳过面扫
+  completedAnalysis    Int @default(0) // 完成分析
+  viewedResult         Int @default(0) // 查看结果
+  sharedResult         Int @default(0) // 分享结果
+
+  // AI使用情况
+  aiAnalysisCount      Int @default(0) // AI分析次数
+  fallbackAnalysisCount Int @default(0) // 降级分析次数
+
+  // 问卷答案分布（JSON存储）
+  answerDistribution   Json? // { skinType: { dry: 10, oily: 20 }, ... }
+
+  // 设备分布
+  deviceDistribution   Json? // { desktop: 50, mobile: 40, tablet: 10 }
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([date])
+}
+
 // ============================================
 // 系统管理
 // ============================================

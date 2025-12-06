@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { preprocessFaceImage } from "@/lib/image-processing";
+import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 
 /** 加载提示文案 */
 const LOADING_TIPS = [
@@ -30,6 +31,7 @@ const BRAND_FACTS = [
  */
 export function AnalyzingContent() {
   const router = useRouter();
+  const { trackAnalysisStart, trackAnalysisComplete } = useAdvisorAnalytics();
   const [progress, setProgress] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
   const [factIndex, setFactIndex] = useState(0);
@@ -40,6 +42,9 @@ export function AnalyzingContent() {
    * 执行分析
    */
   const runAnalysis = useCallback(async () => {
+    // 追踪分析开始
+    trackAnalysisStart();
+
     try {
       // 获取问答数据
       const answersStr = sessionStorage.getItem("advisorAnswers");
@@ -109,6 +114,9 @@ export function AnalyzingContent() {
       // 保存分析结果
       sessionStorage.setItem("advisorResult", JSON.stringify(data.data));
 
+      // 追踪分析完成
+      trackAnalysisComplete(data.data.source || "ai");
+
       setProgress(100);
 
       // 延迟跳转，让用户看到 100% 进度
@@ -119,7 +127,7 @@ export function AnalyzingContent() {
       console.error("Analysis error:", e);
       setError(e instanceof Error ? e.message : "分析失败，请重试");
     }
-  }, [router]);
+  }, [router, trackAnalysisStart, trackAnalysisComplete]);
 
   // 启动分析
   useEffect(() => {

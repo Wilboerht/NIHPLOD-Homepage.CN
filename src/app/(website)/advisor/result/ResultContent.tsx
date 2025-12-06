@@ -23,6 +23,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { FaceAnalysisResult } from "@/components/website/advisor/FaceAnalysisResult";
+import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations";
 import type { FaceAnalysisResult as FaceAnalysisData } from "@/app/api/advisor/face-analyze/route";
 import {
@@ -72,7 +73,9 @@ interface ComprehensiveResult {
  */
 export function ResultContent() {
   const router = useRouter();
+  const { trackResultView, trackResultShare } = useAdvisorAnalytics();
   const reportRef = useRef<HTMLDivElement>(null);
+  const hasTrackedView = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ComprehensiveResult | null>(null);
@@ -88,6 +91,14 @@ export function ResultContent() {
   useEffect(() => {
     setCanNativeShare(typeof navigator !== "undefined" && !!navigator.share);
   }, []);
+
+  // 追踪结果页面查看
+  useEffect(() => {
+    if (!loading && result && !hasTrackedView.current) {
+      trackResultView();
+      hasTrackedView.current = true;
+    }
+  }, [loading, result, trackResultView]);
 
   /**
    * 生成报告图片
@@ -119,9 +130,10 @@ export function ResultContent() {
     if (imageUrl) {
       const timestamp = new Date().toISOString().slice(0, 10);
       downloadImage(imageUrl, `nihplod-skin-report-${timestamp}.png`);
+      trackResultShare("image");
     }
     setShowShareMenu(false);
-  }, [generateReportImage]);
+  }, [generateReportImage, trackResultShare]);
 
   /**
    * 保存到相册（移动端）
@@ -130,9 +142,10 @@ export function ResultContent() {
     const imageUrl = await generateReportImage();
     if (imageUrl) {
       await saveToGallery(imageUrl);
+      trackResultShare("image");
     }
     setShowShareMenu(false);
-  }, [generateReportImage]);
+  }, [generateReportImage, trackResultShare]);
 
   /**
    * 复制分享链接
@@ -155,9 +168,10 @@ export function ResultContent() {
     if (success) {
       setShareStatus("copied");
       setTimeout(() => setShareStatus("idle"), 2000);
+      trackResultShare("link");
     }
     setShowShareMenu(false);
-  }, [result]);
+  }, [result, trackResultShare]);
 
   /**
    * 分享到微博
@@ -176,8 +190,9 @@ export function ResultContent() {
       description,
       url: shareUrl,
     });
+    trackResultShare("weibo");
     setShowShareMenu(false);
-  }, [result]);
+  }, [result, trackResultShare]);
 
   /**
    * 原生分享（移动端）
@@ -197,11 +212,12 @@ export function ResultContent() {
         text: description,
         url: shareUrl,
       });
+      trackResultShare("native");
     } catch {
       // 用户取消
     }
     setShowShareMenu(false);
-  }, [result]);
+  }, [result, trackResultShare]);
 
   /**
    * 打开分享菜单
