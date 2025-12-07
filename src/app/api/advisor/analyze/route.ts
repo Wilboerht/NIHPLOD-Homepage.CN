@@ -41,6 +41,10 @@ export async function POST(request: NextRequest) {
     // 验证请求数据
     const result = AnalyzeRequestSchema.safeParse(body);
     if (!result.success) {
+      console.error("[Analyze API] Validation error:", {
+        body: JSON.stringify(body),
+        errors: result.error.flatten(),
+      });
       return NextResponse.json(
         {
           success: false,

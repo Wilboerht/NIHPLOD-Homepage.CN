@@ -86,7 +86,8 @@ export const FaceAnalysisResultSchema = z.object({
 // 分析请求 Schema
 export const AnalyzeRequestSchema = z.object({
   answers: QuestionnaireAnswersSchema,
-  faceAnalysis: FaceAnalysisResultSchema.optional(),
+  // 使用 .nullish() 允许 null、undefined 或有效值
+  faceAnalysis: FaceAnalysisResultSchema.nullish(),
 });
 
 // 护肤顾问上下文 Schema
