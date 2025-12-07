@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { adminNavItems, type NavItem } from "@/config/admin-nav";
@@ -60,9 +61,14 @@ export function Sidebar({
           {isCollapsed && !isMobile ? (
             <span className="font-serif text-xl font-bold text-brand-gold">N</span>
           ) : (
-            <span className="font-serif text-xl tracking-wider text-brand-charcoal">
-              NIHPLOD
-            </span>
+            <Image
+              src="/images/logo.png"
+              alt="NIHPLOD"
+              width={120}
+              height={40}
+              className="h-8 w-auto object-contain"
+              priority
+            />
           )}
         </Link>
 

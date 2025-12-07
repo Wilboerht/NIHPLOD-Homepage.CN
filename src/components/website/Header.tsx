@@ -79,6 +79,12 @@ export function Header({ logo }: HeaderProps) {
     return null;
   }
 
+  // products 页面使用自己的导航栏（在 ProductsContent 中）
+  const isProductsPage = pathname === "/products";
+  if (isProductsPage) {
+    return null;
+  }
+
   /**
    * 切换汉堡菜单
    */

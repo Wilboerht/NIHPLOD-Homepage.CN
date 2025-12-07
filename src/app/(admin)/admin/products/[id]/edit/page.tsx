@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { ProductForm } from "@/components/admin/ProductForm";
 
 interface Category {
@@ -36,13 +36,10 @@ interface ProductData {
   published: boolean;
 }
 
-export default function EditProductPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function EditProductPage() {
   const router = useRouter();
-  const { id } = use(params);
+  const params = useParams();
+  const id = params.id as string;
   const [product, setProduct] = useState<ProductData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
