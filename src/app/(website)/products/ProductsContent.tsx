@@ -247,8 +247,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           {/* 分类栏 + 按钮一体化容器 */}
           <div className="flex flex-col items-center">
             {/* 分类图标区域 */}
-            <div className="w-full overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl">
-              <div className="px-2 py-2 sm:py-3 lg:px-4 lg:py-4">
+            <div className="w-fit max-w-full overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl">
+              <div className="px-10 py-2 sm:px-16 sm:py-3 lg:px-20 lg:py-4">
                 <div className="flex items-center justify-start gap-2 overflow-x-auto sm:justify-center sm:gap-6 md:gap-10 lg:gap-14">
                   {categories.map((cat) => (
                     <button
@@ -485,7 +485,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed bottom-4 left-4 right-4 z-50 lg:bottom-6 lg:left-6 lg:right-6"
+            className="fixed bottom-4 left-6 right-6 z-50 sm:left-10 sm:right-10 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"
           >
             <nav

@@ -85,6 +85,12 @@ export function Header({ logo }: HeaderProps) {
     return null;
   }
 
+  // story 页面使用自己的导航栏（在 StoryContent 中）
+  const isStoryPage = pathname === "/story";
+  if (isStoryPage) {
+    return null;
+  }
+
   /**
    * 切换汉堡菜单
    */
