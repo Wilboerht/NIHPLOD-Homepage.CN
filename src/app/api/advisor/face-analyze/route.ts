@@ -7,6 +7,7 @@ import {
   CLAUDE_VISION_PROMPT,
 } from "@/config/ai-prompts";
 import { aiLogger } from "@/lib/logger";
+import { getAISettings, getApiKeyForProvider } from "@/lib/ai";
 
 /**
  * 面部分析请求 Schema
@@ -165,7 +166,10 @@ export async function POST(request: NextRequest) {
  * 使用 AI 视觉模型分析面部
  */
 async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResult> {
-  const provider = process.env.AI_VISION_PROVIDER || "openai";
+  // 从数据库获取设置（优先）+ 环境变量（降级）
+  const settings = await getAISettings();
+  const provider = settings.visionProvider;
+  const model = settings.visionModel;
 
   // 检查是否启用 AI
   if (process.env.AI_ENABLED !== "true") {
@@ -173,17 +177,20 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
     return getFallbackAnalysis();
   }
 
-  aiLogger.info("Starting face analysis", { provider });
+  aiLogger.info("Starting face analysis", { provider, model });
 
   try {
     if (provider === "openai") {
-      return await analyzeWithGPT4V(imageBase64);
+      return await analyzeWithGPT4V(imageBase64, model);
     } else if (provider === "anthropic") {
-      return await analyzeWithClaudeVision(imageBase64);
+      return await analyzeWithClaudeVision(imageBase64, model);
+    } else if (provider === "qwen") {
+      return await analyzeWithQwenVL(imageBase64, model);
     }
   } catch (error) {
     aiLogger.error("AI vision analysis failed, using fallback", {
       provider,
+      model,
       error: error instanceof Error ? error.message : "Unknown error",
     });
     // 降级到基础分析
@@ -197,8 +204,9 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
 /**
  * 使用 GPT-4 Vision 分析
  */
-async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
+async function analyzeWithGPT4V(imageBase64: string, model?: string): Promise<FaceAnalysisResult> {
+  const apiKey = getApiKeyForProvider("openai");
+  const useModel = model || "gpt-4o";
   const startTime = Date.now();
 
   if (!apiKey) {
@@ -212,7 +220,7 @@ async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: useModel,
       messages: [
         {
           role: "system",
@@ -279,8 +287,9 @@ async function analyzeWithGPT4V(imageBase64: string): Promise<FaceAnalysisResult
 /**
  * 使用 Claude Vision 分析
  */
-async function analyzeWithClaudeVision(imageBase64: string): Promise<FaceAnalysisResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+async function analyzeWithClaudeVision(imageBase64: string, model?: string): Promise<FaceAnalysisResult> {
+  const apiKey = getApiKeyForProvider("anthropic");
+  const useModel = model || "claude-sonnet-4-20250514";
   const startTime = Date.now();
 
   if (!apiKey) {
@@ -303,7 +312,7 @@ async function analyzeWithClaudeVision(imageBase64: string): Promise<FaceAnalysi
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: useModel,
       max_tokens: 1500,
       messages: [
         {
@@ -356,6 +365,93 @@ async function analyzeWithClaudeVision(imageBase64: string): Promise<FaceAnalysi
   }
 
   return JSON.parse(jsonMatch[0]) as FaceAnalysisResult;
+}
+
+/**
+ * 使用通义千问 VL（视觉语言模型）分析
+ * 文档: https://help.aliyun.com/zh/model-studio/developer-reference/qwen-vl-api
+ */
+async function analyzeWithQwenVL(imageBase64: string, modelOverride?: string): Promise<FaceAnalysisResult> {
+  const apiKey = getApiKeyForProvider("qwen");
+  const startTime = Date.now();
+  const model = modelOverride || process.env.QWEN_VL_MODEL || "qwen-vl-max";
+  const baseUrl = process.env.QWEN_API_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1";
+
+  if (!apiKey) {
+    throw new Error("AI: 通义千问 API key not configured");
+  }
+
+  aiLogger.info("Calling Qwen VL API", { model, baseUrl });
+
+  // 通义千问 VL 使用 OpenAI 兼容模式
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        {
+          role: "system",
+          content: VISION_ANALYSIS_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: VISION_ANALYSIS_USER_PROMPT,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageBase64,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 1500,
+      temperature: 0.3,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    aiLogger.error("Qwen VL API error", {
+      status: response.status,
+      error,
+      duration: Date.now() - startTime,
+    });
+    throw new Error(`AI: 通义千问 API error: ${error}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+
+  aiLogger.info("Qwen VL API success", {
+    duration: Date.now() - startTime,
+    tokenUsage: data.usage,
+  });
+
+  if (!content) {
+    throw new Error("AI: Empty response from 通义千问");
+  }
+
+  // 解析 JSON 响应
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    aiLogger.error("Failed to parse Qwen VL response", { content: content.substring(0, 200) });
+    throw new Error("AI: Failed to parse AI response as JSON");
+  }
+
+  try {
+    return JSON.parse(jsonMatch[0]) as FaceAnalysisResult;
+  } catch {
+    throw new Error("AI: Invalid JSON in 通义千问 response");
+  }
 }
 
 /**

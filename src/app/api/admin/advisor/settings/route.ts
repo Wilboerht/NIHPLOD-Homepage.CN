@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
+import { clearAISettingsCache } from "@/lib/ai";
 import { z } from "zod";
 
 // AI 设置 Key
-const AI_SETTINGS_KEY = "ai_advisor_settings";
+const AI_SETTINGS_KEY = "advisor_ai_settings";
 
 // 默认设置
 const DEFAULT_SETTINGS = {
+  provider: "deepseek",
+  visionProvider: "openai",
   apiKey: "",
-  model: "gpt-4o-mini",
+  model: "deepseek-chat",
+  visionModel: "gpt-4o",
   systemPrompt: `你是 NIHPLOD 品牌的专业护肤顾问。根据用户的肤质、护肤需求和生活习惯，为他们推荐最适合的产品。
 
 请用温和、专业的语气回答，并解释为什么推荐这些产品。`,
@@ -19,8 +23,11 @@ const DEFAULT_SETTINGS = {
 
 // 设置 Schema
 const SettingsSchema = z.object({
+  provider: z.enum(["openai", "deepseek", "qwen", "anthropic"]).optional(),
+  visionProvider: z.enum(["openai", "qwen", "anthropic"]).optional(),
   apiKey: z.string().optional(),
   model: z.string().optional(),
+  visionModel: z.string().optional(),
   systemPrompt: z.string().max(2000).optional(),
   maxTokens: z.number().min(100).max(2000).optional(),
   temperature: z.number().min(0).max(2).optional(),
@@ -89,7 +96,10 @@ export async function PUT(request: NextRequest) {
     // 合并设置（如果 apiKey 为空字符串，保留原有值）
     const newSettings = {
       ...currentSettings,
+      ...(validated.provider !== undefined && { provider: validated.provider }),
+      ...(validated.visionProvider !== undefined && { visionProvider: validated.visionProvider }),
       ...(validated.model !== undefined && { model: validated.model }),
+      ...(validated.visionModel !== undefined && { visionModel: validated.visionModel }),
       ...(validated.systemPrompt !== undefined && { systemPrompt: validated.systemPrompt }),
       ...(validated.maxTokens !== undefined && { maxTokens: validated.maxTokens }),
       ...(validated.temperature !== undefined && { temperature: validated.temperature }),
@@ -111,6 +121,9 @@ export async function PUT(request: NextRequest) {
         value: newSettings,
       },
     });
+
+    // 清除 AI 设置缓存，使新设置立即生效
+    clearAISettingsCache();
 
     return NextResponse.json({
       success: true,

@@ -113,9 +113,93 @@ export async function analyzeWithAI(
 }
 
 /**
+ * AI 设置接口
+ */
+export interface AISettings {
+  provider: string;
+  visionProvider: string;
+  model: string;
+  visionModel: string;
+  systemPrompt: string;
+  maxTokens: number;
+  temperature: number;
+}
+
+// 默认设置
+const DEFAULT_AI_SETTINGS: AISettings = {
+  provider: "deepseek",
+  visionProvider: "openai",
+  model: "deepseek-chat",
+  visionModel: "gpt-4o",
+  systemPrompt: "",
+  maxTokens: 500,
+  temperature: 0.7,
+};
+
+// 缓存设置，避免每次请求都查询数据库
+let cachedSettings: AISettings | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 60 * 1000; // 缓存 60 秒
+
+/**
+ * 从数据库获取 AI 设置（带缓存）
+ */
+export async function getAISettings(): Promise<AISettings> {
+  const now = Date.now();
+
+  // 如果缓存有效，直接返回
+  if (cachedSettings && now - cacheTimestamp < CACHE_TTL) {
+    return cachedSettings;
+  }
+
+  try {
+    const setting = await prisma.setting.findUnique({
+      where: { key: "advisor_ai_settings" },
+    });
+
+    if (setting?.value) {
+      const dbSettings = setting.value as Partial<AISettings>;
+      cachedSettings = {
+        ...DEFAULT_AI_SETTINGS,
+        ...dbSettings,
+        // 环境变量可以覆盖数据库设置（用于本地开发）
+        provider: process.env.AI_PROVIDER || dbSettings.provider || DEFAULT_AI_SETTINGS.provider,
+        visionProvider: process.env.AI_VISION_PROVIDER || dbSettings.visionProvider || DEFAULT_AI_SETTINGS.visionProvider,
+      };
+    } else {
+      // 没有数据库设置，使用环境变量
+      cachedSettings = {
+        ...DEFAULT_AI_SETTINGS,
+        provider: process.env.AI_PROVIDER || DEFAULT_AI_SETTINGS.provider,
+        visionProvider: process.env.AI_VISION_PROVIDER || DEFAULT_AI_SETTINGS.visionProvider,
+      };
+    }
+
+    cacheTimestamp = now;
+    return cachedSettings;
+  } catch (error) {
+    aiLogger.error("Failed to fetch AI settings from database", { error });
+    // 出错时使用默认设置
+    return {
+      ...DEFAULT_AI_SETTINGS,
+      provider: process.env.AI_PROVIDER || DEFAULT_AI_SETTINGS.provider,
+      visionProvider: process.env.AI_VISION_PROVIDER || DEFAULT_AI_SETTINGS.visionProvider,
+    };
+  }
+}
+
+/**
+ * 清除设置缓存（在设置更新后调用）
+ */
+export function clearAISettingsCache(): void {
+  cachedSettings = null;
+  cacheTimestamp = 0;
+}
+
+/**
  * 根据 provider 获取对应的 API Key
  */
-function getApiKeyForProvider(provider: string): string | undefined {
+export function getApiKeyForProvider(provider: string): string | undefined {
   switch (provider) {
     case "openai":
       return process.env.OPENAI_API_KEY;
@@ -123,8 +207,40 @@ function getApiKeyForProvider(provider: string): string | undefined {
       return process.env.DEEPSEEK_API_KEY;
     case "anthropic":
       return process.env.ANTHROPIC_API_KEY;
+    case "qwen":
+      return process.env.QWEN_API_KEY;
     default:
       return process.env.OPENAI_API_KEY;
+  }
+}
+
+/**
+ * 获取 OpenAI 兼容 API 的 Base URL
+ */
+function getOpenAICompatibleBaseUrl(provider: string): string {
+  switch (provider) {
+    case "deepseek":
+      return process.env.DEEPSEEK_API_URL || "https://api.deepseek.com/v1";
+    case "qwen":
+      return process.env.QWEN_API_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1";
+    case "openai":
+    default:
+      return "https://api.openai.com/v1";
+  }
+}
+
+/**
+ * 获取对应 provider 的模型名称
+ */
+function getModelForProvider(provider: string, defaultModel: string): string {
+  switch (provider) {
+    case "deepseek":
+      return process.env.DEEPSEEK_MODEL || "deepseek-chat";
+    case "qwen":
+      return process.env.QWEN_MODEL || "qwen-plus";
+    case "openai":
+    default:
+      return defaultModel;
   }
 }
 
@@ -186,7 +302,7 @@ function buildAnalysisPrompt(
 }
 
 /**
- * 调用 AI 服务（支持 OpenAI、DeepSeek、Anthropic）
+ * 调用 AI 服务（支持 OpenAI、DeepSeek、Anthropic、通义千问）
  */
 async function callAIProvider(
   provider: string,
@@ -197,11 +313,9 @@ async function callAIProvider(
   const startTime = Date.now();
 
   try {
-    // OpenAI 和 DeepSeek 使用相同的 API 格式
-    if (provider === "openai" || provider === "deepseek") {
-      const baseUrl = provider === "deepseek"
-        ? (process.env.DEEPSEEK_API_URL || "https://api.deepseek.com/v1")
-        : "https://api.openai.com/v1";
+    // OpenAI、DeepSeek、通义千问 使用相同的 API 格式（OpenAI 兼容）
+    if (provider === "openai" || provider === "deepseek" || provider === "qwen") {
+      const baseUrl = getOpenAICompatibleBaseUrl(provider);
 
       const response = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
@@ -210,7 +324,7 @@ async function callAIProvider(
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: provider === "deepseek" ? (process.env.DEEPSEEK_MODEL || "deepseek-chat") : model,
+          model: getModelForProvider(provider, model),
           messages: [
             { role: "system", content: TEXT_ANALYSIS_SYSTEM_PROMPT },
             { role: "user", content: prompt },
@@ -236,7 +350,7 @@ async function callAIProvider(
 
       aiLogger.info("AI API request successful", {
         provider,
-        model: provider === "deepseek" ? (process.env.DEEPSEEK_MODEL || "deepseek-chat") : model,
+        model: getModelForProvider(provider, model),
         duration: Date.now() - startTime,
         tokenUsage: data.usage,
       });
