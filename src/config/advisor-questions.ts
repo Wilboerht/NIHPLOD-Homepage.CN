@@ -67,9 +67,9 @@ export const advisorQuestions: Question[] = [
     subtext: "了解你的日常护肤流程",
     options: [
       { value: "minimal", label: "极简护肤", description: "洁面+保湿即可", emoji: "1️⃣" },
-      { value: "basic", label: "基础护肤", description: "水乳霜基本步骤", emoji: "3️⃣" },
-      { value: "complete", label: "完整护肤", description: "精华、眼霜都用", emoji: "5️⃣" },
-      { value: "advanced", label: "进阶护理", description: "会用酸类、抗老成分", emoji: "🔬" },
+      { value: "basic", label: "基础护肤", description: "洁面、面霜基本步骤", emoji: "3️⃣" },
+      { value: "complete", label: "完整护肤", description: "精华、面霜、防晒都用", emoji: "5️⃣" },
+      { value: "advanced", label: "进阶护理", description: "会用护理油、面膜等", emoji: "🔬" },
       { value: "none", label: "几乎不护肤", description: "想开始但不知如何", emoji: "🆕" },
     ],
   },

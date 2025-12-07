@@ -119,27 +119,30 @@ function SectionEditor({
 
 // Hero 区块编辑器
 interface HeroEditorProps {
-  value: { title: string; subtitle?: string; backgroundImage?: string };
+  value: { title: string; subtitle?: string; backgroundImage?: string } | undefined;
   onChange: (hero: { title: string; subtitle?: string; backgroundImage?: string }) => void;
 }
 
 function HeroEditor({ value, onChange }: HeroEditorProps) {
+  // 确保 value 存在
+  const hero = value || { title: "", subtitle: "", backgroundImage: "" };
+
   return (
     <div className="space-y-4">
       <Input
         label="主标题"
-        value={value.title}
-        onChange={(e) => onChange({ ...value, title: e.target.value })}
+        value={hero.title || ""}
+        onChange={(e) => onChange({ ...hero, title: e.target.value })}
       />
       <Input
         label="副标题"
-        value={value.subtitle || ""}
-        onChange={(e) => onChange({ ...value, subtitle: e.target.value })}
+        value={hero.subtitle || ""}
+        onChange={(e) => onChange({ ...hero, subtitle: e.target.value })}
       />
       <Input
         label="背景图片 URL"
-        value={value.backgroundImage || ""}
-        onChange={(e) => onChange({ ...value, backgroundImage: e.target.value })}
+        value={hero.backgroundImage || ""}
+        onChange={(e) => onChange({ ...hero, backgroundImage: e.target.value })}
         placeholder="输入背景图片地址"
       />
     </div>
@@ -154,28 +157,34 @@ export function HomeContentEditor({
   content: HomePageContent;
   onChange: (content: HomePageContent) => void;
 }) {
+  // 确保嵌套对象存在
+  const hero = content.hero || { title: "", subtitle: "", backgroundImage: "", buttonText: "", buttonLink: "" };
+  const intro = content.intro || { title: "", content: "" };
+  const featuredProducts = content.featuredProducts || { title: "", subtitle: "" };
+  const brandStory = content.brandStory || { title: "", content: "", image: "" };
+
   return (
     <div className="space-y-8">
       {/* Hero */}
       <section>
         <h3 className="mb-4 font-medium text-gray-900">Hero 区块</h3>
         <HeroEditor
-          value={content.hero}
-          onChange={(hero) => onChange({ ...content, hero: { ...content.hero, ...hero } })}
+          value={hero}
+          onChange={(newHero) => onChange({ ...content, hero: { ...hero, ...newHero } })}
         />
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <Input
             label="按钮文字"
-            value={content.hero.buttonText || ""}
+            value={hero.buttonText || ""}
             onChange={(e) =>
-              onChange({ ...content, hero: { ...content.hero, buttonText: e.target.value } })
+              onChange({ ...content, hero: { ...hero, buttonText: e.target.value } })
             }
           />
           <Input
             label="按钮链接"
-            value={content.hero.buttonLink || ""}
+            value={hero.buttonLink || ""}
             onChange={(e) =>
-              onChange({ ...content, hero: { ...content.hero, buttonLink: e.target.value } })
+              onChange({ ...content, hero: { ...hero, buttonLink: e.target.value } })
             }
           />
         </div>
@@ -186,17 +195,17 @@ export function HomeContentEditor({
         <h3 className="mb-4 font-medium text-gray-900">简介区块</h3>
         <Input
           label="标题"
-          value={content.intro.title}
+          value={intro.title || ""}
           onChange={(e) =>
-            onChange({ ...content, intro: { ...content.intro, title: e.target.value } })
+            onChange({ ...content, intro: { ...intro, title: e.target.value } })
           }
         />
         <div className="mt-4">
           <RichTextEditor
             label="内容"
-            value={content.intro.content}
+            value={intro.content || ""}
             onChange={(value) =>
-              onChange({ ...content, intro: { ...content.intro, content: value } })
+              onChange({ ...content, intro: { ...intro, content: value } })
             }
             minHeight="100px"
           />
@@ -208,22 +217,22 @@ export function HomeContentEditor({
         <h3 className="mb-4 font-medium text-gray-900">推荐产品区块</h3>
         <Input
           label="标题"
-          value={content.featuredProducts.title}
+          value={featuredProducts.title || ""}
           onChange={(e) =>
             onChange({
               ...content,
-              featuredProducts: { ...content.featuredProducts, title: e.target.value },
+              featuredProducts: { ...featuredProducts, title: e.target.value },
             })
           }
         />
         <div className="mt-4">
           <Input
             label="副标题"
-            value={content.featuredProducts.subtitle || ""}
+            value={featuredProducts.subtitle || ""}
             onChange={(e) =>
               onChange({
                 ...content,
-                featuredProducts: { ...content.featuredProducts, subtitle: e.target.value },
+                featuredProducts: { ...featuredProducts, subtitle: e.target.value },
               })
             }
           />
@@ -235,17 +244,17 @@ export function HomeContentEditor({
         <h3 className="mb-4 font-medium text-gray-900">品牌故事区块</h3>
         <Input
           label="标题"
-          value={content.brandStory.title}
+          value={brandStory.title || ""}
           onChange={(e) =>
-            onChange({ ...content, brandStory: { ...content.brandStory, title: e.target.value } })
+            onChange({ ...content, brandStory: { ...brandStory, title: e.target.value } })
           }
         />
         <div className="mt-4">
           <RichTextEditor
             label="内容"
-            value={content.brandStory.content}
+            value={brandStory.content || ""}
             onChange={(value) =>
-              onChange({ ...content, brandStory: { ...content.brandStory, content: value } })
+              onChange({ ...content, brandStory: { ...brandStory, content: value } })
             }
             minHeight="100px"
           />
@@ -253,9 +262,9 @@ export function HomeContentEditor({
         <div className="mt-4">
           <Input
             label="图片 URL"
-            value={content.brandStory.image || ""}
+            value={brandStory.image || ""}
             onChange={(e) =>
-              onChange({ ...content, brandStory: { ...content.brandStory, image: e.target.value } })
+              onChange({ ...content, brandStory: { ...brandStory, image: e.target.value } })
             }
           />
         </div>
@@ -272,6 +281,10 @@ export function StoryContentEditor({
   content: StoryPageContent;
   onChange: (content: StoryPageContent) => void;
 }) {
+  // 确保嵌套对象存在
+  const intro = content.intro || { title: "", content: "" };
+  const sections = content.sections || [];
+
   const addSection = () => {
     const newSection: ContentSection = {
       id: `section-${Date.now()}`,
@@ -279,21 +292,21 @@ export function StoryContentEditor({
       content: "",
       layout: "left",
     };
-    onChange({ ...content, sections: [...content.sections, newSection] });
+    onChange({ ...content, sections: [...sections, newSection] });
   };
 
   const updateSection = (index: number, section: ContentSection) => {
-    const newSections = [...content.sections];
+    const newSections = [...sections];
     newSections[index] = section;
     onChange({ ...content, sections: newSections });
   };
 
   const removeSection = (index: number) => {
-    onChange({ ...content, sections: content.sections.filter((_, i) => i !== index) });
+    onChange({ ...content, sections: sections.filter((_, i) => i !== index) });
   };
 
   const moveSection = (from: number, to: number) => {
-    const newSections = [...content.sections];
+    const newSections = [...sections];
     const [removed] = newSections.splice(from, 1);
     newSections.splice(to, 0, removed);
     onChange({ ...content, sections: newSections });
@@ -315,17 +328,17 @@ export function StoryContentEditor({
         <h3 className="mb-4 font-medium text-gray-900">简介</h3>
         <Input
           label="标题"
-          value={content.intro.title}
+          value={intro.title || ""}
           onChange={(e) =>
-            onChange({ ...content, intro: { ...content.intro, title: e.target.value } })
+            onChange({ ...content, intro: { ...intro, title: e.target.value } })
           }
         />
         <div className="mt-4">
           <RichTextEditor
             label="内容"
-            value={content.intro.content}
+            value={intro.content || ""}
             onChange={(value) =>
-              onChange({ ...content, intro: { ...content.intro, content: value } })
+              onChange({ ...content, intro: { ...intro, content: value } })
             }
             minHeight="100px"
           />
@@ -341,7 +354,7 @@ export function StoryContentEditor({
           </Button>
         </div>
         <div className="space-y-4">
-          {content.sections.map((section, index) => (
+          {sections.map((section, index) => (
             <SectionEditor
               key={section.id}
               section={section}
@@ -349,7 +362,7 @@ export function StoryContentEditor({
               onChange={(s) => updateSection(index, s)}
               onRemove={() => removeSection(index)}
               onMoveUp={index > 0 ? () => moveSection(index, index - 1) : undefined}
-              onMoveDown={index < content.sections.length - 1 ? () => moveSection(index, index + 1) : undefined}
+              onMoveDown={index < sections.length - 1 ? () => moveSection(index, index + 1) : undefined}
             />
           ))}
         </div>
@@ -366,6 +379,9 @@ export function ContactContentEditor({
   content: ContactPageContent;
   onChange: (content: ContactPageContent) => void;
 }) {
+  // 确保 info 对象存在
+  const info = content.info || { address: "", email: "", phone: "", wechat: "", workingHours: "" };
+
   return (
     <div className="space-y-8">
       {/* Hero */}
@@ -383,38 +399,38 @@ export function ContactContentEditor({
         <div className="grid gap-4 md:grid-cols-2">
           <Input
             label="地址"
-            value={content.info.address}
+            value={info.address || ""}
             onChange={(e) =>
-              onChange({ ...content, info: { ...content.info, address: e.target.value } })
+              onChange({ ...content, info: { ...info, address: e.target.value } })
             }
           />
           <Input
             label="邮箱"
             type="email"
-            value={content.info.email}
+            value={info.email || ""}
             onChange={(e) =>
-              onChange({ ...content, info: { ...content.info, email: e.target.value } })
+              onChange({ ...content, info: { ...info, email: e.target.value } })
             }
           />
           <Input
             label="电话"
-            value={content.info.phone || ""}
+            value={info.phone || ""}
             onChange={(e) =>
-              onChange({ ...content, info: { ...content.info, phone: e.target.value } })
+              onChange({ ...content, info: { ...info, phone: e.target.value } })
             }
           />
           <Input
             label="微信"
-            value={content.info.wechat || ""}
+            value={info.wechat || ""}
             onChange={(e) =>
-              onChange({ ...content, info: { ...content.info, wechat: e.target.value } })
+              onChange({ ...content, info: { ...info, wechat: e.target.value } })
             }
           />
           <Input
             label="工作时间"
-            value={content.info.workingHours || ""}
+            value={info.workingHours || ""}
             onChange={(e) =>
-              onChange({ ...content, info: { ...content.info, workingHours: e.target.value } })
+              onChange({ ...content, info: { ...info, workingHours: e.target.value } })
             }
             className="md:col-span-2"
           />
@@ -460,6 +476,9 @@ export function CareersContentEditor({
   content: CareersPageContent;
   onChange: (content: CareersPageContent) => void;
 }) {
+  // 确保 intro 对象存在
+  const intro = content.intro || { title: "", content: "" };
+
   return (
     <div className="space-y-8">
       {/* Hero */}
@@ -476,17 +495,17 @@ export function CareersContentEditor({
         <h3 className="mb-4 font-medium text-gray-900">简介</h3>
         <Input
           label="标题"
-          value={content.intro.title}
+          value={intro.title}
           onChange={(e) =>
-            onChange({ ...content, intro: { ...content.intro, title: e.target.value } })
+            onChange({ ...content, intro: { ...intro, title: e.target.value } })
           }
         />
         <div className="mt-4">
           <RichTextEditor
             label="内容"
-            value={content.intro.content}
+            value={intro.content}
             onChange={(value) =>
-              onChange({ ...content, intro: { ...content.intro, content: value } })
+              onChange({ ...content, intro: { ...intro, content: value } })
             }
             minHeight="100px"
           />
@@ -516,19 +535,22 @@ export function LegalContentEditor({
   content: PrivacyPageContent;
   onChange: (content: PrivacyPageContent) => void;
 }) {
+  // 确保 sections 数组存在
+  const sections = content.sections || [];
+
   const addSection = () => {
     const newSection = { title: "", content: "" };
-    onChange({ ...content, sections: [...content.sections, newSection] });
+    onChange({ ...content, sections: [...sections, newSection] });
   };
 
   const updateSection = (index: number, section: { title: string; content: string }) => {
-    const newSections = [...content.sections];
+    const newSections = [...sections];
     newSections[index] = section;
     onChange({ ...content, sections: newSections });
   };
 
   const removeSection = (index: number) => {
-    onChange({ ...content, sections: content.sections.filter((_, i) => i !== index) });
+    onChange({ ...content, sections: sections.filter((_, i) => i !== index) });
   };
 
   return (
@@ -536,7 +558,7 @@ export function LegalContentEditor({
       <section>
         <Input
           label="页面标题"
-          value={content.title}
+          value={content.title || ""}
           onChange={(e) => onChange({ ...content, title: e.target.value })}
         />
         <div className="mt-4">
@@ -557,7 +579,7 @@ export function LegalContentEditor({
           </Button>
         </div>
         <div className="space-y-4">
-          {content.sections.map((section, index) => (
+          {sections.map((section, index) => (
             <div key={index} className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="mb-3 flex items-center justify-between">
                 <span className="font-medium text-gray-700">章节 {index + 1}</span>
@@ -570,13 +592,13 @@ export function LegalContentEditor({
               </div>
               <Input
                 label="章节标题"
-                value={section.title}
+                value={section.title || ""}
                 onChange={(e) => updateSection(index, { ...section, title: e.target.value })}
               />
               <div className="mt-4">
                 <RichTextEditor
                   label="章节内容"
-                  value={section.content}
+                  value={section.content || ""}
                   onChange={(value) => updateSection(index, { ...section, content: value })}
                   minHeight="100px"
                 />

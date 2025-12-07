@@ -36,6 +36,7 @@ export interface FaceAnalysisResult {
   };
   hydration: {
     level: HydrationLevel;
+    percent: number; // 0-100 的精确水分百分比
     description: string;
   };
   recommendations: string[];
@@ -136,6 +137,7 @@ export function getDefaultFaceAnalysisResult(): FaceAnalysisResult {
     },
     hydration: {
       level: "medium",
+      percent: 55,
       description: "建议日常保持良好的补水习惯",
     },
     recommendations: [

@@ -277,15 +277,15 @@ export function ResultContent() {
             products: savedResult.products || [],
             routine: savedResult.routine || {
               morning: [
-                { order: 1, step: "洁面", description: "温和清洁" },
-                { order: 2, step: "爽肤水", description: "调理肌肤" },
-                { order: 3, step: "面霜/防晒", description: "保湿防护" },
+                { order: 1, step: "洁面", description: "云朵洁面慕斯温和清洁" },
+                { order: 2, step: "精华", description: "修护紧致精华按压吸收" },
+                { order: 3, step: "面霜", description: "逆龄面霜滋润保湿" },
+                { order: 4, step: "防晒", description: "轻透防晒霜日间防护" },
               ],
               evening: [
-                { order: 1, step: "卸妆洁面", description: "彻底清洁" },
-                { order: 2, step: "爽肤水", description: "调理肌肤" },
-                { order: 3, step: "精华", description: "针对性护理" },
-                { order: 4, step: "面霜", description: "夜间滋养" },
+                { order: 1, step: "洁面", description: "云朵洁面慕斯深层清洁" },
+                { order: 2, step: "精华", description: "修护紧致精华夜间修护" },
+                { order: 3, step: "面霜", description: "逆龄面霜夜间滋养" },
               ],
             },
             dataSource: savedResult.source === "ai" ? "comprehensive" : "questionnaire",

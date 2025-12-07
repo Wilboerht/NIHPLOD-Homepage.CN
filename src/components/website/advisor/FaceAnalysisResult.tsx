@@ -37,11 +37,18 @@ const SEVERITY_LABELS: Record<string, { label: string; color: string }> = {
   severe: { label: "重度", color: "text-red-600" },
 };
 
-/** 水分等级映射 */
-const HYDRATION_CONFIG: Record<string, { percent: number; color: string }> = {
-  low: { percent: 35, color: "bg-red-400" },
-  medium: { percent: 65, color: "bg-yellow-400" },
-  high: { percent: 90, color: "bg-green-400" },
+/** 水分等级颜色映射（百分比现在从 AI 返回） */
+const HYDRATION_COLORS: Record<string, string> = {
+  low: "bg-red-400",
+  medium: "bg-yellow-400",
+  high: "bg-green-400",
+};
+
+/** 根据百分比获取颜色 */
+const getHydrationColor = (percent: number): string => {
+  if (percent < 40) return "bg-red-400";
+  if (percent < 70) return "bg-yellow-400";
+  return "bg-green-400";
 };
 
 /** 置信度提示映射 */
@@ -87,10 +94,12 @@ export function FaceAnalysisResult({
     label: "未知",
     emoji: "❓",
   };
-  const hydrationConfig = HYDRATION_CONFIG[result.hydration.level] || {
-    percent: 50,
-    color: "bg-gray-400",
-  };
+
+  // 使用 AI 返回的真实百分比，如果没有则根据 level 估算
+  const hydrationPercent = result.hydration.percent ??
+    (result.hydration.level === "low" ? 35 : result.hydration.level === "high" ? 85 : 60);
+  const hydrationColor = HYDRATION_COLORS[result.hydration.level] || getHydrationColor(hydrationPercent);
+
   const confidenceHint = getConfidenceHint(result.skinType.confidence);
 
   return (
@@ -172,14 +181,14 @@ export function FaceAnalysisResult({
               <div className="mb-1 flex items-center justify-between text-sm">
                 <span className="text-brand-charcoal">水分状态</span>
                 <span className="text-brand-charcoal/60">
-                  {hydrationConfig.percent}%
+                  {hydrationPercent}%
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-brand-beige">
                 <m.div
-                  className={`h-full rounded-full ${hydrationConfig.color}`}
+                  className={`h-full rounded-full ${hydrationColor}`}
                   initial={{ width: 0 }}
-                  animate={{ width: `${hydrationConfig.percent}%` }}
+                  animate={{ width: `${hydrationPercent}%` }}
                   transition={{ duration: 1, delay: 0.5 }}
                 />
               </div>

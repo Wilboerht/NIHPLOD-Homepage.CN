@@ -42,11 +42,11 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
   },
   home: {
     galleryItems: [
-      { image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=600&fit=crop", text: "精华液" },
+      { image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=600&fit=crop", text: "精华" },
       { image: "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=800&h=600&fit=crop", text: "面霜" },
-      { image: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=800&h=600&fit=crop", text: "眼霜" },
-      { image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&h=600&fit=crop", text: "洁面乳" },
-      { image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=600&fit=crop", text: "爽肤水" },
+      { image: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=800&h=600&fit=crop", text: "护理油" },
+      { image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&h=600&fit=crop", text: "洁面慕斯" },
+      { image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=600&fit=crop", text: "防晒霜" },
       { image: "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=800&h=600&fit=crop", text: "面膜" },
     ],
     galleryBend: 3,

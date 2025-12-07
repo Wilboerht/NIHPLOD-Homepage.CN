@@ -364,41 +364,50 @@ export async function fallbackAnalysis(
 }
 
 /**
- * 生成护肤方案
+ * 生成护肤方案 (基于 NIHPLOD 产品线)
+ *
+ * NIHPLOD 产品：
+ * - 云朵洁面慕斯 (Foam Cleanser)
+ * - 匀衡磨砂膏 (Face Scrub) - 每周1-2次
+ * - 臻萃修护面膜 (Face Mask) - 每周2-3次
+ * - 修护紧致精华 (Serum)
+ * - 逆龄面霜 (Face Cream)
+ * - 轻透防晒霜 (Sunscreen)
+ * - 臻萃护理油 (Treatment Oil) - 可选加强护理
  */
 function generateSkincareRoutine(currentRoutine?: string): SkincareRoutine {
   const isMinimal = currentRoutine === "minimal" || currentRoutine === "none";
 
-  const morning: SkincareStep[] = [
-    { order: 1, step: "洁面", description: "温和洁面乳清洁" },
-    { order: 2, step: "爽肤水", description: "拍打至吸收" },
-  ];
-
-  const evening: SkincareStep[] = [
-    { order: 1, step: "卸妆", description: "彻底卸除彩妆" },
-    { order: 2, step: "洁面", description: "二次清洁" },
-    { order: 3, step: "爽肤水", description: "调理肌肤" },
-  ];
-
-  // 非极简模式添加更多步骤
-  if (!isMinimal) {
-    morning.push(
-      { order: 3, step: "精华", description: "针对性精华护理" },
-      { order: 4, step: "面霜", description: "锁水保湿" },
-      { order: 5, step: "防晒", description: "日间必备防护" }
-    );
-
-    evening.push(
-      { order: 4, step: "精华", description: "夜间修护精华" },
-      { order: 5, step: "眼霜", description: "眼周专属护理" },
-      { order: 6, step: "面霜", description: "夜间滋养锁水" }
-    );
-  } else {
-    morning.push({ order: 3, step: "面霜/防晒", description: "基础保湿防护" });
-    evening.push({ order: 4, step: "面霜", description: "基础保湿" });
+  // 极简护肤方案
+  if (isMinimal) {
+    return {
+      morning: [
+        { order: 1, step: "洁面", description: "云朵洁面慕斯温和清洁" },
+        { order: 2, step: "面霜", description: "逆龄面霜基础保湿" },
+        { order: 3, step: "防晒", description: "轻透防晒霜日间防护" },
+      ],
+      evening: [
+        { order: 1, step: "洁面", description: "云朵洁面慕斯清洁肌肤" },
+        { order: 2, step: "面霜", description: "逆龄面霜夜间滋养" },
+      ],
+    };
   }
 
-  return { morning, evening };
+  // 完整护肤方案
+  return {
+    morning: [
+      { order: 1, step: "洁面", description: "云朵洁面慕斯温和清洁" },
+      { order: 2, step: "精华", description: "修护紧致精华轻拍吸收" },
+      { order: 3, step: "面霜", description: "逆龄面霜锁水保湿" },
+      { order: 4, step: "防晒", description: "轻透防晒霜出门必备" },
+    ],
+    evening: [
+      { order: 1, step: "洁面", description: "云朵洁面慕斯深层清洁" },
+      { order: 2, step: "精华", description: "修护紧致精华夜间修护" },
+      { order: 3, step: "护理油", description: "臻萃护理油加强滋养（可选）" },
+      { order: 4, step: "面霜", description: "逆龄面霜夜间滋养锁水" },
+    ],
+  };
 }
 
 /**

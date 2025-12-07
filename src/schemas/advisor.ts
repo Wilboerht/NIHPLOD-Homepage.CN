@@ -74,6 +74,7 @@ export const FaceAnalysisResultSchema = z.object({
   })),
   hydration: z.object({
     level: z.enum(["low", "medium", "high"]),
+    percent: z.number().min(0).max(100).optional(), // AI 返回的水分百分比
     description: z.string().optional(),
   }),
   skinAge: z.object({

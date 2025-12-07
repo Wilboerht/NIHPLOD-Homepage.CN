@@ -44,6 +44,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'nihplod.cn',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
     ],
     // 启用的图片格式 (优先使用 AVIF，其次 WebP)
     formats: ['image/avif', 'image/webp'],

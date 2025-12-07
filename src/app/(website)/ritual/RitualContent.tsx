@@ -8,13 +8,13 @@ import { FloatingCardLayout } from "@/components/website";
 import { fadeInUp, defaultTransition } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 
-// 晨间仪式步骤
+// 晨间仪式步骤 (基于 NIHPLOD 产品线)
 const morningSteps = [
   {
     order: 1,
     name: "洁面",
     nameEn: "CLEANSE",
-    description: "用温水轻柔唤醒肌肤，使用氨基酸洁面乳打出绵密泡沫，轻轻按摩全脸后冲洗干净。",
+    description: "用温水轻柔唤醒肌肤，云朵洁面慕斯打出绵密泡沫，轻轻按摩全脸后冲洗干净。",
     duration: "1-2分钟",
     productSlug: "foam-cleanser",
   },
@@ -22,15 +22,15 @@ const morningSteps = [
     order: 2,
     name: "精华",
     nameEn: "SERUM",
-    description: "取适量精华于掌心温热，轻拍于面部，由内向外、由下向上轻柔按压至吸收。",
+    description: "取适量修护紧致精华于掌心温热，轻拍于面部，由内向外、由下向上轻柔按压至吸收。",
     duration: "30秒",
-    productSlug: "vital-serum",
+    productSlug: "serum",
   },
   {
     order: 3,
     name: "面霜",
     nameEn: "CREAM",
-    description: "取黄豆大小面霜，均匀涂抹于面部，配合提拉手法按摩，锁住水分与营养。",
+    description: "取黄豆大小逆龄面霜，均匀涂抹于面部，配合提拉手法按摩，锁住水分与营养。",
     duration: "1分钟",
     productSlug: "face-cream",
   },
@@ -38,43 +38,43 @@ const morningSteps = [
     order: 4,
     name: "防晒",
     nameEn: "SUNSCREEN",
-    description: "最后一步，涂抹足量防晒产品，为肌肤撑起保护伞，开启元气满满的一天。",
+    description: "最后一步，涂抹足量轻透防晒霜，为肌肤撑起保护伞，开启元气满满的一天。",
     duration: "30秒",
     productSlug: "sunscreen",
   },
 ];
 
-// 晚间仪式步骤
+// 晚间仪式步骤 (基于 NIHPLOD 产品线)
 const eveningSteps = [
   {
     order: 1,
-    name: "卸妆",
-    nameEn: "REMOVE",
-    description: "使用卸妆油或卸妆膏，按摩乳化后彻底清除彩妆与防晒，让肌肤自由呼吸。",
-    duration: "2-3分钟",
-    productSlug: null,
-  },
-  {
-    order: 2,
     name: "洁面",
     nameEn: "CLEANSE",
-    description: "二次清洁，洗去卸妆残留与一天的疲惫，为后续护肤做好准备。",
+    description: "云朵洁面慕斯温和清洁，洗去一天的疲惫与污垢，为后续护肤做好准备。",
     duration: "1-2分钟",
     productSlug: "foam-cleanser",
   },
   {
-    order: 3,
+    order: 2,
     name: "精华",
     nameEn: "SERUM",
-    description: "夜间是肌肤修护的黄金时段，精华液帮助深层滋养，修复日间损伤。",
+    description: "夜间是肌肤修护的黄金时段，修护紧致精华帮助深层滋养，修复日间损伤。",
     duration: "30秒",
-    productSlug: "vital-serum",
+    productSlug: "serum",
+  },
+  {
+    order: 3,
+    name: "护理油",
+    nameEn: "OIL",
+    description: "臻萃护理油加强滋养，轻柔按摩促进吸收，为肌肤注入奢润能量（可选步骤）。",
+    duration: "30秒",
+    productSlug: "treatment-oil",
   },
   {
     order: 4,
     name: "面霜",
     nameEn: "CREAM",
-    description: "晚霜质地更滋润，配合轻柔按摩，让营养在睡眠中持续渗透，次日醒来容光焕发。",
+    description: "逆龄面霜质地滋润，配合轻柔按摩，让营养在睡眠中持续渗透，次日醒来容光焕发。",
     duration: "1分钟",
     productSlug: "face-cream",
   },

@@ -162,6 +162,9 @@ async function callVisionAPI(
         throw new Error(`AI: Empty response from ${config.provider}`);
       }
 
+      // 调试：打印 AI 返回的原始内容
+      console.log("[Face Analyze] AI Raw Response (first 1000 chars):", content.substring(0, 1000));
+
       return extractJsonFromResponse(content);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("AI:")) {
@@ -250,6 +253,14 @@ export async function POST(request: NextRequest) {
     // 调用 AI 视觉模型分析
     const analysis = await analyzeFaceWithAI(image);
 
+    // 调试日志：打印 AI 返回的原始数据
+    console.log("[Face Analyze] AI Analysis Result:", JSON.stringify({
+      skinType: analysis.skinType,
+      skinAge: analysis.skinAge,
+      hydration: analysis.hydration,
+      skinConditionsCount: analysis.skinConditions?.length || 0,
+    }, null, 2));
+
     return NextResponse.json({
       success: true,
       data: analysis,
@@ -295,8 +306,15 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
   const settings = await getAISettings();
   const provider = settings.visionProvider;
   const model = settings.visionModel;
-  // 获取自定义视觉系统提示词（如果有）
-  const customPrompt = settings.visionSystemPrompt || "";
+  // 获取自定义视觉系统提示词（如果有非空值）
+  // 注意：只有当数据库中有实际内容时才使用，空字符串会使用代码中的默认提示词
+  const customPrompt = settings.visionSystemPrompt?.trim() || "";
+
+  // 调试：打印提示词来源
+  console.log("[Face Analyze] Prompt source:", customPrompt ? "DATABASE (custom)" : "CODE (default VISION_ANALYSIS_SYSTEM_PROMPT)");
+  if (customPrompt) {
+    console.log("[Face Analyze] Custom prompt length:", customPrompt.length);
+  }
 
   // 检查是否启用 AI
   if (process.env.AI_ENABLED !== "true") {
