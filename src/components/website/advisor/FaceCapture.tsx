@@ -72,13 +72,13 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
 
       // 视频约束配置
       // 添加高级约束以禁用美颜效果，确保获取原始相机画面
-      const videoConstraints: MediaTrackConstraints = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const videoConstraints: MediaTrackConstraints & { advanced?: any[] } = {
         facingMode,
         width: { ideal: 1280 },
         height: { ideal: 720 },
-        // 标准化的高级约束，用于禁用图像处理/美颜效果
+        // 非标准的高级约束，用于禁用图像处理/美颜效果
         // 这些约束在支持的浏览器/设备上会生效
-        // @ts-expect-error - 非标准但广泛支持的约束
         advanced: [
           // 禁用美颜模式（部分Android设备支持）
           { beautificationMode: "off" },

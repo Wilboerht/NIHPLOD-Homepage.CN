@@ -28,28 +28,23 @@ export interface ContentSection {
 }
 
 // ============================================
-// 首页内容 (home)
+// 首页内容 (home) - 简洁品牌着陆页
 // ============================================
 export interface HomePageContent {
-  hero: HeroSection & {
-    buttonText?: string;
-    buttonLink?: string;
+  // 品牌信息
+  brand: {
+    chineseName: string; // 中文名（旎柏）
+    slogan: string; // 品牌语（逆转时光）
   };
-  intro: {
-    title: string;
-    content: string;
+  // 主要入口按钮
+  buttons: {
+    advisorText: string; // AI 顾问按钮文字
+    advisorLink: string; // AI 顾问链接
+    productsText: string; // 产品按钮文字
+    productsLink: string; // 产品链接
   };
-  featuredProducts: {
-    title: string;
-    subtitle?: string;
-  };
-  brandStory: {
-    title: string;
-    content: string;
-    image?: string;
-    buttonText?: string;
-    buttonLink?: string;
-  };
+  // 底部版权
+  copyright?: string;
 }
 
 // ============================================
@@ -208,10 +203,14 @@ export const PAGE_META: Record<string, { name: string; description: string }> = 
 export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
   const templates: Record<PageSlug, unknown> = {
     home: {
-      hero: { title: "", subtitle: "", backgroundImage: "" },
-      intro: { title: "", content: "" },
-      featuredProducts: { title: "", subtitle: "" },
-      brandStory: { title: "", content: "" },
+      brand: { chineseName: "旎柏", slogan: "逆转时光" },
+      buttons: {
+        advisorText: "AI 护肤顾问",
+        advisorLink: "/advisor",
+        productsText: "探索产品",
+        productsLink: "/products",
+      },
+      copyright: "NIHPLOD All Rights Reserved.",
     },
     story: {
       hero: { title: "", subtitle: "" },

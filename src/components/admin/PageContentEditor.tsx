@@ -149,7 +149,7 @@ function HeroEditor({ value, onChange }: HeroEditorProps) {
   );
 }
 
-// 首页内容编辑器
+// 首页内容编辑器 - 简洁品牌着陆页
 export function HomeContentEditor({
   content,
   onChange,
@@ -158,116 +158,108 @@ export function HomeContentEditor({
   onChange: (content: HomePageContent) => void;
 }) {
   // 确保嵌套对象存在
-  const hero = content.hero || { title: "", subtitle: "", backgroundImage: "", buttonText: "", buttonLink: "" };
-  const intro = content.intro || { title: "", content: "" };
-  const featuredProducts = content.featuredProducts || { title: "", subtitle: "" };
-  const brandStory = content.brandStory || { title: "", content: "", image: "" };
+  const brand = content.brand || { chineseName: "旎柏", slogan: "逆转时光" };
+  const buttons = content.buttons || {
+    advisorText: "AI 护肤顾问",
+    advisorLink: "/advisor",
+    productsText: "探索产品",
+    productsLink: "/products",
+  };
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
+      {/* 品牌信息 */}
       <section>
-        <h3 className="mb-4 font-medium text-gray-900">Hero 区块</h3>
-        <HeroEditor
-          value={hero}
-          onChange={(newHero) => onChange({ ...content, hero: { ...hero, ...newHero } })}
-        />
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <h3 className="mb-4 font-medium text-gray-900">品牌信息</h3>
+        <p className="mb-4 text-sm text-gray-500">
+          首页中央显示的品牌名称和标语
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
           <Input
-            label="按钮文字"
-            value={hero.buttonText || ""}
+            label="品牌中文名"
+            value={brand.chineseName || ""}
             onChange={(e) =>
-              onChange({ ...content, hero: { ...hero, buttonText: e.target.value } })
+              onChange({ ...content, brand: { ...brand, chineseName: e.target.value } })
             }
+            placeholder="旎柏"
           />
           <Input
-            label="按钮链接"
-            value={hero.buttonLink || ""}
+            label="品牌标语"
+            value={brand.slogan || ""}
             onChange={(e) =>
-              onChange({ ...content, hero: { ...hero, buttonLink: e.target.value } })
+              onChange({ ...content, brand: { ...brand, slogan: e.target.value } })
             }
+            placeholder="逆转时光"
           />
         </div>
       </section>
 
-      {/* 简介 */}
+      {/* 入口按钮 */}
       <section>
-        <h3 className="mb-4 font-medium text-gray-900">简介区块</h3>
-        <Input
-          label="标题"
-          value={intro.title || ""}
-          onChange={(e) =>
-            onChange({ ...content, intro: { ...intro, title: e.target.value } })
-          }
-        />
-        <div className="mt-4">
-          <RichTextEditor
-            label="内容"
-            value={intro.content || ""}
-            onChange={(value) =>
-              onChange({ ...content, intro: { ...intro, content: value } })
-            }
-            minHeight="100px"
-          />
+        <h3 className="mb-4 font-medium text-gray-900">入口按钮</h3>
+        <p className="mb-4 text-sm text-gray-500">
+          首页中央的两个主要入口按钮
+        </p>
+        <div className="space-y-4">
+          {/* AI 顾问按钮 */}
+          <div className="rounded-lg border border-brand-gold/30 bg-brand-gold/5 p-4">
+            <h4 className="mb-3 text-sm font-medium text-brand-gold">AI 护肤顾问按钮（金色）</h4>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Input
+                label="按钮文字"
+                value={buttons.advisorText || ""}
+                onChange={(e) =>
+                  onChange({ ...content, buttons: { ...buttons, advisorText: e.target.value } })
+                }
+                placeholder="AI 护肤顾问"
+              />
+              <Input
+                label="链接地址"
+                value={buttons.advisorLink || ""}
+                onChange={(e) =>
+                  onChange({ ...content, buttons: { ...buttons, advisorLink: e.target.value } })
+                }
+                placeholder="/advisor"
+              />
+            </div>
+          </div>
+          {/* 产品浏览按钮 */}
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <h4 className="mb-3 text-sm font-medium text-gray-700">探索产品按钮（白色）</h4>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Input
+                label="按钮文字"
+                value={buttons.productsText || ""}
+                onChange={(e) =>
+                  onChange({ ...content, buttons: { ...buttons, productsText: e.target.value } })
+                }
+                placeholder="探索产品"
+              />
+              <Input
+                label="链接地址"
+                value={buttons.productsLink || ""}
+                onChange={(e) =>
+                  onChange({ ...content, buttons: { ...buttons, productsLink: e.target.value } })
+                }
+                placeholder="/products"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* 推荐产品区块 */}
+      {/* 版权信息 */}
       <section>
-        <h3 className="mb-4 font-medium text-gray-900">推荐产品区块</h3>
+        <h3 className="mb-4 font-medium text-gray-900">底部版权</h3>
         <Input
-          label="标题"
-          value={featuredProducts.title || ""}
-          onChange={(e) =>
-            onChange({
-              ...content,
-              featuredProducts: { ...featuredProducts, title: e.target.value },
-            })
-          }
+          label="版权文字"
+          value={content.copyright || ""}
+          onChange={(e) => onChange({ ...content, copyright: e.target.value })}
+          placeholder="NIHPLOD All Rights Reserved."
         />
-        <div className="mt-4">
-          <Input
-            label="副标题"
-            value={featuredProducts.subtitle || ""}
-            onChange={(e) =>
-              onChange({
-                ...content,
-                featuredProducts: { ...featuredProducts, subtitle: e.target.value },
-              })
-            }
-          />
-        </div>
-      </section>
-
-      {/* 品牌故事区块 */}
-      <section>
-        <h3 className="mb-4 font-medium text-gray-900">品牌故事区块</h3>
-        <Input
-          label="标题"
-          value={brandStory.title || ""}
-          onChange={(e) =>
-            onChange({ ...content, brandStory: { ...brandStory, title: e.target.value } })
-          }
-        />
-        <div className="mt-4">
-          <RichTextEditor
-            label="内容"
-            value={brandStory.content || ""}
-            onChange={(value) =>
-              onChange({ ...content, brandStory: { ...brandStory, content: value } })
-            }
-            minHeight="100px"
-          />
-        </div>
-        <div className="mt-4">
-          <Input
-            label="图片 URL"
-            value={brandStory.image || ""}
-            onChange={(e) =>
-              onChange({ ...content, brandStory: { ...brandStory, image: e.target.value } })
-            }
-          />
-        </div>
+        <p className="mt-2 text-xs text-gray-400">
+          年份会自动添加，例如：© 2024 NIHPLOD All Rights Reserved.
+        </p>
       </section>
     </div>
   );

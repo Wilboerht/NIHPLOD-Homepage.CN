@@ -59,11 +59,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { answers, faceAnalysis } = result.data;
+    // 将 null 转换为 undefined（函数签名使用 optional）
+    const faceAnalysisData = faceAnalysis ?? undefined;
 
     // 尝试 AI 分析
     if (process.env.AI_ENABLED === "true") {
       try {
-        const aiResult = await analyzeWithAI(answers, faceAnalysis);
+        const aiResult = await analyzeWithAI(answers, faceAnalysisData);
         return NextResponse.json({
           success: true,
           source: "ai",
@@ -76,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 降级：规则匹配分析
-    const fallbackResult = await fallbackAnalysis(answers, faceAnalysis);
+    const fallbackResult = await fallbackAnalysis(answers, faceAnalysisData);
 
     return NextResponse.json({
       success: true,

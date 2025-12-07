@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { m } from "framer-motion";
 import { Sparkles, Package } from "lucide-react";
+import type { HomePageContent } from "@/types/page-content";
 
 /**
  * 网格背景色值 - 2行4列 布局
@@ -13,10 +14,31 @@ const gridColors = [
   ["#E2E0D7", "#EBE8DB", "#E2E0D7", "#D8D5CA"], // 下面一行
 ];
 
+// 默认内容
+const defaultContent: HomePageContent = {
+  brand: { chineseName: "旎柏", slogan: "逆转时光" },
+  buttons: {
+    advisorText: "AI 护肤顾问",
+    advisorLink: "/advisor",
+    productsText: "探索产品",
+    productsLink: "/products",
+  },
+  copyright: "NIHPLOD All Rights Reserved.",
+};
+
+interface HomeClientProps {
+  content?: HomePageContent;
+}
+
 /**
  * 首页客户端组件 - 网格色块背景布局
  */
-export default function HomeClient() {
+export default function HomeClient({ content }: HomeClientProps) {
+  // 合并默认内容和传入内容
+  const brand = content?.brand || defaultContent.brand;
+  const buttons = content?.buttons || defaultContent.buttons;
+  const copyright = content?.copyright || defaultContent.copyright;
+
   return (
     <div className="fixed inset-0 flex flex-col">
       {/* 2行4列 网格色块背景 */}
@@ -58,7 +80,7 @@ export default function HomeClient() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          旎柏
+          {brand.chineseName}
         </m.p>
 
         {/* 品牌语 */}
@@ -68,7 +90,7 @@ export default function HomeClient() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          逆转时光
+          {brand.slogan}
         </m.p>
 
         {/* 分隔线 */}
@@ -87,20 +109,22 @@ export default function HomeClient() {
           transition={{ duration: 0.6, delay: 0.4 }}
         >
           {/* AI 顾问 */}
-          <Link href="/advisor" className="group flex-1">
+          <Link href={buttons.advisorLink} className="group flex-1">
             <div className="flex items-center justify-center gap-2 rounded-full bg-brand-gold px-4 py-3 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl sm:gap-3 sm:px-5 sm:py-3.5 md:px-6 md:py-4">
               <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5" />
               <span className="text-xs font-medium sm:text-sm md:text-base">
-                AI 护肤顾问
+                {buttons.advisorText}
               </span>
             </div>
           </Link>
 
           {/* 产品浏览 */}
-          <Link href="/products" className="group flex-1">
+          <Link href={buttons.productsLink} className="group flex-1">
             <div className="flex items-center justify-center gap-2 rounded-full border border-brand-charcoal/20 bg-white/90 px-4 py-3 text-brand-charcoal shadow-lg backdrop-blur-sm transition-all hover:scale-105 hover:border-brand-gold hover:text-brand-gold sm:gap-3 sm:px-5 sm:py-3.5 md:px-6 md:py-4">
               <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5" />
-              <span className="text-xs font-medium sm:text-sm md:text-base">探索产品</span>
+              <span className="text-xs font-medium sm:text-sm md:text-base">
+                {buttons.productsText}
+              </span>
             </div>
           </Link>
         </m.div>
@@ -129,7 +153,7 @@ export default function HomeClient() {
           </Link>
         </nav>
         <p className="mt-3 text-[9px] text-brand-charcoal/25 sm:mt-4 sm:text-[10px]">
-          © {new Date().getFullYear()} NIHPLOD All Rights Reserved.
+          © {new Date().getFullYear()} {copyright}
         </p>
       </m.footer>
     </div>
