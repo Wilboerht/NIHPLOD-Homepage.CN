@@ -10,6 +10,21 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 
+// 各服务商 API Keys 状态
+interface ApiKeys {
+  openai: string;
+  deepseek: string;
+  qwen: string;
+  anthropic: string;
+}
+
+interface HasApiKeys {
+  openai: boolean;
+  deepseek: boolean;
+  qwen: boolean;
+  anthropic: boolean;
+}
+
 interface AISettings {
   provider: string;
   visionProvider: string;
@@ -20,6 +35,8 @@ interface AISettings {
   maxTokens: number;
   temperature: number;
   hasApiKey: boolean;
+  apiKeys: ApiKeys;
+  hasApiKeys: HasApiKeys;
 }
 
 // AI 文本服务商选项
@@ -96,9 +113,29 @@ export default function AdvisorSettingsPage() {
     maxTokens: 500,
     temperature: 0.7,
     hasApiKey: false,
+    apiKeys: {
+      openai: "",
+      deepseek: "",
+      qwen: "",
+      anthropic: "",
+    },
+    hasApiKeys: {
+      openai: false,
+      deepseek: false,
+      qwen: false,
+      anthropic: false,
+    },
   });
 
-  // 新 API Key 输入
+  // 新 API Key 输入（各服务商独立）
+  const [newApiKeys, setNewApiKeys] = useState<ApiKeys>({
+    openai: "",
+    deepseek: "",
+    qwen: "",
+    anthropic: "",
+  });
+
+  // 保留旧的 newApiKey 用于兼容（不再使用）
   const [newApiKey, setNewApiKey] = useState("");
 
   // 获取设置
@@ -124,11 +161,19 @@ export default function AdvisorSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // 构建 apiKeys 对象（只包含有值的 Key）
+      const apiKeysToSave: Partial<ApiKeys> = {};
+      if (newApiKeys.openai) apiKeysToSave.openai = newApiKeys.openai;
+      if (newApiKeys.deepseek) apiKeysToSave.deepseek = newApiKeys.deepseek;
+      if (newApiKeys.qwen) apiKeysToSave.qwen = newApiKeys.qwen;
+      if (newApiKeys.anthropic) apiKeysToSave.anthropic = newApiKeys.anthropic;
+
       const res = await fetch("/api/admin/advisor/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...(newApiKey && { apiKey: newApiKey }),
+          ...(Object.keys(apiKeysToSave).length > 0 && { apiKeys: apiKeysToSave }),
           provider: settings.provider,
           visionProvider: settings.visionProvider,
           model: settings.model,
@@ -146,9 +191,22 @@ export default function AdvisorSettingsPage() {
       }
 
       success("设置已保存");
+      // 清空输入框
       setNewApiKey("");
-      if (data.data.hasApiKey) {
-        setSettings((prev) => ({ ...prev, hasApiKey: true }));
+      setNewApiKeys({
+        openai: "",
+        deepseek: "",
+        qwen: "",
+        anthropic: "",
+      });
+
+      // 更新 hasApiKeys 状态
+      if (data.data.hasApiKeys) {
+        setSettings((prev) => ({
+          ...prev,
+          hasApiKey: data.data.hasApiKey,
+          hasApiKeys: data.data.hasApiKeys,
+        }));
       }
     } catch (error) {
       showError(error instanceof Error ? error.message : "保存失败");
@@ -284,7 +342,7 @@ export default function AdvisorSettingsPage() {
 
         {/* 提示信息 */}
         <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
-          <p>⚠️ <strong>注意</strong>：视觉分析需要对应服务商的 API Key。如果文本服务商和视觉服务商不同，请确保两个服务商的 API Key 都已在环境变量中配置。</p>
+          <p>⚠️ <strong>注意</strong>：视觉分析需要对应服务商的 API Key。如果文本服务商和视觉服务商不同，请确保两个服务商的 API Key 都已配置。</p>
         </div>
       </section>
 
@@ -295,33 +353,122 @@ export default function AdvisorSettingsPage() {
             <Key className="h-5 w-5 text-brand-gold" />
           </div>
           <div>
-            <h2 className="text-lg font-medium text-gray-900">API 密钥</h2>
-            <p className="text-sm text-gray-500">{settings.provider === "qwen" ? "通义千问" : settings.provider === "deepseek" ? "DeepSeek" : settings.provider === "anthropic" ? "Anthropic" : "OpenAI"} API Key</p>
+            <h2 className="text-lg font-medium text-gray-900">API 密钥管理</h2>
+            <p className="text-sm text-gray-500">为各 AI 服务商配置独立的 API Key</p>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">当前状态:</span>
-            {settings.hasApiKey ? (
-              <Badge variant="success">已配置</Badge>
-            ) : (
-              <Badge variant="warning">未配置</Badge>
+        <div className="space-y-6">
+          {/* DeepSeek API Key */}
+          <div className="rounded-lg border border-gray-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">DeepSeek</span>
+                <span className="text-xs text-gray-500">(文本分析)</span>
+              </div>
+              {settings.hasApiKeys?.deepseek ? (
+                <Badge variant="success">已配置</Badge>
+              ) : (
+                <Badge variant="warning">未配置</Badge>
+              )}
+            </div>
+            {settings.hasApiKeys?.deepseek && settings.apiKeys?.deepseek && (
+              <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.deepseek}</p>
             )}
-            {settings.hasApiKey && settings.apiKey && (
-              <span className="text-sm text-gray-500">{settings.apiKey}</span>
-            )}
+            <Input
+              type="password"
+              value={newApiKeys.deepseek}
+              onChange={(e) => setNewApiKeys((prev) => ({ ...prev, deepseek: e.target.value }))}
+              placeholder="sk-..."
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              <a href="https://platform.deepseek.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+            </p>
           </div>
 
-          <Input
-            label="新 API Key"
-            type="password"
-            value={newApiKey}
-            onChange={(e) => setNewApiKey(e.target.value)}
-            placeholder={settings.provider === "anthropic" ? "sk-ant-..." : "sk-..."}
-          />
+          {/* 通义千问 API Key */}
+          <div className="rounded-lg border border-gray-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">通义千问</span>
+                <span className="text-xs text-gray-500">(文本/视觉)</span>
+              </div>
+              {settings.hasApiKeys?.qwen ? (
+                <Badge variant="success">已配置</Badge>
+              ) : (
+                <Badge variant="warning">未配置</Badge>
+              )}
+            </div>
+            {settings.hasApiKeys?.qwen && settings.apiKeys?.qwen && (
+              <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.qwen}</p>
+            )}
+            <Input
+              type="password"
+              value={newApiKeys.qwen}
+              onChange={(e) => setNewApiKeys((prev) => ({ ...prev, qwen: e.target.value }))}
+              placeholder="sk-..."
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+            </p>
+          </div>
+
+          {/* OpenAI API Key */}
+          <div className="rounded-lg border border-gray-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">OpenAI</span>
+                <span className="text-xs text-gray-500">(文本/视觉)</span>
+              </div>
+              {settings.hasApiKeys?.openai ? (
+                <Badge variant="success">已配置</Badge>
+              ) : (
+                <Badge variant="warning">未配置</Badge>
+              )}
+            </div>
+            {settings.hasApiKeys?.openai && settings.apiKeys?.openai && (
+              <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.openai}</p>
+            )}
+            <Input
+              type="password"
+              value={newApiKeys.openai}
+              onChange={(e) => setNewApiKeys((prev) => ({ ...prev, openai: e.target.value }))}
+              placeholder="sk-..."
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              <a href="https://platform.openai.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+            </p>
+          </div>
+
+          {/* Anthropic API Key */}
+          <div className="rounded-lg border border-gray-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">Anthropic</span>
+                <span className="text-xs text-gray-500">(文本/视觉)</span>
+              </div>
+              {settings.hasApiKeys?.anthropic ? (
+                <Badge variant="success">已配置</Badge>
+              ) : (
+                <Badge variant="warning">未配置</Badge>
+              )}
+            </div>
+            {settings.hasApiKeys?.anthropic && settings.apiKeys?.anthropic && (
+              <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.anthropic}</p>
+            )}
+            <Input
+              type="password"
+              value={newApiKeys.anthropic}
+              onChange={(e) => setNewApiKeys((prev) => ({ ...prev, anthropic: e.target.value }))}
+              placeholder="sk-ant-..."
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              <a href="https://console.anthropic.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+            </p>
+          </div>
+
           <p className="text-sm text-gray-500">
-            留空则保留原有 API Key。输入新值将覆盖原有配置。
+            💡 留空则保留原有 API Key。输入新值将覆盖原有配置。环境变量中的 API Key 会作为后备使用。
           </p>
         </div>
       </section>

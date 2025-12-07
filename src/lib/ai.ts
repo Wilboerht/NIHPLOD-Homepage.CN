@@ -113,6 +113,16 @@ export async function analyzeWithAI(
 }
 
 /**
+ * 各服务商 API Keys 接口
+ */
+export interface ApiKeys {
+  openai?: string;
+  deepseek?: string;
+  qwen?: string;
+  anthropic?: string;
+}
+
+/**
  * AI 设置接口
  */
 export interface AISettings {
@@ -123,6 +133,7 @@ export interface AISettings {
   systemPrompt: string;
   maxTokens: number;
   temperature: number;
+  apiKeys?: ApiKeys;
 }
 
 // 默认设置
@@ -134,6 +145,12 @@ const DEFAULT_AI_SETTINGS: AISettings = {
   systemPrompt: "",
   maxTokens: 500,
   temperature: 0.7,
+  apiKeys: {
+    openai: "",
+    deepseek: "",
+    qwen: "",
+    anthropic: "",
+  },
 };
 
 // 缓存设置，避免每次请求都查询数据库
@@ -165,6 +182,7 @@ export async function getAISettings(): Promise<AISettings> {
         // 环境变量可以覆盖数据库设置（用于本地开发）
         provider: process.env.AI_PROVIDER || dbSettings.provider || DEFAULT_AI_SETTINGS.provider,
         visionProvider: process.env.AI_VISION_PROVIDER || dbSettings.visionProvider || DEFAULT_AI_SETTINGS.visionProvider,
+        apiKeys: dbSettings.apiKeys || DEFAULT_AI_SETTINGS.apiKeys,
       };
     } else {
       // 没有数据库设置，使用环境变量
@@ -198,8 +216,18 @@ export function clearAISettingsCache(): void {
 
 /**
  * 根据 provider 获取对应的 API Key
+ * 优先从数据库缓存读取，降级到环境变量
  */
 export function getApiKeyForProvider(provider: string): string | undefined {
+  // 首先尝试从缓存的数据库设置中获取
+  if (cachedSettings?.apiKeys) {
+    const dbKey = cachedSettings.apiKeys[provider as keyof ApiKeys];
+    if (dbKey && dbKey.length > 0) {
+      return dbKey;
+    }
+  }
+
+  // 降级到环境变量
   switch (provider) {
     case "openai":
       return process.env.OPENAI_API_KEY;
