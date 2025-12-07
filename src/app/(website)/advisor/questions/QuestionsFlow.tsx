@@ -21,7 +21,7 @@ type Answers = Record<string, string>;
  */
 export function QuestionsFlow() {
   const router = useRouter();
-  const { trackQuestionnaireStart, trackQuestionnaireComplete } = useAdvisorAnalytics();
+  const { initSession, trackQuestionnaireStart, trackQuestionnaireComplete } = useAdvisorAnalytics();
   const hasTrackedStart = useRef(false);
 
   // 动态获取问题数据
@@ -35,6 +35,11 @@ export function QuestionsFlow() {
   const [direction, setDirection] = useState(1);
   // 是否正在过渡动画中
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // 初始化会话（确保即使用户直接访问问题页也能创建会话）
+  useEffect(() => {
+    initSession();
+  }, [initSession]);
 
   // 追踪问卷开始
   useEffect(() => {

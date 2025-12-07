@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Bot, Save } from "lucide-react";
+import { ArrowLeft, Key, Bot, Save, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -31,7 +31,9 @@ interface AISettings {
   apiKey: string;
   model: string;
   visionModel: string;
-  systemPrompt: string;
+  systemPrompt: string; // 废弃，保留兼容
+  textSystemPrompt: string;
+  visionSystemPrompt: string;
   maxTokens: number;
   temperature: number;
   hasApiKey: boolean;
@@ -110,6 +112,8 @@ export default function AdvisorSettingsPage() {
     model: "deepseek-chat",
     visionModel: "gpt-4o",
     systemPrompt: "",
+    textSystemPrompt: "",
+    visionSystemPrompt: "",
     maxTokens: 500,
     temperature: 0.7,
     hasApiKey: false,
@@ -178,7 +182,8 @@ export default function AdvisorSettingsPage() {
           visionProvider: settings.visionProvider,
           model: settings.model,
           visionModel: settings.visionModel,
-          systemPrompt: settings.systemPrompt,
+          textSystemPrompt: settings.textSystemPrompt,
+          visionSystemPrompt: settings.visionSystemPrompt,
           maxTokens: settings.maxTokens,
           temperature: settings.temperature,
         }),
@@ -526,15 +531,53 @@ export default function AdvisorSettingsPage() {
             </div>
           </div>
 
-          <div className="md:col-span-2">
+        </div>
+      </section>
+
+      {/* 系统提示词配置 */}
+      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-purple-600" />
+          <h2 className="text-lg font-semibold text-gray-900">系统提示词</h2>
+        </div>
+        <p className="mb-4 text-sm text-gray-600">
+          自定义 AI 的角色和行为指导。文本分析用于问卷分析，视觉分析用于面部拍照分析。
+        </p>
+
+        <div className="space-y-6">
+          {/* 文本分析提示词 */}
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="font-medium text-gray-900">文本分析系统提示词</span>
+              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                问卷分析
+              </span>
+            </div>
             <Textarea
-              label="系统提示词"
-              value={settings.systemPrompt}
+              value={settings.textSystemPrompt}
               onChange={(e) =>
-                setSettings((prev) => ({ ...prev, systemPrompt: e.target.value }))
+                setSettings((prev) => ({ ...prev, textSystemPrompt: e.target.value }))
               }
-              placeholder="定义 AI 的角色和行为..."
+              placeholder="定义 AI 在分析用户问卷时的角色和行为..."
               rows={6}
+            />
+          </div>
+
+          {/* 视觉分析提示词 */}
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="font-medium text-gray-900">视觉分析系统提示词</span>
+              <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                面部分析
+              </span>
+            </div>
+            <Textarea
+              value={settings.visionSystemPrompt}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, visionSystemPrompt: e.target.value }))
+              }
+              placeholder="定义 AI 在分析面部照片时的角色和行为..."
+              rows={8}
             />
           </div>
         </div>

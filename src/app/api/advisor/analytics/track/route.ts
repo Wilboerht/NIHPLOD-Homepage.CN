@@ -31,12 +31,38 @@ const EventSchema = z.object({
 
 type _TrackEvent = z.infer<typeof EventSchema>;
 
+// IP 脱敏处理（隐藏最后一段）
+function anonymizeIP(ip: string): string {
+  if (ip === "unknown") return ip;
+
+  // IPv4: 192.168.1.100 -> 192.168.1.xxx
+  if (ip.includes(".")) {
+    const parts = ip.split(".");
+    if (parts.length === 4) {
+      parts[3] = "xxx";
+      return parts.join(".");
+    }
+  }
+
+  // IPv6: 简化处理，只保留前三段
+  if (ip.includes(":")) {
+    const parts = ip.split(":");
+    if (parts.length > 3) {
+      return parts.slice(0, 3).join(":") + ":xxx";
+    }
+  }
+
+  return ip;
+}
+
 // 获取客户端信息
 function getClientInfo(request: NextRequest) {
   const userAgent = request.headers.get("user-agent") || "";
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() 
-    || request.headers.get("x-real-ip") 
+  const rawIP = request.headers.get("x-forwarded-for")?.split(",")[0].trim()
+    || request.headers.get("x-real-ip")
     || "unknown";
+  // 脱敏处理 IP 地址
+  const ip = anonymizeIP(rawIP);
   const referer = request.headers.get("referer") || "";
   
   // 解析设备类型

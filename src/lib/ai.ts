@@ -41,11 +41,25 @@ export interface RecommendedProduct {
   reason: string;
 }
 
+/** 护肤步骤 */
+export interface SkincareStep {
+  order: number;
+  step: string;
+  description: string;
+}
+
+/** 护肤方案 */
+export interface SkincareRoutine {
+  morning: SkincareStep[];
+  evening: SkincareStep[];
+}
+
 /** 分析结果 */
 export interface AnalysisResult {
   skinAnalysis: SkinAnalysis;
   recommendations: string;
   products: RecommendedProduct[];
+  routine: SkincareRoutine;
 }
 
 /**
@@ -73,8 +87,10 @@ export async function analyzeWithAI(
   answers: QuestionnaireAnswers,
   faceAnalysis?: FaceAnalysisResult
 ): Promise<AnalysisResult> {
-  const provider = process.env.AI_PROVIDER || "openai";
-  const model = process.env.AI_MODEL || "gpt-4o";
+  // 从数据库获取设置
+  const settings = await getAISettings();
+  const provider = settings.provider || process.env.AI_PROVIDER || "openai";
+  const model = settings.model || process.env.AI_MODEL || "gpt-4o";
 
   // 根据 provider 获取对应的 API Key
   const apiKey = getApiKeyForProvider(provider);
@@ -89,8 +105,15 @@ export async function analyzeWithAI(
   // 构建提示词
   const prompt = buildAnalysisPrompt(answers, faceAnalysis);
 
+  // 获取自定义系统提示词（如果有）
+  const systemPrompt = settings.textSystemPrompt || TEXT_ANALYSIS_SYSTEM_PROMPT;
+
+  // 获取 maxTokens 和 temperature（使用数据库设置或默认值）
+  const maxTokens = settings.maxTokens || 1200;
+  const temperature = settings.temperature ?? 0.3;
+
   // 调用 AI API
-  const response = await callAIProvider(provider, apiKey, model, prompt);
+  const response = await callAIProvider(provider, apiKey, model, prompt, systemPrompt, maxTokens, temperature);
 
   // 解析 AI 响应
   const analysis = parseAIResponse(response, answers);
@@ -105,10 +128,14 @@ export async function analyzeWithAI(
     productCount: products.length,
   });
 
+  // 生成护肤方案
+  const routine = generateSkincareRoutine(answers.currentRoutine);
+
   return {
     skinAnalysis: analysis,
     recommendations: generateRecommendationText(analysis),
     products,
+    routine,
   };
 }
 
@@ -130,7 +157,9 @@ export interface AISettings {
   visionProvider: string;
   model: string;
   visionModel: string;
-  systemPrompt: string;
+  systemPrompt: string; // 废弃，保留兼容
+  textSystemPrompt: string;
+  visionSystemPrompt: string;
   maxTokens: number;
   temperature: number;
   apiKeys?: ApiKeys;
@@ -143,6 +172,8 @@ const DEFAULT_AI_SETTINGS: AISettings = {
   model: "deepseek-chat",
   visionModel: "gpt-4o",
   systemPrompt: "",
+  textSystemPrompt: "",
+  visionSystemPrompt: "",
   maxTokens: 500,
   temperature: 0.7,
   apiKeys: {
@@ -179,9 +210,14 @@ export async function getAISettings(): Promise<AISettings> {
       cachedSettings = {
         ...DEFAULT_AI_SETTINGS,
         ...dbSettings,
-        // 环境变量可以覆盖数据库设置（用于本地开发）
-        provider: process.env.AI_PROVIDER || dbSettings.provider || DEFAULT_AI_SETTINGS.provider,
-        visionProvider: process.env.AI_VISION_PROVIDER || dbSettings.visionProvider || DEFAULT_AI_SETTINGS.visionProvider,
+        // 数据库设置优先，环境变量作为降级选项（仅当数据库未配置时使用）
+        provider: dbSettings.provider || process.env.AI_PROVIDER || DEFAULT_AI_SETTINGS.provider,
+        visionProvider: dbSettings.visionProvider || process.env.AI_VISION_PROVIDER || DEFAULT_AI_SETTINGS.visionProvider,
+        model: dbSettings.model || process.env.AI_MODEL || DEFAULT_AI_SETTINGS.model,
+        visionModel: dbSettings.visionModel || process.env.AI_VISION_MODEL || DEFAULT_AI_SETTINGS.visionModel,
+        // 确保提示词字段正确传递
+        textSystemPrompt: dbSettings.textSystemPrompt || DEFAULT_AI_SETTINGS.textSystemPrompt,
+        visionSystemPrompt: dbSettings.visionSystemPrompt || DEFAULT_AI_SETTINGS.visionSystemPrompt,
         apiKeys: dbSettings.apiKeys || DEFAULT_AI_SETTINGS.apiKeys,
       };
     } else {
@@ -190,6 +226,8 @@ export async function getAISettings(): Promise<AISettings> {
         ...DEFAULT_AI_SETTINGS,
         provider: process.env.AI_PROVIDER || DEFAULT_AI_SETTINGS.provider,
         visionProvider: process.env.AI_VISION_PROVIDER || DEFAULT_AI_SETTINGS.visionProvider,
+        model: process.env.AI_MODEL || DEFAULT_AI_SETTINGS.model,
+        visionModel: process.env.AI_VISION_MODEL || DEFAULT_AI_SETTINGS.visionModel,
       };
     }
 
@@ -304,11 +342,53 @@ export async function fallbackAnalysis(
   // 匹配推荐产品
   const products = await matchProducts(concerns, answers);
 
+  // 生成护肤方案
+  const routine = generateSkincareRoutine(answers.currentRoutine);
+
   return {
     skinAnalysis,
     recommendations: generateRecommendationText(skinAnalysis),
     products,
+    routine,
   };
+}
+
+/**
+ * 生成护肤方案
+ */
+function generateSkincareRoutine(currentRoutine?: string): SkincareRoutine {
+  const isMinimal = currentRoutine === "minimal" || currentRoutine === "none";
+
+  const morning: SkincareStep[] = [
+    { order: 1, step: "洁面", description: "温和洁面乳清洁" },
+    { order: 2, step: "爽肤水", description: "拍打至吸收" },
+  ];
+
+  const evening: SkincareStep[] = [
+    { order: 1, step: "卸妆", description: "彻底卸除彩妆" },
+    { order: 2, step: "洁面", description: "二次清洁" },
+    { order: 3, step: "爽肤水", description: "调理肌肤" },
+  ];
+
+  // 非极简模式添加更多步骤
+  if (!isMinimal) {
+    morning.push(
+      { order: 3, step: "精华", description: "针对性精华护理" },
+      { order: 4, step: "面霜", description: "锁水保湿" },
+      { order: 5, step: "防晒", description: "日间必备防护" }
+    );
+
+    evening.push(
+      { order: 4, step: "精华", description: "夜间修护精华" },
+      { order: 5, step: "眼霜", description: "眼周专属护理" },
+      { order: 6, step: "面霜", description: "夜间滋养锁水" }
+    );
+  } else {
+    morning.push({ order: 3, step: "面霜/防晒", description: "基础保湿防护" });
+    evening.push({ order: 4, step: "面霜", description: "基础保湿" });
+  }
+
+  return { morning, evening };
 }
 
 /**
@@ -331,14 +411,23 @@ function buildAnalysisPrompt(
 
 /**
  * 调用 AI 服务（支持 OpenAI、DeepSeek、Anthropic、通义千问）
+ * @param systemPrompt 自定义系统提示词，如果未提供则使用默认值
+ * @param maxTokens 最大 token 数
+ * @param temperature 温度参数
  */
 async function callAIProvider(
   provider: string,
   apiKey: string,
   model: string,
-  prompt: string
+  prompt: string,
+  systemPrompt?: string,
+  maxTokens?: number,
+  temperature?: number
 ): Promise<string> {
   const startTime = Date.now();
+  const effectiveSystemPrompt = systemPrompt || TEXT_ANALYSIS_SYSTEM_PROMPT;
+  const effectiveMaxTokens = maxTokens || 1200;
+  const effectiveTemperature = temperature ?? 0.3;
 
   try {
     // OpenAI、DeepSeek、通义千问 使用相同的 API 格式（OpenAI 兼容）
@@ -354,11 +443,11 @@ async function callAIProvider(
         body: JSON.stringify({
           model: getModelForProvider(provider, model),
           messages: [
-            { role: "system", content: TEXT_ANALYSIS_SYSTEM_PROMPT },
+            { role: "system", content: effectiveSystemPrompt },
             { role: "user", content: prompt },
           ],
-          max_tokens: 1200,
-          temperature: 0.3,
+          max_tokens: effectiveMaxTokens,
+          temperature: effectiveTemperature,
         }),
       });
 
@@ -397,8 +486,9 @@ async function callAIProvider(
         },
         body: JSON.stringify({
           model: model || "claude-sonnet-4-20250514",
-          max_tokens: 1200,
-          system: TEXT_ANALYSIS_SYSTEM_PROMPT,
+          max_tokens: effectiveMaxTokens,
+          temperature: effectiveTemperature,
+          system: effectiveSystemPrompt,
           messages: [{ role: "user", content: prompt }],
         }),
       });
@@ -504,6 +594,7 @@ const SKINTYPE_TO_BENEFITS: Record<string, string[]> = {
   combination: ["平衡", "调理", "均衡", "双效"],
   sensitive: ["舒缓", "温和", "修护", "镇静"],
   normal: ["维稳", "保养", "平衡", "健康"],
+  unknown: ["保湿", "温和", "平衡", "基础"], // 不确定肤质时推荐温和基础产品
 };
 
 /** 预算到价格范围的映射 */
