@@ -9,6 +9,7 @@ import {
   buildTextAnalysisPrompt,
 } from "@/config/ai-prompts";
 import { aiLogger } from "./logger";
+import { getSkinTypeLabel, getConcernLabel } from "./advisor-utils";
 
 export interface AIMessage {
   role: "user" | "assistant" | "system";
@@ -282,6 +283,7 @@ export function getApiKeyForProvider(provider: string): string | undefined {
 
 /**
  * 获取 OpenAI 兼容 API 的 Base URL
+ * 支持通过环境变量配置自定义端点（如代理服务器）
  */
 function getOpenAICompatibleBaseUrl(provider: string): string {
   switch (provider) {
@@ -291,8 +293,16 @@ function getOpenAICompatibleBaseUrl(provider: string): string {
       return process.env.QWEN_API_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1";
     case "openai":
     default:
-      return "https://api.openai.com/v1";
+      return process.env.OPENAI_API_URL || "https://api.openai.com/v1";
   }
+}
+
+/**
+ * 获取 Anthropic API URL
+ * 支持通过环境变量配置自定义端点（如代理服务器）
+ */
+function getAnthropicApiUrl(): string {
+  return process.env.ANTHROPIC_API_URL || "https://api.anthropic.com/v1/messages";
 }
 
 /**
@@ -477,7 +487,7 @@ async function callAIProvider(
 
     // Anthropic Claude
     if (provider === "anthropic") {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch(getAnthropicApiUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1008,32 +1018,4 @@ function generateRecommendationText(analysis: SkinAnalysis): string {
   return "根据您的肌肤状况，为您推荐以下产品：";
 }
 
-/**
- * 获取肤质标签
- */
-function getSkinTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    dry: "干性肌肤",
-    oily: "油性肌肤",
-    combination: "混合性肌肤",
-    normal: "中性肌肤",
-    sensitive: "敏感性肌肤",
-    unknown: "待确定肤质",
-  };
-  return labels[type] || type;
-}
-
-/**
- * 获取关注点标签
- */
-function getConcernLabel(concern: string): string {
-  const labels: Record<string, string> = {
-    aging: "抗老紧致",
-    dull: "提亮肤色",
-    hydration: "补水保湿",
-    pores: "毛孔护理",
-    sensitive: "舒缓修护",
-    acne: "祛痘净肤",
-  };
-  return labels[concern] || concern;
-}
+// getSkinTypeLabel 和 getConcernLabel 已移至 lib/advisor-utils.ts

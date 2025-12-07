@@ -7,6 +7,13 @@ import {
 } from "@/config/ai-prompts";
 import { aiLogger } from "@/lib/logger";
 import { getAISettings, getApiKeyForProvider } from "@/lib/ai";
+import {
+  type FaceAnalysisResult,
+  getDefaultFaceAnalysisResult,
+} from "@/lib/advisor-utils";
+
+// 重新导出类型供其他模块使用
+export type { FaceAnalysisResult };
 
 /**
  * 面部分析请求 Schema
@@ -14,47 +21,6 @@ import { getAISettings, getApiKeyForProvider } from "@/lib/ai";
 const FaceAnalyzeSchema = z.object({
   image: z.string().min(1, "请提供图片"),
 });
-
-/**
- * 肤质类型
- */
-type SkinType = "dry" | "oily" | "combination" | "normal" | "sensitive";
-
-/**
- * 严重程度
- */
-type Severity = "mild" | "moderate" | "severe";
-
-/**
- * 水分等级
- */
-type HydrationLevel = "low" | "medium" | "high";
-
-/**
- * 面部分析结果类型
- */
-export interface FaceAnalysisResult {
-  skinType: {
-    type: SkinType;
-    confidence: number;
-    description: string;
-  };
-  skinConditions: {
-    condition: string;
-    severity: Severity;
-    area: string;
-    description: string;
-  }[];
-  skinAge: {
-    estimated: number;
-    factors: string[];
-  };
-  hydration: {
-    level: HydrationLevel;
-    description: string;
-  };
-  recommendations: string[];
-}
 
 // ============================================================================
 // 公共工具函数
@@ -373,11 +339,16 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
 function createOpenAIConfig(apiKey: string, model: string, customSystemPrompt?: string): VisionAPIConfig {
   const systemPrompt = customSystemPrompt || VISION_ANALYSIS_SYSTEM_PROMPT;
 
+  // 支持通过环境变量配置自定义端点（如代理服务器）
+  const baseUrl = process.env.OPENAI_API_URL
+    ? `${process.env.OPENAI_API_URL}/chat/completions`
+    : "https://api.openai.com/v1/chat/completions";
+
   return {
     provider: "OpenAI",
     model,
     apiKey,
-    baseUrl: "https://api.openai.com/v1/chat/completions",
+    baseUrl,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
@@ -418,11 +389,14 @@ function createAnthropicConfig(apiKey: string, model: string, imageBase64: strin
   }
   const [, mediaType, base64Data] = matches;
 
+  // 支持通过环境变量配置自定义端点（如代理服务器）
+  const baseUrl = process.env.ANTHROPIC_API_URL || "https://api.anthropic.com/v1/messages";
+
   return {
     provider: "Anthropic",
     model,
     apiKey,
-    baseUrl: "https://api.anthropic.com/v1/messages",
+    baseUrl,
     headers: {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
@@ -544,27 +518,6 @@ async function analyzeWithQwenVL(imageBase64: string, modelOverride?: string, cu
  * 当 AI 服务不可用时返回通用建议
  */
 function getFallbackAnalysis(): FaceAnalysisResult {
-  return {
-    skinType: {
-      type: "combination",
-      confidence: 0.5,
-      description: "由于技术原因，无法精确判断您的肤质类型。建议结合您的日常感受来判断。",
-    },
-    skinConditions: [],
-    skinAge: {
-      estimated: 0,
-      factors: ["无法通过照片准确评估"],
-    },
-    hydration: {
-      level: "medium",
-      description: "建议日常保持良好的补水习惯",
-    },
-    recommendations: [
-      "建议早晚使用温和的洁面产品清洁肌肤",
-      "保持每日饮水量在 2000ml 以上",
-      "根据季节调整护肤品的滋润度",
-      "建议到专业机构进行详细的肌肤检测",
-    ],
-  };
+  return getDefaultFaceAnalysisResult();
 }
 

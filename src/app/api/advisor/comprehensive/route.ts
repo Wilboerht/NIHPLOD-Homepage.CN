@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { getSkinTypeLabel, getConcernLabel } from "@/lib/advisor-utils";
 
 /**
  * 问答数据 Schema
@@ -404,33 +405,5 @@ function generateSkincareRoutine(
   return { morning, evening };
 }
 
-/**
- * 获取肤质类型标签
- */
-function getSkinTypeLabel(type: SkinType): string {
-  const labels: Record<SkinType, string> = {
-    dry: "干性肌肤",
-    oily: "油性肌肤",
-    combination: "混合性肌肤",
-    normal: "中性肌肤",
-    sensitive: "敏感性肌肤",
-    unknown: "待确定肤质",
-  };
-  return labels[type] || "待确定肤质";
-}
-
-/**
- * 获取关注点标签
- */
-function getConcernLabel(concern: string): string {
-  const labels: Record<string, string> = {
-    aging: "抗老紧致",
-    dull: "提亮肤色",
-    hydration: "补水保湿",
-    pores: "毛孔护理",
-    sensitive: "舒缓修护",
-    acne: "祛痘净肤",
-  };
-  return labels[concern] || concern;
-}
+// getSkinTypeLabel 和 getConcernLabel 已移至 lib/advisor-utils.ts
 
