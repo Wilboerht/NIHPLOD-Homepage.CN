@@ -151,6 +151,9 @@ export default function HomeClient({ content }: HomeClientProps) {
           <Link href="/careers" className="transition-colors hover:text-brand-gold">
             加入我们
           </Link>
+          <Link href="/privacy" className="transition-colors hover:text-brand-gold">
+            隐私政策
+          </Link>
         </nav>
         <p className="mt-3 text-[9px] text-brand-charcoal/25 sm:mt-4 sm:text-[10px]">
           © {new Date().getFullYear()} {copyright}

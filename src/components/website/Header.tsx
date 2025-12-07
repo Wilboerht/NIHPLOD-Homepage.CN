@@ -91,6 +91,30 @@ export function Header({ logo }: HeaderProps) {
     return null;
   }
 
+  // ritual 页面使用自己的导航栏（在 RitualContent 中）
+  const isRitualPage = pathname === "/ritual";
+  if (isRitualPage) {
+    return null;
+  }
+
+  // contact 页面使用自己的导航栏（在 ContactContent 中）
+  const isContactPage = pathname === "/contact";
+  if (isContactPage) {
+    return null;
+  }
+
+  // careers 页面使用自己的导航栏（在 CareersContent 中）
+  const isCareersPage = pathname === "/careers";
+  if (isCareersPage) {
+    return null;
+  }
+
+  // privacy 页面使用自己的导航栏（在 PrivacyContent 中）
+  const isPrivacyPage = pathname === "/privacy";
+  if (isPrivacyPage) {
+    return null;
+  }
+
   /**
    * 切换汉堡菜单
    */

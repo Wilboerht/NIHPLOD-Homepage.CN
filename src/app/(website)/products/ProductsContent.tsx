@@ -174,16 +174,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   };
 
   // 点击分类时跳转到该分类的第一个产品并展开
-  const handleCategoryChange = (categoryId: string | null) => {
-    if (categoryId === null) {
-      setActiveCategory(null);
-      setCurrentProductIndex(0);
-    } else {
-      const firstProductIndex = sortedProducts.findIndex((p) => p.categoryId === categoryId);
-      if (firstProductIndex !== -1) {
-        setActiveCategory(categoryId);
-        setCurrentProductIndex(firstProductIndex);
-      }
+  const handleCategoryChange = (categoryId: string) => {
+    // 重复点击同一分类不取消选中，直接返回
+    if (categoryId === activeCategory) {
+      return;
+    }
+    const firstProductIndex = sortedProducts.findIndex((p) => p.categoryId === categoryId);
+    if (firstProductIndex !== -1) {
+      setActiveCategory(categoryId);
+      setCurrentProductIndex(firstProductIndex);
     }
     // 点击分类时自动展开商品卡片
     setIsExpanded(true);
@@ -254,7 +253,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => handleCategoryChange(activeCategory === cat.id ? null : cat.id)}
+                      onClick={() => handleCategoryChange(cat.id)}
                       className={cn(
                         "flex flex-shrink-0 flex-col items-center gap-0.5 px-1.5 py-1 transition-all sm:gap-1 sm:px-2 sm:py-1.5 lg:px-3 lg:py-2",
                         "rounded-xl hover:bg-brand-beige/30",
@@ -282,7 +281,16 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             {/* 展开/收起按钮 - 无缝连接 */}
             <button
               type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => {
+                if (isExpanded) {
+                  // 收起时清除分类选中状态
+                  setActiveCategory(null);
+                } else {
+                  // 展开时自动选中当前产品的分类
+                  setActiveCategory(currentProduct?.categoryId || null);
+                }
+                setIsExpanded(!isExpanded);
+              }}
               className="group flex items-center justify-center rounded-b-2xl bg-brand-gold/10 px-10 py-2.5 shadow-sm backdrop-blur-md lg:px-14 lg:py-3"
             >
               <m.div
