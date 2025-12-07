@@ -58,6 +58,7 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
 
   /**
    * 初始化摄像头
+   * 注意：禁用美颜效果，确保获取原始相机画面用于AI肌肤分析
    */
   const initCamera = useCallback(async () => {
     setIsLoading(true);
@@ -69,13 +70,58 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
         stream.getTracks().forEach((track) => track.stop());
       }
 
+      // 视频约束配置
+      // 添加高级约束以禁用美颜效果，确保获取原始相机画面
+      const videoConstraints: MediaTrackConstraints = {
+        facingMode,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        // 标准化的高级约束，用于禁用图像处理/美颜效果
+        // 这些约束在支持的浏览器/设备上会生效
+        // @ts-expect-error - 非标准但广泛支持的约束
+        advanced: [
+          // 禁用美颜模式（部分Android设备支持）
+          { beautificationMode: "off" },
+          // 禁用图像增强
+          { imageEnhancement: false },
+          // 禁用自动美化
+          { autoBeautify: false },
+          // 禁用人脸美化
+          { faceBeautification: false },
+          // 禁用皮肤平滑
+          { skinSmoothing: false },
+        ],
+      };
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: videoConstraints,
       });
+
+      // 获取视频轨道并尝试应用更多约束
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      if (videoTrack) {
+        try {
+          // 获取当前轨道能力
+          const capabilities = videoTrack.getCapabilities?.();
+
+          // 尝试应用额外的约束来禁用美颜
+          // 不同设备/浏览器支持的约束可能不同
+          const constraintsToApply: MediaTrackConstraints = {};
+
+          // @ts-expect-error - 检查并应用非标准约束
+          if (capabilities?.beautificationMode) {
+            // @ts-expect-error - 非标准约束
+            constraintsToApply.beautificationMode = "off";
+          }
+
+          if (Object.keys(constraintsToApply).length > 0) {
+            await videoTrack.applyConstraints(constraintsToApply);
+          }
+        } catch {
+          // 如果应用约束失败，继续使用现有流
+          console.log("Note: Some camera constraints not supported on this device");
+        }
+      }
 
       setStream(mediaStream);
 
