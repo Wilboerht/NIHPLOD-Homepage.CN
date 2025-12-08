@@ -154,6 +154,9 @@ export default function HomeClient({ content }: HomeClientProps) {
           <Link href="/privacy" className="transition-colors hover:text-brand-gold">
             隐私政策
           </Link>
+          <Link href="/services" className="transition-colors hover:text-brand-gold">
+            服务入口
+          </Link>
         </nav>
         <p className="mt-3 text-[9px] text-brand-charcoal/25 sm:mt-4 sm:text-[10px]">
           © {new Date().getFullYear()} {copyright}

@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 // 职位类型选项
 const JOB_TYPES = [
@@ -43,6 +44,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
   const [formData, setFormData] = useState<JobFormData>({
     title: "",
@@ -90,25 +92,23 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     }
   };
 
-  // 提交表单
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      showError("请检查表单填写");
-      return;
-    }
-
+  // 执行保存
+  const doSave = async (shouldPublish?: boolean) => {
     setLoading(true);
 
     try {
       const url = isEdit ? `/api/admin/jobs/${jobId}` : "/api/admin/jobs";
       const method = isEdit ? "PUT" : "POST";
 
+      // 如果用户选择发布，则设置 published 为 true
+      const dataToSave = shouldPublish !== undefined
+        ? { ...formData, published: shouldPublish }
+        : formData;
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSave),
       });
 
       const data = await res.json();
@@ -125,6 +125,37 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 提交表单
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      showError("请检查表单填写");
+      return;
+    }
+
+    // 如果是草稿状态，询问是否发布
+    if (!formData.published) {
+      setShowPublishConfirm(true);
+      return;
+    }
+
+    // 已经是发布状态，直接保存
+    await doSave();
+  };
+
+  // 确认发布
+  const handleConfirmPublish = async () => {
+    setShowPublishConfirm(false);
+    await doSave(true);
+  };
+
+  // 保持草稿
+  const handleKeepDraft = async () => {
+    setShowPublishConfirm(false);
+    await doSave(false);
   };
 
   return (
@@ -216,6 +247,19 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           {isEdit ? "保存更改" : "创建职位"}
         </Button>
       </div>
+
+      {/* 发布确认对话框 */}
+      <ConfirmDialog
+        open={showPublishConfirm}
+        onClose={handleKeepDraft}
+        onConfirm={handleConfirmPublish}
+        title="是否发布职位？"
+        description="该职位当前为草稿状态，您希望立即发布还是保持草稿？"
+        type="info"
+        confirmText="立即发布"
+        cancelText="保持草稿"
+        loading={loading}
+      />
     </form>
   );
 }

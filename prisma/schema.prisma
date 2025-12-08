@@ -108,7 +108,31 @@ model Job {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  applications JobApplication[] // 该职位的申请记录
+
   @@index([published, order])
+}
+
+// ============================================
+// 职位申请
+// ============================================
+
+model JobApplication {
+  id         String   @id @default(cuid())
+  jobId      String   // 申请的职位ID
+  name       String   // 申请人姓名
+  phone      String   // 手机号
+  email      String   // 邮箱
+  resumePath String   // 简历文件路径
+  status     String   @default("pending") // 状态: pending, reviewed, interviewed, rejected, hired
+  notes      String?  @db.Text // 备注
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
 }
 
 

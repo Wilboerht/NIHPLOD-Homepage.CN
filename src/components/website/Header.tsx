@@ -115,6 +115,12 @@ export function Header({ logo }: HeaderProps) {
     return null;
   }
 
+  // services 页面使用自己的导航栏（在 ServicesContent 中）
+  const isServicesPage = pathname === "/services";
+  if (isServicesPage) {
+    return null;
+  }
+
   /**
    * 切换汉堡菜单
    */

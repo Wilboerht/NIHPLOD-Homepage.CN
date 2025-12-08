@@ -247,17 +247,49 @@ export function PrivacyContent() {
                       {/* 内容区域 */}
                       <div className="flex-1 overflow-y-auto rounded-xl border border-brand-beige bg-white/80 p-4 backdrop-blur-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
                         <div className="space-y-6">
-                          {tabContents[activeTab].content.map((paragraph, index) => (
-                            <m.div
-                              key={index}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.3, delay: index * 0.1 }}
-                              className="text-sm leading-relaxed text-brand-charcoal/70 sm:text-base"
-                            >
-                              <p className="whitespace-pre-line">{paragraph}</p>
-                            </m.div>
-                          ))}
+                          {tabContents[activeTab].content.map((paragraph, index) => {
+                            // 按换行符分割段落
+                            const lines = paragraph.split('\n');
+                            return (
+                              <m.div
+                                key={index}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: index * 0.1 }}
+                                className="text-sm leading-relaxed text-brand-charcoal/70 sm:text-base"
+                              >
+                                {lines.map((line, lineIndex) => {
+                                  const trimmedLine = line.trim();
+                                  // 空行
+                                  if (!trimmedLine) {
+                                    return <div key={lineIndex} className="h-2" />;
+                                  }
+                                  // 标题行（一、二、三等开头）
+                                  if (/^[一二三四五六七八九十]+、/.test(trimmedLine)) {
+                                    return (
+                                      <p key={lineIndex} className="mb-2 mt-4 font-medium text-brand-charcoal first:mt-0">
+                                        {trimmedLine}
+                                      </p>
+                                    );
+                                  }
+                                  // 列表项（• 开头）
+                                  if (trimmedLine.startsWith('•')) {
+                                    return (
+                                      <p key={lineIndex} className="pl-4 text-brand-charcoal/60">
+                                        {trimmedLine}
+                                      </p>
+                                    );
+                                  }
+                                  // 普通段落
+                                  return (
+                                    <p key={lineIndex} className="text-brand-charcoal/70">
+                                      {trimmedLine}
+                                    </p>
+                                  );
+                                })}
+                              </m.div>
+                            );
+                          })}
                         </div>
                       </div>
                     </m.div>
