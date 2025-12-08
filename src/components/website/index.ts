@@ -1,6 +1,5 @@
 export { EmptyState } from "./EmptyState";
 export { FloatingCardLayout } from "./FloatingCardLayout";
-export { Footer } from "./Footer";
 export { Header } from "./Header";
 export { ProductCard } from "./ProductCard";
 export { ProductDrawer } from "./ProductDrawer";

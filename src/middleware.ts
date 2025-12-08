@@ -24,7 +24,6 @@ const PROTECTED_API_PATHS = [
   "/api/admin/me",
   "/api/admin/logout",
   "/api/categories",
-  "/api/products",
   "/api/pages",
   "/api/media",
   "/api/jobs",
@@ -35,7 +34,6 @@ const PROTECTED_API_PATHS = [
 const _PUBLIC_API_PATHS = [
   "/api/admin/login",
   "/api/contact",
-  "/api/advisor",
 ];
 
 /**

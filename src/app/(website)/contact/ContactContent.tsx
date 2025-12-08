@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, ShoppingBag, BookMarked, Sparkles, Mail, Phone, MapPin, Send, CheckCircle, AlertCircle, Loader2, Home } from "lucide-react";
+import { ChevronDown, ShoppingBag, BookMarked, Sparkles, Mail, Send, CheckCircle, AlertCircle, Loader2, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,90 +16,36 @@ const bottomNavItems = [
   { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: Sparkles },
 ];
 
-// 自定义图标组件
-const MailIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="2" y="4" width="20" height="16" rx="2" />
-    <path d="M22 6l-10 7L2 6" />
-  </svg>
-);
-
-const PhoneIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
-  </svg>
-);
-
-const LocationIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-    <circle cx="12" cy="10" r="3" />
-  </svg>
-);
-
-// 标签页配置
-type TabId = "email" | "phone" | "address";
-
-interface TabConfig {
-  id: TabId;
-  label: string;
-  icon: React.FC<{ className?: string }>;
-}
-
-const tabs: TabConfig[] = [
-  { id: "email", label: "电子邮箱", icon: MailIcon },
-  { id: "phone", label: "客服热线", icon: PhoneIcon },
-  { id: "address", label: "公司地址", icon: LocationIcon },
-];
-
-// 各标签页内容
-interface TabContent {
-  title: string;
-  value: string;
-  href: string | null;
-  description: string;
-}
-
-const tabContents: Record<TabId, TabContent> = {
-  email: {
-    title: "电子邮箱",
-    value: "contact@nihplod.com",
-    href: "mailto:contact@nihplod.com",
-    description: "发送邮件给我们，我们会在24小时内回复您",
-  },
-  phone: {
-    title: "客服热线",
-    value: "+86 400-888-8888",
-    href: "tel:+864008888888",
-    description: "工作时间：周一至周五 9:00-18:00",
-  },
-  address: {
-    title: "公司地址",
-    value: "中国上海市静安区南京西路1788号",
-    href: null,
-    description: "欢迎预约到访，体验我们的产品与服务",
-  },
-};
-
 type FormStatus = "idle" | "loading" | "success" | "error";
+
+// 留言类型选项
+const messageTypes = [
+  { value: "", label: "请选择留言类型" },
+  { value: "consultation", label: "产品咨询" },
+  { value: "cooperation", label: "商务合作" },
+  { value: "feedback", label: "意见反馈" },
+  { value: "complaint", label: "投诉建议" },
+  { value: "other", label: "其他" },
+];
 
 interface FormData {
   name: string;
   email: string;
+  type: string;
   content: string;
   website: string; // 蜜罐字段
 }
 
 /**
  * 联系我们页面内容组件
- * 样式参考 StoryContent，使用独立的导航栏
+ * 直接显示联系表单
  */
 export function ContactContent() {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true); // 默认展开
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
+    type: "",
     content: "",
     website: "",
   });
@@ -119,6 +65,9 @@ export function ContactContent() {
       newErrors.email = "请输入您的邮箱";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "请输入有效的邮箱地址";
+    }
+    if (!formData.type) {
+      newErrors.type = "请选择留言类型";
     }
     if (!formData.content.trim()) {
       newErrors.content = "请输入留言内容";
@@ -145,7 +94,7 @@ export function ContactContent() {
       if (response.ok) {
         setStatus("success");
         setMessage(data.message || "留言已提交");
-        setFormData({ name: "", email: "", content: "", website: "" });
+        setFormData({ name: "", email: "", type: "", content: "", website: "" });
       } else {
         setStatus("error");
         setMessage(data.error || "提交失败，请稍后重试");
@@ -157,7 +106,7 @@ export function ContactContent() {
   };
 
   // 输入变化处理
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
@@ -202,179 +151,152 @@ export function ContactContent() {
               isExpanded ? "flex-1" : ""
             )}>
               <div className={cn(
-                "flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
-                isExpanded ? "h-full justify-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
+                "flex flex-col px-6 py-8 sm:px-10 sm:py-10 lg:px-16 lg:py-12",
+                isExpanded ? "h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
               )}>
                 {/* 页面标题 */}
-                {!activeTab && (
-                  <div className={cn("text-center", isExpanded ? "mb-6 sm:mb-8" : "")}>
-                    <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                      CONTACT US
-                    </p>
-                    <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                      联系我们
-                    </h1>
-                    <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
-                      有任何问题或建议？我们期待与您的每一次交流
-                    </p>
-                  </div>
-                )}
+                <div className={cn("text-center", isExpanded ? "mb-6 sm:mb-8" : "")}>
+                  <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm">
+                    CONTACT US
+                  </p>
+                  <h1 className="mt-2 font-serif text-3xl text-brand-charcoal sm:text-4xl lg:text-5xl">
+                    联系我们
+                  </h1>
+                  <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-brand-charcoal/70 sm:mt-4 sm:text-base">
+                    有任何问题或建议？我们期待与您的每一次交流
+                  </p>
+                </div>
 
-                {/* 展开后显示的内容 */}
-                <AnimatePresence mode="wait">
-                  {isExpanded && !activeTab && (
+                {/* 联系表单 - 仅在展开时显示 */}
+                <AnimatePresence>
+                  {isExpanded && (
                     <m.div
-                      key="tabs"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className="flex flex-col items-center"
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="mx-auto w-full max-w-xl"
                     >
-                      {/* Logo */}
-                      <m.div
-                        className="mb-8 flex justify-center sm:mb-10"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-                      >
-                        <div className="relative h-16 w-32 sm:h-20 sm:w-40 md:h-24 md:w-48">
-                          <Image src="/images/logo.png" alt="NIHPLOD Logo" fill className="object-contain" />
-                        </div>
-                      </m.div>
-
-                      {/* 3个大标签按钮 */}
-                      <div className="flex w-full max-w-3xl items-stretch justify-center">
-                        {tabs.map((tab, index) => {
-                          const Icon = tab.icon;
-                          return (
-                            <m.button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => setActiveTab(tab.id)}
-                              className={cn(
-                                "group relative flex flex-1 flex-col items-center justify-center gap-3 px-4 py-6 transition-all duration-300 sm:gap-4 sm:px-8 sm:py-8 md:py-10",
-                                index < tabs.length - 1 && "border-r border-brand-charcoal/20"
-                              )}
-                              initial={{ opacity: 0, y: 15 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.4, delay: 0.15 + index * 0.06, ease: "easeOut" }}
-                              whileHover={{ scale: 1.03 }}
-                              whileTap={{ scale: 0.97 }}
-                            >
-                              <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28">
-                                <Icon className="h-12 w-12 text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-gold sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24" />
-                              </div>
-                              <span className="text-xs font-medium text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-sm md:text-base lg:text-lg">
-                                {tab.label}
-                              </span>
-                            </m.button>
-                          );
-                        })}
-                      </div>
-                    </m.div>
+                  {status === "success" && (
+                    <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-green-50/80 p-4 text-green-700 backdrop-blur-sm">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="text-sm">{message}</span>
+                    </div>
+                  )}
+                  {status === "error" && (
+                    <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-red-50/80 p-4 text-red-700 backdrop-blur-sm">
+                      <AlertCircle className="h-5 w-5" />
+                      <span className="text-sm">{message}</span>
+                    </div>
                   )}
 
-                  {/* 选中标签后显示的内容 */}
-                  {isExpanded && activeTab && (
-                    <m.div
-                      key={activeTab}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className="flex h-full flex-col"
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* 蜜罐字段 */}
+                    <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
+
+                    {/* 姓名和邮箱并排 */}
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                          姓名 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id="name"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleChange}
+                          placeholder="请输入您的姓名"
+                          autoComplete="name"
+                          className={cn(
+                            "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
+                            errors.name ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                          )}
+                        />
+                        {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
+                      </div>
+
+                      <div>
+                        <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                          邮箱 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          placeholder="请输入您的邮箱"
+                          autoComplete="email"
+                          inputMode="email"
+                          className={cn(
+                            "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
+                            errors.email ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                          )}
+                        />
+                        {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
+                      </div>
+                    </div>
+
+                    {/* 留言类型 */}
+                    <div>
+                      <label htmlFor="type" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                        留言类型 <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="type"
+                        name="type"
+                        value={formData.type}
+                        onChange={handleChange}
+                        className={cn(
+                          "w-full appearance-none rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
+                          "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10",
+                          !formData.type && "text-brand-charcoal/50",
+                          errors.type ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                        )}
+                      >
+                        {messageTypes.map((type) => (
+                          <option key={type.value} value={type.value} disabled={type.value === ""}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
+                    </div>
+
+                    {/* 留言内容 */}
+                    <div>
+                      <label htmlFor="content" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                        留言内容 <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        id="content"
+                        name="content"
+                        value={formData.content}
+                        onChange={handleChange}
+                        placeholder="请输入您的留言内容..."
+                        rows={5}
+                        className={cn(
+                          "w-full resize-none rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
+                          errors.content ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                        )}
+                      />
+                      {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={status === "loading"}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold py-3.5 text-sm font-medium text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold/90 hover:shadow-xl hover:shadow-brand-gold/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {/* 返回按钮和标题 */}
-                      <div className="mb-4 flex items-center justify-between sm:mb-6">
-                        <m.button
-                          type="button"
-                          onClick={() => setActiveTab(null)}
-                          className="flex items-center gap-2 text-brand-charcoal/70 transition-colors duration-300 hover:text-brand-charcoal"
-                        >
-                          <svg className="h-5 w-5 sm:h-6 sm:w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M15 18l-6-6 6-6" />
-                          </svg>
-                          <span className="text-sm sm:text-base">返回</span>
-                        </m.button>
-                        <m.h2 className="font-serif text-xl text-brand-gold sm:text-2xl md:text-3xl">
-                          {tabContents[activeTab].title}
-                        </m.h2>
-                        <div className="w-16 sm:w-20" />
-                      </div>
-
-                      {/* 内容区域 */}
-                      <div className="flex-1 overflow-y-auto rounded-xl border border-brand-beige bg-white/80 p-4 backdrop-blur-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
-                        {/* 联系信息 */}
-                        <m.div
-                          className="mb-8 text-center"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: 0.1 }}
-                        >
-                          <p className="text-lg font-medium text-brand-charcoal sm:text-xl md:text-2xl">
-                            {tabContents[activeTab].href ? (
-                              <a href={tabContents[activeTab].href!} className="hover:text-brand-gold">
-                                {tabContents[activeTab].value}
-                              </a>
-                            ) : (
-                              tabContents[activeTab].value
-                            )}
-                          </p>
-                          <p className="mt-2 text-sm text-brand-charcoal/70">
-                            {tabContents[activeTab].description}
-                          </p>
-                        </m.div>
-
-                        {/* 留言表单 */}
-                        <m.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: 0.2 }}
-                        >
-                          <h3 className="mb-4 text-center font-serif text-lg text-brand-charcoal">给我们留言</h3>
-
-                          {status === "success" && (
-                            <div className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-green-50 p-3 text-green-700">
-                              <CheckCircle className="h-5 w-5" />
-                              <span className="text-sm">{message}</span>
-                            </div>
-                          )}
-                          {status === "error" && (
-                            <div className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-red-50 p-3 text-red-700">
-                              <AlertCircle className="h-5 w-5" />
-                              <span className="text-sm">{message}</span>
-                            </div>
-                          )}
-
-                          <form onSubmit={handleSubmit} className="mx-auto max-w-md space-y-4">
-                            <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
-
-                            <div>
-                              <label htmlFor="name" className="mb-1 block text-sm text-brand-charcoal">姓名 <span className="text-red-500">*</span></label>
-                              <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} placeholder="请输入您的姓名" autoComplete="name" className={cn("w-full rounded-lg border bg-white px-4 py-3 text-base outline-none transition-colors md:py-2.5 md:text-sm", errors.name ? "border-red-300 focus:border-red-500" : "border-brand-beige focus:border-brand-gold")} />
-                              {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-                            </div>
-
-                            <div>
-                              <label htmlFor="email" className="mb-1 block text-sm text-brand-charcoal">邮箱 <span className="text-red-500">*</span></label>
-                              <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} placeholder="请输入您的邮箱" autoComplete="email" inputMode="email" className={cn("w-full rounded-lg border bg-white px-4 py-3 text-base outline-none transition-colors md:py-2.5 md:text-sm", errors.email ? "border-red-300 focus:border-red-500" : "border-brand-beige focus:border-brand-gold")} />
-                              {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-                            </div>
-
-                            <div>
-                              <label htmlFor="content" className="mb-1 block text-sm text-brand-charcoal">留言内容 <span className="text-red-500">*</span></label>
-                              <textarea id="content" name="content" value={formData.content} onChange={handleChange} placeholder="请输入您的留言内容..." rows={4} className={cn("w-full resize-none rounded-lg border bg-white px-4 py-3 text-base outline-none transition-colors md:py-2.5 md:text-sm", errors.content ? "border-red-300 focus:border-red-500" : "border-brand-beige focus:border-brand-gold")} />
-                              {errors.content && <p className="mt-1 text-xs text-red-500">{errors.content}</p>}
-                            </div>
-
-                            <button type="submit" disabled={status === "loading"} className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-gold py-3 font-medium text-white transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-60">
-                              {status === "loading" ? (<><Loader2 className="h-4 w-4 animate-spin" /><span>提交中...</span></>) : (<><Send className="h-4 w-4" /><span>提交留言</span></>)}
-                            </button>
-                          </form>
-                        </m.div>
-                      </div>
-                    </m.div>
+                      {status === "loading" ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" /><span>提交中...</span></>
+                      ) : (
+                        <><Send className="h-4 w-4" /><span>提交留言</span></>
+                      )}
+                    </button>
+                  </form>
+                </m.div>
                   )}
                 </AnimatePresence>
               </div>
