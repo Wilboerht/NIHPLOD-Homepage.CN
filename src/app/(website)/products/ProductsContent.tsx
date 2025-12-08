@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, BookMarked, Sparkles, Phone } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ShoppingBag, BookMarked, Sparkles, Phone, Home } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn } from "@/lib/utils";
@@ -546,6 +546,21 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     </Link>
                   );
                 })}
+                {/* 回到首页按钮 */}
+                <Link
+                  href="/"
+                  className="group flex flex-col items-center gap-0.5 transition-opacity hover:opacity-80 sm:gap-1"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 sm:h-11 sm:w-11 lg:h-12 lg:w-12">
+                    <Home className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+                  </div>
+                  <span className="hidden text-xs text-brand-charcoal/70 sm:block lg:text-sm">
+                    首页
+                  </span>
+                  <span className="hidden font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 sm:block lg:text-xs">
+                    Home
+                  </span>
+                </Link>
               </div>
             </nav>
           </m.header>

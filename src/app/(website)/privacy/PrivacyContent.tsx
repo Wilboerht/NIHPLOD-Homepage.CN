@@ -4,17 +4,10 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m, AnimatePresence } from "framer-motion";
-import { Shield, ChevronDown, ShoppingBag, BookMarked, Sparkles } from "lucide-react";
+import { Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/**
- * 底部导航项配置
- */
-const bottomNavItems = [
-  { href: "/products", label: "商城", labelEn: "Products", icon: ShoppingBag },
-  { href: "/story", label: "关于旎柏", labelEn: "Story", icon: BookMarked },
-  { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: Sparkles },
-];
+
 
 // 自定义图标组件
 const CollectIcon = ({ className }: { className?: string }) => (
@@ -77,51 +70,56 @@ const tabContents: Record<TabId, TabContent> = {
   collect: {
     title: "信息收集",
     content: [
-      "**个人信息**\n• 姓名、电子邮箱地址（当您联系我们或订阅时）\n• 护肤咨询中您主动提供的肤质信息",
-      "**自动收集的信息**\n• 设备信息（设备类型、操作系统、浏览器类型）\n• 访问日志（IP地址、访问时间、浏览页面）\n• Cookies 和类似技术收集的信息",
+      "一、您主动提供的个人信息\n\n当您使用我们的服务时，我们可能会收集您主动提供的以下信息：\n\n• 身份信息：包括您的姓名、性别、出生日期等基本身份信息\n• 联系信息：包括您的电子邮箱地址、电话号码、收货地址等\n• 账户信息：包括您设置的用户名、密码（加密存储）、头像等\n• 护肤相关信息：包括您的肤质类型、肌肤问题、过敏史、护肤习惯等您在咨询过程中自愿提供的信息\n• 交易信息：包括您的订单详情、支付记录、物流信息等与购买相关的信息\n• 反馈信息：包括您提交的产品评价、投诉建议、问卷调查回复等",
+      "二、我们自动收集的信息\n\n当您访问我们的网站或使用我们的服务时，我们会自动收集以下技术信息：\n\n• 设备信息：包括设备型号、操作系统及版本、设备设置、唯一设备标识符、设备环境等软硬件特征信息\n• 网络信息：包括 IP 地址、网络类型、运营商信息、网络环境等\n• 日志信息：包括访问时间、访问时长、浏览记录、搜索记录、点击记录、错误日志等\n• 位置信息：基于 IP 地址推断的大致地理位置（城市级别）",
+      "三、Cookies 和类似技术\n\n我们使用 Cookies 和类似的跟踪技术来收集和存储您的相关信息。这些技术帮助我们：\n\n• 记住您的登录状态和偏好设置\n• 分析网站流量和使用情况\n• 提供个性化的内容和推荐\n• 防范欺诈和保障账户安全\n\n您可以通过浏览器设置管理或删除 Cookies，但这可能会影响您使用我们服务的部分功能。",
     ],
   },
   use: {
     title: "信息使用",
     content: [
-      "我们使用收集的信息用于以下目的：",
-      "• 提供和改进我们的服务\n• 响应您的咨询和请求\n• 发送产品更新和营销信息（需您授权）\n• 提供个性化的护肤建议\n• 分析网站使用情况以优化用户体验\n• 遵守法律法规要求",
+      "一、提供产品和服务\n\n我们使用您的个人信息来：\n\n• 处理和完成您的订单，包括发货、支付处理和售后服务\n• 提供客户支持，响应您的咨询、投诉和建议\n• 根据您的肤质和需求提供个性化的护肤建议和产品推荐\n• 验证您的身份，保障您的账户和交易安全\n• 履行我们与您之间的合同义务",
+      "二、改进和优化服务\n\n我们会将收集的信息用于：\n\n• 分析用户行为和偏好，了解产品和服务的使用情况\n• 开展内部审计、数据分析和研究，改进我们的产品和服务\n• 测试和开发新的产品功能\n• 优化网站性能和用户体验\n• 进行市场调研和数据统计分析",
+      "三、营销和推广\n\n在获得您明确同意的情况下，我们可能会：\n\n• 向您发送产品资讯、促销活动、新品上市等营销信息\n• 向您推送个性化的广告和推荐内容\n• 邀请您参与调查问卷、用户访谈等市场研究活动\n\n您可以随时选择退订营销信息，这不会影响您使用我们的基本服务。",
+      "四、法律合规\n\n我们可能会在以下情况下使用您的信息：\n\n• 遵守适用的法律法规、法规要求或政府命令\n• 执行我们的服务条款和其他协议\n• 保护我们、用户或公众的权利、财产或安全\n• 检测、预防或解决欺诈、安全或技术问题",
     ],
   },
   protect: {
     title: "信息保护",
     content: [
-      "我们采取多种安全措施保护您的个人信息：",
-      "• 使用 SSL/TLS 加密传输数据\n• 限制员工访问个人信息的权限\n• 定期进行安全审计和漏洞检测\n• 与第三方服务商签订数据保护协议\n• 数据存储于安全的云服务器",
-      "我们承诺不会出售、出租或以其他方式向第三方披露您的个人信息，除非获得您的明确同意或法律要求。",
+      "一、技术安全措施\n\n我们采用业界标准的安全技术来保护您的个人信息：\n\n• 数据传输加密：所有数据传输均采用 SSL/TLS 加密协议，确保传输过程中的数据安全\n• 数据存储加密：敏感个人信息在存储时采用加密处理\n• 访问控制：实施严格的访问权限管理，仅授权人员可访问个人信息\n• 安全审计：定期进行安全审计、渗透测试和漏洞扫描\n• 入侵检测：部署入侵检测和防护系统，实时监控异常行为\n• 数据备份：定期进行数据备份，确保数据的可恢复性",
+      "二、组织管理措施\n\n我们建立了完善的数据保护管理体系：\n\n• 设立专门的数据保护负责人，负责监督个人信息保护工作\n• 对员工进行数据保护培训，签署保密协议\n• 建立数据分类分级制度，对不同敏感程度的数据采取不同的保护措施\n• 与第三方服务提供商签订数据保护协议，确保其遵守同等的保护标准\n• 制定数据泄露应急响应预案，确保及时有效地应对安全事件",
+      "三、数据保留\n\n我们仅在实现本政策所述目的所必需的期限内保留您的个人信息：\n\n• 账户信息：在您的账户有效期内保留，账户注销后将在合理期限内删除\n• 交易记录：根据适用的财务和税务法规要求保留相应期限\n• 日志信息：通常保留不超过 12 个月\n\n超出保留期限后，我们将删除或匿名化处理您的个人信息。",
+      "四、第三方共享\n\n我们承诺不会出售您的个人信息。在以下情况下，我们可能会与第三方共享您的信息：\n\n• 服务提供商：与帮助我们提供服务的合作伙伴共享（如物流公司、支付服务商）\n• 法律要求：根据法律法规要求或政府机关的强制性要求\n• 业务转让：在公司合并、收购或资产转让时，您的信息可能作为交易资产的一部分被转让\n\n我们会要求所有第三方遵守适用的数据保护法规，并采取适当的安全措施。",
     ],
   },
   rights: {
     title: "您的权利",
     content: [
-      "根据适用的数据保护法律，您享有以下权利：",
-      "• **访问权**：您可以请求获取我们持有的您的个人信息副本\n• **更正权**：您可以请求更正不准确的个人信息\n• **删除权**：您可以请求删除您的个人信息\n• **反对权**：您可以反对我们处理您的个人信息\n• **可携带权**：您可以请求以机器可读格式获取您的数据",
-      "如需行使上述权利，请通过 privacy@nihplod.com 与我们联系。",
+      "根据《中华人民共和国个人信息保护法》及其他适用的数据保护法律，您对您的个人信息享有以下权利：",
+      "一、知情权和决定权\n\n您有权了解我们如何收集、使用、共享和保护您的个人信息。您有权决定是否同意我们处理您的个人信息，并可随时撤回您的同意。撤回同意不影响撤回前基于您同意所进行的处理活动的合法性。",
+      "二、查阅和复制权\n\n您有权查阅我们持有的关于您的个人信息，并有权获取该信息的副本。我们将在验证您的身份后，在合理期限内响应您的请求。对于超出合理范围的请求，我们可能会收取合理的费用。",
+      "三、更正和补充权\n\n当您发现我们持有的个人信息不准确或不完整时，您有权要求我们进行更正或补充。我们将在核实后及时更新相关信息。",
+      "四、删除权\n\n在以下情况下，您有权要求我们删除您的个人信息：\n\n• 处理目的已实现、无法实现或者为实现处理目的不再必要\n• 我们停止提供产品或者服务，或者保存期限已届满\n• 您撤回同意，且我们无其他合法处理依据\n• 我们违反法律法规或与您的约定处理个人信息\n\n法律法规规定的保存期限未届满，或删除技术上难以实现的，我们将停止除存储和采取必要安全保护措施之外的处理。",
+      "五、限制或拒绝处理权\n\n在特定情况下，您有权要求我们限制对您个人信息的处理，或拒绝我们对您个人信息的处理，包括拒绝接收营销信息。",
+      "六、数据可携带权\n\n您有权以结构化、通用的机器可读格式获取您的个人信息副本，并在技术可行的情况下，要求我们将您的个人信息直接传输给其他数据控制者。",
+      "七、行使权利的方式\n\n如您需要行使上述权利，可通过本网站的「联系我们」页面提交请求。我们将在验证您的身份后，在 15 个工作日内响应您的请求。对于复杂或多次请求，我们可能需要延长响应时间，届时我们会告知您。",
     ],
   },
 };
 
 /**
  * 隐私政策页面内容组件
- * 样式参考 StoryContent，使用独立的导航栏
+ * 默认展开，无底部导航栏
  */
 export function PrivacyContent() {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const lastUpdated = "2024年12月1日";
 
   return (
     <>
-      {/* 全屏背景容器 */}
-      <div className={cn(
-        "fixed inset-0 transition-all duration-500 ease-out",
-        isExpanded ? "bottom-0" : "bottom-28 lg:bottom-32"
-      )}>
+      {/* 全屏背景容器 - 始终展开到底部 */}
+      <div className="fixed inset-0 bottom-0">
         {/* 背景图片 */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -139,25 +137,15 @@ export function PrivacyContent() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className={cn(
-            "absolute left-6 right-6 top-4 z-20 transition-all duration-500 ease-out sm:left-10 sm:right-10 lg:left-16 lg:right-16 lg:top-6",
-            isExpanded ? "bottom-4 lg:bottom-6" : ""
-          )}
+          className="absolute bottom-4 left-6 right-6 top-4 z-20 sm:left-10 sm:right-10 lg:bottom-6 lg:left-16 lg:right-16 lg:top-6"
         >
           <div className="flex h-full flex-col items-center">
             {/* 主内容区域 */}
-            <div className={cn(
-              "w-full overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl",
-              "transition-all duration-500 ease-out",
-              isExpanded ? "flex-1" : ""
-            )}>
-              <div className={cn(
-                "flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
-                isExpanded ? "h-full justify-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
-              )}>
+            <div className="w-full flex-1 overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl">
+              <div className="flex h-full flex-col justify-center overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
                 {/* 页面标题 */}
                 {!activeTab && (
-                  <div className={cn("text-center", isExpanded ? "mb-6 sm:mb-8" : "")}>
+                  <div className="mb-6 text-center sm:mb-8">
                     <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
                       PRIVACY POLICY
                     </p>
@@ -173,9 +161,9 @@ export function PrivacyContent() {
                   </div>
                 )}
 
-                {/* 展开后显示的内容 */}
+                {/* 内容区域 */}
                 <AnimatePresence mode="wait">
-                  {isExpanded && !activeTab && (
+                  {!activeTab && (
                     <m.div
                       key="tabs"
                       initial={{ opacity: 0, y: 10 }}
@@ -229,7 +217,7 @@ export function PrivacyContent() {
                   )}
 
                   {/* 选中标签后显示的内容 */}
-                  {isExpanded && activeTab && (
+                  {activeTab && (
                     <m.div
                       key={activeTab}
                       initial={{ opacity: 0, x: 20 }}
@@ -271,21 +259,6 @@ export function PrivacyContent() {
                             </m.div>
                           ))}
                         </div>
-
-                        {/* 联系方式 */}
-                        <m.div
-                          className="mt-8 rounded-xl bg-brand-gold/10 p-5"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: 0.3 }}
-                        >
-                          <p className="text-center text-sm text-brand-charcoal/70">
-                            如有任何疑问，请联系：
-                            <a href="mailto:privacy@nihplod.com" className="ml-1 font-medium text-brand-gold hover:underline">
-                              privacy@nihplod.com
-                            </a>
-                          </p>
-                        </m.div>
                       </div>
                     </m.div>
                   )}
@@ -293,65 +266,17 @@ export function PrivacyContent() {
               </div>
             </div>
 
-            {/* 展开/收起按钮 */}
-            <button
-              type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="group flex items-center justify-center rounded-b-2xl bg-brand-gold/10 px-10 py-2.5 shadow-sm backdrop-blur-md lg:px-14 lg:py-3"
+            {/* 回到首页按钮 */}
+            <Link
+              href="/"
+              className="group flex items-center justify-center gap-2 rounded-b-2xl bg-brand-gold/10 px-10 py-2.5 shadow-sm backdrop-blur-md lg:px-14 lg:py-3"
             >
-              <m.div
-                className="flex flex-col items-center transition-transform duration-200 group-hover:scale-110"
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <ChevronDown className="h-7 w-7 text-brand-gold transition-colors duration-200 group-hover:text-brand-gold/80 lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold transition-colors duration-200 group-hover:text-brand-gold/80 lg:h-8 lg:w-8" />
-              </m.div>
-            </button>
+              <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
+              <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回首页</span>
+            </Link>
           </div>
         </m.div>
       </div>
-
-      {/* 底部导航栏 */}
-      <AnimatePresence>
-        {!isExpanded && (
-          <m.header
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed bottom-4 left-6 right-6 z-50 sm:left-10 sm:right-10 lg:bottom-6 lg:left-16 lg:right-16"
-            role="banner"
-          >
-            <nav className={cn("flex items-center justify-between", "rounded-2xl bg-white/95 px-5 py-4 shadow-lg backdrop-blur-md", "lg:rounded-3xl lg:px-8 lg:py-5")} aria-label="隐私政策页导航">
-              <Link href="/privacy" className="group flex items-center gap-2 transition-opacity hover:opacity-80 sm:gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-12 sm:w-12 lg:h-14 lg:w-14">
-                  <Shield className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-lg font-semibold text-brand-charcoal sm:text-xl lg:text-2xl">隐私政策</span>
-                  <span className="font-serif text-xs uppercase tracking-wide text-brand-gold/70 sm:text-sm lg:text-base">Privacy</span>
-                </div>
-              </Link>
-
-              <div className="flex items-center gap-3 sm:gap-5 lg:gap-8">
-                {bottomNavItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link key={item.href} href={item.href} className="group flex flex-col items-center gap-0.5 transition-opacity hover:opacity-80 sm:gap-1">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 sm:h-11 sm:w-11 lg:h-12 lg:w-12">
-                        <Icon className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
-                      </div>
-                      <span className="hidden text-xs text-brand-charcoal/70 sm:block lg:text-sm">{item.label}</span>
-                      <span className="hidden font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 sm:block lg:text-xs">{item.labelEn}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </nav>
-          </m.header>
-        )}
-      </AnimatePresence>
     </>
   );
 }

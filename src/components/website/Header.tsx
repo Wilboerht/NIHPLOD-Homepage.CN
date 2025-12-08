@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -286,6 +286,19 @@ export function Header({ logo }: HeaderProps) {
               <Sparkles className="h-4 w-4 transition-transform group-hover:scale-110" />
               <span className="hidden sm:inline">AI护肤顾问</span>
               <span className="sm:hidden">AI顾问</span>
+            </Link>
+
+            {/* 回到首页按钮 */}
+            <Link
+              href="/"
+              className={cn(
+                "group flex items-center justify-center rounded-full p-2 transition-all duration-300",
+                "hover:bg-brand-beige/50",
+                "lg:p-2.5"
+              )}
+              aria-label="返回首页"
+            >
+              <Home className="h-5 w-5 text-brand-gold transition-transform group-hover:scale-110 lg:h-6 lg:w-6" />
             </Link>
           </div>
         </nav>
