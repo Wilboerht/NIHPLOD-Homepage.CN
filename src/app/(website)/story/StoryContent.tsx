@@ -17,47 +17,45 @@ const bottomNavItems = [
 ];
 
 // 自定义图标组件
-const DolphinIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M3 10c0 0 1-4 6-4c2 0 3.5 1.5 5 2.5c1.5 1 3 1.5 5 1.5c1 0 2-0.5 2-0.5s-1 4-5 4c-1.5 0-2.5-0.5-3.5-1" />
-    <path d="M12 12c-2 2-4 5-4 7" />
-    <path d="M7 6c-1-1-2-2-4-2" />
-    <circle cx="15" cy="8" r="0.5" fill="currentColor" />
+const StoryIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12 3.49906C7.11519 0.805619 4.84294 4.31506 4.00002 5.49925C1.16778 6.10825 2 6.99749 3.50005 7.49925C4.10696 7.70225 5.57284 8.1607 6.50004 8.499C6.70234 10.1231 7.33149 11.5761 7.50004 11.999C7.50004 11.593 8.16279 9.6767 8.49994 9C12.9998 9.501 17.4999 11.999 17.9999 16.9991C17.393 18.2171 15.7529 20.6532 15.5 21.499L18.5 19.9991L22 20.9991C22 19.375 19.9273 17.6758 19 16.9991C19.4047 10.5029 16.3545 6.5987 14.5 5.49905C14.7023 4.68704 15.0786 3.33741 15.5 2.99906C13.8816 2.18704 12.5901 3.07614 12 3.49906Z" />
   </svg>
 );
 
-const ClipboardCheckIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="4" y="2" width="16" height="20" rx="2" />
-    <path d="M9 12l2 2l4-4" />
+const MissionIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M6.5 9H3.5V21H6.5V9Z" />
+    <path d="M13.5 3H10.5V21H13.5V3Z" />
+    <path d="M20.5 13H17.5V21H20.5V13Z" />
   </svg>
 );
 
-const BusinessPersonIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="6" r="3" />
-    <path d="M12 9v6" />
-    <path d="M8 15l4 6l4-6" />
-    <path d="M7 12h10" />
+const PhilosophyIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    {/* 奖杯主体 */}
+    <path d="M12 14.8039C14.4853 14.8039 16.5 12.9526 16.5 9.80388V2.70703H7.5V9.80388C7.5 12.9526 9.51472 14.8039 12 14.8039Z" />
+    {/* 左把手 */}
+    <path d="M7.5 4.1V10.7C5.3 10.5 3.7 8.8 3.5 6.1C3.4 5.3 4 4.7 4.7 4.7H6.7V4.1H7.5Z" />
+    {/* 右把手 */}
+    <path d="M16.5 4.1V10.7C18.7 10.5 20.3 8.8 20.5 6.1C20.6 5.3 20 4.7 19.3 4.7H17.3V4.1H16.5Z" />
+    {/* 底座支撑 */}
+    <rect x="11.2" y="14.5" width="1.6" height="4.5" />
+    {/* 底座 */}
+    <rect x="8" y="19.2" width="8" height="1.6" rx="0.8" />
   </svg>
 );
 
-const ChartIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="3" y="12" width="5" height="9" />
-    <rect x="10" y="6" width="5" height="15" />
-    <rect x="17" y="3" width="5" height="18" />
+const MediaIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M11.9999 10.0501C13.8755 10.0501 15.3961 8.5296 15.3961 6.65396C15.3961 4.77832 13.8755 3.25781 11.9999 3.25781C10.1243 3.25781 8.60376 4.77832 8.60376 6.65396C8.60376 8.5296 10.1243 10.0501 11.9999 10.0501Z" />
+    <path d="M3.26245 18.0001V20.0756H20.7377V18.0001C20.7377 17.6475 20.6484 17.2952 20.4127 17.033C19.4463 15.9578 16.8734 14.2676 12.0001 14.2676C7.12675 14.2676 4.55386 15.9578 3.58744 17.033C3.35175 17.2952 3.26245 17.6475 3.26245 18.0001Z" />
   </svg>
 );
 
-const TrophyIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M6 3h12v6c0 3.3-2.7 6-6 6s-6-2.7-6-6V3z" />
-    <path d="M6 5H3v2c0 1.7 1.3 3 3 3" />
-    <path d="M18 5h3v2c0 1.7-1.3 3-3 3" />
-    <path d="M12 15v3" />
-    <path d="M8 21h8" />
-    <path d="M12 18l-2 3h4l-2-3z" />
+const AwardsIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M11.4951 1.88281C11.8093 1.62635 12.2725 1.64454 12.5654 1.9375L15.1807 4.55273H18.6484C19.0902 4.55277 19.4482 4.91073 19.4482 5.35254V8.82031L22.0635 11.4355C22.3758 11.748 22.3759 12.254 22.0635 12.5664L19.4482 15.1816V18.6494C19.4482 19.0912 19.0902 19.4492 18.6484 19.4492H15.1807L12.5654 22.0645C12.253 22.3768 11.747 22.3768 11.4346 22.0645L8.81934 19.4492H5.35156C4.90977 19.4492 4.55181 19.0912 4.55176 18.6494V15.1816L1.93652 12.5664C1.62411 12.254 1.62412 11.748 1.93652 11.4355L4.55176 8.82031V5.35254C4.55176 4.91071 4.90973 4.55273 5.35156 4.55273H8.81934L11.4346 1.9375L11.4951 1.88281ZM16.1064 9.07422C15.794 8.76185 15.287 8.76181 14.9746 9.07422L10.8193 13.2295L9.02441 11.4346C8.71201 11.1223 8.20594 11.1223 7.89355 11.4346C7.58132 11.747 7.58131 12.253 7.89355 12.5654L10.2539 14.9268C10.4038 15.0766 10.6074 15.161 10.8193 15.1611C11.0313 15.1611 11.2348 15.0764 11.3848 14.9268L16.1064 10.2051C16.4185 9.89272 16.4185 9.38658 16.1064 9.07422Z" />
   </svg>
 );
 
@@ -87,11 +85,11 @@ interface TabContent {
 }
 
 const tabs: TabConfig[] = [
-  { id: "story", label: "品牌故事", icon: DolphinIcon },
-  { id: "mission", label: "公司使命", icon: ClipboardCheckIcon },
-  { id: "philosophy", label: "经营理念", icon: BusinessPersonIcon },
-  { id: "media", label: "媒体报道", icon: ChartIcon },
-  { id: "awards", label: "荣获奖项", icon: TrophyIcon },
+  { id: "story", label: "品牌故事", icon: StoryIcon },
+  { id: "mission", label: "公司使命", icon: MissionIcon },
+  { id: "philosophy", label: "经营理念", icon: PhilosophyIcon },
+  { id: "media", label: "媒体报道", icon: MediaIcon },
+  { id: "awards", label: "荣获奖项", icon: AwardsIcon },
 ];
 
 // 各标签页内容

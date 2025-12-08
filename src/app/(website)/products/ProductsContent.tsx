@@ -23,6 +23,7 @@ interface Category {
   name: string;
   nameEn: string;
   slug: string;
+  icon?: string | null;
 }
 
 interface Product {
@@ -49,84 +50,33 @@ interface ProductsContentProps {
 
 /**
  * 分类图标 SVG 组件
- * 根据分类名称返回对应的产品形状图标
+ * 优先使用数据库中的图标，如果没有则使用默认图标
  */
-function CategoryIcon({ name, isActive }: { name: string; isActive: boolean }) {
+function CategoryIcon({ icon, isActive }: { icon?: string | null; isActive: boolean }) {
   const color = isActive ? "#C9A86C" : "#8B8579";
-  const iconClass = "h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12";
+  const iconClass = "h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 flex-shrink-0";
 
-  // 根据分类名称返回不同的图标形状
-  const iconMap: Record<string, JSX.Element> = {
-    "洁面": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <ellipse cx="20" cy="20" rx="6" ry="16" fill={color} />
-      </svg>
-    ),
-    "磨砂膏": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <rect x="8" y="16" width="24" height="16" rx="3" fill={color} />
-        <rect x="12" y="12" width="16" height="6" rx="2" fill={color} opacity="0.7" />
-      </svg>
-    ),
-    "面膜": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <rect x="8" y="10" width="24" height="22" rx="2" fill={color} />
-        <rect x="12" y="6" width="16" height="6" rx="1" fill={color} opacity="0.7" />
-      </svg>
-    ),
-    "精华": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <rect x="14" y="6" width="12" height="28" rx="3" fill={color} />
-        <rect x="12" y="4" width="16" height="4" rx="2" fill={color} opacity="0.7" />
-      </svg>
-    ),
-    "面霜": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <rect x="6" y="12" width="28" height="20" rx="3" fill={color} />
-        <rect x="10" y="8" width="20" height="6" rx="2" fill={color} opacity="0.7" />
-      </svg>
-    ),
-    "防晒": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <circle cx="20" cy="22" r="12" fill={color} />
-        <rect x="16" y="4" width="8" height="8" rx="2" fill={color} opacity="0.7" />
-      </svg>
-    ),
-    "护手霜": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <ellipse cx="20" cy="22" rx="8" ry="14" fill={color} />
-        <rect x="16" y="4" width="8" height="6" rx="2" fill={color} opacity="0.7" />
-      </svg>
-    ),
-    "身体护理": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <ellipse cx="20" cy="24" rx="10" ry="12" fill={color} />
-        <rect x="16" y="6" width="8" height="8" rx="2" fill={color} opacity="0.7" />
-      </svg>
-    ),
-    "护理油": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <ellipse cx="20" cy="26" rx="8" ry="10" fill={color} />
-        <rect x="17" y="6" width="6" height="12" rx="2" fill={color} opacity="0.7" />
-      </svg>
-    ),
-    "礼盒套装": (
-      <svg viewBox="0 0 40 40" className={iconClass}>
-        <rect x="6" y="14" width="28" height="20" rx="3" fill={color} />
-        <rect x="18" y="6" width="4" height="28" rx="1" fill={color} opacity="0.5" />
-        <rect x="6" y="18" width="28" height="4" rx="1" fill={color} opacity="0.5" />
-      </svg>
-    ),
-  };
+  // 如果有自定义图标，使用 dangerouslySetInnerHTML 渲染
+  if (icon) {
+    // 将 currentColor 替换为实际颜色，并确保 SVG 填充容器
+    const coloredIcon = icon
+      .replace(/currentColor/g, color)
+      .replace(/<svg/, '<svg class="w-full h-full"');
+    return (
+      <div
+        className={iconClass}
+        style={{ color }}
+        dangerouslySetInnerHTML={{ __html: coloredIcon }}
+      />
+    );
+  }
 
   // 默认图标
-  const defaultIcon = (
-    <svg viewBox="0 0 40 40" className="h-10 w-10 lg:h-12 lg:w-12">
+  return (
+    <svg viewBox="0 0 40 40" className={iconClass}>
       <rect x="10" y="10" width="20" height="20" rx="4" fill={color} />
     </svg>
   );
-
-  return iconMap[name] || defaultIcon;
 }
 
 /**
@@ -260,7 +210,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         activeCategory === cat.id && "bg-brand-beige/50"
                       )}
                     >
-                      <CategoryIcon name={cat.name} isActive={activeCategory === cat.id} />
+                      <CategoryIcon icon={cat.icon} isActive={activeCategory === cat.id} />
                       <span className={cn(
                         "text-[10px] whitespace-nowrap sm:text-xs lg:text-sm",
                         activeCategory === cat.id ? "text-brand-gold font-medium" : "text-brand-charcoal/70"

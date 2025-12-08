@@ -15,6 +15,7 @@ interface Category {
   name: string;
   nameEn: string;
   slug: string;
+  icon?: string | null;
   order: number;
   productCount: number;
   createdAt: string;
@@ -180,8 +181,9 @@ export default function AdminCategoriesPage() {
             {/* 表头 */}
             <div className="grid grid-cols-12 gap-4 px-6 py-3 text-sm font-medium text-gray-500">
               <div className="col-span-1"></div>
+              <div className="col-span-1">图标</div>
               <div className="col-span-3">分类名称</div>
-              <div className="col-span-3">URL 别名</div>
+              <div className="col-span-2">URL 别名</div>
               <div className="col-span-2">产品数量</div>
               <div className="col-span-3 text-right">操作</div>
             </div>
@@ -207,6 +209,20 @@ export default function AdminCategoriesPage() {
                   </button>
                 </div>
 
+                {/* 图标 */}
+                <div className="col-span-1 flex items-center">
+                  {category.icon ? (
+                    <div
+                      className="h-8 w-8 text-brand-gold"
+                      dangerouslySetInnerHTML={{ __html: category.icon }}
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100 text-xs text-gray-400">
+                      无
+                    </div>
+                  )}
+                </div>
+
                 {/* 名称 */}
                 <div className="col-span-3 flex flex-col justify-center">
                   <span className="font-medium text-gray-900">{category.name}</span>
@@ -214,7 +230,7 @@ export default function AdminCategoriesPage() {
                 </div>
 
                 {/* Slug */}
-                <div className="col-span-3 flex items-center">
+                <div className="col-span-2 flex items-center">
                   <code className="rounded bg-gray-100 px-2 py-1 text-sm text-gray-600">
                     {category.slug}
                   </code>

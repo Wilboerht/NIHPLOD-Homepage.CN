@@ -44,6 +44,7 @@ model Category {
   name      String    // 分类名称（中文）
   nameEn    String    // 分类名称（英文）
   slug      String    @unique // URL 标识
+  icon      String?   @db.Text // 分类图标（SVG 代码）
   order     Int       @default(0) // 排序
   products  Product[] // 关联产品
   createdAt DateTime  @default(now())

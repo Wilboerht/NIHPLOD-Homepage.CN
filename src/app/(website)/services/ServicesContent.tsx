@@ -199,100 +199,89 @@ export function ServicesContent() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
                       transition={{ duration: 0.4, ease: "easeOut" }}
-                      className="flex h-full flex-col"
+                      className="flex flex-col items-center"
                     >
-                      {/* 返回按钮和标题 */}
-                      <div className="mb-4 flex items-center justify-between sm:mb-6">
-                        <m.button
-                          type="button"
-                          onClick={() => setActiveService(null)}
-                          className="flex items-center gap-2 text-brand-charcoal/70 transition-colors duration-300 hover:text-brand-charcoal"
-                        >
-                          <svg className="h-5 w-5 sm:h-6 sm:w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M15 18l-6-6 6-6" />
-                          </svg>
-                          <span className="text-sm sm:text-base">返回</span>
-                        </m.button>
-                        <m.h2 className="font-serif text-xl text-brand-gold sm:text-2xl md:text-3xl">
+                      {/* 返回按钮 - 居中显示 */}
+                      <m.button
+                        type="button"
+                        onClick={() => setActiveService(null)}
+                        className="mb-6 flex items-center gap-1.5 rounded-full border border-brand-charcoal/20 px-4 py-1.5 text-brand-charcoal/60 transition-all duration-300 hover:border-brand-charcoal/40 hover:text-brand-charcoal sm:mb-8 sm:px-5 sm:py-2"
+                      >
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M15 18l-6-6 6-6" />
+                        </svg>
+                        <span className="text-xs sm:text-sm">返回服务列表</span>
+                      </m.button>
+
+                      {/* 标题区域 */}
+                      <div className="mb-6 text-center sm:mb-8">
+                        <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
+                          {serviceDetails[activeService].nameEn.toUpperCase()}
+                        </p>
+                        <h2 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
                           {serviceDetails[activeService].title}
-                        </m.h2>
-                        <div className="w-16 sm:w-20" />
+                        </h2>
+                        <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base">
+                          {serviceDetails[activeService].description}
+                        </p>
                       </div>
 
-                      {/* 内容区域 */}
-                      <div className="flex-1 overflow-y-auto rounded-xl border border-brand-beige bg-white/80 p-4 backdrop-blur-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
-                        <div className="space-y-6">
-                          {/* 服务描述 */}
-                          <m.div
-                            initial={{ opacity: 0, y: 10 }}
+                      {/* 两个大按钮：用户端 / 管理端 */}
+                      <div className="flex w-full max-w-2xl items-stretch justify-center">
+                        {serviceDetails[activeService].links.map((link, index) => (
+                          <m.a
+                            key={link.url}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                              "group relative flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 transition-all duration-300 sm:gap-4 sm:px-8 sm:py-10 md:py-12",
+                              index < serviceDetails[activeService].links.length - 1 && "border-r border-brand-charcoal/20"
+                            )}
+                            initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.4, delay: 0.1 + index * 0.08, ease: "easeOut" }}
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
                           >
-                            <p className="text-xs uppercase tracking-widest text-brand-charcoal/50 sm:text-sm">
-                              {serviceDetails[activeService].nameEn}
-                            </p>
-                            <p className="mt-3 text-sm leading-relaxed text-brand-charcoal/70 sm:text-base">
-                              {serviceDetails[activeService].description}
-                            </p>
-                          </m.div>
-
-                          {/* 链接卡片 */}
-                          {serviceDetails[activeService].links.map((link, index) => (
-                            <m.a
-                              key={link.url}
-                              href={link.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block rounded-xl border border-brand-beige bg-white p-5 transition-all hover:border-brand-gold/50 hover:shadow-md"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.3, delay: 0.1 + index * 0.1 }}
-                              whileHover={{ scale: 1.01 }}
-                              whileTap={{ scale: 0.99 }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className={cn(
-                                    "flex h-10 w-10 items-center justify-center rounded-full",
-                                    link.isAdmin ? "bg-brand-charcoal/10" : "bg-brand-gold/10"
-                                  )}>
-                                    {link.isAdmin ? (
-                                      <Shield className="h-5 w-5 text-brand-charcoal" />
-                                    ) : (
-                                      <ExternalLink className="h-5 w-5 text-brand-gold" />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium text-brand-charcoal">{link.label}</span>
-                                      {link.isAdmin && (
-                                        <span className="rounded bg-brand-charcoal/10 px-1.5 py-0.5 text-xs text-brand-charcoal/70">
-                                          需授权
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="mt-0.5 text-sm text-brand-charcoal/60">{link.description}</p>
-                                  </div>
-                                </div>
-                                <ExternalLink className="h-4 w-4 text-brand-charcoal/40" />
+                            <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
+                              {link.isAdmin ? (
+                                <Shield className="h-12 w-12 text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal sm:h-16 sm:w-16 md:h-20 md:w-20" />
+                              ) : (
+                                <ExternalLink className="h-12 w-12 text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-gold sm:h-16 sm:w-16 md:h-20 md:w-20" />
+                              )}
+                            </div>
+                            <div className="text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-sm font-medium text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-base md:text-lg">
+                                  {link.label}
+                                </span>
+                                {link.isAdmin && (
+                                  <span className="rounded bg-brand-charcoal/10 px-1.5 py-0.5 text-[10px] text-brand-charcoal/70 sm:text-xs">
+                                    需授权
+                                  </span>
+                                )}
                               </div>
-                            </m.a>
-                          ))}
-
-                          {/* 提示信息 */}
-                          <m.div
-                            className="rounded-xl bg-brand-gold/10 p-4"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: 0.3 }}
-                          >
-                            <p className="text-center text-xs text-brand-charcoal/60 sm:text-sm">
-                              <Shield className="mr-1 inline-block h-4 w-4" />
-                              管理端入口仅供授权人员访问，需要相应的账号权限
-                            </p>
-                          </m.div>
-                        </div>
+                              <p className="mt-1 text-xs text-brand-charcoal/50 sm:text-sm">
+                                {link.description}
+                              </p>
+                            </div>
+                          </m.a>
+                        ))}
                       </div>
+
+                      {/* 提示信息 */}
+                      <m.div
+                        className="mt-6 sm:mt-8"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.3 }}
+                      >
+                        <p className="text-center text-xs text-brand-charcoal/50 sm:text-sm">
+                          <Shield className="mr-1 inline-block h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          管理端入口仅供授权人员访问，需要相应的账号权限
+                        </p>
+                      </m.div>
                     </m.div>
                   )}
                 </AnimatePresence>

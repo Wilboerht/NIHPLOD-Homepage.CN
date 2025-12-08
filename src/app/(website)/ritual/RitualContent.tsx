@@ -18,21 +18,28 @@ const bottomNavItems = [
 
 // 自定义图标组件
 const SunIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="12" r="5" />
-    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12 18.5C15.5898 18.5 18.5 15.5898 18.5 12C18.5 8.41015 15.5898 5.5 12 5.5C8.41015 5.5 5.5 8.41015 5.5 12C5.5 15.5898 8.41015 18.5 12 18.5Z" />
+    <circle cx="12" cy="1.75" r="1.25" />
+    <circle cx="19.25" cy="4.75" r="1.25" />
+    <circle cx="22.25" cy="12" r="1.25" />
+    <circle cx="19.25" cy="19.25" r="1.25" />
+    <circle cx="12" cy="22.25" r="1.25" />
+    <circle cx="4.75" cy="19.25" r="1.25" />
+    <circle cx="1.75" cy="12" r="1.25" />
+    <circle cx="4.75" cy="4.75" r="1.25" />
   </svg>
 );
 
 const MoonIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M13.8237 3.18488C11.3623 3.82663 9.54547 6.06477 9.54547 8.72728C9.54547 11.8904 12.1096 14.4545 15.2727 14.4545C17.9352 14.4545 20.1734 12.6377 20.8151 10.1763C20.9363 10.7652 21 11.3752 21 12C21 16.9706 16.9706 21 12 21C7.02943 21 3 16.9706 3 12C3 7.02943 7.02943 3 12 3C12.6248 3 13.2348 3.06367 13.8237 3.18488Z" />
   </svg>
 );
 
 const HeartIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M7.49983 4.00195C4.46222 4.00195 1.99976 6.46443 1.99976 9.50202C1.99976 15.0021 8.49984 20.0022 11.9999 21.1653C15.4999 20.0022 22 15.0021 22 9.50202C22 6.46443 19.5375 4.00195 16.4999 4.00195C14.6398 4.00195 12.9952 4.92542 11.9999 6.33888C11.0045 4.92542 9.36 4.00195 7.49983 4.00195Z" />
   </svg>
 );
 

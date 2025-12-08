@@ -33,6 +33,7 @@ async function getCategories() {
       name: true,
       nameEn: true,
       slug: true,
+      icon: true,
     },
   });
   return categories;
