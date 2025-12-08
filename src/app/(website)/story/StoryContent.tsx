@@ -224,33 +224,42 @@ export function StoryContent() {
                 "flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
                 isExpanded ? "h-full justify-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
               )}>
-                {/* 页面标题 - 没有选中标签时显示 */}
-                {!activeTab && (
-                  <div className={cn(
-                    "text-center",
-                    isExpanded ? "mb-6 sm:mb-8" : ""
-                  )}>
-                    <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                      OUR STORY
-                    </p>
-                    <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                      关于旎柏
-                    </h1>
-                    <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
-                      源自摩纳哥的高端护肤品牌，将地中海的优雅与东方的智慧完美融合
-                    </p>
-                  </div>
-                )}
+                {/* 页面标题 - 收起时始终显示，展开时仅在没有选中标签时显示 */}
+                <AnimatePresence mode="wait">
+                  {(!isExpanded || !activeTab) && (
+                    <m.div
+                      key="title"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className={cn(
+                        "text-center",
+                        isExpanded ? "mb-6 sm:mb-8" : ""
+                      )}
+                    >
+                      <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
+                        OUR STORY
+                      </p>
+                      <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
+                        关于旎柏
+                      </h1>
+                      <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
+                        源自摩纳哥的高端护肤品牌，将地中海的优雅与东方的智慧完美融合
+                      </p>
+                    </m.div>
+                  )}
+                </AnimatePresence>
 
                 {/* 展开后显示的内容 */}
                 <AnimatePresence mode="wait">
                   {isExpanded && !activeTab && (
                     <m.div
                       key="tabs"
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      exit={{ opacity: 0, y: 20, transition: { duration: 0.25 } }}
+                      transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
                       className="flex flex-col items-center"
                     >
 
@@ -259,7 +268,7 @@ export function StoryContent() {
                         className="mb-8 flex justify-center sm:mb-10"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+                        transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
                       >
                         <div className="relative h-16 w-32 sm:h-20 sm:w-40 md:h-24 md:w-48">
                           <Image
@@ -286,7 +295,7 @@ export function StoryContent() {
                               )}
                               initial={{ opacity: 0, y: 15 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.4, delay: 0.15 + index * 0.06, ease: "easeOut" }}
+                              transition={{ duration: 0.4, delay: 0.2 + index * 0.06, ease: "easeOut" }}
                               whileHover={{ scale: 1.03 }}
                               whileTap={{ scale: 0.97 }}
                             >
@@ -311,7 +320,7 @@ export function StoryContent() {
                       key={activeTab}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
+                      exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.2 } }}
                       transition={{ duration: 0.4, ease: "easeOut" }}
                       className="flex h-full flex-col"
                     >

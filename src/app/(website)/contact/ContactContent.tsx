@@ -296,6 +296,11 @@ export function ContactContent() {
                       )}
                     </button>
                   </form>
+
+                  {/* 版权信息 */}
+                  <p className="mt-6 text-center text-xs text-brand-charcoal/40">
+                    © {new Date().getFullYear()} NIHPLOD All Rights Reserved.
+                  </p>
                 </m.div>
                   )}
                 </AnimatePresence>
