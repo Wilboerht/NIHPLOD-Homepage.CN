@@ -41,7 +41,7 @@ export function AdvisorWelcome() {
         {!imageError && (
           <div className="absolute inset-0 z-0">
             <Image
-              src="/images/advisor-bg.jpg"
+              src="/images/bg.png"
               alt="AI 护肤顾问"
               fill
               priority

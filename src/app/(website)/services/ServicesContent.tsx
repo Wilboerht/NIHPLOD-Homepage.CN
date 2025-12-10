@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m, AnimatePresence } from "framer-motion";
-import { ExternalLink, Home, Shield } from "lucide-react";
+import { Home, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // 图标颜色常量
@@ -38,6 +38,30 @@ const InfluencerIcon = ({ className, isHovered }: { className?: string; isHovere
       <path d="M16.304 3.5C17.3204 4.11245 18.0002 5.22685 18.0002 6.5C18.0002 7.77315 17.3204 8.88755 16.304 9.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M2 17.7573V20H17V17.7573C17 17.456 16.9366 17.155 16.7605 16.9105C15.9629 15.8034 13.7511 14 9.5 14C5.24886 14 3.03712 15.8034 2.23955 16.9105C2.06344 17.155 2 17.456 2 17.7573Z" fill={color} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M19.5 15.0781C20.6406 15.6602 21.3695 16.3685 21.7599 16.9102C21.9361 17.1546 21.9999 17.4564 21.9999 17.7576V20.0004H20" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+};
+
+// 用户端图标 - 组合样式（填充+描边），与 InfluencerIcon 保持一致
+const UsersIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+  const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
+      <path d="M9.5 10C11.433 10 13 8.433 13 6.5C13 4.56701 11.433 3 9.5 3C7.567 3 6 4.56701 6 6.5C6 8.433 7.567 10 9.5 10Z" fill={color} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M16.304 3.5C17.3204 4.11245 18.0002 5.22685 18.0002 6.5C18.0002 7.77315 17.3204 8.88755 16.304 9.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2 17.7573V20H17V17.7573C17 17.456 16.9366 17.155 16.7605 16.9105C15.9629 15.8034 13.7511 14 9.5 14C5.24886 14 3.03712 15.8034 2.23955 16.9105C2.06344 17.155 2 17.456 2 17.7573Z" fill={color} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M19.5 15.0781C20.6406 15.6602 21.3695 16.3685 21.7599 16.9102C21.9361 17.1546 21.9999 17.4564 21.9999 17.7576V20.0004H20" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+};
+
+// 管理端图标 - 组合样式（填充+描边）
+const LockIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+  const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
+      <path d="M7 11.4609V7.46094C7 4.69951 9.2386 2.46094 12 2.46094C14.7614 2.46094 17 4.69951 17 7.46094V11.4609" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M19.5576 9.33203C20.7011 9.33217 21.5029 10.3082 21.5029 11.3506V20.5186C21.5029 21.561 20.7012 22.537 19.5576 22.5371H4.44238C3.29889 22.5369 2.49805 21.561 2.49805 20.5186V11.3506C2.4981 10.3082 3.29893 9.33223 4.44238 9.33203H19.5576ZM12 14.0654C11.5582 14.0654 11.2002 14.4234 11.2002 14.8652V18.8652C11.2002 19.3071 11.5582 19.665 12 19.665C12.4418 19.665 12.7998 19.3071 12.7998 18.8652V14.8652C12.7998 14.4234 12.4418 14.0654 12 14.0654Z" fill={color}/>
     </svg>
   );
 };
@@ -139,6 +163,64 @@ const ServiceButton = ({
   );
 };
 
+// 服务链接按钮组件 - 用户端/管理端按钮
+const ServiceLinkButton = ({
+  link,
+  index,
+  isLast,
+}: {
+  link: { label: string; url: string; isAdmin: boolean; description: string };
+  index: number;
+  isLast: boolean;
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <m.a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        "group relative flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 transition-all duration-300 sm:gap-4 sm:px-8 sm:py-10 md:py-12",
+        !isLast && "border-r border-brand-charcoal/20"
+      )}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 + index * 0.08, ease: "easeOut" }}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+    >
+      <div className="flex h-12 w-12 items-center justify-center sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24">
+        {link.isAdmin ? (
+          <LockIcon className="h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-20 lg:w-20" isHovered={isHovered} />
+        ) : (
+          <UsersIcon className="h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-20 lg:w-20" isHovered={isHovered} />
+        )}
+      </div>
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-2">
+          <span className={cn(
+            "text-xs font-medium transition-colors duration-300 sm:text-sm md:text-base lg:text-lg",
+            isHovered ? "text-brand-charcoal" : "text-brand-charcoal/70"
+          )}>
+            {link.label}
+          </span>
+          {link.isAdmin && (
+            <span className="rounded bg-brand-charcoal/10 px-1.5 py-0.5 text-[10px] text-brand-charcoal/70 sm:text-xs">
+              需授权
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-brand-charcoal/50 sm:text-sm">
+          {link.description}
+        </p>
+      </div>
+    </m.a>
+  );
+};
+
 /**
  * 服务入口页面内容组件
  * 样式参考 PrivacyContent
@@ -153,7 +235,7 @@ export function ServicesContent() {
         {/* 背景图片 */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/privacy-bg.jpg"
+            src="/images/bg.png"
             alt="服务入口"
             fill
             priority
@@ -171,7 +253,7 @@ export function ServicesContent() {
         >
           <div className="flex h-full flex-col items-center">
             {/* 主内容区域 */}
-            <div className="w-full flex-1 overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl">
+            <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl">
               <div className="flex h-full flex-col justify-center overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
                 {/* 页面标题 - 仅在未选中服务时显示 */}
                 {!activeService && (
@@ -264,44 +346,12 @@ export function ServicesContent() {
                       {/* 两个大按钮：用户端 / 管理端 */}
                       <div className="flex w-full max-w-2xl items-stretch justify-center">
                         {serviceDetails[activeService].links.map((link, index) => (
-                          <m.a
+                          <ServiceLinkButton
                             key={link.url}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={cn(
-                              "group relative flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 transition-all duration-300 sm:gap-4 sm:px-8 sm:py-10 md:py-12",
-                              index < serviceDetails[activeService].links.length - 1 && "border-r border-brand-charcoal/20"
-                            )}
-                            initial={{ opacity: 0, y: 15 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, delay: 0.1 + index * 0.08, ease: "easeOut" }}
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
-                          >
-                            <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
-                              {link.isAdmin ? (
-                                <Shield className="h-12 w-12 text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal sm:h-16 sm:w-16 md:h-20 md:w-20" />
-                              ) : (
-                                <ExternalLink className="h-12 w-12 text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-gold sm:h-16 sm:w-16 md:h-20 md:w-20" />
-                              )}
-                            </div>
-                            <div className="text-center">
-                              <div className="flex items-center justify-center gap-2">
-                                <span className="text-sm font-medium text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-base md:text-lg">
-                                  {link.label}
-                                </span>
-                                {link.isAdmin && (
-                                  <span className="rounded bg-brand-charcoal/10 px-1.5 py-0.5 text-[10px] text-brand-charcoal/70 sm:text-xs">
-                                    需授权
-                                  </span>
-                                )}
-                              </div>
-                              <p className="mt-1 text-xs text-brand-charcoal/50 sm:text-sm">
-                                {link.description}
-                              </p>
-                            </div>
-                          </m.a>
+                            link={link}
+                            index={index}
+                            isLast={index === serviceDetails[activeService].links.length - 1}
+                          />
                         ))}
                       </div>
 

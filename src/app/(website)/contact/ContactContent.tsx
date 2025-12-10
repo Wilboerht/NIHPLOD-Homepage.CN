@@ -139,7 +139,7 @@ export function ContactContent() {
         {/* 背景图片 */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/contact-bg.jpg"
+            src="/images/bg.png"
             alt="联系我们"
             fill
             priority
@@ -161,7 +161,7 @@ export function ContactContent() {
           <div className="flex h-full flex-col items-center justify-center">
             {/* 主内容区域 */}
             <div className={cn(
-              "w-full overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl",
+              "w-full overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl",
               "transition-all duration-500 ease-out",
               isExpanded ? "max-h-full" : ""
             )}>
@@ -386,7 +386,7 @@ export function ContactContent() {
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="group flex items-center justify-center rounded-b-2xl bg-brand-gold/10 px-10 py-2.5 shadow-sm backdrop-blur-md lg:px-14 lg:py-3"
+              className="group flex items-center justify-center rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
             >
               <m.div
                 className="flex flex-col items-center transition-transform duration-200 group-hover:scale-110"

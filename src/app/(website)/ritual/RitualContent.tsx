@@ -226,7 +226,7 @@ const tabContents: Record<TabId, TabContent> = {
 /**
  * 护肤仪式页面内容组件
  * 样式参考 StoryContent，使用独立的导航栏
- * 主内容区域使用 bg-brand-gold/10 backdrop-blur-md 样式
+ * 主内容区域使用 bg-[#EBE8DB] 不透明样式
  */
 export function RitualContent() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -243,7 +243,7 @@ export function RitualContent() {
         {/* 背景图片 */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/ritual-bg.jpg"
+            src="/images/bg.png"
             alt="护肤仪式"
             fill
             priority
@@ -264,9 +264,9 @@ export function RitualContent() {
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center">
-            {/* 主内容区域 - 使用 bg-brand-gold/10 样式 */}
+            {/* 主内容区域 - 使用 bg-[#EBE8DB] 不透明样式 */}
             <div className={cn(
-              "w-full overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl",
+              "w-full overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl",
               "transition-all duration-500 ease-out",
               isExpanded ? "flex-1" : ""
             )}>
@@ -520,7 +520,7 @@ export function RitualContent() {
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="group flex items-center justify-center rounded-b-2xl bg-brand-gold/10 px-10 py-2.5 shadow-sm backdrop-blur-md lg:px-14 lg:py-3"
+              className="group flex items-center justify-center rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
             >
               <m.div
                 className="flex flex-col items-center transition-transform duration-200 group-hover:scale-110"
