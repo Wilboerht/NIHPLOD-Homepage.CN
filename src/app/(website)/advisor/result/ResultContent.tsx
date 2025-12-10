@@ -24,7 +24,6 @@ import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations";
 import type { FaceAnalysisResult as FaceAnalysisData } from "@/app/api/advisor/face-analyze/route";
 import {
-  elementToImage,
   saveToGallery,
   copyToClipboard,
   generateShareUrl,
@@ -116,17 +115,45 @@ export function ResultContent() {
 
   /**
    * 生成报告图片
+   * 使用服务端 Satori API 生成固定布局的报告图片
    */
   const generateReportImage = useCallback(async (): Promise<string | null> => {
-    if (!reportRef.current) return null;
+    if (!result) return null;
 
     try {
       setIsGeneratingImage(true);
-      const dataUrl = await elementToImage(reportRef.current, {
-        scale: 2,
-        backgroundColor: "#FAF8F5",
-        padding: 24,
+
+      // 调用服务端 API 生成图片
+      const response = await fetch("/api/advisor/share-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          skinType: result.skinProfile.type,
+          skinTypeLabel: result.skinProfile.typeLabel,
+          concerns: result.skinProfile.concerns,
+          skinAge: result.skinProfile.skinAge,
+          summary: result.analysis.summary,
+          details: result.analysis.details,
+          faceAnalysis: faceAnalysis,
+          userImage: userImage,
+          routine: result.routine,
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate image");
+      }
+
+      // 将响应转换为 data URL
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+
       return dataUrl;
     } catch (error) {
       console.error("Failed to generate image:", error);
@@ -134,7 +161,7 @@ export function ResultContent() {
     } finally {
       setIsGeneratingImage(false);
     }
-  }, []);
+  }, [result, faceAnalysis, userImage]);
 
   /**
    * 保存到相册（移动端）
@@ -604,7 +631,7 @@ export function ResultContent() {
       >
         <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-gold/10 px-4 py-1.5">
           <Star className="h-4 w-4 text-brand-gold" />
-          <span className="text-sm text-brand-gold">AI 分析完成</span>
+          <span className="text-sm text-brand-gold">多维分析完成</span>
         </div>
         <h1 className="font-serif text-2xl text-brand-charcoal lg:text-3xl">您的肌肤分析报告</h1>
       </m.div>

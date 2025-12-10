@@ -17,38 +17,26 @@ export interface ShareData {
 
 /**
  * 将元素转换为图片
+ * 用于截图已渲染的固定宽度元素
  */
 export async function elementToImage(
   element: HTMLElement,
   options?: {
     scale?: number;
     backgroundColor?: string;
-    padding?: number;
   }
 ): Promise<string> {
-  const { scale = 2, backgroundColor = "#FAF8F5", padding = 20 } = options || {};
+  const { scale = 2, backgroundColor = "#FAF8F5" } = options || {};
 
-  // 添加临时 padding
-  const originalPadding = element.style.padding;
-  element.style.padding = `${padding}px`;
+  const canvas = await html2canvas(element, {
+    scale,
+    backgroundColor,
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+  });
 
-  try {
-    const canvas = await html2canvas(element, {
-      scale,
-      backgroundColor,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      // 忽略某些元素
-      ignoreElements: (el) => {
-        return el.classList.contains("no-screenshot");
-      },
-    });
-
-    return canvas.toDataURL("image/png", 1.0);
-  } finally {
-    element.style.padding = originalPadding;
-  }
+  return canvas.toDataURL("image/png", 1.0);
 }
 
 /**
