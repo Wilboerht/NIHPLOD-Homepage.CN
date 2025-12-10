@@ -109,16 +109,6 @@ export function FaceAnalysisResult({
       initial="hidden"
       animate="visible"
     >
-      {/* 标题 */}
-      <m.div variants={itemVariants} className="text-center">
-        <div className="mb-2 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-gold/10">
-          <Sparkles className="h-6 w-6 text-brand-gold" />
-        </div>
-        <h2 className="font-serif text-2xl text-brand-charcoal">
-          AI 肌肤分析报告
-        </h2>
-      </m.div>
-
       {/* 肤质类型卡片 */}
       <m.div
         variants={itemVariants}
