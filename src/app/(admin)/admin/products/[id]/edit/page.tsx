@@ -17,6 +17,12 @@ interface ImageItem {
   order: number;
 }
 
+interface PurchaseLinkItem {
+  platform: string;
+  url: string;
+  order: number;
+}
+
 interface ProductData {
   id: string;
   name: string;
@@ -26,6 +32,7 @@ interface ProductData {
   price: number;
   capacity: string | null;
   purchaseUrl: string | null;
+  purchaseLinks: PurchaseLinkItem[];
   description: string;
   ingredients: string | null;
   usage: string | null;
@@ -72,6 +79,11 @@ export default function EditProductPage() {
           price: data.price,
           capacity: data.capacity || "",
           purchaseUrl: data.purchaseUrl || "",
+          purchaseLinks: (data.purchaseLinks || []).map((link: PurchaseLinkItem, index: number) => ({
+            platform: link.platform,
+            url: link.url,
+            order: link.order ?? index,
+          })),
           description: data.description,
           ingredients: data.ingredients || "",
           usage: data.usage || "",

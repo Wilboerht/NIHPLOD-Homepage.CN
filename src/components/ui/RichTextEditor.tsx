@@ -330,7 +330,6 @@ export function RichTextEditor({
             <BubbleMenu
               editor={editor}
               className="flex gap-0.5 rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
-              tippyOptions={{ duration: 100, placement: "top" }}
             >
               <ToolbarButton
                 onClick={() => editor.chain().focus().toggleBold().run()}

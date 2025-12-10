@@ -44,9 +44,9 @@ interface Application {
 }
 
 // 状态配置
-const statusConfig: Record<string, { label: string; color: "default" | "warning" | "info" | "success" | "danger" }> = {
+const statusConfig: Record<string, { label: string; color: "default" | "warning" | "primary" | "success" | "danger" }> = {
   pending: { label: "待处理", color: "warning" },
-  reviewed: { label: "已查看", color: "info" },
+  reviewed: { label: "已查看", color: "primary" },
   interviewed: { label: "已面试", color: "default" },
   rejected: { label: "已拒绝", color: "danger" },
   hired: { label: "已录用", color: "success" },
