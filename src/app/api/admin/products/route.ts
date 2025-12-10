@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 创建产品和图片
+    // 创建产品、图片和购买链接
     const product = await prisma.product.create({
       data: {
         name: validated.name,
@@ -189,10 +189,20 @@ export async function POST(request: NextRequest) {
             order: img.order ?? index,
           })),
         },
+        purchaseLinks: validated.purchaseLinks?.length
+          ? {
+              create: validated.purchaseLinks.map((link, index) => ({
+                platform: link.platform,
+                url: link.url,
+                order: link.order ?? index,
+              })),
+            }
+          : undefined,
       },
       include: {
         category: true,
         images: { orderBy: { order: "asc" } },
+        purchaseLinks: { orderBy: { order: "asc" } },
       },
     });
 

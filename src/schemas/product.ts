@@ -14,6 +14,14 @@ export const ProductImageSchema = z.object({
   order: z.number().int().min(0).default(0),
 });
 
+// 购买链接 Schema
+export const PurchaseLinkSchema = z.object({
+  id: z.string().optional(), // 已有链接的 ID
+  platform: z.string().min(1, "平台名称不能为空").max(50, "平台名称不能超过50个字符"),
+  url: z.string().url("请输入有效的URL"),
+  order: z.number().int().min(0).default(0),
+});
+
 // 产品创建/更新 Schema
 export const ProductSchema = z.object({
   name: z.string().min(1, "产品名称不能为空").max(100, "产品名称不能超过100个字符"),
@@ -26,7 +34,8 @@ export const ProductSchema = z.object({
   categoryId: z.string().min(1, "请选择分类"),
   price: z.coerce.number().min(0, "价格不能为负数"),
   capacity: z.string().max(50, "规格容量不能超过50个字符").optional().nullable(),
-  purchaseUrl: z.string().url("请输入有效的URL").optional().nullable().or(z.literal("")),
+  purchaseUrl: z.string().url("请输入有效的URL").optional().nullable().or(z.literal("")), // 保留兼容
+  purchaseLinks: z.array(PurchaseLinkSchema).optional(), // 多平台购买链接
   description: z.string().min(1, "产品描述不能为空").max(5000, "描述不能超过5000个字符"),
   ingredients: z.string().max(5000, "成分说明不能超过5000个字符").optional().nullable(),
   usage: z.string().max(5000, "使用方法不能超过5000个字符").optional().nullable(),
@@ -67,6 +76,7 @@ export const CategorySchema = z.object({
 
 // 类型导出
 export type ProductImageData = z.infer<typeof ProductImageSchema>;
+export type PurchaseLinkData = z.infer<typeof PurchaseLinkSchema>;
 export type ProductFormData = z.infer<typeof ProductSchema>;
 export type ProductQueryParams = z.infer<typeof ProductQuerySchema>;
 export type CategoryFormData = z.infer<typeof CategorySchema>;

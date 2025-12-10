@@ -15,28 +15,42 @@ datasource db {
 // ============================================
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String   // 产品名称（中文）
-  nameEn      String   // 产品名称（英文）
-  slug        String   @unique // URL 标识
-  description String   @db.Text // 产品描述
-  price       Decimal  @db.Decimal(10, 2) // 参考价格
-  capacity    String?  // 规格容量
-  purchaseUrl String?  // 外部购买链接
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id])
-  images      Image[]  // 产品图片
-  ingredients String?  @db.Text // 成分说明
-  usage       String?  @db.Text // 使用方法
-  benefits    String[] // 功效标签
-  order       Int      @default(0) // 排序（数字越小越靠前）
-  featured    Boolean  @default(false) // 是否推荐
-  published   Boolean  @default(false) // 是否发布
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String         @id @default(cuid())
+  name          String         // 产品名称（中文）
+  nameEn        String         // 产品名称（英文）
+  slug          String         @unique // URL 标识
+  description   String         @db.Text // 产品描述
+  price         Decimal        @db.Decimal(10, 2) // 参考价格
+  capacity      String?        // 规格容量
+  purchaseUrl   String?        // 外部购买链接（保留兼容，deprecated）
+  categoryId    String
+  category      Category       @relation(fields: [categoryId], references: [id])
+  images        Image[]        // 产品图片
+  purchaseLinks PurchaseLink[] // 多平台购买链接
+  ingredients   String?        @db.Text // 成分说明
+  usage         String?        @db.Text // 使用方法
+  benefits      String[]       // 功效标签
+  order         Int            @default(0) // 排序（数字越小越靠前）
+  featured      Boolean        @default(false) // 是否推荐
+  published     Boolean        @default(false) // 是否发布
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([categoryId])
   @@index([published, order])
+}
+
+// 购买链接（支持多平台）
+model PurchaseLink {
+  id        String   @id @default(cuid())
+  platform  String   // 平台名称（如：天猫、京东、小红书、官方商城）
+  url       String   // 购买链接
+  order     Int      @default(0) // 排序
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 model Category {

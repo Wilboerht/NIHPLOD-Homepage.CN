@@ -54,6 +54,10 @@ async function getProducts() {
         orderBy: { order: "asc" },
         select: { url: true, alt: true },
       },
+      purchaseLinks: {
+        orderBy: { order: "asc" },
+        select: { id: true, platform: true, url: true },
+      },
     },
   });
 

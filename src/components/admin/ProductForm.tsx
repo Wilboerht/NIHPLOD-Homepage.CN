@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Save, Send, ArrowLeft } from "lucide-react";
+import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select, SelectOption } from "@/components/ui/Select";
@@ -23,6 +23,14 @@ interface ImageItem {
   file?: File;
 }
 
+// 购买链接类型
+interface PurchaseLinkItem {
+  id?: string;
+  platform: string;
+  url: string;
+  order: number;
+}
+
 // 表单数据类型
 interface FormData {
   name: string;
@@ -32,6 +40,7 @@ interface FormData {
   price: number;
   capacity: string | null;
   purchaseUrl: string | null;
+  purchaseLinks: PurchaseLinkItem[];
   description: string;
   ingredients: string | null;
   usage: string | null;
@@ -78,6 +87,7 @@ const defaultFormData: FormData = {
   price: 0,
   capacity: "",
   purchaseUrl: "",
+  purchaseLinks: [],
   description: "",
   ingredients: "",
   usage: "",
@@ -88,10 +98,26 @@ const defaultFormData: FormData = {
   published: false,
 };
 
+// 购买平台选项
+const platformOptions: SelectOption[] = [
+  { value: "小红书", label: "小红书" },
+  { value: "抖音", label: "抖音" },
+  { value: "天猫", label: "天猫" },
+];
+
 export function ProductForm({ mode, initialData, categories }: ProductFormProps) {
   const router = useRouter();
   const { success, error: showError } = useToast();
-  const [formData, setFormData] = useState<FormData>(initialData || defaultFormData);
+  const [formData, setFormData] = useState<FormData>(() => {
+    if (initialData) {
+      return {
+        ...defaultFormData,
+        ...initialData,
+        purchaseLinks: initialData.purchaseLinks || [],
+      };
+    }
+    return defaultFormData;
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -124,6 +150,28 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         return next;
       });
     }
+  };
+
+  // 购买链接管理
+  const addPurchaseLink = () => {
+    const newLink: PurchaseLinkItem = {
+      platform: "小红书",
+      url: "",
+      order: formData.purchaseLinks.length,
+    };
+    updateField("purchaseLinks", [...formData.purchaseLinks, newLink]);
+  };
+
+  const removePurchaseLink = (index: number) => {
+    const newLinks = formData.purchaseLinks.filter((_, i) => i !== index);
+    // 重新排序
+    updateField("purchaseLinks", newLinks.map((link, i) => ({ ...link, order: i })));
+  };
+
+  const updatePurchaseLink = (index: number, field: keyof PurchaseLinkItem, value: string | number) => {
+    const newLinks = [...formData.purchaseLinks];
+    newLinks[index] = { ...newLinks[index], [field]: value };
+    updateField("purchaseLinks", newLinks);
   };
 
   // 验证表单
@@ -224,9 +272,15 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       // 上传新图片
       const uploadedImages = await uploadImages(formData.images);
 
+      // 过滤掉没有填写完整的购买链接
+      const validPurchaseLinks = formData.purchaseLinks.filter(
+        (link) => link.platform && link.url
+      );
+
       const payload = {
         ...formData,
         images: uploadedImages,
+        purchaseLinks: validPurchaseLinks,
         purchaseUrl: formData.purchaseUrl || null,
         capacity: formData.capacity || null,
         ingredients: formData.ingredients || null,
@@ -403,17 +457,63 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           />
         </section>
 
+        {/* 购买链接 */}
+        <section className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-medium text-gray-900">购买链接</h2>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addPurchaseLink}
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              添加平台
+            </Button>
+          </div>
+          {formData.purchaseLinks.length === 0 ? (
+            <p className="text-sm text-gray-500">暂无购买链接，点击右上角添加</p>
+          ) : (
+            <div className="space-y-3">
+              {formData.purchaseLinks.map((link, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3"
+                >
+                  <GripVertical className="h-4 w-4 flex-shrink-0 cursor-move text-gray-400" />
+                  <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                    <Select
+                      options={platformOptions}
+                      value={link.platform}
+                      onChange={(e) => updatePurchaseLink(index, "platform", e.target.value)}
+                      placeholder="选择平台"
+                    />
+                    <Input
+                      value={link.url}
+                      onChange={(e) => updatePurchaseLink(index, "url", e.target.value)}
+                      placeholder="输入购买链接 URL"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePurchaseLink(index)}
+                    className="flex-shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {errors.purchaseLinks && (
+            <p className="mt-2 text-sm text-red-500">{errors.purchaseLinks}</p>
+          )}
+        </section>
+
         {/* 其他设置 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-medium text-gray-900">其他设置</h2>
           <div className="space-y-4">
-            <Input
-              label="购买链接"
-              value={formData.purchaseUrl || ""}
-              onChange={(e) => updateField("purchaseUrl", e.target.value)}
-              error={errors.purchaseUrl}
-              placeholder="外部购买链接（可选）"
-            />
             <Input
               label="排序"
               type="number"

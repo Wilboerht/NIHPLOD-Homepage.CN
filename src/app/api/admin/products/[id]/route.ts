@@ -25,6 +25,7 @@ export async function GET(
       include: {
         category: true,
         images: { orderBy: { order: "asc" } },
+        purchaseLinks: { orderBy: { order: "asc" } },
       },
     });
 
@@ -157,12 +158,30 @@ export async function PUT(
     // 删除不再使用的图片
     const imagesToDelete = existingImageIds.filter((imgId) => !newImageIds.includes(imgId));
 
+    // 获取现有购买链接 ID
+    const existingLinks = await prisma.purchaseLink.findMany({
+      where: { productId: id },
+      select: { id: true },
+    });
+    const existingLinkIds = existingLinks.map((l) => l.id);
+    const newLinkIds = (validated.purchaseLinks || []).filter((l) => l.id).map((l) => l.id);
+
+    // 删除不再使用的购买链接
+    const linksToDelete = existingLinkIds.filter((linkId) => !newLinkIds.includes(linkId));
+
     // 更新产品
     await prisma.$transaction(async (tx) => {
       // 删除不再使用的图片
       if (imagesToDelete.length > 0) {
         await tx.image.deleteMany({
           where: { id: { in: imagesToDelete } },
+        });
+      }
+
+      // 删除不再使用的购买链接
+      if (linksToDelete.length > 0) {
+        await tx.purchaseLink.deleteMany({
+          where: { id: { in: linksToDelete } },
         });
       }
 
@@ -208,6 +227,27 @@ export async function PUT(
         }
       }
 
+      // 处理购买链接：更新已有 + 创建新的
+      for (const link of validated.purchaseLinks || []) {
+        if (link.id && existingLinkIds.includes(link.id)) {
+          // 更新已有链接
+          await tx.purchaseLink.update({
+            where: { id: link.id },
+            data: { platform: link.platform, url: link.url, order: link.order },
+          });
+        } else {
+          // 创建新链接
+          await tx.purchaseLink.create({
+            data: {
+              platform: link.platform,
+              url: link.url,
+              order: link.order,
+              productId: id,
+            },
+          });
+        }
+      }
+
       return updated;
     });
 
@@ -217,6 +257,7 @@ export async function PUT(
       include: {
         category: true,
         images: { orderBy: { order: "asc" } },
+        purchaseLinks: { orderBy: { order: "asc" } },
       },
     });
 

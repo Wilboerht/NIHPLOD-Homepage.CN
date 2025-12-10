@@ -56,6 +56,16 @@ export function ContactContent() {
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // 监听滚动，添加毛玻璃效果
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // 点击外部关闭下拉框
   useEffect(() => {
@@ -141,6 +151,13 @@ export function ContactContent() {
           quality={100}
           className="object-cover"
           sizes="100vw"
+        />
+        {/* 毛玻璃遮罩层 - 滚动或展开时显示 */}
+        <div
+          className={cn(
+            "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
+            isScrolled || isExpanded ? "opacity-100" : "opacity-0"
+          )}
         />
       </div>
 

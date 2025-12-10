@@ -11,7 +11,7 @@ import type { HomePageContent } from "@/types/page-content";
  */
 const gridColors = [
   ["#F5F3EA", "#F9F5E7", "#EAE8DF", "#E9E5D5"], // 上面一行
-  ["#E2E0D7", "#EBE8DB", "#E2E0D7", "#D8D5CA"], // 下面一行
+  ["#E2E0D7", "#EBE8DB", "#DDD9CE", "#D8D5CA"], // 下面一行
 ];
 
 // 默认内容
@@ -41,8 +41,14 @@ export default function HomeClient({ content }: HomeClientProps) {
 
   return (
     <div className="fixed inset-0 flex flex-col">
-      {/* 2行4列 网格色块背景 */}
-      <div className="absolute inset-0 grid grid-cols-4 grid-rows-2">
+      {/* 顶部线段 */}
+      <div className="absolute left-0 right-0 top-0 z-20 h-2 bg-[#F0EDE1] sm:h-2.5 md:h-3 lg:h-4" />
+
+      {/* 底部线段 */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 h-2 bg-[#F0EDE1] sm:h-2.5 md:h-3 lg:h-4" />
+
+      {/* 网格色块背景：移动端 4行2列，PC端 2行4列 */}
+      <div className="absolute inset-0 grid grid-cols-2 grid-rows-4 sm:grid-cols-4 sm:grid-rows-2">
         {gridColors.flat().map((color, index) => (
           <m.div
             key={index}

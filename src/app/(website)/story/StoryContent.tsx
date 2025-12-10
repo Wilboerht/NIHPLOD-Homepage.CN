@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m, AnimatePresence } from "framer-motion";
@@ -337,6 +337,16 @@ export function StoryContent() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // 监听滚动，添加毛玻璃效果
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <>
@@ -350,6 +360,13 @@ export function StoryContent() {
           quality={100}
           className="object-cover"
           sizes="100vw"
+        />
+        {/* 毛玻璃遮罩层 - 滚动或展开时显示 */}
+        <div
+          className={cn(
+            "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
+            isScrolled || isExpanded ? "opacity-100" : "opacity-0"
+          )}
         />
       </div>
 
