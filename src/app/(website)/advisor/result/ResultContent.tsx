@@ -372,7 +372,7 @@ export function ResultContent() {
       <header className="mx-auto mb-6 flex max-w-2xl items-center justify-between lg:max-w-3xl lg:mb-8">
         <Link
           href="/"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/5 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-charcoal lg:h-11 lg:w-11"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal lg:h-11 lg:w-11"
         >
           <Home className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
         </Link>
@@ -381,7 +381,7 @@ export function ResultContent() {
         </span>
         <button
           onClick={handleShare}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/5 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-charcoal lg:h-11 lg:w-11"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal lg:h-11 lg:w-11"
           aria-label="分享"
         >
           <AnimatePresence mode="wait">

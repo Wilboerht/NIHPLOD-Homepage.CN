@@ -191,7 +191,7 @@ export function QuestionsFlow() {
         {currentIndex === 0 ? (
           <Link
             href="/advisor"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/5 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-charcoal lg:h-11 lg:w-11"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal lg:h-11 lg:w-11"
             aria-label="返回"
           >
             <X className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
@@ -199,7 +199,7 @@ export function QuestionsFlow() {
         ) : (
           <button
             onClick={handlePrev}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/5 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-charcoal lg:h-11 lg:w-11"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal lg:h-11 lg:w-11"
             aria-label="上一题"
           >
             <ArrowLeft className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
@@ -239,7 +239,7 @@ export function QuestionsFlow() {
           className={cn(
             "flex items-center gap-2 rounded-full px-10 py-3.5 text-sm font-light tracking-wider transition-all sm:px-12 sm:py-4",
             currentAnswer
-              ? "border border-brand-gold/30 bg-brand-gold/10 text-brand-charcoal hover:border-brand-gold/50 hover:bg-brand-gold/20"
+              ? "border border-brand-charcoal/20 bg-white/60 text-brand-charcoal hover:border-brand-charcoal/40 hover:bg-white/80"
               : "cursor-not-allowed border border-brand-beige/50 bg-brand-beige/30 text-brand-charcoal/30"
           )}
         >

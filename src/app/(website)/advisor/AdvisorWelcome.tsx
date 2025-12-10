@@ -60,8 +60,8 @@ export function AdvisorWelcome() {
           className="absolute bottom-4 left-6 right-6 top-4 z-20 sm:left-10 sm:right-10 lg:bottom-6 lg:left-16 lg:right-16 lg:top-6"
         >
           <div className="flex h-full flex-col items-center">
-            {/* 毛玻璃卡片 */}
-            <div className="flex w-full flex-1 flex-col overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl">
+            {/* 内容卡片 */}
+            <div className="flex w-full flex-1 flex-col overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl">
               {/* 内容区域 - 垂直居中 */}
               <div className="flex flex-1 flex-col items-center justify-center px-6 sm:px-8 lg:px-12">
                 {/* 装饰线条 */}
@@ -120,7 +120,7 @@ export function AdvisorWelcome() {
                 {/* 开始按钮 */}
                 <m.button
                   onClick={handleStart}
-                  className="mt-10 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-12 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:border-brand-gold/50 hover:bg-brand-gold/20 sm:mt-12 sm:px-16 sm:py-4 sm:text-base"
+                  className="mt-10 rounded-full border border-brand-charcoal/20 bg-white/60 px-12 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:border-brand-charcoal/40 hover:bg-white/80 sm:mt-12 sm:px-16 sm:py-4 sm:text-base"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.9 }}
@@ -167,7 +167,7 @@ export function AdvisorWelcome() {
             {/* 回到首页按钮 */}
             <Link
               href="/"
-              className="group flex items-center justify-center gap-2 rounded-b-2xl bg-brand-gold/10 px-10 py-2.5 shadow-sm backdrop-blur-md lg:px-14 lg:py-3"
+              className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
             >
               <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
               <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">
