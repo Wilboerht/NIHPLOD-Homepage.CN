@@ -206,7 +206,10 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => setIsOpen(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                  }}
                   className="flex flex-col items-center gap-2 transition-all active:scale-95"
                 >
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-black/5">
@@ -235,10 +238,13 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
 
   // 有链接时显示菜单
   return (
-    <div ref={dropdownRef} className="relative">
+    <div ref={dropdownRef} className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
         className="flex items-center justify-center rounded-full bg-brand-gold/20 p-2 text-brand-gold transition-all active:scale-95 sm:p-2.5 sm:hover:bg-brand-gold/30"
       >
         <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -263,7 +269,10 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen(false);
+                }}
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-charcoal transition-colors hover:bg-brand-gold/10"
               >
                 <PlatformIcon platform={link.platform} className="h-5 w-5" />
@@ -348,6 +357,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       price: product.price,
       capacity: product.capacity || undefined,
       purchaseUrl: product.purchaseUrl || undefined,
+      purchaseLinks: product.purchaseLinks,
       images: product.images.map((img) => ({
         url: img.url,
         alt: img.alt || undefined,
