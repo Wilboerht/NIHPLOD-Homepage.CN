@@ -1,31 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, ShoppingBag, BookMarked, Sparkles, Mail, Send, CheckCircle, AlertCircle, Loader2, Home } from "lucide-react";
+import { ChevronDown, Mail, Send, CheckCircle, AlertCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, ContactIcon } from "@/components/website";
 
 /**
  * 底部导航项配置
  */
 const bottomNavItems = [
-  { href: "/products", label: "商城", labelEn: "Products", icon: ShoppingBag },
-  { href: "/story", label: "关于旎柏", labelEn: "Story", icon: BookMarked },
-  { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: Sparkles },
+  { href: "/products", label: "商城", labelEn: "Products", icon: ShopIcon },
+  { href: "/story", label: "关于旎柏", labelEn: "Story", icon: StoryIcon },
+  { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: RitualIcon },
 ];
 
 type FormStatus = "idle" | "loading" | "success" | "error";
 
-// 留言类型选项
+// 留言类型选项（带图标）
 const messageTypes = [
-  { value: "", label: "请选择留言类型" },
-  { value: "consultation", label: "产品咨询" },
-  { value: "cooperation", label: "商务合作" },
-  { value: "feedback", label: "意见反馈" },
-  { value: "complaint", label: "投诉建议" },
-  { value: "other", label: "其他" },
+  { value: "", label: "请选择留言类型", icon: HelpCircle },
+  { value: "consultation", label: "产品咨询", icon: MessageSquare },
+  { value: "cooperation", label: "商务合作", icon: Briefcase },
+  { value: "feedback", label: "意见反馈", icon: MessageCircle },
+  { value: "complaint", label: "投诉建议", icon: AlertTriangle },
+  { value: "other", label: "其他", icon: HelpCircle },
 ];
 
 interface FormData {
@@ -52,6 +53,20 @@ export function ContactContent() {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const typeDropdownRef = useRef<HTMLDivElement>(null);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+
+  // 点击外部关闭下拉框
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target as Node)) {
+        setIsTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // 表单验证
   const validateForm = (): boolean => {
@@ -143,16 +158,16 @@ export function ContactContent() {
             isExpanded ? "bottom-4 lg:bottom-6" : ""
           )}
         >
-          <div className="flex h-full flex-col items-center">
+          <div className="flex h-full flex-col items-center justify-center">
             {/* 主内容区域 */}
             <div className={cn(
               "w-full overflow-hidden rounded-2xl bg-brand-gold/10 backdrop-blur-md lg:rounded-3xl",
               "transition-all duration-500 ease-out",
-              isExpanded ? "flex-1" : ""
+              isExpanded ? "max-h-full" : ""
             )}>
               <div className={cn(
                 "flex flex-col px-6 py-8 sm:px-10 sm:py-10 lg:px-16 lg:py-12",
-                isExpanded ? "h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
+                isExpanded ? "max-h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
               )}>
                 {/* 页面标题 */}
                 <div className={cn("text-center", isExpanded ? "mb-6 sm:mb-8" : "")}>
@@ -238,29 +253,89 @@ export function ContactContent() {
                       </div>
                     </div>
 
-                    {/* 留言类型 */}
-                    <div>
+                    {/* 留言类型 - 自定义下拉框 */}
+                    <div ref={typeDropdownRef} className="relative">
                       <label htmlFor="type" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
                         留言类型 <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        id="type"
-                        name="type"
-                        value={formData.type}
-                        onChange={handleChange}
+                      {/* 触发按钮 */}
+                      <button
+                        type="button"
+                        onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                         className={cn(
-                          "w-full appearance-none rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
-                          "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10",
+                          "flex w-full items-center justify-between rounded-xl border bg-white/90 px-4 py-3 text-left text-sm outline-none transition-all backdrop-blur-sm",
                           !formData.type && "text-brand-charcoal/50",
-                          errors.type ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                          errors.type
+                            ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            : "border-brand-beige/50 hover:border-brand-gold/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10",
+                          isTypeDropdownOpen && !errors.type && "border-brand-gold ring-2 ring-brand-gold/10"
                         )}
                       >
-                        {messageTypes.map((type) => (
-                          <option key={type.value} value={type.value} disabled={type.value === ""}>
-                            {type.label}
-                          </option>
-                        ))}
-                      </select>
+                        <span className="flex items-center gap-2.5">
+                          {formData.type && (() => {
+                            const selected = messageTypes.find(t => t.value === formData.type);
+                            if (selected) {
+                              const Icon = selected.icon;
+                              return <Icon className="h-4 w-4 text-brand-gold" />;
+                            }
+                            return null;
+                          })()}
+                          <span className={formData.type ? "text-brand-charcoal" : ""}>
+                            {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
+                          </span>
+                        </span>
+                        <ChevronDown className={cn(
+                          "h-4 w-4 text-brand-charcoal/40 transition-transform duration-200",
+                          isTypeDropdownOpen && "rotate-180"
+                        )} />
+                      </button>
+
+                      {/* 下拉选项 */}
+                      <AnimatePresence>
+                        {isTypeDropdownOpen && (
+                          <m.div
+                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-brand-beige/50 bg-white/95 shadow-lg shadow-brand-charcoal/5 backdrop-blur-sm"
+                          >
+                            {messageTypes.filter(t => t.value !== "").map((type, index) => {
+                              const Icon = type.icon;
+                              const isSelected = formData.type === type.value;
+                              return (
+                                <button
+                                  key={type.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData(prev => ({ ...prev, type: type.value }));
+                                    setIsTypeDropdownOpen(false);
+                                    if (errors.type) {
+                                      setErrors(prev => ({ ...prev, type: "" }));
+                                    }
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all",
+                                    isSelected
+                                      ? "bg-brand-gold/10 text-brand-charcoal"
+                                      : "text-brand-charcoal/70 hover:bg-brand-beige/30 hover:text-brand-charcoal",
+                                    index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-brand-beige/30"
+                                  )}
+                                >
+                                  <Icon className={cn(
+                                    "h-4 w-4 transition-colors",
+                                    isSelected ? "text-brand-gold" : "text-brand-charcoal/40"
+                                  )} />
+                                  <span>{type.label}</span>
+                                  {isSelected && (
+                                    <CheckCircle className="ml-auto h-4 w-4 text-brand-gold" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </m.div>
+                        )}
+                      </AnimatePresence>
                       {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
                     </div>
 
@@ -326,7 +401,71 @@ export function ContactContent() {
         </m.div>
       </div>
 
-      {/* 底部导航栏 */}
+      {/* 移动端菜单遮罩层 */}
+      <AnimatePresence>
+        {isNavMenuOpen && !isExpanded && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm sm:hidden"
+            onClick={() => setIsNavMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* 移动端弹出菜单 */}
+      <AnimatePresence>
+        {isNavMenuOpen && !isExpanded && (
+          <m.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="fixed bottom-20 right-3 z-50 w-44 rounded-2xl bg-white/95 p-2 shadow-xl backdrop-blur-md sm:hidden"
+          >
+            <div className="flex flex-col gap-1">
+              {/* 首页 */}
+              <Link
+                href="/"
+                onClick={() => setIsNavMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
+                  <HomeIcon className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-brand-charcoal">首页</span>
+                  <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">Home</span>
+                </div>
+              </Link>
+              {/* 其他导航项 */}
+              {bottomNavItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsNavMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
+                      <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">{item.labelEn}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      {/* 底部导航栏 - 展开时隐藏 */}
       <AnimatePresence>
         {!isExpanded && (
           <m.header
@@ -334,43 +473,105 @@ export function ContactContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed bottom-4 left-6 right-6 z-50 sm:left-10 sm:right-10 lg:bottom-6 lg:left-16 lg:right-16"
+            className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"
           >
-            <nav className={cn("flex items-center justify-between", "rounded-2xl bg-white/95 px-5 py-4 shadow-lg backdrop-blur-md", "lg:rounded-3xl lg:px-8 lg:py-5")} aria-label="联系我们页导航">
-              <Link href="/contact" className="group flex items-center gap-2 transition-opacity hover:opacity-80 sm:gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-12 sm:w-12 lg:h-14 lg:w-14">
-                  <Mail className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+            <nav
+              className={cn(
+                "flex items-center justify-between",
+                "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
+                "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
+              )}
+              aria-label="联系我们页导航"
+            >
+              {/* 左侧主导航 - 联系我们 */}
+              <Link
+                href="/contact"
+                className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:gap-4 sm:hover:opacity-80"
+              >
+                {/* 图标容器 */}
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+                  <ContactIcon className="h-6 w-6 sm:h-10 sm:w-10 lg:h-14 lg:w-14" />
                 </div>
+                {/* 文字 */}
                 <div className="flex flex-col">
-                  <span className="text-lg font-semibold text-brand-charcoal sm:text-xl lg:text-2xl">联系我们</span>
-                  <span className="font-serif text-xs uppercase tracking-wide text-brand-gold/70 sm:text-sm lg:text-base">Contact</span>
+                  <span className="text-sm font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">
+                    联系我们
+                  </span>
+                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">
+                    Contact
+                  </span>
                 </div>
               </Link>
 
-              <div className="flex items-center gap-3 sm:gap-5 lg:gap-8">
+              {/* 移动端：菜单按钮 */}
+              <button
+                type="button"
+                onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-beige/30 transition-colors active:bg-brand-beige/50 sm:hidden"
+                aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {isNavMenuOpen ? (
+                    <m.div
+                      key="close"
+                      initial={{ opacity: 0, rotate: -90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: 90 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <X className="h-5 w-5 text-brand-charcoal" />
+                    </m.div>
+                  ) : (
+                    <m.div
+                      key="menu"
+                      initial={{ opacity: 0, rotate: 90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: -90 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <Menu className="h-5 w-5 text-brand-charcoal" />
+                    </m.div>
+                  )}
+                </AnimatePresence>
+              </button>
+
+              {/* 平板/桌面端：直接显示导航图标 */}
+              <div className="hidden items-center gap-5 sm:flex lg:gap-8">
                 {bottomNavItems.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <Link key={item.href} href={item.href} className="group flex flex-col items-center gap-0.5 transition-opacity hover:opacity-80 sm:gap-1">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 sm:h-11 sm:w-11 lg:h-12 lg:w-12">
-                        <Icon className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
+                    >
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
+                        <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
                       </div>
-                      <span className="hidden text-xs text-brand-charcoal/70 sm:block lg:text-sm">{item.label}</span>
-                      <span className="hidden font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 sm:block lg:text-xs">{item.labelEn}</span>
+                      <span className="text-xs text-brand-charcoal/70 lg:text-sm">
+                        {item.label}
+                      </span>
+                      <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
+                        {item.labelEn}
+                      </span>
                     </Link>
                   );
                 })}
                 {/* 回到首页按钮 */}
                 <Link
                   href="/"
-                  className="group flex flex-col items-center gap-0.5 transition-opacity hover:opacity-80 sm:gap-1"
+                  className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 sm:h-11 sm:w-11 lg:h-12 lg:w-12">
-                    <Home className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
+                    <HomeIcon className="h-8 w-8 lg:h-9 lg:w-9" />
                   </div>
-                  <span className="hidden text-xs text-brand-charcoal/70 sm:block lg:text-sm">首页</span>
-                  <span className="hidden font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 sm:block lg:text-xs">Home</span>
+                  <span className="text-xs text-brand-charcoal/70 lg:text-sm">
+                    首页
+                  </span>
+                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
+                    Home
+                  </span>
                 </Link>
               </div>
             </nav>

@@ -184,35 +184,35 @@ export function QuestionsFlow() {
   }
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden px-4 py-6 md:px-6">
+    <div className="relative flex h-screen flex-col overflow-hidden px-4 py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
       {/* 顶部导航栏 */}
       <header className="flex items-center justify-between">
         {/* 返回按钮 */}
         {currentIndex === 0 ? (
           <Link
             href="/advisor"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/5 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-charcoal lg:h-11 lg:w-11"
             aria-label="返回"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
           </Link>
         ) : (
           <button
             onClick={handlePrev}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/5 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-charcoal lg:h-11 lg:w-11"
             aria-label="上一题"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
           </button>
         )}
 
         {/* 进度指示器 */}
-        <div className="flex-1 px-4">
+        <div className="flex-1 px-4 lg:px-8">
           <ProgressBar current={currentIndex + 1} total={totalQuestions} />
         </div>
 
-        {/* 跳过按钮（占位） */}
-        <div className="w-10" />
+        {/* 占位 */}
+        <div className="w-10 lg:w-12" />
       </header>
 
       {/* 问题内容区域 */}
@@ -228,33 +228,19 @@ export function QuestionsFlow() {
       </main>
 
       {/* 底部导航按钮 */}
-      <footer className="flex items-center justify-between pb-4">
-        {/* 左侧：上一题按钮（仅非第一题显示） */}
-        <div>
-          {currentIndex > 0 && (
-            <m.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onClick={handlePrev}
-              className="flex items-center gap-1 text-sm text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              上一题
-            </m.button>
-          )}
-        </div>
-
-        {/* 右侧：下一题/完成按钮 */}
+      <footer className="flex items-center justify-center pb-6 pt-2">
+        {/* 居中：下一题/完成按钮 */}
         <m.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: currentAnswer ? 1 : 0.5 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: currentAnswer ? 1 : 0.4, y: 0 }}
+          transition={{ duration: 0.3 }}
           onClick={isLastQuestion ? handleComplete : handleNext}
           disabled={!currentAnswer}
           className={cn(
-            "flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-all",
+            "flex items-center gap-2 rounded-full px-10 py-3.5 text-sm font-light tracking-wider transition-all sm:px-12 sm:py-4",
             currentAnswer
-              ? "bg-brand-gold text-white shadow-md hover:bg-brand-gold/90"
-              : "cursor-not-allowed bg-brand-beige text-brand-charcoal/40"
+              ? "border border-brand-gold/30 bg-brand-gold/10 text-brand-charcoal hover:border-brand-gold/50 hover:bg-brand-gold/20"
+              : "cursor-not-allowed border border-brand-beige/50 bg-brand-beige/30 text-brand-charcoal/30"
           )}
         >
           {isLastQuestion ? "查看结果" : "下一题"}

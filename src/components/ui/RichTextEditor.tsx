@@ -325,11 +325,12 @@ export function RichTextEditor({
             )}
           />
 
-          {/* 浮动菜单 */}
-          {editor && (
+          {/* 浮动菜单 - 仅在编辑器获得焦点且有选中内容时显示 */}
+          {editor && isFocused && (
             <BubbleMenu
               editor={editor}
               className="flex gap-0.5 rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
+              tippyOptions={{ duration: 100, placement: "top" }}
             >
               <ToolbarButton
                 onClick={() => editor.chain().focus().toggleBold().run()}

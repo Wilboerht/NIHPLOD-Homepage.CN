@@ -41,9 +41,9 @@ export function ProgressBar({
   }
 
   return (
-    <div className="flex w-full items-center gap-3">
+    <div className="mx-auto flex w-full max-w-md items-center gap-4 lg:max-w-lg">
       {/* 分段进度指示器 */}
-      <div className="flex flex-1 items-center gap-1.5 sm:gap-2">
+      <div className="flex flex-1 items-center gap-2 sm:gap-2.5 lg:gap-3">
         {Array.from({ length: total }, (_, i) => {
           const isCompleted = i + 1 < current;
           const isCurrent = i + 1 === current;
@@ -51,21 +51,21 @@ export function ProgressBar({
           return (
             <m.div
               key={i}
-              className="relative h-1 flex-1 overflow-hidden rounded-full sm:h-1.5"
+              className="relative h-1.5 flex-1 overflow-hidden rounded-full sm:h-2 lg:h-[5px]"
               style={{
                 backgroundColor: isCompleted || isCurrent
                   ? "transparent"
-                  : "rgba(232, 226, 217, 0.5)", // brand-beige/50
+                  : "rgba(232, 226, 217, 0.35)", // brand-beige/35
               }}
             >
               {/* 已完成或当前段的填充 */}
               {(isCompleted || isCurrent) && (
                 <m.div
-                  className="absolute inset-0 rounded-full bg-brand-gold"
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-gold to-brand-gold/80"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
                   transition={{
-                    duration: 0.5,
+                    duration: 0.4,
                     ease: [0.4, 0, 0.2, 1],
                     delay: isCurrent ? 0.1 : 0,
                   }}
@@ -78,7 +78,7 @@ export function ProgressBar({
       </div>
 
       {/* 步骤数字 */}
-      <span className="min-w-[3rem] text-right text-xs tracking-wider text-brand-charcoal/50 sm:text-sm">
+      <span className="min-w-[2.5rem] text-right text-[11px] font-light tracking-widest text-brand-charcoal/40 sm:text-xs lg:min-w-[3rem] lg:text-xs">
         {current}/{total}
       </span>
     </div>

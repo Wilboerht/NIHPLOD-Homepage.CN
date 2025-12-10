@@ -4,44 +4,58 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, ShoppingBag, BookMarked, Phone, Sun, Moon, Heart, ChevronRight, Home } from "lucide-react";
+import { ChevronDown, ChevronRight, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ShopIcon, StoryIcon, ContactIcon, HomeIcon, RitualIcon } from "@/components/website";
 
 /**
  * 底部导航项配置
  */
 const bottomNavItems = [
-  { href: "/products", label: "商城", labelEn: "Products", icon: ShoppingBag },
-  { href: "/story", label: "关于旎柏", labelEn: "Story", icon: BookMarked },
-  { href: "/contact", label: "联系我们", labelEn: "Contact", icon: Phone },
+  { href: "/products", label: "商城", labelEn: "Products", icon: ShopIcon },
+  { href: "/story", label: "关于旎柏", labelEn: "Story", icon: StoryIcon },
+  { href: "/contact", label: "联系我们", labelEn: "Contact", icon: ContactIcon },
 ];
 
-// 自定义图标组件
-const SunIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M12 18.5C15.5898 18.5 18.5 15.5898 18.5 12C18.5 8.41015 15.5898 5.5 12 5.5C8.41015 5.5 5.5 8.41015 5.5 12C5.5 15.5898 8.41015 18.5 12 18.5Z" />
-    <circle cx="12" cy="1.75" r="1.25" />
-    <circle cx="19.25" cy="4.75" r="1.25" />
-    <circle cx="22.25" cy="12" r="1.25" />
-    <circle cx="19.25" cy="19.25" r="1.25" />
-    <circle cx="12" cy="22.25" r="1.25" />
-    <circle cx="4.75" cy="19.25" r="1.25" />
-    <circle cx="1.75" cy="12" r="1.25" />
-    <circle cx="4.75" cy="4.75" r="1.25" />
-  </svg>
-);
+// 图标颜色常量
+const ICON_COLOR = "#C3BC9F";
+const ICON_HOVER_COLOR = "#B8A47B"; // brand-gold
 
-const MoonIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M13.8237 3.18488C11.3623 3.82663 9.54547 6.06477 9.54547 8.72728C9.54547 11.8904 12.1096 14.4545 15.2727 14.4545C17.9352 14.4545 20.1734 12.6377 20.8151 10.1763C20.9363 10.7652 21 11.3752 21 12C21 16.9706 16.9706 21 12 21C7.02943 21 3 16.9706 3 12C3 7.02943 7.02943 3 12 3C12.6248 3 13.2348 3.06367 13.8237 3.18488Z" />
-  </svg>
-);
+// 自定义图标组件 - 支持 hover 状态
+const SunIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+  const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
+      <path d="M12 18.5C15.5898 18.5 18.5 15.5898 18.5 12C18.5 8.41015 15.5898 5.5 12 5.5C8.41015 5.5 5.5 8.41015 5.5 12C5.5 15.5898 8.41015 18.5 12 18.5Z" fill={color} stroke={color} strokeWidth="1.6" strokeLinejoin="round"/>
+      <path d="M12 3C12.6904 3 13.25 2.44036 13.25 1.75C13.25 1.05964 12.6904 0.5 12 0.5C11.3097 0.5 10.75 1.05964 10.75 1.75C10.75 2.44036 11.3097 3 12 3Z" fill={color}/>
+      <path d="M19.25 6C19.9404 6 20.5 5.44035 20.5 4.75C20.5 4.05964 19.9404 3.5 19.25 3.5C18.5597 3.5 18 4.05964 18 4.75C18 5.44035 18.5597 6 19.25 6Z" fill={color}/>
+      <path d="M22.25 13.25C22.9404 13.25 23.5 12.6904 23.5 12C23.5 11.3097 22.9404 10.75 22.25 10.75C21.5597 10.75 21 11.3097 21 12C21 12.6904 21.5597 13.25 22.25 13.25Z" fill={color}/>
+      <path d="M19.25 20.5C19.9404 20.5 20.5 19.9404 20.5 19.25C20.5 18.5597 19.9404 18 19.25 18C18.5597 18 18 18.5597 18 19.25C18 19.9404 18.5597 20.5 19.25 20.5Z" fill={color}/>
+      <path d="M12 23.5C12.6904 23.5 13.25 22.9404 13.25 22.25C13.25 21.5597 12.6904 21 12 21C11.3097 21 10.75 21.5597 10.75 22.25C10.75 22.9404 11.3097 23.5 12 23.5Z" fill={color}/>
+      <path d="M4.75 20.5C5.44035 20.5 6 19.9404 6 19.25C6 18.5597 5.44035 18 4.75 18C4.05964 18 3.5 18.5597 3.5 19.25C3.5 19.9404 4.05964 20.5 4.75 20.5Z" fill={color}/>
+      <path d="M1.75 13.25C2.44036 13.25 3 12.6904 3 12C3 11.3097 2.44036 10.75 1.75 10.75C1.05964 10.75 0.5 11.3097 0.5 12C0.5 12.6904 1.05964 13.25 1.75 13.25Z" fill={color}/>
+      <path d="M4.75 6C5.44035 6 6 5.44035 6 4.75C6 4.05964 5.44035 3.5 4.75 3.5C4.05964 3.5 3.5 4.05964 3.5 4.75C3.5 5.44035 4.05964 6 4.75 6Z" fill={color}/>
+    </svg>
+  );
+};
 
-const HeartIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M7.49983 4.00195C4.46222 4.00195 1.99976 6.46443 1.99976 9.50202C1.99976 15.0021 8.49984 20.0022 11.9999 21.1653C15.4999 20.0022 22 15.0021 22 9.50202C22 6.46443 19.5375 4.00195 16.4999 4.00195C14.6398 4.00195 12.9952 4.92542 11.9999 6.33888C11.0045 4.92542 9.36 4.00195 7.49983 4.00195Z" />
-  </svg>
-);
+const MoonIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+  const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
+      <path d="M13.8237 3.18488C11.3623 3.82663 9.54547 6.06477 9.54547 8.72728C9.54547 11.8904 12.1096 14.4545 15.2727 14.4545C17.9352 14.4545 20.1734 12.6377 20.8151 10.1763C20.9363 10.7652 21 11.3752 21 12C21 16.9706 16.9706 21 12 21C7.02943 21 3 16.9706 3 12C3 7.02943 7.02943 3 12 3C12.6248 3 13.2348 3.06367 13.8237 3.18488Z" fill={color} stroke={color} strokeWidth="1.44" strokeLinejoin="round"/>
+    </svg>
+  );
+};
+
+const HeartIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+  const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
+      <path d="M7.49983 4.00195C4.46222 4.00195 1.99976 6.46443 1.99976 9.50202C1.99976 15.0021 8.49984 20.0022 11.9999 21.1653C15.4999 20.0022 22 15.0021 22 9.50202C22 6.46443 19.5375 4.00195 16.4999 4.00195C14.6398 4.00195 12.9952 4.92542 11.9999 6.33888C11.0045 4.92542 9.36 4.00195 7.49983 4.00195Z" fill={color} stroke={color} strokeWidth="1.60002" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+};
 
 // 标签页配置
 type TabId = "morning" | "evening" | "couple";
@@ -49,7 +63,7 @@ type TabId = "morning" | "evening" | "couple";
 interface TabConfig {
   id: TabId;
   label: string;
-  icon: React.FC<{ className?: string }>;
+  icon: React.FC<{ className?: string; isHovered?: boolean }>;
 }
 
 const tabs: TabConfig[] = [
@@ -57,6 +71,52 @@ const tabs: TabConfig[] = [
   { id: "evening", label: "晚间仪式", icon: MoonIcon },
   { id: "couple", label: "双人SPA", icon: HeartIcon },
 ];
+
+// Tab 按钮组件 - 支持 hover 状态
+const TabButton = ({
+  tab,
+  index,
+  isLast,
+  onClick
+}: {
+  tab: TabConfig;
+  index: number;
+  isLast: boolean;
+  onClick: () => void;
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const Icon = tab.icon;
+
+  return (
+    <m.button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        "group relative flex flex-1 flex-col items-center justify-center gap-3 px-4 py-6 transition-all duration-300 sm:gap-4 sm:px-8 sm:py-8 md:py-10",
+        !isLast && "border-r border-brand-charcoal/20"
+      )}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2 + index * 0.06, ease: "easeOut" }}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+    >
+      {/* 大图标 */}
+      <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28">
+        <Icon className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24" isHovered={isHovered} />
+      </div>
+      {/* 标签文字 */}
+      <span className={cn(
+        "text-xs font-medium transition-colors duration-300 sm:text-sm md:text-base lg:text-lg",
+        isHovered ? "text-brand-charcoal" : "text-brand-charcoal/70"
+      )}>
+        {tab.label}
+      </span>
+    </m.button>
+  );
+};
 
 // 护肤步骤类型
 interface RitualStep {
@@ -171,6 +231,7 @@ const tabContents: Record<TabId, TabContent> = {
 export function RitualContent() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
 
   return (
     <>
@@ -270,34 +331,15 @@ export function RitualContent() {
 
                       {/* 3个大标签按钮 */}
                       <div className="flex w-full max-w-3xl items-stretch justify-center">
-                        {tabs.map((tab, index) => {
-                          const Icon = tab.icon;
-                          return (
-                            <m.button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => setActiveTab(tab.id)}
-                              className={cn(
-                                "group relative flex flex-1 flex-col items-center justify-center gap-3 px-4 py-6 transition-all duration-300 sm:gap-4 sm:px-8 sm:py-8 md:py-10",
-                                index < tabs.length - 1 && "border-r border-brand-charcoal/20"
-                              )}
-                              initial={{ opacity: 0, y: 15 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.4, delay: 0.2 + index * 0.06, ease: "easeOut" }}
-                              whileHover={{ scale: 1.03 }}
-                              whileTap={{ scale: 0.97 }}
-                            >
-                              {/* 大图标 */}
-                              <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28">
-                                <Icon className="h-12 w-12 text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-gold sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24" />
-                              </div>
-                              {/* 标签文字 */}
-                              <span className="text-xs font-medium text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-sm md:text-base lg:text-lg">
-                                {tab.label}
-                              </span>
-                            </m.button>
-                          );
-                        })}
+                        {tabs.map((tab, index) => (
+                          <TabButton
+                            key={tab.id}
+                            tab={tab}
+                            index={index}
+                            isLast={index === tabs.length - 1}
+                            onClick={() => setActiveTab(tab.id)}
+                          />
+                        ))}
                       </div>
                     </m.div>
                   )}
@@ -493,6 +535,70 @@ export function RitualContent() {
         </m.div>
       </div>
 
+      {/* 移动端菜单遮罩层 */}
+      <AnimatePresence>
+        {isNavMenuOpen && !isExpanded && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm sm:hidden"
+            onClick={() => setIsNavMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* 移动端弹出菜单 */}
+      <AnimatePresence>
+        {isNavMenuOpen && !isExpanded && (
+          <m.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="fixed bottom-20 right-3 z-50 w-44 rounded-2xl bg-white/95 p-2 shadow-xl backdrop-blur-md sm:hidden"
+          >
+            <div className="flex flex-col gap-1">
+              {/* 首页 */}
+              <Link
+                href="/"
+                onClick={() => setIsNavMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
+                  <HomeIcon className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-brand-charcoal">首页</span>
+                  <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">Home</span>
+                </div>
+              </Link>
+              {/* 其他导航项 */}
+              {bottomNavItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsNavMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
+                      <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">{item.labelEn}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+
       {/* 底部导航栏 - 展开时隐藏 */}
       <AnimatePresence>
         {!isExpanded && (
@@ -501,54 +607,86 @@ export function RitualContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed bottom-4 left-6 right-6 z-50 sm:left-10 sm:right-10 lg:bottom-6 lg:left-16 lg:right-16"
+            className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"
           >
             <nav
               className={cn(
                 "flex items-center justify-between",
-                "rounded-2xl bg-white/95 px-5 py-4 shadow-lg backdrop-blur-md",
-                "lg:rounded-3xl lg:px-8 lg:py-5"
+                "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
+                "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
               )}
               aria-label="护肤仪式页导航"
             >
               {/* 左侧主导航 - 护肤仪式 */}
               <Link
                 href="/ritual"
-                className="group flex items-center gap-2 transition-opacity hover:opacity-80 sm:gap-4"
+                className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:gap-4 sm:hover:opacity-80"
               >
                 {/* 图标容器 */}
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-12 sm:w-12 lg:h-14 lg:w-14">
-                  <Sun className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+                  <RitualIcon className="h-6 w-6 sm:h-10 sm:w-10 lg:h-14 lg:w-14" />
                 </div>
                 {/* 文字 */}
                 <div className="flex flex-col">
-                  <span className="text-lg font-semibold text-brand-charcoal sm:text-xl lg:text-2xl">
+                  <span className="text-sm font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">
                     护肤仪式
                   </span>
-                  <span className="font-serif text-xs uppercase tracking-wide text-brand-gold/70 sm:text-sm lg:text-base">
+                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">
                     Ritual
                   </span>
                 </div>
               </Link>
 
-              {/* 右侧导航图标 */}
-              <div className="flex items-center gap-3 sm:gap-5 lg:gap-8">
+              {/* 移动端：菜单按钮 */}
+              <button
+                type="button"
+                onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-beige/30 transition-colors active:bg-brand-beige/50 sm:hidden"
+                aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {isNavMenuOpen ? (
+                    <m.div
+                      key="close"
+                      initial={{ opacity: 0, rotate: -90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: 90 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <X className="h-5 w-5 text-brand-charcoal" />
+                    </m.div>
+                  ) : (
+                    <m.div
+                      key="menu"
+                      initial={{ opacity: 0, rotate: 90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: -90 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <Menu className="h-5 w-5 text-brand-charcoal" />
+                    </m.div>
+                  )}
+                </AnimatePresence>
+              </button>
+
+              {/* 平板/桌面端：直接显示导航图标 */}
+              <div className="hidden items-center gap-5 sm:flex lg:gap-8">
                 {bottomNavItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="group flex flex-col items-center gap-0.5 transition-opacity hover:opacity-80 sm:gap-1"
+                      className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 sm:h-11 sm:w-11 lg:h-12 lg:w-12">
-                        <Icon className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
+                        <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
                       </div>
-                      <span className="hidden text-xs text-brand-charcoal/70 sm:block lg:text-sm">
+                      <span className="text-xs text-brand-charcoal/70 lg:text-sm">
                         {item.label}
                       </span>
-                      <span className="hidden font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 sm:block lg:text-xs">
+                      <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
                         {item.labelEn}
                       </span>
                     </Link>
@@ -557,15 +695,15 @@ export function RitualContent() {
                 {/* 回到首页按钮 */}
                 <Link
                   href="/"
-                  className="group flex flex-col items-center gap-0.5 transition-opacity hover:opacity-80 sm:gap-1"
+                  className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 sm:h-11 sm:w-11 lg:h-12 lg:w-12">
-                    <Home className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
+                    <HomeIcon className="h-8 w-8 lg:h-9 lg:w-9" />
                   </div>
-                  <span className="hidden text-xs text-brand-charcoal/70 sm:block lg:text-sm">
+                  <span className="text-xs text-brand-charcoal/70 lg:text-sm">
                     首页
                   </span>
-                  <span className="hidden font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 sm:block lg:text-xs">
+                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
                     Home
                   </span>
                 </Link>

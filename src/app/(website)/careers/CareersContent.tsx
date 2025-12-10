@@ -91,7 +91,7 @@ export function CareersContent({ jobs }: CareersContentProps) {
                 </div>
 
                 {/* 开放职位内容 */}
-                <div className="flex-1 overflow-y-auto rounded-xl border border-brand-beige bg-white/80 p-4 backdrop-blur-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
+                <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
                   <div className="space-y-4">
                     {jobs.length === 0 ? (
                       <div className="py-8 text-center">

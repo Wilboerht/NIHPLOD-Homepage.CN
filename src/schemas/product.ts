@@ -6,7 +6,10 @@ import { z } from "zod";
 // 产品图片 Schema
 export const ProductImageSchema = z.object({
   id: z.string().optional(), // 已有图片的 ID
-  url: z.string().url("请输入有效的图片URL"),
+  url: z.string().min(1, "图片URL不能为空").refine(
+    (val) => val.startsWith("/") || val.startsWith("http://") || val.startsWith("https://") || val.startsWith("blob:"),
+    "请输入有效的图片URL（支持相对路径或完整URL）"
+  ),
   alt: z.string().max(200, "图片描述最多200个字符").optional().nullable(),
   order: z.number().int().min(0).default(0),
 });
@@ -55,7 +58,10 @@ export const CategorySchema = z.object({
     .max(50, "URL别名不能超过50个字符")
     .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
   description: z.string().max(500, "描述不能超过500个字符").optional(),
-  image: z.string().url("请输入有效的图片URL").optional(),
+  image: z.string().refine(
+    (val) => !val || val.startsWith("/") || val.startsWith("http://") || val.startsWith("https://"),
+    "请输入有效的图片URL（支持相对路径或完整URL）"
+  ).optional(),
   order: z.number().int().min(0).default(0),
 });
 

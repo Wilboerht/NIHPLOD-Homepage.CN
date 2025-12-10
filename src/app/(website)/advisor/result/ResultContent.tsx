@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import {
   RefreshCw,
@@ -48,6 +47,15 @@ interface Product {
   description?: string | null;
 }
 
+/** 护肤步骤类型 */
+interface RoutineStep {
+  order: number;
+  step: string;
+  description: string;
+  productId?: string;
+  productName?: string;
+}
+
 /** 综合分析结果类型 */
 interface ComprehensiveResult {
   skinProfile: {
@@ -62,8 +70,8 @@ interface ComprehensiveResult {
   };
   products: Product[];
   routine: {
-    morning: { order: number; step: string; description: string }[];
-    evening: { order: number; step: string; description: string }[];
+    morning: RoutineStep[];
+    evening: RoutineStep[];
   };
   dataSource: "comprehensive" | "questionnaire";
 }
@@ -359,21 +367,21 @@ export function ResultContent() {
   if (!result) return null;
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-6">
+    <div className="min-h-screen px-4 py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
       {/* 顶部导航 */}
-      <header className="mb-6 flex items-center justify-between">
+      <header className="mx-auto mb-6 flex max-w-2xl items-center justify-between lg:max-w-3xl lg:mb-8">
         <Link
           href="/"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-sm transition-colors hover:bg-white"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/5 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-charcoal lg:h-11 lg:w-11"
         >
-          <Home className="h-5 w-5" />
+          <Home className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
         </Link>
-        <span className="text-sm text-brand-charcoal/60">
+        <span className="text-xs font-light tracking-wider text-brand-charcoal/50 sm:text-sm">
           {result.dataSource === "comprehensive" ? "综合分析" : "问卷分析"}
         </span>
         <button
           onClick={handleShare}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-sm transition-colors hover:bg-white"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/5 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-brand-gold/10 hover:text-brand-charcoal lg:h-11 lg:w-11"
           aria-label="分享"
         >
           <AnimatePresence mode="wait">
@@ -501,7 +509,7 @@ export function ResultContent() {
 
       {/* 页面标题 */}
       <m.div
-        className="mb-6 text-center"
+        className="mb-6 text-center lg:mb-8"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -510,13 +518,13 @@ export function ResultContent() {
           <Star className="h-4 w-4 text-brand-gold" />
           <span className="text-sm text-brand-gold">AI 分析完成</span>
         </div>
-        <h1 className="font-playfair text-2xl text-brand-charcoal">您的肌肤分析报告</h1>
+        <h1 className="font-serif text-2xl text-brand-charcoal lg:text-3xl">您的肌肤分析报告</h1>
       </m.div>
 
       {/* 报告内容区域（用于截图） */}
       <m.div
         ref={reportRef}
-        className="mx-auto max-w-2xl space-y-6"
+        className="mx-auto max-w-2xl space-y-6 lg:max-w-3xl"
         variants={staggerContainer}
         initial="initial"
         animate="animate"
@@ -585,17 +593,43 @@ export function ResultContent() {
 
           {/* 步骤列表 */}
           <div className="space-y-3">
-            {result.routine[activeRoutine].map((step) => (
-              <div key={step.order} className="flex items-center gap-3">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold/10 text-sm font-medium text-brand-gold">
-                  {step.order}
+            {result.routine[activeRoutine].map((step) => {
+              // 查找对应产品
+              const product = step.productId
+                ? result.products.find((p) => p.id === step.productId)
+                : null;
+
+              return (
+                <div key={step.order} className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold/10 text-sm font-medium text-brand-gold">
+                    {step.order}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-brand-charcoal">{step.step}</span>
+                      {(step.productName || product?.name) && (
+                        <>
+                          <span className="text-brand-charcoal/30">·</span>
+                          {product ? (
+                            <Link
+                              href={`/products/${product.id}`}
+                              className="text-sm text-brand-gold hover:underline"
+                            >
+                              {step.productName || product.name}
+                            </Link>
+                          ) : (
+                            <span className="text-sm text-brand-gold">
+                              {step.productName}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="text-xs text-brand-charcoal/60">{step.description}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm font-medium text-brand-charcoal">{step.step}</div>
-                  <div className="text-xs text-brand-charcoal/60">{step.description}</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </m.div>
 
@@ -622,72 +656,6 @@ export function ResultContent() {
             </div>
           </div>
         </m.div>
-
-        {/* 推荐产品 */}
-        {result.products.length > 0 && (
-          <m.div
-            variants={fadeInUp}
-            transition={defaultTransition}
-            className="rounded-2xl bg-white p-4 shadow-sm"
-          >
-            <h3 className="mb-4 flex items-center gap-2 font-medium text-brand-charcoal">
-              <ShoppingBag className="h-5 w-5 text-brand-gold" />
-              💫 为您推荐以下产品
-            </h3>
-
-            {/* 产品卡片网格 */}
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              {result.products.slice(0, 6).map((product, index) => (
-                <m.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Link
-                    href={`/products/${product.id}`}
-                    className="group block overflow-hidden rounded-xl bg-brand-cream/50 transition-all hover:bg-brand-cream hover:shadow-md"
-                  >
-                    {/* 产品图片 */}
-                    <div className="relative aspect-square overflow-hidden bg-white">
-                      {product.image ? (
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
-                          sizes="(max-width: 768px) 50vw, 33vw"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <ShoppingBag className="h-8 w-8 text-brand-beige" />
-                        </div>
-                      )}
-                    </div>
-                    {/* 产品信息 */}
-                    <div className="p-3">
-                      <div className="mb-1 line-clamp-1 text-sm font-medium text-brand-charcoal">
-                        {product.name}
-                      </div>
-                      {product.nameEn && (
-                        <div className="mb-1 line-clamp-1 text-xs text-brand-charcoal/40">
-                          {product.nameEn}
-                        </div>
-                      )}
-                      <div className="line-clamp-2 text-xs text-brand-gold">{product.reason}</div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-xs text-brand-charcoal/50">
-                          {product.category || "护肤品"}
-                        </span>
-                        <span className="text-xs text-brand-gold">查看详情 →</span>
-                      </div>
-                    </div>
-                  </Link>
-                </m.div>
-              ))}
-            </div>
-          </m.div>
-        )}
 
         {/* 操作按钮 */}
         <m.div

@@ -16,3 +16,4 @@ export {
   FormSkeleton,
   TimelineSkeleton,
 } from "./Skeleton";
+export { RitualIcon, ContactIcon, HomeIcon, ShopIcon, StoryIcon } from "./NavIcons";
