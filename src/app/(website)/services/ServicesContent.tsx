@@ -96,7 +96,7 @@ const serviceDetails: Record<ServiceId, ServiceDetail> = {
     description: "会员积分、权益管理与专属服务平台，为尊贵会员提供积分查询、等级权益、专属优惠等服务。",
     links: [
       { label: "用户端", url: "https://vip.nihplod.cn", isAdmin: false, description: "会员登录、积分查询、权益兑换" },
-      { label: "管理端", url: "https://adminvip.nihplod.cn", isAdmin: true, description: "会员管理、积分发放、活动配置" },
+      { label: "管理端", url: "https://adminvip.nihplod.cn", isAdmin: true, description: "仅授权人员使用" },
     ],
   },
   website: {
@@ -105,7 +105,7 @@ const serviceDetails: Record<ServiceId, ServiceDetail> = {
     description: "NIHPLOD 旎柏品牌官方网站，展示品牌故事、产品系列、护肤仪式等内容。",
     links: [
       { label: "用户端", url: "https://nihplod.cn", isAdmin: false, description: "品牌展示、产品浏览、AI护肤顾问" },
-      { label: "管理端", url: "https://nihplod.cn/admin", isAdmin: true, description: "内容管理、产品管理、数据分析" },
+      { label: "管理端", url: "https://nihplod.cn/admin", isAdmin: true, description: "仅授权人员使用" },
     ],
   },
   influencer: {
@@ -114,7 +114,7 @@ const serviceDetails: Record<ServiceId, ServiceDetail> = {
     description: "KOL/KOC合作平台，提供达人招募、内容共创、合作管理等功能。",
     links: [
       { label: "用户端", url: "https://influencer.nihplod.cn", isAdmin: false, description: "达人注册、合作申请、任务领取" },
-      { label: "管理端", url: "https://admininfluencer.nihplod.cn", isAdmin: true, description: "达人审核、任务发布、数据统计" },
+      { label: "管理端", url: "https://influencer.nihplod.cn/admin", isAdmin: true, description: "仅授权人员使用" },
     ],
   },
 };
