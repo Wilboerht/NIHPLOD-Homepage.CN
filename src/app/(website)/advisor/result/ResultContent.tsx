@@ -94,10 +94,19 @@ export function ResultContent() {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
+  const [isMobile, setIsMobile] = useState(true); // 默认移动端，避免闪烁
 
-  // 检测是否支持原生分享
+  // 检测是否支持原生分享和屏幕尺寸
   useEffect(() => {
     setCanNativeShare(typeof navigator !== "undefined" && !!navigator.share);
+
+    // 检测是否为移动端
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // 追踪结果页面查看
@@ -408,100 +417,157 @@ export function ResultContent() {
         </button>
       </header>
 
-      {/* 分享菜单弹窗 */}
+      {/* 分享菜单弹窗 - 移动端底部抽屉，PC端居中弹窗 */}
       <AnimatePresence>
         {showShareMenu && (
           <>
             {/* 遮罩 */}
             <m.div
-              className="fixed inset-0 z-50 bg-black/50"
+              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowShareMenu(false)}
             />
-            {/* 弹窗 */}
+            {/* 弹窗容器 - PC端居中，移动端底部 */}
             <m.div
-              className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl bg-white p-6 pb-8"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={isMobile
+                ? "fixed bottom-0 left-0 right-0 z-50 w-full"
+                : "fixed left-1/2 top-1/2 z-50 w-[420px]"
+              }
+              initial={isMobile
+                ? { y: "100%" }
+                : { opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }
+              }
+              animate={isMobile
+                ? { y: 0 }
+                : { opacity: 1, scale: 1, x: "-50%", y: "-50%" }
+              }
+              exit={isMobile
+                ? { y: "100%" }
+                : { opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }
+              }
+              transition={isMobile
+                ? { type: "spring", damping: 28, stiffness: 350 }
+                : { duration: 0.2, ease: "easeOut" }
+              }
             >
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-medium text-brand-charcoal">分享报告</h3>
-                <button
-                  onClick={() => setShowShareMenu(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-brand-cream"
-                  aria-label="关闭"
-                >
-                  <X className="h-5 w-5 text-brand-charcoal/60" />
-                </button>
-              </div>
+              <div className={`bg-[#EBE8DB] px-6 ${isMobile ? "rounded-t-[2rem] pb-10 pt-5" : "rounded-2xl pb-6 pt-5 shadow-2xl"}`}>
+                {/* 顶部拖动指示条 - 仅移动端显示 */}
+                {isMobile && <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-brand-charcoal/20" />}
 
-              {/* 分享选项 */}
-              <div className="grid grid-cols-4 gap-4">
-                {/* 保存图片 */}
+                {/* 标题区域 */}
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-serif text-lg text-brand-charcoal">分享报告</h3>
+                    <p className="mt-0.5 text-xs text-brand-charcoal/50">将您的肌肤分析报告分享给朋友</p>
+                  </div>
+                  <button
+                    onClick={() => setShowShareMenu(false)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/60 text-brand-charcoal/60 transition-colors hover:bg-white hover:text-brand-charcoal"
+                    aria-label="关闭"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* 分享选项 */}
+                <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+                  {/* 保存图片 */}
+                  <button
+                    onClick={handleSaveImage}
+                    disabled={isGeneratingImage}
+                    className="group flex flex-col items-center gap-2"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm transition-all group-hover:shadow-md group-active:scale-95">
+                      {isGeneratingImage ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-brand-gold" />
+                      ) : (
+                        <Download className="h-6 w-6 text-brand-gold" />
+                      )}
+                    </div>
+                    <span className="text-xs text-brand-charcoal/70">保存图片</span>
+                  </button>
+
+                  {/* 复制链接 */}
+                  <button onClick={handleCopyLink} className="group flex flex-col items-center gap-2">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm transition-all group-hover:shadow-md group-active:scale-95">
+                      <Copy className="h-6 w-6 text-blue-500" />
+                    </div>
+                    <span className="text-xs text-brand-charcoal/70">复制链接</span>
+                  </button>
+
+                  {/* 微信 */}
+                  <button onClick={handleCopyLink} className="group flex flex-col items-center gap-2">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#07C160] shadow-sm transition-all group-hover:shadow-md group-active:scale-95">
+                      <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088v-.001c-.135-.007-.27-.023-.407-.033zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>
+                      </svg>
+                    </div>
+                    <span className="text-xs text-brand-charcoal/70">微信</span>
+                  </button>
+
+                  {/* 微博 */}
+                  <button onClick={handleShareWeibo} className="group flex flex-col items-center gap-2">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E6162D] shadow-sm transition-all group-hover:shadow-md group-active:scale-95">
+                      <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10.098 20c-4.433 0-8.098-2.055-8.098-4.786 0-1.413.887-3.016 2.396-4.383C6.535 9.06 9.263 8 11.667 8c1.65 0 2.94.377 3.727 1.088.66.597.96 1.353.894 2.249-.123 1.673-1.678 3.461-4.038 4.642-1.028.515-2.124.775-3.254.775-1.055 0-1.829-.276-2.236-.8-.27-.347-.362-.77-.266-1.222.107-.499.4-.94.758-1.248a2.93 2.93 0 0 1 1.79-.668c.482 0 .893.144 1.187.416.255.236.383.532.383.88 0 .348-.128.644-.37.857a1.03 1.03 0 0 1-.685.262c-.244 0-.456-.085-.614-.246a.605.605 0 0 1-.173-.433c0-.123.035-.237.102-.331.063-.088.15-.16.253-.21l-.016-.03c-.193.078-.355.2-.47.356a.87.87 0 0 0-.152.503c0 .23.093.44.27.608.19.181.453.28.761.28.374 0 .728-.137 1.002-.388.298-.273.463-.638.463-1.03 0-.474-.175-.903-.508-1.24-.373-.38-.923-.59-1.549-.59-.729 0-1.418.263-1.94.74a2.69 2.69 0 0 0-.905 1.958c-.044.452.08.87.36 1.209.507.617 1.446.954 2.717.954 1.185 0 2.374-.302 3.44-.873 2.07-1.109 3.428-2.663 3.522-4.035.043-.622-.169-1.17-.63-1.63C14.09 8.282 13.003 8 11.667 8c-2.219 0-4.762.98-6.782 2.618C3.453 11.823 2.5 13.395 2.5 15c0 2.321 3.31 4.286 7.598 4.286 3.506 0 6.64-1.485 8.148-3.858a.625.625 0 0 0-.207-.86.625.625 0 0 0-.86.207C15.833 17.145 13.11 18.5 10 18.5c-.035 0-.07-.001-.104-.003C13.392 17.85 16 15.607 16 13c0-.19-.015-.377-.044-.562.853-.157 1.57-.626 2.017-1.322a.625.625 0 1 0-1.054-.673 1.747 1.747 0 0 1-1.288.839c-.23-.59-.608-1.108-1.123-1.52-.906-.727-2.17-1.097-3.758-1.097-2.57 0-5.421 1.106-7.685 2.98C1.47 13.048.5 14.889.5 16.714c0 3.233 4.132 5.786 9.098 5.786 5.065 0 8.902-2.554 8.902-5.5 0-.69-.19-1.355-.548-1.98a.625.625 0 0 0-1.073.643c.27.474.414.977.414 1.337 0 2.34-3.422 4.214-7.695 4.214-4.173 0-7.89-1.873-7.89-4.5 0-1.537.87-3.127 2.382-4.352C6.38 10.197 8.96 9.214 11.37 9.214c1.386 0 2.45.3 3.165.89.558.46.809 1.031.758 1.697-.09 1.184-1.267 2.633-3.23 3.621-.917.462-1.907.696-2.94.696-.868 0-1.54-.22-1.943-.637-.235-.245-.33-.52-.282-.82.048-.297.21-.564.443-.756a1.718 1.718 0 0 1 1.066-.407c.299 0 .55.085.725.246a.68.68 0 0 1 .222.51.68.68 0 0 1-.222.51c-.18.166-.438.252-.749.252a.625.625 0 0 0 0 1.25c.56 0 1.075-.165 1.487-.477a1.93 1.93 0 0 0 .733-1.535c0-.62-.248-1.188-.7-1.599-.492-.449-1.17-.687-1.959-.687a2.97 2.97 0 0 0-1.84.654 2.65 2.65 0 0 0-.88 1.514c-.105.558.06 1.088.478 1.533.597.636 1.545.987 2.667.987 1.143 0 2.24-.262 3.264-.778 2.206-1.11 3.582-2.792 3.693-4.274.066-.78-.212-1.506-.828-2.158-.825-.873-2.067-1.335-3.59-1.335z"/>
+                      </svg>
+                    </div>
+                    <span className="text-xs text-brand-charcoal/70">微博</span>
+                  </button>
+
+                  {/* 小红书 */}
+                  <button onClick={handleCopyLink} className="group flex flex-col items-center gap-2">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FE2C55] shadow-sm transition-all group-hover:shadow-md group-active:scale-95">
+                      <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12.006 2c2.756 0 4.996 2.24 4.996 4.996v.008h2.004a2 2 0 0 1 2 2v10.998a2 2 0 0 1-2 2H4.994a2 2 0 0 1-2-2V9.004a2 2 0 0 1 2-2h2.004v-.008C6.998 4.24 9.238 2 12.006 2zm0 1.5c-1.928 0-3.496 1.568-3.496 3.496v.008h6.992v-.008c0-1.928-1.568-3.496-3.496-3.496zM8.75 12.5a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75zm6.5 0a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75zm-3.25 0a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75z"/>
+                      </svg>
+                    </div>
+                    <span className="text-xs text-brand-charcoal/70">小红书</span>
+                  </button>
+
+                  {/* 抖音 */}
+                  <button onClick={handleCopyLink} className="group flex flex-col items-center gap-2">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black shadow-sm transition-all group-hover:shadow-md group-active:scale-95">
+                      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                        <path d="M19.321 5.562a5.124 5.124 0 0 1-.443-.258 6.228 6.228 0 0 1-1.137-.966c-.849-.971-1.166-1.956-1.282-2.645h.004c-.097-.573-.057-.943-.05-.943h-3.865v14.943c0 .2 0 .399-.008.595 0 .024-.003.046-.004.073 0 .01 0 .022-.002.032v.009a3.28 3.28 0 0 1-1.65 2.604 3.226 3.226 0 0 1-1.6.422c-1.8 0-3.26-1.468-3.26-3.281s1.46-3.282 3.26-3.282c.341 0 .68.054 1.004.16l.005-3.936a7.178 7.178 0 0 0-4.937 1.166 7.333 7.333 0 0 0-2.325 2.564 7.448 7.448 0 0 0-.748 1.906 7.655 7.655 0 0 0-.085 3.063c.149.853.424 1.651.812 2.382a7.363 7.363 0 0 0 2.926 2.986 7.206 7.206 0 0 0 3.753 1.054c.39 0 .789-.033 1.188-.1a7.263 7.263 0 0 0 2.911-1.103 7.364 7.364 0 0 0 2.447-2.653c.443-.786.725-1.648.843-2.562.018-.134.032-.269.045-.404v-.024l.003-9.882a9.27 9.27 0 0 0 2.273 1.2 9.556 9.556 0 0 0 2.474.53V5.742c-.497 0-1.246-.136-2.088-.48l-.005.002z" fill="#25F4EE"/>
+                        <path d="M17.233 5.082a5.124 5.124 0 0 1-.443-.258 6.228 6.228 0 0 1-1.137-.966c-.849-.971-1.166-1.956-1.282-2.645h.004c-.097-.573-.057-.943-.05-.943H10.46v14.943c0 .2 0 .399-.008.595 0 .024-.003.046-.004.073 0 .01 0 .022-.002.032v.009a3.28 3.28 0 0 1-1.65 2.604 3.226 3.226 0 0 1-1.6.422c-1.8 0-3.26-1.468-3.26-3.281s1.46-3.282 3.26-3.282c.341 0 .68.054 1.004.16l.005-3.936a7.178 7.178 0 0 0-4.937 1.166A7.333 7.333 0 0 0 .943 12.34a7.448 7.448 0 0 0-.748 1.906 7.655 7.655 0 0 0-.085 3.063c.149.853.424 1.651.812 2.382a7.363 7.363 0 0 0 2.926 2.986 7.206 7.206 0 0 0 3.753 1.054c.39 0 .789-.033 1.188-.1a7.263 7.263 0 0 0 2.911-1.103 7.364 7.364 0 0 0 2.447-2.653c.443-.786.725-1.648.843-2.562.018-.134.032-.269.045-.404v-.024l.003-9.882a9.27 9.27 0 0 0 2.273 1.2 9.556 9.556 0 0 0 2.474.53V5.262c-.497 0-1.246-.136-2.088-.48l-.005.002z" fill="#FE2C55"/>
+                      </svg>
+                    </div>
+                    <span className="text-xs text-brand-charcoal/70">抖音</span>
+                  </button>
+
+                  {/* 更多（原生分享）- 仅移动端显示 */}
+                  {canNativeShare && isMobile && (
+                    <button onClick={handleNativeShare} className="group flex flex-col items-center gap-2">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm transition-all group-hover:shadow-md group-active:scale-95">
+                        <Share2 className="h-6 w-6 text-brand-charcoal/70" />
+                      </div>
+                      <span className="text-xs text-brand-charcoal/70">更多</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* 保存报告图片按钮 */}
                 <button
-                  onClick={handleSaveImage}
+                  onClick={handleSaveToGallery}
                   disabled={isGeneratingImage}
-                  className="flex flex-col items-center gap-2"
+                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-brand-gold py-3.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-brand-gold/90 active:scale-[0.98] disabled:opacity-50"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-gold to-brand-gold/80 text-white">
-                    {isGeneratingImage ? (
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    ) : (
-                      <Download className="h-6 w-6" />
-                    )}
-                  </div>
-                  <span className="text-xs text-brand-charcoal/70">保存图片</span>
-                </button>
-
-                {/* 复制链接 */}
-                <button onClick={handleCopyLink} className="flex flex-col items-center gap-2">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-                    <Copy className="h-6 w-6" />
-                  </div>
-                  <span className="text-xs text-brand-charcoal/70">复制链接</span>
-                </button>
-
-                {/* 微信 */}
-                <button onClick={handleCopyLink} className="flex flex-col items-center gap-2">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
-                    <MessageCircle className="h-6 w-6" />
-                  </div>
-                  <span className="text-xs text-brand-charcoal/70">微信</span>
-                </button>
-
-                {/* 微博 */}
-                <button onClick={handleShareWeibo} className="flex flex-col items-center gap-2">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 text-white">
-                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M10.098 20c-4.433 0-8.098-2.055-8.098-4.786 0-1.732 1.375-3.588 3.666-4.998 2.917-1.797 6.5-2.017 8.017-0.493 0.398 0.399 0.594 0.887 0.586 1.455-0.013 0.885-0.568 1.845-1.565 2.697-1.157 0.988-2.633 1.547-3.855 1.547-0.899 0-1.602-0.279-1.926-0.764-0.255-0.383-0.297-0.875-0.119-1.383 0.066-0.191 0.225-0.422 0.418-0.609 0.082-0.079 0.184-0.158 0.291-0.227-0.119 0.023-0.238 0.055-0.353 0.102-0.587 0.24-0.98 0.71-1.045 1.257-0.057 0.479 0.166 0.939 0.593 1.222 0.521 0.346 1.256 0.447 2.014 0.275 1.089-0.244 2.082-0.857 2.795-1.726 0.516-0.629 0.809-1.357 0.824-2.049 0.008-0.406-0.111-0.773-0.348-1.066-0.703-0.87-2.563-0.955-4.695-0.216-2.067 0.717-3.871 2.227-4.617 3.869-0.249 0.55-0.372 1.082-0.366 1.583 0.017 1.605 1.992 2.917 4.407 2.93 3.087 0.017 6.093-1.812 6.886-4.188 0.072-0.217 0.123-0.439 0.154-0.664 0.034 0.001 0.067 0.002 0.101 0.002 1.127 0 2.076-0.772 2.338-1.818 0.036 0.007 0.073 0.011 0.111 0.011 0.482 0 0.873-0.391 0.873-0.873s-0.391-0.873-0.873-0.873c-0.165 0-0.318 0.047-0.449 0.127-0.318-0.771-1.074-1.315-1.962-1.315-0.109 0-0.217 0.008-0.322 0.025 0.027-0.153 0.041-0.311 0.041-0.472 0-1.479-1.199-2.678-2.678-2.678-0.652 0-1.249 0.234-1.713 0.622-0.474-1.136-1.591-1.935-2.893-1.935-1.736 0-3.143 1.407-3.143 3.143 0 0.264 0.033 0.521 0.095 0.766-2.614 0.953-4.437 3.416-4.437 6.305 0 3.701 3.681 6.714 8.202 6.714 4.522 0 8.203-3.013 8.203-6.714 0-0.614-0.097-1.206-0.278-1.768-0.556 0.892-1.508 1.513-2.608 1.636 0.006 0.044 0.009 0.088 0.009 0.132 0 2.852-2.809 5.166-6.273 5.166z" />
-                    </svg>
-                  </div>
-                  <span className="text-xs text-brand-charcoal/70">微博</span>
+                  {isGeneratingImage ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      正在生成报告...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      保存报告图片到相册
+                    </>
+                  )}
                 </button>
               </div>
-
-              {/* 移动端原生分享 */}
-              {canNativeShare && (
-                <button
-                  onClick={handleNativeShare}
-                  className="mt-4 w-full rounded-full border border-brand-charcoal/20 py-3 text-sm text-brand-charcoal transition-colors hover:bg-brand-cream"
-                >
-                  更多分享方式...
-                </button>
-              )}
-
-              {/* 保存到相册（移动端） */}
-              <button
-                onClick={handleSaveToGallery}
-                disabled={isGeneratingImage}
-                className="mt-3 w-full rounded-full bg-brand-gold py-3 text-sm text-white transition-colors hover:bg-brand-gold/90 disabled:opacity-50"
-              >
-                {isGeneratingImage ? "正在生成..." : "保存报告图片到相册"}
-              </button>
             </m.div>
           </>
         )}
