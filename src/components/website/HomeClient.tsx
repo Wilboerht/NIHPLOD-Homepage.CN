@@ -146,7 +146,7 @@ export default function HomeClient({ content }: HomeClientProps) {
       >
         <nav className="flex flex-wrap justify-center gap-3 text-[10px] text-brand-charcoal/50 sm:gap-4 sm:text-xs md:gap-6">
           <Link href="/story" className="transition-colors hover:text-brand-gold">
-            品牌故事
+            关于旎柏
           </Link>
           <Link href="/ritual" className="transition-colors hover:text-brand-gold">
             护肤仪式

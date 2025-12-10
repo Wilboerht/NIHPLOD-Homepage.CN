@@ -125,13 +125,17 @@ const tabs: TabConfig[] = [
 const TabButton = ({
   tab,
   index,
-  isLast,
-  onClick
+  isLastInRow,
+  isLastInDesktop,
+  onClick,
+  className
 }: {
   tab: TabConfig;
   index: number;
-  isLast: boolean;
+  isLastInRow: boolean; // 移动端当前行最后一个
+  isLastInDesktop: boolean; // 桌面端最后一个
   onClick: () => void;
+  className?: string;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const Icon = tab.icon;
@@ -143,8 +147,12 @@ const TabButton = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "group relative flex flex-1 flex-col items-center justify-center gap-3 px-3 py-6 transition-all duration-300 sm:gap-4 sm:px-6 sm:py-8 md:py-10",
-        !isLast && "border-r border-brand-charcoal/20"
+        "group relative flex flex-col items-center justify-center gap-3 px-3 py-6 transition-all duration-300 sm:gap-4 sm:px-6 sm:py-8 md:py-10",
+        // 移动端：当前行最后一个不显示右边框
+        // 桌面端：最后一个不显示右边框
+        !isLastInRow && "border-r border-brand-charcoal/20",
+        isLastInRow && !isLastInDesktop && "sm:border-r sm:border-brand-charcoal/20",
+        className
       )}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
@@ -453,17 +461,24 @@ export function StoryContent() {
                         </div>
                       </m.div>
 
-                      {/* 5个大标签按钮 */}
-                      <div className="flex w-full max-w-5xl items-stretch justify-center">
-                        {tabs.map((tab, index) => (
-                          <TabButton
-                            key={tab.id}
-                            tab={tab}
-                            index={index}
-                            isLast={index === tabs.length - 1}
-                            onClick={() => setActiveTab(tab.id)}
-                          />
-                        ))}
+                      {/* 5个大标签按钮 - 移动端两行(3+2居中)，桌面端一行 */}
+                      <div className="grid w-full max-w-5xl grid-cols-6 sm:grid-cols-5">
+                        {tabs.map((tab, index) => {
+                          // 移动端：所有按钮都占2列，第4个从第2列开始以实现居中
+                          // 桌面端：每个占1列
+                          const mobileColStart = index === 3 ? "col-start-2" : "";
+                          return (
+                            <TabButton
+                              key={tab.id}
+                              tab={tab}
+                              index={index}
+                              isLastInRow={index === 2 || index === 4}
+                              isLastInDesktop={index === 4}
+                              onClick={() => setActiveTab(tab.id)}
+                              className={`col-span-2 sm:col-span-1 sm:col-start-auto ${mobileColStart}`}
+                            />
+                          );
+                        })}
                       </div>
                     </m.div>
                   )}

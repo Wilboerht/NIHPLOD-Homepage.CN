@@ -164,68 +164,71 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
     );
   }
 
-  // 移动端底部弹出菜单（通过 Portal 渲染到 body）
-  const mobileMenu = isMounted && isOpen ? createPortal(
+  // 移动端底部弹出菜单（通过 Portal 渲染到 body，AnimatePresence 包在外层以支持退出动画）
+  const mobileMenu = isMounted ? createPortal(
     <AnimatePresence>
-      <m.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] sm:hidden"
-        onClick={() => setIsOpen(false)}
-      >
-        {/* 背景遮罩 */}
+      {isOpen && (
         <m.div
+          key="mobile-purchase-menu"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        />
-        {/* 底部菜单 */}
-        <m.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-0 left-0 right-0 rounded-t-2xl bg-white pb-safe"
+          transition={{ duration: 0.25 }}
+          className="fixed inset-0 z-[9999] sm:hidden"
+          onClick={() => setIsOpen(false)}
         >
-          {/* 拖动条 */}
-          <div className="flex justify-center py-3">
-            <div className="h-1 w-10 rounded-full bg-gray-300" />
-          </div>
-          {/* 标题 */}
-          <div className="border-b border-gray-100 px-4 pb-3">
-            <h3 className="text-center text-sm font-medium text-brand-charcoal">选择购买渠道</h3>
-          </div>
-          {/* 购买选项 */}
-          <div className="p-4">
-            {links.map((link) => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
+          {/* 背景遮罩 - 毛玻璃效果 */}
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+          />
+          {/* 底部菜单 */}
+          <m.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 400 }}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute bottom-0 left-0 right-0 mx-3 mb-3 overflow-hidden rounded-3xl bg-gradient-to-b from-[#FAF9F6] to-white shadow-2xl"
+          >
+            {/* 拖动条 */}
+            <div className="flex justify-center pt-3">
+              <div className="h-1 w-10 rounded-full bg-brand-gold/30" />
+            </div>
+            {/* 购买选项 - 横向排列 */}
+            <div className="flex justify-center gap-6 px-6 py-6">
+              {links.map((link) => (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsOpen(false)}
+                  className="flex flex-col items-center gap-2 transition-all active:scale-95"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-black/5">
+                    <PlatformIcon platform={link.platform} className="h-8 w-8" />
+                  </div>
+                  <span className="text-xs font-medium text-brand-charcoal/80">{link.platform}</span>
+                </a>
+              ))}
+            </div>
+            {/* 取消按钮 */}
+            <div className="border-t border-brand-gold/10 px-4 py-3">
+              <button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 text-brand-charcoal transition-colors active:bg-brand-gold/10"
+                className="w-full py-2 text-center text-sm font-medium text-brand-charcoal/50 transition-colors active:text-brand-charcoal"
               >
-                <PlatformIcon platform={link.platform} className="h-6 w-6" />
-                <span className="text-base">{link.platform}</span>
-              </a>
-            ))}
-          </div>
-          {/* 取消按钮 */}
-          <div className="border-t border-gray-100 p-4">
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="w-full rounded-xl bg-gray-100 py-3 text-center text-sm font-medium text-gray-600 active:bg-gray-200"
-            >
-              取消
-            </button>
-          </div>
+                取消
+              </button>
+            </div>
+          </m.div>
         </m.div>
-      </m.div>
+      )}
     </AnimatePresence>,
     document.body
   ) : null;
