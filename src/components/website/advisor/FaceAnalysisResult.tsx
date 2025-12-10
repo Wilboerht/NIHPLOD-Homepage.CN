@@ -3,7 +3,6 @@
 import { m } from "framer-motion";
 import {
   Droplets,
-  Sparkles,
   CircleDot,
   Calendar,
   Lightbulb,

@@ -39,7 +39,7 @@ interface ShareReportImageProps {
  */
 export const ShareReportImage = forwardRef<HTMLDivElement, ShareReportImageProps>(
   function ShareReportImage(
-    { skinType, skinTypeLabel, concerns, skinAge, summary, details, faceAnalysis, userImage, routine },
+    { skinType, skinTypeLabel, concerns: _concerns, skinAge: _skinAge, summary, details, faceAnalysis, userImage, routine },
     ref
   ) {
     const hydrationPercent = faceAnalysis?.hydration?.percent ?? 60;
