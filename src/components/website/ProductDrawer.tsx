@@ -140,14 +140,14 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-brand-gold/20 bg-white/90 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal lg:right-4 lg:top-4 lg:h-10 lg:w-10"
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/20 text-brand-charcoal/70 backdrop-blur-md transition-all hover:bg-white/40 hover:text-brand-charcoal lg:right-4 lg:top-4 lg:h-10 lg:w-10"
                 aria-label="关闭"
               >
                 <X className="h-4 w-4 lg:h-5 lg:w-5" />
               </button>
 
               {/* 产品图片区域 */}
-              <div className="relative aspect-[4/3] flex-shrink-0 bg-brand-beige/20 lg:aspect-auto lg:w-1/2">
+              <div className="relative aspect-square flex-shrink-0 bg-brand-beige/20 lg:aspect-auto lg:w-1/2">
                 {/* 主图 */}
                 <AnimatePresence mode="wait">
                   {product.images[currentImageIndex] && (
@@ -176,18 +176,18 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     <button
                       type="button"
                       onClick={handlePrevImage}
-                      className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-gold/20 bg-white/90 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal lg:left-3 lg:h-9 lg:w-9"
+                      className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-brand-charcoal/50 transition-all hover:text-brand-charcoal lg:left-3 lg:h-9 lg:w-9 lg:rounded-full lg:border lg:border-brand-gold/20 lg:bg-white/90 lg:text-brand-charcoal/70 lg:backdrop-blur-sm lg:hover:border-brand-gold/40 lg:hover:bg-white"
                       aria-label="上一张"
                     >
-                      <ChevronLeft className="h-4 w-4 lg:h-5 lg:w-5" />
+                      <ChevronLeft className="h-5 w-5 lg:h-5 lg:w-5" />
                     </button>
                     <button
                       type="button"
                       onClick={handleNextImage}
-                      className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-gold/20 bg-white/90 text-brand-charcoal/70 backdrop-blur-sm transition-all hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal lg:right-3 lg:h-9 lg:w-9"
+                      className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-brand-charcoal/50 transition-all hover:text-brand-charcoal lg:right-3 lg:h-9 lg:w-9 lg:rounded-full lg:border lg:border-brand-gold/20 lg:bg-white/90 lg:text-brand-charcoal/70 lg:backdrop-blur-sm lg:hover:border-brand-gold/40 lg:hover:bg-white"
                       aria-label="下一张"
                     >
-                      <ChevronRight className="h-4 w-4 lg:h-5 lg:w-5" />
+                      <ChevronRight className="h-5 w-5 lg:h-5 lg:w-5" />
                     </button>
                   </>
                 )}

@@ -347,6 +347,7 @@ export function StoryContent() {
           alt="品牌故事"
           fill
           priority
+          quality={100}
           className="object-cover"
           sizes="100vw"
         />

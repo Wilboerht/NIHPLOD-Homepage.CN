@@ -242,6 +242,7 @@ export function RitualContent() {
           alt="护肤仪式"
           fill
           priority
+          quality={100}
           className="object-cover"
           sizes="100vw"
         />

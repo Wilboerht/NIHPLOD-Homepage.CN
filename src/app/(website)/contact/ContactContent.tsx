@@ -138,6 +138,7 @@ export function ContactContent() {
           alt="联系我们"
           fill
           priority
+          quality={100}
           className="object-cover"
           sizes="100vw"
         />

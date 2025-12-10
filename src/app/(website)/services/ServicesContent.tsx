@@ -239,6 +239,7 @@ export function ServicesContent() {
             alt="服务入口"
             fill
             priority
+            quality={100}
             className="object-cover"
             sizes="100vw"
           />
