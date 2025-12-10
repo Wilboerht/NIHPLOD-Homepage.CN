@@ -377,7 +377,17 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           priority
           quality={100}
           unoptimized
-          className="object-cover"
+          className={cn(
+            "object-cover transition-all duration-500",
+            isExpanded && "scale-105 blur-sm"
+          )}
+        />
+        {/* 展开时的朦胧遮罩 */}
+        <m.div
+          className="absolute inset-0 bg-brand-cream/30"
+          initial={false}
+          animate={{ opacity: isExpanded ? 1 : 0 }}
+          transition={{ duration: 0.4 }}
         />
       </div>
 
@@ -526,9 +536,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         // PC端：横向卡片（左文右图）
                         "sm:aspect-[16/10] sm:h-auto sm:w-[480px] sm:max-w-none sm:flex-row sm:rounded-2xl",
                         "md:w-[560px] lg:w-[640px] lg:rounded-3xl",
-                        isCenter
-                          ? "cursor-default bg-white shadow-2xl ring-1 ring-black/5"
-                          : "cursor-pointer bg-white/90 shadow-lg ring-1 ring-black/5 sm:bg-white/60 sm:shadow-xl sm:ring-0 sm:backdrop-blur-sm sm:hover:bg-white/70"
+                        // 中心卡片样式
+                        isCenter && "cursor-default bg-white shadow-2xl ring-1 ring-black/5",
+                        // 左1、右1：轻度虚化
+                        (isLeft1 || isRight1) && "cursor-pointer bg-white/90 shadow-lg ring-1 ring-black/5 sm:bg-white/70 sm:shadow-xl sm:ring-0 sm:backdrop-blur-sm sm:hover:bg-white/80",
+                        // 左2、右2：更强虚化
+                        (isLeft2 || isRight2) && "cursor-pointer bg-white/80 shadow-md ring-1 ring-black/5 sm:bg-white/50 sm:shadow-lg sm:ring-0 sm:backdrop-blur-md sm:hover:bg-white/60"
                       )}
                       style={{ transformStyle: "preserve-3d" }}
                     >

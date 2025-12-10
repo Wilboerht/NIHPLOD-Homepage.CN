@@ -120,7 +120,7 @@ export function AdvisorWelcome() {
                 {/* 开始按钮 */}
                 <m.button
                   onClick={handleStart}
-                  className="mt-10 rounded-full border border-brand-charcoal/20 bg-white/60 px-12 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:border-brand-charcoal/40 hover:bg-white/80 sm:mt-12 sm:px-16 sm:py-4 sm:text-base"
+                  className="mt-10 rounded-full border border-brand-gold bg-white/60 px-12 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:border-brand-gold/80 hover:bg-white/80 sm:mt-12 sm:px-16 sm:py-4 sm:text-base"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.9 }}
