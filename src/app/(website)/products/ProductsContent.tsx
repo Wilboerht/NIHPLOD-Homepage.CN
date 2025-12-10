@@ -170,23 +170,23 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
   return (
     <>
-      {/* 全屏背景容器 - 展开时延伸到底部 */}
+      {/* 全屏背景图片 - 始终全屏显示，不受展开/收起影响 */}
+      <div className="fixed inset-0 z-0">
+        <Image
+          src="/images/bg.png"
+          alt="NIHPLOD 产品系列"
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
+        />
+      </div>
+
+      {/* 内容区域容器 - 展开时延伸到底部 */}
       <div className={cn(
-        "fixed inset-0 transition-all duration-300",
+        "fixed inset-0 z-10 transition-all duration-300",
         isExpanded ? "bottom-0" : "bottom-28 lg:bottom-32"
       )}>
-        {/* 背景图片 */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/images/products-hero.jpg"
-            alt="NIHPLOD 产品系列"
-            fill
-            priority
-            className="object-cover"
-            sizes="100vw"
-          />
-        </div>
-
         {/* 顶部分类导航栏 + 展开按钮一体化 */}
         <m.div
           initial={{ opacity: 0, y: -20 }}
@@ -197,7 +197,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           {/* 分类栏 + 按钮一体化容器 */}
           <div className="flex flex-col items-center">
             {/* 分类图标区域 */}
-            <div className="w-full rounded-xl bg-brand-gold/10 backdrop-blur-md sm:w-fit sm:rounded-2xl lg:rounded-3xl">
+            <div className="w-full rounded-xl bg-[#EBE8DB] sm:w-fit sm:rounded-2xl lg:rounded-3xl">
               <div className="px-2 py-2 sm:px-8 sm:py-3 md:px-12 lg:px-20 lg:py-4">
                 {/* 移动端：grid 5列，桌面端：flex 单行 */}
                 <div className="grid grid-cols-5 gap-x-0 gap-y-1 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">
@@ -243,7 +243,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 }
                 setIsExpanded(!isExpanded);
               }}
-              className="group flex items-center justify-center rounded-b-xl bg-brand-gold/10 px-6 py-2 shadow-sm backdrop-blur-md sm:rounded-b-2xl sm:px-10 sm:py-2.5 lg:px-14 lg:py-3"
+              className="group flex items-center justify-center rounded-b-xl bg-[#EBE8DB] px-6 py-2 shadow-sm sm:rounded-b-2xl sm:px-10 sm:py-2.5 lg:px-14 lg:py-3"
             >
               <m.div
                 className="flex flex-col items-center transition-transform duration-200 group-hover:scale-110"

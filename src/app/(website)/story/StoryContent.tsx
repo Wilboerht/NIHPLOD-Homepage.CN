@@ -340,23 +340,23 @@ export function StoryContent() {
 
   return (
     <>
-      {/* 全屏背景容器 - 展开时延伸到底部 */}
+      {/* 全屏背景图片 - 始终全屏显示，不受展开/收起影响 */}
+      <div className="fixed inset-0 z-0">
+        <Image
+          src="/images/bg.png"
+          alt="品牌故事"
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
+        />
+      </div>
+
+      {/* 内容区域容器 - 展开时延伸到底部 */}
       <div className={cn(
-        "fixed inset-0 transition-all duration-500 ease-out",
+        "fixed inset-0 z-10 transition-all duration-500 ease-out",
         isExpanded ? "bottom-0" : "bottom-28 lg:bottom-32"
       )}>
-        {/* 背景图片 */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/images/bg.png"
-            alt="品牌故事"
-            fill
-            priority
-            className="object-cover"
-            sizes="100vw"
-          />
-        </div>
-
         {/* 主内容区域 + 展开按钮一体化 - 参考 ProductsContent 分类栏样式 */}
         <m.div
           initial={{ opacity: 0, y: -20 }}
