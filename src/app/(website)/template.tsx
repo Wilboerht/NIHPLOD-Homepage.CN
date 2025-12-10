@@ -9,11 +9,12 @@ interface TemplateProps {
 
 /**
  * 页面过渡动画变体
+ * 使用柔和的位移和透明度变化实现丝滑过渡
  */
 const pageVariants = {
   initial: {
     opacity: 0,
-    y: 12,
+    y: 16,
   },
   enter: {
     opacity: 1,
@@ -36,11 +37,12 @@ const reducedPageVariants = {
 
 /**
  * 页面过渡动画配置
+ * 使用自定义贝塞尔曲线实现丝滑的缓动效果
  */
 const pageTransition = {
   type: "tween",
-  ease: [0.25, 0.1, 0.25, 1],
-  duration: 0.4,
+  ease: [0.22, 1, 0.36, 1], // 使用更平滑的 ease-out-quint 曲线
+  duration: 0.45,
 };
 
 const reducedTransition = {
