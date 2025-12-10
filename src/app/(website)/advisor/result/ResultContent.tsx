@@ -360,7 +360,7 @@ export function ResultContent() {
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <div className="text-center">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-gold" />
-          <p className="mt-4 text-brand-charcoal/60">正在分析您的肌肤...</p>
+          <p className="mt-4 text-sm text-brand-charcoal/60">正在分析您的肌肤...</p>
         </div>
       </div>
     );
@@ -371,10 +371,10 @@ export function ResultContent() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-red-500">{error}</p>
+          <p className="text-sm text-red-500">{error}</p>
           <button
             onClick={handleRetry}
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand-gold px-6 py-2 text-white"
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand-gold px-6 py-2 text-sm text-white"
           >
             <RefreshCw className="h-4 w-4" />
             重试
@@ -396,7 +396,7 @@ export function ResultContent() {
         >
           <Home className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
         </Link>
-        <span className="text-xs font-light tracking-wider text-brand-charcoal/50 sm:text-sm">
+        <span className="text-xs tracking-wider text-brand-charcoal/60">
           {result.dataSource === "comprehensive" ? "综合分析" : "问卷分析"}
         </span>
         <button
@@ -471,7 +471,7 @@ export function ResultContent() {
                 <div className="mb-6 flex items-center justify-between">
                   <div>
                     <h3 className="font-serif text-lg text-brand-charcoal">分享报告</h3>
-                    <p className="mt-0.5 text-xs text-brand-charcoal/50">将您的肌肤分析报告分享给朋友</p>
+                    <p className="mt-0.5 text-xs text-brand-charcoal/60">将您的肌肤分析报告分享给朋友</p>
                   </div>
                   <button
                     onClick={() => setShowShareMenu(false)}
@@ -491,7 +491,7 @@ export function ResultContent() {
                         <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088v-.001c-.135-.007-.27-.023-.407-.033zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>
                       </svg>
                     </div>
-                    <span className="text-xs text-brand-charcoal/70">微信</span>
+                    <span className="text-xs text-brand-charcoal/60">微信</span>
                   </button>
 
                   {/* 微博 */}
@@ -520,7 +520,7 @@ export function ResultContent() {
 		                        />
 		                      </svg>
                     </div>
-                    <span className="text-xs text-brand-charcoal/70">微博</span>
+                    <span className="text-xs text-brand-charcoal/60">微博</span>
                   </button>
 
                   {/* 小红书 */}
@@ -545,7 +545,7 @@ export function ResultContent() {
 	                        />
 	                      </svg>
                     </div>
-                    <span className="text-xs text-brand-charcoal/70">小红书</span>
+                    <span className="text-xs text-brand-charcoal/60">小红书</span>
                   </button>
 
                   {/* 抖音 */}
@@ -574,7 +574,7 @@ export function ResultContent() {
                         />
                       </svg>
                     </div>
-                    <span className="text-xs text-brand-charcoal/70">抖音</span>
+                    <span className="text-xs text-brand-charcoal/60">抖音</span>
                   </button>
 
                   {/* 复制链接 */}
@@ -584,16 +584,16 @@ export function ResultContent() {
                         <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                       </svg>
                     </div>
-                    <span className="text-xs text-brand-charcoal/70">复制链接</span>
+                    <span className="text-xs text-brand-charcoal/60">复制链接</span>
                   </button>
 
                   {/* 更多分享方式（原生分享）*/}
                   {canNativeShare && (
                     <button onClick={handleNativeShare} className="group flex flex-col items-center gap-2">
                       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm transition-all group-hover:shadow-md group-active:scale-95">
-                        <Share2 className="h-6 w-6 text-brand-charcoal/70" />
+                        <Share2 className="h-6 w-6 text-brand-charcoal/60" />
                       </div>
-                      <span className="text-xs text-brand-charcoal/70">更多分享</span>
+                      <span className="text-xs text-brand-charcoal/60">更多分享</span>
                     </button>
                   )}
                 </div>
@@ -657,14 +657,14 @@ export function ResultContent() {
           transition={defaultTransition}
           className="rounded-2xl bg-white p-4 shadow-sm"
         >
-          <h3 className="mb-3 flex items-center gap-2 font-medium text-brand-charcoal">
+          <h3 className="mb-3 flex items-center gap-2 font-serif text-base text-brand-charcoal">
             <Sparkles className="h-5 w-5 text-brand-gold" />
             综合分析
           </h3>
-          <p className="mb-3 text-sm text-brand-charcoal/80">{result.analysis.summary}</p>
+          <p className="mb-3 text-sm leading-relaxed text-brand-charcoal/80">{result.analysis.summary}</p>
           <ul className="space-y-1.5">
             {result.analysis.details.map((detail, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-brand-charcoal/70">
+              <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-brand-charcoal/70">
                 <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-gold" />
                 {detail}
               </li>
@@ -678,7 +678,7 @@ export function ResultContent() {
           transition={defaultTransition}
           className="rounded-2xl bg-white p-4 shadow-sm"
         >
-          <h3 className="mb-3 font-medium text-brand-charcoal">专属护肤方案</h3>
+          <h3 className="mb-3 font-serif text-base text-brand-charcoal">专属护肤方案</h3>
 
           {/* 切换标签 */}
           <div className="mb-4 flex gap-2">
@@ -721,7 +721,7 @@ export function ResultContent() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-brand-charcoal">{step.step}</span>
+                      <span className="text-sm text-brand-charcoal">{step.step}</span>
                       {(step.productName || product?.name) && (
                         <>
                           <span className="text-brand-charcoal/30">·</span>
@@ -740,7 +740,7 @@ export function ResultContent() {
                         </>
                       )}
                     </div>
-                    <div className="text-xs text-brand-charcoal/60">{step.description}</div>
+                    <p className="text-xs leading-relaxed text-brand-charcoal/60">{step.description}</p>
                   </div>
                 </div>
               );
@@ -757,8 +757,8 @@ export function ResultContent() {
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600" />
             <div className="text-xs leading-relaxed text-amber-800/80">
-              <p className="mb-1 font-medium text-amber-900">温馨提示</p>
-              <p>
+              <p className="mb-1 text-xs font-medium text-amber-900">温馨提示</p>
+              <p className="text-xs leading-relaxed">
                 本分析报告由 AI
                 技术生成，仅供护肤品选购参考，不构成医学诊断或治疗建议。
                 {faceAnalysis && (

@@ -127,14 +127,14 @@ export function FaceAnalysisResult({
 
         {/* 肤质信息 */}
         <div className="flex-1">
-          <div className="mb-1 text-sm text-brand-charcoal/60">肤质类型</div>
+          <p className="mb-1 text-xs text-brand-charcoal/60">肤质类型</p>
           <div className="flex items-center gap-2">
             <span className="text-2xl">{skinTypeInfo.emoji}</span>
             <span className="font-serif text-xl text-brand-charcoal">
               {skinTypeInfo.label}
             </span>
           </div>
-          <div className="mt-1 flex items-center gap-2 text-sm text-brand-charcoal/60">
+          <div className="mt-1 flex items-center gap-2 text-xs text-brand-charcoal/60">
             <span>置信度</span>
             <div className="h-1.5 w-20 overflow-hidden rounded-full bg-brand-beige">
               <div
@@ -147,7 +147,7 @@ export function FaceAnalysisResult({
               ({confidenceHint.text})
             </span>
           </div>
-          <p className="mt-2 text-sm text-brand-charcoal/70">
+          <p className="mt-2 text-sm leading-relaxed text-brand-charcoal/70">
             {result.skinType.description}
           </p>
         </div>
@@ -158,7 +158,7 @@ export function FaceAnalysisResult({
         variants={itemVariants}
         className="rounded-2xl bg-white p-4 shadow-sm"
       >
-        <h3 className="mb-4 flex items-center gap-2 font-medium text-brand-charcoal">
+        <h3 className="mb-4 flex items-center gap-2 font-serif text-base text-brand-charcoal">
           <CircleDot className="h-5 w-5 text-brand-gold" />
           检测到的肌肤状态
         </h3>
@@ -182,7 +182,7 @@ export function FaceAnalysisResult({
                   transition={{ duration: 1, delay: 0.5 }}
                 />
               </div>
-              <p className="mt-1 text-xs text-brand-charcoal/60">
+              <p className="mt-1 text-xs leading-relaxed text-brand-charcoal/60">
                 {result.hydration.description}
               </p>
             </div>
@@ -200,7 +200,7 @@ export function FaceAnalysisResult({
                   <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-500" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-brand-charcoal">
+                      <span className="text-sm text-brand-charcoal">
                         {condition.condition}
                       </span>
                       <span
@@ -209,7 +209,7 @@ export function FaceAnalysisResult({
                         {severity.label}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-brand-charcoal/60">
+                    <p className="mt-0.5 text-xs leading-relaxed text-brand-charcoal/60">
                       {condition.area} · {condition.description}
                     </p>
                   </div>
@@ -219,7 +219,7 @@ export function FaceAnalysisResult({
           ) : (
             <div className="flex items-center gap-3 text-green-600">
               <CheckCircle2 className="h-5 w-5" />
-              <span className="text-sm">肌肤状态良好，未检测到明显问题</span>
+              <span className="text-sm text-green-600">肌肤状态良好，未检测到明显问题</span>
             </div>
           )}
 
@@ -229,7 +229,7 @@ export function FaceAnalysisResult({
               <Calendar className="h-5 w-5 flex-shrink-0 text-purple-500" />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-brand-charcoal">
+                  <span className="text-sm text-brand-charcoal">
                     肌肤年龄
                   </span>
                   <span className="font-serif text-lg text-brand-gold">
@@ -250,7 +250,7 @@ export function FaceAnalysisResult({
                   )}
                 </div>
                 {result.skinAge.factors.length > 0 && (
-                  <p className="mt-0.5 text-xs text-brand-charcoal/60">
+                  <p className="mt-0.5 text-xs leading-relaxed text-brand-charcoal/60">
                     影响因素：{result.skinAge.factors.join("、")}
                   </p>
                 )}
@@ -266,7 +266,7 @@ export function FaceAnalysisResult({
           variants={itemVariants}
           className="rounded-2xl bg-white p-4 shadow-sm"
         >
-          <h3 className="mb-3 flex items-center gap-2 font-medium text-brand-charcoal">
+          <h3 className="mb-3 flex items-center gap-2 font-serif text-base text-brand-charcoal">
             <Lightbulb className="h-5 w-5 text-brand-gold" />
             护肤建议
           </h3>
@@ -274,7 +274,7 @@ export function FaceAnalysisResult({
             {result.recommendations.map((rec, index) => (
               <m.li
                 key={index}
-                className="flex items-start gap-2 text-sm text-brand-charcoal/80"
+                className="flex items-start gap-2 text-sm leading-relaxed text-brand-charcoal/80"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.8 + index * 0.1 }}
