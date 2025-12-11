@@ -207,13 +207,28 @@ export interface PrivacyPageContent {
 // ============================================
 // 服务条款页面 (terms)
 // ============================================
-export interface TermsPageContent {
+
+// 服务条款标签页ID
+export type TermsTabId = "general" | "product" | "responsibility" | "dispute";
+
+// 服务条款标签页内容
+export interface TermsTabContent {
   title: string;
-  lastUpdated?: string;
-  sections: Array<{
-    title: string;
-    content: string;
-  }>;
+  content: string[]; // 每个元素是一个段落
+}
+
+export interface TermsPageContent {
+  // 页面标题
+  pageTitle: {
+    en: string; // TERMS OF SERVICE
+    zh: string; // 服务条款
+  };
+  // 页面描述
+  description: string;
+  // 最后更新日期
+  lastUpdated: string;
+  // 四个标签页内容
+  tabs: Record<TermsTabId, TermsTabContent>;
 }
 
 // ============================================
@@ -398,8 +413,15 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
       },
     },
     terms: {
-      title: "服务条款",
-      sections: [],
+      pageTitle: { en: "TERMS OF SERVICE", zh: "服务条款" },
+      description: "在使用我们的服务前，请仔细阅读以下条款",
+      lastUpdated: "2024年12月1日",
+      tabs: {
+        general: { title: "总则", content: [] },
+        product: { title: "产品服务", content: [] },
+        responsibility: { title: "责任限制", content: [] },
+        dispute: { title: "争议解决", content: [] },
+      },
     },
     services: {
       pageTitle: { en: "SERVICES", zh: "服务入口" },

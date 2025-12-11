@@ -64,9 +64,21 @@ export function AdvisorWelcome() {
             <div className="flex w-full flex-1 flex-col overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl">
               {/* 内容区域 - 垂直居中 */}
               <div className="flex flex-1 flex-col items-center justify-center px-6 sm:px-8 lg:px-12">
+                {/* 皇冠图标 */}
+                <m.div
+                  className="text-brand-gold/50"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.1 }}
+                >
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18.567 19.4336C19.0088 19.4337 19.3668 19.7926 19.3668 20.2344C19.3666 20.6759 19.0086 21.0341 18.567 21.0342H5.43323C4.99163 21.0341 4.6327 20.6759 4.63245 20.2344C4.63245 19.7926 4.99147 19.4337 5.43323 19.4336H18.567ZM11.9996 2.97266C12.2929 2.97266 12.5628 3.13298 12.7028 3.39062L15.6891 8.89258L20.4567 6.9707C20.7347 6.8586 21.0521 6.91146 21.2789 7.10742C21.5058 7.3035 21.6036 7.60999 21.5328 7.90137L19.3444 16.9199C19.2573 17.2786 18.9361 17.5312 18.567 17.5312H5.43323C5.06415 17.5312 4.74196 17.2786 4.65491 16.9199L2.46643 7.90137C2.39575 7.6101 2.49367 7.3035 2.72034 7.10742C2.94705 6.91145 3.26463 6.85881 3.5426 6.9707L8.3092 8.89258L11.2965 3.39062L11.3551 3.29883C11.5044 3.09548 11.7431 2.97277 11.9996 2.97266ZM11.9996 11.6572C11.0326 11.6573 10.2488 12.4412 10.2487 13.4082C10.2487 14.3753 11.0326 15.1591 11.9996 15.1592C12.9668 15.1592 13.7506 14.3754 13.7506 13.4082C13.7505 12.4412 12.9667 11.6572 11.9996 11.6572Z" fill="currentColor"/>
+                  </svg>
+                </m.div>
+
                 {/* 装饰线条 */}
                 <m.div
-                  className="mb-6 h-px w-12 bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent sm:mb-8 sm:w-16"
+                  className="mb-6 mt-4 h-px w-12 bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent sm:mb-8 sm:w-16"
                   initial={{ scaleX: 0, opacity: 0 }}
                   animate={{ scaleX: 1, opacity: 1 }}
                   transition={{ duration: 1, delay: 0.2 }}
@@ -120,12 +132,12 @@ export function AdvisorWelcome() {
                 {/* 开始按钮 */}
                 <m.button
                   onClick={handleStart}
-                  className="mt-10 rounded-full border border-brand-gold bg-white/60 px-12 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:border-brand-gold/80 hover:bg-white/80 sm:mt-12 sm:px-16 sm:py-4 sm:text-base"
+                  className="mt-10 rounded-full border-2 border-brand-gold/70 bg-brand-gold/10 px-14 py-4 text-sm font-medium tracking-[0.2em] text-brand-charcoal shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-brand-gold hover:bg-brand-gold/20 hover:shadow-md sm:mt-12 sm:px-16 sm:py-4.5 sm:text-base"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.9 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                 >
                   开始测试
                 </m.button>
@@ -149,19 +161,23 @@ export function AdvisorWelcome() {
                 >
                   面部图像仅由 AI 即时分析，不会以任何形式存储或保留
                 </m.p>
-              </div>
 
-              {/* 底部品牌标识 */}
-              <m.div
-                className="pb-6 text-center sm:pb-8"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 1.2 }}
-              >
-                <p className="text-[10px] font-light tracking-[0.25em] text-brand-charcoal/30">
-                  NIHPLOD · 旎柏
-                </p>
-              </m.div>
+                {/* Logo */}
+                <m.div
+                  className="mt-8 sm:mt-10"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 1.3 }}
+                >
+                  <Image
+                    src="/images/logo.png"
+                    alt="NIHPLOD"
+                    width={120}
+                    height={40}
+                    className="h-8 w-auto opacity-40 sm:h-10"
+                  />
+                </m.div>
+              </div>
             </div>
 
             {/* 回到首页按钮 */}

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { TermsPageContent, TermsTabId } from "@/types/page-content";
 
 // 图标颜色常量
 const ICON_COLOR = "#C3BC9F";
@@ -49,66 +50,18 @@ const DisputeIcon = ({ className, isHovered }: { className?: string; isHovered?:
 };
 
 // 标签页配置
-type TabId = "general" | "product" | "responsibility" | "dispute";
-
 interface TabConfig {
-  id: TabId;
+  id: TermsTabId;
   label: string;
   icon: React.FC<{ className?: string; isHovered?: boolean }>;
 }
 
-const tabs: TabConfig[] = [
+const defaultTabs: TabConfig[] = [
   { id: "general", label: "总则", icon: GeneralIcon },
   { id: "product", label: "产品服务", icon: ProductIcon },
   { id: "responsibility", label: "责任限制", icon: ResponsibilityIcon },
   { id: "dispute", label: "争议解决", icon: DisputeIcon },
 ];
-
-// 各标签页内容
-interface TabContent {
-  title: string;
-  content: string[];
-}
-
-const tabContents: Record<TabId, TabContent> = {
-  general: {
-    title: "总则",
-    content: [
-      "一、协议的接受与修改\n\n欢迎使用 NIHPLOD 旎柏（以下简称「我们」或「本公司」）提供的产品和服务。在使用我们的服务之前，请您仔细阅读并理解本服务条款（以下简称「本条款」）的全部内容。\n\n当您访问我们的网站、购买我们的产品或使用我们的服务时，即表示您已阅读、理解并同意接受本条款的约束。如果您不同意本条款的任何内容，请立即停止使用我们的服务。",
-      "二、服务范围\n\n本条款适用于您通过以下渠道使用我们的服务：\n\n• 我们的官方网站（nihplod.cn 及其子域名）\n• 我们的移动应用程序\n• 我们的线下门店和专柜\n• 我们的会员系统和积分计划\n• 我们的客户服务热线和在线客服\n• 任何其他由我们提供的产品和服务",
-      "三、用户资格\n\n使用我们的服务，您需要：\n\n• 具备完全民事行为能力（年满18周岁）\n• 未满18周岁的用户需在法定监护人的监护和同意下使用\n• 确保您提供的所有信息真实、准确、完整\n• 遵守中华人民共和国的法律法规",
-      "四、条款的修改\n\n我们保留随时修改本条款的权利。修改后的条款将在我们的网站上公布。如果您在条款修改后继续使用我们的服务，即表示您接受修改后的条款。对于重大条款变更，我们将通过合理的方式通知您。",
-    ],
-  },
-  product: {
-    title: "产品服务",
-    content: [
-      "一、产品信息\n\n我们尽力确保网站上展示的产品信息（包括但不限于产品描述、图片、价格、规格等）准确完整。但由于技术原因或人为疏忽，可能存在错误或不准确之处。\n\n• 产品图片仅供参考，实际产品可能因批次、显示器设置等因素存在轻微差异\n• 产品价格可能随时调整，以下单时的价格为准\n• 产品成分和功效说明基于一般情况，个体差异可能导致效果不同",
-      "二、订单与支付\n\n当您在我们的平台下单时：\n\n• 订单确认邮件的发送并不代表我们接受您的订单\n• 我们有权在发现订单存在问题时取消订单\n• 如发现价格错误，我们将通知您并提供取消或按正确价格购买的选择\n• 支付成功后，订单状态将及时更新\n• 电子发票将在订单完成后发送至您的邮箱",
-      "三、配送与退换货\n\n关于配送和退换货政策：\n\n• 配送时间为预估时间，可能因不可抗力因素延迟\n• 收到商品后请当面验收，如有问题请拒收并联系客服\n• 未开封且不影响二次销售的商品，可在签收后7日内申请退换\n• 因产品质量问题退换货，运费由我们承担\n• 因个人原因退换货，运费由您承担\n• 定制产品、赠品、已开封产品不支持退换",
-      "四、会员服务\n\n关于我们的会员体系：\n\n• 会员资格以实名注册信息为准\n• 会员积分有效期为36个月\n• 会员权益以当时公布的规则为准\n• 禁止会员账号的转让、借用或出售\n• 我们有权对异常账户进行限制或注销",
-    ],
-  },
-  responsibility: {
-    title: "责任限制",
-    content: [
-      "一、服务的提供\n\n我们致力于提供高质量的产品和服务，但在法律允许的范围内：\n\n• 我们的服务按「现状」和「可用」的基础提供\n• 我们不保证服务不会中断或完全没有错误\n• 我们可能会因维护、升级等原因暂停服务\n• 我们不对因第三方服务导致的问题承担责任",
-      "二、用户责任\n\n作为用户，您同意：\n\n• 对您账户下的所有活动负责\n• 妥善保管您的账户信息和密码\n• 发现账户被盗用时立即通知我们\n• 不进行任何违法、欺诈或损害他人权益的行为\n• 不干扰或破坏我们的服务和系统\n• 尊重我们和其他用户的知识产权",
-      "三、赔偿限制\n\n在法律允许的最大范围内：\n\n• 我们对任何间接的、附带的、特殊的、惩罚性的或后果性的损害不承担责任\n• 我们的赔偿责任上限不超过您支付的相关产品或服务的费用\n• 对于非我们过错导致的损失，我们不承担赔偿责任",
-      "四、免责情形\n\n以下情况我们不承担责任：\n\n• 因不可抗力（如自然灾害、战争、政府行为等）导致的服务中断或损失\n• 因您自身原因（如误操作、设备故障等）导致的损失\n• 因第三方原因（如物流延误、支付平台故障等）导致的问题\n• 因您违反本条款或适用法律导致的任何后果",
-    ],
-  },
-  dispute: {
-    title: "争议解决",
-    content: [
-      "一、争议协商\n\n如果您与我们之间发生任何争议或纠纷，双方应首先尝试通过友好协商的方式解决。我们的客户服务团队将竭诚为您提供帮助，您可以通过以下方式联系我们：\n\n• 在线客服：通过官网或APP的在线客服功能\n• 客服热线：工作日 9:00-18:00\n• 电子邮件：service@nihplod.cn\n• 联系我们页面：提交您的问题和建议",
-      "二、管辖与法律适用\n\n本条款的订立、生效、解释、执行和争议解决均适用中华人民共和国大陆地区法律（不包括港澳台地区）。\n\n若协商不成，双方同意将争议提交至我们公司注册地有管辖权的人民法院诉讼解决。",
-      "三、条款的可分割性\n\n如果本条款的任何条款被认定为无效或不可执行，该条款将在最低必要的范围内进行修改或删除，其余条款将继续保持完全有效。",
-      "四、完整协议\n\n本条款及我们的隐私政策共同构成您与我们之间关于服务使用的完整协议。本条款取代您与我们之间先前的所有口头或书面协议。\n\n五、权利保留\n\n我们未能行使或执行本条款的任何权利或规定，不应被视为放弃该权利或规定。我们对本条款项下的所有权利和补救措施均为累积性的，不排斥法律规定的其他权利和补救措施。",
-      "六、联系我们\n\n如您对本服务条款有任何疑问或建议，欢迎通过「联系我们」页面与我们取得联系。\n\n感谢您选择 NIHPLOD 旎柏，我们将竭诚为您提供优质的产品和服务。",
-    ],
-  },
-};
 
 // Tab 按钮组件 - 支持 hover 状态
 const TabButton = ({
@@ -158,9 +111,20 @@ const TabButton = ({
  * 服务条款页面内容组件
  * 默认展开，无底部导航栏
  */
-export function TermsContent() {
-  const [activeTab, setActiveTab] = useState<TabId | null>(null);
-  const lastUpdated = "2024年12月1日";
+export function TermsContent({ content }: { content: TermsPageContent }) {
+  const [activeTab, setActiveTab] = useState<TermsTabId | null>(null);
+
+  // 从 content 中获取数据
+  const pageTitle = content.pageTitle || { en: "TERMS OF SERVICE", zh: "服务条款" };
+  const description = content.description || "在使用我们的服务前，请仔细阅读以下条款";
+  const lastUpdated = content.lastUpdated || "2024年12月1日";
+  const tabContents = content.tabs;
+
+  // 根据 content 中的标签标题动态生成 tabs
+  const tabs: TabConfig[] = defaultTabs.map((tab) => ({
+    ...tab,
+    label: tabContents?.[tab.id]?.title || tab.label,
+  }));
 
   return (
     <>
@@ -193,13 +157,13 @@ export function TermsContent() {
                 {!activeTab && (
                   <div className="mb-6 text-center sm:mb-8">
                     <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                      TERMS OF SERVICE
+                      {pageTitle.en}
                     </p>
                     <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                      服务条款
+                      {pageTitle.zh}
                     </h1>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
-                      使用我们的服务即表示您同意以下条款
+                      {description}
                     </p>
                     <p className="mt-1 text-xs text-brand-charcoal/50 sm:text-sm">
                       最后更新：{lastUpdated}
@@ -268,7 +232,7 @@ export function TermsContent() {
                           <span className="text-sm sm:text-base">返回</span>
                         </m.button>
                         <m.h2 className="font-serif text-xl text-brand-gold sm:text-2xl md:text-3xl">
-                          {tabContents[activeTab].title}
+                          {tabContents?.[activeTab]?.title || activeTab}
                         </m.h2>
                         <div className="w-16 sm:w-20" />
                       </div>
@@ -276,7 +240,7 @@ export function TermsContent() {
                       {/* 内容区域 */}
                       <div className="flex-1 overflow-y-auto rounded-xl border border-brand-beige bg-white/80 p-4 backdrop-blur-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
                         <div className="space-y-6">
-                          {tabContents[activeTab].content.map((paragraph, index) => {
+                          {(tabContents?.[activeTab]?.content || []).map((paragraph, index) => {
                             // 按换行符分割段落
                             const lines = paragraph.split('\n');
                             return (

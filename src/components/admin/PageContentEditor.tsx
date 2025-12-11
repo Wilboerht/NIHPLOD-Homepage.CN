@@ -17,6 +17,7 @@ import type {
   CareersPageContent,
   PrivacyPageContent,
   TermsPageContent,
+  TermsTabId,
   ServicesPageContent,
   ServiceDetail,
   ServiceLink,
@@ -1142,7 +1143,89 @@ export function PrivacyContentEditor({
   );
 }
 
-// 服务条款页内容编辑器（保留原有实现）
+// 服务条款标签编辑器组件
+function TermsTabEditor({
+  tabId,
+  tabLabel,
+  title,
+  content,
+  onTitleChange,
+  onContentChange,
+}: {
+  tabId: string;
+  tabLabel: string;
+  title: string;
+  content: string[];
+  onTitleChange: (title: string) => void;
+  onContentChange: (content: string[]) => void;
+}) {
+  const addParagraph = () => {
+    onContentChange([...content, ""]);
+  };
+
+  const updateParagraph = (index: number, value: string) => {
+    const newContent = [...content];
+    newContent[index] = value;
+    onContentChange(newContent);
+  };
+
+  const removeParagraph = (index: number) => {
+    onContentChange(content.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h4 className="font-medium text-gray-900">{tabLabel}</h4>
+        <button
+          type="button"
+          onClick={addParagraph}
+          className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-200"
+        >
+          + 添加段落
+        </button>
+      </div>
+      <Input
+        label="标签标题"
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder={tabLabel}
+      />
+      <div className="mt-4 space-y-3">
+        {content.map((paragraph, index) => (
+          <div key={index} className="flex gap-2">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-gray-500">
+                段落 {index + 1}
+              </label>
+              <textarea
+                value={paragraph}
+                onChange={(e) => updateParagraph(index, e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+                rows={4}
+                placeholder="输入段落内容，支持换行符格式化..."
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeParagraph(index)}
+              className="mt-6 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+        {content.length === 0 && (
+          <p className="py-4 text-center text-sm text-gray-400">
+            暂无段落，点击上方按钮添加
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 服务条款页内容编辑器
 export function LegalContentEditor({
   content,
   onChange,
@@ -1150,75 +1233,101 @@ export function LegalContentEditor({
   content: TermsPageContent;
   onChange: (content: TermsPageContent) => void;
 }) {
-  // 确保 sections 数组存在
-  const sections = content.sections || [];
-
-  const addSection = () => {
-    const newSection = { title: "", content: "" };
-    onChange({ ...content, sections: [...sections, newSection] });
+  // 确保嵌套对象存在
+  const pageTitle = content.pageTitle || { en: "TERMS OF SERVICE", zh: "服务条款" };
+  const tabs = content.tabs || {
+    general: { title: "总则", content: [] },
+    product: { title: "产品服务", content: [] },
+    responsibility: { title: "责任限制", content: [] },
+    dispute: { title: "争议解决", content: [] },
   };
 
-  const updateSection = (index: number, section: { title: string; content: string }) => {
-    const newSections = [...sections];
-    newSections[index] = section;
-    onChange({ ...content, sections: newSections });
+  const updateTab = (
+    tabId: TermsTabId,
+    field: "title" | "content",
+    value: string | string[]
+  ) => {
+    onChange({
+      ...content,
+      tabs: {
+        ...tabs,
+        [tabId]: {
+          ...tabs[tabId],
+          [field]: value,
+        },
+      },
+    });
   };
 
-  const removeSection = (index: number) => {
-    onChange({ ...content, sections: sections.filter((_, i) => i !== index) });
-  };
+  const tabConfigs: { id: TermsTabId; label: string; icon: string }[] = [
+    { id: "general", label: "总则", icon: "📋" },
+    { id: "product", label: "产品服务", icon: "🛍️" },
+    { id: "responsibility", label: "责任限制", icon: "🛡️" },
+    { id: "dispute", label: "争议解决", icon: "⚖️" },
+  ];
 
   return (
     <div className="space-y-8">
+      {/* 基本信息 */}
       <section>
-        <Input
-          label="页面标题"
-          value={content.title || ""}
-          onChange={(e) => onChange({ ...content, title: e.target.value })}
-        />
-        <div className="mt-4">
+        <h3 className="mb-4 font-medium text-gray-900">页面标题</h3>
+        <div className="grid gap-4 md:grid-cols-2">
           <Input
-            label="最后更新日期"
-            value={content.lastUpdated || ""}
-            onChange={(e) => onChange({ ...content, lastUpdated: e.target.value })}
-            placeholder="2024-01-01"
+            label="英文标题"
+            value={pageTitle.en}
+            onChange={(e) =>
+              onChange({ ...content, pageTitle: { ...pageTitle, en: e.target.value } })
+            }
+            placeholder="TERMS OF SERVICE"
+          />
+          <Input
+            label="中文标题"
+            value={pageTitle.zh}
+            onChange={(e) =>
+              onChange({ ...content, pageTitle: { ...pageTitle, zh: e.target.value } })
+            }
+            placeholder="服务条款"
           />
         </div>
       </section>
 
       <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-medium text-gray-900">条款内容</h3>
-          <Button size="sm" variant="outline" leftIcon={<Plus className="h-4 w-4" />} onClick={addSection}>
-            添加章节
-          </Button>
-        </div>
-        <div className="space-y-4">
-          {sections.map((section, index) => (
-            <div key={index} className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="font-medium text-gray-700">章节 {index + 1}</span>
-                <button
-                  onClick={() => removeSection(index)}
-                  className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-              <Input
-                label="章节标题"
-                value={section.title || ""}
-                onChange={(e) => updateSection(index, { ...section, title: e.target.value })}
-              />
-              <div className="mt-4">
-                <RichTextEditor
-                  label="章节内容"
-                  value={section.content || ""}
-                  onChange={(value) => updateSection(index, { ...section, content: value })}
-                  minHeight="100px"
-                />
-              </div>
-            </div>
+        <h3 className="mb-4 font-medium text-gray-900">页面描述</h3>
+        <Input
+          label="描述文字"
+          value={content.description || ""}
+          onChange={(e) => onChange({ ...content, description: e.target.value })}
+          placeholder="在使用我们的服务前，请仔细阅读以下条款"
+        />
+      </section>
+
+      <section>
+        <h3 className="mb-4 font-medium text-gray-900">更新日期</h3>
+        <Input
+          label="最后更新日期"
+          value={content.lastUpdated || ""}
+          onChange={(e) => onChange({ ...content, lastUpdated: e.target.value })}
+          placeholder="2024年12月1日"
+        />
+      </section>
+
+      {/* 标签页内容 */}
+      <section>
+        <h3 className="mb-4 font-medium text-gray-900">标签页内容</h3>
+        <p className="mb-4 text-sm text-gray-500">
+          服务条款使用标签式布局，包含4个标签页。每个标签可包含多个段落，支持换行符格式化。
+        </p>
+        <div className="space-y-6">
+          {tabConfigs.map((tab) => (
+            <TermsTabEditor
+              key={tab.id}
+              tabId={tab.id}
+              tabLabel={`${tab.icon} ${tab.label}`}
+              title={tabs[tab.id]?.title || tab.label}
+              content={tabs[tab.id]?.content || []}
+              onTitleChange={(val) => updateTab(tab.id, "title", val)}
+              onContentChange={(val) => updateTab(tab.id, "content", val)}
+            />
           ))}
         </div>
       </section>
