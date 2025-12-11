@@ -479,7 +479,7 @@ export function RitualContent() {
                         {/* 双人SPA内容 - 从 steps 读取 */}
                         {activeTab === "couple" && (
                           <div className="space-y-4">
-                            {currentTabData.steps.map((step, index) => (
+                            {tabContents[activeTab].steps.map((step, index) => (
                               <m.div
                                 key={step.order}
                                 className="rounded-xl border border-brand-beige bg-gradient-to-br from-brand-blush/30 to-white p-5"
@@ -501,7 +501,7 @@ export function RitualContent() {
                               className="mt-6 rounded-xl bg-brand-gold/10 p-4"
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.3, delay: 0.15 + currentTabData.steps.length * 0.08 }}
+                              transition={{ duration: 0.3, delay: 0.15 + tabContents[activeTab].steps.length * 0.08 }}
                             >
                               <p className="text-center text-sm text-brand-charcoal">
                                 探索适合双人护肤的产品组合

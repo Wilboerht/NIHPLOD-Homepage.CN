@@ -38,6 +38,7 @@ interface SectionEditorProps {
   onMoveDown?: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SectionEditor({
   section,
   index,
@@ -136,6 +137,7 @@ interface HeroEditorProps {
   onChange: (hero: { title: string; subtitle?: string; backgroundImage?: string }) => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function HeroEditor({ value, onChange }: HeroEditorProps) {
   // 确保 value 存在
   const hero = value || { title: "", subtitle: "", backgroundImage: "" };
@@ -925,7 +927,7 @@ export function CareersContentEditor({
 
 // 隐私政策标签编辑器组件
 function PrivacyTabEditor({
-  tabId,
+  tabId: _tabId,
   tabLabel,
   title,
   content,
@@ -1145,7 +1147,7 @@ export function PrivacyContentEditor({
 
 // 服务条款标签编辑器组件
 function TermsTabEditor({
-  tabId,
+  tabId: _tabId,
   tabLabel,
   title,
   content,
@@ -1349,7 +1351,7 @@ interface StepEditorProps {
 
 function RitualStepEditor({
   step,
-  index,
+  index: _index,
   onChange,
   onRemove,
   onMoveUp,

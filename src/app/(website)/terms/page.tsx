@@ -60,7 +60,7 @@ async function getPageContent(): Promise<TermsPageContent> {
     });
 
     if (page?.content && page.published) {
-      return page.content as TermsPageContent;
+      return page.content as unknown as TermsPageContent;
     }
   } catch (error) {
     console.error("Failed to fetch terms page content:", error);

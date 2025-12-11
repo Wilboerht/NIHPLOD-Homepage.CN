@@ -51,7 +51,7 @@ async function getPageContent(): Promise<ServicesPageContent> {
     });
 
     if (page?.content && page.published) {
-      return page.content as ServicesPageContent;
+      return page.content as unknown as ServicesPageContent;
     }
   } catch (error) {
     console.error("Failed to fetch services page content:", error);
