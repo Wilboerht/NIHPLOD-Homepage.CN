@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import {
   MapPin,
@@ -19,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { CareersPageContent } from "@/types/page-content";
 
 // 职位类型
 interface Job {
@@ -39,16 +40,34 @@ const jobTypeMap: Record<string, { label: string; color: string }> = {
   intern: { label: "实习", color: "bg-purple-100 text-purple-700" },
 };
 
+// 默认内容
+const defaultContent: CareersPageContent = {
+  title: { en: "JOIN US", zh: "加入我们" },
+  description: "与热爱美好事物的人一起，创造高端护肤的未来",
+  submitTip: {
+    title: "简历投递",
+    content: "请将简历直接投递到在招岗位的投递提交表单中\n简历命名格式：【应聘】职位名称 - 姓名",
+  },
+  contactEmail: "hr@nihplod.com",
+};
+
 interface CareersContentProps {
   jobs: Job[];
+  content?: CareersPageContent;
 }
 
 /**
  * 招聘页面内容组件
  * 直接显示开放职位
  */
-export function CareersContent({ jobs }: CareersContentProps) {
+export function CareersContent({ jobs, content }: CareersContentProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+
+  // 合并默认内容和传入内容
+  const title = content?.title || defaultContent.title;
+  const description = content?.description || defaultContent.description;
+  const submitTip = content?.submitTip || defaultContent.submitTip;
+  const contactEmail = content?.contactEmail || defaultContent.contactEmail;
 
   return (
     <>
@@ -80,13 +99,13 @@ export function CareersContent({ jobs }: CareersContentProps) {
                 {/* 页面标题 */}
                 <div className="mb-6 text-center sm:mb-8">
                   <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                    JOIN US
+                    {title.en}
                   </p>
                   <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                    加入我们
+                    {title.zh}
                   </h1>
                   <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
-                    与热爱美好事物的人一起，创造高端护肤的未来
+                    {description}
                   </p>
                 </div>
 
@@ -110,25 +129,26 @@ export function CareersContent({ jobs }: CareersContentProps) {
                     )}
 
                     {/* 投递方式 */}
-                    <m.div
-                      className="mt-6 rounded-xl bg-brand-gold/10 p-5"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold">
-                          <Mail className="h-5 w-5 text-white" />
+                    {submitTip && (
+                      <m.div
+                        className="mt-6 rounded-xl bg-brand-gold/10 p-5"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.2 }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold">
+                            <Mail className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-serif text-base text-brand-charcoal">{submitTip.title}</h3>
+                            <p className="mt-1 whitespace-pre-line text-sm text-brand-charcoal/70">
+                              {submitTip.content}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-serif text-base text-brand-charcoal">简历投递</h3>
-                          <p className="mt-1 text-sm text-brand-charcoal/70">
-                            请将简历直接投递到在招岗位的<span className="text-brand-gold/70"> 投递提交表单 </span>中
-                            <br />简历命名格式：【应聘】职位名称 - 姓名
-                          </p>
-                        </div>
-                      </div>
-                    </m.div>
+                      </m.div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -149,7 +169,7 @@ export function CareersContent({ jobs }: CareersContentProps) {
       {/* 职位详情弹窗 */}
       <AnimatePresence>
         {selectedJob && (
-          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} contactEmail={contactEmail} />
         )}
       </AnimatePresence>
     </>
@@ -221,7 +241,7 @@ function JobCard({
 /**
  * 职位详情弹窗组件
  */
-function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
+function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => void; contactEmail?: string }) {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -471,7 +491,7 @@ function JobModal({ job, onClose }: { job: Job; onClose: () => void }) {
                 {/* 错误提示 */}
                 {submitStatus === "error" && (
                   <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                    投递失败，请稍后重试或直接发送简历至 hr@nihplod.com
+                    投递失败，请稍后重试或直接发送简历至 {contactEmail || "hr@nihplod.com"}
                   </div>
                 )}
 

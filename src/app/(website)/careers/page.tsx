@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { CareersContent } from "./CareersContent";
+import type { CareersPageContent } from "@/types/page-content";
 
 // ISR: 招聘页面每小时重新验证一次
 export const revalidate = 3600; // 1小时
@@ -52,7 +53,23 @@ async function getJobs(): Promise<Job[]> {
   return jobs;
 }
 
+async function getContent(): Promise<CareersPageContent | undefined> {
+  try {
+    const page = await prisma.page.findUnique({
+      where: { slug: "careers" },
+      select: { content: true, published: true },
+    });
+
+    if (page?.published && page.content) {
+      return page.content as unknown as CareersPageContent;
+    }
+  } catch (error) {
+    console.error("获取加入我们页面内容失败:", error);
+  }
+  return undefined;
+}
+
 export default async function CareersPage() {
-  const jobs = await getJobs();
-  return <CareersContent jobs={jobs} />;
+  const [jobs, content] = await Promise.all([getJobs(), getContent()]);
+  return <CareersContent jobs={jobs} content={content} />;
 }

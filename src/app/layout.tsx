@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display } from "next/font/google";
+import { ViewTransitions } from "next-view-transitions";
 import "@fontsource/playfair-display/400.css";
 import "@fontsource/playfair-display/500.css";
 import "@fontsource/playfair-display/600.css";
@@ -92,15 +93,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
-      <head>
-        {/* Schema.org 结构化数据 */}
-        <OrganizationJsonLd />
-        <WebSiteJsonLd />
-      </head>
-      <body className={`${playfair.variable} font-sans antialiased`}>
-        <MotionProvider>{children}</MotionProvider>
-      </body>
-    </html>
+    <ViewTransitions>
+      <html lang="zh-CN">
+        <head>
+          {/* Schema.org 结构化数据 */}
+          <OrganizationJsonLd />
+          <WebSiteJsonLd />
+        </head>
+        <body className={`${playfair.variable} font-sans antialiased`}>
+          <MotionProvider>{children}</MotionProvider>
+        </body>
+      </html>
+    </ViewTransitions>
   );
 }

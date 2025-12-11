@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
 import { ArrowLeft, Scan, SkipForward } from "lucide-react";
 import { FaceCapture } from "@/components/website/advisor/FaceCapture";

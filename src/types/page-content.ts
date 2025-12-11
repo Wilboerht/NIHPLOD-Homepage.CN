@@ -43,6 +43,11 @@ export interface HomePageContent {
     productsText: string; // 产品按钮文字
     productsLink: string; // 产品链接
   };
+  // 底部导航链接
+  footerLinks?: Array<{
+    text: string;
+    href: string;
+  }>;
   // 底部版权
   copyright?: string;
 }
@@ -96,38 +101,39 @@ export interface RitualPageContent {
 // 联系我们页面 (contact)
 // ============================================
 export interface ContactPageContent {
-  hero: HeroSection;
-  info: {
-    address: string;
-    email: string;
-    phone?: string;
-    wechat?: string;
-    workingHours?: string;
+  // 页面标题
+  title: {
+    en: string; // 英文标题 (CONTACT US)
+    zh: string; // 中文标题 (联系我们)
   };
-  mapEmbed?: string;
-  formTitle?: string;
-  formDescription?: string;
+  // 页面描述
+  description: string;
+  // 留言类型选项
+  messageTypes?: Array<{
+    value: string;
+    label: string;
+  }>;
+  // 底部版权
+  copyright?: string;
 }
 
 // ============================================
 // 加入我们页面 (careers)
 // ============================================
 export interface CareersPageContent {
-  hero: HeroSection;
-  intro: {
+  // 页面标题
+  title: {
+    en: string; // 英文标题 (JOIN US)
+    zh: string; // 中文标题 (加入我们)
+  };
+  // 页面描述
+  description: string;
+  // 投递提示
+  submitTip?: {
     title: string;
     content: string;
   };
-  benefits?: Array<{
-    icon?: string;
-    title: string;
-    description: string;
-  }>;
-  culture?: {
-    title: string;
-    content: string;
-    images?: string[];
-  };
+  // 失败时的联系邮箱
   contactEmail?: string;
 }
 
@@ -135,12 +141,38 @@ export interface CareersPageContent {
 // 隐私政策页面 (privacy)
 // ============================================
 export interface PrivacyPageContent {
-  title: string;
-  lastUpdated?: string;
-  sections: Array<{
-    title: string;
-    content: string;
-  }>;
+  // 页面标题
+  title: {
+    en: string; // 英文标题 (PRIVACY POLICY)
+    zh: string; // 中文标题 (隐私政策)
+  };
+  // 页面描述
+  description: string;
+  // 最后更新日期
+  lastUpdated: string;
+  // 四个标签页内容
+  tabs: {
+    // 信息收集
+    collect: {
+      title: string;
+      content: string[]; // 每个元素是一个段落，支持换行符分隔小节
+    };
+    // 信息使用
+    use: {
+      title: string;
+      content: string[];
+    };
+    // 信息保护
+    protect: {
+      title: string;
+      content: string[];
+    };
+    // 您的权利
+    rights: {
+      title: string;
+      content: string[];
+    };
+  };
 }
 
 // ============================================
@@ -210,6 +242,14 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
         productsText: "探索产品",
         productsLink: "/products",
       },
+      footerLinks: [
+        { text: "关于旎柏", href: "/story" },
+        { text: "护肤仪式", href: "/ritual" },
+        { text: "联系我们", href: "/contact" },
+        { text: "加入我们", href: "/careers" },
+        { text: "隐私政策", href: "/privacy" },
+        { text: "服务入口", href: "/services" },
+      ],
       copyright: "NIHPLOD All Rights Reserved.",
     },
     story: {
@@ -224,16 +264,48 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
       steps: [],
     },
     contact: {
-      hero: { title: "", subtitle: "" },
-      info: { address: "", email: "" },
+      title: { en: "CONTACT US", zh: "联系我们" },
+      description: "有任何问题或建议？我们期待与您的每一次交流",
+      messageTypes: [
+        { value: "consultation", label: "产品咨询" },
+        { value: "cooperation", label: "商务合作" },
+        { value: "feedback", label: "使用反馈" },
+        { value: "complaint", label: "投诉建议" },
+        { value: "other", label: "其他问题" },
+      ],
+      copyright: "NIHPLOD All Rights Reserved.",
     },
     careers: {
-      hero: { title: "", subtitle: "" },
-      intro: { title: "", content: "" },
+      title: { en: "JOIN US", zh: "加入我们" },
+      description: "与热爱美好事物的人一起，创造高端护肤的未来",
+      submitTip: {
+        title: "简历投递",
+        content: "请将简历直接投递到在招岗位的投递提交表单中\n简历命名格式：【应聘】职位名称 - 姓名",
+      },
+      contactEmail: "hr@nihplod.com",
     },
     privacy: {
-      title: "隐私政策",
-      sections: [],
+      title: { en: "PRIVACY POLICY", zh: "隐私政策" },
+      description: "我们重视并尊重您的隐私",
+      lastUpdated: "2024年12月1日",
+      tabs: {
+        collect: {
+          title: "信息收集",
+          content: [],
+        },
+        use: {
+          title: "信息使用",
+          content: [],
+        },
+        protect: {
+          title: "信息保护",
+          content: [],
+        },
+        rights: {
+          title: "您的权利",
+          content: [],
+        },
+      },
     },
     terms: {
       title: "服务条款",

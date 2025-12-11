@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Send, CheckCircle, AlertCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, ContactIcon } from "@/components/website";
+import type { ContactPageContent } from "@/types/page-content";
 
 /**
  * 底部导航项配置
@@ -19,15 +20,31 @@ const bottomNavItems = [
 
 type FormStatus = "idle" | "loading" | "success" | "error";
 
-// 留言类型选项（带图标）
-const messageTypes = [
-  { value: "", label: "请选择留言类型", icon: HelpCircle },
-  { value: "consultation", label: "产品咨询", icon: MessageSquare },
-  { value: "cooperation", label: "商务合作", icon: Briefcase },
-  { value: "feedback", label: "意见反馈", icon: MessageCircle },
-  { value: "complaint", label: "投诉建议", icon: AlertTriangle },
-  { value: "other", label: "其他", icon: HelpCircle },
+// 图标映射
+const iconMap: Record<string, typeof HelpCircle> = {
+  consultation: MessageSquare,
+  cooperation: Briefcase,
+  feedback: MessageCircle,
+  complaint: AlertTriangle,
+  other: HelpCircle,
+};
+
+// 默认留言类型
+const defaultMessageTypes = [
+  { value: "consultation", label: "产品咨询" },
+  { value: "cooperation", label: "商务合作" },
+  { value: "feedback", label: "使用反馈" },
+  { value: "complaint", label: "投诉建议" },
+  { value: "other", label: "其他问题" },
 ];
+
+// 默认内容
+const defaultContent: ContactPageContent = {
+  title: { en: "CONTACT US", zh: "联系我们" },
+  description: "有任何问题或建议？我们期待与您的每一次交流",
+  messageTypes: defaultMessageTypes,
+  copyright: "NIHPLOD All Rights Reserved.",
+};
 
 interface FormData {
   name: string;
@@ -37,12 +54,31 @@ interface FormData {
   website: string; // 蜜罐字段
 }
 
+interface ContactContentProps {
+  content?: ContactPageContent;
+}
+
 /**
  * 联系我们页面内容组件
  * 直接显示联系表单
  */
-export function ContactContent() {
-  const [isExpanded, setIsExpanded] = useState(true); // 默认展开
+export function ContactContent({ content }: ContactContentProps) {
+  // 合并默认内容和传入内容
+  const title = content?.title || defaultContent.title;
+  const description = content?.description || defaultContent.description;
+  const messageTypesData = content?.messageTypes || defaultMessageTypes;
+  const copyright = content?.copyright || defaultContent.copyright;
+
+  // 构建带图标的留言类型选项
+  const messageTypes = [
+    { value: "", label: "请选择留言类型", icon: HelpCircle },
+    ...messageTypesData.map((t) => ({
+      value: t.value,
+      label: t.label,
+      icon: iconMap[t.value] || HelpCircle,
+    })),
+  ];
+  const [isExpanded, setIsExpanded] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
@@ -161,53 +197,67 @@ export function ContactContent() {
         />
       </div>
 
-      {/* 内容区域容器 - 展开时延伸到底部 */}
-      <div className={cn(
-        "fixed inset-0 z-10 transition-all duration-500 ease-out",
-        isExpanded ? "bottom-0" : "bottom-28 lg:bottom-32"
-      )}>
+      {/* 内容区域容器 - 使用 framer-motion 统一控制动画 */}
+      <m.div
+        className="fixed inset-x-0 top-0 z-10"
+        animate={{
+          bottom: isExpanded ? 0 : 112 // bottom-28 = 7rem = 112px
+        }}
+        transition={{
+          duration: 0.5,
+          ease: [0.32, 0.72, 0, 1]
+        }}
+      >
         {/* 主内容区域 */}
         <m.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className={cn(
-            "absolute left-6 right-6 top-4 z-20 transition-all duration-500 ease-out sm:left-10 sm:right-10 lg:left-16 lg:right-16 lg:top-6",
-            isExpanded ? "bottom-4 lg:bottom-6" : ""
-          )}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            bottom: isExpanded ? 16 : 0 // bottom-4 = 1rem = 16px
+          }}
+          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+          className="absolute left-6 right-6 top-4 z-20 sm:left-10 sm:right-10 lg:left-16 lg:right-16 lg:top-6"
         >
-          <div className="flex h-full flex-col items-center justify-center">
-            {/* 主内容区域 */}
-            <div className={cn(
-              "w-full overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl",
-              "transition-all duration-500 ease-out",
-              isExpanded ? "max-h-full" : ""
-            )}>
+          {/* 主内容区域 + 按钮一体化容器 */}
+          <div className="flex h-full flex-col items-center">
+            {/* 主内容区域 - 使用 bg-[#EBE8DB] 不透明样式 */}
+            <m.div
+              className="w-full overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl"
+              animate={{
+                flexGrow: isExpanded ? 1 : 0
+              }}
+              transition={{
+                duration: 0.5,
+                ease: [0.32, 0.72, 0, 1]
+              }}
+            >
               <div className={cn(
-                "flex flex-col px-6 py-8 sm:px-10 sm:py-10 lg:px-16 lg:py-12",
-                isExpanded ? "max-h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
+                "flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
+                isExpanded ? "h-full justify-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
               )}>
                 {/* 页面标题 */}
                 <div className={cn("text-center", isExpanded ? "mb-6 sm:mb-8" : "")}>
                   <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm">
-                    CONTACT US
+                    {title.en}
                   </p>
                   <h1 className="mt-2 font-serif text-3xl text-brand-charcoal sm:text-4xl lg:text-5xl">
-                    联系我们
+                    {title.zh}
                   </h1>
                   <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-brand-charcoal/70 sm:mt-4 sm:text-base">
-                    有任何问题或建议？我们期待与您的每一次交流
+                    {description}
                   </p>
                 </div>
 
                 {/* 联系表单 - 仅在展开时显示 */}
-                <AnimatePresence>
+                <AnimatePresence mode="popLayout">
                   {isExpanded && (
                     <m.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
                       className="mx-auto w-full max-w-xl"
                     >
                   {status === "success" && (
@@ -392,13 +442,13 @@ export function ContactContent() {
 
                   {/* 版权信息 */}
                   <p className="mt-6 text-center text-xs text-brand-charcoal/40">
-                    © {new Date().getFullYear()} NIHPLOD All Rights Reserved.
+                    © {new Date().getFullYear()} {copyright}
                   </p>
                 </m.div>
                   )}
                 </AnimatePresence>
               </div>
-            </div>
+            </m.div>
 
             {/* 展开/收起按钮 */}
             <button
@@ -407,17 +457,22 @@ export function ContactContent() {
               className="group flex items-center justify-center rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
             >
               <m.div
-                className="flex flex-col items-center transition-transform duration-200 group-hover:scale-110"
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center"
+                animate={{
+                  rotate: isExpanded ? 180 : 0,
+                  scale: 1
+                }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
               >
-                <ChevronDown className="h-7 w-7 text-brand-gold transition-colors duration-200 group-hover:text-brand-gold/80 lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold transition-colors duration-200 group-hover:text-brand-gold/80 lg:h-8 lg:w-8" />
+                <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
               </m.div>
             </button>
           </div>
         </m.div>
-      </div>
+      </m.div>
 
       {/* 移动端菜单遮罩层 */}
       <AnimatePresence>
@@ -487,10 +542,13 @@ export function ContactContent() {
       <AnimatePresence>
         {!isExpanded && (
           <m.header
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{
+              duration: 0.35,
+              ease: [0.32, 0.72, 0, 1]
+            }}
             className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"
           >

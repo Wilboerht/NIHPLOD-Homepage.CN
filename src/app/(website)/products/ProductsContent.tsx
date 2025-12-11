@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronLeft, ChevronRight, Menu, X, ShoppingBag } from "lucide-react";
 import { ProductDrawer, ShopIcon, StoryIcon, RitualIcon, ContactIcon, HomeIcon } from "@/components/website";
@@ -297,6 +297,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 监听屏幕尺寸变化
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // 按分类顺序排列产品
   const sortedProducts = useMemo(() => {
@@ -401,16 +410,22 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         />
       </div>
 
-      {/* 内容区域容器 - 展开时延伸到底部 */}
-      <div className={cn(
-        "fixed inset-0 z-10 transition-all duration-300",
-        isExpanded ? "bottom-0" : "bottom-28 lg:bottom-32"
-      )}>
+      {/* 内容区域容器 - 使用 framer-motion 统一控制动画 */}
+      <m.div
+        className="fixed inset-x-0 top-0 z-10"
+        animate={{
+          bottom: isExpanded ? 0 : 112 // bottom-28 = 7rem = 112px
+        }}
+        transition={{
+          duration: 0.5,
+          ease: [0.32, 0.72, 0, 1]
+        }}
+      >
         {/* 顶部分类导航栏 + 展开按钮一体化 */}
         <m.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
           className="absolute left-2 right-2 top-2 z-30 sm:left-4 sm:right-4 sm:top-4 lg:left-6 lg:right-6 lg:top-6"
         >
           {/* 分类栏 + 按钮一体化容器 */}
@@ -418,28 +433,28 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             {/* 分类图标区域 */}
             <div className="w-full rounded-xl bg-[#EBE8DB] sm:w-fit sm:rounded-2xl lg:rounded-3xl">
               <div className="px-2 py-2 sm:px-8 sm:py-3 md:px-12 lg:px-20 lg:py-4">
-                {/* 移动端：grid 5列，桌面端：flex 单行 */}
-                <div className="grid grid-cols-5 gap-x-0 gap-y-1 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">
+                {/* 移动端：固定5列网格保证均匀布局，桌面端：flex单行 */}
+                <div className="grid grid-cols-5 gap-x-0.5 gap-y-1.5 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
                       type="button"
                       onClick={() => handleCategoryChange(cat.id)}
                       className={cn(
-                        "flex flex-col items-center gap-0.5 px-1.5 py-1.5 transition-all sm:gap-1 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5",
+                        "flex flex-col items-center gap-0.5 px-1 py-1.5 transition-all sm:gap-1 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5",
                         "rounded-lg hover:bg-brand-beige/30 sm:rounded-xl",
                         activeCategory === cat.id && "bg-brand-beige/50"
                       )}
                     >
                       <CategoryIcon icon={cat.icon} isActive={activeCategory === cat.id} />
                       <span className={cn(
-                        "text-[10px] whitespace-nowrap sm:text-[11px] md:text-xs lg:text-sm",
-                        activeCategory === cat.id ? "text-brand-gold font-medium" : "text-brand-charcoal/70"
+                        "line-clamp-1 text-center text-[9px] leading-tight sm:text-[11px] md:text-xs lg:text-sm",
+                        activeCategory === cat.id ? "font-medium text-brand-gold" : "text-brand-charcoal/70"
                       )}>
                         {cat.name}
                       </span>
                       <span className={cn(
-                        "font-serif text-[7px] uppercase tracking-wide whitespace-nowrap sm:text-[9px] md:text-[10px] lg:text-xs",
+                        "line-clamp-1 text-center font-serif text-[6px] uppercase leading-tight tracking-wide sm:text-[9px] md:text-[10px] lg:text-xs",
                         activeCategory === cat.id ? "text-brand-gold/80" : "text-brand-charcoal/50"
                       )}>
                         {cat.nameEn}
@@ -465,25 +480,31 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               className="group flex items-center justify-center rounded-b-xl bg-[#EBE8DB] px-6 py-2 shadow-sm sm:rounded-b-2xl sm:px-10 sm:py-2.5 lg:px-14 lg:py-3"
             >
               <m.div
-                className="flex flex-col items-center transition-transform duration-200 group-hover:scale-110"
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center"
+                animate={{
+                  rotate: isExpanded ? 180 : 0,
+                  scale: 1
+                }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
               >
-                <ChevronDown className="h-5 w-5 text-brand-gold transition-colors duration-200 group-hover:text-brand-gold/80 sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-3 h-5 w-5 text-brand-gold transition-colors duration-200 group-hover:text-brand-gold/80 sm:-mt-4 sm:h-6 sm:w-6 lg:-mt-5 lg:h-8 lg:w-8" />
+                <ChevronDown className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
+                <ChevronDown className="-mt-3 h-5 w-5 text-brand-gold sm:-mt-4 sm:h-6 sm:w-6 lg:-mt-5 lg:h-8 lg:w-8" />
               </m.div>
             </button>
           </div>
         </m.div>
 
         {/* 产品展示区域 - 3D 旋转木马 */}
-        <AnimatePresence>
+        <AnimatePresence mode="popLayout">
           {isExpanded && currentProduct && (
             <m.div
+              layout
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               className="absolute inset-x-0 bottom-2 top-36 z-10 sm:bottom-4 sm:top-40 md:top-44 lg:bottom-6 lg:top-48"
               style={{ perspective: "1200px" }}
             >
@@ -506,8 +527,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   const isRight2 = normalizedDiff === 2;
 
                   // 计算位置、缩放、透明度、旋转
-                  // 移动端和PC端使用不同参数
-                  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+                  // 使用 state 中的 isMobile 判断
                   const getTransform = () => {
                     if (isCenter) return { x: "0%", scale: 1, zIndex: 20, opacity: 1, rotateY: 0 };
                     if (isMobile) {
@@ -700,7 +720,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             </m.div>
           )}
         </AnimatePresence>
-      </div>
+      </m.div>
 
       {/* 移动端菜单遮罩层 */}
       <AnimatePresence>
@@ -770,10 +790,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       <AnimatePresence>
         {!isExpanded && (
           <m.header
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{
+              duration: 0.35,
+              ease: [0.32, 0.72, 0, 1]
+            }}
             className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"
           >

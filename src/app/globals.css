@@ -273,3 +273,63 @@
 .animate-image-load {
   animation: image-fade-in 0.3s ease-out forwards;
 }
+
+/* ========== View Transitions API 页面过渡动画 ========== */
+
+/**
+ * 页面过渡动画配置
+ * 使用 CSS View Transitions API 实现丝滑的路由切换效果
+ *
+ * 效果：极简交叉淡入 (Minimal Crossfade)
+ * 风格：高端奢侈品牌标准做法
+ *       - 纯透明度交叉过渡
+ *       - 极轻微缩放增加层次感
+ *       - 克制内敛，让内容说话
+ */
+
+/* 过渡容器 */
+::view-transition-group(root) {
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 旧页面 - 柔和淡出 */
+::view-transition-old(root) {
+  animation: fade-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* 新页面 - 柔和淡入 */
+::view-transition-new(root) {
+  animation: fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(1.01);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 尊重用户的减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.01ms !important;
+  }
+}

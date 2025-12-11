@@ -12,6 +12,7 @@ import type {
   ContactPageContent,
   CareersPageContent,
   PrivacyPageContent,
+  TermsPageContent,
   ContentSection,
 } from "@/types/page-content";
 
@@ -149,6 +150,16 @@ function HeroEditor({ value, onChange }: HeroEditorProps) {
   );
 }
 
+// 默认底部导航链接
+const defaultFooterLinks = [
+  { text: "关于旎柏", href: "/story" },
+  { text: "护肤仪式", href: "/ritual" },
+  { text: "联系我们", href: "/contact" },
+  { text: "加入我们", href: "/careers" },
+  { text: "隐私政策", href: "/privacy" },
+  { text: "服务入口", href: "/services" },
+];
+
 // 首页内容编辑器 - 简洁品牌着陆页
 export function HomeContentEditor({
   content,
@@ -164,6 +175,30 @@ export function HomeContentEditor({
     advisorLink: "/advisor",
     productsText: "探索产品",
     productsLink: "/products",
+  };
+  const footerLinks = content.footerLinks || defaultFooterLinks;
+
+  // 添加底部链接
+  const addFooterLink = () => {
+    onChange({
+      ...content,
+      footerLinks: [...footerLinks, { text: "", href: "" }],
+    });
+  };
+
+  // 更新底部链接
+  const updateFooterLink = (index: number, field: "text" | "href", value: string) => {
+    const newLinks = [...footerLinks];
+    newLinks[index] = { ...newLinks[index], [field]: value };
+    onChange({ ...content, footerLinks: newLinks });
+  };
+
+  // 删除底部链接
+  const removeFooterLink = (index: number) => {
+    onChange({
+      ...content,
+      footerLinks: footerLinks.filter((_, i) => i !== index),
+    });
   };
 
   return (
@@ -245,6 +280,55 @@ export function HomeContentEditor({
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* 底部导航链接 */}
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="font-medium text-gray-900">底部导航链接</h3>
+            <p className="mt-1 text-sm text-gray-500">页面底部显示的快速导航链接</p>
+          </div>
+          <button
+            type="button"
+            onClick={addFooterLink}
+            className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-200"
+          >
+            + 添加链接
+          </button>
+        </div>
+        <div className="space-y-3">
+          {footerLinks.map((link, index) => (
+            <div key={index} className="flex items-center gap-3">
+              <div className="flex flex-1 gap-3">
+                <Input
+                  label=""
+                  value={link.text}
+                  onChange={(e) => updateFooterLink(index, "text", e.target.value)}
+                  placeholder="链接文字"
+                  className="flex-1"
+                />
+                <Input
+                  label=""
+                  value={link.href}
+                  onChange={(e) => updateFooterLink(index, "href", e.target.value)}
+                  placeholder="/path"
+                  className="flex-1"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeFooterLink(index)}
+                className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                title="删除"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -363,6 +447,15 @@ export function StoryContentEditor({
   );
 }
 
+// 默认留言类型
+const defaultMessageTypes = [
+  { value: "consultation", label: "产品咨询" },
+  { value: "cooperation", label: "商务合作" },
+  { value: "feedback", label: "使用反馈" },
+  { value: "complaint", label: "投诉建议" },
+  { value: "other", label: "其他问题" },
+];
+
 // 联系我们页内容编辑器
 export function ContactContentEditor({
   content,
@@ -371,90 +464,133 @@ export function ContactContentEditor({
   content: ContactPageContent;
   onChange: (content: ContactPageContent) => void;
 }) {
-  // 确保 info 对象存在
-  const info = content.info || { address: "", email: "", phone: "", wechat: "", workingHours: "" };
+  // 确保嵌套对象存在
+  const title = content.title || { en: "CONTACT US", zh: "联系我们" };
+  const messageTypes = content.messageTypes || defaultMessageTypes;
+
+  // 添加留言类型
+  const addMessageType = () => {
+    onChange({
+      ...content,
+      messageTypes: [...messageTypes, { value: "", label: "" }],
+    });
+  };
+
+  // 更新留言类型
+  const updateMessageType = (index: number, field: "value" | "label", value: string) => {
+    const newTypes = [...messageTypes];
+    newTypes[index] = { ...newTypes[index], [field]: value };
+    onChange({ ...content, messageTypes: newTypes });
+  };
+
+  // 删除留言类型
+  const removeMessageType = (index: number) => {
+    onChange({
+      ...content,
+      messageTypes: messageTypes.filter((_, i) => i !== index),
+    });
+  };
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
+      {/* 页面标题 */}
       <section>
-        <h3 className="mb-4 font-medium text-gray-900">Hero 区块</h3>
-        <HeroEditor
-          value={content.hero}
-          onChange={(hero) => onChange({ ...content, hero })}
-        />
-      </section>
-
-      {/* 联系信息 */}
-      <section>
-        <h3 className="mb-4 font-medium text-gray-900">联系信息</h3>
+        <h3 className="mb-4 font-medium text-gray-900">页面标题</h3>
+        <p className="mb-4 text-sm text-gray-500">
+          页面顶部显示的标题
+        </p>
         <div className="grid gap-4 md:grid-cols-2">
           <Input
-            label="地址"
-            value={info.address || ""}
+            label="英文标题"
+            value={title.en || ""}
             onChange={(e) =>
-              onChange({ ...content, info: { ...info, address: e.target.value } })
+              onChange({ ...content, title: { ...title, en: e.target.value } })
             }
+            placeholder="CONTACT US"
           />
           <Input
-            label="邮箱"
-            type="email"
-            value={info.email || ""}
+            label="中文标题"
+            value={title.zh || ""}
             onChange={(e) =>
-              onChange({ ...content, info: { ...info, email: e.target.value } })
+              onChange({ ...content, title: { ...title, zh: e.target.value } })
             }
-          />
-          <Input
-            label="电话"
-            value={info.phone || ""}
-            onChange={(e) =>
-              onChange({ ...content, info: { ...info, phone: e.target.value } })
-            }
-          />
-          <Input
-            label="微信"
-            value={info.wechat || ""}
-            onChange={(e) =>
-              onChange({ ...content, info: { ...info, wechat: e.target.value } })
-            }
-          />
-          <Input
-            label="工作时间"
-            value={info.workingHours || ""}
-            onChange={(e) =>
-              onChange({ ...content, info: { ...info, workingHours: e.target.value } })
-            }
-            className="md:col-span-2"
+            placeholder="联系我们"
           />
         </div>
       </section>
 
-      {/* 地图 */}
+      {/* 页面描述 */}
       <section>
-        <h3 className="mb-4 font-medium text-gray-900">地图嵌入</h3>
+        <h3 className="mb-4 font-medium text-gray-900">页面描述</h3>
         <Input
-          label="地图嵌入代码"
-          value={content.mapEmbed || ""}
-          onChange={(e) => onChange({ ...content, mapEmbed: e.target.value })}
-          placeholder="粘贴地图 iframe 代码"
+          label="描述文字"
+          value={content.description || ""}
+          onChange={(e) => onChange({ ...content, description: e.target.value })}
+          placeholder="有任何问题或建议？我们期待与您的每一次交流"
         />
       </section>
 
-      {/* 表单配置 */}
+      {/* 留言类型 */}
       <section>
-        <h3 className="mb-4 font-medium text-gray-900">表单配置</h3>
-        <Input
-          label="表单标题"
-          value={content.formTitle || ""}
-          onChange={(e) => onChange({ ...content, formTitle: e.target.value })}
-        />
-        <div className="mt-4">
-          <Input
-            label="表单描述"
-            value={content.formDescription || ""}
-            onChange={(e) => onChange({ ...content, formDescription: e.target.value })}
-          />
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="font-medium text-gray-900">留言类型</h3>
+            <p className="mt-1 text-sm text-gray-500">表单中的留言类型下拉选项</p>
+          </div>
+          <button
+            type="button"
+            onClick={addMessageType}
+            className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-200"
+          >
+            + 添加类型
+          </button>
         </div>
+        <div className="space-y-3">
+          {messageTypes.map((type, index) => (
+            <div key={index} className="flex items-center gap-3">
+              <div className="flex flex-1 gap-3">
+                <Input
+                  label=""
+                  value={type.value}
+                  onChange={(e) => updateMessageType(index, "value", e.target.value)}
+                  placeholder="值（英文，如 consultation）"
+                  className="flex-1"
+                />
+                <Input
+                  label=""
+                  value={type.label}
+                  onChange={(e) => updateMessageType(index, "label", e.target.value)}
+                  placeholder="显示名称（如 产品咨询）"
+                  className="flex-1"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeMessageType(index)}
+                className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                title="删除"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 版权信息 */}
+      <section>
+        <h3 className="mb-4 font-medium text-gray-900">底部版权</h3>
+        <Input
+          label="版权文字"
+          value={content.copyright || ""}
+          onChange={(e) => onChange({ ...content, copyright: e.target.value })}
+          placeholder="NIHPLOD All Rights Reserved."
+        />
+        <p className="mt-2 text-xs text-gray-400">
+          年份会自动添加，例如：© 2024 NIHPLOD All Rights Reserved.
+        </p>
       </section>
     </div>
   );
@@ -468,39 +604,79 @@ export function CareersContentEditor({
   content: CareersPageContent;
   onChange: (content: CareersPageContent) => void;
 }) {
-  // 确保 intro 对象存在
-  const intro = content.intro || { title: "", content: "" };
+  // 确保嵌套对象存在
+  const title = content.title || { en: "JOIN US", zh: "加入我们" };
+  const submitTip = content.submitTip || { title: "简历投递", content: "" };
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
+      {/* 页面标题 */}
       <section>
-        <h3 className="mb-4 font-medium text-gray-900">Hero 区块</h3>
-        <HeroEditor
-          value={content.hero}
-          onChange={(hero) => onChange({ ...content, hero })}
+        <h3 className="mb-4 font-medium text-gray-900">页面标题</h3>
+        <p className="mb-4 text-sm text-gray-500">
+          页面顶部显示的标题
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Input
+            label="英文标题"
+            value={title.en || ""}
+            onChange={(e) =>
+              onChange({ ...content, title: { ...title, en: e.target.value } })
+            }
+            placeholder="JOIN US"
+          />
+          <Input
+            label="中文标题"
+            value={title.zh || ""}
+            onChange={(e) =>
+              onChange({ ...content, title: { ...title, zh: e.target.value } })
+            }
+            placeholder="加入我们"
+          />
+        </div>
+      </section>
+
+      {/* 页面描述 */}
+      <section>
+        <h3 className="mb-4 font-medium text-gray-900">页面描述</h3>
+        <Input
+          label="描述文字"
+          value={content.description || ""}
+          onChange={(e) => onChange({ ...content, description: e.target.value })}
+          placeholder="与热爱美好事物的人一起，创造高端护肤的未来"
         />
       </section>
 
-      {/* 简介 */}
+      {/* 投递提示 */}
       <section>
-        <h3 className="mb-4 font-medium text-gray-900">简介</h3>
-        <Input
-          label="标题"
-          value={intro.title}
-          onChange={(e) =>
-            onChange({ ...content, intro: { ...intro, title: e.target.value } })
-          }
-        />
-        <div className="mt-4">
-          <RichTextEditor
-            label="内容"
-            value={intro.content}
-            onChange={(value) =>
-              onChange({ ...content, intro: { ...intro, content: value } })
+        <h3 className="mb-4 font-medium text-gray-900">投递提示</h3>
+        <p className="mb-4 text-sm text-gray-500">
+          职位列表下方的投递说明区块
+        </p>
+        <div className="space-y-4">
+          <Input
+            label="提示标题"
+            value={submitTip.title || ""}
+            onChange={(e) =>
+              onChange({ ...content, submitTip: { ...submitTip, title: e.target.value } })
             }
-            minHeight="100px"
+            placeholder="简历投递"
           />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              提示内容
+            </label>
+            <textarea
+              value={submitTip.content || ""}
+              onChange={(e) =>
+                onChange({ ...content, submitTip: { ...submitTip, content: e.target.value } })
+              }
+              placeholder="请将简历直接投递到在招岗位的投递提交表单中&#10;简历命名格式：【应聘】职位名称 - 姓名"
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-gold focus:ring-1 focus:ring-brand-gold"
+            />
+            <p className="mt-1 text-xs text-gray-400">支持换行，用于多行说明</p>
+          </div>
         </div>
       </section>
 
@@ -512,20 +688,250 @@ export function CareersContentEditor({
           type="email"
           value={content.contactEmail || ""}
           onChange={(e) => onChange({ ...content, contactEmail: e.target.value })}
-          placeholder="hr@nihplod.cn"
+          placeholder="hr@nihplod.com"
         />
+        <p className="mt-2 text-xs text-gray-400">
+          投递失败时显示的备用联系邮箱
+        </p>
       </section>
+
+      {/* 提示信息 */}
+      <div className="rounded-lg bg-blue-50 p-4">
+        <p className="text-sm text-blue-700">
+          <strong>提示：</strong>职位列表通过「职位管理」页面进行管理，不在此处编辑。
+        </p>
+      </div>
     </div>
   );
 }
 
-// 隐私政策/服务条款页内容编辑器
-export function LegalContentEditor({
+// 隐私政策标签编辑器组件
+function PrivacyTabEditor({
+  tabId,
+  tabLabel,
+  title,
+  content,
+  onTitleChange,
+  onContentChange,
+}: {
+  tabId: string;
+  tabLabel: string;
+  title: string;
+  content: string[];
+  onTitleChange: (title: string) => void;
+  onContentChange: (content: string[]) => void;
+}) {
+  const addParagraph = () => {
+    onContentChange([...content, ""]);
+  };
+
+  const updateParagraph = (index: number, value: string) => {
+    const newContent = [...content];
+    newContent[index] = value;
+    onContentChange(newContent);
+  };
+
+  const removeParagraph = (index: number) => {
+    onContentChange(content.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h4 className="font-medium text-gray-900">{tabLabel}</h4>
+        <button
+          type="button"
+          onClick={addParagraph}
+          className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-200"
+        >
+          + 添加段落
+        </button>
+      </div>
+      <Input
+        label="标签标题"
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder={tabLabel}
+      />
+      <div className="mt-4 space-y-3">
+        {content.map((paragraph, index) => (
+          <div key={index} className="flex gap-2">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-gray-500">
+                段落 {index + 1}
+              </label>
+              <textarea
+                value={paragraph}
+                onChange={(e) => updateParagraph(index, e.target.value)}
+                rows={4}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition-colors focus:border-brand-gold focus:ring-1 focus:ring-brand-gold"
+                placeholder="支持换行符分隔小节，如：&#10;一、标题&#10;内容...&#10;&#10;• 列表项1&#10;• 列表项2"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeParagraph(index)}
+              className="mt-6 rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+              title="删除"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+        {content.length === 0 && (
+          <p className="py-4 text-center text-sm text-gray-400">
+            暂无段落，点击"添加段落"开始编辑
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 隐私政策页内容编辑器
+export function PrivacyContentEditor({
   content,
   onChange,
 }: {
   content: PrivacyPageContent;
   onChange: (content: PrivacyPageContent) => void;
+}) {
+  // 确保嵌套对象存在
+  const title = content.title || { en: "PRIVACY POLICY", zh: "隐私政策" };
+  const tabs = content.tabs || {
+    collect: { title: "信息收集", content: [] },
+    use: { title: "信息使用", content: [] },
+    protect: { title: "信息保护", content: [] },
+    rights: { title: "您的权利", content: [] },
+  };
+
+  const updateTab = (
+    tabId: "collect" | "use" | "protect" | "rights",
+    field: "title" | "content",
+    value: string | string[]
+  ) => {
+    onChange({
+      ...content,
+      tabs: {
+        ...tabs,
+        [tabId]: {
+          ...tabs[tabId],
+          [field]: value,
+        },
+      },
+    });
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* 页面标题 */}
+      <section>
+        <h3 className="mb-4 font-medium text-gray-900">页面标题</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Input
+            label="英文标题"
+            value={title.en || ""}
+            onChange={(e) =>
+              onChange({ ...content, title: { ...title, en: e.target.value } })
+            }
+            placeholder="PRIVACY POLICY"
+          />
+          <Input
+            label="中文标题"
+            value={title.zh || ""}
+            onChange={(e) =>
+              onChange({ ...content, title: { ...title, zh: e.target.value } })
+            }
+            placeholder="隐私政策"
+          />
+        </div>
+      </section>
+
+      {/* 页面描述 */}
+      <section>
+        <h3 className="mb-4 font-medium text-gray-900">页面描述</h3>
+        <Input
+          label="描述文字"
+          value={content.description || ""}
+          onChange={(e) => onChange({ ...content, description: e.target.value })}
+          placeholder="我们重视并尊重您的隐私"
+        />
+      </section>
+
+      {/* 最后更新日期 */}
+      <section>
+        <h3 className="mb-4 font-medium text-gray-900">更新日期</h3>
+        <Input
+          label="最后更新日期"
+          value={content.lastUpdated || ""}
+          onChange={(e) => onChange({ ...content, lastUpdated: e.target.value })}
+          placeholder="2024年12月1日"
+        />
+      </section>
+
+      {/* 标签页内容 */}
+      <section>
+        <h3 className="mb-4 font-medium text-gray-900">标签页内容</h3>
+        <p className="mb-4 text-sm text-gray-500">
+          隐私政策使用标签式布局，包含4个标签页。每个标签可包含多个段落，支持换行符格式化。
+        </p>
+        <div className="space-y-6">
+          <PrivacyTabEditor
+            tabId="collect"
+            tabLabel="信息收集"
+            title={tabs.collect?.title || "信息收集"}
+            content={tabs.collect?.content || []}
+            onTitleChange={(val) => updateTab("collect", "title", val)}
+            onContentChange={(val) => updateTab("collect", "content", val)}
+          />
+          <PrivacyTabEditor
+            tabId="use"
+            tabLabel="信息使用"
+            title={tabs.use?.title || "信息使用"}
+            content={tabs.use?.content || []}
+            onTitleChange={(val) => updateTab("use", "title", val)}
+            onContentChange={(val) => updateTab("use", "content", val)}
+          />
+          <PrivacyTabEditor
+            tabId="protect"
+            tabLabel="信息保护"
+            title={tabs.protect?.title || "信息保护"}
+            content={tabs.protect?.content || []}
+            onTitleChange={(val) => updateTab("protect", "title", val)}
+            onContentChange={(val) => updateTab("protect", "content", val)}
+          />
+          <PrivacyTabEditor
+            tabId="rights"
+            tabLabel="您的权利"
+            title={tabs.rights?.title || "您的权利"}
+            content={tabs.rights?.content || []}
+            onTitleChange={(val) => updateTab("rights", "title", val)}
+            onContentChange={(val) => updateTab("rights", "content", val)}
+          />
+        </div>
+      </section>
+
+      {/* 格式说明 */}
+      <div className="rounded-lg bg-blue-50 p-4">
+        <p className="mb-2 text-sm font-medium text-blue-700">段落格式说明</p>
+        <ul className="space-y-1 text-xs text-blue-600">
+          <li>• 使用空行分隔不同小节</li>
+          <li>• 以"一、二、三..."开头的行会显示为小标题</li>
+          <li>• 以"•"开头的行会显示为列表项</li>
+          <li>• 其他内容显示为普通段落</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// 服务条款页内容编辑器（保留原有实现）
+export function LegalContentEditor({
+  content,
+  onChange,
+}: {
+  content: TermsPageContent;
+  onChange: (content: TermsPageContent) => void;
 }) {
   // 确保 sections 数组存在
   const sections = content.sections || [];

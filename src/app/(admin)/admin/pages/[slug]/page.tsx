@@ -12,6 +12,7 @@ import {
   StoryContentEditor,
   ContactContentEditor,
   CareersContentEditor,
+  PrivacyContentEditor,
   LegalContentEditor,
 } from "@/components/admin/PageContentEditor";
 import { PAGE_META, type PageSlug, type SeoConfig } from "@/types/page-content";
@@ -170,6 +171,12 @@ export default function PageEditPage() {
           />
         );
       case "privacy":
+        return (
+          <PrivacyContentEditor
+            content={page.content as any}
+            onChange={updateContent}
+          />
+        );
       case "terms":
         return (
           <LegalContentEditor

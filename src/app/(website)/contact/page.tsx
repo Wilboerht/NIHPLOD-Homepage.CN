@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import prisma from "@/lib/prisma";
 import { ContactContent } from "./ContactContent";
+import type { ContactPageContent } from "@/types/page-content";
 
 // ISR: 联系我们页面每天重新验证一次
 export const revalidate = 86400; // 24小时
@@ -18,6 +20,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ContactPage() {
-  return <ContactContent />;
+async function getContent(): Promise<ContactPageContent | undefined> {
+  try {
+    const page = await prisma.page.findUnique({
+      where: { slug: "contact" },
+      select: { content: true, published: true },
+    });
+
+    if (page?.published && page.content) {
+      return page.content as unknown as ContactPageContent;
+    }
+  } catch (error) {
+    console.error("获取联系我们页面内容失败:", error);
+  }
+  return undefined;
+}
+
+export default async function ContactPage() {
+  const content = await getContent();
+  return <ContactContent content={content} />;
 }

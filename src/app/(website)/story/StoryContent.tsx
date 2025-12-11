@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -147,18 +147,19 @@ const TabButton = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "group relative flex flex-col items-center justify-center gap-3 px-3 py-6 transition-all duration-300 sm:gap-4 sm:px-6 sm:py-8 md:py-10",
+        "group relative flex flex-col items-center justify-center gap-3 px-3 py-6 sm:gap-4 sm:px-6 sm:py-8 md:py-10",
+        "transition-colors duration-300",
         // 移动端：当前行最后一个不显示右边框
         // 桌面端：最后一个不显示右边框
         !isLastInRow && "border-r border-brand-charcoal/20",
         isLastInRow && !isLastInDesktop && "sm:border-r sm:border-brand-charcoal/20",
         className
       )}
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.2 + index * 0.06, ease: "easeOut" }}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, delay: 0.12 + index * 0.05, ease: [0.32, 0.72, 0, 1] }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
     >
       {/* 大图标 */}
       <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28">
@@ -378,42 +379,55 @@ export function StoryContent() {
         />
       </div>
 
-      {/* 内容区域容器 - 展开时延伸到底部 */}
-      <div className={cn(
-        "fixed inset-0 z-10 transition-all duration-500 ease-out",
-        isExpanded ? "bottom-0" : "bottom-28 lg:bottom-32"
-      )}>
-        {/* 主内容区域 + 展开按钮一体化 - 参考 ProductsContent 分类栏样式 */}
+      {/* 内容区域容器 - 使用 framer-motion 统一控制动画 */}
+      <m.div
+        className="fixed inset-x-0 top-0 z-10"
+        animate={{
+          bottom: isExpanded ? 0 : 112 // bottom-28 = 7rem = 112px
+        }}
+        transition={{
+          duration: 0.5,
+          ease: [0.32, 0.72, 0, 1]
+        }}
+      >
+        {/* 主内容区域 + 展开按钮一体化 */}
         <m.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className={cn(
-            "absolute left-6 right-6 top-4 z-20 transition-all duration-500 ease-out sm:left-10 sm:right-10 lg:left-16 lg:right-16 lg:top-6",
-            isExpanded ? "bottom-4 lg:bottom-6" : ""
-          )}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            bottom: isExpanded ? 16 : 0 // bottom-4 = 1rem = 16px
+          }}
+          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+          className="absolute left-6 right-6 top-4 z-20 sm:left-10 sm:right-10 lg:left-16 lg:right-16 lg:top-6"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center">
             {/* 主内容区域 - 使用 bg-[#EBE8DB] 不透明样式 */}
-            <div className={cn(
-              "w-full overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl",
-              "transition-all duration-500 ease-out",
-              isExpanded ? "flex-1" : ""
-            )}>
+            <m.div
+              className="w-full overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl"
+              animate={{
+                flexGrow: isExpanded ? 1 : 0
+              }}
+              transition={{
+                duration: 0.5,
+                ease: [0.32, 0.72, 0, 1]
+              }}
+            >
               <div className={cn(
                 "flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
                 isExpanded ? "h-full justify-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
               )}>
                 {/* 页面标题 - 收起时始终显示，展开时仅在没有选中标签时显示 */}
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="popLayout">
                   {(!isExpanded || !activeTab) && (
                     <m.div
                       key="title"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
                       className={cn(
                         "text-center",
                         isExpanded ? "mb-6 sm:mb-8" : ""
@@ -433,23 +447,24 @@ export function StoryContent() {
                 </AnimatePresence>
 
                 {/* 展开后显示的内容 */}
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="popLayout">
                   {isExpanded && !activeTab && (
                     <m.div
                       key="tabs"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 20, transition: { duration: 0.25 } }}
-                      transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
                       className="flex flex-col items-center"
                     >
 
                       {/* 品牌 Logo 展示 */}
                       <m.div
                         className="mb-8 flex justify-center sm:mb-10"
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, scale: 0.96 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+                        transition={{ duration: 0.5, delay: 0.08, ease: [0.32, 0.72, 0, 1] }}
                       >
                         <div className="relative h-16 w-32 sm:h-20 sm:w-40 md:h-24 md:w-48">
                           <Image
@@ -487,10 +502,11 @@ export function StoryContent() {
                   {isExpanded && activeTab && (
                     <m.div
                       key={activeTab}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.2 } }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      layout
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.97 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
                       className="flex h-full flex-col"
                     >
                       {/* 返回按钮和标题 */}
@@ -499,9 +515,9 @@ export function StoryContent() {
                           type="button"
                           onClick={() => setActiveTab(null)}
                           className="flex items-center gap-2 text-brand-charcoal/70 transition-colors duration-300 hover:text-brand-charcoal"
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.4, ease: "easeOut" }}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
                         >
                           <svg className="h-5 w-5 sm:h-6 sm:w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M15 18l-6-6 6-6" />
@@ -510,9 +526,9 @@ export function StoryContent() {
                         </m.button>
                         <m.h2
                           className="font-serif text-xl text-brand-gold sm:text-2xl md:text-3xl"
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+                          initial={{ opacity: 0, scale: 0.96 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.4, delay: 0.06, ease: [0.32, 0.72, 0, 1] }}
                         >
                           {tabContents[activeTab].title}
                         </m.h2>
@@ -552,10 +568,10 @@ export function StoryContent() {
                               {tabContents[activeTab].sections.filter(s => s.type === "mission-card").map((section, cardIndex) => (
                                 <m.div
                                   key={cardIndex}
-                                  className="group rounded-2xl border border-brand-beige/50 bg-gradient-to-br from-brand-cream to-white p-5 transition-all duration-300 hover:border-brand-gold/30 hover:shadow-md sm:p-6"
-                                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  transition={{ duration: 0.4, delay: 0.2 + cardIndex * 0.1, ease: "easeOut" }}
+                                  className="group rounded-2xl border border-brand-beige/50 bg-gradient-to-br from-brand-cream to-white p-5 transition-colors duration-300 hover:border-brand-gold/30 hover:shadow-md sm:p-6"
+                                  initial={{ opacity: 0, scale: 0.96 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ duration: 0.4, delay: 0.1 + cardIndex * 0.06, ease: [0.32, 0.72, 0, 1] }}
                                 >
                                   {/* 图标 */}
                                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-gold/10 transition-colors group-hover:bg-brand-gold/20 sm:h-14 sm:w-14">
@@ -599,9 +615,9 @@ export function StoryContent() {
                           <div className="flex min-h-[300px] flex-col items-center justify-center py-8 sm:py-12">
                             <m.div
                               className="text-center"
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.6, ease: "easeOut" }}
+                              initial={{ opacity: 0, scale: 0.97 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
                             >
                               <p className="mb-6 text-xs font-light uppercase tracking-[0.3em] text-brand-gold sm:mb-8 sm:text-sm">
                                 {tabContents[activeTab].subtitle}
@@ -612,9 +628,9 @@ export function StoryContent() {
                                     <m.p
                                       key={lineIdx}
                                       className="font-serif text-base leading-relaxed text-brand-charcoal sm:text-lg md:text-xl"
-                                      initial={{ opacity: 0, y: 10 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      transition={{ duration: 0.4, delay: 0.2 + lineIdx * 0.08, ease: "easeOut" }}
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      transition={{ duration: 0.4, delay: 0.1 + lineIdx * 0.05, ease: [0.32, 0.72, 0, 1] }}
                                     >
                                       {line}
                                     </m.p>
@@ -624,9 +640,9 @@ export function StoryContent() {
                               {/* 使命图片 */}
                               <m.div
                                 className="mt-8 sm:mt-10"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.5, delay: 0.8, ease: "easeOut" }}
+                                initial={{ opacity: 0, scale: 0.97 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.5, delay: 0.4, ease: [0.32, 0.72, 0, 1] }}
                               >
                                 <img
                                   src="/images/story/mission-image.png"
@@ -637,9 +653,9 @@ export function StoryContent() {
                               {/* 装饰图片 */}
                               <m.div
                                 className="mt-6 sm:mt-8"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.5, delay: 1.0, ease: "easeOut" }}
+                                initial={{ opacity: 0, scale: 0.97 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.5, delay: 0.5, ease: [0.32, 0.72, 0, 1] }}
                               >
                                 <img
                                   src="/images/story/mission-decoration.svg"
@@ -655,9 +671,9 @@ export function StoryContent() {
                             {/* 顶部标题 */}
                             <m.div
                               className="mb-16 text-center sm:mb-20"
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.5, ease: "easeOut" }}
+                              initial={{ opacity: 0, scale: 0.97 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
                             >
                               <p className="text-xs font-light uppercase tracking-[0.3em] text-brand-gold sm:text-sm">
                                 {tabContents[activeTab].subtitle}
@@ -673,9 +689,9 @@ export function StoryContent() {
                                 <m.div
                                   key={idx}
                                   className="group relative"
-                                  initial={{ opacity: 0, y: 20 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ duration: 0.4, delay: 0.15 + idx * 0.1, ease: "easeOut" }}
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ duration: 0.4, delay: 0.08 + idx * 0.06, ease: [0.32, 0.72, 0, 1] }}
                                 >
                                   {/* 序号 */}
                                   <div className="mb-3 flex items-center justify-center sm:mb-4 md:mb-5">
@@ -705,9 +721,9 @@ export function StoryContent() {
                             {/* 顶部标题 */}
                             <m.div
                               className="mb-8 text-center sm:mb-12"
-                              initial={{ opacity: 0, y: -20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.6, ease: "easeOut" }}
+                              initial={{ opacity: 0, scale: 0.96 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
                             >
                               <h2 className="font-serif text-4xl font-light italic tracking-[0.3em] text-gray-300 sm:text-5xl md:text-6xl lg:text-7xl">
                                 PRESS
@@ -719,9 +735,9 @@ export function StoryContent() {
                               {/* 左侧图片 */}
                               <m.div
                                 className="w-full sm:w-[55%]"
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+                                initial={{ opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.5, delay: 0.1, ease: [0.32, 0.72, 0, 1] }}
                               >
                                 {tabContents[activeTab].sections[1] && (
                                   <Image
@@ -738,9 +754,9 @@ export function StoryContent() {
                               {/* 右侧图片 */}
                               <m.div
                                 className="w-full sm:w-[40%]"
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+                                initial={{ opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.5, delay: 0.18, ease: [0.32, 0.72, 0, 1] }}
                               >
                                 {tabContents[activeTab].sections[0] && (
                                   <Image
@@ -764,9 +780,9 @@ export function StoryContent() {
                                 <m.div
                                   key={index}
                                   className="flex w-full flex-col items-center text-center"
-                                  initial={{ opacity: 0, y: 30 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ duration: 0.6, delay: 0.1 + index * 0.15, ease: "easeOut" }}
+                                  initial={{ opacity: 0, scale: 0.96 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ duration: 0.5, delay: 0.06 + index * 0.08, ease: [0.32, 0.72, 0, 1] }}
                                 >
                                   {/* 图片 */}
                                   <div className="mb-4 w-full max-w-md sm:max-w-lg">
@@ -820,9 +836,9 @@ export function StoryContent() {
                             {tabContents[activeTab].sections.map((section, sectionIndex) => (
                               <m.div
                                 key={sectionIndex}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.5, delay: 0.1 + sectionIndex * 0.1, ease: "easeOut" }}
+                                initial={{ opacity: 0, scale: 0.97 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.5, delay: 0.06 + sectionIndex * 0.06, ease: [0.32, 0.72, 0, 1] }}
                               >
                                 {/* Hero 图片区域 */}
                                 {section.type === "hero" && (
@@ -884,9 +900,9 @@ export function StoryContent() {
                               <m.p
                                 key={index}
                                 className="text-sm leading-relaxed text-brand-charcoal/80 sm:text-base md:text-lg"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.4, delay: 0.1 + index * 0.06, ease: "easeOut" }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.4, delay: 0.06 + index * 0.04, ease: [0.32, 0.72, 0, 1] }}
                               >
                                 {text}
                               </m.p>
@@ -900,7 +916,7 @@ export function StoryContent() {
 
                 </AnimatePresence>
               </div>
-            </div>
+            </m.div>
 
             {/* 展开/收起按钮 - 无缝连接 */}
             <button
@@ -909,17 +925,22 @@ export function StoryContent() {
               className="group flex items-center justify-center rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
             >
               <m.div
-                className="flex flex-col items-center transition-transform duration-200 group-hover:scale-110"
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center"
+                animate={{
+                  rotate: isExpanded ? 180 : 0,
+                  scale: 1
+                }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
               >
-                <ChevronDown className="h-7 w-7 text-brand-gold transition-colors duration-200 group-hover:text-brand-gold/80 lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold transition-colors duration-200 group-hover:text-brand-gold/80 lg:h-8 lg:w-8" />
+                <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
               </m.div>
             </button>
           </div>
         </m.div>
-      </div>
+      </m.div>
 
       {/* 移动端菜单遮罩层 */}
       <AnimatePresence>
@@ -989,10 +1010,13 @@ export function StoryContent() {
       <AnimatePresence>
         {!isExpanded && (
           <m.header
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{
+              duration: 0.35,
+              ease: [0.32, 0.72, 0, 1]
+            }}
             className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"
           >

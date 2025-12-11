@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
 import { ArrowLeft, ArrowRight, X, Loader2 } from "lucide-react";
 import { useAdvisorQuestions } from "@/hooks/useAdvisorQuestions";

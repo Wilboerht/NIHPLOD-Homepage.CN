@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
 
 interface ErrorProps {

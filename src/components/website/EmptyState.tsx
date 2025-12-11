@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
 import {
   Package,

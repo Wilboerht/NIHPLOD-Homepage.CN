@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { m } from "framer-motion";
 import { Sparkles, Package } from "lucide-react";
@@ -14,6 +14,16 @@ const gridColors = [
   ["#E2E0D7", "#EBE8DB", "#DDD9CE", "#D8D5CA"], // 下面一行
 ];
 
+// 默认底部导航链接
+const defaultFooterLinks = [
+  { text: "关于旎柏", href: "/story" },
+  { text: "护肤仪式", href: "/ritual" },
+  { text: "联系我们", href: "/contact" },
+  { text: "加入我们", href: "/careers" },
+  { text: "隐私政策", href: "/privacy" },
+  { text: "服务入口", href: "/services" },
+];
+
 // 默认内容
 const defaultContent: HomePageContent = {
   brand: { chineseName: "旎柏", slogan: "逆转时光" },
@@ -23,6 +33,7 @@ const defaultContent: HomePageContent = {
     productsText: "探索产品",
     productsLink: "/products",
   },
+  footerLinks: defaultFooterLinks,
   copyright: "NIHPLOD All Rights Reserved.",
 };
 
@@ -37,6 +48,7 @@ export default function HomeClient({ content }: HomeClientProps) {
   // 合并默认内容和传入内容
   const brand = content?.brand || defaultContent.brand;
   const buttons = content?.buttons || defaultContent.buttons;
+  const footerLinks = content?.footerLinks || defaultFooterLinks;
   const copyright = content?.copyright || defaultContent.copyright;
 
   return (
@@ -145,24 +157,15 @@ export default function HomeClient({ content }: HomeClientProps) {
         transition={{ duration: 0.6, delay: 0.6 }}
       >
         <nav className="flex flex-wrap justify-center gap-3 text-[10px] text-brand-charcoal/50 sm:gap-4 sm:text-xs md:gap-6">
-          <Link href="/story" className="transition-colors hover:text-brand-gold">
-            关于旎柏
-          </Link>
-          <Link href="/ritual" className="transition-colors hover:text-brand-gold">
-            护肤仪式
-          </Link>
-          <Link href="/contact" className="transition-colors hover:text-brand-gold">
-            联系我们
-          </Link>
-          <Link href="/careers" className="transition-colors hover:text-brand-gold">
-            加入我们
-          </Link>
-          <Link href="/privacy" className="transition-colors hover:text-brand-gold">
-            隐私政策
-          </Link>
-          <Link href="/services" className="transition-colors hover:text-brand-gold">
-            服务入口
-          </Link>
+          {footerLinks.map((link, index) => (
+            <Link
+              key={index}
+              href={link.href}
+              className="transition-colors hover:text-brand-gold"
+            >
+              {link.text}
+            </Link>
+          ))}
         </nav>
         <p className="mt-3 text-[9px] text-brand-charcoal/25 sm:mt-4 sm:text-[10px]">
           © {new Date().getFullYear()} {copyright}

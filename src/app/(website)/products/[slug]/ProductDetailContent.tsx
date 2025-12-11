@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import { ProductCard } from "@/components/website";
