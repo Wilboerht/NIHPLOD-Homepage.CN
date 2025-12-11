@@ -14,6 +14,8 @@ import {
   CareersContentEditor,
   PrivacyContentEditor,
   LegalContentEditor,
+  RitualContentEditor,
+  ServicesContentEditor,
 } from "@/components/admin/PageContentEditor";
 import { PAGE_META, type PageSlug, type SeoConfig } from "@/types/page-content";
 import { cn } from "@/lib/utils";
@@ -185,9 +187,15 @@ export default function PageEditPage() {
           />
         );
       case "ritual":
-        // 美丽仪式页面使用 Story 编辑器
         return (
-          <StoryContentEditor
+          <RitualContentEditor
+            content={page.content as any}
+            onChange={updateContent}
+          />
+        );
+      case "services":
+        return (
+          <ServicesContentEditor
             content={page.content as any}
             onChange={updateContent}
           />

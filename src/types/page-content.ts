@@ -53,48 +53,77 @@ export interface HomePageContent {
 }
 
 // ============================================
-// 品牌故事页面 (story)
+// 关于旎柏页面 (story)
 // ============================================
+
+// 故事章节类型
+export interface StorySection {
+  type: "hero" | "section" | "mission-text" | "philosophy-item" | "media-image";
+  title?: string;
+  subtitle?: string;
+  paragraphs?: string[];
+  image?: string;
+  imageAlt?: string;
+}
+
+// 单个标签页内容
+export interface StoryTabContent {
+  title: string;
+  subtitle?: string; // 英文副标题
+  slogan?: string; // 理念口号
+  layout?: "default" | "cards" | "philosophy" | "mission-centered" | "media-images" | "awards-images";
+  sections: StorySection[];
+}
+
+// 标签页ID
+export type StoryTabId = "story" | "mission" | "philosophy" | "media" | "awards";
+
+// 关于旎柏页面内容
 export interface StoryPageContent {
-  hero: HeroSection;
-  intro: {
-    title: string;
-    content: string;
+  // 页面标题
+  pageTitle: {
+    en: string; // ABOUT NIHPLOD
+    zh: string; // 关于旎柏
   };
-  sections: ContentSection[];
-  timeline?: Array<{
-    year: string;
-    event: string;
-    description?: string;
-  }>;
-  values?: Array<{
-    icon?: string;
-    title: string;
-    description: string;
-  }>;
+  // 五个标签页内容
+  tabs: Record<StoryTabId, StoryTabContent>;
 }
 
 // ============================================
-// 美丽仪式页面 (ritual)
+// 护肤仪式页面 (ritual)
 // ============================================
+
+// 护肤步骤类型
+export interface RitualStep {
+  order: number;
+  name: string;
+  nameEn: string;
+  description: string;
+  duration: string;
+  productSlug: string | null;
+}
+
+// 单个仪式标签页内容
+export interface RitualTabContent {
+  title: string;
+  titleEn: string;
+  description: string;
+  steps: RitualStep[];
+}
+
+// 仪式标签页ID
+export type RitualTabId = "morning" | "evening" | "couple";
+
+// 护肤仪式页面内容
 export interface RitualPageContent {
-  hero: HeroSection;
-  intro: {
-    title: string;
-    content: string;
+  // 页面标题信息
+  pageTitle: {
+    en: string; // 英文标题 (SKINCARE RITUAL)
+    zh: string; // 中文标题 (护肤仪式)
+    description: string; // 副标题描述
   };
-  steps: Array<{
-    id: string;
-    order: number;
-    title: string;
-    description: string;
-    image?: string;
-    products?: string[]; // 关联产品 ID
-  }>;
-  tips?: Array<{
-    title: string;
-    content: string;
-  }>;
+  // 三个标签页内容
+  tabs: Record<RitualTabId, RitualTabContent>;
 }
 
 // ============================================
@@ -187,6 +216,39 @@ export interface TermsPageContent {
   }>;
 }
 
+// ============================================
+// 服务入口页面 (services)
+// ============================================
+
+// 服务链接
+export interface ServiceLink {
+  label: string; // 用户端 / 管理端
+  url: string;
+  isAdmin: boolean;
+  description: string;
+}
+
+// 单个服务详情
+export interface ServiceDetail {
+  id: string; // vip / website / influencer
+  label: string; // 标签名称
+  title: string; // 服务标题
+  nameEn: string; // 英文名
+  description: string; // 服务描述
+  links: ServiceLink[];
+}
+
+// 服务入口页面内容
+export interface ServicesPageContent {
+  // 页面标题
+  pageTitle: {
+    en: string; // SERVICES
+    zh: string; // 服务入口
+  };
+  // 服务列表
+  services: ServiceDetail[];
+}
+
 // 页面类型映射
 export type PageContentMap = {
   home: HomePageContent;
@@ -196,6 +258,7 @@ export type PageContentMap = {
   careers: CareersPageContent;
   privacy: PrivacyPageContent;
   terms: TermsPageContent;
+  services: ServicesPageContent;
 };
 
 export type PageSlug = keyof PageContentMap;
@@ -223,12 +286,13 @@ export interface PageListItem {
 // 页面元数据（用于列表显示）
 export const PAGE_META: Record<string, { name: string; description: string }> = {
   home: { name: "首页", description: "网站首页内容" },
-  story: { name: "品牌故事", description: "品牌历史与理念" },
-  ritual: { name: "美丽仪式", description: "护肤步骤指南" },
+  story: { name: "关于旎柏", description: "品牌故事、使命与理念" },
+  ritual: { name: "护肤仪式", description: "护肤步骤指南" },
   contact: { name: "联系我们", description: "联系方式与表单" },
   careers: { name: "加入我们", description: "招聘信息" },
   privacy: { name: "隐私政策", description: "隐私条款" },
   terms: { name: "服务条款", description: "使用条款" },
+  services: { name: "服务入口", description: "各系统服务入口导航" },
 };
 
 // 获取空白页面内容模板
@@ -253,15 +317,41 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
       copyright: "NIHPLOD All Rights Reserved.",
     },
     story: {
-      hero: { title: "", subtitle: "" },
-      intro: { title: "", content: "" },
-      sections: [],
-      timeline: [],
+      pageTitle: { en: "ABOUT NIHPLOD", zh: "关于旎柏" },
+      tabs: {
+        story: { title: "品牌故事", sections: [] },
+        mission: { title: "公司使命", subtitle: "OUR MISSION", layout: "mission-centered", sections: [] },
+        philosophy: { title: "经营理念", subtitle: "OUR PHILOSOPHY", slogan: "", layout: "philosophy", sections: [] },
+        media: { title: "媒体报道", subtitle: "PRESS", layout: "media-images", sections: [] },
+        awards: { title: "荣获奖项", layout: "awards-images", sections: [] },
+      },
     },
     ritual: {
-      hero: { title: "", subtitle: "" },
-      intro: { title: "", content: "" },
-      steps: [],
+      pageTitle: {
+        en: "SKINCARE RITUAL",
+        zh: "护肤仪式",
+        description: "每一次护肤，都是与自己对话的珍贵时光",
+      },
+      tabs: {
+        morning: {
+          title: "晨间仪式",
+          titleEn: "MORNING RITUAL",
+          description: "清晨护肤，唤醒肌肤活力，为新的一天注入能量",
+          steps: [],
+        },
+        evening: {
+          title: "晚间仪式",
+          titleEn: "EVENING RITUAL",
+          description: "夜间护肤，修护一天的疲惫，让肌肤在睡眠中焕新",
+          steps: [],
+        },
+        couple: {
+          title: "双人SPA",
+          titleEn: "COUPLE SPA",
+          description: "与伴侣一起，享受护肤的亲密时光，在彼此的呵护中，感受爱与美的交融",
+          steps: [],
+        },
+      },
     },
     contact: {
       title: { en: "CONTACT US", zh: "联系我们" },
@@ -310,6 +400,10 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
     terms: {
       title: "服务条款",
       sections: [],
+    },
+    services: {
+      pageTitle: { en: "SERVICES", zh: "服务入口" },
+      services: [],
     },
   };
 

@@ -1,6 +1,4 @@
 import { ReactNode } from "react";
-import { Header } from "@/components/website";
-import { getSiteSettings } from "@/lib/settings";
 
 interface WebsiteLayoutProps {
   children: ReactNode;
@@ -8,13 +6,8 @@ interface WebsiteLayoutProps {
 
 /**
  * 前台网站布局
- * 包含底部固定导航栏
- * 注意：首页等全屏页面需要自行处理底部导航栏的空间（pb-16 lg:pb-20）
  */
-export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
-  // 获取站点设置
-  const siteSettings = await getSiteSettings();
-
+export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
   return (
     <div className="min-h-screen">
       {/* Skip to main content 链接 - 可访问性 */}
@@ -26,9 +19,6 @@ export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
       <main id="main-content" tabIndex={-1}>
         {children}
       </main>
-
-      {/* 底部固定导航栏 */}
-      <Header logo={siteSettings.logo} />
     </div>
   );
 }

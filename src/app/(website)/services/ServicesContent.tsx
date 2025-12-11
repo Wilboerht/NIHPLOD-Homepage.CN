@@ -6,6 +6,7 @@ import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { Home, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ServicesPageContent, ServiceDetail as CMSServiceDetail } from "@/types/page-content";
 
 // 图标颜色常量
 const ICON_COLOR = "#C3BC9F";
@@ -66,57 +67,16 @@ const LockIcon = ({ className, isHovered }: { className?: string; isHovered?: bo
   );
 };
 
-// 标签页配置
-type ServiceId = "vip" | "website" | "influencer";
+// 图标映射
+const iconMap: Record<string, React.FC<{ className?: string; isHovered?: boolean }>> = {
+  vip: VipIcon,
+  website: WebsiteIcon,
+  influencer: InfluencerIcon,
+};
 
-interface ServiceConfig {
-  id: ServiceId;
-  label: string;
-  icon: React.FC<{ className?: string; isHovered?: boolean }>;
-}
-
-const services: ServiceConfig[] = [
-  { id: "vip", label: "会员系统", icon: VipIcon },
-  { id: "website", label: "官方网站", icon: WebsiteIcon },
-  { id: "influencer", label: "达人平台", icon: InfluencerIcon },
-];
-
-// 各服务详细信息
-interface ServiceDetail {
-  title: string;
-  nameEn: string;
-  description: string;
-  links: Array<{ label: string; url: string; isAdmin: boolean; description: string }>;
-}
-
-const serviceDetails: Record<ServiceId, ServiceDetail> = {
-  vip: {
-    title: "旎柏会员系统",
-    nameEn: "VIP System",
-    description: "会员积分、权益管理与专属服务平台，为尊贵会员提供积分查询、等级权益、专属优惠等服务。",
-    links: [
-      { label: "用户端", url: "https://vip.nihplod.cn", isAdmin: false, description: "会员登录、积分查询、权益兑换" },
-      { label: "管理端", url: "https://adminvip.nihplod.cn", isAdmin: true, description: "仅授权人员使用" },
-    ],
-  },
-  website: {
-    title: "官方网站",
-    nameEn: "Official Website",
-    description: "NIHPLOD 旎柏品牌官方网站，展示品牌故事、产品系列、护肤仪式等内容。",
-    links: [
-      { label: "用户端", url: "https://nihplod.cn", isAdmin: false, description: "品牌展示、产品浏览、AI护肤顾问" },
-      { label: "管理端", url: "https://nihplod.cn/admin", isAdmin: true, description: "仅授权人员使用" },
-    ],
-  },
-  influencer: {
-    title: "达人合作平台",
-    nameEn: "Influencer Platform",
-    description: "KOL/KOC合作平台，提供达人招募、内容共创、合作管理等功能。",
-    links: [
-      { label: "用户端", url: "https://influencer.nihplod.cn", isAdmin: false, description: "达人注册、合作申请、任务领取" },
-      { label: "管理端", url: "https://influencer.nihplod.cn/admin", isAdmin: true, description: "仅授权人员使用" },
-    ],
-  },
+// 获取服务图标
+const getServiceIcon = (serviceId: string) => {
+  return iconMap[serviceId] || WebsiteIcon;
 };
 
 // Tab 按钮组件 - 支持 hover 状态
@@ -126,13 +86,13 @@ const ServiceButton = ({
   isLast,
   onClick
 }: {
-  service: ServiceConfig;
+  service: CMSServiceDetail;
   index: number;
   isLast: boolean;
   onClick: () => void;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const Icon = service.icon;
+  const Icon = getServiceIcon(service.id);
 
   return (
     <m.button
@@ -221,13 +181,27 @@ const ServiceLinkButton = ({
   );
 };
 
+// Props 接口
+interface ServicesContentProps {
+  content: ServicesPageContent;
+}
+
 /**
  * 服务入口页面内容组件
  * 样式参考 PrivacyContent
  */
-export function ServicesContent() {
-  const [activeService, setActiveService] = useState<ServiceId | null>(null);
+export function ServicesContent({ content }: ServicesContentProps) {
+  const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // 从 content 获取数据
+  const pageTitle = content.pageTitle || { en: "SERVICES", zh: "服务入口" };
+  const services = content.services || [];
+
+  // 获取当前选中的服务
+  const activeService = activeServiceId
+    ? services.find((s) => s.id === activeServiceId)
+    : null;
 
   // 监听滚动，添加毛玻璃效果
   useEffect(() => {
@@ -277,13 +251,20 @@ export function ServicesContent() {
                 {!activeService && (
                   <div className="mb-6 text-center sm:mb-8">
                     <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                      SERVICE PORTAL
+                      {pageTitle.en}
                     </p>
                     <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                      服务入口
+                      {pageTitle.zh}
                     </h1>
-                    <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
-                      快速访问 NIHPLOD 旎柏各服务系统
+                    <p className="mx-auto mt-2 flex max-w-xl items-center justify-center gap-2 text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:gap-3 sm:text-base md:text-lg">
+                      <span>快速访问 NIHPLOD 旎柏各服务系统</span>
+                      <span className="text-brand-charcoal/30">·</span>
+                      <Link
+                        href="/terms"
+                        className="text-brand-charcoal/50 transition-colors hover:text-brand-gold"
+                      >
+                        服务条款
+                      </Link>
                     </p>
                   </div>
                 )}
@@ -311,7 +292,7 @@ export function ServicesContent() {
                         </div>
                       </m.div>
 
-                      {/* 3个大服务按钮 */}
+                      {/* 服务按钮 */}
                       <div className="flex w-full max-w-3xl items-stretch justify-center">
                         {services.map((service, index) => (
                           <ServiceButton
@@ -319,7 +300,7 @@ export function ServicesContent() {
                             service={service}
                             index={index}
                             isLast={index === services.length - 1}
-                            onClick={() => setActiveService(service.id)}
+                            onClick={() => setActiveServiceId(service.id)}
                           />
                         ))}
                       </div>
@@ -329,7 +310,7 @@ export function ServicesContent() {
                   {/* 选中服务后显示的内容 */}
                   {activeService && (
                     <m.div
-                      key={activeService}
+                      key={activeService.id}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
@@ -339,7 +320,7 @@ export function ServicesContent() {
                       {/* 返回按钮 - 居中显示 */}
                       <m.button
                         type="button"
-                        onClick={() => setActiveService(null)}
+                        onClick={() => setActiveServiceId(null)}
                         className="mb-6 flex items-center gap-1.5 rounded-full border border-brand-charcoal/20 px-4 py-1.5 text-brand-charcoal/60 transition-all duration-300 hover:border-brand-charcoal/40 hover:text-brand-charcoal sm:mb-8 sm:px-5 sm:py-2"
                       >
                         <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -351,24 +332,24 @@ export function ServicesContent() {
                       {/* 标题区域 */}
                       <div className="mb-6 text-center sm:mb-8">
                         <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                          {serviceDetails[activeService].nameEn.toUpperCase()}
+                          {activeService.nameEn.toUpperCase()}
                         </p>
                         <h2 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                          {serviceDetails[activeService].title}
+                          {activeService.title}
                         </h2>
                         <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base">
-                          {serviceDetails[activeService].description}
+                          {activeService.description}
                         </p>
                       </div>
 
                       {/* 两个大按钮：用户端 / 管理端 */}
                       <div className="flex w-full max-w-2xl items-stretch justify-center">
-                        {serviceDetails[activeService].links.map((link, index) => (
+                        {activeService.links.map((link, index) => (
                           <ServiceLinkButton
                             key={link.url}
                             link={link}
                             index={index}
-                            isLast={index === serviceDetails[activeService].links.length - 1}
+                            isLast={index === activeService.links.length - 1}
                           />
                         ))}
                       </div>

@@ -476,57 +476,32 @@ export function RitualContent() {
                           </div>
                         )}
 
-                        {/* 双人SPA内容 */}
+                        {/* 双人SPA内容 - 从 steps 读取 */}
                         {activeTab === "couple" && (
                           <div className="space-y-4">
-                            <m.div
-                              className="rounded-xl border border-brand-beige bg-gradient-to-br from-brand-blush/30 to-white p-5"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.3, delay: 0.15 }}
-                            >
-                              <h3 className="font-serif text-lg text-brand-charcoal">
-                                💑 面对面护肤
-                              </h3>
-                              <p className="mt-2 text-sm text-brand-charcoal/70">
-                                相对而坐，为彼此涂抹护肤品。用指尖传递温柔，在每一次触碰中加深情感连接。
-                              </p>
-                            </m.div>
-
-                            <m.div
-                              className="rounded-xl border border-brand-beige bg-gradient-to-br from-brand-blush/30 to-white p-5"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.3, delay: 0.23 }}
-                            >
-                              <h3 className="font-serif text-lg text-brand-charcoal">
-                                🧴 互相按摩
-                              </h3>
-                              <p className="mt-2 text-sm text-brand-charcoal/70">
-                                轮流为对方进行面部按摩，配合舒缓的音乐与香氛，创造属于你们的私密SPA时光。
-                              </p>
-                            </m.div>
-
-                            <m.div
-                              className="rounded-xl border border-brand-beige bg-gradient-to-br from-brand-blush/30 to-white p-5"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.3, delay: 0.31 }}
-                            >
-                              <h3 className="font-serif text-lg text-brand-charcoal">
-                                🕯️ 仪式感布置
-                              </h3>
-                              <p className="mt-2 text-sm text-brand-charcoal/70">
-                                点上香薰蜡烛，播放轻柔音乐，准备好柔软的毛巾和温热的花茶，让护肤成为一场浪漫约会。
-                              </p>
-                            </m.div>
+                            {currentTabData.steps.map((step, index) => (
+                              <m.div
+                                key={step.order}
+                                className="rounded-xl border border-brand-beige bg-gradient-to-br from-brand-blush/30 to-white p-5"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: 0.15 + index * 0.08 }}
+                              >
+                                <h3 className="font-serif text-lg text-brand-charcoal">
+                                  {step.name}
+                                </h3>
+                                <p className="mt-2 text-sm text-brand-charcoal/70">
+                                  {step.description}
+                                </p>
+                              </m.div>
+                            ))}
 
                             {/* 产品推荐 */}
                             <m.div
                               className="mt-6 rounded-xl bg-brand-gold/10 p-4"
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.3, delay: 0.39 }}
+                              transition={{ duration: 0.3, delay: 0.15 + currentTabData.steps.length * 0.08 }}
                             >
                               <p className="text-center text-sm text-brand-charcoal">
                                 探索适合双人护肤的产品组合
