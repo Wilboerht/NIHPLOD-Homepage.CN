@@ -426,12 +426,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-          className="absolute left-2 right-2 top-2 z-30 sm:left-4 sm:right-4 sm:top-4 lg:left-6 lg:right-6 lg:top-6"
+          className="absolute left-0 right-0 top-0 z-30"
         >
           {/* 分类栏 + 按钮一体化容器 */}
           <div className="flex flex-col items-center">
             {/* 分类图标区域 */}
-            <div className="w-full rounded-xl bg-[#EBE8DB] sm:w-fit sm:rounded-2xl lg:rounded-3xl">
+            <div className="w-full bg-[#EBE8DB] sm:w-fit sm:rounded-b-2xl lg:rounded-b-3xl">
               <div className="px-2 py-2 sm:px-8 sm:py-3 md:px-12 lg:px-20 lg:py-4">
                 {/* 移动端：固定5列网格保证均匀布局，桌面端：flex单行 */}
                 <div className="grid grid-cols-5 gap-x-0.5 gap-y-1.5 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">

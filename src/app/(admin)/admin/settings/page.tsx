@@ -9,10 +9,6 @@ import {
   Mail,
   Upload,
   X,
-  Home,
-  Plus,
-  Trash2,
-  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -36,22 +32,9 @@ interface SocialSettings {
   instagram: string;
 }
 
-interface HomeGalleryItem {
-  image: string;
-  text: string;
-}
-
-interface HomeSettings {
-  galleryItems: HomeGalleryItem[];
-  galleryBend: number;
-  galleryOpacity: number;
-  maskOpacity: number;
-}
-
 interface AllSettings {
   site: SiteSettings;
   social: SocialSettings;
-  home: HomeSettings;
 }
 
 export default function AdminSettingsPage() {
@@ -61,8 +44,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
-  const [mediaPickerTarget, setMediaPickerTarget] = useState<"logo" | "wechat_qrcode" | "gallery" | null>(null);
-  const [galleryEditIndex, setGalleryEditIndex] = useState<number | null>(null);
+  const [mediaPickerTarget, setMediaPickerTarget] = useState<"logo" | "wechat_qrcode" | null>(null);
 
   // 设置数据
   const [site, setSite] = useState<SiteSettings>({
@@ -80,13 +62,6 @@ export default function AdminSettingsPage() {
     instagram: "",
   });
 
-  const [home, setHome] = useState<HomeSettings>({
-    galleryItems: [],
-    galleryBend: 3,
-    galleryOpacity: 60,
-    maskOpacity: 70,
-  });
-
   // 获取设置
   useEffect(() => {
     const fetchSettings = async () => {
@@ -98,7 +73,6 @@ export default function AdminSettingsPage() {
           const settings = data.data as AllSettings;
           if (settings.site) setSite(settings.site);
           if (settings.social) setSocial(settings.social);
-          if (settings.home) setHome(settings.home);
         }
       } catch (error) {
         console.error("获取设置失败:", error);
@@ -118,7 +92,6 @@ export default function AdminSettingsPage() {
       const payload: Record<string, unknown> = {
         site,
         social,
-        home,
       };
 
       const res = await fetch("/api/admin/settings", {
@@ -142,11 +115,8 @@ export default function AdminSettingsPage() {
   };
 
   // 打开媒体选择器
-  const openMediaPicker = (target: "logo" | "wechat_qrcode" | "gallery", index?: number) => {
+  const openMediaPicker = (target: "logo" | "wechat_qrcode") => {
     setMediaPickerTarget(target);
-    if (target === "gallery" && index !== undefined) {
-      setGalleryEditIndex(index);
-    }
     setMediaPickerOpen(true);
   };
 
@@ -156,35 +126,9 @@ export default function AdminSettingsPage() {
       setSite({ ...site, logo: url });
     } else if (mediaPickerTarget === "wechat_qrcode") {
       setSocial({ ...social, wechat_qrcode: url });
-    } else if (mediaPickerTarget === "gallery" && galleryEditIndex !== null) {
-      const newItems = [...home.galleryItems];
-      newItems[galleryEditIndex] = { ...newItems[galleryEditIndex], image: url };
-      setHome({ ...home, galleryItems: newItems });
     }
     setMediaPickerOpen(false);
     setMediaPickerTarget(null);
-    setGalleryEditIndex(null);
-  };
-
-  // 添加画廊图片
-  const addGalleryItem = () => {
-    setHome({
-      ...home,
-      galleryItems: [...home.galleryItems, { image: "", text: "" }],
-    });
-  };
-
-  // 删除画廊图片
-  const removeGalleryItem = (index: number) => {
-    const newItems = home.galleryItems.filter((_, i) => i !== index);
-    setHome({ ...home, galleryItems: newItems });
-  };
-
-  // 更新画廊图片文字
-  const updateGalleryItemText = (index: number, text: string) => {
-    const newItems = [...home.galleryItems];
-    newItems[index] = { ...newItems[index], text };
-    setHome({ ...home, galleryItems: newItems });
   };
 
   if (loading) {
@@ -275,153 +219,6 @@ export default function AdminSettingsPage() {
               >
                 选择图片
               </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 首页画廊设置 */}
-      <section className="rounded-xl bg-white p-6 shadow-sm">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-50">
-            <Home className="h-5 w-5 text-pink-500" />
-          </div>
-          <div>
-            <h2 className="text-lg font-medium text-gray-900">首页画廊</h2>
-            <p className="text-sm text-gray-500">首页圆形画廊图片和效果配置</p>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {/* 画廊效果设置 */}
-          <div className="grid gap-6 md:grid-cols-3">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                画廊弯曲度
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="10"
-                step="0.5"
-                value={home.galleryBend}
-                onChange={(e) => setHome({ ...home, galleryBend: Number(e.target.value) })}
-                className="w-full accent-brand-gold"
-              />
-              <div className="mt-1 flex justify-between text-xs text-gray-500">
-                <span>平直 (0)</span>
-                <span className="font-medium text-brand-gold">{home.galleryBend}</span>
-                <span>弯曲 (10)</span>
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                画廊透明度
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={home.galleryOpacity}
-                onChange={(e) => setHome({ ...home, galleryOpacity: Number(e.target.value) })}
-                className="w-full accent-brand-gold"
-              />
-              <div className="mt-1 flex justify-between text-xs text-gray-500">
-                <span>透明 (0)</span>
-                <span className="font-medium text-brand-gold">{home.galleryOpacity}%</span>
-                <span>不透明 (100)</span>
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
-                蒙版浓度
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={home.maskOpacity}
-                onChange={(e) => setHome({ ...home, maskOpacity: Number(e.target.value) })}
-                className="w-full accent-brand-gold"
-              />
-              <div className="mt-1 flex justify-between text-xs text-gray-500">
-                <span>淡 (0)</span>
-                <span className="font-medium text-brand-gold">{home.maskOpacity}%</span>
-                <span>浓 (100)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 画廊图片列表 */}
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                画廊图片 ({home.galleryItems.length})
-              </label>
-              <Button
-                size="sm"
-                variant="outline"
-                leftIcon={<Plus className="h-4 w-4" />}
-                onClick={addGalleryItem}
-              >
-                添加图片
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {home.galleryItems.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3"
-                >
-                  <GripVertical className="h-5 w-5 cursor-move text-gray-400" />
-                  <div className="relative h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white">
-                    {item.image ? (
-                      <Image
-                        src={item.image}
-                        alt={item.text || `图片 ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <button
-                        onClick={() => openMediaPicker("gallery", index)}
-                        className="flex h-full w-full items-center justify-center text-gray-400 hover:text-brand-gold"
-                      >
-                        <Upload className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <Input
-                      placeholder="图片标题"
-                      value={item.text}
-                      onChange={(e) => updateGalleryItemText(index, e.target.value)}
-                      className="!py-1.5"
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openMediaPicker("gallery", index)}
-                  >
-                    选择图片
-                  </Button>
-                  <button
-                    onClick={() => removeGalleryItem(index)}
-                    className="rounded-lg p-2 text-red-500 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              {home.galleryItems.length === 0 && (
-                <div className="rounded-lg border-2 border-dashed border-gray-200 p-8 text-center text-gray-400">
-                  <p>暂无画廊图片</p>
-                  <p className="mt-1 text-xs">点击上方按钮添加图片</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
