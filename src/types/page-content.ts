@@ -361,9 +361,9 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
           steps: [],
         },
         couple: {
-          title: "双人SPA",
-          titleEn: "COUPLE SPA",
-          description: "与伴侣一起，享受护肤的亲密时光，在彼此的呵护中，感受爱与美的交融",
+          title: "家庭护肤",
+          titleEn: "FAMILY SKINCARE",
+          description: "与家人一起，享受护肤的温馨时光，在彼此的呵护中，感受爱与美的交融",
           steps: [],
         },
       },

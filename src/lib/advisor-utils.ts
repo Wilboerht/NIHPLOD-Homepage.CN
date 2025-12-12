@@ -17,8 +17,27 @@ export type Severity = "mild" | "moderate" | "severe";
 /** 水分等级 */
 export type HydrationLevel = "low" | "medium" | "high";
 
+/** 图片验证状态 */
+export type ImageValidation =
+  | "valid"              // 有效的人脸照片
+  | "not_human_face"     // 非人脸（动物、物品、卡通等）
+  | "photo_of_photo"     // 照片的照片（翻拍）
+  | "screen_photo"       // 屏幕照片（拍摄显示器/手机屏幕）
+  | "video_frame"        // 视频帧/录制画面
+  | "fake_face"          // 假人脸（面具、AI生成、3D打印等）
+  | "low_quality"        // 图片质量太差
+  | "partial_face"       // 人脸不完整
+  | "multiple_faces"     // 多张人脸
+  | "medical_condition"; // 检测到疑似需要就医的皮肤状况
+
 /** 面部分析结果（完整版，用于 Vision API 返回） */
 export interface FaceAnalysisResult {
+  /** 图片验证结果 - 首先判断是否是有效的真人人脸 */
+  validation?: {
+    isValid: boolean;
+    status: ImageValidation;
+    message: string;
+  };
   skinType: {
     type: SkinType;
     confidence: number;

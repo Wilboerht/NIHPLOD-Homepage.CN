@@ -70,7 +70,7 @@ interface TabConfig {
 const tabs: TabConfig[] = [
   { id: "morning", label: "晨间仪式", icon: SunIcon },
   { id: "evening", label: "晚间仪式", icon: MoonIcon },
-  { id: "couple", label: "双人SPA", icon: HeartIcon },
+  { id: "couple", label: "家庭护肤", icon: HeartIcon },
 ];
 
 // Tab 按钮组件 - 支持 hover 状态
@@ -218,9 +218,9 @@ const defaultTabContents: Record<TabId, TabContent> = {
     ],
   },
   couple: {
-    title: "双人SPA",
-    titleEn: "COUPLE SPA",
-    description: "与伴侣一起，享受护肤的亲密时光，在彼此的呵护中，感受爱与美的交融",
+    title: "家庭护肤",
+    titleEn: "FAMILY SKINCARE",
+    description: "与家人一起，享受护肤的温馨时光，在彼此的呵护中，感受爱与美的交融",
     steps: [],
   },
 };
@@ -426,7 +426,7 @@ export function RitualContent({ content }: RitualContentProps) {
                       </div>
 
                       {/* 内容区域 */}
-                      <div className="flex-1 overflow-y-auto rounded-xl border border-brand-beige bg-white/80 p-4 backdrop-blur-sm transition-all duration-300 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
+                      <div className="flex-1 overflow-y-auto p-4 transition-all duration-300 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
                         {/* 描述 */}
                         <m.p
                           className="mb-6 text-center text-sm text-brand-charcoal/70 sm:text-base"
@@ -488,7 +488,7 @@ export function RitualContent({ content }: RitualContentProps) {
                           </div>
                         )}
 
-                        {/* 双人SPA内容 - 从 steps 读取 */}
+                        {/* 家庭护肤内容 - 从 steps 读取 */}
                         {activeTab === "couple" && (
                           <div className="space-y-4">
                             {tabContents[activeTab].steps.map((step, index) => (
@@ -516,7 +516,7 @@ export function RitualContent({ content }: RitualContentProps) {
                               transition={{ duration: 0.3, delay: 0.15 + tabContents[activeTab].steps.length * 0.08 }}
                             >
                               <p className="text-center text-sm text-brand-charcoal">
-                                探索适合双人护肤的产品组合
+                                探索适合家庭护肤的产品组合
                               </p>
                               <Link
                                 href="/products"

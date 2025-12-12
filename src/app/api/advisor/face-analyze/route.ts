@@ -4,6 +4,8 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   VISION_ANALYSIS_SYSTEM_PROMPT,
   VISION_ANALYSIS_USER_PROMPT,
+  CLAUDE_VISION_PROMPT,
+  QWEN_VISION_PROMPT,
 } from "@/config/ai-prompts";
 import { aiLogger } from "@/lib/logger";
 import { getAISettings, getApiKeyForProvider } from "@/lib/ai";
@@ -293,12 +295,31 @@ export async function POST(request: NextRequest) {
 
     // 调试日志：打印 AI 返回的原始数据
     console.log("[Face Analyze] AI Analysis Result:", JSON.stringify({
+      validation: analysis.validation,
       skinType: analysis.skinType,
       skinAge: analysis.skinAge,
       hydration: analysis.hydration,
       skinConditionsCount: analysis.skinConditions?.length || 0,
       imagesAnalyzed: validImages.length,
     }, null, 2));
+
+    // 检查 AI 是否验证通过
+    // 如果 validation.isValid 为 false，说明图片不是有效的人脸（可能是动物、翻拍、视频帧等）
+    if (analysis.validation && analysis.validation.isValid === false) {
+      aiLogger.warn("Face validation failed", {
+        status: analysis.validation.status,
+        message: analysis.validation.message,
+      });
+
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: "VALIDATION_FAILED",
+          status: analysis.validation.status,
+          message: analysis.validation.message || "图片验证失败，请上传真人面部照片",
+        },
+      }, { status: 400 });
+    }
 
     return NextResponse.json({
       success: true,
@@ -464,7 +485,8 @@ function createOpenAIConfig(apiKey: string, model: string, customSystemPrompt?: 
  * @param customSystemPrompt 自定义系统提示词，如果未提供则使用默认值
  */
 function createAnthropicConfig(apiKey: string, model: string, customSystemPrompt?: string): VisionAPIConfig {
-  const systemPrompt = customSystemPrompt || VISION_ANALYSIS_SYSTEM_PROMPT;
+  // Claude 使用专门优化的简洁提示词（因为要放在 user message 中）
+  const systemPrompt = customSystemPrompt || CLAUDE_VISION_PROMPT;
 
   // 支持通过环境变量配置自定义端点（如代理服务器）
   const baseUrl = process.env.ANTHROPIC_API_URL || "https://api.anthropic.com/v1/messages";
@@ -521,11 +543,12 @@ function createAnthropicConfig(apiKey: string, model: string, customSystemPrompt
 
 /**
  * 创建通义千问 VL API 配置
- * @param customSystemPrompt 自定义系统提示词，如果未提供则使用默认值
+ * @param customSystemPrompt 自定义系统提示词，如果未提供则使用通义专用提示词
  */
 function createQwenConfig(apiKey: string, model: string, customSystemPrompt?: string): VisionAPIConfig {
   const baseUrl = process.env.QWEN_API_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1";
-  const systemPrompt = customSystemPrompt || VISION_ANALYSIS_SYSTEM_PROMPT;
+  // 通义千问使用专门优化的中文提示词
+  const systemPrompt = customSystemPrompt || QWEN_VISION_PROMPT;
 
   return {
     provider: "Qwen",

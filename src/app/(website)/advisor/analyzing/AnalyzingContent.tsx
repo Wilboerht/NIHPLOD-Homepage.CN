@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Heart } from "lucide-react";
 import { preprocessFaceImage } from "@/lib/image-processing";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 
@@ -36,6 +36,7 @@ export function AnalyzingContent() {
   const [tipIndex, setTipIndex] = useState(0);
   const [factIndex, setFactIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [medicalAdvice, setMedicalAdvice] = useState<string | null>(null); // 就医建议（需要特殊温和展示）
   const hasStarted = useRef(false);
 
   /**
@@ -94,18 +95,41 @@ export function AnalyzingContent() {
             body: JSON.stringify({ images: imagesToAnalyze }),
           });
 
-          if (faceRes.ok) {
-            const faceData = await faceRes.json();
-            if (faceData.success) {
-              faceAnalysis = faceData.data;
-              // 保存面部分析结果
-              sessionStorage.setItem("advisorFaceAnalysis", JSON.stringify(faceData.data));
+          const faceData = await faceRes.json();
+
+          if (faceRes.ok && faceData.success) {
+            faceAnalysis = faceData.data;
+            // 保存面部分析结果
+            sessionStorage.setItem("advisorFaceAnalysis", JSON.stringify(faceData.data));
+          } else if (faceData.error?.code === "VALIDATION_FAILED") {
+            // 检查是否是需要就医的情况
+            if (faceData.error.status === "medical_condition") {
+              // 就医建议需要特殊处理，使用温和的界面展示
+              setMedicalAdvice(faceData.error.message);
+              return; // 直接返回，不继续分析
             }
+            // 其他验证失败（非人脸、翻拍、视频帧等）
+            console.error("Face validation failed:", faceData.error);
+            throw new Error(faceData.error.message || "照片验证失败，请重新拍摄");
           }
+          // 其他错误（如 AI 服务不可用）可以忽略，继续用问卷分析
+
           setProgress(50);
         } catch (e) {
           console.warn("Face analysis failed:", e);
-          // 面部分析失败不阻断流程
+          // 如果是验证失败错误，需要抛出让用户重新拍照
+          if (e instanceof Error && (
+            e.message.includes("验证") ||
+            e.message.includes("人脸") ||
+            e.message.includes("照片") ||
+            e.message.includes("动物") ||
+            e.message.includes("屏幕") ||
+            e.message.includes("翻拍") ||
+            e.message.includes("视频")
+          )) {
+            throw e;
+          }
+          // 其他错误（网络问题等）不阻断流程
         }
       } else {
         setProgress(30);
@@ -187,6 +211,50 @@ export function AnalyzingContent() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // 就医建议状态 - 使用温和、关心的 UI
+  if (medicalAdvice) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-4">
+        <m.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-sm text-center"
+        >
+          {/* 温和的图标 */}
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-rose-100 to-pink-50">
+            <Heart className="h-10 w-10 text-rose-400" />
+          </div>
+
+          {/* 温馨提示标题 */}
+          <h2 className="mb-4 text-xl font-medium text-brand-charcoal">
+            温馨提示
+          </h2>
+
+          {/* 就医建议内容 */}
+          <div className="mb-8 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 p-6">
+            <p className="leading-relaxed text-brand-charcoal/80">
+              {medicalAdvice}
+            </p>
+          </div>
+
+          {/* 行动按钮 */}
+          <button
+            onClick={() => router.push("/advisor")}
+            className="w-full rounded-full bg-brand-gold px-6 py-3 text-white transition-colors hover:bg-brand-gold/90"
+          >
+            我知道了
+          </button>
+
+          {/* 底部说明 */}
+          <p className="mt-6 text-xs text-brand-charcoal/50">
+            您的健康是我们最关心的事情 💕
+          </p>
+        </m.div>
+      </div>
+    );
+  }
 
   // 错误状态
   if (error) {

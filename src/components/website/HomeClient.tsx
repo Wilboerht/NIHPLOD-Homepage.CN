@@ -77,6 +77,9 @@ const fireworkColors = [
   "text-orange-400/80",
 ];
 
+// 粒子ID计数器
+let particleIdCounter = 0;
+
 /**
  * 生成随机烟花粒子 - 向四周发射
  */
@@ -91,6 +94,7 @@ function generateFireworkParticles(count: number) {
                    : layer < 0.7 ? 70 + Math.random() * 30
                    : 100 + Math.random() * 30;
     return {
+      id: `particle-${++particleIdCounter}`, // 唯一ID
       Icon: fireworkIconList[Math.floor(Math.random() * fireworkIconList.length)],
       targetX: Math.cos(radian) * distance,
       targetY: Math.sin(radian) * distance,
@@ -147,8 +151,10 @@ function ProductButton({ href, text }: { href: string; text: string }) {
 
   const handleMouseEnter = () => {
     setIsHovered(true);
-    // 每次悬停生成新的随机粒子 - 18个，形成丰富的烟花效果
-    setParticles(generateFireworkParticles(18));
+    // 响应式粒子数量：移动端 10 个，桌面端 16 个
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+    const count = isMobile ? 10 : 16;
+    setParticles(generateFireworkParticles(count));
   };
 
   return (
@@ -158,23 +164,23 @@ function ProductButton({ href, text }: { href: string; text: string }) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* 烟花图标容器 - 按钮中心，z-index 低于按钮 */}
-        <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center overflow-visible">
+        {/* 烟花图标容器 - 按钮周围，z-index 高于按钮 */}
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-visible">
           <AnimatePresence>
-            {isHovered && particles.map(({ Icon, targetX, targetY, delay, duration, rotate, scale, color }, index) => (
+            {isHovered && particles.map(({ id, Icon, targetX, targetY, delay, duration, rotate, scale, color }) => (
               <m.div
-                key={index}
+                key={id}
                 className="absolute"
                 style={{ willChange: "transform, opacity" }}
                 initial={{ x: 0, y: 0, opacity: 0, scale: 0, rotate: 0 }}
                 animate={{
-                  x: [0, targetX * 0.3, targetX],
-                  y: [0, targetY * 0.3, targetY],
-                  opacity: [0, 1, 0.9, 0],
+                  x: [0, targetX * 0.3, targetX, targetX],
+                  y: [0, targetY * 0.3, targetY, targetY],
+                  opacity: [0, 1, 0.8, 0],
                   scale: [0, scale * 1.2, scale, scale * 0.3],
-                  rotate: [0, rotate * 0.5, rotate],
+                  rotate: [0, rotate * 0.3, rotate * 0.7, rotate],
                 }}
-                exit={{ opacity: 0, scale: 0, transition: { duration: 0.08 } }}
+                exit={{ opacity: 0, scale: 0, transition: { duration: 0.18, ease: "easeOut" } }}
                 transition={{
                   duration: duration,
                   delay: delay,
@@ -190,16 +196,25 @@ function ProductButton({ href, text }: { href: string; text: string }) {
 
         {/* 按钮主体 - z-index 高于烟花 */}
         <m.div
-          className="relative z-10 overflow-hidden rounded-full border border-brand-gold/30 bg-white/95 px-8 py-3.5 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-brand-gold hover:shadow-lg sm:px-10 sm:py-4"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          className="relative z-10"
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
         >
-          <div className="relative z-10 flex items-center justify-center gap-2.5">
-            <Package className="h-4 w-4 text-brand-gold sm:h-5 sm:w-5" />
-            <span className="text-sm font-medium tracking-wide text-brand-charcoal/80 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-base">
-              {text}
-            </span>
-            <ChevronRight className="h-4 w-4 text-brand-gold/60 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-brand-gold sm:h-5 sm:w-5" />
+          {/* 动态边框 - 旋转的渐变光晕 */}
+          <div className="absolute -inset-[1px] overflow-hidden rounded-full">
+            <m.div
+              className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_60deg,#c9a86c_120deg,#d4af37_180deg,#c9a86c_240deg,transparent_300deg,transparent_360deg)]"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            />
+          </div>
+          {/* 内部背景 */}
+          <div className="relative rounded-full bg-[#EBE8DB] px-8 py-3 transition-all duration-300 group-hover:bg-[#E5E1D3] sm:px-10 sm:py-3.5">
+            <div className="relative z-10 flex items-center justify-center gap-2">
+              <span className="text-sm font-medium tracking-wider text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal/90 sm:text-base">
+                {text}
+              </span>
+            </div>
           </div>
         </m.div>
       </div>
@@ -295,20 +310,17 @@ export default function HomeClient({ content }: HomeClientProps) {
           {/* 产品浏览 - 金色主按钮（带烟花效果） */}
           <ProductButton href={buttons.productsLink} text={buttons.productsText} />
 
-          {/* AI 顾问 - 透明背景蓝色边框按钮 */}
+          {/* AI 顾问 - 透明背景金色边框按钮 */}
           <Link href={buttons.advisorLink} className="group">
             <m.div
               className="relative"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
             >
-              <div
-                className="relative overflow-hidden rounded-full border bg-transparent px-8 py-3.5 transition-all duration-300 hover:bg-[#1d2d68]/5 sm:px-10 sm:py-4"
-                style={{ borderColor: '#1d2d68' }}
-              >
-                <div className="relative z-10 flex items-center justify-center gap-2.5">
-                  <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#1d2d68' }} />
-                  <span className="text-sm font-medium tracking-wide sm:text-base" style={{ color: '#1d2d68' }}>
+              <div className="relative overflow-hidden rounded-full border border-brand-charcoal/20 bg-transparent px-8 py-3 transition-all duration-300 hover:border-brand-charcoal/40 hover:bg-brand-charcoal/5 sm:px-10 sm:py-3.5">
+                <div className="relative z-10 flex items-center justify-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5 text-brand-gold/70 transition-colors duration-300 group-hover:text-brand-gold sm:h-4 sm:w-4" />
+                  <span className="text-sm font-medium tracking-wider text-brand-charcoal/60 transition-colors duration-300 group-hover:text-brand-charcoal/80 sm:text-base">
                     {buttons.advisorText}
                   </span>
                 </div>

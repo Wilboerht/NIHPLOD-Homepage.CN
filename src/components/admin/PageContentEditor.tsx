@@ -1645,9 +1645,9 @@ export function RitualContentEditor({
       steps: [],
     },
     couple: {
-      title: "双人SPA",
-      titleEn: "COUPLE SPA",
-      description: "与伴侣一起，享受护肤的亲密时光，在彼此的呵护中，感受爱与美的交融",
+      title: "家庭护肤",
+      titleEn: "FAMILY SKINCARE",
+      description: "与家人一起，享受护肤的温馨时光，在彼此的呵护中，感受爱与美的交融",
       steps: [],
     },
   };
@@ -1730,7 +1730,7 @@ export function RitualContentEditor({
           />
           <RitualTabEditor
             tabId="couple"
-            tabLabel="双人SPA"
+            tabLabel="家庭护肤"
             tabContent={tabs.couple}
             onChange={(tc) => updateTab("couple", tc)}
           />
@@ -1744,7 +1744,7 @@ export function RitualContentEditor({
           <li>• 每个标签页可以单独编辑标题、描述和步骤</li>
           <li>• 步骤可以拖拽排序（使用上下箭头）</li>
           <li>• 关联产品 Slug 用于链接到产品详情页</li>
-          <li>• 双人SPA标签页目前显示的是固定内容，步骤不会显示在前端</li>
+          <li>• 家庭护肤标签页目前显示的是固定内容，步骤不会显示在前端</li>
         </ul>
       </div>
     </div>

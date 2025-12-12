@@ -243,7 +243,7 @@ export function QuestionsFlow() {
               : "cursor-not-allowed border border-brand-beige/50 bg-brand-beige/30 text-brand-charcoal/30"
           )}
         >
-          {isLastQuestion ? "查看结果" : "下一题"}
+          {isLastQuestion ? "深度面部分析" : "下一题"}
           <ArrowRight className="h-4 w-4" />
         </m.button>
       </footer>
