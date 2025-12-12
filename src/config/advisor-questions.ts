@@ -1,6 +1,6 @@
 /**
  * AI 护肤顾问问题配置
- * 共 6 道问题，收集用户护肤需求和肌肤状况
+ * 共 8 道问题，收集用户护肤需求和肌肤状况
  */
 
 export interface QuestionOption {
@@ -97,6 +97,29 @@ export const advisorQuestions: Question[] = [
       { value: "mid", label: "中等预算", description: "¥500-1500/月", emoji: "💎" },
       { value: "premium", label: "品质优先", description: "¥1500-3000/月", emoji: "👑" },
       { value: "luxury", label: "不设上限", description: "只选最好的", emoji: "✨" },
+    ],
+  },
+  {
+    id: 7,
+    fieldName: "pregnancyStatus",
+    question: "您目前是否处于备孕、孕期、产后或哺乳期？",
+    subtext: "帮助我们提供更安全的产品建议",
+    options: [
+      { value: "yes", label: "是", description: "我们将提供特别关怀建议", emoji: "🤰" },
+      { value: "no", label: "否", description: "无特殊时期", emoji: "✅" },
+      { value: "private", label: "暂不透露", description: "跳过此问题", emoji: "🔒" },
+    ],
+  },
+  {
+    id: 8,
+    fieldName: "medicationHistory",
+    question: "关于肌肤的护理与用药经历，以下哪项最符合？",
+    subtext: "帮助我们了解您的肌肤护理背景",
+    options: [
+      { value: "routine", label: "常规护理", description: "仅使用护肤品，未长期使用药膏或口服药", emoji: "🧴" },
+      { value: "occasional", label: "偶有用药", description: "仅在严重时短期使用过非处方药膏，非长期依赖", emoji: "💊" },
+      { value: "ongoing", label: "持续治疗", description: "目前或近期（6个月内）正在医生指导下使用处方药", emoji: "🏥" },
+      { value: "complex", label: "情况复杂", description: "有明确皮肤病史或长期用药史，希望获得更谨慎的建议", emoji: "⚕️" },
     ],
   },
 ];

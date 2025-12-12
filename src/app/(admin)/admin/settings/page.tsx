@@ -29,7 +29,6 @@ interface SocialSettings {
   weibo: string;
   xiaohongshu: string;
   douyin: string;
-  instagram: string;
 }
 
 interface AllSettings {
@@ -59,7 +58,6 @@ export default function AdminSettingsPage() {
     weibo: "",
     xiaohongshu: "",
     douyin: "",
-    instagram: "",
   });
 
   // 获取设置
@@ -291,12 +289,6 @@ export default function AdminSettingsPage() {
             value={social.douyin}
             onChange={(e) => setSocial({ ...social, douyin: e.target.value })}
             placeholder="https://douyin.com/..."
-          />
-          <Input
-            label="Instagram"
-            value={social.instagram}
-            onChange={(e) => setSocial({ ...social, instagram: e.target.value })}
-            placeholder="https://instagram.com/..."
           />
         </div>
       </section>

@@ -28,6 +28,8 @@ export function buildTextAnalysisPrompt(params: {
   currentRoutine?: string;
   allergies?: string;
   budget?: string;
+  pregnancyStatus?: string;
+  medicationHistory?: string;
   faceAnalysis?: {
     skinType: { type: string; confidence: number };
     hydration: { level: string };
@@ -35,7 +37,7 @@ export function buildTextAnalysisPrompt(params: {
     skinConditions: { condition: string }[];
   };
 }): string {
-  const { skinTypeLabel, concernLabel, ageRange, currentRoutine, allergies, budget, faceAnalysis } = params;
+  const { skinTypeLabel, concernLabel, ageRange, currentRoutine, allergies, budget, pregnancyStatus, medicationHistory, faceAnalysis } = params;
 
   let prompt = `你是一位专业的护肤顾问。请根据以下信息，为用户提供个性化的肌肤分析和护肤建议。
 
@@ -52,6 +54,8 @@ export function buildTextAnalysisPrompt(params: {
 - 护肤习惯：${currentRoutine || "未填写"}
 - 过敏情况：${allergies || "无"}
 - 预算偏好：${budget || "未填写"}
+- 特殊时期：${pregnancyStatus === "yes" ? "备孕/孕期/产后/哺乳期（需特别注意成分安全）" : pregnancyStatus === "private" ? "未透露" : "无"}
+- 用药经历：${medicationHistory === "routine" ? "常规护理" : medicationHistory === "occasional" ? "偶有用药" : medicationHistory === "ongoing" ? "持续治疗中" : medicationHistory === "complex" ? "情况复杂" : "未填写"}
 `;
 
   if (faceAnalysis) {

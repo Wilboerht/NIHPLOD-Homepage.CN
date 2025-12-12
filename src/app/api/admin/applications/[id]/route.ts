@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const { status, notes } = body;
+    const { status, notes, folderId } = body;
 
     // 验证状态值
     const validStatuses = ["pending", "reviewed", "interviewed", "rejected", "hired"];
@@ -75,9 +75,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // 验证分类夹是否存在
+    if (folderId && folderId !== null) {
+      const folder = await prisma.applicationFolder.findUnique({ where: { id: folderId } });
+      if (!folder) {
+        return NextResponse.json(
+          { success: false, error: { code: "INVALID_FOLDER", message: "分类夹不存在" } },
+          { status: 400 }
+        );
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
     if (status) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
+    if (folderId !== undefined) updateData.folderId = folderId; // null 表示移除分类
 
     const application = await prisma.jobApplication.update({
       where: { id },
@@ -88,6 +100,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             id: true,
             title: true,
             titleEn: true,
+          },
+        },
+        folder: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },

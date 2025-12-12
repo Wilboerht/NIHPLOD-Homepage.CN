@@ -612,16 +612,43 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
 
       {/* 预览区域 */}
       <div className="relative mb-3 aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl bg-brand-charcoal/5">
-        {/* 显示完成后的照片预览 */}
+        {/* 完成后显示模糊背景 + 分析提示 */}
         {isAllCaptured && capturedImages.front ? (
-          <m.img
-            src={capturedImages.front}
-            alt="正脸照片"
-            className="h-full w-full object-cover"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
-          />
+          <div className="relative h-full w-full">
+            {/* 模糊的背景照片 */}
+            <m.img
+              src={capturedImages.front}
+              alt=""
+              className="h-full w-full scale-110 object-cover blur-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            />
+            {/* 深色蒙版 */}
+            <div className="absolute inset-0 bg-brand-charcoal/60" />
+            {/* 即将开始分析提示 */}
+            <m.div
+              className="absolute inset-0 flex flex-col items-center justify-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+            >
+              <div className="flex flex-col items-center gap-4">
+                {/* 加载动画 */}
+                <div className="relative">
+                  <div className="h-16 w-16 animate-spin rounded-full border-[3px] border-white/20 border-t-brand-gold" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Check className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+                {/* 提示文字 */}
+                <div className="text-center">
+                  <p className="text-lg font-medium text-white">拍摄完成</p>
+                  <p className="mt-1 text-sm text-white/70">正在准备 AI 分析...</p>
+                </div>
+              </div>
+            </m.div>
+          </div>
         ) : (
           <>
             <video

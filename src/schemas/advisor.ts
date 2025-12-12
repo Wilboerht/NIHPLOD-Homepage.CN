@@ -57,6 +57,8 @@ export const QuestionnaireAnswersSchema = z.object({
   currentRoutine: z.enum(["minimal", "basic", "complete", "advanced", "none"]).optional(),
   allergies: z.enum(["none", "fragrance", "alcohol", "acid", "multiple", "unknown"]).optional(),
   budget: z.enum(["budget", "mid", "premium", "luxury"]).optional(),
+  pregnancyStatus: z.enum(["yes", "no", "private"]).optional(),
+  medicationHistory: z.enum(["routine", "occasional", "ongoing", "complex"]).optional(),
 });
 
 // 面部分析结果 Schema

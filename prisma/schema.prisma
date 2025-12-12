@@ -141,13 +141,33 @@ model JobApplication {
   resumePath String   // 简历文件路径
   status     String   @default("pending") // 状态: pending, reviewed, interviewed, rejected, hired
   notes      String?  @db.Text // 备注
+  folderId   String?  // 分类夹ID（可选）
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job    Job                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  folder ApplicationFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@index([jobId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
+  @@index([folderId])
+}
+
+// ============================================
+// 申请分类夹
+// ============================================
+
+model ApplicationFolder {
+  id           String   @id @default(cuid())
+  name         String   // 分类夹名称
+  description  String?  // 描述说明
+  order        Int      @default(0) // 排序
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  applications JobApplication[] // 该分类夹下的申请
+
+  @@index([order])
 }
 
 

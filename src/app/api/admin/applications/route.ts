@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const pageSize = parseInt(searchParams.get("pageSize") || "20");
     const status = searchParams.get("status") || "all";
     const jobId = searchParams.get("jobId") || "";
+    const folderId = searchParams.get("folderId") || "";
     const search = searchParams.get("search") || "";
 
     // 构建查询条件
@@ -30,6 +31,13 @@ export async function GET(request: NextRequest) {
 
     if (jobId) {
       where.jobId = jobId;
+    }
+
+    // 分类夹筛选：支持 "uncategorized" 表示未分类
+    if (folderId === "uncategorized") {
+      where.folderId = null;
+    } else if (folderId) {
+      where.folderId = folderId;
     }
 
     if (search) {
@@ -50,6 +58,12 @@ export async function GET(request: NextRequest) {
               id: true,
               title: true,
               titleEn: true,
+            },
+          },
+          folder: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },

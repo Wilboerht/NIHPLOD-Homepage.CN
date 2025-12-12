@@ -424,6 +424,8 @@ function buildAnalysisPrompt(
     currentRoutine: answers.currentRoutine,
     allergies: answers.allergies,
     budget: answers.budget,
+    pregnancyStatus: answers.pregnancyStatus,
+    medicationHistory: answers.medicationHistory,
     faceAnalysis: faceAnalysis,
   });
 }

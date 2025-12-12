@@ -11,7 +11,13 @@ import {
   User,
   Briefcase,
   Filter,
+  FolderPlus,
+  Folder,
+  Edit2,
+  X,
+  Tag,
 } from "lucide-react";
+import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
@@ -29,6 +35,13 @@ interface Job {
   type?: string;
 }
 
+interface ApplicationFolder {
+  id: string;
+  name: string;
+  description?: string | null;
+  applicationCount: number;
+}
+
 interface Application {
   id: string;
   jobId: string;
@@ -38,9 +51,11 @@ interface Application {
   resumePath: string;
   status: string;
   notes: string | null;
+  folderId: string | null;
   createdAt: string;
   updatedAt: string;
   job: Job;
+  folder?: { id: string; name: string } | null;
 }
 
 // 状态配置
@@ -63,6 +78,18 @@ export default function AdminApplicationsPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [jobFilter, setJobFilter] = useState("all");
+  const [folderFilter, setFolderFilter] = useState("all");
+  const [jobs, setJobs] = useState<Job[]>([]);
+
+  // 分类夹相关状态
+  const [folders, setFolders] = useState<ApplicationFolder[]>([]);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<ApplicationFolder | null>(null);
+  const [folderForm, setFolderForm] = useState({ name: "", description: "" });
+  const [savingFolder, setSavingFolder] = useState(false);
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<ApplicationFolder | null>(null);
+  const [deletingFolder, setDeletingFolder] = useState(false);
 
   // 详情弹窗
   const [detailApplication, setDetailApplication] = useState<Application | null>(null);
@@ -71,6 +98,36 @@ export default function AdminApplicationsPage() {
   // 删除确认
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // 获取分类夹列表
+  const fetchFolders = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/application-folders");
+      const data = await res.json();
+      if (data.success) {
+        setFolders(data.data);
+      }
+    } catch (error) {
+      console.error("获取分类夹列表失败:", error);
+    }
+  }, []);
+
+  // 获取职位列表（用于筛选）
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const res = await fetch("/api/admin/jobs?pageSize=100");
+        const data = await res.json();
+        if (data.success) {
+          setJobs(data.data.items);
+        }
+      } catch (error) {
+        console.error("获取职位列表失败:", error);
+      }
+    };
+    fetchJobs();
+    fetchFolders();
+  }, [fetchFolders]);
 
   // 获取申请列表
   const fetchApplications = useCallback(async () => {
@@ -82,6 +139,8 @@ export default function AdminApplicationsPage() {
       });
       if (search) params.set("search", search);
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (jobFilter !== "all") params.set("jobId", jobFilter);
+      if (folderFilter !== "all") params.set("folderId", folderFilter);
 
       const res = await fetch(`/api/admin/applications?${params}`);
       const data = await res.json();
@@ -96,7 +155,7 @@ export default function AdminApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [page, search, statusFilter, jobFilter, folderFilter]);
 
   useEffect(() => {
     fetchApplications();
@@ -199,6 +258,99 @@ export default function AdminApplicationsPage() {
     window.open(application.resumePath, "_blank");
   };
 
+  // 打开分类夹编辑弹窗
+  const openFolderModal = (folder?: ApplicationFolder) => {
+    if (folder) {
+      setEditingFolder(folder);
+      setFolderForm({ name: folder.name, description: folder.description || "" });
+    } else {
+      setEditingFolder(null);
+      setFolderForm({ name: "", description: "" });
+    }
+    setShowFolderModal(true);
+  };
+
+  // 保存分类夹
+  const saveFolder = async () => {
+    if (!folderForm.name.trim()) {
+      showError("请输入分类名称");
+      return;
+    }
+
+    setSavingFolder(true);
+    try {
+      const url = editingFolder
+        ? `/api/admin/application-folders/${editingFolder.id}`
+        : "/api/admin/application-folders";
+      const method = editingFolder ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(folderForm),
+      });
+
+      if (!res.ok) throw new Error("操作失败");
+      success(editingFolder ? "分类已更新" : "分类已创建");
+      setShowFolderModal(false);
+      fetchFolders();
+    } catch {
+      showError("保存失败");
+    } finally {
+      setSavingFolder(false);
+    }
+  };
+
+  // 删除分类夹
+  const handleDeleteFolder = async () => {
+    if (!deleteFolderTarget) return;
+
+    setDeletingFolder(true);
+    try {
+      const res = await fetch(`/api/admin/application-folders/${deleteFolderTarget.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("删除失败");
+      success("分类已删除");
+      setDeleteFolderTarget(null);
+      fetchFolders();
+      if (folderFilter === deleteFolderTarget.id) {
+        setFolderFilter("all");
+      }
+    } catch {
+      showError("删除失败");
+    } finally {
+      setDeletingFolder(false);
+    }
+  };
+
+  // 更新申请的分类
+  const updateApplicationFolder = async (application: Application, folderId: string | null) => {
+    try {
+      const res = await fetch(`/api/admin/applications/${application.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      });
+
+      if (!res.ok) throw new Error("操作失败");
+      success("分类已更新");
+      fetchApplications();
+      fetchFolders();
+      if (detailApplication?.id === application.id) {
+        const updatedFolder = folderId ? folders.find((f) => f.id === folderId) : null;
+        setDetailApplication({
+          ...application,
+          folderId,
+          folder: updatedFolder ? { id: updatedFolder.id, name: updatedFolder.name } : null,
+        });
+      }
+    } catch {
+      showError("更新失败");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 头部 */}
@@ -214,7 +366,97 @@ export default function AdminApplicationsPage() {
             )}
           </p>
         </div>
+        <Button
+          leftIcon={<FolderPlus className="h-4 w-4" />}
+          onClick={() => openFolderModal()}
+        >
+          新建分类
+        </Button>
       </div>
+
+      {/* 分类夹列表 */}
+      {folders.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => {
+              setFolderFilter("all");
+              setPage(1);
+            }}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+              folderFilter === "all"
+                ? "bg-brand-gold text-white"
+                : "bg-white text-gray-600 hover:bg-gray-100"
+            )}
+          >
+            <Folder className="h-4 w-4" />
+            全部
+          </button>
+          <button
+            onClick={() => {
+              setFolderFilter("uncategorized");
+              setPage(1);
+            }}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+              folderFilter === "uncategorized"
+                ? "bg-gray-600 text-white"
+                : "bg-white text-gray-600 hover:bg-gray-100"
+            )}
+          >
+            <FileText className="h-4 w-4" />
+            未分类
+          </button>
+          {folders.map((folder) => (
+            <div key={folder.id} className="group relative">
+              <button
+                onClick={() => {
+                  setFolderFilter(folder.id);
+                  setPage(1);
+                }}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                  folderFilter === folder.id
+                    ? "bg-brand-gold text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-100"
+                )}
+              >
+                {folder.name}
+                <span className={cn(
+                  "rounded-full px-1.5 py-0.5 text-xs",
+                  folderFilter === folder.id
+                    ? "bg-white/20 text-white"
+                    : "bg-gray-100 text-gray-500"
+                )}>
+                  {folder.applicationCount}
+                </span>
+              </button>
+              <div className="absolute right-0 top-0 hidden -translate-y-1 translate-x-1 group-hover:flex gap-0.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openFolderModal(folder);
+                  }}
+                  className="rounded bg-white p-1 text-gray-400 shadow hover:text-gray-600"
+                  title="编辑"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteFolderTarget(folder);
+                  }}
+                  className="rounded bg-white p-1 text-gray-400 shadow hover:text-red-500"
+                  title="删除"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl bg-white p-4 shadow-sm">
@@ -246,6 +488,22 @@ export default function AdminApplicationsPage() {
               setPage(1);
             }}
             className="w-32"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Briefcase className="h-4 w-4 text-gray-400" />
+          <Select
+            options={[
+              { value: "all", label: "全部职位" },
+              ...jobs.map((job) => ({ value: job.id, label: job.title })),
+            ]}
+            value={jobFilter}
+            onChange={(e) => {
+              setJobFilter(e.target.value);
+              setPage(1);
+            }}
+            className="w-40"
           />
         </div>
       </div>
@@ -304,8 +562,14 @@ export default function AdminApplicationsPage() {
                     </div>
 
                     {/* 状态 */}
-                    <div className="col-span-2 flex items-center">
+                    <div className="col-span-2 flex flex-col gap-1 justify-center">
                       <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
+                      {application.folder && (
+                        <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                          <Tag className="h-3 w-3" />
+                          {application.folder.name}
+                        </span>
+                      )}
                     </div>
 
                     {/* 时间 */}
@@ -446,6 +710,40 @@ export default function AdminApplicationsPage() {
               </div>
             </div>
 
+            {/* 分类夹 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                分类
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => updateApplicationFolder(detailApplication, null)}
+                  className={cn(
+                    "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                    !detailApplication.folderId
+                      ? "bg-gray-600 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  )}
+                >
+                  未分类
+                </button>
+                {folders.map((folder) => (
+                  <button
+                    key={folder.id}
+                    onClick={() => updateApplicationFolder(detailApplication, folder.id)}
+                    className={cn(
+                      "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                      detailApplication.folderId === folder.id
+                        ? "bg-brand-gold text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    )}
+                  >
+                    {folder.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 备注 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -477,6 +775,55 @@ export default function AdminApplicationsPage() {
         description={`确定要删除「${deleteTarget?.name}」的简历申请吗？此操作无法撤销。`}
         confirmText="删除"
         loading={deleting}
+        type="danger"
+      />
+
+      {/* 分类夹编辑弹窗 */}
+      <Modal
+        open={showFolderModal}
+        onClose={() => setShowFolderModal(false)}
+        title={editingFolder ? "编辑分类" : "新建分类"}
+      >
+        <div className="space-y-4">
+          <Input
+            label="分类名称"
+            value={folderForm.name}
+            onChange={(e) => setFolderForm({ ...folderForm, name: e.target.value })}
+            placeholder="如：优秀候选人、待面试等"
+            required
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              描述（可选）
+            </label>
+            <textarea
+              value={folderForm.description}
+              onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
+              placeholder="添加分类说明..."
+              rows={2}
+              className="w-full rounded-lg border border-gray-200 p-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => setShowFolderModal(false)}>
+              取消
+            </Button>
+            <Button onClick={saveFolder} loading={savingFolder}>
+              {editingFolder ? "保存" : "创建"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 删除分类夹确认 */}
+      <ConfirmDialog
+        open={!!deleteFolderTarget}
+        onClose={() => setDeleteFolderTarget(null)}
+        onConfirm={handleDeleteFolder}
+        title="确认删除分类"
+        description={`确定要删除分类「${deleteFolderTarget?.name}」吗？分类下的申请不会被删除，会变为未分类状态。`}
+        confirmText="删除"
+        loading={deletingFolder}
         type="danger"
       />
     </div>
