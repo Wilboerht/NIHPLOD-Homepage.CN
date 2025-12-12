@@ -299,6 +299,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false); // 防止动画中重复触发
+  const animationRef = useRef<NodeJS.Timeout | null>(null); // 存储动画定时器
 
   // 手势滑动相关
   const dragX = useMotionValue(0);
@@ -309,6 +311,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // 清理动画定时器
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        clearTimeout(animationRef.current);
+      }
+    };
   }, []);
 
   // 按分类顺序排列产品
@@ -324,8 +335,63 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   // 当前展示的产品（轮播显示所有产品，按分类顺序）
   const currentProduct = sortedProducts[currentProductIndex] || null;
 
+  // 逐步滚动到目标索引（优雅的轮播动画）
+  const animateToIndex = (targetIndex: number) => {
+    if (isAnimating || targetIndex === currentProductIndex) return;
+
+    const total = sortedProducts.length;
+    if (total === 0) return;
+
+    // 计算最短路径方向
+    const forwardDistance = (targetIndex - currentProductIndex + total) % total;
+    const backwardDistance = (currentProductIndex - targetIndex + total) % total;
+    const goForward = forwardDistance <= backwardDistance;
+    const steps = goForward ? forwardDistance : backwardDistance;
+
+    if (steps === 0) return;
+
+    setIsAnimating(true);
+
+    // 动画间隔时间 - 使用更丝滑的时间曲线
+    // 步数少时稍慢，步数多时加速，让整体体验更流畅
+    const getInterval = (step: number, totalSteps: number) => {
+      // 使用缓动曲线：开始稍慢，中间加速，结尾稍慢
+      const progress = step / totalSteps;
+      const eased = 1 - Math.pow(1 - progress, 2); // easeOutQuad
+      const minInterval = 60;
+      const maxInterval = 120;
+      return minInterval + (maxInterval - minInterval) * (1 - Math.abs(eased - 0.5) * 2);
+    };
+
+    let currentStep = 0;
+
+    const animate = () => {
+      currentStep++;
+
+      setCurrentProductIndex((prev) => {
+        if (goForward) {
+          return prev === total - 1 ? 0 : prev + 1;
+        } else {
+          return prev === 0 ? total - 1 : prev - 1;
+        }
+      });
+
+      if (currentStep < steps) {
+        const interval = getInterval(currentStep, steps);
+        animationRef.current = setTimeout(animate, interval);
+      } else {
+        setIsAnimating(false);
+        // 更新高亮分类
+        setActiveCategory(sortedProducts[targetIndex]?.categoryId || null);
+      }
+    };
+
+    animate();
+  };
+
   // 切换到上一个产品
   const handlePrevProduct = () => {
+    if (isAnimating) return;
     setCurrentProductIndex((prev) =>
       prev === 0 ? sortedProducts.length - 1 : prev - 1
     );
@@ -336,6 +402,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
   // 切换到下一个产品
   const handleNextProduct = () => {
+    if (isAnimating) return;
     setCurrentProductIndex((prev) =>
       prev === sortedProducts.length - 1 ? 0 : prev + 1
     );
@@ -371,7 +438,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     const firstProductIndex = sortedProducts.findIndex((p) => p.categoryId === categoryId);
     if (firstProductIndex !== -1) {
       setActiveCategory(categoryId);
-      setCurrentProductIndex(firstProductIndex);
+      animateToIndex(firstProductIndex);
     }
     // 点击分类时自动展开商品卡片
     setIsExpanded(true);
@@ -579,19 +646,28 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
                   const transform = getTransform();
 
+                  // 连续滚动时使用更丝滑的动画
+                  const transition = isAnimating
+                    ? {
+                        duration: 0.18,
+                        ease: [0.4, 0, 0.2, 1] as const, // Material Design 标准缓动
+                        filter: { duration: 0.1 }
+                      }
+                    : {
+                        duration: 0.6,
+                        ease: [0.32, 0.72, 0, 1] as const,
+                        filter: { duration: 0.4 }
+                      };
+
                   return (
                     <m.div
                       key={product.id}
                       initial={false}
                       animate={transform}
-                      transition={{
-                        duration: 0.6,
-                        ease: [0.32, 0.72, 0, 1],
-                        filter: { duration: 0.4 }
-                      }}
+                      transition={transition}
                       onClick={() => {
-                        // 拖拽中不触发点击
-                        if (isDragging) return;
+                        // 拖拽中或动画中不触发点击
+                        if (isDragging || isAnimating) return;
                         if (isLeft1 || isLeft2) handlePrevProduct();
                         if (isRight1 || isRight2) handleNextProduct();
                       }}
@@ -727,10 +803,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     <button
                       key={index}
                       type="button"
-                      onClick={() => {
-                        setCurrentProductIndex(index);
-                        setActiveCategory(sortedProducts[index]?.categoryId || null);
-                      }}
+                      onClick={() => animateToIndex(index)}
                       className={cn(
                         "h-2 rounded-full transition-all",
                         index === currentProductIndex
@@ -850,7 +923,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               )}
               aria-label="产品页导航"
             >
-              {/* 左侧主导航 - 商城 */}
+              {/* 左侧主导航 - 了解产品 */}
               <Link
                 href="/products"
                 className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:gap-4 sm:hover:opacity-80"
@@ -862,7 +935,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 {/* 文字 */}
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">
-                    商城
+                    了解产品
                   </span>
                   <span className="font-serif text-[10px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">
                     Products

@@ -33,11 +33,11 @@ interface Job {
   salary: string | null;
 }
 
-// 职位类型映射
+// 职位类型映射 - 使用品牌色系
 const jobTypeMap: Record<string, { label: string; color: string }> = {
-  fulltime: { label: "全职", color: "bg-green-100 text-green-700" },
-  parttime: { label: "兼职", color: "bg-blue-100 text-blue-700" },
-  intern: { label: "实习", color: "bg-purple-100 text-purple-700" },
+  fulltime: { label: "全职", color: "bg-brand-gold/15 text-brand-gold" },
+  parttime: { label: "兼职", color: "bg-brand-charcoal/10 text-brand-charcoal/70" },
+  intern: { label: "实习", color: "bg-brand-beige text-brand-charcoal/70" },
 };
 
 // 默认内容
@@ -197,41 +197,41 @@ function JobCard({
     <m.button
       type="button"
       onClick={onClick}
-      className="w-full overflow-hidden rounded-xl border border-brand-beige bg-white text-left transition-all hover:border-brand-gold/50 hover:shadow-md"
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
+      className="group w-full overflow-hidden rounded-2xl bg-white/80 text-left shadow-sm ring-1 ring-brand-charcoal/5 backdrop-blur-sm transition-all hover:bg-white hover:shadow-md hover:ring-brand-gold/30"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
     >
-      <div className="flex w-full items-center justify-between p-5">
+      <div className="flex w-full items-center justify-between p-4 sm:p-5">
         <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h3 className="font-serif text-lg text-brand-charcoal sm:text-xl">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-serif text-base font-medium text-brand-charcoal sm:text-lg">
               {job.title}
             </h3>
-            <span className="text-sm text-brand-charcoal/50">{job.titleEn}</span>
+            <span className="text-xs text-brand-charcoal/40 sm:text-sm">{job.titleEn}</span>
             <span
-              className={cn("rounded-full px-2.5 py-1 text-sm", typeInfo.color)}
+              className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", typeInfo.color)}
             >
               {typeInfo.label}
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-brand-charcoal/60">
+          <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-brand-charcoal/60 sm:gap-4 sm:text-sm">
             <span className="flex items-center gap-1.5">
-              <MapPin className="h-4 w-4" />
+              <MapPin className="h-3.5 w-3.5" />
               {job.location}
             </span>
             {job.salary && (
-              <span className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4" />
+              <span className="flex items-center gap-1.5 font-medium text-brand-gold">
+                <Clock className="h-3.5 w-3.5" />
                 {job.salary}
               </span>
             )}
           </div>
         </div>
-        <div className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-brand-gold/10">
-          <FileText className="h-5 w-5 text-brand-gold" />
+        <div className="ml-3 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gold/10 transition-all group-hover:bg-brand-gold group-hover:shadow-md sm:h-11 sm:w-11">
+          <FileText className="h-5 w-5 text-brand-gold transition-colors group-hover:text-white" />
         </div>
       </div>
     </m.button>

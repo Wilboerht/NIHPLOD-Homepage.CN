@@ -3,7 +3,7 @@
 import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { m } from "framer-motion";
-import { Sparkles, Package } from "lucide-react";
+import { Sparkles, Package, ChevronRight } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 
 /**
@@ -119,31 +119,51 @@ export default function HomeClient({ content }: HomeClientProps) {
           transition={{ duration: 0.5, delay: 0.3 }}
         />
 
-        {/* 双入口 */}
+        {/* 双入口 - 垂直排列 */}
         <m.div
-          className="flex w-full max-w-xs flex-col gap-2.5 sm:max-w-sm sm:flex-row sm:gap-3 md:max-w-md md:gap-4"
+          className="flex flex-col items-center gap-5 sm:gap-6"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          {/* AI 顾问 */}
-          <Link href={buttons.advisorLink} className="group flex-1">
-            <div className="flex items-center justify-center gap-2 rounded-full bg-brand-gold px-4 py-3 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl sm:gap-3 sm:px-5 sm:py-3.5 md:px-6 md:py-4">
-              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5" />
-              <span className="text-xs font-medium sm:text-sm md:text-base">
-                {buttons.advisorText}
-              </span>
-            </div>
+          {/* 产品浏览 - 金色主按钮 */}
+          <Link href={buttons.productsLink} className="group">
+            <m.div
+              className="relative"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {/* 按钮主体 */}
+              <div className="relative overflow-hidden rounded-full border border-brand-gold/30 bg-white/90 px-8 py-3.5 shadow-sm backdrop-blur-sm transition-all duration-300 group-hover:border-brand-gold group-hover:shadow-md sm:px-10 sm:py-4">
+                <div className="relative z-10 flex items-center justify-center gap-2.5">
+                  <Package className="h-4 w-4 text-brand-gold transition-colors duration-300 sm:h-5 sm:w-5" />
+                  <span className="text-sm font-medium tracking-wide text-brand-charcoal/80 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-base">
+                    {buttons.productsText}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-brand-gold/60 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-brand-gold sm:h-5 sm:w-5" />
+                </div>
+              </div>
+            </m.div>
           </Link>
 
-          {/* 产品浏览 */}
-          <Link href={buttons.productsLink} className="group flex-1">
-            <div className="flex items-center justify-center gap-2 rounded-full border border-brand-charcoal/20 bg-white/90 px-4 py-3 text-brand-charcoal shadow-lg backdrop-blur-sm transition-all hover:scale-105 hover:border-brand-gold hover:text-brand-gold sm:gap-3 sm:px-5 sm:py-3.5 md:px-6 md:py-4">
-              <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5" />
-              <span className="text-xs font-medium sm:text-sm md:text-base">
-                {buttons.productsText}
-              </span>
-            </div>
+          {/* AI 顾问 - 深蓝按钮 */}
+          <Link href={buttons.advisorLink} className="group">
+            <m.div
+              className="relative"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div className="relative overflow-hidden rounded-full bg-brand-blue px-8 py-3.5 shadow-sm transition-all duration-300 group-hover:shadow-md sm:px-10 sm:py-4">
+                {/* 光泽效果 */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                <div className="relative z-10 flex items-center justify-center gap-2.5">
+                  <Sparkles className="h-4 w-4 text-white/90 sm:h-5 sm:w-5" />
+                  <span className="text-sm font-medium tracking-wide text-white sm:text-base">
+                    {buttons.advisorText}
+                  </span>
+                </div>
+              </div>
+            </m.div>
           </Link>
         </m.div>
 

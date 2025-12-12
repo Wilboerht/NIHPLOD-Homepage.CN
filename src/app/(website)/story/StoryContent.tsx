@@ -12,7 +12,7 @@ import { ShopIcon, RitualIcon, ContactIcon, HomeIcon } from "@/components/websit
  * 底部导航项配置 - 与 ProductsContent 一致
  */
 const bottomNavItems = [
-  { href: "/products", label: "商城", labelEn: "Products", icon: ShopIcon },
+  { href: "/products", label: "了解产品", labelEn: "Products", icon: ShopIcon },
   { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: RitualIcon },
   { href: "/contact", label: "联系我们", labelEn: "Contact", icon: ContactIcon },
 ];
@@ -343,7 +343,7 @@ const tabContents: Record<TabId, TabContent> = {
  * 主内容区域使用 bg-[#EBE8DB] 不透明样式
  */
 export function StoryContent() {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -399,15 +399,17 @@ export function StoryContent() {
             bottom: isExpanded ? 16 : 0 // bottom-4 = 1rem = 16px
           }}
           transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-          className="absolute left-6 right-6 top-4 z-20 sm:left-10 sm:right-10 lg:left-16 lg:right-16 lg:top-6"
+          className="absolute left-6 right-6 top-0 z-20 sm:left-10 sm:right-10 lg:left-16 lg:right-16"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center">
-            {/* 主内容区域 - 使用 bg-[#EBE8DB] 不透明样式 */}
+            {/* 主内容区域 - 使用 bg-[#EBE8DB] 不透明样式，收起时完全隐藏 */}
             <m.div
-              className="w-full overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl"
+              className="w-full overflow-hidden rounded-b-2xl bg-[#EBE8DB] lg:rounded-b-3xl"
               animate={{
-                flexGrow: isExpanded ? 1 : 0
+                flexGrow: isExpanded ? 1 : 0,
+                opacity: isExpanded ? 1 : 0,
+                height: isExpanded ? "auto" : 0
               }}
               transition={{
                 duration: 0.5,
@@ -416,11 +418,11 @@ export function StoryContent() {
             >
               <div className={cn(
                 "flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",
-                isExpanded ? "h-full justify-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : ""
+                isExpanded ? "h-full justify-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" : "hidden"
               )}>
-                {/* 页面标题 - 收起时始终显示，展开时仅在没有选中标签时显示 */}
+                {/* 页面标题 - 仅在展开且没有选中标签时显示 */}
                 <AnimatePresence mode="popLayout">
-                  {(!isExpanded || !activeTab) && (
+                  {isExpanded && !activeTab && (
                     <m.div
                       key="title"
                       layout
@@ -428,10 +430,7 @@ export function StoryContent() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15, ease: "easeOut" }}
-                      className={cn(
-                        "text-center",
-                        isExpanded ? "mb-6 sm:mb-8" : ""
-                      )}
+                      className="mb-6 text-center sm:mb-8"
                     >
                       <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
                         OUR STORY
@@ -918,7 +917,7 @@ export function StoryContent() {
               </div>
             </m.div>
 
-            {/* 展开/收起按钮 - 无缝连接 */}
+            {/* 展开/收起按钮 - 始终只有底部圆角 */}
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
