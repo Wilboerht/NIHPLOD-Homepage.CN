@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
-import { m, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, useMotionValue, PanInfo } from "framer-motion";
 import { ChevronDown, ChevronLeft, ChevronRight, Menu, X, ShoppingBag } from "lucide-react";
 import { ProductDrawer, ShopIcon, StoryIcon, RitualIcon, ContactIcon, HomeIcon } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
@@ -298,6 +298,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // 手势滑动相关
+  const dragX = useMotionValue(0);
 
   // 监听屏幕尺寸变化
   useEffect(() => {
@@ -338,6 +342,24 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     // 更新高亮的分类
     const nextIndex = currentProductIndex === sortedProducts.length - 1 ? 0 : currentProductIndex + 1;
     setActiveCategory(sortedProducts[nextIndex]?.categoryId || null);
+  };
+
+  // 手势滑动结束处理
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false);
+    const threshold = 50; // 滑动阈值
+    const velocity = info.velocity.x;
+    const offset = info.offset.x;
+
+    // 根据滑动距离或速度判断是否切换
+    if (offset < -threshold || velocity < -500) {
+      handleNextProduct();
+    } else if (offset > threshold || velocity > 500) {
+      handlePrevProduct();
+    }
+
+    // 重置拖拽值
+    dragX.set(0);
   };
 
   // 点击分类时跳转到该分类的第一个产品并展开
@@ -508,7 +530,16 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               className="absolute inset-x-0 bottom-2 top-36 z-10 sm:bottom-4 sm:top-40 md:top-44 lg:bottom-6 lg:top-48"
               style={{ perspective: "1200px" }}
             >
-              <div className="relative mx-auto flex h-full max-w-6xl items-center justify-center px-2 sm:px-4">
+              {/* 手势滑动容器 */}
+              <m.div
+                className="relative mx-auto flex h-full max-w-6xl cursor-grab items-center justify-center px-2 active:cursor-grabbing sm:px-4"
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                onDragStart={() => setIsDragging(true)}
+                onDragEnd={handleDragEnd}
+                style={{ x: dragX }}
+              >
                 {/* 五张卡片容器：左2、中1、右2 */}
                 {sortedProducts.map((product, index) => {
                   // 计算相对位置：-2=左2, -1=左1, 0=中, 1=右1, 2=右2
@@ -526,24 +557,24 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   const isRight1 = normalizedDiff === 1;
                   const isRight2 = normalizedDiff === 2;
 
-                  // 计算位置、缩放、透明度、旋转
+                  // 计算位置、缩放、透明度、旋转、Z轴位移、模糊度
                   // 使用 state 中的 isMobile 判断
                   const getTransform = () => {
-                    if (isCenter) return { x: "0%", scale: 1, zIndex: 20, opacity: 1, rotateY: 0 };
+                    if (isCenter) return { x: "0%", scale: 1, zIndex: 20, opacity: 1, rotateY: 0, z: 50, filter: "blur(0px)" };
                     if (isMobile) {
                       // 移动端：左右卡片靠近中心
-                      if (isLeft1) return { x: "-55%", scale: 0.82, zIndex: 15, opacity: 0.7, rotateY: 6 };
-                      if (isRight1) return { x: "55%", scale: 0.82, zIndex: 15, opacity: 0.7, rotateY: -6 };
-                      if (isLeft2) return { x: "-95%", scale: 0.65, zIndex: 10, opacity: 0, rotateY: 10 };
-                      if (isRight2) return { x: "95%", scale: 0.65, zIndex: 10, opacity: 0, rotateY: -10 };
+                      if (isLeft1) return { x: "-55%", scale: 0.82, zIndex: 15, opacity: 0.8, rotateY: 8, z: -30, filter: "blur(1px)" };
+                      if (isRight1) return { x: "55%", scale: 0.82, zIndex: 15, opacity: 0.8, rotateY: -8, z: -30, filter: "blur(1px)" };
+                      if (isLeft2) return { x: "-95%", scale: 0.65, zIndex: 10, opacity: 0, rotateY: 12, z: -80, filter: "blur(3px)" };
+                      if (isRight2) return { x: "95%", scale: 0.65, zIndex: 10, opacity: 0, rotateY: -12, z: -80, filter: "blur(3px)" };
                     } else {
                       // PC端
-                      if (isLeft1) return { x: "-52%", scale: 0.75, zIndex: 15, opacity: 0.6, rotateY: 15 };
-                      if (isRight1) return { x: "52%", scale: 0.75, zIndex: 15, opacity: 0.6, rotateY: -15 };
-                      if (isLeft2) return { x: "-90%", scale: 0.55, zIndex: 10, opacity: 0.3, rotateY: 25 };
-                      if (isRight2) return { x: "90%", scale: 0.55, zIndex: 10, opacity: 0.3, rotateY: -25 };
+                      if (isLeft1) return { x: "-52%", scale: 0.78, zIndex: 15, opacity: 0.75, rotateY: 18, z: -60, filter: "blur(2px)" };
+                      if (isRight1) return { x: "52%", scale: 0.78, zIndex: 15, opacity: 0.75, rotateY: -18, z: -60, filter: "blur(2px)" };
+                      if (isLeft2) return { x: "-90%", scale: 0.58, zIndex: 10, opacity: 0.4, rotateY: 30, z: -120, filter: "blur(4px)" };
+                      if (isRight2) return { x: "90%", scale: 0.58, zIndex: 10, opacity: 0.4, rotateY: -30, z: -120, filter: "blur(4px)" };
                     }
-                    return { x: "0%", scale: 0, zIndex: 0, opacity: 0, rotateY: 0 };
+                    return { x: "0%", scale: 0, zIndex: 0, opacity: 0, rotateY: 0, z: -200, filter: "blur(8px)" };
                   };
 
                   const transform = getTransform();
@@ -553,25 +584,31 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       key={product.id}
                       initial={false}
                       animate={transform}
-                      transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+                      transition={{
+                        duration: 0.6,
+                        ease: [0.32, 0.72, 0, 1],
+                        filter: { duration: 0.4 }
+                      }}
                       onClick={() => {
+                        // 拖拽中不触发点击
+                        if (isDragging) return;
                         if (isLeft1 || isLeft2) handlePrevProduct();
                         if (isRight1 || isRight2) handleNextProduct();
                       }}
                       className={cn(
                         // 卡片基础样式
-                        "absolute overflow-hidden",
+                        "absolute overflow-hidden select-none",
                         // 移动端：竖向卡片（上图下文）
                         "flex w-[58%] max-w-[240px] flex-col rounded-2xl",
                         // PC端：横向卡片（左文右图）
                         "sm:aspect-[16/10] sm:h-auto sm:w-[480px] sm:max-w-none sm:flex-row sm:rounded-2xl",
                         "md:w-[560px] lg:w-[640px] lg:rounded-3xl",
                         // 中心卡片样式
-                        isCenter && "cursor-default bg-white shadow-2xl ring-1 ring-black/5",
-                        // 左1、右1：轻度虚化
-                        (isLeft1 || isRight1) && "cursor-pointer bg-white/90 shadow-lg ring-1 ring-black/5 sm:bg-white/70 sm:shadow-xl sm:ring-0 sm:backdrop-blur-sm sm:hover:bg-white/80",
-                        // 左2、右2：更强虚化
-                        (isLeft2 || isRight2) && "cursor-pointer bg-white/80 shadow-md ring-1 ring-black/5 sm:bg-white/50 sm:shadow-lg sm:ring-0 sm:backdrop-blur-md sm:hover:bg-white/60"
+                        isCenter && "cursor-grab bg-white shadow-2xl ring-1 ring-black/5 active:cursor-grabbing",
+                        // 左1、右1
+                        (isLeft1 || isRight1) && "cursor-pointer bg-white/95 shadow-xl ring-1 ring-black/5",
+                        // 左2、右2
+                        (isLeft2 || isRight2) && "cursor-pointer bg-white/90 shadow-lg ring-1 ring-black/5"
                       )}
                       style={{ transformStyle: "preserve-3d" }}
                     >
@@ -631,7 +668,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             <div className="mt-3 flex gap-2 sm:mt-6 sm:gap-3">
                               <button
                                 type="button"
-                                onClick={() => handleProductClick(product)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isDragging) handleProductClick(product);
+                                }}
                                 className="rounded-full border border-brand-charcoal/20 px-4 py-1.5 text-[11px] font-medium text-brand-charcoal transition-all hover:border-brand-charcoal/40 hover:bg-brand-charcoal/5 sm:px-5 sm:py-2 sm:text-xs md:px-6 md:py-2.5 md:text-sm"
                               >
                                 了解详情
@@ -700,7 +740,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     />
                   ))}
                 </div>
-              </div>
+              </m.div>
             </m.div>
           )}
         </AnimatePresence>
