@@ -1,10 +1,107 @@
 "use client";
 
+import { useState } from "react";
 import { Link } from "next-view-transitions";
 import Image from "next/image";
-import { m } from "framer-motion";
-import { Sparkles, Package, ChevronRight } from "lucide-react";
+import { m, AnimatePresence } from "framer-motion";
+import { Sparkles, Package, ChevronRight, Star, Heart, Sparkle, Circle, Diamond } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
+
+/**
+ * 护肤品图标 SVG 组件
+ */
+const ProductIcons = {
+  // 面霜
+  FaceCream: ({ className }: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path d="M4.71235 5.27496C5.84896 5.14222 8.00007 5 12 5C15.9999 5 18.151 5.14222 19.2876 5.27496C20.0401 5.36283 20.5 5.97852 20.5 6.73607V18C20.5 18.8284 19.8284 19.5 19 19.5H5C4.17157 19.5 3.5 18.8284 3.5 18V6.73607C3.5 5.97852 3.95992 5.36283 4.71235 5.27496Z" fill="currentColor" stroke="currentColor" strokeWidth="0.8"/>
+    </svg>
+  ),
+  // 精华乳
+  Essence: ({ className }: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path d="M9.84189 8.38604L10.8768 8.04105C10.9584 8.01386 11.0438 8 11.1298 8H12.8702C12.9562 8 13.0416 8.01386 13.1232 8.04105L14.1581 8.38604C14.3623 8.4541 14.5 8.64516 14.5 8.86038V21.2C14.5 21.6418 14.1418 22 13.7 22H10.3C9.85817 22 9.5 21.6418 9.5 21.2V8.86038C9.5 8.64516 9.63772 8.4541 9.84189 8.38604Z" fill="currentColor" stroke="currentColor" strokeWidth="0.8"/>
+      <path d="M10.25 2.27892C10.25 2.0789 10.3703 1.90047 10.5645 1.85252C10.8494 1.78218 11.3279 1.69922 12 1.69922C12.6721 1.69922 13.1506 1.78218 13.4355 1.85252C13.6297 1.90047 13.75 2.0789 13.75 2.27892V7.44922C13.75 7.72536 13.5263 7.94922 13.2501 7.94922H10.7499C10.4737 7.94922 10.25 7.72536 10.25 7.44922V2.27892Z" fill="currentColor" stroke="currentColor" strokeWidth="0.7"/>
+    </svg>
+  ),
+  // 防晒
+  Sunscreen: ({ className }: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="4.4" y="2.1" width="15.06" height="19.92" rx="7.2" fill="currentColor"/>
+      <path d="M11.875 2C6.5 2 5.296 5.317 4.875 7C4.454 8.683 4.445 15.28 4.875 17C5.305 18.72 6.5 22 11.875 22" stroke="currentColor" strokeWidth="0.8"/>
+      <path d="M12 2C17.375 2 18.579 5.317 19 7C19.421 8.683 19.43 15.28 19 17C18.57 18.72 17.375 22 12 22" stroke="currentColor" strokeWidth="0.8"/>
+    </svg>
+  ),
+  // 面膜
+  Mask: ({ className }: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path d="M5.5 3.5C5.5 2.94772 5.94772 2.5 6.5 2.5H17.5C18.0523 2.5 18.5 2.94772 18.5 3.5V20.5C18.5 21.0523 18.0523 21.5 17.5 21.5H6.5C5.94772 21.5 5.5 21.0523 5.5 20.5V3.5Z" fill="currentColor" stroke="currentColor" strokeWidth="0.8"/>
+      <path d="M7 4.4C7 4.17909 7.17909 4 7.4 4H16.6C16.8209 4 17 4.17909 17 4.4V19.1C17 19.3209 16.8209 19.5 16.6 19.5H7.4C7.17909 19.5 7 19.3209 7 19.1V4.4Z" fill="currentColor" stroke="currentColor" strokeWidth="0.6"/>
+    </svg>
+  ),
+  // 护理油
+  Oil: ({ className }: { className?: string }) => (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path d="M7.97144 11.9934C7.97144 11.782 8.04988 11.5782 8.23354 11.4734C8.65975 11.2302 9.69906 10.8438 12 10.8438C14.3009 10.8438 15.3402 11.2302 15.7664 11.4734C15.9501 11.5782 16.0285 11.782 16.0285 11.9934V20.3331C16.0285 20.8399 15.6176 21.2508 15.1108 21.2508H8.88917C8.38232 21.2508 7.97144 20.8399 7.97144 20.3331V11.9934Z" fill="currentColor" stroke="currentColor" strokeWidth="0.8"/>
+      <path d="M10.5963 3.09543C10.8518 2.96797 11.4246 2.77734 11.9973 2.77734L12 10.8167H9.76721V10.0182L9.84981 9.85305C9.8479 8.27661 9.8452 5.26204 9.84891 4.63549C9.84929 4.57273 9.87044 4.51166 9.91704 4.46962C10.0556 4.3446 10.2531 4.26463 10.483 4.23654V3.29505C10.483 3.21142 10.5215 3.13277 10.5963 3.09543Z" fill="currentColor" stroke="currentColor" strokeWidth="0.8"/>
+      <path d="M13.4037 3.09543C13.1482 2.96797 12.5754 2.77734 12.0027 2.77734L12 10.8167H14.2328V10.0182L14.1502 9.85305C14.1521 8.27661 14.1548 5.26204 14.1511 4.63549C14.1507 4.57273 14.1296 4.51166 14.083 4.46962C13.9444 4.3446 13.7469 4.26463 13.517 4.23654V3.29505C13.517 3.21142 13.4785 3.13277 13.4037 3.09543Z" fill="currentColor" stroke="currentColor" strokeWidth="0.8"/>
+    </svg>
+  ),
+};
+
+/**
+ * 烟花图标配置 - 护肤品图标 + 装饰图标
+ */
+const fireworkIconList: React.ComponentType<{ className?: string }>[] = [
+  // 护肤品图标 (权重更高)
+  ProductIcons.FaceCream,
+  ProductIcons.FaceCream,
+  ProductIcons.Essence,
+  ProductIcons.Essence,
+  ProductIcons.Mask,
+  ProductIcons.Sunscreen,
+  ProductIcons.Oil,
+  // 装饰图标
+  Star,
+  Heart,
+  Sparkle,
+  Diamond,
+];
+
+// 金色系颜色
+const fireworkColors = [
+  "text-brand-gold",
+  "text-brand-gold/90",
+  "text-amber-500",
+  "text-yellow-500",
+  "text-orange-400/80",
+];
+
+/**
+ * 生成随机烟花粒子 - 向四周发射
+ */
+function generateFireworkParticles(count: number) {
+  return Array.from({ length: count }, () => {
+    // 随机角度 0-360度
+    const angle = Math.random() * 360;
+    const radian = (angle * Math.PI) / 180;
+    // 多层距离：近(40-70)、中(70-100)、远(100-130)
+    const layer = Math.random();
+    const distance = layer < 0.3 ? 40 + Math.random() * 30
+                   : layer < 0.7 ? 70 + Math.random() * 30
+                   : 100 + Math.random() * 30;
+    return {
+      Icon: fireworkIconList[Math.floor(Math.random() * fireworkIconList.length)],
+      targetX: Math.cos(radian) * distance,
+      targetY: Math.sin(radian) * distance,
+      delay: Math.random() * 0.12,
+      duration: 0.5 + Math.random() * 0.3,
+      rotate: (Math.random() - 0.5) * 90,
+      scale: 0.5 + Math.random() * 0.7,
+      color: fireworkColors[Math.floor(Math.random() * fireworkColors.length)],
+    };
+  });
+}
 
 /**
  * 网格背景色值 - 2行4列 布局
@@ -39,6 +136,75 @@ const defaultContent: HomePageContent = {
 
 interface HomeClientProps {
   content?: HomePageContent;
+}
+
+/**
+ * 产品按钮组件 - 带烟花效果
+ */
+function ProductButton({ href, text }: { href: string; text: string }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [particles, setParticles] = useState<ReturnType<typeof generateFireworkParticles>>([]);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    // 每次悬停生成新的随机粒子 - 18个，形成丰富的烟花效果
+    setParticles(generateFireworkParticles(18));
+  };
+
+  return (
+    <Link href={href} className="group">
+      <div
+        className="relative"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* 烟花图标容器 - 按钮中心，z-index 低于按钮 */}
+        <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center overflow-visible">
+          <AnimatePresence>
+            {isHovered && particles.map(({ Icon, targetX, targetY, delay, duration, rotate, scale, color }, index) => (
+              <m.div
+                key={index}
+                className="absolute"
+                style={{ willChange: "transform, opacity" }}
+                initial={{ x: 0, y: 0, opacity: 0, scale: 0, rotate: 0 }}
+                animate={{
+                  x: [0, targetX * 0.3, targetX],
+                  y: [0, targetY * 0.3, targetY],
+                  opacity: [0, 1, 0.9, 0],
+                  scale: [0, scale * 1.2, scale, scale * 0.3],
+                  rotate: [0, rotate * 0.5, rotate],
+                }}
+                exit={{ opacity: 0, scale: 0, transition: { duration: 0.08 } }}
+                transition={{
+                  duration: duration,
+                  delay: delay,
+                  ease: [0.25, 0.1, 0.25, 1],
+                  times: [0, 0.2, 0.6, 1],
+                }}
+              >
+                <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${color}`} />
+              </m.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* 按钮主体 - z-index 高于烟花 */}
+        <m.div
+          className="relative z-10 overflow-hidden rounded-full border border-brand-gold/30 bg-white/95 px-8 py-3.5 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-brand-gold hover:shadow-lg sm:px-10 sm:py-4"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <div className="relative z-10 flex items-center justify-center gap-2.5">
+            <Package className="h-4 w-4 text-brand-gold sm:h-5 sm:w-5" />
+            <span className="text-sm font-medium tracking-wide text-brand-charcoal/80 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-base">
+              {text}
+            </span>
+            <ChevronRight className="h-4 w-4 text-brand-gold/60 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-brand-gold sm:h-5 sm:w-5" />
+          </div>
+        </m.div>
+      </div>
+    </Link>
+  );
 }
 
 /**
@@ -126,25 +292,8 @@ export default function HomeClient({ content }: HomeClientProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          {/* 产品浏览 - 金色主按钮 */}
-          <Link href={buttons.productsLink} className="group">
-            <m.div
-              className="relative"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {/* 按钮主体 */}
-              <div className="relative overflow-hidden rounded-full border border-brand-gold/30 bg-white/90 px-8 py-3.5 shadow-sm backdrop-blur-sm transition-all duration-300 group-hover:border-brand-gold group-hover:shadow-md sm:px-10 sm:py-4">
-                <div className="relative z-10 flex items-center justify-center gap-2.5">
-                  <Package className="h-4 w-4 text-brand-gold transition-colors duration-300 sm:h-5 sm:w-5" />
-                  <span className="text-sm font-medium tracking-wide text-brand-charcoal/80 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-base">
-                    {buttons.productsText}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-brand-gold/60 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-brand-gold sm:h-5 sm:w-5" />
-                </div>
-              </div>
-            </m.div>
-          </Link>
+          {/* 产品浏览 - 金色主按钮（带烟花效果） */}
+          <ProductButton href={buttons.productsLink} text={buttons.productsText} />
 
           {/* AI 顾问 - 深蓝按钮 */}
           <Link href={buttons.advisorLink} className="group">

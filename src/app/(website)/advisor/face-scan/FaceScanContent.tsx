@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
 import { ArrowLeft, Scan, SkipForward } from "lucide-react";
-import { FaceCapture } from "@/components/website/advisor/FaceCapture";
+import { FaceCapture, type FaceCaptureImages } from "@/components/website/advisor/FaceCapture";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations";
 
@@ -37,12 +37,14 @@ export function FaceScanContent() {
   }, [router, trackFaceScanStart]);
 
   /**
-   * 处理照片捕获
+   * 处理照片捕获 - 接收三张照片
    */
   const handleCapture = useCallback(
-    (imageData: string) => {
-      // 保存照片数据到 sessionStorage
-      sessionStorage.setItem("advisorFaceImage", imageData);
+    (images: FaceCaptureImages) => {
+      // 保存所有三张照片数据到 sessionStorage
+      sessionStorage.setItem("advisorFaceImages", JSON.stringify(images));
+      // 同时保留正脸照片作为主图（用于结果页显示）
+      sessionStorage.setItem("advisorFaceImage", images.front);
       // 追踪面部扫描完成
       trackFaceScanComplete();
       // 跳转到分析页面
@@ -57,6 +59,7 @@ export function FaceScanContent() {
   const handleSkip = useCallback(() => {
     // 清除可能存在的旧照片数据
     sessionStorage.removeItem("advisorFaceImage");
+    sessionStorage.removeItem("advisorFaceImages");
     // 追踪跳过面部扫描
     trackFaceScanSkip();
     // 直接跳转到分析页面

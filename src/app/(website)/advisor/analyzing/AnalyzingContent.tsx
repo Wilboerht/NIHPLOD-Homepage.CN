@@ -55,22 +55,43 @@ export function AnalyzingContent() {
 
       const answers = JSON.parse(answersStr);
 
-      // 获取面部图片（可选）
+      // 获取面部图片（可选）- 优先使用三张照片，降级到单张
+      const faceImagesStr = sessionStorage.getItem("advisorFaceImages");
       const faceImage = sessionStorage.getItem("advisorFaceImage");
       let faceAnalysis = null;
 
       // 如果有面部图片，先预处理再分析
-      if (faceImage) {
+      if (faceImagesStr || faceImage) {
         try {
-          // 预处理图片
-          const processed = await preprocessFaceImage(faceImage);
+          let imagesToAnalyze: { front?: string; left?: string; right?: string } = {};
+
+          if (faceImagesStr) {
+            // 有三张照片，全部使用
+            const faceImages = JSON.parse(faceImagesStr);
+            // 预处理所有图片
+            const [frontProcessed, leftProcessed, rightProcessed] = await Promise.all([
+              preprocessFaceImage(faceImages.front),
+              preprocessFaceImage(faceImages.left),
+              preprocessFaceImage(faceImages.right),
+            ]);
+            imagesToAnalyze = {
+              front: frontProcessed.imageData,
+              left: leftProcessed.imageData,
+              right: rightProcessed.imageData,
+            };
+          } else if (faceImage) {
+            // 只有一张照片（降级模式）
+            const processed = await preprocessFaceImage(faceImage);
+            imagesToAnalyze = { front: processed.imageData };
+          }
+
           setProgress(20);
 
-          // 调用面部分析 API
+          // 调用面部分析 API - 发送所有照片
           const faceRes = await fetch("/api/advisor/face-analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image: processed.imageData }),
+            body: JSON.stringify({ images: imagesToAnalyze }),
           });
 
           if (faceRes.ok) {

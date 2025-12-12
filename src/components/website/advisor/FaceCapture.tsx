@@ -1,27 +1,47 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { m } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import {
-  Camera,
-  Upload,
   RefreshCw,
   Check,
-  X,
   Sun,
   SunDim,
   AlertCircle,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// 三张照片的数据结构
+export interface FaceCaptureImages {
+  front: string;
+  left: string;
+  right: string;
+}
+
 interface FaceCaptureProps {
-  onCapture: (imageData: string) => void;
+  onCapture: (images: FaceCaptureImages) => void;
   onSkip?: () => void;
 }
 
 type LightLevel = "good" | "low" | "unknown";
 type FaceStatus = "none" | "detecting" | "found" | "ready";
+
+// 拍照步骤类型
+type CaptureStep = "front" | "left" | "right";
+
+// 头部朝向类型
+type HeadPose = "front" | "left" | "right" | "unknown";
+
+// 步骤配置
+const CAPTURE_STEPS: { step: CaptureStep; label: string; instruction: string; icon: React.ReactNode }[] = [
+  { step: "front", label: "正脸", instruction: "请正对镜头", icon: <User className="h-6 w-6" /> },
+  { step: "left", label: "左转", instruction: "请向左转头", icon: <ChevronLeft className="h-6 w-6" /> },
+  { step: "right", label: "右转", instruction: "请向右转头", icon: <ChevronRight className="h-6 w-6" /> },
+];
 
 /**
  * 面部拍照/上传组件
@@ -38,21 +58,25 @@ type FaceStatus = "none" | "detecting" | "found" | "ready";
 export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const faceDetectionRef = useRef<number | null>(null);
   const stableCountRef = useRef<number>(0);
-  const countdownRef = useRef<number | null>(null);
 
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedImages, setCapturedImages] = useState<Record<CaptureStep, string | null>>({
+    front: null,
+    left: null,
+    right: null,
+  });
+  const [currentStep, setCurrentStep] = useState<CaptureStep>("front");
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [lightLevel, setLightLevel] = useState<LightLevel>("unknown");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [faceStatus, setFaceStatus] = useState<FaceStatus>("none");
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceApiLoaded, setFaceApiLoaded] = useState(false);
+  const [currentHeadPose, setCurrentHeadPose] = useState<HeadPose>("unknown");
+  const [isAllCaptured, setIsAllCaptured] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const faceApiRef = useRef<any>(null);
 
@@ -149,12 +173,15 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
       const faceapi = await import("@vladmandic/face-api");
       faceApiRef.current = faceapi;
 
-      // 从本地加载 TinyFaceDetector 模型
-      await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+      // 从本地加载 TinyFaceDetector 和 faceLandmark68Net 模型
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
+        faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+      ]);
 
       setModelsLoaded(true);
       setFaceApiLoaded(true);
-      console.log("Face detection models loaded");
+      console.log("Face detection models loaded (including landmarks)");
     } catch (err) {
       console.error("Failed to load face detection:", err);
       // 加载失败时，使用手动模式
@@ -163,10 +190,62 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
   }, [faceApiLoaded]);
 
   /**
-   * 检测面部
+   * 根据面部关键点计算头部朝向
+   * 使用鼻尖和眼睛位置来判断头部方向
+   */
+  const calculateHeadPose = useCallback((landmarks: { positions: { x: number; y: number }[] }): HeadPose => {
+    const positions = landmarks.positions;
+
+    // 68点面部关键点索引:
+    // 左眼外角: 36, 左眼内角: 39
+    // 右眼外角: 45, 右眼内角: 42
+    // 鼻尖: 30
+    // 面部左边缘: 0, 面部右边缘: 16
+
+    const leftEyeOuter = positions[36];
+    const rightEyeOuter = positions[45];
+    const noseTip = positions[30];
+    const faceLeft = positions[0];
+    const faceRight = positions[16];
+
+    // 计算眼睛中心
+    const eyesCenterX = (leftEyeOuter.x + rightEyeOuter.x) / 2;
+
+    // 计算面部宽度
+    const faceWidth = faceRight.x - faceLeft.x;
+
+    // 计算鼻尖相对于眼睛中心的水平偏移比例
+    const noseOffsetRatio = (noseTip.x - eyesCenterX) / faceWidth;
+
+    // 计算左右眼到面部边缘的距离比例
+    const leftEyeToEdge = leftEyeOuter.x - faceLeft.x;
+    const rightEyeToEdge = faceRight.x - rightEyeOuter.x;
+    const eyeEdgeRatio = leftEyeToEdge / rightEyeToEdge;
+
+    // 判断头部朝向
+    // 正脸: 鼻尖在眼睛中心附近，左右对称
+    // 左转: 鼻尖偏向右侧（从摄像头看），右眼到边缘距离更小
+    // 右转: 鼻尖偏向左侧（从摄像头看），左眼到边缘距离更小
+
+    // 对于前置摄像头，图像是镜像的，需要反转判断
+    if (Math.abs(noseOffsetRatio) < 0.08 && eyeEdgeRatio > 0.6 && eyeEdgeRatio < 1.5) {
+      return "front";
+    } else if (noseOffsetRatio > 0.1 || eyeEdgeRatio > 1.8) {
+      // 镜像后：用户向左转时，鼻尖在摄像头画面中偏右
+      return "left";
+    } else if (noseOffsetRatio < -0.1 || eyeEdgeRatio < 0.55) {
+      // 镜像后：用户向右转时，鼻尖在摄像头画面中偏左
+      return "right";
+    }
+
+    return "unknown";
+  }, []);
+
+  /**
+   * 检测面部和头部朝向
    */
   const detectFace = useCallback(async () => {
-    if (!videoRef.current || !faceApiRef.current || !modelsLoaded || capturedImage) {
+    if (!videoRef.current || !faceApiRef.current || !modelsLoaded || isAllCaptured) {
       return;
     }
 
@@ -174,14 +253,13 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
     const video = videoRef.current;
 
     try {
-      const detection = await faceapi.detectSingleFace(
-        video,
-        new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
-      );
+      // 使用 withFaceLandmarks 获取面部关键点
+      const detection = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+        .withFaceLandmarks();
 
       if (detection) {
-        // 检查面部是否在中心区域且大小合适
-        const { box } = detection;
+        const { box } = detection.detection;
         const videoWidth = video.videoWidth;
         const videoHeight = video.videoHeight;
 
@@ -193,24 +271,32 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
         const videoCenterX = videoWidth / 2;
         const videoCenterY = videoHeight / 2;
 
-        // 检查面部是否在中心区域（允许20%的偏移）
+        // 检查面部是否在中心区域（允许25%的偏移）
         const offsetX = Math.abs(faceCenterX - videoCenterX) / videoWidth;
         const offsetY = Math.abs(faceCenterY - videoCenterY) / videoHeight;
 
-        // 检查面部大小是否合适（占视频高度的20%-60%）
+        // 检查面部大小是否合适
         const faceRatio = box.height / videoHeight;
 
-        const isCentered = offsetX < 0.2 && offsetY < 0.2;
+        const isCentered = offsetX < 0.25 && offsetY < 0.25;
         const isSizeOk = faceRatio > 0.15 && faceRatio < 0.7;
 
-        if (isCentered && isSizeOk) {
+        // 计算头部朝向
+        const headPose = calculateHeadPose(detection.landmarks);
+        setCurrentHeadPose(headPose);
+
+        // 检查当前头部朝向是否匹配当前步骤
+        const isPoseCorrect = headPose === currentStep;
+
+        if (isCentered && isSizeOk && isPoseCorrect) {
           stableCountRef.current += 1;
           setFaceStatus("found");
 
-          // 面部稳定检测 1.5 秒后开始倒计时
-          if (stableCountRef.current >= 5) {
+          // 稳定检测约0.6秒后立即拍照（2次检测，每次300ms）
+          if (stableCountRef.current >= 2) {
             setFaceStatus("ready");
-            startCountdown();
+            // 立即拍照
+            takePhotoAuto();
           }
         } else {
           stableCountRef.current = 0;
@@ -218,39 +304,29 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
         }
       } else {
         stableCountRef.current = 0;
+        setCurrentHeadPose("unknown");
         setFaceStatus("detecting");
       }
     } catch (err) {
       console.error("Face detection error:", err);
     }
-  }, [modelsLoaded, capturedImage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelsLoaded, isAllCaptured, calculateHeadPose, currentStep]);
 
   /**
-   * 开始倒计时
+   * 获取下一步骤
    */
-  const startCountdown = useCallback(() => {
-    if (countdownRef.current !== null) return;
-
-    setCountdown(3);
-
-    let count = 3;
-    countdownRef.current = window.setInterval(() => {
-      count -= 1;
-      setCountdown(count);
-
-      if (count === 0) {
-        if (countdownRef.current) {
-          clearInterval(countdownRef.current);
-          countdownRef.current = null;
-        }
-        // 自动拍照
-        takePhotoAuto();
-      }
-    }, 1000);
+  const getNextStep = useCallback((current: CaptureStep): CaptureStep | null => {
+    const stepOrder: CaptureStep[] = ["front", "left", "right"];
+    const currentIndex = stepOrder.indexOf(current);
+    if (currentIndex < stepOrder.length - 1) {
+      return stepOrder[currentIndex + 1];
+    }
+    return null;
   }, []);
 
   /**
-   * 自动拍照
+   * 自动拍照并进入下一步
    */
   const takePhotoAuto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -273,15 +349,48 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
     ctx.drawImage(video, 0, 0);
 
     const imageData = canvas.toDataURL("image/jpeg", 0.9);
-    setCapturedImage(imageData);
-    setCountdown(null);
 
-    // 停止面部检测
-    if (faceDetectionRef.current) {
-      cancelAnimationFrame(faceDetectionRef.current);
-      faceDetectionRef.current = null;
+    // 保存当前步骤的照片
+    setCapturedImages(prev => ({
+      ...prev,
+      [currentStep]: imageData,
+    }));
+
+    stableCountRef.current = 0;
+
+    // 检查是否还有下一步
+    const nextStep = getNextStep(currentStep);
+
+    if (nextStep) {
+      // 进入下一步
+      setCurrentStep(nextStep);
+      setFaceStatus("none");
+      setCurrentHeadPose("unknown");
+    } else {
+      // 所有步骤完成 - 直接调用 onCapture 并传递所有照片
+      setIsAllCaptured(true);
+
+      // 停止面部检测
+      if (faceDetectionRef.current) {
+        cancelAnimationFrame(faceDetectionRef.current);
+        faceDetectionRef.current = null;
+      }
+
+      // 停止摄像头
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        setStream(null);
+      }
+
+      // 直接调用 onCapture，传递所有三张照片
+      const allImages: FaceCaptureImages = {
+        front: currentStep === "front" ? imageData : capturedImages.front!,
+        left: currentStep === "left" ? imageData : capturedImages.left!,
+        right: imageData, // 最后一步一定是 right
+      };
+      onCapture(allImages);
     }
-  }, [facingMode]);
+  }, [facingMode, currentStep, getNextStep, stream, capturedImages, onCapture]);
 
   /**
    * 分析光线条件
@@ -325,96 +434,6 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
   }, []);
 
   /**
-   * 拍照
-   */
-  const takePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // 前置摄像头需要镜像
-    if (facingMode === "user") {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-    }
-
-    ctx.drawImage(video, 0, 0);
-
-    const imageData = canvas.toDataURL("image/jpeg", 0.9);
-    setCapturedImage(imageData);
-  }, [facingMode]);
-
-  /**
-   * 确认使用照片
-   */
-  const confirmPhoto = useCallback(() => {
-    if (capturedImage) {
-      onCapture(capturedImage);
-    }
-  }, [capturedImage, onCapture]);
-
-  /**
-   * 重新拍照
-   */
-  const retakePhoto = useCallback(() => {
-    setCapturedImage(null);
-    setFaceStatus("none");
-    stableCountRef.current = 0;
-    setCountdown(null);
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
-  }, []);
-
-  /**
-   * 上传图片
-   */
-  const handleUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      // 验证文件类型
-      if (!file.type.startsWith("image/")) {
-        setError("请选择图片文件");
-        return;
-      }
-
-      // 验证文件大小 (最大 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        setError("图片大小不能超过 10MB");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const imageData = reader.result as string;
-        setCapturedImage(imageData);
-      };
-      reader.onerror = () => {
-        setError("读取图片失败，请重试");
-      };
-      reader.readAsDataURL(file);
-    },
-    []
-  );
-
-  /**
-   * 触发文件选择
-   */
-  const triggerUpload = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  /**
    * 切换前后摄像头
    */
   const toggleCamera = useCallback(() => {
@@ -440,7 +459,7 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
 
   // 面部检测循环
   useEffect(() => {
-    if (!stream || !modelsLoaded || capturedImage || isLoading) return;
+    if (!stream || !modelsLoaded || isAllCaptured || isLoading) return;
 
     let animationId: number;
     let lastDetectionTime = 0;
@@ -461,20 +480,16 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
       if (animationId) {
         cancelAnimationFrame(animationId);
       }
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-        countdownRef.current = null;
-      }
     };
-  }, [stream, modelsLoaded, capturedImage, isLoading, detectFace]);
+  }, [stream, modelsLoaded, isAllCaptured, isLoading, detectFace]);
 
   // 定时检测光线
   useEffect(() => {
-    if (!stream || capturedImage) return;
+    if (!stream || isAllCaptured) return;
 
     const interval = setInterval(analyzeLightLevel, 1000);
     return () => clearInterval(interval);
-  }, [stream, capturedImage, analyzeLightLevel]);
+  }, [stream, isAllCaptured, analyzeLightLevel]);
 
   /**
    * 渲染光线提示
@@ -514,25 +529,93 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
     );
   };
 
+  // 获取当前步骤配置
+  const currentStepConfig = CAPTURE_STEPS.find(s => s.step === currentStep)!;
+  const currentStepIndex = CAPTURE_STEPS.findIndex(s => s.step === currentStep);
+
+  // 获取动作提示文字
+  const getActionHint = () => {
+    if (!modelsLoaded) return "正在加载面部识别...";
+    if (faceStatus === "none") return "请将面部置于框内";
+
+    const isPoseCorrect = currentHeadPose === currentStep;
+
+    if (faceStatus === "detecting") {
+      if (currentHeadPose === "unknown") {
+        return currentStepConfig.instruction;
+      }
+      if (!isPoseCorrect) {
+        return currentStepConfig.instruction;
+      }
+      return "请将面部居中";
+    }
+
+    if (faceStatus === "found") {
+      return "检测到正确姿势，请保持不动";
+    }
+
+    if (faceStatus === "ready") {
+      return "拍照中...";
+    }
+
+    return currentStepConfig.instruction;
+  };
+
   return (
     <div className="flex h-full flex-col items-center">
-      {/* 隐藏的 Canvas 和文件输入 */}
+      {/* 隐藏的 Canvas */}
       <canvas ref={canvasRef} className="hidden" />
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleUpload}
-        className="hidden"
-      />
+
+      {/* 步骤进度指示器 */}
+      <div className="mb-3 flex w-full max-w-sm items-center justify-center gap-2">
+        {CAPTURE_STEPS.map((step, index) => {
+          const isCompleted = capturedImages[step.step] !== null;
+          const isCurrent = step.step === currentStep && !isAllCaptured;
+
+          return (
+            <div key={step.step} className="flex items-center gap-2">
+              <div className="flex flex-col items-center">
+                <div
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300",
+                    isCompleted
+                      ? "border-green-500 bg-green-500 text-white"
+                      : isCurrent
+                      ? "border-brand-gold bg-brand-gold/10 text-brand-gold"
+                      : "border-gray-300 bg-gray-100 text-gray-400"
+                  )}
+                >
+                  {isCompleted ? (
+                    <Check className="h-5 w-5" />
+                  ) : (
+                    step.icon
+                  )}
+                </div>
+                <span className={cn(
+                  "mt-1 text-xs",
+                  isCurrent ? "font-medium text-brand-gold" : "text-gray-500"
+                )}>
+                  {step.label}
+                </span>
+              </div>
+              {index < CAPTURE_STEPS.length - 1 && (
+                <div className={cn(
+                  "mb-4 h-0.5 w-8 transition-colors duration-300",
+                  capturedImages[step.step] ? "bg-green-500" : "bg-gray-200"
+                )} />
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {/* 预览区域 */}
       <div className="relative mb-3 aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl bg-brand-charcoal/5">
-        {/* 摄像头预览或拍摄的照片 */}
-        {capturedImage ? (
+        {/* 显示完成后的照片预览 */}
+        {isAllCaptured && capturedImages.front ? (
           <m.img
-            src={capturedImage}
-            alt="拍摄的照片"
+            src={capturedImages.front}
+            alt="正脸照片"
             className="h-full w-full object-cover"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -547,7 +630,7 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
               muted
               className={cn(
                 "h-full w-full object-cover",
-                facingMode === "user" && "-scale-x-100" // 前置摄像头镜像
+                facingMode === "user" && "-scale-x-100"
               )}
             />
 
@@ -555,7 +638,7 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
             {!isLoading && !error && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="relative h-[70%] w-[65%]">
-                  {/* 椭圆形边框 - 根据检测状态变色 */}
+                  {/* 椭圆形边框 */}
                   <div
                     className={cn(
                       "absolute inset-0 rounded-[50%] border-2 transition-colors duration-300",
@@ -566,6 +649,36 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
                         : "border-solid border-green-400"
                     )}
                   />
+
+                  {/* 方向指示箭头 */}
+                  <AnimatePresence mode="wait">
+                    {currentStep !== "front" && faceStatus !== "ready" && (
+                      <m.div
+                        key={currentStep}
+                        initial={{ opacity: 0, x: currentStep === "left" ? 20 : -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        className={cn(
+                          "absolute top-1/2 -translate-y-1/2",
+                          currentStep === "left" ? "-left-12" : "-right-12"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-full",
+                          currentHeadPose === currentStep
+                            ? "bg-green-500 text-white"
+                            : "bg-brand-gold/80 text-white animate-pulse"
+                        )}>
+                          {currentStep === "left" ? (
+                            <ChevronLeft className="h-6 w-6" />
+                          ) : (
+                            <ChevronRight className="h-6 w-6" />
+                          )}
+                        </div>
+                      </m.div>
+                    )}
+                  </AnimatePresence>
+
                   {/* 四角标记 */}
                   <div className={cn(
                     "absolute -left-1 -top-1 h-4 w-4 border-l-2 border-t-2 transition-colors duration-300",
@@ -584,20 +697,6 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
                     faceStatus === "ready" ? "border-green-400" : "border-white"
                   )} />
 
-                  {/* 倒计时显示 */}
-                  {countdown !== null && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <m.div
-                        key={countdown}
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 1.5, opacity: 0 }}
-                        className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-gold/90 text-4xl font-bold text-white shadow-lg"
-                      >
-                        {countdown}
-                      </m.div>
-                    </div>
-                  )}
                 </div>
 
                 {/* 状态提示文字 */}
@@ -607,13 +706,30 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
                       <Loader2 className="h-3 w-3 animate-spin" />
                       <span>正在加载面部识别...</span>
                     </div>
-                  ) : faceStatus === "none" || faceStatus === "detecting" ? (
-                    <p className="text-sm text-white/80">请将面部置于框内</p>
-                  ) : faceStatus === "found" ? (
-                    <p className="text-sm text-yellow-300">检测到面部，请保持不动</p>
-                  ) : countdown !== null ? (
-                    <p className="text-sm text-green-300">即将自动拍照...</p>
-                  ) : null}
+                  ) : (
+                    <m.div
+                      key={getActionHint()}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={cn(
+                        "rounded-full px-4 py-2 text-sm",
+                        faceStatus === "ready"
+                          ? "bg-green-500/80 text-white"
+                          : faceStatus === "found"
+                          ? "bg-yellow-500/80 text-white"
+                          : "bg-black/50 text-white"
+                      )}
+                    >
+                      {getActionHint()}
+                    </m.div>
+                  )}
+                </div>
+
+                {/* 当前步骤提示 */}
+                <div className="absolute left-4 top-4">
+                  <div className="rounded-full bg-black/50 px-3 py-1 text-xs text-white">
+                    步骤 {currentStepIndex + 1}/3: {currentStepConfig.label}
+                  </div>
                 </div>
               </div>
             )}
@@ -636,7 +752,7 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
         )}
 
         {/* 切换摄像头按钮 */}
-        {!capturedImage && !error && !isLoading && (
+        {!isAllCaptured && !error && !isLoading && (
           <button
             onClick={toggleCamera}
             className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50"
@@ -648,56 +764,23 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
       </div>
 
       {/* 光线提示 */}
-      {!capturedImage && !error && !isLoading && (
+      {!isAllCaptured && !error && !isLoading && (
         <div className="mb-2">{renderLightIndicator()}</div>
       )}
 
-      {/* 操作按钮 */}
-      <div className="flex w-full max-w-sm shrink-0 gap-2">
-        {capturedImage ? (
-          <>
-            {/* 重拍按钮 */}
-            <button
-              onClick={retakePhoto}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-brand-beige bg-white py-2.5 text-sm text-brand-charcoal transition-colors hover:bg-brand-cream"
-            >
-              <X className="h-4 w-4" />
-              重新拍摄
-            </button>
-            {/* 确认按钮 */}
-            <button
-              onClick={confirmPhoto}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-gold py-2.5 text-sm text-white shadow-lg transition-colors hover:bg-brand-gold/90"
-            >
-              <Check className="h-4 w-4" />
-              使用此照片
-            </button>
-          </>
-        ) : (
-          <>
-            {/* 拍照按钮 */}
-            <button
-              onClick={takePhoto}
-              disabled={isLoading || !!error}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-gold py-2.5 text-sm text-white shadow-lg transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Camera className="h-4 w-4" />
-              拍照
-            </button>
-            {/* 上传按钮 */}
-            <button
-              onClick={triggerUpload}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-brand-beige bg-white py-2.5 text-sm text-brand-charcoal transition-colors hover:bg-brand-cream"
-            >
-              <Upload className="h-4 w-4" />
-              上传照片
-            </button>
-          </>
-        )}
-      </div>
+      {/* 拍照提示 */}
+      {!isAllCaptured && !error && !isLoading && (
+        <div className="flex w-full max-w-sm shrink-0 gap-2">
+          <div className="flex w-full flex-col items-center gap-2">
+            <p className="text-center text-xs text-brand-charcoal/60">
+              请按照提示完成三个动作，系统将自动拍照
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 跳过按钮 */}
-      {onSkip && !capturedImage && (
+      {onSkip && !isAllCaptured && (
         <button
           onClick={onSkip}
           className="mt-4 text-sm text-brand-charcoal/50 transition-colors hover:text-brand-charcoal/70"

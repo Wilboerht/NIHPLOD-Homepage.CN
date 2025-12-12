@@ -16,15 +16,33 @@ import {
 export type { FaceAnalysisResult };
 
 /**
- * 面部分析请求 Schema
+ * 面部分析请求 Schema - 支持多张照片
  */
 const FaceAnalyzeSchema = z.object({
-  image: z.string().min(1, "请提供图片"),
-});
+  // 新格式：多张照片
+  images: z.object({
+    front: z.string().optional(),
+    left: z.string().optional(),
+    right: z.string().optional(),
+  }).optional(),
+  // 兼容旧格式：单张照片
+  image: z.string().optional(),
+}).refine(
+  (data) => data.images?.front || data.image,
+  { message: "请提供至少一张照片" }
+);
 
 // ============================================================================
 // 公共工具函数
 // ============================================================================
+
+/**
+ * 图片信息类型（用于 API 配置）
+ */
+interface ImageInfoForConfig {
+  angle: string;
+  data: string;
+}
 
 /**
  * Vision API 配置
@@ -35,7 +53,7 @@ interface VisionAPIConfig {
   apiKey: string;
   baseUrl: string;
   headers: Record<string, string>;
-  buildRequestBody: (imageBase64: string, model: string) => object;
+  buildRequestBody: (images: ImageInfoForConfig[], model: string) => object;
   extractContent: (data: unknown) => string | null;
 }
 
@@ -103,11 +121,11 @@ function extractJsonFromResponse(content: string): FaceAnalysisResult {
 }
 
 /**
- * 通用 Vision API 调用函数
+ * 通用 Vision API 调用函数 - 支持多张照片
  */
 async function callVisionAPI(
   config: VisionAPIConfig,
-  imageBase64: string
+  images: ImageInfoForConfig[]
 ): Promise<FaceAnalysisResult> {
   const startTime = Date.now();
   let lastError: Error | null = null;
@@ -125,7 +143,7 @@ async function callVisionAPI(
       const response = await fetch(config.baseUrl, {
         method: "POST",
         headers: config.headers,
-        body: JSON.stringify(config.buildRequestBody(imageBase64, config.model)),
+        body: JSON.stringify(config.buildRequestBody(images, config.model)),
       });
 
       if (!response.ok) {
@@ -234,10 +252,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { image } = result.data;
+    const { images, image } = result.data;
 
-    // 验证图片格式
-    if (!image.startsWith("data:image/")) {
+    // 收集所有有效的照片
+    const validImages: { angle: string; data: string }[] = [];
+
+    if (images) {
+      // 新格式：多张照片
+      if (images.front && images.front.startsWith("data:image/")) {
+        validImages.push({ angle: "正脸", data: images.front });
+      }
+      if (images.left && images.left.startsWith("data:image/")) {
+        validImages.push({ angle: "左侧", data: images.left });
+      }
+      if (images.right && images.right.startsWith("data:image/")) {
+        validImages.push({ angle: "右侧", data: images.right });
+      }
+    } else if (image && image.startsWith("data:image/")) {
+      // 兼容旧格式：单张照片
+      validImages.push({ angle: "正脸", data: image });
+    }
+
+    if (validImages.length === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -250,8 +286,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 调用 AI 视觉模型分析
-    const analysis = await analyzeFaceWithAI(image);
+    console.log(`[Face Analyze] Processing ${validImages.length} images: ${validImages.map(i => i.angle).join(", ")}`);
+
+    // 调用 AI 视觉模型分析（传入所有照片）
+    const analysis = await analyzeFaceWithAI(validImages);
 
     // 调试日志：打印 AI 返回的原始数据
     console.log("[Face Analyze] AI Analysis Result:", JSON.stringify({
@@ -259,6 +297,7 @@ export async function POST(request: NextRequest) {
       skinAge: analysis.skinAge,
       hydration: analysis.hydration,
       skinConditionsCount: analysis.skinConditions?.length || 0,
+      imagesAnalyzed: validImages.length,
     }, null, 2));
 
     return NextResponse.json({
@@ -299,9 +338,17 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * 使用 AI 视觉模型分析面部
+ * 图片信息类型
  */
-async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResult> {
+interface ImageInfo {
+  angle: string;
+  data: string;
+}
+
+/**
+ * 使用 AI 视觉模型分析面部 - 支持多张照片
+ */
+async function analyzeFaceWithAI(images: ImageInfo[]): Promise<FaceAnalysisResult> {
   // 从数据库获取设置（优先）+ 环境变量（降级）
   const settings = await getAISettings();
   const provider = settings.visionProvider;
@@ -312,6 +359,7 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
 
   // 调试：打印提示词来源
   console.log("[Face Analyze] Prompt source:", customPrompt ? "DATABASE (custom)" : "CODE (default VISION_ANALYSIS_SYSTEM_PROMPT)");
+  console.log("[Face Analyze] Images count:", images.length);
   if (customPrompt) {
     console.log("[Face Analyze] Custom prompt length:", customPrompt.length);
   }
@@ -322,15 +370,20 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
     return getFallbackAnalysis();
   }
 
-  aiLogger.info("Starting face analysis", { provider, model, hasCustomPrompt: !!customPrompt });
+  aiLogger.info("Starting face analysis", {
+    provider,
+    model,
+    hasCustomPrompt: !!customPrompt,
+    imageCount: images.length,
+  });
 
   try {
     if (provider === "openai") {
-      return await analyzeWithGPT4V(imageBase64, model, customPrompt);
+      return await analyzeWithGPT4V(images, model, customPrompt);
     } else if (provider === "anthropic") {
-      return await analyzeWithClaudeVision(imageBase64, model, customPrompt);
+      return await analyzeWithClaudeVision(images, model, customPrompt);
     } else if (provider === "qwen") {
-      return await analyzeWithQwenVL(imageBase64, model, customPrompt);
+      return await analyzeWithQwenVL(images, model, customPrompt);
     }
   } catch (error) {
     aiLogger.error("AI vision analysis failed, using fallback", {
@@ -343,7 +396,7 @@ async function analyzeFaceWithAI(imageBase64: string): Promise<FaceAnalysisResul
   }
 
   // 默认使用 OpenAI（也传递自定义提示词）
-  return analyzeWithGPT4V(imageBase64, model, customPrompt);
+  return analyzeWithGPT4V(images, model, customPrompt);
 }
 
 // ============================================================================
@@ -371,21 +424,34 @@ function createOpenAIConfig(apiKey: string, model: string, customSystemPrompt?: 
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    buildRequestBody: (imageBase64: string, useModel: string) => ({
-      model: useModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: VISION_ANALYSIS_USER_PROMPT },
-            { type: "image_url", image_url: { url: imageBase64, detail: "high" } },
-          ],
-        },
-      ],
-      max_tokens: 1500,
-      temperature: 0.3,
-    }),
+    buildRequestBody: (images: ImageInfoForConfig[], useModel: string) => {
+      // 构建包含所有图片的内容数组
+      const imageContents = images.map((img) => ({
+        type: "image_url" as const,
+        image_url: { url: img.data, detail: "high" as const },
+      }));
+
+      // 构建用户提示词，说明每张图片的角度
+      const imageDescription = images.length > 1
+        ? `\n\n我提供了${images.length}张照片，分别是：${images.map(img => img.angle).join("、")}。请综合分析所有照片。`
+        : "";
+
+      return {
+        model: useModel,
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: VISION_ANALYSIS_USER_PROMPT + imageDescription },
+              ...imageContents,
+            ],
+          },
+        ],
+        max_tokens: 1500,
+        temperature: 0.3,
+      };
+    },
     extractContent: (data: unknown) => {
       const d = data as { choices?: { message?: { content?: string } }[] };
       return d.choices?.[0]?.message?.content || null;
@@ -397,15 +463,8 @@ function createOpenAIConfig(apiKey: string, model: string, customSystemPrompt?: 
  * 创建 Anthropic Vision API 配置
  * @param customSystemPrompt 自定义系统提示词，如果未提供则使用默认值
  */
-function createAnthropicConfig(apiKey: string, model: string, imageBase64: string, customSystemPrompt?: string): VisionAPIConfig {
+function createAnthropicConfig(apiKey: string, model: string, customSystemPrompt?: string): VisionAPIConfig {
   const systemPrompt = customSystemPrompt || VISION_ANALYSIS_SYSTEM_PROMPT;
-
-  // 提取 base64 数据和媒体类型
-  const matches = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
-  if (!matches) {
-    throw new Error("AI: Invalid image format");
-  }
-  const [, mediaType, base64Data] = matches;
 
   // 支持通过环境变量配置自定义端点（如代理服务器）
   const baseUrl = process.env.ANTHROPIC_API_URL || "https://api.anthropic.com/v1/messages";
@@ -420,22 +479,39 @@ function createAnthropicConfig(apiKey: string, model: string, imageBase64: strin
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
     },
-    buildRequestBody: (_: string, useModel: string) => ({
-      model: useModel,
-      max_tokens: 1500,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: { type: "base64", media_type: mediaType, data: base64Data },
-            },
-            { type: "text", text: systemPrompt + "\n\n" + VISION_ANALYSIS_USER_PROMPT },
-          ],
-        },
-      ],
-    }),
+    buildRequestBody: (images: ImageInfoForConfig[], useModel: string) => {
+      // 构建所有图片的内容
+      const imageContents = images.map((img) => {
+        const matches = img.data.match(/^data:([^;]+);base64,(.+)$/);
+        if (!matches) {
+          throw new Error("AI: Invalid image format");
+        }
+        const [, mediaType, base64Data] = matches;
+        return {
+          type: "image" as const,
+          source: { type: "base64" as const, media_type: mediaType, data: base64Data },
+        };
+      });
+
+      // 构建用户提示词
+      const imageDescription = images.length > 1
+        ? `\n\n我提供了${images.length}张照片，分别是：${images.map(img => img.angle).join("、")}。请综合分析所有照片。`
+        : "";
+
+      return {
+        model: useModel,
+        max_tokens: 1500,
+        messages: [
+          {
+            role: "user",
+            content: [
+              ...imageContents,
+              { type: "text", text: systemPrompt + "\n\n" + VISION_ANALYSIS_USER_PROMPT + imageDescription },
+            ],
+          },
+        ],
+      };
+    },
     extractContent: (data: unknown) => {
       const d = data as { content?: { text?: string }[] };
       return d.content?.[0]?.text || null;
@@ -460,21 +536,34 @@ function createQwenConfig(apiKey: string, model: string, customSystemPrompt?: st
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    buildRequestBody: (imageBase64: string, useModel: string) => ({
-      model: useModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: VISION_ANALYSIS_USER_PROMPT },
-            { type: "image_url", image_url: { url: imageBase64 } },
-          ],
-        },
-      ],
-      max_tokens: 1500,
-      temperature: 0.3,
-    }),
+    buildRequestBody: (images: ImageInfoForConfig[], useModel: string) => {
+      // 构建所有图片的内容
+      const imageContents = images.map((img) => ({
+        type: "image_url" as const,
+        image_url: { url: img.data },
+      }));
+
+      // 构建用户提示词
+      const imageDescription = images.length > 1
+        ? `\n\n我提供了${images.length}张照片，分别是：${images.map(img => img.angle).join("、")}。请综合分析所有照片。`
+        : "";
+
+      return {
+        model: useModel,
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: VISION_ANALYSIS_USER_PROMPT + imageDescription },
+              ...imageContents,
+            ],
+          },
+        ],
+        max_tokens: 1500,
+        temperature: 0.3,
+      };
+    },
     extractContent: (data: unknown) => {
       const d = data as { choices?: { message?: { content?: string } }[] };
       return d.choices?.[0]?.message?.content || null;
@@ -488,47 +577,50 @@ function createQwenConfig(apiKey: string, model: string, customSystemPrompt?: st
 
 /**
  * 使用 GPT-4 Vision 分析
+ * @param images 多张照片信息
  * @param customSystemPrompt 自定义系统提示词
  */
-async function analyzeWithGPT4V(imageBase64: string, model?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
+async function analyzeWithGPT4V(images: ImageInfo[], model?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
   const apiKey = getApiKeyForProvider("openai");
   if (!apiKey) {
     throw new Error("AI: OpenAI API key not configured");
   }
 
   const config = createOpenAIConfig(apiKey, model || "gpt-4o", customSystemPrompt);
-  return callVisionAPI(config, imageBase64);
+  return callVisionAPI(config, images);
 }
 
 /**
  * 使用 Claude Vision 分析
+ * @param images 多张照片信息
  * @param customSystemPrompt 自定义系统提示词
  */
-async function analyzeWithClaudeVision(imageBase64: string, model?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
+async function analyzeWithClaudeVision(images: ImageInfo[], model?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
   const apiKey = getApiKeyForProvider("anthropic");
   if (!apiKey) {
     throw new Error("AI: Anthropic API key not configured");
   }
 
-  const config = createAnthropicConfig(apiKey, model || "claude-sonnet-4-20250514", imageBase64, customSystemPrompt);
-  return callVisionAPI(config, imageBase64);
+  const config = createAnthropicConfig(apiKey, model || "claude-sonnet-4-20250514", customSystemPrompt);
+  return callVisionAPI(config, images);
 }
 
 /**
  * 使用通义千问 VL 分析
+ * @param images 多张照片信息
  * @param customSystemPrompt 自定义系统提示词
  */
-async function analyzeWithQwenVL(imageBase64: string, modelOverride?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
+async function analyzeWithQwenVL(images: ImageInfo[], modelOverride?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
   const apiKey = getApiKeyForProvider("qwen");
   if (!apiKey) {
     throw new Error("AI: 通义千问 API key not configured");
   }
 
   const model = modelOverride || process.env.QWEN_VL_MODEL || "qwen-vl-max";
-  aiLogger.info("Calling Qwen VL API", { model });
+  aiLogger.info("Calling Qwen VL API", { model, imageCount: images.length });
 
   const config = createQwenConfig(apiKey, model, customSystemPrompt);
-  return callVisionAPI(config, imageBase64);
+  return callVisionAPI(config, images);
 }
 
 /**
