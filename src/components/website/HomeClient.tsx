@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { Sparkles, Package, ChevronRight, Star, Heart, Sparkle, Circle, Diamond } from "lucide-react";
+import { Sparkles, Star, Heart, Sparkle, Diamond } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 
 /**

@@ -67,7 +67,7 @@ async function updateRitualContent() {
 
     const result = await prisma.page.update({
       where: { slug: "ritual" },
-      data: { content: content },
+      data: { content: JSON.parse(JSON.stringify(content)) },
     });
 
     console.log("更新后内容:", JSON.stringify(result.content, null, 2));
