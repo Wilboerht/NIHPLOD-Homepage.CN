@@ -295,19 +295,20 @@ export default function HomeClient({ content }: HomeClientProps) {
           {/* 产品浏览 - 金色主按钮（带烟花效果） */}
           <ProductButton href={buttons.productsLink} text={buttons.productsText} />
 
-          {/* AI 顾问 - 深蓝按钮 */}
+          {/* AI 顾问 - 透明背景蓝色边框按钮 */}
           <Link href={buttons.advisorLink} className="group">
             <m.div
               className="relative"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <div className="relative overflow-hidden rounded-full bg-brand-blue px-8 py-3.5 shadow-sm transition-all duration-300 group-hover:shadow-md sm:px-10 sm:py-4">
-                {/* 光泽效果 */}
-                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+              <div
+                className="relative overflow-hidden rounded-full border bg-transparent px-8 py-3.5 transition-all duration-300 hover:bg-[#1d2d68]/5 sm:px-10 sm:py-4"
+                style={{ borderColor: '#1d2d68' }}
+              >
                 <div className="relative z-10 flex items-center justify-center gap-2.5">
-                  <Sparkles className="h-4 w-4 text-white/90 sm:h-5 sm:w-5" />
-                  <span className="text-sm font-medium tracking-wide text-white sm:text-base">
+                  <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#1d2d68' }} />
+                  <span className="text-sm font-medium tracking-wide sm:text-base" style={{ color: '#1d2d68' }}>
                     {buttons.advisorText}
                   </span>
                 </div>

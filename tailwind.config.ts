@@ -17,7 +17,7 @@ const config: Config = {
           charcoal: "#2C2C2C", // 深炭灰 - 主文字
           blush: "#F5E6E0", // 柔粉 - 辅助背景
           beige: "#E8E2D9", // 米色 - 分隔、边框
-          blue: "#1d2d68", // AI蓝 - AI护肤顾问专用（与Logo一致）
+          blue: "#7a9fd4", // AI蓝 - AI护肤顾问专用（淡蓝色调）
         },
       },
       fontFamily: {

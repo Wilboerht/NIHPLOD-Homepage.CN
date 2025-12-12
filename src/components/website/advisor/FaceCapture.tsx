@@ -292,10 +292,11 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
           stableCountRef.current += 1;
           setFaceStatus("found");
 
-          // 稳定检测约0.6秒后立即拍照（2次检测，每次300ms）
-          if (stableCountRef.current >= 2) {
+          // 稳定检测约1.2秒后拍照（4次检测，每次300ms）
+          // 确保用户有足够时间保持姿势，拍摄清晰
+          if (stableCountRef.current >= 4) {
             setFaceStatus("ready");
-            // 立即拍照
+            // 拍照
             takePhotoAuto();
           }
         } else {
