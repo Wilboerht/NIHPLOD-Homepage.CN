@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
@@ -205,6 +206,9 @@ export async function POST(request: NextRequest) {
         purchaseLinks: { orderBy: { order: "asc" } },
       },
     });
+
+    // 重新验证前台页面缓存
+    revalidatePath("/products");
 
     return NextResponse.json({
       success: true,

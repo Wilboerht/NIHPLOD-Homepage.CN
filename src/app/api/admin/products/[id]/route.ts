@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
@@ -261,6 +262,12 @@ export async function PUT(
       },
     });
 
+    // 重新验证前台页面缓存
+    revalidatePath("/products");
+    if (fullProduct?.slug) {
+      revalidatePath(`/products/${fullProduct.slug}`);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -310,6 +317,10 @@ export async function DELETE(
 
     // 删除产品（级联删除关联的图片）
     await prisma.product.delete({ where: { id } });
+
+    // 重新验证前台页面缓存
+    revalidatePath("/products");
+    revalidatePath(`/products/${existing.slug}`);
 
     return NextResponse.json({
       success: true,

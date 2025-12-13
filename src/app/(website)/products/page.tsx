@@ -3,8 +3,8 @@ import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { ProductsContent } from "./ProductsContent";
 
-// ISR: 产品列表页每小时重新验证一次
-export const revalidate = 3600; // 1小时
+// ISR: 产品列表页每60秒重新验证一次
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "产品系列",

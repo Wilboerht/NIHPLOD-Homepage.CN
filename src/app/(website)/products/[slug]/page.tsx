@@ -4,8 +4,8 @@ import prisma from "@/lib/prisma";
 import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
-// ISR: 产品详情页每小时重新验证一次
-export const revalidate = 3600; // 1小时
+// ISR: 产品详情页每60秒重新验证一次
+export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
