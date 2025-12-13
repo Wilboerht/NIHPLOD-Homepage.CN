@@ -34,7 +34,7 @@ export async function DELETE(
     }
 
     // 删除文件
-    const deleted = deleteUploadedFile(filePath);
+    const deleted = await deleteUploadedFile(filePath);
 
     if (!deleted && !imageRecord) {
       return NextResponse.json(

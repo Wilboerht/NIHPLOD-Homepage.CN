@@ -2,15 +2,26 @@ import sharp from "sharp";
 import { existsSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { randomUUID } from "crypto";
+import { uploadToStorage, deleteFromStorage, extractStoragePath } from "./supabase";
 
 // ============================================
 // 上传与图片优化配置
 // ============================================
 
+// 存储模式：supabase（云端）或 local（本地）
+// Vercel 等无服务器平台必须使用 supabase
+export const storageMode = (process.env.STORAGE_MODE || "supabase") as "supabase" | "local";
+
 // 上传配置
 export const uploadConfig = {
-  maxFileSize: 5 * 1024 * 1024, // 5MB
-  allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  maxFileSize: 10 * 1024 * 1024, // 10MB (支持 PDF)
+  allowedTypes: [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf", // 支持 PDF
+  ],
   uploadDir: "public/uploads",
   quality: 80, // WebP 质量
   maxWidth: 2000, // 最大宽度
@@ -97,9 +108,7 @@ export async function generateSizedImage(
   folder: string = "images"
 ): Promise<{ url: string; width: number; height: number }> {
   const config = imageSizes[size];
-  const uploadDir = ensureUploadDir(`${folder}/${size}`);
   const filename = generateFilename();
-  const filepath = join(uploadDir, filename);
 
   const image = sharp(buffer);
   const metadata = await image.metadata();
@@ -119,19 +128,33 @@ export async function generateSizedImage(
     width = Math.round(height * aspectRatio);
   }
 
-  await image
+  const processedBuffer = await image
     .resize(width, height, {
       fit: "inside",
       withoutEnlargement: true,
     })
     .webp({ quality: config.quality })
-    .toFile(filepath);
+    .toBuffer();
 
-  return {
-    url: `/uploads/${folder}/${size}/${filename}`,
-    width,
-    height,
-  };
+  let url: string;
+
+  if (storageMode === "supabase") {
+    // 上传到 Supabase Storage
+    const storagePath = `${folder}/${size}/${filename}`;
+    const result = await uploadToStorage(processedBuffer, storagePath, "image/webp");
+    if (result.error) {
+      throw result.error;
+    }
+    url = result.url;
+  } else {
+    // 本地存储
+    const uploadDir = ensureUploadDir(`${folder}/${size}`);
+    const filepath = join(uploadDir, filename);
+    await sharp(processedBuffer).toFile(filepath);
+    url = `/uploads/${folder}/${size}/${filename}`;
+  }
+
+  return { url, width, height };
 }
 
 /**
@@ -149,9 +172,7 @@ export async function processAndSaveImage(
 ): Promise<UploadResult> {
   const { generateThumbnail = true, generateBlur = true } = options;
 
-  const uploadDir = ensureUploadDir(folder);
   const filename = generateFilename();
-  const filepath = join(uploadDir, filename);
 
   // 使用 sharp 处理图片
   const image = sharp(buffer);
@@ -180,11 +201,23 @@ export async function processAndSaveImage(
     .webp({ quality: uploadConfig.quality })
     .toBuffer();
 
-  // 保存主图
-  await sharp(processedImage).toFile(filepath);
+  let url: string;
 
-  // 主图 URL
-  const url = `/uploads/${folder}/${filename}`;
+  if (storageMode === "supabase") {
+    // 上传到 Supabase Storage
+    const storagePath = `${folder}/${filename}`;
+    const result = await uploadToStorage(processedImage, storagePath, "image/webp");
+    if (result.error) {
+      throw result.error;
+    }
+    url = result.url;
+  } else {
+    // 本地存储
+    const uploadDir = ensureUploadDir(folder);
+    const filepath = join(uploadDir, filename);
+    await sharp(processedImage).toFile(filepath);
+    url = `/uploads/${folder}/${filename}`;
+  }
 
   // 生成模糊占位符
   let blurDataURL: string | undefined;
@@ -212,19 +245,68 @@ export async function processAndSaveImage(
   };
 }
 
-// 删除上传的文件
-export function deleteUploadedFile(url: string): boolean {
-  try {
-    // 从 URL 提取路径
-    const relativePath = url.replace(/^\//, "");
-    const filepath = join(process.cwd(), "public", relativePath);
+/**
+ * 上传文件（不做处理，适用于 PDF 等非图片文件）
+ */
+export async function uploadFile(
+  buffer: Buffer,
+  originalName: string,
+  mimeType: string,
+  folder: string = "files"
+): Promise<{ url: string; filename: string; size: number }> {
+  const ext = originalName.split(".").pop()?.toLowerCase() || "bin";
+  const timestamp = Date.now();
+  const uuid = randomUUID();
+  const filename = `${timestamp}-${uuid}.${ext}`;
 
-    if (existsSync(filepath)) {
-      unlinkSync(filepath);
-      return true;
+  let url: string;
+
+  if (storageMode === "supabase") {
+    // 上传到 Supabase Storage
+    const storagePath = `${folder}/${filename}`;
+    const result = await uploadToStorage(buffer, storagePath, mimeType);
+    if (result.error) {
+      throw result.error;
     }
+    url = result.url;
+  } else {
+    // 本地存储
+    const uploadDir = ensureUploadDir(folder);
+    const filepath = join(uploadDir, filename);
+    const fs = await import("fs/promises");
+    await fs.writeFile(filepath, buffer);
+    url = `/uploads/${folder}/${filename}`;
+  }
 
-    return false;
+  return {
+    url,
+    filename,
+    size: buffer.length,
+  };
+}
+
+// 删除上传的文件
+export async function deleteUploadedFile(url: string): Promise<boolean> {
+  try {
+    if (storageMode === "supabase") {
+      // 从 Supabase Storage 删除
+      const storagePath = extractStoragePath(url);
+      if (storagePath) {
+        const { error } = await deleteFromStorage([storagePath]);
+        return !error;
+      }
+      return false;
+    } else {
+      // 本地删除
+      const relativePath = url.replace(/^\//, "");
+      const filepath = join(process.cwd(), "public", relativePath);
+
+      if (existsSync(filepath)) {
+        unlinkSync(filepath);
+        return true;
+      }
+      return false;
+    }
   } catch (error) {
     console.error("删除文件失败:", error);
     return false;
@@ -240,6 +322,7 @@ export function getMimeType(filename: string): string {
     png: "image/png",
     gif: "image/gif",
     webp: "image/webp",
+    pdf: "application/pdf",
   };
   return mimeTypes[ext || ""] || "application/octet-stream";
 }

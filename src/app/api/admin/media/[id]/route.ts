@@ -137,7 +137,7 @@ export async function DELETE(
     }
 
     // 删除文件
-    deleteUploadedFile(media.url);
+    await deleteUploadedFile(media.url);
 
     // 删除数据库记录
     await prisma.media.delete({ where: { id } });

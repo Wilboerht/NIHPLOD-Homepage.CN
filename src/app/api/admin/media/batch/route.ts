@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
       // 删除文件
       for (const media of mediaList) {
-        deleteUploadedFile(media.url);
+        await deleteUploadedFile(media.url);
       }
 
       // 删除数据库记录
