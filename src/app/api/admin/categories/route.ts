@@ -12,7 +12,7 @@ const CategorySchema = z.object({
     .min(1, "URL别名不能为空")
     .max(50, "URL别名不能超过50个字符")
     .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
-  icon: z.string().max(5000, "图标代码不能超过5000个字符").optional().nullable(),
+  icon: z.string().max(10000, "图标代码不能超过10000个字符").optional().nullable(),
   order: z.number().int().min(0).default(0),
 });
 

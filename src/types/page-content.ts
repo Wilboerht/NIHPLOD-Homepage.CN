@@ -112,7 +112,7 @@ export interface RitualTabContent {
 }
 
 // 仪式标签页ID
-export type RitualTabId = "morning" | "evening" | "couple";
+export type RitualTabId = "morning" | "evening" | "couple" | "travel";
 
 // 护肤仪式页面内容
 export interface RitualPageContent {

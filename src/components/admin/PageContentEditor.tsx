@@ -1650,6 +1650,12 @@ export function RitualContentEditor({
       description: "与家人一起，享受护肤的温馨时光，在彼此的呵护中，感受爱与美的交融",
       steps: [],
     },
+    travel: {
+      title: "旅行护肤",
+      titleEn: "TRAVEL SKINCARE",
+      description: "旅途中的护肤方案，轻便高效，让肌肤在任何目的地都保持最佳状态",
+      steps: [],
+    },
   };
 
   const updateTab = (tabId: RitualTabId, tabContent: RitualTabContent) => {
@@ -1709,7 +1715,7 @@ export function RitualContentEditor({
         </div>
       </section>
 
-      {/* 三个标签页 */}
+      {/* 四个标签页 */}
       <section>
         <h3 className="mb-4 font-medium text-gray-900">仪式标签页</h3>
         <p className="mb-4 text-sm text-gray-500">
@@ -1733,6 +1739,12 @@ export function RitualContentEditor({
             tabLabel="家庭护肤"
             tabContent={tabs.couple}
             onChange={(tc) => updateTab("couple", tc)}
+          />
+          <RitualTabEditor
+            tabId="travel"
+            tabLabel="旅行护肤"
+            tabContent={tabs.travel}
+            onChange={(tc) => updateTab("travel", tc)}
           />
         </div>
       </section>

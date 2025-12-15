@@ -58,8 +58,18 @@ const HeartIcon = ({ className, isHovered }: { className?: string; isHovered?: b
   );
 };
 
+const TravelIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+  const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
+      {/* 飞机图标 - 旅行护肤 */}
+      <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z" fill={color} stroke={color} strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+};
+
 // 标签页配置
-type TabId = "morning" | "evening" | "couple";
+type TabId = "morning" | "evening" | "couple" | "travel";
 
 interface TabConfig {
   id: TabId;
@@ -71,6 +81,7 @@ const tabs: TabConfig[] = [
   { id: "morning", label: "晨间仪式", icon: SunIcon },
   { id: "evening", label: "晚间仪式", icon: MoonIcon },
   { id: "couple", label: "家庭护肤", icon: HeartIcon },
+  { id: "travel", label: "旅行护肤", icon: TravelIcon },
 ];
 
 // Tab 按钮组件 - 支持 hover 状态
@@ -223,6 +234,37 @@ const defaultTabContents: Record<TabId, TabContent> = {
     description: "与家人一起，享受护肤的温馨时光，在彼此的呵护中，感受爱与美的交融",
     steps: [],
   },
+  travel: {
+    title: "旅行护肤",
+    titleEn: "TRAVEL SKINCARE",
+    description: "旅途中的护肤方案，轻便高效，让肌肤在任何目的地都保持最佳状态",
+    steps: [
+      {
+        order: 1,
+        name: "洁面",
+        nameEn: "CLEANSE",
+        description: "旅行装云朵洁面慕斯，小巧便携，温和清洁旅途中的灰尘与疲惫。",
+        duration: "1分钟",
+        productSlug: "foam-cleanser",
+      },
+      {
+        order: 2,
+        name: "多效精华",
+        nameEn: "MULTI-SERUM",
+        description: "一瓶精华，多重功效，简化护肤步骤，适合旅途中快节奏的生活方式。",
+        duration: "30秒",
+        productSlug: "serum",
+      },
+      {
+        order: 3,
+        name: "保湿锁水",
+        nameEn: "MOISTURIZE",
+        description: "旅途中机舱干燥、环境变化，面霜帮助锁住水分，保持肌肤滋润。",
+        duration: "30秒",
+        productSlug: "face-cream",
+      },
+    ],
+  },
 };
 
 interface RitualContentProps {
@@ -246,6 +288,7 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
     morning: content?.tabs?.morning || defaultTabContents.morning,
     evening: content?.tabs?.evening || defaultTabContents.evening,
     couple: content?.tabs?.couple || defaultTabContents.couple,
+    travel: content?.tabs?.travel || defaultTabContents.travel,
   };
 
   // 监听滚动，添加毛玻璃效果
