@@ -1,5 +1,29 @@
 import { Metadata } from "next";
+import { prisma } from "@/lib/prisma";
 import { PrivacyContent } from "./PrivacyContent";
+
+// ISR: 隐私政策页面每天重新验证一次
+export const revalidate = 86400; // 24小时
+
+// 获取页面数据
+async function getPageData(): Promise<{ backgroundImage?: string }> {
+  try {
+    const page = await prisma.page.findUnique({
+      where: { slug: "privacy" },
+      select: { backgroundImage: true, published: true },
+    });
+
+    if (page?.published) {
+      return {
+        backgroundImage: page.backgroundImage || undefined,
+      };
+    }
+  } catch (error) {
+    console.error("Failed to fetch privacy page data:", error);
+  }
+
+  return {};
+}
 
 export const metadata: Metadata = {
   title: "隐私政策",
@@ -18,6 +42,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyPage() {
-  return <PrivacyContent />;
+export default async function PrivacyPage() {
+  const pageData = await getPageData();
+  return <PrivacyContent backgroundImage={pageData.backgroundImage} />;
 }

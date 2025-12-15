@@ -69,13 +69,35 @@ async function getProducts() {
 }
 
 /**
+ * 获取页面背景图片
+ */
+async function getPageData(): Promise<{ backgroundImage?: string }> {
+  try {
+    const page = await prisma.page.findUnique({
+      where: { slug: "products" },
+      select: { published: true, backgroundImage: true },
+    });
+
+    if (page?.published) {
+      return {
+        backgroundImage: page.backgroundImage || undefined,
+      };
+    }
+  } catch (error) {
+    console.error("获取产品页面数据失败:", error);
+  }
+  return {};
+}
+
+/**
  * 产品列表页
  * Server Component - 数据获取
  */
 export default async function ProductsPage() {
-  const [categories, products] = await Promise.all([
+  const [categories, products, pageData] = await Promise.all([
     getCategories(),
     getProducts(),
+    getPageData(),
   ]);
 
   return (
@@ -86,7 +108,11 @@ export default async function ProductsPage() {
         </div>
       }
     >
-      <ProductsContent categories={categories} products={products} />
+      <ProductsContent
+        categories={categories}
+        products={products}
+        backgroundImage={pageData.backgroundImage}
+      />
     </Suspense>
   );
 }

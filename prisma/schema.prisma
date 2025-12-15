@@ -82,13 +82,14 @@ model Image {
 // ============================================
 
 model Page {
-  id        String   @id @default(cuid())
-  title     String   // 页面标题
-  slug      String   @unique // 页面标识 (home, story, ritual, contact, careers, privacy)
-  content   Json     // 页面内容（结构化 JSON）
-  seo       Json?    // SEO 配置
-  published Boolean  @default(false)
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  title           String   // 页面标题
+  slug            String   @unique // 页面标识 (home, story, ritual, contact, careers, privacy)
+  content         Json     // 页面内容（结构化 JSON）
+  seo             Json?    // SEO 配置
+  backgroundImage String?  // 页面背景图片 URL
+  published       Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
 }
 
 model Media {
@@ -303,6 +304,111 @@ model AdvisorDailyStats {
   updatedAt       DateTime @updatedAt
 
   @@index([date])
+}
+
+// ============================================
+// 抽奖裂变
+// ============================================
+
+// 抽奖活动
+model LotteryActivity {
+  id          String   @id @default(cuid())
+  name        String   // 活动名称
+  description String?  @db.Text // 活动描述
+
+  // 奖品信息
+  prizeName   String   // 奖品名称
+  prizeImage  String?  // 奖品图片
+  prizeCount  Int      @default(1) // 奖品数量（中奖名额）
+
+  // 时间设置
+  startTime   DateTime // 活动开始时间
+  endTime     DateTime // 活动结束时间（报名截止）
+  drawTime    DateTime // 开奖时间
+
+  // 规则设置
+  rules       Json?    // 活动规则 { ipLimit: 3, deviceLimit: 1, ... }
+
+  // 状态
+  status      String   @default("draft") // draft | active | drawing | finished | cancelled
+
+  // 开奖结果
+  drawnAt     DateTime? // 实际开奖时间
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries     LotteryEntry[] // 参与记录
+
+  @@index([status, startTime])
+  @@index([drawTime])
+}
+
+// 抽奖参与记录
+model LotteryEntry {
+  id          String   @id @default(cuid())
+  activityId  String   // 关联活动
+
+  // 用户信息
+  phone       String   // 手机号（加密存储）
+  phoneHash   String   // 手机号哈希（用于去重和查询）
+
+  // 花朵/签名图片
+  drawingUrl  String   // 画作图片 URL（花朵或签名）
+  drawingType String   @default("flower") // flower | signature
+
+  // 花朵数据（用于花园展示）
+  flowerData  Json?    // { colors: string[], strokeCount, duration, centerX, centerY, scale, rotation }
+
+  // 来源追踪
+  sessionId   String?  // 关联的 AdvisorSession
+
+  // 邀请裂变
+  inviteCode  String   @unique @default(cuid()) // 用户专属邀请码
+  invitedBy   String?  // 被谁邀请的（邀请者的 inviteCode）
+  inviteCount Int      @default(0) // 成功邀请人数
+  bonusWeight Int      @default(0) // 中奖权重加成（每邀请1人 +10）
+
+  // 风控数据
+  ip          String   // IP 地址
+  deviceId    String   // 设备指纹
+  riskScore   Int      @default(0) // 风险评分 0-100
+  riskFactors String[] // 风险因素 ["虚拟号段", "同IP多次"]
+
+  // 绘制分析（兼容旧字段）
+  signatureData Json?  // { strokeCount, duration, complexity }
+
+  // 状态
+  status      String   @default("pending") // pending | won | verified | expired | invalid
+
+  // 中奖相关
+  wonAt       DateTime? // 中奖时间
+  wonRank     Int?      // 中奖顺序（第几个中奖）
+
+  // 验证相关
+  verifyCode  String?   // 验证码（加密）
+  verifyCodeSentAt DateTime? // 验证码发送时间
+  verifyAttempts Int    @default(0) // 验证尝试次数
+  verifiedAt  DateTime? // 验证通过时间
+
+  // 领奖信息
+  recipientName    String? // 收件人姓名
+  recipientPhone   String? // 收件人电话
+  recipientAddress String? @db.Text // 收件地址
+  shippedAt   DateTime? // 发货时间
+  trackingNo  String?   // 快递单号
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activity    LotteryActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, phoneHash]) // 同一活动同一手机号只能参与一次
+  @@index([activityId, status])
+  @@index([activityId, riskScore])
+  @@index([phoneHash])
+  @@index([deviceId])
+  @@index([invitedBy]) // 查询某人邀请了谁
 }
 
 // ============================================

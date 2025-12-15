@@ -24,23 +24,26 @@ export const metadata: Metadata = {
   },
 };
 
-async function getContent(): Promise<RitualPageContent | undefined> {
+async function getPageData(): Promise<{ content?: RitualPageContent; backgroundImage?: string }> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "ritual" },
-      select: { content: true, published: true },
+      select: { content: true, published: true, backgroundImage: true },
     });
 
-    if (page?.published && page.content) {
-      return page.content as unknown as RitualPageContent;
+    if (page?.published) {
+      return {
+        content: page.content as unknown as RitualPageContent,
+        backgroundImage: page.backgroundImage || undefined,
+      };
     }
   } catch (error) {
     console.error("获取护肤仪式页面内容失败:", error);
   }
-  return undefined;
+  return {};
 }
 
 export default async function RitualPage() {
-  const content = await getContent();
-  return <RitualContent content={content} />;
+  const pageData = await getPageData();
+  return <RitualContent content={pageData.content} backgroundImage={pageData.backgroundImage} />;
 }

@@ -20,23 +20,26 @@ export const metadata: Metadata = {
   },
 };
 
-async function getContent(): Promise<ContactPageContent | undefined> {
+async function getPageData(): Promise<{ content?: ContactPageContent; backgroundImage?: string }> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "contact" },
-      select: { content: true, published: true },
+      select: { content: true, published: true, backgroundImage: true },
     });
 
-    if (page?.published && page.content) {
-      return page.content as unknown as ContactPageContent;
+    if (page?.published) {
+      return {
+        content: page.content as unknown as ContactPageContent,
+        backgroundImage: page.backgroundImage || undefined,
+      };
     }
   } catch (error) {
     console.error("获取联系我们页面内容失败:", error);
   }
-  return undefined;
+  return {};
 }
 
 export default async function ContactPage() {
-  const content = await getContent();
-  return <ContactContent content={content} />;
+  const pageData = await getPageData();
+  return <ContactContent content={pageData.content} backgroundImage={pageData.backgroundImage} />;
 }

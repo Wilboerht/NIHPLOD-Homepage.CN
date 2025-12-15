@@ -44,20 +44,24 @@ const defaultContent: ServicesPageContent = {
 };
 
 // 获取页面数据
-async function getPageContent(): Promise<ServicesPageContent> {
+async function getPageData(): Promise<{ content: ServicesPageContent; backgroundImage?: string }> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "services" },
+      select: { content: true, published: true, backgroundImage: true },
     });
 
-    if (page?.content && page.published) {
-      return page.content as unknown as ServicesPageContent;
+    if (page?.published) {
+      return {
+        content: (page.content as unknown as ServicesPageContent) || defaultContent,
+        backgroundImage: page.backgroundImage || undefined,
+      };
     }
   } catch (error) {
     console.error("Failed to fetch services page content:", error);
   }
 
-  return defaultContent;
+  return { content: defaultContent };
 }
 
 export const metadata: Metadata = {
@@ -78,7 +82,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ServicesPage() {
-  const content = await getPageContent();
-  return <ServicesContent content={content} />;
+  const pageData = await getPageData();
+  return <ServicesContent content={pageData.content} backgroundImage={pageData.backgroundImage} />;
 }
 

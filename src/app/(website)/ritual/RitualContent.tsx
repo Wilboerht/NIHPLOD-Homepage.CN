@@ -15,7 +15,7 @@ import type { RitualPageContent } from "@/types/page-content";
 const bottomNavItems = [
   { href: "/products", label: "了解产品", labelEn: "Products", icon: ShopIcon },
   { href: "/story", label: "关于旎柏", labelEn: "Story", icon: StoryIcon },
-  { href: "/contact", label: "联系我们", labelEn: "Contact", icon: ContactIcon },
+  { href: "/advisor", label: "护肤顾问", labelEn: "Consultant", icon: ContactIcon },
 ];
 
 // 图标颜色常量
@@ -227,6 +227,7 @@ const defaultTabContents: Record<TabId, TabContent> = {
 
 interface RitualContentProps {
   content?: RitualPageContent;
+  backgroundImage?: string;
 }
 
 /**
@@ -234,7 +235,7 @@ interface RitualContentProps {
  * 样式参考 StoryContent，使用独立的导航栏
  * 主内容区域使用 bg-[#EBE8DB] 不透明样式
  */
-export function RitualContent({ content }: RitualContentProps) {
+export function RitualContent({ content, backgroundImage }: RitualContentProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
@@ -261,7 +262,7 @@ export function RitualContent({ content }: RitualContentProps) {
       {/* 全屏背景图片 - 始终全屏显示，不受展开/收起影响 */}
       <div className="fixed inset-0 z-0">
         <Image
-          src="/images/bg.png"
+          src={backgroundImage || "/images/bg.png"}
           alt="护肤仪式"
           fill
           priority
@@ -307,12 +308,11 @@ export function RitualContent({ content }: RitualContentProps) {
               className="w-full overflow-hidden rounded-b-2xl bg-[#EBE8DB] lg:rounded-b-3xl"
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
-                opacity: isExpanded ? 1 : 0,
                 height: isExpanded ? "auto" : 0
               }}
               transition={{
-                duration: 0.5,
-                ease: [0.32, 0.72, 0, 1]
+                duration: 0.7,
+                ease: [0.4, 0, 0.2, 1]
               }}
             >
               <div className={cn(
@@ -550,7 +550,7 @@ export function RitualContent({ content }: RitualContentProps) {
                 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+                transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
               >
                 <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
                 <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />

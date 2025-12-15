@@ -53,23 +53,26 @@ async function getJobs(): Promise<Job[]> {
   return jobs;
 }
 
-async function getContent(): Promise<CareersPageContent | undefined> {
+async function getPageData(): Promise<{ content?: CareersPageContent; backgroundImage?: string }> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "careers" },
-      select: { content: true, published: true },
+      select: { content: true, published: true, backgroundImage: true },
     });
 
-    if (page?.published && page.content) {
-      return page.content as unknown as CareersPageContent;
+    if (page?.published) {
+      return {
+        content: page.content as unknown as CareersPageContent,
+        backgroundImage: page.backgroundImage || undefined,
+      };
     }
   } catch (error) {
     console.error("获取加入我们页面内容失败:", error);
   }
-  return undefined;
+  return {};
 }
 
 export default async function CareersPage() {
-  const [jobs, content] = await Promise.all([getJobs(), getContent()]);
-  return <CareersContent jobs={jobs} content={content} />;
+  const [jobs, pageData] = await Promise.all([getJobs(), getPageData()]);
+  return <CareersContent jobs={jobs} content={pageData.content} backgroundImage={pageData.backgroundImage} />;
 }

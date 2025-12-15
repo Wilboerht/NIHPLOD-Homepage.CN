@@ -14,7 +14,7 @@ import { ShopIcon, RitualIcon, ContactIcon, HomeIcon } from "@/components/websit
 const bottomNavItems = [
   { href: "/products", label: "了解产品", labelEn: "Products", icon: ShopIcon },
   { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: RitualIcon },
-  { href: "/contact", label: "联系我们", labelEn: "Contact", icon: ContactIcon },
+  { href: "/advisor", label: "护肤顾问", labelEn: "Consultant", icon: ContactIcon },
 ];
 
 // 图标颜色常量
@@ -84,7 +84,7 @@ const AwardsIcon = ({ className, isHovered }: { className?: string; isHovered?: 
 };
 
 // 标签页配置
-type TabId = "story" | "mission" | "philosophy" | "media" | "awards";
+type TabId = "story" | "media" | "awards";
 
 interface TabConfig {
   id: TabId;
@@ -115,8 +115,6 @@ interface TabContent {
 
 const tabs: TabConfig[] = [
   { id: "story", label: "品牌故事", icon: StoryTabIcon },
-  { id: "mission", label: "公司使命", icon: MissionIcon },
-  { id: "philosophy", label: "经营理念", icon: PhilosophyIcon },
   { id: "media", label: "媒体报道", icon: MediaIcon },
   { id: "awards", label: "荣获奖项", icon: AwardsIcon },
 ];
@@ -149,10 +147,6 @@ const TabButton = ({
       className={cn(
         "group relative flex flex-col items-center justify-center gap-3 px-3 py-6 sm:gap-4 sm:px-6 sm:py-8 md:py-10",
         "transition-colors duration-300",
-        // 移动端：当前行最后一个不显示右边框
-        // 桌面端：最后一个不显示右边框
-        !isLastInRow && "border-r border-brand-charcoal/20",
-        isLastInRow && !isLastInDesktop && "sm:border-r sm:border-brand-charcoal/20",
         className
       )}
       initial={{ opacity: 0, scale: 0.95 }}
@@ -209,72 +203,30 @@ const tabContents: Record<TabId, TabContent> = {
         image: "/images/story/dolphin-ocean.png",
         imageAlt: "海豚在海洋中游泳",
       },
-    ],
-    content: [],
-  },
-  mission: {
-    title: "公司使命",
-    isRichContent: true,
-    layout: "mission-centered", // 居中文字布局
-    subtitle: "OUR MISSION",
-    sections: [
       {
-        type: "mission-text",
+        type: "section",
+        title: "「公司使命」逆转时光的承诺",
+        subtitle: "OUR MISSION",
         paragraphs: [
-          "NIHPLOD 将脂质体技术",
-          "与精选的天然活性成分相结合",
-          "通过大量临床实验和调研使日常护肤变得美好",
-          "通过最前沿的生物科技和配方",
-          "我们在护肤上将尽最大的可能",
-          "帮助人们「逆转时光」",
+          "NIHPLOD 将脂质体技术与精选的天然活性成分相结合\n通过大量临床实验和调研使日常护肤变得美好",
+          "通过最前沿的生物科技和配方\n我们在护肤上将尽最大的可能\n帮助人们「逆转时光」",
           "这是我们一直继续前行的最大动力",
         ],
-      },
-    ],
-    content: [],
-  },
-  philosophy: {
-    title: "经营理念",
-    isRichContent: true,
-    layout: "philosophy",
-    subtitle: "OUR PHILOSOPHY",
-    slogan: "「顶奢体验 · 护肤艺术」",
-    sections: [
-      {
-        type: "philosophy-item",
-        title: "更珍贵的产品",
-        paragraphs: [
-          "我们通过采集这个世上最好的原材料",
-          "结合最前沿及有效的科技力量",
-          "不断更新和进步",
-        ],
+        image: "/images/story/mission-image.png",
+        imageAlt: "公司使命",
       },
       {
-        type: "philosophy-item",
-        title: "更优越的体验",
+        type: "section",
+        title: "「经营理念」顶奢体验 · 护肤艺术",
+        subtitle: "OUR PHILOSOPHY",
         paragraphs: [
-          "通过严选的供应渠道，极致的专员服务",
-          "我们力求为你做到最满意、舒适及专业",
+          "更珍贵的产品\n我们通过采集这个世上最好的原材料\n结合最前沿及有效的科技力量\n不断更新和进步",
+          "更优越的体验\n通过严选的供应渠道，极致的专员服务\n我们力求为你做到最满意、舒适及专业",
+          "更积极的方式\n我们提倡以健康的心态去面对每一天\n通过适量的运动\n合理的膳食及平衡的心理",
+          "更艰巨的责任\n我们将售出的每款产品的2%捐赠给\n全球的慈善组织和非营利组织\n包括 UNF、SPF 等",
         ],
-      },
-      {
-        type: "philosophy-item",
-        title: "更积极的方式",
-        paragraphs: [
-          "我们提倡以健康的心态",
-          "去面对每一天",
-          "通过适量的运动",
-          "合理的膳食及平衡的心理",
-        ],
-      },
-      {
-        type: "philosophy-item",
-        title: "更艰巨的责任",
-        paragraphs: [
-          "我们将售出的每款产品的2%捐赠给",
-          "全球的慈善组织和非营利组织",
-          "包括 UNF、SPF 等",
-        ],
+        image: "/images/story/philosophy-image.png",
+        imageAlt: "经营理念",
       },
     ],
     content: [],
@@ -337,12 +289,16 @@ const tabContents: Record<TabId, TabContent> = {
   },
 };
 
+interface StoryContentProps {
+  backgroundImage?: string;
+}
+
 /**
  * 品牌故事页面内容组件
  * 样式参考 ProductsContent，使用独立的导航栏
  * 主内容区域使用 bg-[#EBE8DB] 不透明样式
  */
-export function StoryContent() {
+export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
@@ -362,7 +318,7 @@ export function StoryContent() {
       {/* 全屏背景图片 - 始终全屏显示，不受展开/收起影响 */}
       <div className="fixed inset-0 z-0">
         <Image
-          src="/images/bg.png"
+          src={backgroundImage || "/images/bg.png"}
           alt="品牌故事"
           fill
           priority
@@ -408,12 +364,11 @@ export function StoryContent() {
               className="w-full overflow-hidden rounded-b-2xl bg-[#EBE8DB] lg:rounded-b-3xl"
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
-                opacity: isExpanded ? 1 : 0,
                 height: isExpanded ? "auto" : 0
               }}
               transition={{
-                duration: 0.5,
-                ease: [0.32, 0.72, 0, 1]
+                duration: 0.7,
+                ease: [0.4, 0, 0.2, 1]
               }}
             >
               <div className={cn(
@@ -475,24 +430,19 @@ export function StoryContent() {
                         </div>
                       </m.div>
 
-                      {/* 5个大标签按钮 - 移动端两行(3+2居中)，桌面端一行 */}
-                      <div className="grid w-full max-w-5xl grid-cols-6 sm:grid-cols-5">
-                        {tabs.map((tab, index) => {
-                          // 移动端：所有按钮都占2列，第4个从第2列开始以实现居中
-                          // 桌面端：每个占1列
-                          const mobileColStart = index === 3 ? "col-start-2" : "";
-                          return (
-                            <TabButton
-                              key={tab.id}
-                              tab={tab}
-                              index={index}
-                              isLastInRow={index === 2 || index === 4}
-                              isLastInDesktop={index === 4}
-                              onClick={() => setActiveTab(tab.id)}
-                              className={`col-span-2 sm:col-span-1 sm:col-start-auto ${mobileColStart}`}
-                            />
-                          );
-                        })}
+                      {/* 3个大标签按钮 - 居中对齐 */}
+                      <div className="flex w-full max-w-4xl items-stretch justify-center gap-3 sm:gap-4 md:gap-6">
+                        {tabs.map((tab, index) => (
+                          <TabButton
+                            key={tab.id}
+                            tab={tab}
+                            index={index}
+                            isLastInRow={index === tabs.length - 1}
+                            isLastInDesktop={index === tabs.length - 1}
+                            onClick={() => setActiveTab(tab.id)}
+                            className="flex-1"
+                          />
+                        ))}
                       </div>
                     </m.div>
                   )}
@@ -931,7 +881,7 @@ export function StoryContent() {
                 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+                transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
               >
                 <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
                 <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />

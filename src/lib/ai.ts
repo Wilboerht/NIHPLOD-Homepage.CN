@@ -175,8 +175,8 @@ const DEFAULT_AI_SETTINGS: AISettings = {
   systemPrompt: "",
   textSystemPrompt: "",
   visionSystemPrompt: "",
-  maxTokens: 500,
-  temperature: 0.7,
+  maxTokens: 1200, // 文本分析需要较长输出
+  temperature: 0.3, // 保持一致性
   apiKeys: {
     openai: "",
     deepseek: "",

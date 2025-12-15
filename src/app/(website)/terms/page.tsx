@@ -53,20 +53,24 @@ const defaultContent: TermsPageContent = {
 };
 
 // 获取页面数据
-async function getPageContent(): Promise<TermsPageContent> {
+async function getPageData(): Promise<{ content: TermsPageContent; backgroundImage?: string }> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "terms" },
+      select: { content: true, published: true, backgroundImage: true },
     });
 
-    if (page?.content && page.published) {
-      return page.content as unknown as TermsPageContent;
+    if (page?.published) {
+      return {
+        content: (page.content as unknown as TermsPageContent) || defaultContent,
+        backgroundImage: page.backgroundImage || undefined,
+      };
     }
   } catch (error) {
     console.error("Failed to fetch terms page content:", error);
   }
 
-  return defaultContent;
+  return { content: defaultContent };
 }
 
 export const metadata: Metadata = {
@@ -87,7 +91,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TermsPage() {
-  const content = await getPageContent();
-  return <TermsContent content={content} />;
+  const pageData = await getPageData();
+  return <TermsContent content={pageData.content} backgroundImage={pageData.backgroundImage} />;
 }
 

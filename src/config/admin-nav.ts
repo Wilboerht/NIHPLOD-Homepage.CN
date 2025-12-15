@@ -12,6 +12,7 @@ import {
   UserCheck,
   MessageSquare,
   Settings,
+  Gift,
   LucideIcon,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ export const adminNavItems: NavItem[] = [
   { title: "页面内容", href: "/admin/pages", icon: FileText },
   { title: "媒体库", href: "/admin/media", icon: Image },
   { title: "AI 顾问", href: "/admin/advisor", icon: Bot },
+  { title: "抽奖活动", href: "/admin/lottery", icon: Gift },
   { title: "职位管理", href: "/admin/jobs", icon: Briefcase },
   { title: "简历管理", href: "/admin/applications", icon: UserCheck },
   { title: "留言管理", href: "/admin/messages", icon: MessageSquare },

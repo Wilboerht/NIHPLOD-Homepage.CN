@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 const bottomNavItems = [
   { href: "/story", label: "关于旎柏", labelEn: "Story", icon: StoryIcon },
   { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: RitualIcon },
-  { href: "/contact", label: "联系我们", labelEn: "Contact", icon: ContactIcon },
+  { href: "/advisor", label: "护肤顾问", labelEn: "Consultant", icon: ContactIcon },
 ];
 
 interface Category {
@@ -54,6 +54,7 @@ interface Product {
 interface ProductsContentProps {
   categories: Category[];
   products: Product[];
+  backgroundImage?: string;
 }
 
 /**
@@ -290,9 +291,9 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
  * 产品列表内容组件
  * Client Component - 处理分类筛选和产品展示
  */
-export function ProductsContent({ categories, products }: ProductsContentProps) {
+export function ProductsContent({ categories, products, backgroundImage }: ProductsContentProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true); // 默认展开
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
@@ -301,9 +302,20 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false); // 防止动画中重复触发
   const animationRef = useRef<NodeJS.Timeout | null>(null); // 存储动画定时器
+  const [hasAnimated, setHasAnimated] = useState(false); // 标记是否已经播放过初始动画
 
   // 手势滑动相关
   const dragX = useMotionValue(0);
+
+  // 按分类顺序排列产品
+  const sortedProducts = useMemo(() => {
+    const categoryOrder = new Map(categories.map((cat, index) => [cat.id, index]));
+    return [...products].sort((a, b) => {
+      const orderA = categoryOrder.get(a.categoryId) ?? 999;
+      const orderB = categoryOrder.get(b.categoryId) ?? 999;
+      return orderA - orderB;
+    });
+  }, [categories, products]);
 
   // 监听屏幕尺寸变化
   useEffect(() => {
@@ -322,15 +334,17 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     };
   }, []);
 
-  // 按分类顺序排列产品
-  const sortedProducts = useMemo(() => {
-    const categoryOrder = new Map(categories.map((cat, index) => [cat.id, index]));
-    return [...products].sort((a, b) => {
-      const orderA = categoryOrder.get(a.categoryId) ?? 999;
-      const orderB = categoryOrder.get(b.categoryId) ?? 999;
-      return orderA - orderB;
-    });
-  }, [categories, products]);
+  // 初始展开动画 - 页面加载时自动展开
+  useEffect(() => {
+    if (!hasAnimated && sortedProducts.length > 0) {
+      // 延迟一小段时间后自动选中第一个产品的分类
+      const timer = setTimeout(() => {
+        setActiveCategory(sortedProducts[0]?.categoryId || null);
+        setHasAnimated(true);
+      }, 300); // 300ms 延迟，让页面先渲染
+      return () => clearTimeout(timer);
+    }
+  }, [hasAnimated, sortedProducts]);
 
   // 当前展示的产品（轮播显示所有产品，按分类顺序）
   const currentProduct = sortedProducts[currentProductIndex] || null;
@@ -479,14 +493,14 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       {/* 全屏背景图片 - 始终全屏显示，不受展开/收起影响 */}
       <div className="fixed inset-0 z-0">
         <Image
-          src="/images/bg.png"
+          src={backgroundImage || "/images/bg.png"}
           alt="NIHPLOD 产品系列"
           fill
           priority
           quality={100}
           unoptimized
           className={cn(
-            "object-cover transition-all duration-500",
+            "object-cover transition-all duration-700 ease-out",
             isExpanded && "scale-105 blur-sm"
           )}
         />
@@ -495,108 +509,120 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           className="absolute inset-0 bg-brand-cream/30"
           initial={false}
           animate={{ opacity: isExpanded ? 1 : 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{
+            duration: isExpanded ? 0.5 : 0.6,
+            ease: [0.4, 0, 0.2, 1]
+          }}
         />
       </div>
 
-      {/* 内容区域容器 - 使用 framer-motion 统一控制动画 */}
+      {/* 顶部分类导航栏 + 展开按钮 - 固定在顶部 */}
       <m.div
-        className="fixed inset-x-0 top-0 z-10"
-        animate={{
-          bottom: isExpanded ? 0 : 112 // bottom-28 = 7rem = 112px
-        }}
-        transition={{
-          duration: 0.5,
-          ease: [0.32, 0.72, 0, 1]
-        }}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
+        className="fixed left-0 right-0 top-0 z-30"
       >
-        {/* 顶部分类导航栏 + 展开按钮一体化 */}
-        <m.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-          className="absolute left-0 right-0 top-0 z-30"
-        >
-          {/* 分类栏 + 按钮一体化容器 */}
-          <div className="flex flex-col items-center">
-            {/* 分类图标区域 */}
-            <div className="w-full bg-[#EBE8DB] sm:w-fit sm:rounded-b-2xl lg:rounded-b-3xl">
-              <div className="px-2 py-2 sm:px-8 sm:py-3 md:px-12 lg:px-20 lg:py-4">
-                {/* 移动端：固定5列网格保证均匀布局，桌面端：flex单行 */}
-                <div className="grid grid-cols-5 gap-x-0.5 gap-y-1.5 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => handleCategoryChange(cat.id)}
-                      className={cn(
-                        "flex flex-col items-center gap-0.5 px-1 py-1.5 transition-all sm:gap-1 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5",
-                        "rounded-lg hover:bg-brand-beige/30 sm:rounded-xl",
-                        activeCategory === cat.id && "bg-brand-beige/50"
-                      )}
-                    >
-                      <CategoryIcon icon={cat.icon} isActive={activeCategory === cat.id} />
-                      <span className={cn(
-                        "line-clamp-1 text-center text-[9px] leading-tight sm:text-[11px] md:text-xs lg:text-sm",
-                        activeCategory === cat.id ? "font-medium text-brand-gold" : "text-brand-charcoal/70"
-                      )}>
-                        {cat.name}
-                      </span>
-                      <span className={cn(
-                        "line-clamp-1 text-center font-serif text-[6px] uppercase leading-tight tracking-wide sm:text-[9px] md:text-[10px] lg:text-xs",
-                        activeCategory === cat.id ? "text-brand-gold/80" : "text-brand-charcoal/50"
-                      )}>
-                        {cat.nameEn}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+        <div className="flex flex-col items-center">
+          {/* 分类图标区域 - 始终存在，通过高度控制显示/隐藏 */}
+          <m.div
+            initial={{ height: 0 }}
+            animate={{
+              height: isExpanded ? "auto" : 0
+            }}
+            transition={{
+              duration: 0.6,
+              ease: [0.4, 0, 0.2, 1],
+              delay: 0.2 // 延迟展开，让整体动画更流畅
+            }}
+            className="w-full overflow-hidden bg-[#EBE8DB] sm:w-fit sm:rounded-b-2xl lg:rounded-b-3xl"
+          >
+            <div className="px-2 py-2 sm:px-8 sm:py-3 md:px-12 lg:px-20 lg:py-4">
+              {/* 移动端：固定5列网格保证均匀布局，桌面端：flex单行 */}
+              <div className="grid grid-cols-5 gap-x-0.5 gap-y-1.5 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={cn(
+                      "flex flex-col items-center gap-0.5 px-1 py-1.5 transition-all sm:gap-1 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5",
+                      "rounded-lg hover:bg-brand-beige/30 sm:rounded-xl",
+                      activeCategory === cat.id && "bg-brand-beige/50"
+                    )}
+                  >
+                    <CategoryIcon icon={cat.icon} isActive={activeCategory === cat.id} />
+                    <span className={cn(
+                      "line-clamp-1 text-center text-[9px] leading-tight sm:text-[11px] md:text-xs lg:text-sm",
+                      activeCategory === cat.id ? "font-medium text-brand-gold" : "text-brand-charcoal/70"
+                    )}>
+                      {cat.name}
+                    </span>
+                    <span className={cn(
+                      "line-clamp-1 text-center font-serif text-[6px] uppercase leading-tight tracking-wide sm:text-[9px] md:text-[10px] lg:text-xs",
+                      activeCategory === cat.id ? "text-brand-gold/80" : "text-brand-charcoal/50"
+                    )}>
+                      {cat.nameEn}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
-            {/* 展开/收起按钮 - 无缝连接 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (isExpanded) {
-                  // 收起时清除分类选中状态
-                  setActiveCategory(null);
-                } else {
-                  // 展开时自动选中当前产品的分类
-                  setActiveCategory(currentProduct?.categoryId || null);
-                }
-                setIsExpanded(!isExpanded);
-              }}
-              className="group flex items-center justify-center rounded-b-xl bg-[#EBE8DB] px-6 py-2 shadow-sm sm:rounded-b-2xl sm:px-10 sm:py-2.5 lg:px-14 lg:py-3"
-            >
-              <m.div
-                className="flex flex-col items-center"
-                animate={{
-                  rotate: isExpanded ? 180 : 0,
-                  scale: 1
-                }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-              >
-                <ChevronDown className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-3 h-5 w-5 text-brand-gold sm:-mt-4 sm:h-6 sm:w-6 lg:-mt-5 lg:h-8 lg:w-8" />
-              </m.div>
-            </button>
-          </div>
-        </m.div>
+          </m.div>
 
-        {/* 产品展示区域 - 3D 旋转木马 */}
-        <AnimatePresence mode="popLayout">
-          {isExpanded && currentProduct && (
+          {/* 展开/收起按钮 - 始终显示，紧贴分类栏 */}
+          <button
+            type="button"
+            onClick={() => {
+              if (isExpanded) {
+                // 收起时清除分类选中状态
+                setActiveCategory(null);
+                setIsExpanded(false);
+              } else {
+                // 展开时自动选中当前产品的分类
+                setActiveCategory(currentProduct?.categoryId || null);
+                setIsExpanded(true);
+              }
+            }}
+            className="group flex items-center justify-center rounded-b-xl bg-[#EBE8DB] px-6 py-2 shadow-sm sm:rounded-b-2xl sm:px-10 sm:py-2.5 lg:px-14 lg:py-3"
+          >
             <m.div
-              layout
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="absolute inset-x-0 bottom-2 top-36 z-10 sm:bottom-4 sm:top-40 md:top-44 lg:bottom-6 lg:top-48"
-              style={{ perspective: "1200px" }}
+              className="flex flex-col items-center"
+              animate={{
+                rotate: isExpanded ? 180 : 0,
+                scale: 1
+              }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{
+                duration: 0.5,
+                ease: [0.4, 0, 0.2, 1]
+              }}
             >
+              <ChevronDown className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
+              <ChevronDown className="-mt-3 h-5 w-5 text-brand-gold sm:-mt-4 sm:h-6 sm:w-6 lg:-mt-5 lg:h-8 lg:w-8" />
+            </m.div>
+          </button>
+        </div>
+      </m.div>
+
+      {/* 产品展示区域 - 3D 旋转木马 - 独立的固定定位 */}
+      <AnimatePresence mode="wait">
+        {isExpanded && currentProduct && (
+          <m.div
+            key="carousel"
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            transition={{
+              duration: 0.7,
+              ease: [0.4, 0, 0.2, 1],
+              delay: 0.4, // 延迟出现，等分类栏展开后再显示
+              opacity: { duration: 0.5 }
+            }}
+            className="fixed inset-x-0 bottom-2 top-36 z-10 sm:bottom-4 sm:top-40 md:top-44 lg:bottom-6 lg:top-48"
+            style={{ perspective: "1200px" }}
+          >
               {/* 手势滑动容器 */}
               <m.div
                 className="relative mx-auto flex h-full max-w-6xl cursor-grab items-center justify-center px-2 active:cursor-grabbing sm:px-4"
@@ -818,22 +844,25 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           )}
         </AnimatePresence>
 
-        {/* 无产品提示 */}
-        <AnimatePresence>
-          {isExpanded && sortedProducts.length === 0 && (
-            <m.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-x-4 bottom-4 top-44 z-10 flex items-center justify-center lg:inset-x-6 lg:bottom-6 lg:top-48"
-            >
-              <div className="rounded-2xl bg-white/90 px-8 py-6 shadow-xl backdrop-blur-md">
-                <p className="text-brand-charcoal/50">暂无产品</p>
-              </div>
-            </m.div>
-          )}
-        </AnimatePresence>
-      </m.div>
+      {/* 无产品提示 */}
+      <AnimatePresence>
+        {isExpanded && sortedProducts.length === 0 && (
+          <m.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{
+              duration: 0.4,
+              ease: [0.4, 0, 0.2, 1]
+            }}
+            className="fixed inset-x-4 bottom-4 top-44 z-10 flex items-center justify-center lg:inset-x-6 lg:bottom-6 lg:top-48"
+          >
+            <div className="rounded-2xl bg-white/90 px-8 py-6 shadow-xl backdrop-blur-md">
+              <p className="text-brand-charcoal/50">暂无产品</p>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
 
       {/* 移动端菜单遮罩层 */}
       <AnimatePresence>
@@ -903,12 +932,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       <AnimatePresence>
         {!isExpanded && (
           <m.header
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.96, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            exit={{ opacity: 0, scale: 0.96, y: 20 }}
             transition={{
-              duration: 0.35,
-              ease: [0.32, 0.72, 0, 1]
+              duration: 0.5,
+              ease: [0.4, 0, 0.2, 1],
+              delay: 0.1
             }}
             className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"

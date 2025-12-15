@@ -2,13 +2,24 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Bot, Save, MessageSquare } from "lucide-react";
+import { ArrowLeft, Key, Bot, Save, MessageSquare, RotateCcw, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
+
+// 默认提示词接口
+interface DefaultPrompts {
+  textSystemPrompt: string;
+  visionSystemPrompt: string;
+  providerPrompts: {
+    openai: string;
+    anthropic: string;
+    qwen: string;
+  };
+}
 
 // 各服务商 API Keys 状态
 interface ApiKeys {
@@ -114,8 +125,8 @@ export default function AdvisorSettingsPage() {
     systemPrompt: "",
     textSystemPrompt: "",
     visionSystemPrompt: "",
-    maxTokens: 500,
-    temperature: 0.7,
+    maxTokens: 1200, // 文本分析需要较长输出
+    temperature: 0.3, // 保持输出一致性
     hasApiKey: false,
     apiKeys: {
       openai: "",
@@ -142,14 +153,31 @@ export default function AdvisorSettingsPage() {
   // 保留旧的 newApiKey 用于兼容（不再使用）
   const [newApiKey, setNewApiKey] = useState("");
 
-  // 获取设置
+  // 默认提示词
+  const [defaultPrompts, setDefaultPrompts] = useState<DefaultPrompts | null>(null);
+  // 展开/收起默认提示词预览
+  const [showDefaultTextPrompt, setShowDefaultTextPrompt] = useState(false);
+  const [showDefaultVisionPrompt, setShowDefaultVisionPrompt] = useState(false);
+
+  // 获取设置和默认提示词
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch("/api/admin/advisor/settings");
-        const data = await res.json();
-        if (data.success) {
-          setSettings(data.data);
+        // 并行获取设置和默认提示词
+        const [settingsRes, promptsRes] = await Promise.all([
+          fetch("/api/admin/advisor/settings"),
+          fetch("/api/admin/advisor/prompts"),
+        ]);
+
+        const settingsData = await settingsRes.json();
+        const promptsData = await promptsRes.json();
+
+        if (settingsData.success) {
+          setSettings(settingsData.data);
+        }
+
+        if (promptsData.success) {
+          setDefaultPrompts(promptsData.data);
         }
       } catch (error) {
         console.error("获取设置失败:", error);
@@ -158,7 +186,7 @@ export default function AdvisorSettingsPage() {
       }
     };
 
-    fetchSettings();
+    fetchData();
   }, []);
 
   // 保存设置
@@ -536,49 +564,178 @@ export default function AdvisorSettingsPage() {
 
       {/* 系统提示词配置 */}
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-purple-600" />
-          <h2 className="text-lg font-semibold text-gray-900">系统提示词</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-purple-600" />
+            <h2 className="text-lg font-semibold text-gray-900">系统提示词</h2>
+          </div>
         </div>
         <p className="mb-4 text-sm text-gray-600">
-          自定义 AI 的角色和行为指导。文本分析用于问卷分析，视觉分析用于面部拍照分析。
+          自定义 AI 的角色和行为指导。留空则使用系统默认提示词。文本分析用于问卷分析，视觉分析用于面部拍照分析。
         </p>
 
         <div className="space-y-6">
           {/* 文本分析提示词 */}
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="font-medium text-gray-900">文本分析系统提示词</span>
-              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                问卷分析
-              </span>
+          <div className="rounded-lg border border-gray-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">文本分析系统提示词</span>
+                <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                  问卷分析
+                </span>
+                {settings.textSystemPrompt ? (
+                  <Badge variant="success">已自定义</Badge>
+                ) : (
+                  <Badge variant="default">使用默认</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {defaultPrompts && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowDefaultTextPrompt(!showDefaultTextPrompt)}
+                      className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      {showDefaultTextPrompt ? "隐藏默认" : "查看默认"}
+                      {showDefaultTextPrompt ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                    {settings.textSystemPrompt && (
+                      <button
+                        type="button"
+                        onClick={() => setSettings((prev) => ({ ...prev, textSystemPrompt: "" }))}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-orange-600 hover:bg-orange-50"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        恢复默认
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
+
+            {/* 默认提示词预览 */}
+            {showDefaultTextPrompt && defaultPrompts && (
+              <div className="mb-3 rounded-lg bg-gray-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500">默认提示词预览</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSettings((prev) => ({ ...prev, textSystemPrompt: defaultPrompts.textSystemPrompt }));
+                      success("已复制默认提示词，您可以在此基础上修改");
+                    }}
+                    className="text-xs text-brand-gold hover:underline"
+                  >
+                    复制到编辑区
+                  </button>
+                </div>
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-gray-600">
+                  {defaultPrompts.textSystemPrompt}
+                </pre>
+              </div>
+            )}
+
             <Textarea
               value={settings.textSystemPrompt}
               onChange={(e) =>
                 setSettings((prev) => ({ ...prev, textSystemPrompt: e.target.value }))
               }
-              placeholder="定义 AI 在分析用户问卷时的角色和行为..."
+              placeholder="留空使用默认提示词，或输入自定义提示词..."
               rows={6}
             />
+            <p className="mt-2 text-xs text-gray-500">
+              💡 提示：留空将使用系统内置的专业护肤顾问提示词
+            </p>
           </div>
 
           {/* 视觉分析提示词 */}
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="font-medium text-gray-900">视觉分析系统提示词</span>
-              <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
-                面部分析
-              </span>
+          <div className="rounded-lg border border-gray-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">视觉分析系统提示词</span>
+                <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                  面部分析
+                </span>
+                {settings.visionSystemPrompt ? (
+                  <Badge variant="success">已自定义</Badge>
+                ) : (
+                  <Badge variant="default">使用默认</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {defaultPrompts && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowDefaultVisionPrompt(!showDefaultVisionPrompt)}
+                      className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      {showDefaultVisionPrompt ? "隐藏默认" : "查看默认"}
+                      {showDefaultVisionPrompt ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+                    {settings.visionSystemPrompt && (
+                      <button
+                        type="button"
+                        onClick={() => setSettings((prev) => ({ ...prev, visionSystemPrompt: "" }))}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-orange-600 hover:bg-orange-50"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        恢复默认
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
+
+            {/* 默认提示词预览 - 根据选择的视觉服务商显示对应版本 */}
+            {showDefaultVisionPrompt && defaultPrompts && (
+              <div className="mb-3 rounded-lg bg-gray-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500">
+                    默认提示词预览 ({settings.visionProvider === "anthropic" ? "Claude 专用" : settings.visionProvider === "qwen" ? "通义千问专用" : "通用版"})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prompt = settings.visionProvider === "anthropic"
+                        ? defaultPrompts.providerPrompts.anthropic
+                        : settings.visionProvider === "qwen"
+                          ? defaultPrompts.providerPrompts.qwen
+                          : defaultPrompts.visionSystemPrompt;
+                      setSettings((prev) => ({ ...prev, visionSystemPrompt: prompt }));
+                      success("已复制默认提示词，您可以在此基础上修改");
+                    }}
+                    className="text-xs text-brand-gold hover:underline"
+                  >
+                    复制到编辑区
+                  </button>
+                </div>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap text-xs text-gray-600">
+                  {settings.visionProvider === "anthropic"
+                    ? defaultPrompts.providerPrompts.anthropic
+                    : settings.visionProvider === "qwen"
+                      ? defaultPrompts.providerPrompts.qwen
+                      : defaultPrompts.visionSystemPrompt}
+                </pre>
+              </div>
+            )}
+
             <Textarea
               value={settings.visionSystemPrompt}
               onChange={(e) =>
                 setSettings((prev) => ({ ...prev, visionSystemPrompt: e.target.value }))
               }
-              placeholder="定义 AI 在分析面部照片时的角色和行为..."
+              placeholder="留空使用默认提示词，或输入自定义提示词..."
               rows={8}
             />
+            <p className="mt-2 text-xs text-gray-500">
+              💡 提示：不同视觉服务商有专门优化的默认提示词。留空将自动使用对应服务商的最佳提示词
+            </p>
           </div>
         </div>
       </section>

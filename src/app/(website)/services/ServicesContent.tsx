@@ -184,13 +184,14 @@ const ServiceLinkButton = ({
 // Props 接口
 interface ServicesContentProps {
   content: ServicesPageContent;
+  backgroundImage?: string;
 }
 
 /**
  * 服务入口页面内容组件
  * 样式参考 PrivacyContent
  */
-export function ServicesContent({ content }: ServicesContentProps) {
+export function ServicesContent({ content, backgroundImage }: ServicesContentProps) {
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -219,7 +220,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
         {/* 背景图片 */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/bg.png"
+            src={backgroundImage || "/images/bg.png"}
             alt="服务入口"
             fill
             priority

@@ -107,11 +107,16 @@ const TabButton = ({
   );
 };
 
+interface TermsContentProps {
+  content: TermsPageContent;
+  backgroundImage?: string;
+}
+
 /**
  * 服务条款页面内容组件
  * 默认展开，无底部导航栏
  */
-export function TermsContent({ content }: { content: TermsPageContent }) {
+export function TermsContent({ content, backgroundImage }: TermsContentProps) {
   const [activeTab, setActiveTab] = useState<TermsTabId | null>(null);
 
   // 从 content 中获取数据
@@ -133,7 +138,7 @@ export function TermsContent({ content }: { content: TermsPageContent }) {
         {/* 背景图片 */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/bg.png"
+            src={backgroundImage || "/images/bg.png"}
             alt="服务条款"
             fill
             priority

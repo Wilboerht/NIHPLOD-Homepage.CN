@@ -54,13 +54,14 @@ const defaultContent: CareersPageContent = {
 interface CareersContentProps {
   jobs: Job[];
   content?: CareersPageContent;
+  backgroundImage?: string;
 }
 
 /**
  * 招聘页面内容组件
  * 直接显示开放职位
  */
-export function CareersContent({ jobs, content }: CareersContentProps) {
+export function CareersContent({ jobs, content, backgroundImage }: CareersContentProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   // 合并默认内容和传入内容
@@ -76,7 +77,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         {/* 背景图片 */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/bg.png"
+            src={backgroundImage || "/images/bg.png"}
             alt="加入我们"
             fill
             priority

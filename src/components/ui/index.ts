@@ -20,3 +20,5 @@ export {
   getResponsiveImageUrl,
   preloadImage,
 } from "./OptimizedImage";
+export { default as SignaturePad, type SignatureData } from "./SignaturePad";
+export { default as FlowerCanvas, type FlowerData } from "./FlowerCanvas";

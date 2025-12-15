@@ -157,11 +157,15 @@ const TabButton = ({
   );
 };
 
+interface PrivacyContentProps {
+  backgroundImage?: string;
+}
+
 /**
  * 隐私政策页面内容组件
  * 默认展开，无底部导航栏
  */
-export function PrivacyContent() {
+export function PrivacyContent({ backgroundImage }: PrivacyContentProps) {
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const lastUpdated = "2024年12月1日";
 
@@ -172,7 +176,7 @@ export function PrivacyContent() {
         {/* 背景图片 */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/bg.png"
+            src={backgroundImage || "/images/bg.png"}
             alt="隐私政策"
             fill
             priority

@@ -16,6 +16,7 @@ const PageUpdateSchema = z.object({
   title: z.string().min(1).max(100).optional(),
   content: z.record(z.string(), z.unknown()).optional(),
   seo: SeoSchema.optional(),
+  backgroundImage: z.string().optional().nullable(),
   published: z.boolean().optional(),
 });
 
@@ -96,6 +97,7 @@ export async function PUT(
         ...(validated.title && { title: validated.title }),
         ...(validated.content && { content: validated.content as object }),
         ...(validated.seo && { seo: validated.seo as object }),
+        ...(validated.backgroundImage !== undefined && { backgroundImage: validated.backgroundImage }),
         ...(typeof validated.published === "boolean" && { published: validated.published }),
       },
     });
