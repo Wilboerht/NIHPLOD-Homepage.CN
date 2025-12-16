@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { Sparkles, Star, Heart, Sparkle, Diamond } from "lucide-react";
+import { Sparkles, Star, Heart, Sparkle, Diamond, X } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
+import { ShopIcon, StoryIcon, RitualIcon } from "@/components/website";
 
 /**
  * 护肤品图标 SVG 组件
@@ -117,8 +118,6 @@ const gridColors = [
 
 // 默认底部导航链接
 const defaultFooterLinks = [
-  { text: "关于旎柏", href: "/story" },
-  { text: "护肤仪式", href: "/ritual" },
   { text: "联系我们", href: "/contact" },
   { text: "加入我们", href: "/careers" },
   { text: "隐私政策", href: "/privacy" },
@@ -138,87 +137,334 @@ const defaultContent: HomePageContent = {
   copyright: "NIHPLOD All Rights Reserved.",
 };
 
+// 圆形菜单项配置 - 四个方向
+const menuItems = [
+  {
+    id: "products",
+    label: "探索产品",
+    labelEn: "Products",
+    href: "/products",
+    icon: ShopIcon,
+    position: "right" as const, // 右
+    angle: 0,
+  },
+  {
+    id: "advisor",
+    label: "护肤顾问",
+    labelEn: "Advisor",
+    href: "/advisor",
+    icon: Sparkles,
+    position: "top" as const, // 上
+    angle: -90,
+  },
+  {
+    id: "story",
+    label: "关于旎柏",
+    labelEn: "Story",
+    href: "/story",
+    icon: StoryIcon,
+    position: "left" as const, // 左
+    angle: 180,
+  },
+  {
+    id: "ritual",
+    label: "护肤仪式",
+    labelEn: "Ritual",
+    href: "/ritual",
+    icon: RitualIcon,
+    position: "bottom" as const, // 下
+    angle: 90,
+  },
+];
+
 interface HomeClientProps {
   content?: HomePageContent;
 }
 
 /**
- * 产品按钮组件 - 带烟花效果
+ * 圆形放射状展开菜单组件
  */
-function ProductButton({ href, text }: { href: string; text: string }) {
+function ExploreMenu() {
+  const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [particles, setParticles] = useState<ReturnType<typeof generateFireworkParticles>>([]);
 
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    // 响应式粒子数量：移动端 10 个，桌面端 16 个
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-    const count = isMobile ? 10 : 16;
-    setParticles(generateFireworkParticles(count));
+  // 展开距离（响应式）- 优化后更大气
+  const getExpandDistance = useCallback(() => {
+    if (typeof window === 'undefined') return 170;
+    return window.innerWidth < 640 ? 115 : 170;
+  }, []);
+
+  const handleButtonClick = () => {
+    if (!isOpen) {
+      // 打开时触发烟花
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+      const count = isMobile ? 12 : 20;
+      setParticles(generateFireworkParticles(count));
+    }
+    setIsOpen(!isOpen);
   };
 
+  const handleMouseEnter = () => {
+    if (!isOpen) {
+      setIsHovered(true);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+      const count = isMobile ? 8 : 12;
+      setParticles(generateFireworkParticles(count));
+    }
+  };
+
+  // 点击外部关闭
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.explore-menu-container')) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
+
   return (
-    <Link href={href} className="group">
-      <div
-        className="relative"
+    <div className="explore-menu-container relative flex items-center justify-center">
+      {/* 展开时的背景遮罩 */}
+      <AnimatePresence>
+        {isOpen && (
+          <m.div
+            className="fixed inset-0 z-10 bg-[#E8E5DA]/70 backdrop-blur-[2px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={() => setIsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* 展开的菜单项 */}
+      <AnimatePresence>
+        {isOpen && menuItems.map((item, index) => {
+          const Icon = item.icon;
+          const distance = getExpandDistance();
+          const radian = (item.angle * Math.PI) / 180;
+          const x = Math.cos(radian) * distance;
+          const y = Math.sin(radian) * distance;
+
+          return (
+            <m.div
+              key={item.id}
+              className="absolute z-20"
+              initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
+              animate={{
+                x,
+                y,
+                opacity: 1,
+                scale: 1,
+              }}
+              exit={{
+                x: 0,
+                y: 0,
+                opacity: 0,
+                scale: 0,
+                transition: { duration: 0.35, delay: (menuItems.length - 1 - index) * 0.06, ease: "easeInOut" }
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 180,
+                damping: 18,
+                delay: index * 0.12,
+              }}
+            >
+              <Link
+                href={item.href}
+                className="group flex flex-col items-center gap-1.5"
+                onClick={() => setIsOpen(false)}
+              >
+                {/* 图标容器 - 圆形 + 金色边框 */}
+                <m.div
+                  className="flex h-14 w-14 items-center justify-center rounded-full border border-brand-gold/30 bg-white/90 shadow-lg backdrop-blur-sm transition-all duration-300 group-hover:border-brand-gold/60 group-hover:bg-white group-hover:shadow-xl sm:h-16 sm:w-16"
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Icon className="h-8 w-8 text-brand-gold transition-transform duration-300 group-hover:scale-110 sm:h-9 sm:w-9" />
+                </m.div>
+                {/* 文字标签 */}
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-medium text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-sm">
+                    {item.label}
+                  </span>
+                  <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/40 transition-colors duration-300 group-hover:text-brand-gold/70 sm:text-[10px]">
+                    {item.labelEn}
+                  </span>
+                </div>
+              </Link>
+            </m.div>
+          );
+        })}
+      </AnimatePresence>
+
+      {/* 烟花效果容器 */}
+      <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-visible">
+        <AnimatePresence>
+          {(isHovered || isOpen) && particles.map(({ id, Icon, targetX, targetY, delay, duration, rotate, scale, color }) => (
+            <m.div
+              key={id}
+              className="absolute"
+              style={{ willChange: "transform, opacity" }}
+              initial={{ x: 0, y: 0, opacity: 0, scale: 0, rotate: 0 }}
+              animate={{
+                x: [0, targetX * 0.3, targetX, targetX],
+                y: [0, targetY * 0.3, targetY, targetY],
+                opacity: [0, 1, 0.8, 0],
+                scale: [0, scale * 1.2, scale, scale * 0.3],
+                rotate: [0, rotate * 0.3, rotate * 0.7, rotate],
+              }}
+              exit={{ opacity: 0, scale: 0, transition: { duration: 0.15 } }}
+              transition={{
+                duration: duration,
+                delay: delay,
+                ease: [0.25, 0.1, 0.25, 1],
+                times: [0, 0.2, 0.6, 1],
+              }}
+            >
+              <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${color}`} />
+            </m.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* 主按钮 */}
+      <m.button
+        type="button"
+        className="group relative z-20"
+        onClick={handleButtonClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setIsHovered(false)}
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.97 }}
       >
-        {/* 烟花图标容器 - 按钮周围，z-index 高于按钮 */}
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-visible">
-          <AnimatePresence>
-            {isHovered && particles.map(({ id, Icon, targetX, targetY, delay, duration, rotate, scale, color }) => (
-              <m.div
-                key={id}
-                className="absolute"
-                style={{ willChange: "transform, opacity" }}
-                initial={{ x: 0, y: 0, opacity: 0, scale: 0, rotate: 0 }}
-                animate={{
-                  x: [0, targetX * 0.3, targetX, targetX],
-                  y: [0, targetY * 0.3, targetY, targetY],
-                  opacity: [0, 1, 0.8, 0],
-                  scale: [0, scale * 1.2, scale, scale * 0.3],
-                  rotate: [0, rotate * 0.3, rotate * 0.7, rotate],
-                }}
-                exit={{ opacity: 0, scale: 0, transition: { duration: 0.18, ease: "easeOut" } }}
-                transition={{
-                  duration: duration,
-                  delay: delay,
-                  ease: [0.25, 0.1, 0.25, 1],
-                  times: [0, 0.2, 0.6, 1],
-                }}
-              >
-                <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${color}`} />
-              </m.div>
-            ))}
-          </AnimatePresence>
+        {/* 脉冲光晕提示 - 仅未展开时 */}
+        {!isOpen && (
+          <m.div
+            className="absolute -inset-2 rounded-full bg-brand-gold/20"
+            animate={{
+              scale: [1, 1.15, 1],
+              opacity: [0.3, 0, 0.3],
+            }}
+            transition={{
+              duration: 2.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        )}
+
+        {/* 动态边框 - 双层旋转光晕 + 渐变尾迹 */}
+        <div className="absolute -inset-[1px] overflow-hidden rounded-full">
+          {/* 第一层：主光带 - 顺时针，带长尾迹 */}
+          <m.div
+            className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_30deg,#c9a86c20_60deg,#c9a86c60_90deg,#d4af37_120deg,#c9a86c60_150deg,#c9a86c20_180deg,transparent_210deg,transparent_360deg)]"
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: isHovered ? 2 : 4,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+          {/* 第二层：副光带 - 逆时针，更短更亮 */}
+          <m.div
+            className="absolute inset-[-100%] bg-[conic-gradient(from_180deg,transparent_0deg,transparent_60deg,#d4af3740_90deg,#d4af37_105deg,#c9a86c_120deg,#d4af3740_135deg,transparent_165deg,transparent_360deg)]"
+            animate={{ rotate: -360 }}
+            transition={{
+              duration: isHovered ? 3 : 6,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+          {/* 第三层：微光点缀 - 快速旋转 */}
+          <m.div
+            className="absolute inset-[-100%] opacity-40 bg-[conic-gradient(from_90deg,transparent_0deg,#d4af37_2deg,transparent_4deg,transparent_90deg,#d4af37_92deg,transparent_94deg,transparent_180deg,#d4af37_182deg,transparent_184deg,transparent_270deg,#d4af37_272deg,transparent_274deg,transparent_360deg)]"
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: isHovered ? 1.5 : 3,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
         </div>
 
-        {/* 按钮主体 - z-index 高于烟花 */}
-        <m.div
-          className="relative z-10"
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-        >
-          {/* 动态边框 - 旋转的渐变光晕 */}
-          <div className="absolute -inset-[1px] overflow-hidden rounded-full">
-            <m.div
-              className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_60deg,#c9a86c_120deg,#d4af37_180deg,#c9a86c_240deg,transparent_300deg,transparent_360deg)]"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            />
+        {/* 按钮内容 */}
+        <div className="relative rounded-full bg-[#EBE8DB] px-7 py-2.5 shadow-sm transition-all duration-300 group-hover:bg-[#E5E1D3] group-hover:shadow-md sm:px-9 sm:py-3">
+          <div className="relative z-10 flex items-center justify-center gap-2">
+            <AnimatePresence mode="wait">
+              {isOpen ? (
+                <m.div
+                  key="close"
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <X className="h-4 w-4 text-brand-charcoal/60 sm:h-4.5 sm:w-4.5" />
+                  <span className="text-sm font-medium tracking-wider text-brand-charcoal/60 sm:text-base">
+                    收起
+                  </span>
+                </m.div>
+              ) : (
+                <m.div
+                  key="open"
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {/* 星光图标 */}
+                  <m.div
+                    animate={{ rotate: isHovered ? 180 : 0 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-brand-gold sm:h-4 sm:w-4" />
+                  </m.div>
+                  <span className="text-sm font-medium tracking-wider text-brand-charcoal/80 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-base">
+                    开始探索
+                  </span>
+                  {/* 箭头图标 */}
+                  <m.div
+                    animate={{ x: isHovered ? 3 : 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  >
+                    <svg
+                      className="h-3 w-3 text-brand-charcoal/50 transition-colors duration-300 group-hover:text-brand-charcoal/70 sm:h-3.5 sm:w-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </m.div>
+                </m.div>
+              )}
+            </AnimatePresence>
           </div>
-          {/* 内部背景 */}
-          <div className="relative rounded-full bg-[#EBE8DB] px-8 py-3 transition-all duration-300 group-hover:bg-[#E5E1D3] sm:px-10 sm:py-3.5">
-            <div className="relative z-10 flex items-center justify-center gap-2">
-              <span className="text-sm font-medium tracking-wider text-brand-charcoal/70 transition-colors duration-300 group-hover:text-brand-charcoal/90 sm:text-base">
-                {text}
-              </span>
-            </div>
-          </div>
-        </m.div>
-      </div>
-    </Link>
+        </div>
+      </m.button>
+    </div>
   );
 }
 
@@ -228,7 +474,6 @@ function ProductButton({ href, text }: { href: string; text: string }) {
 export default function HomeClient({ content }: HomeClientProps) {
   // 合并默认内容和传入内容
   const brand = content?.brand || defaultContent.brand;
-  const buttons = content?.buttons || defaultContent.buttons;
   const footerLinks = content?.footerLinks || defaultFooterLinks;
   const copyright = content?.copyright || defaultContent.copyright;
 
@@ -300,33 +545,14 @@ export default function HomeClient({ content }: HomeClientProps) {
           transition={{ duration: 0.5, delay: 0.3 }}
         />
 
-        {/* 双入口 - 垂直排列 */}
+        {/* 圆形放射状展开菜单 - 固定高度防止布局抖动 */}
         <m.div
-          className="flex flex-col items-center gap-5 sm:gap-6"
+          className="relative flex h-12 items-center justify-center sm:h-14"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          {/* 产品浏览 - 金色主按钮（带烟花效果） */}
-          <ProductButton href={buttons.productsLink} text={buttons.productsText} />
-
-          {/* AI 顾问 - 透明背景金色边框按钮 */}
-          <Link href={buttons.advisorLink} className="group">
-            <m.div
-              className="relative"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
-              <div className="relative overflow-hidden rounded-full border border-brand-charcoal/20 bg-transparent px-8 py-3 transition-all duration-300 hover:border-brand-charcoal/40 hover:bg-brand-charcoal/5 sm:px-10 sm:py-3.5">
-                <div className="relative z-10 flex items-center justify-center gap-2">
-                  <Sparkles className="h-3.5 w-3.5 text-brand-gold/70 transition-colors duration-300 group-hover:text-brand-gold sm:h-4 sm:w-4" />
-                  <span className="text-sm font-medium tracking-wider text-brand-charcoal/60 transition-colors duration-300 group-hover:text-brand-charcoal/80 sm:text-base">
-                    {buttons.advisorText}
-                  </span>
-                </div>
-              </div>
-            </m.div>
-          </Link>
+          <ExploreMenu />
         </m.div>
 
       </div>
