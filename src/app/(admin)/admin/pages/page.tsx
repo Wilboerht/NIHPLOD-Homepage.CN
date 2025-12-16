@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { FileText, ExternalLink, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { FileText, ExternalLink, Eye, EyeOff, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { DotBadge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
@@ -22,6 +22,10 @@ export default function AdminPagesPage() {
   const [pages, setPages] = useState<PageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  // 核心页面（不可删除）
+  const corePages = ["home", "story", "ritual", "contact", "careers", "privacy", "terms"];
 
   // 获取页面列表
   const fetchPages = useCallback(async () => {
@@ -62,6 +66,36 @@ export default function AdminPagesPage() {
       showError("操作失败");
     } finally {
       setToggling(null);
+    }
+  };
+
+  // 删除页面
+  const deletePage = async (slug: string) => {
+    if (corePages.includes(slug)) {
+      showError("核心页面不可删除");
+      return;
+    }
+
+    if (!confirm(`确定要删除页面 "${slug}" 吗？此操作不可撤销。`)) {
+      return;
+    }
+
+    setDeleting(slug);
+    try {
+      const res = await fetch(`/api/admin/pages/${slug}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("删除失败");
+      }
+
+      success("页面已删除");
+      fetchPages();
+    } catch {
+      showError("删除失败");
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -193,6 +227,20 @@ export default function AdminPagesPage() {
                 >
                   <ExternalLink className="h-4 w-4" />
                 </a>
+                {!corePages.includes(page.slug) && (
+                  <button
+                    onClick={() => deletePage(page.slug)}
+                    disabled={deleting === page.slug}
+                    className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                    title="删除页面"
+                  >
+                    {deleting === page.slug ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -332,12 +332,9 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
         />
       </div>
 
-      {/* 内容区域容器 - 在安全区域内，使用 framer-motion 统一控制动画 */}
+      {/* 内容区域容器 - 紧贴顶部，使用 framer-motion 统一控制动画 */}
       <m.div
-        className="safe-area-content !bottom-auto"
-        animate={{
-          bottom: isExpanded ? "max(1rem, env(safe-area-inset-bottom, 1rem))" : "calc(max(1rem, env(safe-area-inset-bottom, 1rem)) + 112px)"
-        }}
+        className="safe-area-content !top-0"
         transition={{
           duration: 0.5,
           ease: [0.32, 0.72, 0, 1]

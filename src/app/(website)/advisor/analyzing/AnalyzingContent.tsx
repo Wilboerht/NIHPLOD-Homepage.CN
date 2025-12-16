@@ -7,23 +7,23 @@ import { Sparkles, Heart } from "lucide-react";
 import { preprocessFaceImage } from "@/lib/image-processing";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 
-/** 加载提示文案 */
+/** 加载提示文案 - 高奢品牌语调 */
 const LOADING_TIPS = [
-  { icon: "🔬", text: "正在分析您的肌肤类型..." },
-  { icon: "💧", text: "检测肌肤水分状态..." },
-  { icon: "✨", text: "评估肤色均匀度..." },
-  { icon: "🎯", text: "识别肌肤问题区域..." },
-  { icon: "📊", text: "综合分析数据..." },
-  { icon: "💡", text: "生成专属护肤方案..." },
+  { icon: "🔬", text: "正在解读您的肌肤密码..." },
+  { icon: "💧", text: "评估肌肤水润状态..." },
+  { icon: "✨", text: "分析肤色光泽度..." },
+  { icon: "🎯", text: "识别需要关注的区域..." },
+  { icon: "📊", text: "综合多维度数据..." },
+  { icon: "💡", text: "定制您的专属方案..." },
 ];
 
-/** 品牌小知识 */
+/** 品牌小知识 - NIHPLOD 旎柏品牌故事 */
 const BRAND_FACTS = [
-  "真脂质体技术 - 高效渗透，深层滋养",
-  "源自法国的高端护肤科技",
-  "逆转时光，焕发肌肤年轻活力",
-  "多肽配方，激活肌肤自我修护",
-  "植物精萃，温和呵护每寸肌肤",
+  "真脂质体技术 — 源自摩纳哥的高端护肤科技",
+  "NIHPLOD 旎柏 — 让每一寸肌肤都被温柔以待",
+  "多肽精萃配方 — 唤醒肌肤自我修护能量",
+  "植物精华与科技的完美融合",
+  "专注于为您打造专属护肤仪式",
 ];
 
 /**
@@ -289,54 +289,67 @@ export function AnalyzingContent() {
 
   return (
     <div
-      className="flex h-screen flex-col items-center justify-center overflow-hidden px-4"
+      className="relative flex h-screen flex-col items-center justify-center overflow-hidden bg-gradient-cream px-4"
       role="status"
       aria-live="polite"
       aria-label="正在分析您的肌肤状况"
     >
-      <div className="w-full max-w-sm text-center">
-        {/* 旋转动画 */}
-        <div className="relative mx-auto mb-8 h-24 w-24" aria-hidden="true">
-          {/* 外圈旋转 */}
+      {/* 背景装饰 */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-gradient-radial-gold opacity-40" />
+        <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-gradient-radial-gold opacity-30" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-sm text-center">
+        {/* 优雅的旋转动画 */}
+        <div className="relative mx-auto mb-10 h-28 w-28" aria-hidden="true">
+          {/* 外圈旋转 - 金色渐变 */}
           <m.div
-            className="absolute inset-0 rounded-full border-2 border-brand-gold/30"
+            className="absolute inset-0 rounded-full border-2 border-brand-gold/40"
             animate={{ rotate: 360 }}
-            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          />
-          {/* 内圈反向旋转 */}
-          <m.div
-            className="absolute inset-2 rounded-full border-2 border-dashed border-brand-gold/50"
-            animate={{ rotate: -360 }}
             transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+          />
+          {/* 中圈反向旋转 */}
+          <m.div
+            className="absolute inset-3 rounded-full border border-dashed border-brand-gold/30"
+            animate={{ rotate: -360 }}
+            transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+          />
+          {/* 内圈 */}
+          <m.div
+            className="absolute inset-6 rounded-full border border-brand-beige/50"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
           />
           {/* 中心图标 */}
           <div className="absolute inset-0 flex items-center justify-center">
             <m.div
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-champagne/30 shadow-luxury"
+              animate={{ scale: [1, 1.08, 1] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
             >
-              <Sparkles className="h-10 w-10 text-brand-gold" />
+              <Sparkles className="h-7 w-7 text-brand-gold" />
             </m.div>
           </div>
           {/* 进度指示点 */}
           <m.div
-            className="absolute -right-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-brand-gold"
+            className="absolute -right-1 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-gradient-to-br from-brand-gold to-brand-gold-dark shadow-glow-gold"
             animate={{ rotate: 360 }}
-            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            style={{ transformOrigin: "-47px center" }}
+            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            style={{ transformOrigin: "-55px center" }}
           />
         </div>
 
         {/* 动态提示文案 */}
-        <div className="mb-6 h-8">
+        <div className="mb-8 h-8">
           <AnimatePresence mode="wait">
             <m.div
               key={tipIndex}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="flex items-center justify-center gap-2 text-brand-charcoal"
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              className="flex items-center justify-center gap-2.5 font-light tracking-wide text-brand-charcoal"
             >
               <span className="text-xl">{currentTip.icon}</span>
               <span>{currentTip.text}</span>
@@ -344,10 +357,10 @@ export function AnalyzingContent() {
           </AnimatePresence>
         </div>
 
-        {/* 进度条 */}
-        <div className="mb-8">
+        {/* 优雅进度条 */}
+        <div className="mb-10">
           <div
-            className="mb-2 h-2 overflow-hidden rounded-full bg-brand-beige"
+            className="relative mb-3 h-1.5 overflow-hidden rounded-full bg-brand-beige/50"
             role="progressbar"
             aria-valuenow={Math.round(Math.min(progress, 100))}
             aria-valuemin={0}
@@ -355,28 +368,37 @@ export function AnalyzingContent() {
             aria-label="分析进度"
           >
             <m.div
-              className="h-full rounded-full bg-gradient-to-r from-brand-gold to-brand-gold/80"
+              className="h-full rounded-full bg-gradient-to-r from-brand-gold via-brand-gold-light to-brand-gold"
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(progress, 100)}%` }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            />
+            {/* 光泽效果 */}
+            <m.div
+              className="absolute inset-0 bg-shimmer"
+              animate={{ x: ["-100%", "100%"] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
             />
           </div>
-          <span className="text-sm text-brand-charcoal/60" aria-hidden="true">
+          <span className="text-sm font-light tracking-wider text-brand-charcoal/50" aria-hidden="true">
             {Math.round(Math.min(progress, 100))}%
           </span>
         </div>
 
-        {/* 品牌小知识 */}
-        <div className="rounded-xl bg-brand-cream/50 p-4">
-          <div className="mb-1 text-xs text-brand-charcoal/50">💡 了解更多</div>
+        {/* 品牌小知识 - 优雅卡片 */}
+        <div className="rounded-2xl border border-brand-beige/40 bg-white/60 p-5 shadow-card backdrop-blur-sm">
+          <div className="mb-2 flex items-center justify-center gap-1.5 text-xs tracking-wider text-brand-gold/70">
+            <span>✨</span>
+            <span>旎柏品牌</span>
+          </div>
           <AnimatePresence mode="wait">
             <m.p
               key={factIndex}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
               transition={{ duration: 0.5 }}
-              className="text-sm text-brand-charcoal/70"
+              className="text-sm font-light leading-relaxed tracking-wide text-brand-charcoal/70"
             >
               {currentFact}
             </m.p>

@@ -15,8 +15,8 @@ interface OptionCardProps {
 }
 
 /**
- * 问题选项卡片组件
- * 支持选中状态、动画效果
+ * 问题选项卡片组件 - NIHPLOD 高奢品牌风格
+ * 毛玻璃效果、金色边框、优雅动画
  */
 export function OptionCard({
   label,
@@ -33,53 +33,129 @@ export function OptionCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.3,
-        delay: index * 0.05,
-        ease: "easeOut",
+        duration: 0.4,
+        delay: index * 0.06,
+        ease: [0.4, 0, 0.2, 1],
       }}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{
+        scale: 1.015,
+        transition: { duration: 0.2 }
+      }}
+      whileTap={{ scale: 0.985 }}
       className={cn(
-        "relative w-full rounded-2xl border-2 p-4 text-left transition-all duration-200",
-        "focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-offset-2",
+        "group relative w-full overflow-hidden rounded-2xl text-left transition-all duration-300",
+        "focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:ring-offset-2 focus:ring-offset-brand-cream",
         isSelected
-          ? "border-brand-gold bg-brand-gold/5 shadow-md"
-          : "border-brand-beige/60 bg-white hover:border-brand-gold/50 hover:shadow-sm"
+          ? "shadow-luxury-lg"
+          : "shadow-card hover:shadow-card-hover"
       )}
     >
-      <div className="flex items-start gap-3">
-        {/* Emoji 图标 */}
+      {/* 背景层 */}
+      <div
+        className={cn(
+          "absolute inset-0 transition-all duration-300",
+          isSelected
+            ? "bg-gradient-to-br from-white via-brand-champagne/30 to-white"
+            : "bg-white/90 backdrop-blur-sm group-hover:bg-white"
+        )}
+      />
+
+      {/* 金色边框效果 */}
+      <div
+        className={cn(
+          "absolute inset-0 rounded-2xl transition-all duration-300",
+          isSelected
+            ? "border-2 border-brand-gold"
+            : "border border-brand-beige/60 group-hover:border-brand-gold/40"
+        )}
+      />
+
+      {/* 选中时的微光效果 */}
+      {isSelected && (
+        <m.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-gold/10 to-transparent"
+          initial={{ x: "-100%" }}
+          animate={{ x: "100%" }}
+          transition={{ duration: 1.5, ease: "easeInOut" }}
+        />
+      )}
+
+      {/* 内容区域 */}
+      <div className="relative z-10 flex items-start gap-3.5 p-4 sm:p-4.5">
+        {/* Emoji 图标 - 优雅圆形容器 */}
         {emoji && (
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-cream text-xl">
+          <m.div
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl transition-all duration-300",
+              isSelected
+                ? "bg-gradient-to-br from-brand-gold/15 to-brand-champagne/40 shadow-sm"
+                : "bg-brand-cream/80 group-hover:bg-brand-cream"
+            )}
+            animate={isSelected ? { scale: [1, 1.05, 1] } : {}}
+            transition={{ duration: 0.3 }}
+          >
             {emoji}
-          </span>
+          </m.div>
         )}
 
         {/* 文本内容 */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pt-0.5">
           <p
             className={cn(
-              "font-medium transition-colors",
-              isSelected ? "text-brand-gold" : "text-brand-charcoal"
+              "font-medium tracking-wide transition-colors duration-200",
+              isSelected
+                ? "text-brand-charcoal"
+                : "text-brand-charcoal group-hover:text-brand-charcoal"
             )}
           >
             {label}
           </p>
-          <p className="mt-0.5 text-sm text-brand-charcoal/60">{description}</p>
+          <p
+            className={cn(
+              "mt-1 text-sm leading-relaxed transition-colors duration-200",
+              isSelected
+                ? "text-brand-charcoal/70"
+                : "text-brand-charcoal/50 group-hover:text-brand-charcoal/60"
+            )}
+          >
+            {description}
+          </p>
         </div>
 
-        {/* 选中图标 */}
-        <div
-          className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all",
-            isSelected
-              ? "bg-brand-gold text-white"
-              : "border-2 border-brand-beige bg-white"
-          )}
-        >
-          {isSelected && <Check className="h-4 w-4" />}
+        {/* 选中指示器 - 优雅的金色圆环 */}
+        <div className="flex-shrink-0 pt-0.5">
+          <m.div
+            className={cn(
+              "flex h-6 w-6 items-center justify-center rounded-full transition-all duration-300",
+              isSelected
+                ? "bg-gradient-to-br from-brand-gold to-brand-gold-dark shadow-sm"
+                : "border-2 border-brand-beige/70 bg-white group-hover:border-brand-gold/40"
+            )}
+            animate={isSelected ? { scale: [0.9, 1.1, 1] } : {}}
+            transition={{ duration: 0.3 }}
+          >
+            {isSelected && (
+              <m.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              >
+                <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+              </m.div>
+            )}
+          </m.div>
         </div>
       </div>
+
+      {/* 底部装饰线 - 仅选中时显示 */}
+      {isSelected && (
+        <m.div
+          className="absolute bottom-0 left-1/2 h-0.5 -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-brand-gold to-transparent"
+          initial={{ width: 0 }}
+          animate={{ width: "60%" }}
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+        />
+      )}
     </m.button>
   );
 }

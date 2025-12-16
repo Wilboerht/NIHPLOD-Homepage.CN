@@ -27,7 +27,7 @@ interface FaceCaptureProps {
   onSkip?: () => void;
 }
 
-type LightLevel = "good" | "low" | "unknown";
+type LightLevel = "excellent" | "good" | "low" | "too_dark" | "too_bright" | "uneven" | "unknown";
 type FaceStatus = "none" | "detecting" | "found" | "ready";
 
 // 拍照步骤类型
@@ -70,7 +70,9 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
   const [currentStep, setCurrentStep] = useState<CaptureStep>("front");
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [lightLevel, setLightLevel] = useState<LightLevel>("unknown");
+  const [lightScore, setLightScore] = useState<number>(0); // 0-100 光线质量分数
   const [error, setError] = useState<string | null>(null);
+  const [stabilityProgress, setStabilityProgress] = useState<number>(0); // 姿势稳定进度 0-100
   const [isLoading, setIsLoading] = useState(true);
   const [faceStatus, setFaceStatus] = useState<FaceStatus>("none");
   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -291,16 +293,20 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
         if (isCentered && isSizeOk && isPoseCorrect) {
           stableCountRef.current += 1;
           setFaceStatus("found");
+          // 更新稳定进度 (4次检测 = 100%)
+          setStabilityProgress(Math.min(100, (stableCountRef.current / 4) * 100));
 
           // 稳定检测约1.2秒后拍照（4次检测，每次300ms）
           // 确保用户有足够时间保持姿势，拍摄清晰
           if (stableCountRef.current >= 4) {
             setFaceStatus("ready");
+            setStabilityProgress(100);
             // 拍照
             takePhotoAuto();
           }
         } else {
           stableCountRef.current = 0;
+          setStabilityProgress(0);
           setFaceStatus("detecting");
         }
       } else {
@@ -394,7 +400,8 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
   }, [facingMode, currentStep, getNextStep, stream, capturedImages, onCapture]);
 
   /**
-   * 分析光线条件
+   * 分析光线条件 - 增强版
+   * 检测：亮度、对比度、均匀度
    */
   const analyzeLightLevel = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -412,26 +419,87 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
 
     const imageData = ctx.getImageData(0, 0, 100, 75);
     const data = imageData.data;
+    const pixelCount = data.length / 4;
 
-    // 计算平均亮度
+    // 计算亮度统计
     let totalBrightness = 0;
+    let minBrightness = 255;
+    let maxBrightness = 0;
+    const brightnessValues: number[] = [];
+
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
       // 使用感知亮度公式
-      totalBrightness += 0.299 * r + 0.587 * g + 0.114 * b;
+      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+      totalBrightness += brightness;
+      brightnessValues.push(brightness);
+      minBrightness = Math.min(minBrightness, brightness);
+      maxBrightness = Math.max(maxBrightness, brightness);
     }
 
-    const avgBrightness = totalBrightness / (data.length / 4);
+    const avgBrightness = totalBrightness / pixelCount;
 
-    if (avgBrightness > 100) {
-      setLightLevel("good");
-    } else if (avgBrightness > 50) {
-      setLightLevel("low");
+    // 计算标准差（光线均匀度）
+    let variance = 0;
+    for (const b of brightnessValues) {
+      variance += Math.pow(b - avgBrightness, 2);
+    }
+    const stdDev = Math.sqrt(variance / pixelCount);
+
+    // 计算动态范围（对比度）
+    const dynamicRange = maxBrightness - minBrightness;
+
+    // 综合评分计算
+    let score = 0;
+    let level: LightLevel = "unknown";
+
+    // 亮度评分 (0-40分) - 理想范围 100-180
+    if (avgBrightness >= 100 && avgBrightness <= 180) {
+      score += 40;
+    } else if (avgBrightness >= 80 && avgBrightness <= 200) {
+      score += 30;
+    } else if (avgBrightness >= 50 && avgBrightness <= 220) {
+      score += 15;
+    }
+
+    // 均匀度评分 (0-30分) - 标准差越小越好，理想 < 40
+    if (stdDev < 30) {
+      score += 30;
+    } else if (stdDev < 50) {
+      score += 20;
+    } else if (stdDev < 70) {
+      score += 10;
+    }
+
+    // 对比度评分 (0-30分) - 动态范围适中 60-150
+    if (dynamicRange >= 60 && dynamicRange <= 150) {
+      score += 30;
+    } else if (dynamicRange >= 40 && dynamicRange <= 180) {
+      score += 20;
+    } else if (dynamicRange >= 20) {
+      score += 10;
+    }
+
+    setLightScore(score);
+
+    // 根据评分和具体问题设置状态
+    if (score >= 85) {
+      level = "excellent";
+    } else if (score >= 65) {
+      level = "good";
+    } else if (avgBrightness > 220) {
+      level = "too_bright";
+    } else if (avgBrightness < 50) {
+      level = "too_dark";
+    } else if (stdDev > 60) {
+      level = "uneven";
     } else {
-      setLightLevel("low");
+      level = "low";
     }
+
+    setLightLevel(level);
   }, []);
 
   /**
@@ -493,24 +561,48 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
   }, [stream, isAllCaptured, analyzeLightLevel]);
 
   /**
-   * 渲染光线提示
+   * 渲染光线提示 - 增强版
    */
   const renderLightIndicator = () => {
-    const configs = {
+    const configs: Record<LightLevel, { icon: typeof Sun; text: string; className: string; tip?: string }> = {
+      excellent: {
+        icon: Sun,
+        text: "光线极佳",
+        className: "text-green-600 bg-green-50 border-green-200",
+      },
       good: {
         icon: Sun,
         text: "光线良好",
-        className: "text-green-600 bg-green-50",
+        className: "text-green-600 bg-green-50 border-green-200",
       },
       low: {
         icon: SunDim,
-        text: "光线较暗，建议移到更亮的地方",
-        className: "text-yellow-600 bg-yellow-50",
+        text: "光线偏暗",
+        className: "text-yellow-600 bg-yellow-50 border-yellow-200",
+        tip: "建议移到更亮的地方",
+      },
+      too_dark: {
+        icon: SunDim,
+        text: "光线太暗",
+        className: "text-orange-600 bg-orange-50 border-orange-200",
+        tip: "请移到光线充足的地方",
+      },
+      too_bright: {
+        icon: Sun,
+        text: "光线过强",
+        className: "text-orange-600 bg-orange-50 border-orange-200",
+        tip: "避免阳光直射，移到阴凉处",
+      },
+      uneven: {
+        icon: SunDim,
+        text: "光线不均",
+        className: "text-yellow-600 bg-yellow-50 border-yellow-200",
+        tip: "避免侧面强光，面向光源",
       },
       unknown: {
         icon: Sun,
         text: "检测光线中...",
-        className: "text-gray-500 bg-gray-50",
+        className: "text-gray-500 bg-gray-50 border-gray-200",
       },
     };
 
@@ -518,14 +610,30 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
     const Icon = config.icon;
 
     return (
-      <div
-        className={cn(
-          "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs",
-          config.className
+      <div className="flex flex-col items-center gap-1">
+        <div
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-all duration-300",
+            config.className
+          )}
+        >
+          <Icon className="h-4 w-4" />
+          <span>{config.text}</span>
+          {/* 光线质量分数 */}
+          <span className="ml-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-medium">
+            {lightScore}分
+          </span>
+        </div>
+        {/* 提示文字 */}
+        {config.tip && (
+          <m.p
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[10px] text-brand-charcoal/50"
+          >
+            💡 {config.tip}
+          </m.p>
         )}
-      >
-        <Icon className="h-4 w-4" />
-        <span>{config.text}</span>
       </div>
     );
   };
@@ -724,6 +832,54 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
                     "absolute -bottom-1 -right-1 h-4 w-4 border-b-2 border-r-2 transition-colors duration-300",
                     faceStatus === "ready" ? "border-green-400" : "border-white"
                   )} />
+
+                  {/* 稳定度进度环 - 当检测到正确姿势时显示 */}
+                  {faceStatus === "found" && stabilityProgress > 0 && (
+                    <m.div
+                      className="absolute inset-0 flex items-center justify-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
+                      <svg className="h-full w-full" viewBox="0 0 100 100">
+                        <ellipse
+                          cx="50"
+                          cy="50"
+                          rx="48"
+                          ry="48"
+                          fill="none"
+                          stroke="rgba(74, 222, 128, 0.3)"
+                          strokeWidth="3"
+                        />
+                        <m.ellipse
+                          cx="50"
+                          cy="50"
+                          rx="48"
+                          ry="48"
+                          fill="none"
+                          stroke="#4ade80"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeDasharray={`${stabilityProgress * 3.02} 302`}
+                          transform="rotate(-90 50 50)"
+                          initial={{ strokeDasharray: "0 302" }}
+                          animate={{ strokeDasharray: `${stabilityProgress * 3.02} 302` }}
+                          transition={{ duration: 0.2 }}
+                        />
+                      </svg>
+                      {/* 倒计时数字 */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <m.div
+                          className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20 backdrop-blur-sm"
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                        >
+                          <span className="text-2xl font-bold text-white">
+                            {Math.ceil((100 - stabilityProgress) / 25) || "✓"}
+                          </span>
+                        </m.div>
+                      </div>
+                    </m.div>
+                  )}
 
                 </div>
 

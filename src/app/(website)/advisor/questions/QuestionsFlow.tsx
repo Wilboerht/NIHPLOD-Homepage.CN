@@ -184,26 +184,34 @@ export function QuestionsFlow() {
   }
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden px-4 py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-gradient-cream px-4 py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
+      {/* 背景装饰 */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-gradient-radial-gold opacity-50" />
+        <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-gradient-radial-gold opacity-30" />
+      </div>
+
       {/* 顶部导航栏 */}
-      <header className="flex items-center justify-between">
-        {/* 返回按钮 */}
+      <header className="relative z-10 flex items-center justify-between">
+        {/* 返回按钮 - 优雅的圆形按钮 */}
         {currentIndex === 0 ? (
           <Link
             href="/advisor"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal lg:h-11 lg:w-11"
+            className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover lg:h-11 lg:w-11"
             aria-label="返回"
           >
-            <X className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
+            <X className="h-5 w-5 transition-transform group-hover:scale-110 lg:h-[22px] lg:w-[22px]" />
           </Link>
         ) : (
-          <button
+          <m.button
             onClick={handlePrev}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal lg:h-11 lg:w-11"
+            className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover lg:h-11 lg:w-11"
             aria-label="上一题"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <ArrowLeft className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
-          </button>
+            <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5 lg:h-[22px] lg:w-[22px]" />
+          </m.button>
         )}
 
         {/* 进度指示器 */}
@@ -211,13 +219,17 @@ export function QuestionsFlow() {
           <ProgressBar current={currentIndex + 1} total={totalQuestions} />
         </div>
 
-        {/* 占位 */}
-        <div className="w-10 lg:w-12" />
+        {/* 品牌标识占位 */}
+        <div className="flex h-10 w-10 items-center justify-center lg:h-11 lg:w-11">
+          <span className="text-[10px] font-light uppercase tracking-[0.2em] text-brand-gold/60">
+            旎柏
+          </span>
+        </div>
       </header>
 
       {/* 问题内容区域 */}
-      <main className="flex flex-1 flex-col items-center justify-center py-8">
-        <div className="w-full max-w-md">
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center py-6 md:py-8">
+        <div className="w-full max-w-md lg:max-w-lg">
           <QuestionStep
             question={currentQuestion}
             selectedValue={currentAnswer}
@@ -228,23 +240,32 @@ export function QuestionsFlow() {
       </main>
 
       {/* 底部导航按钮 */}
-      <footer className="flex items-center justify-center pb-6 pt-2">
-        {/* 居中：下一题/完成按钮 */}
+      <footer className="relative z-10 flex items-center justify-center pb-6 pt-2">
+        {/* 优雅的下一题/完成按钮 */}
         <m.button
           initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: currentAnswer ? 1 : 0.4, y: 0 }}
-          transition={{ duration: 0.3 }}
+          animate={{ opacity: currentAnswer ? 1 : 0.5, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
           onClick={isLastQuestion ? handleComplete : handleNext}
           disabled={!currentAnswer}
           className={cn(
-            "flex items-center gap-2 rounded-full px-10 py-3.5 text-sm font-light tracking-wider transition-all sm:px-12 sm:py-4",
+            "group relative flex items-center gap-2.5 overflow-hidden rounded-full px-10 py-3.5 text-sm font-light tracking-wider transition-all duration-300 sm:px-12 sm:py-4",
             currentAnswer
-              ? "border border-brand-charcoal/20 bg-white/60 text-brand-charcoal hover:border-brand-charcoal/40 hover:bg-white/80"
-              : "cursor-not-allowed border border-brand-beige/50 bg-brand-beige/30 text-brand-charcoal/30"
+              ? "border border-brand-gold/30 bg-white/90 text-brand-charcoal shadow-card backdrop-blur-sm hover:border-brand-gold hover:shadow-luxury"
+              : "cursor-not-allowed border border-brand-beige/40 bg-white/50 text-brand-charcoal/30"
           )}
         >
-          {isLastQuestion ? "深度面部分析" : "下一题"}
-          <ArrowRight className="h-4 w-4" />
+          {/* 悬停时的光泽效果 */}
+          {currentAnswer && (
+            <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
+          )}
+          <span className="relative">
+            {isLastQuestion ? "深度面部分析" : "下一题"}
+          </span>
+          <ArrowRight className={cn(
+            "relative h-4 w-4 transition-transform duration-200",
+            currentAnswer && "group-hover:translate-x-0.5"
+          )} />
         </m.button>
       </footer>
     </div>

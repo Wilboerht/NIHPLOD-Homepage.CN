@@ -636,18 +636,46 @@ export function ResultContent() {
         )}
       </AnimatePresence>
 
-      {/* 页面标题 */}
+      {/* 页面标题 - 高奢品牌风格 */}
       <m.div
-        className="mb-6 text-center lg:mb-8"
+        className="mb-8 text-center lg:mb-10"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
       >
-        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-brand-gold/10 px-4 py-1.5">
+        {/* 装饰性分隔线 */}
+        <m.div
+          className="mx-auto mb-4 flex items-center justify-center gap-3"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+        >
+          <span className="h-px w-8 bg-gradient-to-r from-transparent to-brand-gold/50" />
           <Star className="h-4 w-4 text-brand-gold" />
-          <span className="text-sm text-brand-gold">多维分析完成</span>
-        </div>
-        <h1 className="font-serif text-2xl text-brand-charcoal lg:text-3xl">您的肌肤分析报告</h1>
+          <span className="h-px w-8 bg-gradient-to-l from-transparent to-brand-gold/50" />
+        </m.div>
+
+        {/* 徽章 */}
+        <m.div
+          className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-gold/20 bg-gradient-to-r from-brand-champagne/30 via-white to-brand-champagne/30 px-5 py-2 shadow-sm backdrop-blur-sm"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+        >
+          <span className="text-sm font-light tracking-wider text-brand-gold">
+            {result.dataSource === "comprehensive" ? "✨ 综合分析完成" : "📋 问卷分析完成"}
+          </span>
+        </m.div>
+
+        {/* 主标题 */}
+        <m.h1
+          className="font-serif text-2xl font-light tracking-wide text-brand-charcoal lg:text-3xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+        >
+          您的专属肌肤报告
+        </m.h1>
       </m.div>
 
       {/* 报告内容区域（用于截图） */}
@@ -665,43 +693,48 @@ export function ResultContent() {
           </m.div>
         )}
 
-        {/* 综合分析摘要 */}
+        {/* 综合分析摘要 - 高奢卡片风格 */}
         <m.div
           variants={fadeInUp}
           transition={defaultTransition}
-          className="rounded-2xl bg-white p-4 shadow-sm"
+          className="relative overflow-hidden rounded-2xl border border-brand-beige/50 bg-white/95 p-5 shadow-card backdrop-blur-sm"
         >
-          <h3 className="mb-3 flex items-center gap-2 font-serif text-base text-brand-charcoal">
-            <Sparkles className="h-5 w-5 text-brand-gold" />
+          {/* 装饰性背景 */}
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-radial-gold opacity-30" />
+
+          <h3 className="relative mb-4 flex items-center gap-2.5 font-serif text-base font-light tracking-wide text-brand-charcoal">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-champagne/40">
+              <Sparkles className="h-4 w-4 text-brand-gold" />
+            </div>
             综合分析
           </h3>
-          <p className="mb-3 text-sm leading-relaxed text-brand-charcoal/80">{result.analysis.summary}</p>
-          <ul className="space-y-1.5">
+          <p className="relative mb-4 text-sm leading-relaxed text-brand-charcoal/80">{result.analysis.summary}</p>
+          <ul className="relative space-y-2">
             {result.analysis.details.map((detail, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-brand-charcoal/70">
-                <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-gold" />
+              <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed text-brand-charcoal/70">
+                <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full bg-brand-gold" />
                 {detail}
               </li>
             ))}
           </ul>
         </m.div>
 
-        {/* 护肤方案 */}
+        {/* 护肤方案 - 高奢卡片风格 */}
         <m.div
           variants={fadeInUp}
           transition={defaultTransition}
-          className="rounded-2xl bg-white p-4 shadow-sm"
+          className="relative overflow-hidden rounded-2xl border border-brand-beige/50 bg-white/95 p-5 shadow-card backdrop-blur-sm"
         >
-          <h3 className="mb-3 font-serif text-base text-brand-charcoal">专属护肤方案</h3>
+          <h3 className="mb-4 font-serif text-base font-light tracking-wide text-brand-charcoal">专属护肤方案</h3>
 
-          {/* 切换标签 */}
-          <div className="mb-4 flex gap-2">
+          {/* 切换标签 - 优雅胶囊按钮 */}
+          <div className="mb-5 flex gap-2">
             <button
               onClick={() => setActiveRoutine("morning")}
-              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm transition-colors ${
+              className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-light tracking-wide transition-all duration-300 ${
                 activeRoutine === "morning"
-                  ? "bg-brand-gold text-white"
-                  : "bg-brand-cream text-brand-charcoal/60"
+                  ? "bg-gradient-to-r from-brand-gold to-brand-gold-light text-white shadow-luxury"
+                  : "border border-brand-beige bg-white/80 text-brand-charcoal/60 hover:border-brand-gold/40"
               }`}
             >
               <Sun className="h-4 w-4" />
@@ -709,10 +742,10 @@ export function ResultContent() {
             </button>
             <button
               onClick={() => setActiveRoutine("evening")}
-              className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm transition-colors ${
+              className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-light tracking-wide transition-all duration-300 ${
                 activeRoutine === "evening"
-                  ? "bg-brand-gold text-white"
-                  : "bg-brand-cream text-brand-charcoal/60"
+                  ? "bg-gradient-to-r from-brand-gold to-brand-gold-light text-white shadow-luxury"
+                  : "border border-brand-beige bg-white/80 text-brand-charcoal/60 hover:border-brand-gold/40"
               }`}
             >
               <Moon className="h-4 w-4" />
@@ -720,29 +753,39 @@ export function ResultContent() {
             </button>
           </div>
 
-          {/* 步骤列表 */}
-          <div className="space-y-3">
-            {result.routine[activeRoutine].map((step) => {
+          {/* 步骤列表 - 优雅时间线 */}
+          <div className="relative space-y-4">
+            {/* 连接线 */}
+            <div className="absolute bottom-4 left-4 top-4 w-px bg-gradient-to-b from-brand-gold/30 via-brand-gold/20 to-transparent" />
+
+            {result.routine[activeRoutine].map((step, idx) => {
               // 查找对应产品
               const product = step.productId
                 ? result.products.find((p) => p.id === step.productId)
                 : null;
 
               return (
-                <div key={step.order} className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold/10 text-sm font-medium text-brand-gold">
+                <m.div
+                  key={step.order}
+                  className="relative flex items-start gap-4"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1, duration: 0.3 }}
+                >
+                  {/* 步骤编号 - 优雅圆形 */}
+                  <div className="relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-brand-gold/30 bg-white text-sm font-medium text-brand-gold shadow-sm">
                     {step.order}
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-brand-charcoal">{step.step}</span>
+                  <div className="flex-1 pt-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium text-brand-charcoal">{step.step}</span>
                       {(step.productName || product?.name) && (
                         <>
-                          <span className="text-brand-charcoal/30">·</span>
+                          <span className="text-brand-gold/40">·</span>
                           {product ? (
                             <Link
                               href={`/products/${product.id}`}
-                              className="text-sm text-brand-gold hover:underline"
+                              className="text-sm text-brand-gold transition-colors hover:text-brand-gold-dark hover:underline"
                             >
                               {step.productName || product.name}
                             </Link>
@@ -754,9 +797,9 @@ export function ResultContent() {
                         </>
                       )}
                     </div>
-                    <p className="text-xs leading-relaxed text-brand-charcoal/60">{step.description}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-brand-charcoal/55">{step.description}</p>
                   </div>
-                </div>
+                </m.div>
               );
             })}
           </div>
@@ -786,25 +829,27 @@ export function ResultContent() {
           </div>
         </m.div>
 
-        {/* 操作按钮 */}
+        {/* 操作按钮 - 高奢风格 */}
         <m.div
           variants={fadeInUp}
           transition={defaultTransition}
-          className="flex flex-col gap-3 pt-4 sm:flex-row"
+          className="flex flex-col gap-3 pt-6 sm:flex-row"
         >
           <button
             onClick={handleRestart}
-            className="flex items-center justify-center gap-2 rounded-full border border-brand-charcoal/20 py-3 text-sm text-brand-charcoal transition-colors hover:bg-brand-cream sm:flex-1"
+            className="group flex items-center justify-center gap-2.5 rounded-full border border-brand-beige bg-white/80 py-3.5 text-sm font-light tracking-wide text-brand-charcoal/70 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover sm:flex-1"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4 transition-transform group-hover:rotate-180" />
             重新测试
           </button>
           <Link
             href="/products"
-            className="flex items-center justify-center gap-2 rounded-full bg-brand-gold py-3 text-sm text-white transition-colors hover:bg-brand-gold/90 sm:flex-1"
+            className="group relative flex items-center justify-center gap-2.5 overflow-hidden rounded-full bg-gradient-to-r from-brand-gold to-brand-gold-light py-3.5 text-sm font-light tracking-wide text-white shadow-luxury transition-all duration-300 hover:shadow-luxury-lg sm:flex-1"
           >
-            <ShoppingBag className="h-4 w-4" />
-            浏览全部产品
+            {/* 光泽效果 */}
+            <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
+            <ShoppingBag className="relative h-4 w-4" />
+            <span className="relative">浏览全部产品</span>
           </Link>
         </m.div>
 

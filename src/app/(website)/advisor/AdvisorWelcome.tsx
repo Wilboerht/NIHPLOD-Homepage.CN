@@ -137,12 +137,12 @@ export function AdvisorWelcome() {
 
                   {/* 英文标题 */}
                   <m.p
-                    className="text-[11px] font-light uppercase tracking-[0.3em] text-brand-gold/80 sm:text-xs"
+                    className="text-[11px] font-light uppercase tracking-[0.35em] text-brand-gold/80 sm:text-xs"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.8, delay: 0.3 }}
                   >
-                    AI Skin Advisor
+                    Personalized Skin Analysis
                   </m.p>
 
                   {/* 中文主标题 */}
@@ -152,7 +152,7 @@ export function AdvisorWelcome() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
                   >
-                    专属定制
+                    臻享定制
                   </m.h1>
 
                   {/* 分隔装饰 */}
@@ -162,35 +162,37 @@ export function AdvisorWelcome() {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.6, delay: 0.6 }}
                   >
-                    <span className="h-px w-8 bg-brand-charcoal/20" />
-                    <span className="h-1 w-1 rounded-full bg-brand-gold/60" />
-                    <span className="h-px w-8 bg-brand-charcoal/20" />
+                    <span className="h-px w-10 bg-gradient-to-r from-transparent to-brand-gold/40" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand-gold/60" />
+                    <span className="h-px w-10 bg-gradient-to-l from-transparent to-brand-gold/40" />
                   </m.div>
 
                   {/* 副标题 */}
                   <m.p
-                    className="max-w-sm text-center text-sm font-light leading-relaxed text-brand-charcoal/60 sm:max-w-md sm:text-base"
+                    className="max-w-sm text-center text-sm font-light leading-relaxed tracking-wide text-brand-charcoal/60 sm:max-w-md sm:text-base"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.8, delay: 0.7 }}
                   >
-                    回答几个简单问题
+                    几个简单问题
                     <br className="sm:hidden" />
                     <span className="hidden sm:inline">，</span>
-                    发现专属于你的护肤方案
+                    开启您的专属护肤之旅
                   </m.p>
 
                   {/* 开始按钮 */}
                   <m.button
                     onClick={handleStart}
-                    className="mt-10 rounded-full border-2 border-brand-gold/70 bg-brand-gold/10 px-14 py-4 text-sm font-medium tracking-[0.2em] text-brand-charcoal shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-brand-gold hover:bg-brand-gold/20 hover:shadow-md sm:mt-12 sm:px-16 sm:py-4.5 sm:text-base"
+                    className="group relative mt-10 overflow-hidden rounded-full border-2 border-brand-gold/60 bg-gradient-to-r from-brand-gold/10 via-brand-champagne/20 to-brand-gold/10 px-14 py-4 text-sm font-medium tracking-[0.2em] text-brand-charcoal shadow-luxury backdrop-blur-sm transition-all duration-300 hover:border-brand-gold hover:shadow-luxury-lg sm:mt-12 sm:px-16 sm:py-4.5 sm:text-base"
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.9 }}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    开始测试
+                    {/* 光泽效果 */}
+                    <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
+                    <span className="relative">开启体验</span>
                   </m.button>
 
                   {/* 时间提示 + 花园入口 */}
@@ -201,26 +203,26 @@ export function AdvisorWelcome() {
                     transition={{ duration: 0.6, delay: 1.1 }}
                   >
                     <span className="text-[11px] font-light tracking-wider text-brand-charcoal/40 sm:text-xs">
-                      约 2 分钟 · 完全免费
+                      约 2 分钟 · 专属定制
                     </span>
-                    <span className="text-brand-charcoal/20">|</span>
+                    <span className="text-brand-gold/30">·</span>
                     <Link
                       href="/lottery/garden"
-                      className="group flex items-center gap-1 text-[11px] font-light tracking-wider text-brand-gold/70 transition-colors hover:text-brand-gold sm:text-xs"
+                      className="group flex items-center gap-1.5 text-[11px] font-light tracking-wider text-brand-gold/70 transition-colors hover:text-brand-gold sm:text-xs"
                     >
                       <span>🌸</span>
-                      <span>查看幸运花园</span>
+                      <span>幸运花园</span>
                     </Link>
                   </m.div>
 
                   {/* 隐私说明 */}
                   <m.p
-                    className="mt-4 max-w-xs text-center text-[10px] font-light leading-relaxed text-brand-charcoal/35 sm:max-w-sm sm:text-[11px]"
+                    className="mt-4 max-w-xs text-center text-[10px] font-light leading-relaxed tracking-wide text-brand-charcoal/35 sm:max-w-sm sm:text-[11px]"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.6, delay: 1.2 }}
                   >
-                    面部图像仅由 AI 即时分析，不会以任何形式存储或保留
+                    您的面部图像仅用于即时分析，我们承诺不会存储或保留任何影像数据
                   </m.p>
 
                   {/* Logo */}

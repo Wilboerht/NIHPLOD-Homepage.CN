@@ -264,6 +264,32 @@ export interface ServicesPageContent {
   services: ServiceDetail[];
 }
 
+// ============================================
+// 产品列表页面 (products)
+// ============================================
+export interface ProductsPageContent {
+  // 页面配置
+  pageTitle: {
+    en: string; // PRODUCTS
+    zh: string; // 探索产品
+  };
+  // 背景图片
+  backgroundImage?: string;
+}
+
+// ============================================
+// AI 护肤顾问页面 (advisor)
+// ============================================
+export interface AdvisorPageContent {
+  // 欢迎页标题
+  welcome: {
+    title: string; // AI 护肤顾问
+    subtitle: string; // 描述文字
+  };
+  // 背景图片
+  backgroundImage?: string;
+}
+
 // 页面类型映射
 export type PageContentMap = {
   home: HomePageContent;
@@ -274,6 +300,8 @@ export type PageContentMap = {
   privacy: PrivacyPageContent;
   terms: TermsPageContent;
   services: ServicesPageContent;
+  products: ProductsPageContent;
+  advisor: AdvisorPageContent;
 };
 
 export type PageSlug = keyof PageContentMap;
@@ -308,6 +336,8 @@ export const PAGE_META: Record<string, { name: string; description: string }> = 
   privacy: { name: "隐私政策", description: "隐私条款" },
   terms: { name: "服务条款", description: "使用条款" },
   services: { name: "服务入口", description: "各系统服务入口导航" },
+  products: { name: "产品列表", description: "产品展示页面配置" },
+  advisor: { name: "AI 护肤顾问", description: "AI 顾问欢迎页配置" },
 };
 
 // 获取空白页面内容模板
@@ -426,6 +456,17 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
     services: {
       pageTitle: { en: "SERVICES", zh: "服务入口" },
       services: [],
+    },
+    products: {
+      pageTitle: { en: "PRODUCTS", zh: "探索产品" },
+      backgroundImage: "/images/bg.png",
+    },
+    advisor: {
+      welcome: {
+        title: "AI 护肤顾问",
+        subtitle: "通过 AI 智能分析，获取专属于您的个性化护肤方案",
+      },
+      backgroundImage: "/images/bg.png",
     },
   };
 
