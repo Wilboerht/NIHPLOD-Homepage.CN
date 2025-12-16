@@ -17,6 +17,7 @@ export interface Question {
   fieldName: string;
   question: string;
   subtext?: string;
+  type?: "single" | "multiple";
   options: QuestionOption[];
 }
 
@@ -38,8 +39,9 @@ export const advisorQuestions: Question[] = [
   {
     id: 2,
     fieldName: "primaryConcern",
-    question: "您最希望改善的肌肤问题是？",
-    subtext: "让我们了解您的核心护肤诉求",
+    question: "你最关注的肌肤问题是？",
+    subtext: "可多选，让我们了解您的核心护肤诉求",
+    type: "multiple",
     options: [
       { value: "aging", label: "细纹抗老", description: "淡化岁月痕迹，重塑紧致轮廓", emoji: "⏰" },
       { value: "dull", label: "暗沉提亮", description: "唤醒肌肤光彩，焕发自然光泽", emoji: "💡" },
@@ -99,6 +101,7 @@ export const advisorQuestions: Question[] = [
       { value: "mid", label: "品质生活", description: "月均 ¥500-1500", emoji: "💎" },
       { value: "premium", label: "臻享品质", description: "月均 ¥1500-3000", emoji: "👑" },
       { value: "luxury", label: "奢享无限", description: "只为最好的自己", emoji: "✨" },
+      { value: "unknown", label: "不确定", description: "暂无明确预算，期待专业建议", emoji: "❓" },
     ],
   },
   {

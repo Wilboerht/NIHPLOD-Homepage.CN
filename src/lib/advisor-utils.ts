@@ -71,8 +71,22 @@ export interface SkinDimensions {
   acneRisk: DimensionScore;    // 痘痘风险
 }
 
+/** 人脸边界框（相对于图片的百分比坐标 0-100） */
+export interface FaceBoundingBox {
+  /** 左边界 x 坐标 (%) */
+  x: number;
+  /** 上边界 y 坐标 (%) */
+  y: number;
+  /** 宽度 (%) */
+  width: number;
+  /** 高度 (%) */
+  height: number;
+}
+
 /** 面部区域分析 */
 export interface ZoneAnalysis {
+  /** 人脸边界框（用于精准定位标注点） */
+  faceBoundingBox?: FaceBoundingBox;
   /** T区（额头+鼻子） */
   tZone: {
     oil: number;     // 油脂程度 0-100

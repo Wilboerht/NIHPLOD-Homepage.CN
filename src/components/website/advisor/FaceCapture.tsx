@@ -81,6 +81,8 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
   const [isAllCaptured, setIsAllCaptured] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const faceApiRef = useRef<any>(null);
+  // 保存最新的面部检测框，用于裁剪
+  const faceBoxRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
 
   /**
    * 初始化摄像头
@@ -265,6 +267,9 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
         const videoWidth = video.videoWidth;
         const videoHeight = video.videoHeight;
 
+        // 保存面部检测框用于裁剪
+        faceBoxRef.current = { x: box.x, y: box.y, width: box.width, height: box.height };
+
         // 面部中心点
         const faceCenterX = box.x + box.width / 2;
         const faceCenterY = box.y + box.height / 2;
@@ -311,6 +316,7 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
         }
       } else {
         stableCountRef.current = 0;
+        faceBoxRef.current = null;
         setCurrentHeadPose("unknown");
         setFaceStatus("detecting");
       }
@@ -334,28 +340,93 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
 
   /**
    * 自动拍照并进入下一步
+   * 优化：根据面部检测框裁剪图像，去除多余背景
    */
   const takePhotoAuto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const video = videoRef.current;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // 前置摄像头需要镜像
-    if (facingMode === "user") {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
+    let imageData: string;
+
+    // 如果有面部检测框，进行智能裁剪
+    if (faceBoxRef.current) {
+      const faceBox = faceBoxRef.current;
+
+      // 扩展裁剪区域：上方多留40%（头发），下方多留30%（脖子），左右各多留35%
+      const expandTop = faceBox.height * 0.5;
+      const expandBottom = faceBox.height * 0.35;
+      const expandSide = faceBox.width * 0.4;
+
+      // 计算裁剪区域
+      let cropX = faceBox.x - expandSide;
+      let cropY = faceBox.y - expandTop;
+      let cropWidth = faceBox.width + expandSide * 2;
+      let cropHeight = faceBox.height + expandTop + expandBottom;
+
+      // 确保不超出视频边界
+      cropX = Math.max(0, cropX);
+      cropY = Math.max(0, cropY);
+      cropWidth = Math.min(cropWidth, videoWidth - cropX);
+      cropHeight = Math.min(cropHeight, videoHeight - cropY);
+
+      // 保持宽高比为 3:4（适合人像）
+      const targetRatio = 3 / 4;
+      const currentRatio = cropWidth / cropHeight;
+
+      if (currentRatio > targetRatio) {
+        // 太宽了，增加高度或减少宽度
+        const newWidth = cropHeight * targetRatio;
+        cropX += (cropWidth - newWidth) / 2;
+        cropWidth = newWidth;
+      } else {
+        // 太高了，增加宽度或减少高度
+        const newHeight = cropWidth / targetRatio;
+        cropY += (cropHeight - newHeight) / 2;
+        cropHeight = newHeight;
+      }
+
+      // 再次确保边界
+      cropX = Math.max(0, Math.min(cropX, videoWidth - cropWidth));
+      cropY = Math.max(0, Math.min(cropY, videoHeight - cropHeight));
+
+      // 设置输出尺寸（保持高质量）
+      const outputWidth = 720;
+      const outputHeight = 960;
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+
+      // 前置摄像头需要镜像处理
+      if (facingMode === "user") {
+        ctx.translate(outputWidth, 0);
+        ctx.scale(-1, 1);
+        // 镜像时需要调整 cropX
+        const mirroredCropX = videoWidth - cropX - cropWidth;
+        ctx.drawImage(video, mirroredCropX, cropY, cropWidth, cropHeight, 0, 0, outputWidth, outputHeight);
+      } else {
+        ctx.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, outputWidth, outputHeight);
+      }
+
+      imageData = canvas.toDataURL("image/jpeg", 0.92);
+    } else {
+      // 没有面部检测框，使用原始方式
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+
+      if (facingMode === "user") {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+
+      ctx.drawImage(video, 0, 0);
+      imageData = canvas.toDataURL("image/jpeg", 0.9);
     }
-
-    ctx.drawImage(video, 0, 0);
-
-    const imageData = canvas.toDataURL("image/jpeg", 0.9);
 
     // 保存当前步骤的照片
     setCapturedImages(prev => ({
@@ -364,6 +435,7 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
     }));
 
     stableCountRef.current = 0;
+    faceBoxRef.current = null; // 重置面部框
 
     // 检查是否还有下一步
     const nextStep = getNextStep(currentStep);

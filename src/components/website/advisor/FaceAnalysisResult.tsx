@@ -163,162 +163,6 @@ export function FaceAnalysisResult({
         </div>
       </m.div>
 
-      {/* 综合评分 + 八维分析 合并卡片 */}
-      {(result.overallScore !== undefined || result.dimensions) && (
-        <m.div
-          variants={itemVariants}
-          className="relative overflow-hidden rounded-2xl border border-brand-gold/20 bg-gradient-to-br from-white via-brand-champagne/10 to-white p-5 shadow-luxury"
-        >
-          {/* 装饰性背景 */}
-          <div className="absolute -left-10 -top-10 h-28 w-28 rounded-full bg-gradient-radial-gold opacity-15" />
-          <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-gradient-radial-gold opacity-10" />
-
-          <h3 className="relative mb-4 flex items-center gap-2.5 font-serif text-base font-light tracking-wide text-brand-charcoal">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold/15">
-              <Target className="h-4 w-4 text-brand-gold" />
-            </div>
-            肌肤健康分析
-          </h3>
-
-          {/* 主体内容：评分 + 雷达图 并排 */}
-          <div className="relative grid grid-cols-[40%_60%] items-center py-4">
-            {/* 左侧：综合评分 */}
-            {result.overallScore !== undefined && (
-              <div className="flex flex-col items-center justify-center">
-                <div className="relative">
-                  <svg className="h-[160px] w-[160px]" viewBox="0 0 100 100">
-                    {/* 背景圆环 */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="42"
-                      fill="none"
-                      stroke="#E8E2D9"
-                      strokeWidth="5"
-                      opacity="0.5"
-                    />
-                    {/* 进度圆环 */}
-                    <defs>
-                      <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#C9A86C" />
-                        <stop offset="50%" stopColor="#D4B77A" />
-                        <stop offset="100%" stopColor="#B8975B" />
-                      </linearGradient>
-                    </defs>
-                    <m.circle
-                      cx="50"
-                      cy="50"
-                      r="42"
-                      fill="none"
-                      stroke="url(#scoreGradient)"
-                      strokeWidth="5"
-                      strokeLinecap="round"
-                      strokeDasharray={`${result.overallScore * 2.64} 264`}
-                      transform="rotate(-90 50 50)"
-                      initial={{ strokeDasharray: "0 264" }}
-                      animate={{ strokeDasharray: `${result.overallScore * 2.64} 264` }}
-                      transition={{ duration: 1.8, ease: [0.4, 0, 0.2, 1] }}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <m.span
-                      className="font-serif text-4xl font-light text-brand-charcoal"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.5, duration: 0.5 }}
-                    >
-                      {result.overallScore}
-                    </m.span>
-                    <span className="text-[10px] font-light tracking-wider text-brand-charcoal/40">/ 100</span>
-                  </div>
-                </div>
-                {/* 评分等级标签 */}
-                <m.div
-                  className="mt-3 flex flex-col items-center gap-1"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8, duration: 0.4 }}
-                >
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    result.overallScore >= 85 ? "bg-green-100 text-green-700" :
-                    result.overallScore >= 70 ? "bg-brand-gold/15 text-brand-gold" :
-                    result.overallScore >= 55 ? "bg-amber-100 text-amber-700" :
-                    "bg-orange-100 text-orange-700"
-                  }`}>
-                    {result.overallScore >= 85 ? "✨ 优秀" :
-                     result.overallScore >= 70 ? "👍 良好" :
-                     result.overallScore >= 55 ? "📊 一般" :
-                     "⚠️ 需关注"}
-                  </span>
-                  <span className="text-[10px] text-brand-charcoal/40">综合评分</span>
-                </m.div>
-              </div>
-            )}
-
-            {/* 右侧：雷达图 */}
-            {result.dimensions && (
-              <div className="flex items-center justify-center">
-                <SkinRadarChart
-                  dimensions={result.dimensions}
-                  size={320}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* 底部：评语 + 重点关注 */}
-          <div className="relative mt-4 space-y-3">
-            {/* 评语 */}
-            {result.overallScore !== undefined && (
-              <m.p
-                className="text-center text-sm font-light tracking-wide text-brand-charcoal/60"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1, duration: 0.5 }}
-              >
-                {result.overallScore >= 85 ? "肌肤状态优秀，持续保持您的护肤仪式" :
-                 result.overallScore >= 70 ? "肌肤状态良好，精心护理将更加出众" :
-                 result.overallScore >= 55 ? "肌肤有提升空间，让我们为您制定方案" :
-                 "肌肤需要关怀，专属护理方案已就绪"}
-              </m.p>
-            )}
-
-            {/* 重点关注项 */}
-            {result.priorityAreas && result.priorityAreas.length > 0 && (
-              <div className="rounded-xl border border-amber-200/60 bg-gradient-to-r from-amber-50/80 to-orange-50/60 p-3">
-                <p className="text-sm font-light text-amber-800/80">
-                  <span className="font-medium text-amber-900">重点关注</span>
-                  <span className="mx-1.5 text-amber-600/50">·</span>
-                  {result.priorityAreas.map(area => DIMENSION_LABELS[area as keyof typeof DIMENSION_LABELS] || area).join("、")}
-                </p>
-              </div>
-            )}
-          </div>
-        </m.div>
-      )}
-
-      {/* 面部区域热力图 - 高奢风格 */}
-      {result.zoneAnalysis && (
-        <m.div
-          variants={itemVariants}
-          className="relative overflow-hidden rounded-2xl border border-brand-beige/50 bg-white/95 p-5 shadow-card backdrop-blur-sm"
-        >
-          <h3 className="mb-4 flex items-center gap-2.5 font-serif text-base font-light tracking-wide text-brand-charcoal">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold/15">
-              <MapPin className="h-4 w-4 text-brand-gold" />
-            </div>
-            面部区域分析
-          </h3>
-          <div className="flex justify-center py-2">
-            <FaceZoneHeatmap
-              zoneAnalysis={result.zoneAnalysis}
-              userImage={userImage}
-              width={280}
-            />
-          </div>
-        </m.div>
-      )}
-
       {/* 肌肤状态检测 - 高奢风格 */}
       <m.div
         variants={itemVariants}
@@ -435,6 +279,156 @@ export function FaceAnalysisResult({
           )}
         </div>
       </m.div>
+
+      {/* 综合评分 + 八维分析 合并卡片 */}
+      {(result.overallScore !== undefined || result.dimensions) && (
+        <m.div
+          variants={itemVariants}
+          className="relative overflow-hidden rounded-2xl border border-brand-gold/20 bg-gradient-to-br from-white via-brand-champagne/10 to-white p-5 shadow-luxury"
+        >
+          {/* 装饰性背景 */}
+          <div className="absolute -left-10 -top-10 h-28 w-28 rounded-full bg-gradient-radial-gold opacity-15" />
+          <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-gradient-radial-gold opacity-10" />
+
+          <h3 className="relative mb-4 flex items-center gap-2.5 font-serif text-base font-light tracking-wide text-brand-charcoal">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold/15">
+              <Target className="h-4 w-4 text-brand-gold" />
+            </div>
+            肌肤健康分析
+          </h3>
+
+          {/* 主体内容：评分 + 雷达图（移动端上下排列，桌面端并排） */}
+          <div className="relative grid grid-cols-1 items-center gap-6 py-4 md:grid-cols-[40%_60%] md:gap-0">
+            {/* 综合评分 */}
+            {result.overallScore !== undefined && (
+              <div className="flex flex-col items-center justify-center">
+                <div className="relative">
+                  <svg className="h-[140px] w-[140px] md:h-[160px] md:w-[160px]" viewBox="0 0 100 100">
+                    {/* 背景圆环 */}
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="#E8E2D9"
+                      strokeWidth="5"
+                      opacity="0.5"
+                    />
+                    {/* 进度圆环 */}
+                    <defs>
+                      <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#C9A86C" />
+                        <stop offset="50%" stopColor="#D4B77A" />
+                        <stop offset="100%" stopColor="#B8975B" />
+                      </linearGradient>
+                    </defs>
+                    <m.circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="url(#scoreGradient)"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                      strokeDasharray={`${result.overallScore * 2.64} 264`}
+                      transform="rotate(-90 50 50)"
+                      initial={{ strokeDasharray: "0 264" }}
+                      animate={{ strokeDasharray: `${result.overallScore * 2.64} 264` }}
+                      transition={{ duration: 1.8, ease: [0.4, 0, 0.2, 1] }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <m.span
+                      className="font-serif text-4xl font-light text-brand-charcoal"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.5, duration: 0.5 }}
+                    >
+                      {result.overallScore}
+                    </m.span>
+                    <span className="text-[10px] font-light tracking-wider text-brand-charcoal/40">/ 100</span>
+                  </div>
+                </div>
+                {/* 评分等级标签 */}
+                <m.div
+                  className="mt-3 flex flex-col items-center gap-1"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8, duration: 0.4 }}
+                >
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    result.overallScore >= 85 ? "bg-green-100 text-green-700" :
+                    result.overallScore >= 70 ? "bg-brand-gold/15 text-brand-gold" :
+                    result.overallScore >= 55 ? "bg-amber-100 text-amber-700" :
+                    "bg-orange-100 text-orange-700"
+                  }`}>
+                    {result.overallScore >= 85 ? "✨ 优秀" :
+                     result.overallScore >= 70 ? "👍 良好" :
+                     result.overallScore >= 55 ? "📊 一般" :
+                     "⚠️ 需关注"}
+                  </span>
+                  <span className="text-[10px] text-brand-charcoal/40">综合评分</span>
+                </m.div>
+              </div>
+            )}
+
+            {/* 雷达图 */}
+            {result.dimensions && (
+              <div className="flex items-center justify-center px-2">
+                <SkinRadarChart
+                  dimensions={result.dimensions}
+                  size={320}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 底部：评语 + 重点关注 */}
+          <div className="relative mt-4 space-y-3">
+            {/* 评语 */}
+            {result.overallScore !== undefined && (
+              <m.p
+                className="text-center text-sm font-light tracking-wide text-brand-charcoal/60"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1, duration: 0.5 }}
+              >
+                {result.overallScore >= 85 ? "肌肤状态优秀，持续保持您的护肤仪式" :
+                 result.overallScore >= 70 ? "肌肤状态良好，精心护理将更加出众" :
+                 result.overallScore >= 55 ? "肌肤有提升空间，让我们为您制定方案" :
+                 "肌肤需要关怀，专属护理方案已就绪"}
+              </m.p>
+            )}
+
+            {/* 重点关注项 */}
+            {result.priorityAreas && result.priorityAreas.length > 0 && (
+              <div className="rounded-xl border border-amber-200/60 bg-gradient-to-r from-amber-50/80 to-orange-50/60 p-3">
+                <p className="text-sm font-light text-amber-800/80">
+                  <span className="font-medium text-amber-900">重点关注</span>
+                  <span className="mx-1.5 text-amber-600/50">·</span>
+                  {result.priorityAreas.map(area => DIMENSION_LABELS[area as keyof typeof DIMENSION_LABELS] || area).join("、")}
+                </p>
+              </div>
+            )}
+          </div>
+        </m.div>
+      )}
+
+      {/* 面部区域热力图 - 高奢风格 */}
+      {result.zoneAnalysis && (
+        <m.div
+          variants={itemVariants}
+          className="relative overflow-hidden rounded-2xl border border-brand-beige/50 bg-white/95 p-5 shadow-card backdrop-blur-sm"
+        >
+          <h3 className="mb-4 flex items-center gap-2.5 font-serif text-base font-light tracking-wide text-brand-charcoal">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold/15">
+              <MapPin className="h-4 w-4 text-brand-gold" />
+            </div>
+            面部区域分析
+          </h3>
+          <FaceZoneHeatmap zoneAnalysis={result.zoneAnalysis} />
+        </m.div>
+      )}
 
       {/* 护肤建议 */}
       {result.recommendations.length > 0 && (

@@ -220,10 +220,10 @@ export function PrivacyContent({ backgroundImage }: PrivacyContentProps) {
                   {!activeTab && (
                     <m.div
                       key="tabs"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
                       className="flex flex-col items-center"
                     >
                       {/* Logo */}
@@ -257,10 +257,10 @@ export function PrivacyContent({ backgroundImage }: PrivacyContentProps) {
                   {activeTab && (
                     <m.div
                       key={activeTab}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
                       className="flex h-full flex-col"
                     >
                       {/* 返回按钮和标题 */}

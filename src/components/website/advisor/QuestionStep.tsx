@@ -12,7 +12,7 @@ import {
 
 interface QuestionStepProps {
   question: Question;
-  selectedValue: string | null;
+  selectedValue: string | string[] | null;
   onSelect: (value: string) => void;
   direction: number; // 1: 向前, -1: 向后
 }
@@ -90,18 +90,25 @@ export function QuestionStep({
 
         {/* 选项列表 - 优雅间距 */}
         <div className="space-y-3.5">
-          {question.options.map((option, index) => (
-            <OptionCard
-              key={option.value}
-              value={option.value}
-              label={option.label}
-              description={option.description}
-              emoji={option.emoji}
-              isSelected={selectedValue === option.value}
-              onClick={() => onSelect(option.value)}
-              index={prefersReducedMotion ? 0 : index} // 降级时不交错动画
-            />
-          ))}
+          {question.options.map((option, index) => {
+            // 判断选项是否被选中（支持单选和多选）
+            const isSelected = Array.isArray(selectedValue)
+              ? selectedValue.includes(option.value)
+              : selectedValue === option.value;
+
+            return (
+              <OptionCard
+                key={option.value}
+                value={option.value}
+                label={option.label}
+                description={option.description}
+                emoji={option.emoji}
+                isSelected={isSelected}
+                onClick={() => onSelect(option.value)}
+                index={prefersReducedMotion ? 0 : index} // 降级时不交错动画
+              />
+            );
+          })}
         </div>
       </m.div>
     </AnimatePresence>

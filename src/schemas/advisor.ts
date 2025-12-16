@@ -52,11 +52,15 @@ export const AdvisorAnswersSchema = z.object({
 // 问卷式问答 Schema（匹配 advisor-questions.ts 配置）
 export const QuestionnaireAnswersSchema = z.object({
   skinType: z.enum(["dry", "oily", "combination", "sensitive", "normal", "unknown"]).optional(),
-  primaryConcern: z.enum(["aging", "dull", "hydration", "pores", "sensitive", "acne"]).optional(),
+  // primaryConcern 支持单选（字符串）或多选（字符串数组）
+  primaryConcern: z.union([
+    z.enum(["aging", "dull", "hydration", "pores", "sensitive", "acne"]),
+    z.array(z.enum(["aging", "dull", "hydration", "pores", "sensitive", "acne"])),
+  ]).optional(),
   ageRange: z.enum(["18-24", "25-30", "31-40", "41-50", "50+"]).optional(),
   currentRoutine: z.enum(["minimal", "basic", "complete", "advanced", "none"]).optional(),
   allergies: z.enum(["none", "fragrance", "alcohol", "acid", "multiple", "unknown"]).optional(),
-  budget: z.enum(["budget", "mid", "premium", "luxury"]).optional(),
+  budget: z.enum(["budget", "mid", "premium", "luxury", "unknown"]).optional(),
   pregnancyStatus: z.enum(["yes", "no", "private"]).optional(),
   medicationHistory: z.enum(["routine", "occasional", "ongoing", "complex"]).optional(),
 });

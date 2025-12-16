@@ -110,7 +110,7 @@ export async function analyzeWithAI(
   const systemPrompt = settings.textSystemPrompt || TEXT_ANALYSIS_SYSTEM_PROMPT;
 
   // 获取 maxTokens 和 temperature（使用数据库设置或默认值）
-  const maxTokens = settings.maxTokens || 1200;
+  const maxTokens = settings.maxTokens || 1800;
   const temperature = settings.temperature ?? 0.3;
 
   // 调用 AI API
@@ -175,7 +175,7 @@ const DEFAULT_AI_SETTINGS: AISettings = {
   systemPrompt: "",
   textSystemPrompt: "",
   visionSystemPrompt: "",
-  maxTokens: 1200, // 文本分析需要较长输出
+  maxTokens: 1800, // 文本分析需要较长输出（5条详细分析）
   temperature: 0.3, // 保持一致性
   apiKeys: {
     openai: "",
@@ -447,7 +447,7 @@ async function callAIProvider(
 ): Promise<string> {
   const startTime = Date.now();
   const effectiveSystemPrompt = systemPrompt || TEXT_ANALYSIS_SYSTEM_PROMPT;
-  const effectiveMaxTokens = maxTokens || 1200;
+  const effectiveMaxTokens = maxTokens || 1800;
   const effectiveTemperature = temperature ?? 0.3;
 
   try {

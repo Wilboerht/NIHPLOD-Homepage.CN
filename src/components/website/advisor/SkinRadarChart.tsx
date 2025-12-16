@@ -148,7 +148,7 @@ export function SkinRadarChart({
   };
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative aspect-square w-full" style={{ maxWidth: size, maxHeight: size }}>
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart
           cx="50%"

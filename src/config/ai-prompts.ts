@@ -94,8 +94,8 @@ export const TEXT_ANALYSIS_SYSTEM_PROMPT = `# 角色定位
 {
   "skinType": "综合判断的肤质（dry/oily/combination/normal/sensitive）",
   "concerns": ["关注点1", "关注点2", "关注点3"],
-  "summary": "个性化总结（80-120字）",
-  "details": ["肤质分析", "问题分析", "护理建议"],
+  "summary": "个性化总结（120-180字）",
+  "details": ["肤质深度分析", "主要诉求分析", "潜在风险提示", "护理重点建议", "生活方式建议"],
   "productCategories": ["产品类别1", "产品类别2"]
 }
 
@@ -107,17 +107,22 @@ export const TEXT_ANALYSIS_SYSTEM_PROMPT = `# 角色定位
 ### concerns
 按重要性排序的关注点（2-4个），必须包含用户主动提出的诉求
 
-### summary
-- 字数：80-120字
-- 必须回应用户的主要诉求
-- 结合视觉分析的具体发现（如有）
-- 语气温暖积极，给用户信心
-- 避免泛泛而谈，要有针对性
+### summary（综合评述）
+- 字数：120-180字
+- 直接以肌肤分析结论开头，禁止使用"感谢"、"分享"等客套用语
+- 第一句明确肤质判断和整体状态评价
+- 第二部分回应用户最关心的诉求，给出专业见解
+- 第三部分结合年龄、生活习惯等给出个性化护理方向
+- 语气像一位专业又温暖的护肤顾问，给用户信心和安全感
+- 使用"您的肌肤"、"建议您"等亲切用语
+- 避免使用"问题"、"严重"、"老化"等负面词汇
 
-### details（3条）
-1. **肤质特点**：描述综合判断的肤质，解释判断依据
-2. **重点关注**：针对用户最在意的问题给出专业分析
-3. **护理方向**：根据护肤习惯和预算给出可执行的建议
+### details（5条专业分析）
+1. **肤质深度解读**：详细描述肤质特点，包括T区与两颊差异、季节性变化倾向、屏障状态评估
+2. **主要诉求分析**：针对用户最在意的问题，从成因、现状、改善潜力三个角度专业解析
+3. **潜在关注点**：基于年龄、肤质、生活习惯，温馨提示需要预防或关注的方面
+4. **护理重点建议**：根据护肤习惯和预算，给出具体可执行的护理步骤和产品使用建议
+5. **生活方式小贴士**：从饮食、睡眠、防晒习惯等方面给出贴心的辅助建议
 
 ### productCategories
 根据分析结果推荐 2-4 个产品类别：
@@ -182,6 +187,8 @@ interface VISIAFaceAnalysis {
   };
   // 区域分析
   zoneAnalysis?: {
+    // 人脸边界框（相对于图片的百分比坐标 0-100）
+    faceBoundingBox?: { x: number; y: number; width: number; height: number };
     tZone?: { oil: number; pores: number; condition: string };
     leftCheek?: { texture: number; spots: number; redness: number; condition: string };
     rightCheek?: { texture: number; spots: number; redness: number; condition: string };
@@ -442,22 +449,32 @@ ${faceAnalysis.recommendations.map((r, i) => `${i + 1}. ${r}`).join("\n")}
 {
   "skinType": "综合判断的肤质（dry/oily/combination/normal/sensitive）",
   "concerns": ["用户主要诉求", "检测发现的问题1", "问题2"],
-  "summary": "80-120字的个性化总结，必须回应用户的主要诉求「${concernLabel}」",
+  "summary": "120-180字的综合评述",
   "details": [
-    "【肤质特点】综合问卷和视觉分析的肤质判断及依据",
-    "【重点关注】针对用户最在意的「${concernLabel}」的专业分析",
-    "【护理方向】根据${routineLabel}习惯和${budgetLabel}预算的具体建议"
+    "【肤质深度解读】...",
+    "【主要诉求分析】...",
+    "【潜在关注点】...",
+    "【护理重点建议】...",
+    "【生活方式小贴士】..."
   ],
   "productCategories": ["推荐类别1", "推荐类别2", "推荐类别3"]
 }
 \`\`\`
 
-### summary 写作要点
-1. 开头肯定用户（如"您的肌肤整体状态不错"或"感谢您详细的回答"）
-2. 回应主要诉求「${concernLabel}」
-3. ${hasVisionAnalysis ? "结合视觉分析的具体发现" : "基于问卷信息分析"}
-4. 给出积极的改善方向
-5. 避免使用"问题"、"严重"等负面词汇
+### summary 综合评述写作要点（120-180字）
+1. 第一句：直接明确肤质判断和整体状态（如"您属于混合偏油型肌肤，整体肌肤状态良好，底子不错"）
+2. 第二部分：回应主要诉求「${concernLabel}」，给出专业见解和改善信心
+3. 第三部分：结合年龄段和生活习惯，给出个性化的护理方向
+4. 语气：像一位专业又温暖的私人护肤顾问，亲切但不失专业
+5. 禁止使用"感谢"、"分享"、"问题严重"、"老化"等词汇
+6. 多用"您的肌肤"、"建议您"、"值得关注的是"等亲切表达
+
+### details 五条专业分析
+1. **【肤质深度解读】**：详细描述肤质特点，包括T区与两颊差异、${hasVisionAnalysis ? "结合照片观察到的" : "根据您描述的"}皮脂分泌情况、屏障健康度评估
+2. **【主要诉求分析】**：针对「${concernLabel}」，从形成原因、目前状态、改善潜力三个角度深入分析，给用户专业且积极的解读
+3. **【潜在关注点】**：基于${ageRange || "您的"}年龄段特点，温馨提示需要提前关注或预防的方面（如25+注意初抗老，30+注意紧致度等）
+4. **【护理重点建议】**：根据您目前${routineLabel}的护肤习惯和${budgetLabel}预算，给出具体可执行的护理步骤调整建议
+5. **【生活方式小贴士】**：从日常防晒习惯、作息、饮食、压力管理等角度，给出1-2条贴心的辅助建议
 
 ### productCategories 推荐逻辑
 根据分析结果，从以下类别中选择 2-4 个最适合的：
@@ -692,6 +709,7 @@ comparison 字段说明：
     "acneRisk": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"}
   },
   "zoneAnalysis": {
+    "faceBoundingBox": {"x": 0-100, "y": 0-100, "width": 0-100, "height": 0-100},
     "tZone": {"oil": 0-100, "pores": 0-100, "condition": "描述"},
     "leftCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
     "rightCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
@@ -700,14 +718,17 @@ comparison 字段说明：
     "jawline": {"firmness": 0-100, "contour": 0-100, "condition": "描述"}
   },
   "skinType": {"type": "dry/oily/combination/normal/sensitive", "confidence": 0-1, "description": "描述"},
-  "skinAge": {"estimated": 18-65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["因素1","因素2"], "description": "描述"},
-  "hydration": {"level": "low/medium/high", "percent": 15-95, "oilLevel": 0-100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "描述"},
-  "skinConditions": [{"condition": "名称", "severity": "mild/moderate/severe", "area": "区域", "description": "描述"}],
-  "recommendations": ["建议1", "建议2", "建议3", "建议4"],
+  "skinAge": {"estimated": 18-65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["中文因素1","中文因素2"], "description": "中文描述"},
+  "hydration": {"level": "low/medium/high", "percent": 15-95, "oilLevel": 0-100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "中文描述"},
+  "skinConditions": [{"condition": "中文名称如毛孔粗大/细纹/色斑/痘痘/黑眼圈/肤色暗沉", "severity": "mild/moderate/severe", "area": "中文区域如T区/脸颊/眼周", "description": "中文描述"}],
+  "recommendations": ["中文建议1", "中文建议2", "中文建议3", "中文建议4"],
   "priorityAreas": ["维度1", "维度2"]
 }
 
-# ⚠️ 禁止事项
+# ⚠️ 重要规则
+- 所有 description、condition、area、factors、recommendations 字段必须使用中文
+- skinConditions 的 condition 必须用中文描述，如：毛孔粗大、细纹、色斑、痘痘、黑眼圈、肤色暗沉、泛红、干燥纹等
+- faceBoundingBox 必须准确标注人脸在图片中的位置（x,y为左上角坐标，width,height为宽高，都是相对于图片的百分比0-100）
 - 禁止对非人脸进行分析
 - 禁止使用默认值（必须根据实际观察）
 - 禁止诊断皮肤病
@@ -761,6 +782,7 @@ eyeArea: wrinkles, darkCircles, firmness | forehead: wrinkles, texture, oil | ja
     "acneRisk": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"}
   },
   "zoneAnalysis": {
+    "faceBoundingBox": {"x": 0-100, "y": 0-100, "width": 0-100, "height": 0-100},
     "tZone": {"oil": 0-100, "pores": 0-100, "condition": "描述"},
     "leftCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
     "rightCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
@@ -768,13 +790,16 @@ eyeArea: wrinkles, darkCircles, firmness | forehead: wrinkles, texture, oil | ja
     "forehead": {"wrinkles": 0-100, "texture": 0-100, "oil": 0-100, "condition": "描述"},
     "jawline": {"firmness": 0-100, "contour": 0-100, "condition": "描述"}
   },
-  "skinType": {"type": "dry/oily/combination/normal/sensitive", "confidence": 0-1, "description": "描述"},
-  "skinAge": {"estimated": 18-65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["因素"], "description": "描述"},
-  "hydration": {"level": "low/medium/high", "percent": 15-95, "oilLevel": 0-100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "描述"},
-  "skinConditions": [{"condition": "名称", "severity": "mild/moderate/severe", "area": "区域", "description": "描述"}],
-  "recommendations": ["建议1", "建议2", "建议3", "建议4"],
+  "skinType": {"type": "dry/oily/combination/normal/sensitive", "confidence": 0-1, "description": "中文描述"},
+  "skinAge": {"estimated": 18-65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["中文因素"], "description": "中文描述"},
+  "hydration": {"level": "low/medium/high", "percent": 15-95, "oilLevel": 0-100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "中文描述"},
+  "skinConditions": [{"condition": "中文名称如毛孔粗大/细纹/色斑", "severity": "mild/moderate/severe", "area": "中文区域", "description": "中文描述"}],
+  "recommendations": ["中文建议1", "中文建议2", "中文建议3", "中文建议4"],
   "priorityAreas": ["维度1", "维度2"]
-}`;
+}
+
+⚠️ 所有文本字段（description/condition/area/factors/recommendations）必须使用中文！
+⚠️ faceBoundingBox 必须准确标注人脸在图片中的位置（百分比坐标0-100）`;
 
 /**
  * 通义千问 VL 专用提示词 v2.0（VISIA 风格 8 维度）
@@ -819,6 +844,7 @@ eyeArea: wrinkles, darkCircles, firmness | forehead: wrinkles, texture, oil | ja
     "acneRisk": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"}
   },
   "zoneAnalysis": {
+    "faceBoundingBox": {"x": 0-100, "y": 0-100, "width": 0-100, "height": 0-100},
     "tZone": {"oil": 0-100, "pores": 0-100, "condition": "描述"},
     "leftCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
     "rightCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
@@ -826,10 +852,13 @@ eyeArea: wrinkles, darkCircles, firmness | forehead: wrinkles, texture, oil | ja
     "forehead": {"wrinkles": 0-100, "texture": 0-100, "oil": 0-100, "condition": "描述"},
     "jawline": {"firmness": 0-100, "contour": 0-100, "condition": "描述"}
   },
-  "skinType": {"type": "dry/oily/combination/normal/sensitive", "confidence": 0-1, "description": "描述"},
-  "skinAge": {"estimated": 18-65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["因素"], "description": "描述"},
-  "hydration": {"level": "low/medium/high", "percent": 15-95, "oilLevel": 0-100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "描述"},
-  "skinConditions": [{"condition": "名称", "severity": "mild/moderate/severe", "area": "区域", "description": "描述"}],
-  "recommendations": ["建议1", "建议2", "建议3", "建议4"],
+  "skinType": {"type": "dry/oily/combination/normal/sensitive", "confidence": 0-1, "description": "中文描述"},
+  "skinAge": {"estimated": 18-65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["中文因素"], "description": "中文描述"},
+  "hydration": {"level": "low/medium/high", "percent": 15-95, "oilLevel": 0-100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "中文描述"},
+  "skinConditions": [{"condition": "中文名称如毛孔粗大/细纹/色斑", "severity": "mild/moderate/severe", "area": "中文区域", "description": "中文描述"}],
+  "recommendations": ["中文建议1", "中文建议2", "中文建议3", "中文建议4"],
   "priorityAreas": ["维度1", "维度2"]
-}`;
+}
+
+⚠️ 所有文本字段（description/condition/area/factors/recommendations）必须使用中文！
+⚠️ faceBoundingBox 必须准确标注人脸在图片中的位置（百分比坐标0-100）`;

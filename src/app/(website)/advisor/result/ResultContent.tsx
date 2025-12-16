@@ -7,8 +7,6 @@ import { m, AnimatePresence } from "framer-motion";
 import {
   RefreshCw,
   Sparkles,
-  Sun,
-  Moon,
   ShoppingBag,
   Loader2,
   Share2,
@@ -86,7 +84,7 @@ export function ResultContent() {
   const [result, setResult] = useState<ComprehensiveResult | null>(null);
   const [faceAnalysis, setFaceAnalysis] = useState<FaceAnalysisData | null>(null);
   const [userImage, setUserImage] = useState<string | null>(null);
-  const [activeRoutine, setActiveRoutine] = useState<"morning" | "evening">("morning");
+
   const [shareStatus, setShareStatus] = useState<"idle" | "copying" | "copied">("idle");
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -719,90 +717,23 @@ export function ResultContent() {
           </ul>
         </m.div>
 
-        {/* 护肤方案 - 高奢卡片风格 */}
+        {/* 护肤方案 - 引导至护肤仪式页面 */}
         <m.div
           variants={fadeInUp}
           transition={defaultTransition}
           className="relative overflow-hidden rounded-2xl border border-brand-beige/50 bg-white/95 p-5 shadow-card backdrop-blur-sm"
         >
-          <h3 className="mb-4 font-serif text-base font-light tracking-wide text-brand-charcoal">专属护肤方案</h3>
-
-          {/* 切换标签 - 优雅胶囊按钮 */}
-          <div className="mb-5 flex gap-2">
-            <button
-              onClick={() => setActiveRoutine("morning")}
-              className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-light tracking-wide transition-all duration-300 ${
-                activeRoutine === "morning"
-                  ? "bg-gradient-to-r from-brand-gold to-brand-gold-light text-white shadow-luxury"
-                  : "border border-brand-beige bg-white/80 text-brand-charcoal/60 hover:border-brand-gold/40"
-              }`}
-            >
-              <Sun className="h-4 w-4" />
-              晨间护肤
-            </button>
-            <button
-              onClick={() => setActiveRoutine("evening")}
-              className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-light tracking-wide transition-all duration-300 ${
-                activeRoutine === "evening"
-                  ? "bg-gradient-to-r from-brand-gold to-brand-gold-light text-white shadow-luxury"
-                  : "border border-brand-beige bg-white/80 text-brand-charcoal/60 hover:border-brand-gold/40"
-              }`}
-            >
-              <Moon className="h-4 w-4" />
-              夜间护肤
-            </button>
-          </div>
-
-          {/* 步骤列表 - 优雅时间线 */}
-          <div className="relative space-y-4">
-            {/* 连接线 */}
-            <div className="absolute bottom-4 left-4 top-4 w-px bg-gradient-to-b from-brand-gold/30 via-brand-gold/20 to-transparent" />
-
-            {result.routine[activeRoutine].map((step, idx) => {
-              // 查找对应产品
-              const product = step.productId
-                ? result.products.find((p) => p.id === step.productId)
-                : null;
-
-              return (
-                <m.div
-                  key={step.order}
-                  className="relative flex items-start gap-4"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1, duration: 0.3 }}
-                >
-                  {/* 步骤编号 - 优雅圆形 */}
-                  <div className="relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-brand-gold/30 bg-white text-sm font-medium text-brand-gold shadow-sm">
-                    {step.order}
-                  </div>
-                  <div className="flex-1 pt-0.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium text-brand-charcoal">{step.step}</span>
-                      {(step.productName || product?.name) && (
-                        <>
-                          <span className="text-brand-gold/40">·</span>
-                          {product ? (
-                            <Link
-                              href={`/products/${product.id}`}
-                              className="text-sm text-brand-gold transition-colors hover:text-brand-gold-dark hover:underline"
-                            >
-                              {step.productName || product.name}
-                            </Link>
-                          ) : (
-                            <span className="text-sm text-brand-gold">
-                              {step.productName}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-brand-charcoal/55">{step.description}</p>
-                  </div>
-                </m.div>
-              );
-            })}
-          </div>
+          <h3 className="mb-3 font-serif text-base font-light tracking-wide text-brand-charcoal">专属护肤方案</h3>
+          <p className="mb-4 text-sm leading-relaxed text-brand-charcoal/60">
+            探索旎柏精心设计的晨间与夜间护肤仪式，开启您的精致护肤之旅。
+          </p>
+          <Link
+            href="/ritual"
+            className="group inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-gradient-to-r from-brand-gold to-brand-gold-light px-6 py-2.5 text-sm font-light tracking-wide text-white shadow-luxury transition-all duration-300 hover:shadow-luxury-lg"
+          >
+            <Sparkles className="h-4 w-4" />
+            查看护肤仪式
+          </Link>
         </m.div>
 
         {/* 免责声明 */}

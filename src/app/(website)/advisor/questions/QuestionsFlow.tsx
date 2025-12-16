@@ -12,8 +12,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * 用户答案类型
+ * 单选题为 string，多选题为 string[]
  */
-type Answers = Record<string, string>;
+type Answers = Record<string, string | string[]>;
 
 /**
  * 问答流程组件
@@ -51,8 +52,14 @@ export function QuestionsFlow() {
 
   // 当前问题（需要处理加载状态）
   const currentQuestion = questions[currentIndex];
+  // 判断当前问题是否为多选
+  const isMultipleChoice = currentQuestion?.type === "multiple";
   // 当前问题的已选答案
   const currentAnswer = currentQuestion ? (answers[currentQuestion.fieldName] || null) : null;
+  // 判断是否有有效答案（单选非空，多选数组长度 > 0）
+  const hasValidAnswer = isMultipleChoice
+    ? Array.isArray(currentAnswer) && currentAnswer.length > 0
+    : !!currentAnswer;
 
   /**
    * 选择选项
@@ -61,23 +68,39 @@ export function QuestionsFlow() {
     (value: string) => {
       if (isTransitioning || !currentQuestion) return;
 
-      // 保存答案
-      setAnswers((prev) => ({
-        ...prev,
-        [currentQuestion.fieldName]: value,
-      }));
+      if (isMultipleChoice) {
+        // 多选模式：切换选中状态
+        setAnswers((prev) => {
+          const prevAnswer = prev[currentQuestion.fieldName];
+          const prevArray = Array.isArray(prevAnswer) ? prevAnswer : [];
+          const newArray = prevArray.includes(value)
+            ? prevArray.filter((v) => v !== value)
+            : [...prevArray, value];
+          return {
+            ...prev,
+            [currentQuestion.fieldName]: newArray,
+          };
+        });
+        // 多选模式不自动跳转
+      } else {
+        // 单选模式：保存答案并自动跳转
+        setAnswers((prev) => ({
+          ...prev,
+          [currentQuestion.fieldName]: value,
+        }));
 
-      // 自动跳转到下一题（延迟以显示选中动画）
-      if (currentIndex < totalQuestions - 1) {
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setDirection(1);
-          setCurrentIndex((prev) => prev + 1);
-          setIsTransitioning(false);
-        }, 300);
+        // 自动跳转到下一题（延迟以显示选中动画）
+        if (currentIndex < totalQuestions - 1) {
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setDirection(1);
+            setCurrentIndex((prev) => prev + 1);
+            setIsTransitioning(false);
+          }, 300);
+        }
       }
     },
-    [currentIndex, currentQuestion, totalQuestions, isTransitioning]
+    [currentIndex, currentQuestion, totalQuestions, isTransitioning, isMultipleChoice]
   );
 
   /**
@@ -98,7 +121,7 @@ export function QuestionsFlow() {
    * 下一题
    */
   const handleNext = useCallback(() => {
-    if (currentIndex < totalQuestions - 1 && currentAnswer && !isTransitioning) {
+    if (currentIndex < totalQuestions - 1 && hasValidAnswer && !isTransitioning) {
       setIsTransitioning(true);
       setDirection(1);
       setTimeout(() => {
@@ -106,18 +129,18 @@ export function QuestionsFlow() {
         setIsTransitioning(false);
       }, 50);
     }
-  }, [currentIndex, totalQuestions, currentAnswer, isTransitioning]);
+  }, [currentIndex, totalQuestions, hasValidAnswer, isTransitioning]);
 
   /**
    * 完成问答，跳转到面部识别或结果页
    */
   const handleComplete = useCallback(() => {
-    if (!currentAnswer || !currentQuestion) return;
+    if (!hasValidAnswer || !currentQuestion) return;
 
-    // 保存最后一个答案
+    // 保存最后一个答案（确保 currentAnswer 存在）
     const finalAnswers = {
       ...answers,
-      [currentQuestion.fieldName]: currentAnswer,
+      ...(currentAnswer !== null && { [currentQuestion.fieldName]: currentAnswer }),
     };
 
     // 将答案存储到 sessionStorage
@@ -128,7 +151,7 @@ export function QuestionsFlow() {
 
     // 跳转到面部识别页面（可选步骤）
     router.push("/advisor/face-scan");
-  }, [answers, currentAnswer, currentQuestion, router, trackQuestionnaireComplete]);
+  }, [answers, currentAnswer, hasValidAnswer, currentQuestion, router, trackQuestionnaireComplete]);
 
   /**
    * 键盘导航支持
@@ -137,7 +160,7 @@ export function QuestionsFlow() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
         handlePrev();
-      } else if (e.key === "ArrowRight" && currentAnswer) {
+      } else if (e.key === "ArrowRight" && hasValidAnswer) {
         if (currentIndex === totalQuestions - 1) {
           handleComplete();
         } else {
@@ -148,7 +171,7 @@ export function QuestionsFlow() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handlePrev, handleNext, handleComplete, currentAnswer, currentIndex, totalQuestions]);
+  }, [handlePrev, handleNext, handleComplete, hasValidAnswer, currentIndex, totalQuestions]);
 
   const isLastQuestion = currentIndex === totalQuestions - 1;
 
@@ -244,19 +267,19 @@ export function QuestionsFlow() {
         {/* 优雅的下一题/完成按钮 */}
         <m.button
           initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: currentAnswer ? 1 : 0.5, y: 0 }}
+          animate={{ opacity: hasValidAnswer ? 1 : 0.5, y: 0 }}
           transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
           onClick={isLastQuestion ? handleComplete : handleNext}
-          disabled={!currentAnswer}
+          disabled={!hasValidAnswer}
           className={cn(
             "group relative flex items-center gap-2.5 overflow-hidden rounded-full px-10 py-3.5 text-sm font-light tracking-wider transition-all duration-300 sm:px-12 sm:py-4",
-            currentAnswer
+            hasValidAnswer
               ? "border border-brand-gold/30 bg-white/90 text-brand-charcoal shadow-card backdrop-blur-sm hover:border-brand-gold hover:shadow-luxury"
               : "cursor-not-allowed border border-brand-beige/40 bg-white/50 text-brand-charcoal/30"
           )}
         >
           {/* 悬停时的光泽效果 */}
-          {currentAnswer && (
+          {hasValidAnswer && (
             <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
           )}
           <span className="relative">
@@ -264,7 +287,7 @@ export function QuestionsFlow() {
           </span>
           <ArrowRight className={cn(
             "relative h-4 w-4 transition-transform duration-200",
-            currentAnswer && "group-hover:translate-x-0.5"
+            hasValidAnswer && "group-hover:translate-x-0.5"
           )} />
         </m.button>
       </footer>
