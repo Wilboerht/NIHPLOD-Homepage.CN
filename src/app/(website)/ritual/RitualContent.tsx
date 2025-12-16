@@ -278,7 +278,8 @@ interface RitualContentProps {
  * 主内容区域使用 bg-[#EBE8DB] 不透明样式
  */
 export function RitualContent({ content, backgroundImage }: RitualContentProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // 初始状态为收起，这样可以看到导航栏收起 + 内容展开的动画
+  const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -291,6 +292,15 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
     travel: content?.tabs?.travel || defaultTabContents.travel,
   };
 
+  // 页面加载后自动展开，触发导航栏收起 + 内容展开的动画
+  useEffect(() => {
+    // 延迟后自动展开，让用户能先看到导航栏再看到收起动画
+    const timer = setTimeout(() => {
+      setIsExpanded(true);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
   // 监听滚动，添加毛玻璃效果
   useEffect(() => {
     const handleScroll = () => {
@@ -302,8 +312,8 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
 
   return (
     <>
-      {/* 全屏背景图片 - 始终全屏显示，不受展开/收起影响 */}
-      <div className="fixed inset-0 z-0">
+      {/* 全屏背景图片 - 延伸到安全区域外，覆盖状态栏 */}
+      <div className="fullscreen-bg">
         <Image
           src={backgroundImage || "/images/bg.png"}
           alt="护肤仪式"
@@ -322,11 +332,11 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
         />
       </div>
 
-      {/* 内容区域容器 - 使用 framer-motion 统一控制动画 */}
+      {/* 内容区域容器 - 在安全区域内，使用 framer-motion 统一控制动画 */}
       <m.div
-        className="fixed inset-x-0 top-0 z-10"
+        className="safe-area-content !bottom-auto"
         animate={{
-          bottom: isExpanded ? 0 : 112 // bottom-28 = 7rem = 112px
+          bottom: isExpanded ? "max(1rem, env(safe-area-inset-bottom, 1rem))" : "calc(max(1rem, env(safe-area-inset-bottom, 1rem)) + 112px)"
         }}
         transition={{
           duration: 0.5,
@@ -338,11 +348,10 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{
             opacity: 1,
-            scale: 1,
-            bottom: isExpanded ? 16 : 0 // bottom-4 = 1rem = 16px
+            scale: 1
           }}
           transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-          className="absolute left-6 right-6 top-0 z-20 sm:left-10 sm:right-10 lg:left-16 lg:right-16"
+          className="h-full"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center">
@@ -673,9 +682,9 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
           <m.header
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            exit={{ opacity: 0, scale: 0.95, y: 40 }}
             transition={{
-              duration: 0.35,
+              duration: 0.6,
               ease: [0.32, 0.72, 0, 1]
             }}
             className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"

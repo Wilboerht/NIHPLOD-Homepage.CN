@@ -52,6 +52,45 @@
     max-width: 100vw;
   }
 
+  /* ========== 全屏背景安全区域处理 ========== */
+
+  /* 全屏背景容器 - 延伸到安全区域外，覆盖状态栏/刘海区域 */
+  .fullscreen-bg {
+    position: fixed;
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    left: calc(-1 * env(safe-area-inset-left, 0px));
+    right: calc(-1 * env(safe-area-inset-right, 0px));
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    z-index: 0;
+  }
+
+  /* 安全区域内的内容容器 */
+  .safe-area-content {
+    position: fixed;
+    top: max(1rem, env(safe-area-inset-top, 1rem));
+    left: max(1.5rem, env(safe-area-inset-left, 1.5rem));
+    right: max(1.5rem, env(safe-area-inset-right, 1.5rem));
+    bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+    z-index: 20;
+  }
+
+  /* 平板/桌面端安全区域调整 */
+  @media (min-width: 640px) {
+    .safe-area-content {
+      left: max(2.5rem, env(safe-area-inset-left, 2.5rem));
+      right: max(2.5rem, env(safe-area-inset-right, 2.5rem));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .safe-area-content {
+      top: max(1.5rem, env(safe-area-inset-top, 1.5rem));
+      left: max(4rem, env(safe-area-inset-left, 4rem));
+      right: max(4rem, env(safe-area-inset-right, 4rem));
+      bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
+    }
+  }
+
   /* ========== 可访问性增强 ========== */
 
   /* Focus 可见性 - 键盘导航用户 */

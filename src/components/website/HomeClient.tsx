@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
@@ -78,11 +78,9 @@ const fireworkColors = [
   "text-orange-400/80",
 ];
 
-// 粒子ID计数器
-let particleIdCounter = 0;
-
 /**
  * 生成随机烟花粒子 - 向四周发射
+ * 使用 crypto.randomUUID() 生成唯一ID，避免全局计数器累积
  */
 function generateFireworkParticles(count: number) {
   return Array.from({ length: count }, () => {
@@ -95,7 +93,7 @@ function generateFireworkParticles(count: number) {
                    : layer < 0.7 ? 70 + Math.random() * 30
                    : 100 + Math.random() * 30;
     return {
-      id: `particle-${++particleIdCounter}`, // 唯一ID
+      id: crypto.randomUUID(), // 使用原生 UUID 生成唯一ID
       Icon: fireworkIconList[Math.floor(Math.random() * fireworkIconList.length)],
       targetX: Math.cos(radian) * distance,
       targetY: Math.sin(radian) * distance,
@@ -181,6 +179,53 @@ interface HomeClientProps {
   content?: HomePageContent;
 }
 
+// 容器变体 - 控制子元素的交错动画
+const menuContainerVariants = {
+  open: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    }
+  },
+  closed: {
+    transition: {
+      staggerChildren: 0.05,
+      staggerDirection: -1,
+    }
+  }
+};
+
+// 菜单项变体 - 根据位置动态计算目标坐标
+const menuItemVariants = {
+  open: (custom: { x: number; y: number }) => ({
+    x: custom.x,
+    y: custom.y,
+    opacity: 1,
+    scale: 1,
+    transition: {
+      type: "spring",
+      stiffness: 260,
+      damping: 20,
+    }
+  }),
+  closed: {
+    x: 0,
+    y: 0,
+    opacity: 0,
+    scale: 0,
+    transition: {
+      duration: 0.4, // 增加退出时间
+      ease: [0.32, 0, 0.67, 0],
+      // 缩放使用弹簧效果，略有回弹
+      scale: {
+        type: "spring",
+        stiffness: 400,
+        damping: 25,
+      }
+    }
+  }
+};
+
 /**
  * 圆形放射状展开菜单组件
  */
@@ -188,11 +233,16 @@ function ExploreMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [particles, setParticles] = useState<ReturnType<typeof generateFireworkParticles>>([]);
+  const [expandDistance, setExpandDistance] = useState(170);
 
-  // 展开距离（响应式）- 优化后更大气
-  const getExpandDistance = useCallback(() => {
-    if (typeof window === 'undefined') return 170;
-    return window.innerWidth < 640 ? 115 : 170;
+  // 响应式展开距离
+  useEffect(() => {
+    const updateDistance = () => {
+      setExpandDistance(window.innerWidth < 640 ? 115 : 170);
+    };
+    updateDistance();
+    window.addEventListener('resize', updateDistance);
+    return () => window.removeEventListener('resize', updateDistance);
   }, []);
 
   const handleButtonClick = () => {
@@ -255,44 +305,37 @@ function ExploreMenu() {
         )}
       </AnimatePresence>
 
-      {/* 展开的菜单项 */}
-      <AnimatePresence>
-        {isOpen && menuItems.map((item, index) => {
+      {/* 展开的菜单项 - 使用容器变体控制交错动画 */}
+      <m.div
+        className="pointer-events-none"
+        variants={menuContainerVariants}
+        initial="closed"
+        animate={isOpen ? "open" : "closed"}
+      >
+        {menuItems.map((item) => {
           const Icon = item.icon;
-          const distance = getExpandDistance();
           const radian = (item.angle * Math.PI) / 180;
-          const x = Math.cos(radian) * distance;
-          const y = Math.sin(radian) * distance;
+          const x = Math.cos(radian) * expandDistance;
+          const y = Math.sin(radian) * expandDistance;
 
           return (
             <m.div
               key={item.id}
-              className="absolute z-20"
-              initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
-              animate={{
-                x,
-                y,
-                opacity: 1,
-                scale: 1,
+              className={`absolute z-20 ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+              style={{
+                top: '50%',
+                left: '50%',
+                marginTop: '-40px', // 偏移到图标中心
+                marginLeft: '-32px', // 偏移到图标中心 (w-16 = 64px / 2)
               }}
-              exit={{
-                x: 0,
-                y: 0,
-                opacity: 0,
-                scale: 0,
-                transition: { duration: 0.35, delay: (menuItems.length - 1 - index) * 0.06, ease: "easeInOut" }
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 180,
-                damping: 18,
-                delay: index * 0.12,
-              }}
+              variants={menuItemVariants}
+              custom={{ x, y }}
             >
               <Link
                 href={item.href}
                 className="group flex flex-col items-center gap-1.5"
                 onClick={() => setIsOpen(false)}
+                tabIndex={isOpen ? 0 : -1}
               >
                 {/* 图标容器 - 圆形 + 金色边框 */}
                 <m.div
@@ -315,7 +358,7 @@ function ExploreMenu() {
             </m.div>
           );
         })}
-      </AnimatePresence>
+      </m.div>
 
       {/* 烟花效果容器 */}
       <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-visible">
@@ -324,7 +367,11 @@ function ExploreMenu() {
             <m.div
               key={id}
               className="absolute"
-              style={{ willChange: "transform, opacity" }}
+              style={{
+                willChange: "transform, opacity",
+                transform: "translateZ(0)", // 强制 GPU 加速
+                backfaceVisibility: "hidden", // 优化合成层
+              }}
               initial={{ x: 0, y: 0, opacity: 0, scale: 0, rotate: 0 }}
               animate={{
                 x: [0, targetX * 0.3, targetX, targetX],
@@ -373,34 +420,13 @@ function ExploreMenu() {
           />
         )}
 
-        {/* 动态边框 - 双层旋转光晕 + 渐变尾迹 */}
+        {/* 简约动态边框 - 单层柔和光带 */}
         <div className="absolute -inset-[1px] overflow-hidden rounded-full">
-          {/* 第一层：主光带 - 顺时针，带长尾迹 */}
           <m.div
-            className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_30deg,#c9a86c20_60deg,#c9a86c60_90deg,#d4af37_120deg,#c9a86c60_150deg,#c9a86c20_180deg,transparent_210deg,transparent_360deg)]"
+            className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_70deg,#c9a86c40_100deg,#d4af37_180deg,#c9a86c40_260deg,transparent_290deg,transparent_360deg)]"
             animate={{ rotate: 360 }}
             transition={{
-              duration: isHovered ? 2 : 4,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-          />
-          {/* 第二层：副光带 - 逆时针，更短更亮 */}
-          <m.div
-            className="absolute inset-[-100%] bg-[conic-gradient(from_180deg,transparent_0deg,transparent_60deg,#d4af3740_90deg,#d4af37_105deg,#c9a86c_120deg,#d4af3740_135deg,transparent_165deg,transparent_360deg)]"
-            animate={{ rotate: -360 }}
-            transition={{
-              duration: isHovered ? 3 : 6,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-          />
-          {/* 第三层：微光点缀 - 快速旋转 */}
-          <m.div
-            className="absolute inset-[-100%] opacity-40 bg-[conic-gradient(from_90deg,transparent_0deg,#d4af37_2deg,transparent_4deg,transparent_90deg,#d4af37_92deg,transparent_94deg,transparent_180deg,#d4af37_182deg,transparent_184deg,transparent_270deg,#d4af37_272deg,transparent_274deg,transparent_360deg)]"
-            animate={{ rotate: 360 }}
-            transition={{
-              duration: isHovered ? 1.5 : 3,
+              duration: isHovered ? 2.5 : 5,
               repeat: Infinity,
               ease: "linear"
             }}

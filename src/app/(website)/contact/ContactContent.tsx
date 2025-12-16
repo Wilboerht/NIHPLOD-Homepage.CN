@@ -166,10 +166,10 @@ export function ContactContent({ content, backgroundImage }: ContactContentProps
 
   return (
     <>
-      {/* 全屏背景容器 - 始终展开到底部 */}
-      <div className="fixed inset-0 bottom-0">
+      {/* 全屏背景容器 - 延伸到安全区域外，覆盖状态栏 */}
+      <div className="fullscreen-bg">
         {/* 背景图片 */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0">
           <Image
             src={backgroundImage || "/images/bg.png"}
             alt="联系我们"
@@ -187,14 +187,15 @@ export function ContactContent({ content, backgroundImage }: ContactContentProps
             )}
           />
         </div>
+      </div>
 
-        {/* 主内容区域 */}
-        <m.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="absolute bottom-4 left-6 right-6 top-4 z-20 sm:left-10 sm:right-10 lg:bottom-6 lg:left-16 lg:right-16 lg:top-6"
-        >
+      {/* 主内容区域 - 在安全区域内 */}
+      <m.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="safe-area-content"
+      >
           <div className="flex h-full flex-col items-center">
             {/* 主内容区域 */}
             <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl">
@@ -412,7 +413,6 @@ export function ContactContent({ content, backgroundImage }: ContactContentProps
             </Link>
           </div>
         </m.div>
-      </div>
     </>
   );
 }

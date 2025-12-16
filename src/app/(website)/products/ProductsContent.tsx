@@ -293,7 +293,8 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
  */
 export function ProductsContent({ categories, products, backgroundImage }: ProductsContentProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(true); // 默认展开
+  // 初始状态为收起，这样可以看到导航栏收起 + 内容展开的动画
+  const [isExpanded, setIsExpanded] = useState(false);
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
@@ -332,6 +333,15 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
         clearTimeout(animationRef.current);
       }
     };
+  }, []);
+
+  // 页面加载后自动展开，触发导航栏收起 + 内容展开的动画
+  useEffect(() => {
+    // 延迟后自动展开，让用户能先看到导航栏再看到收起动画
+    const timer = setTimeout(() => {
+      setIsExpanded(true);
+    }, 800);
+    return () => clearTimeout(timer);
   }, []);
 
   // 初始展开动画 - 页面加载时自动展开
@@ -490,8 +500,8 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
 
   return (
     <>
-      {/* 全屏背景图片 - 始终全屏显示，不受展开/收起影响 */}
-      <div className="fixed inset-0 z-0">
+      {/* 全屏背景图片 - 延伸到安全区域外，覆盖状态栏 */}
+      <div className="fullscreen-bg">
         <Image
           src={backgroundImage || "/images/bg.png"}
           alt="NIHPLOD 产品系列"
@@ -516,12 +526,13 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
         />
       </div>
 
-      {/* 顶部分类导航栏 + 展开按钮 - 固定在顶部 */}
+      {/* 顶部分类导航栏 + 展开按钮 - 固定在顶部，考虑安全区域 */}
       <m.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed left-0 right-0 top-0 z-30"
+        className="fixed left-0 right-0 z-30"
+        style={{ top: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="flex flex-col items-center">
           {/* 分类图标区域 - 始终存在，通过高度控制显示/隐藏 */}
@@ -606,7 +617,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
         </div>
       </m.div>
 
-      {/* 产品展示区域 - 3D 旋转木马 - 独立的固定定位 */}
+      {/* 产品展示区域 - 3D 旋转木马 - 独立的固定定位，考虑安全区域 */}
       <AnimatePresence mode="wait">
         {isExpanded && currentProduct && (
           <m.div
@@ -620,8 +631,12 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
               delay: 0.4, // 延迟出现，等分类栏展开后再显示
               opacity: { duration: 0.5 }
             }}
-            className="fixed inset-x-0 bottom-2 top-36 z-10 sm:bottom-4 sm:top-40 md:top-44 lg:bottom-6 lg:top-48"
-            style={{ perspective: "1200px" }}
+            className="fixed inset-x-0 z-10"
+            style={{
+              perspective: "1200px",
+              top: "calc(env(safe-area-inset-top, 0px) + 9rem)",
+              bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)"
+            }}
           >
               {/* 手势滑动容器 */}
               <m.div
@@ -932,15 +947,15 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
       <AnimatePresence>
         {!isExpanded && (
           <m.header
-            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 20 }}
+            exit={{ opacity: 0, scale: 0.95, y: 40 }}
             transition={{
-              duration: 0.5,
-              ease: [0.4, 0, 0.2, 1],
-              delay: 0.1
+              duration: 0.6,
+              ease: [0.32, 0.72, 0, 1]
             }}
-            className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
+            className="fixed left-3 right-3 z-50 sm:left-6 sm:right-6 lg:left-16 lg:right-16"
+            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
             role="banner"
           >
             <nav
