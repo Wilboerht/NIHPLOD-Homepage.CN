@@ -224,7 +224,7 @@ export function ServicesContent({ content, backgroundImage }: ServicesContentPro
             alt="服务入口"
             fill
             priority
-            quality={100}
+            quality={75}
             className="object-cover"
             sizes="100vw"
           />

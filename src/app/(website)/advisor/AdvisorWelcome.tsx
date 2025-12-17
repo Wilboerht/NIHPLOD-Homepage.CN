@@ -61,7 +61,7 @@ export function AdvisorWelcome() {
           alt="AI 护肤顾问"
           fill
           priority
-          quality={100}
+          quality={75}
           className="object-cover"
           sizes="100vw"
         />

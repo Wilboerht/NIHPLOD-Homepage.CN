@@ -319,7 +319,7 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
           alt="护肤仪式"
           fill
           priority
-          quality={100}
+          quality={75}
           className="object-cover"
           sizes="100vw"
         />

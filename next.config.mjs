@@ -56,6 +56,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'zeeptwcbrwrllcwxeaer.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'gggmklbpdhsdwmmbkgzg.supabase.co',
+      },
     ],
     // 启用的图片格式 (优先使用 AVIF，其次 WebP)
     formats: ['image/avif', 'image/webp'],

@@ -175,7 +175,7 @@ export function ContactContent({ content, backgroundImage }: ContactContentProps
             alt="联系我们"
             fill
             priority
-            quality={100}
+            quality={75}
             className="object-cover"
             sizes="100vw"
           />

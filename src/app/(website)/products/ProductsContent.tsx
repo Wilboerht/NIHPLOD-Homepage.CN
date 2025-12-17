@@ -507,8 +507,8 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
           alt="NIHPLOD 产品系列"
           fill
           priority
-          quality={100}
-          unoptimized
+          quality={75}
+          sizes="100vw"
           className={cn(
             "object-cover transition-all duration-700 ease-out",
             isExpanded && "scale-105 blur-sm"
