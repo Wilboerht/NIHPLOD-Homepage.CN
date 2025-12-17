@@ -40,7 +40,7 @@ const StoryTabIcon = ({ className, isHovered }: { className?: string; isHovered?
   );
 };
 
-const MissionIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+const _MissionIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
   const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
   return (
     <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
@@ -51,7 +51,7 @@ const MissionIcon = ({ className, isHovered }: { className?: string; isHovered?:
   );
 };
 
-const PhilosophyIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+const _PhilosophyIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
   const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
   return (
     <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
@@ -123,15 +123,15 @@ const tabs: TabConfig[] = [
 const TabButton = ({
   tab,
   index,
-  isLastInRow,
-  isLastInDesktop,
+  _isLastInRow,
+  _isLastInDesktop,
   onClick,
   className
 }: {
   tab: TabConfig;
   index: number;
-  isLastInRow: boolean; // 移动端当前行最后一个
-  isLastInDesktop: boolean; // 桌面端最后一个
+  _isLastInRow: boolean; // 移动端当前行最后一个
+  _isLastInDesktop: boolean; // 桌面端最后一个
   onClick: () => void;
   className?: string;
 }) => {
@@ -443,8 +443,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                             key={tab.id}
                             tab={tab}
                             index={index}
-                            isLastInRow={index === tabs.length - 1}
-                            isLastInDesktop={index === tabs.length - 1}
+                            _isLastInRow={index === tabs.length - 1}
+                            _isLastInDesktop={index === tabs.length - 1}
                             onClick={() => setActiveTab(tab.id)}
                             className="flex-1"
                           />

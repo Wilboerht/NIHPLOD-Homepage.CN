@@ -32,7 +32,7 @@ export function AdvisorWelcome() {
   const { initSession } = useAdvisorAnalytics();
   const [isExpanded, setIsExpanded] = useState(true); // 默认展开
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const [_imageError, _setImageError] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {

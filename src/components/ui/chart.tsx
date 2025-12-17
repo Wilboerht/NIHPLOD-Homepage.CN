@@ -73,7 +73,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(colorConfig)
+        __html: colorConfig
           .map(
             ([key, itemConfig]) => `
 [data-chart=${id}] {
@@ -94,16 +94,33 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
+type TooltipPayloadItem = {
+  dataKey?: string | number;
+  name?: string;
+  value?: number | string;
+  payload?: Record<string, unknown>;
+  color?: string;
+  fill?: string;
+};
+
+interface ChartTooltipContentProps extends React.ComponentProps<"div"> {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+  label?: string;
+  labelFormatter?: (label: React.ReactNode, payload: TooltipPayloadItem[]) => React.ReactNode;
+  formatter?: (value: unknown, name: string, item: TooltipPayloadItem, index: number, payload: TooltipPayloadItem[]) => React.ReactNode;
+  hideLabel?: boolean;
+  hideIndicator?: boolean;
+  indicator?: "line" | "dot" | "dashed";
+  nameKey?: string;
+  labelKey?: string;
+  color?: string;
+  labelClassName?: string;
+}
+
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-    React.ComponentProps<"div"> & {
-      hideLabel?: boolean;
-      hideIndicator?: boolean;
-      indicator?: "line" | "dot" | "dashed";
-      nameKey?: string;
-      labelKey?: string;
-    }
+  ChartTooltipContentProps
 >(
   (
     {
@@ -182,7 +199,7 @@ const ChartTooltipContent = React.forwardRef<
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                  formatter(item.value, item.name, item, index, payload)
                 ) : (
                   <>
                     {itemConfig?.icon ? (

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     if (!validated.success) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: validated.error.errors[0]?.message } },
+        { success: false, error: { code: "VALIDATION_ERROR", message: validated.error.issues[0]?.message } },
         { status: 400 }
       );
     }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       where: { id: entryId },
     });
 
-    if (!entry || !entry.isWinner) {
+    if (!entry || (entry.status !== "won" && entry.status !== "verified")) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_WINNER", message: "无效的领奖链接" } },
         { status: 403 }
@@ -86,8 +86,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 导出验证函数供其他路由使用
-export function verifyCode(phone: string, code: string): boolean {
+// 验证函数 - 用于内部或通过单独的lib模块调用
+// 注意：Next.js App Router 路由文件只能导出 HTTP 方法处理函数
+function _verifyCode(phone: string, code: string): boolean {
   const cacheKey = `lottery_code_${phone}`;
   const stored = codeStore.get(cacheKey);
 
@@ -105,3 +106,5 @@ export function verifyCode(phone: string, code: string): boolean {
   return false;
 }
 
+// 导出类型以便在需要时使用
+export type VerifyCodeFn = typeof _verifyCode;

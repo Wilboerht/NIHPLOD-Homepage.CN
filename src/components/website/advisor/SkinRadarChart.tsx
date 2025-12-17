@@ -40,16 +40,20 @@ function getScoreColor(score: number): string {
 
 /** 自定义标签组件 */
 function CustomLabel(props: {
-  payload: { value: string };
-  x: number;
-  y: number;
-  cx: number;
-  cy: number;
-  index: number;
+  payload?: { value: string };
+  x?: string | number;
+  y?: string | number;
+  cx?: string | number;
+  cy?: string | number;
+  index?: number;
   chartData: { score: number; dimension: string; fullMark: number }[];
   activeIndex: number | null;
 }) {
-  const { payload, x, y, cx, cy, index, chartData, activeIndex } = props;
+  const { payload, index = 0, chartData, activeIndex } = props;
+  const x = Number(props.x) || 0;
+  const y = Number(props.y) || 0;
+  const cx = Number(props.cx) || 0;
+  const cy = Number(props.cy) || 0;
   const data = chartData[index];
   const dimension = payload?.value || data?.dimension || "";
   const score = data?.score ?? 0;
@@ -141,7 +145,8 @@ export function SkinRadarChart({
   }));
 
   // 处理鼠标移动事件
-  const handleMouseMove = (state: { activeTooltipIndex?: number }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleMouseMove = (state: Record<string, any>) => {
     if (state && typeof state.activeTooltipIndex === "number") {
       setActiveIndex(state.activeTooltipIndex);
     }

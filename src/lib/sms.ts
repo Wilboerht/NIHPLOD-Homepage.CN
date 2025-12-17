@@ -80,7 +80,7 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
   try {
     // 阿里云短信 API 调用
     // 这里使用 REST API 方式，避免引入 SDK
-    const endpoint = "https://dysmsapi.aliyuncs.com";
+    const _endpoint = "https://dysmsapi.aliyuncs.com";
     const params = new URLSearchParams({
       Action: "SendSms",
       Version: "2017-05-25",

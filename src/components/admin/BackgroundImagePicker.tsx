@@ -56,7 +56,7 @@ export function BackgroundImagePicker({
   // 裁剪相关状态
   const [showCropper, setShowCropper] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string>("");
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [, setUploadedFile] = useState<File | null>(null);
 
   // 获取媒体列表
   const fetchMedia = useCallback(async () => {

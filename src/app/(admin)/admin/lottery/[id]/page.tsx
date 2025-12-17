@@ -22,10 +22,9 @@ import { useToast } from "@/components/ui/Toast";
 interface LotteryEntry {
   id: string;
   phone: string;
-  drawingDataUrl?: string;
-  weight: number;
+  drawingUrl?: string;
   bonusWeight: number;
-  isWinner: boolean;
+  status: string;
   createdAt: string;
 }
 
@@ -37,6 +36,7 @@ interface LotteryActivity {
   prizeQuantity: number;
   status: string;
   drawTime: string;
+  createdAt: string;
   entryCount: number;
   winnerCount: number;
   entries: LotteryEntry[];
@@ -229,15 +229,15 @@ export default function LotteryDetailPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {activity.winners.map((winner) => (
               <div key={winner.id} className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-3">
-                {winner.drawingDataUrl && (
-                  <img src={winner.drawingDataUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                {winner.drawingUrl && (
+                  <img src={winner.drawingUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
                 )}
                 <div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-3.5 w-3.5 text-gray-400" />
                     <span className="font-medium text-gray-900">{maskPhone(winner.phone)}</span>
                   </div>
-                  <p className="text-xs text-gray-500">权重: {winner.weight + winner.bonusWeight}</p>
+                  <p className="text-xs text-gray-500">权重: {1 + winner.bonusWeight}</p>
                 </div>
                 <CheckCircle className="ml-auto h-5 w-5 text-green-500" />
               </div>
@@ -275,22 +275,25 @@ export default function LotteryDetailPage() {
         <h2 className="mb-4 text-lg font-semibold text-gray-900">参与者列表</h2>
         {activity.entries && activity.entries.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {activity.entries.slice(0, 50).map((entry) => (
-              <div key={entry.id} className={`relative rounded-lg border p-2 ${entry.isWinner ? "border-green-300 bg-green-50" : "border-gray-100"}`}>
-                {entry.drawingDataUrl && (
-                  <img src={entry.drawingDataUrl} alt="" className="h-16 w-full rounded object-cover" />
-                )}
-                <div className="mt-2 text-center">
-                  <p className="text-xs text-gray-600">{maskPhone(entry.phone)}</p>
-                  <p className="text-xs text-gray-400">权重 {entry.weight + entry.bonusWeight}</p>
-                </div>
-                {entry.isWinner && (
-                  <div className="absolute -top-2 -right-2">
-                    <span className="text-lg">🏆</span>
+            {activity.entries.slice(0, 50).map((entry) => {
+              const isWinner = entry.status === "won" || entry.status === "verified";
+              return (
+                <div key={entry.id} className={`relative rounded-lg border p-2 ${isWinner ? "border-green-300 bg-green-50" : "border-gray-100"}`}>
+                  {entry.drawingUrl && (
+                    <img src={entry.drawingUrl} alt="" className="h-16 w-full rounded object-cover" />
+                  )}
+                  <div className="mt-2 text-center">
+                    <p className="text-xs text-gray-600">{maskPhone(entry.phone)}</p>
+                    <p className="text-xs text-gray-400">权重 {1 + entry.bonusWeight}</p>
                   </div>
-                )}
-              </div>
-            ))}
+                  {isWinner && (
+                    <div className="absolute -top-2 -right-2">
+                      <span className="text-lg">🏆</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-center text-gray-400 py-8">暂无参与者</p>

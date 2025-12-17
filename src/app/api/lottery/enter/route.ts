@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     if (!validated.success) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: validated.error.errors[0]?.message || "参数错误" } },
+        { success: false, error: { code: "VALIDATION_ERROR", message: validated.error.issues[0]?.message || "参数错误" } },
         { status: 400 }
       );
     }

@@ -13,7 +13,7 @@ interface FlowerItem {
     rotation: number;
     colors: string[];
   } | null;
-  isWinner: boolean;
+  status: string;
   createdAt: string;
 }
 
@@ -33,7 +33,7 @@ export default function FlowerGarden({
   const [flowers, setFlowers] = useState<FlowerItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [selectedFlower, setSelectedFlower] = useState<FlowerItem | null>(null);
+  const [, setSelectedFlower] = useState<FlowerItem | null>(null);
 
   // 获取花朵数据
   const fetchFlowers = useCallback(async () => {
@@ -128,19 +128,26 @@ export default function FlowerGarden({
                 onClick={() => handleFlowerClick(flower)}
                 whileHover={{ scale: (data.scale || 1) * 1.2, zIndex: 50 }}
               >
-                {/* 花朵图片 */}
-                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shadow-md bg-white ${flower.isWinner ? "ring-2 ring-yellow-400 ring-offset-2" : ""}`}>
-                  <img
-                    src={flower.imageUrl}
-                    alt="花朵"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-                {/* 中奖标记 */}
-                {flower.isWinner && (
-                  <div className="absolute -top-2 -right-2 text-lg">🏆</div>
-                )}
+                {(() => {
+                  const isWinner = flower.status === "won" || flower.status === "verified";
+                  return (
+                    <>
+                      {/* 花朵图片 */}
+                      <div className={`w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shadow-md bg-white ${isWinner ? "ring-2 ring-yellow-400 ring-offset-2" : ""}`}>
+                        <img
+                          src={flower.imageUrl}
+                          alt="花朵"
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      {/* 中奖标记 */}
+                      {isWinner && (
+                        <div className="absolute -top-2 -right-2 text-lg">🏆</div>
+                      )}
+                    </>
+                  );
+                })()}
               </m.div>
             );
           })}

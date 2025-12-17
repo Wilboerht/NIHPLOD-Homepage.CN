@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     if (!validated.success) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: validated.error.errors[0]?.message } },
+        { success: false, error: { code: "VALIDATION_ERROR", message: validated.error.issues[0]?.message } },
         { status: 400 }
       );
     }
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       where: { id: entryId },
     });
 
-    if (!entry || !entry.isWinner) {
+    if (!entry || (entry.status !== "won" && entry.status !== "verified")) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_WINNER", message: "无效的领奖链接" } },
         { status: 403 }

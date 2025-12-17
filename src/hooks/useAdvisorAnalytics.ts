@@ -160,7 +160,7 @@ export function useAdvisorAnalytics() {
   }, []);
   
   // 追踪问卷完成
-  const trackQuestionnaireComplete = useCallback((answers: Record<string, string>) => {
+  const trackQuestionnaireComplete = useCallback((answers: Record<string, string | string[]>) => {
     sendTrackEvent("questionnaire_complete", { answers });
   }, []);
   

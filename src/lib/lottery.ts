@@ -244,7 +244,7 @@ export function drawWinners<T extends { id: string; riskScore: number; bonusWeig
 
   // 3. 加权随机抽取
   while (winners.length < options.totalWinners && pool.length > 0) {
-    let random = Math.random() * totalWeight;
+    const random = Math.random() * totalWeight;
     let cumulative = 0;
 
     for (let i = 0; i < pool.length; i++) {

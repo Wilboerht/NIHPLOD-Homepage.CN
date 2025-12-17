@@ -8,7 +8,8 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 
 // 加权随机抽取算法
-function weightedRandomSelect<T extends { weight: number; bonusWeight: number }>(
+// LotteryEntry 只有 bonusWeight 字段，基础权重默认为 1
+function weightedRandomSelect<T extends { bonusWeight: number }>(
   items: T[],
   count: number
 ): T[] {
@@ -16,11 +17,12 @@ function weightedRandomSelect<T extends { weight: number; bonusWeight: number }>
 
   const selected: T[] = [];
   const remaining = [...items];
+  const BASE_WEIGHT = 1; // 基础权重
 
   for (let i = 0; i < count && remaining.length > 0; i++) {
-    // 计算总权重
+    // 计算总权重（基础权重 + 加成权重）
     const totalWeight = remaining.reduce(
-      (sum, item) => sum + item.weight + item.bonusWeight,
+      (sum, item) => sum + BASE_WEIGHT + item.bonusWeight,
       0
     );
 
@@ -29,7 +31,7 @@ function weightedRandomSelect<T extends { weight: number; bonusWeight: number }>
     let selectedIndex = 0;
 
     for (let j = 0; j < remaining.length; j++) {
-      random -= remaining[j].weight + remaining[j].bonusWeight;
+      random -= BASE_WEIGHT + remaining[j].bonusWeight;
       if (random <= 0) {
         selectedIndex = j;
         break;
@@ -65,7 +67,7 @@ export async function POST(
       where: { id },
       include: {
         entries: {
-          where: { isWinner: false },
+          where: { status: "pending" },
         },
       },
     });
@@ -99,12 +101,12 @@ export async function POST(
       // 标记中奖者
       prisma.lotteryEntry.updateMany({
         where: { id: { in: winners.map((w) => w.id) } },
-        data: { isWinner: true },
+        data: { status: "won", wonAt: new Date() },
       }),
       // 更新活动状态
       prisma.lotteryActivity.update({
         where: { id },
-        data: { status: "ended" },
+        data: { status: "ended", drawnAt: new Date() },
       }),
     ]);
 
@@ -119,7 +121,6 @@ export async function POST(
         winners: winners.map((w) => ({
           id: w.id,
           phone: w.phone,
-          weight: w.weight,
           bonusWeight: w.bonusWeight,
         })),
         message: `成功抽取 ${winners.length} 位中奖者`,

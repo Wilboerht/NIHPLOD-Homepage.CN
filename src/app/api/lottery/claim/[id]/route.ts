@@ -43,22 +43,29 @@ export async function GET(
       );
     }
 
-    if (!entry.isWinner) {
+    if (entry.status !== "won" && entry.status !== "verified") {
       return NextResponse.json(
         { success: false, error: { code: "NOT_WINNER", message: "您未中奖" } },
         { status: 403 }
       );
     }
 
+    // 判断是否已填写领奖信息
+    const claimed = !!(entry.recipientName && entry.recipientPhone && entry.recipientAddress);
+
     return NextResponse.json({
       success: true,
       data: {
         id: entry.id,
         phone: entry.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2"),
-        drawingDataUrl: entry.drawingDataUrl,
+        drawingUrl: entry.drawingUrl,
         activity: entry.activity,
-        claimed: !!entry.claimInfo,
-        claimInfo: entry.claimInfo as Record<string, unknown> | null,
+        claimed,
+        claimInfo: claimed ? {
+          name: entry.recipientName,
+          phone: entry.recipientPhone,
+          address: entry.recipientAddress,
+        } : null,
       },
     });
   } catch (error) {
@@ -83,7 +90,7 @@ export async function POST(
     const validated = ClaimInfoSchema.safeParse(body);
     if (!validated.success) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: validated.error.errors[0]?.message } },
+        { success: false, error: { code: "VALIDATION_ERROR", message: validated.error.issues[0]?.message } },
         { status: 400 }
       );
     }
@@ -100,14 +107,14 @@ export async function POST(
       );
     }
 
-    if (!entry.isWinner) {
+    if (entry.status !== "won" && entry.status !== "verified") {
       return NextResponse.json(
         { success: false, error: { code: "NOT_WINNER", message: "您未中奖" } },
         { status: 403 }
       );
     }
 
-    if (entry.claimInfo) {
+    if (entry.recipientName && entry.recipientPhone && entry.recipientAddress) {
       return NextResponse.json(
         { success: false, error: { code: "ALREADY_CLAIMED", message: "您已提交过领奖信息" } },
         { status: 400 }
@@ -118,7 +125,9 @@ export async function POST(
     await prisma.lotteryEntry.update({
       where: { id },
       data: {
-        claimInfo: validated.data,
+        recipientName: validated.data.name,
+        recipientPhone: validated.data.phone,
+        recipientAddress: validated.data.address,
       },
     });
 

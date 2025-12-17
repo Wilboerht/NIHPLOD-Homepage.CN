@@ -64,7 +64,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       return {
         id: entry.id,
         phone: maskedPhoneDisplay,
-        signatureUrl: entry.signatureUrl,
+        drawingUrl: entry.drawingUrl,
         ip: entry.ip.replace(/\.\d+$/, ".*"), // IP 部分脱敏
         deviceId: entry.deviceId.slice(0, 8) + "...",
         riskScore: entry.riskScore,

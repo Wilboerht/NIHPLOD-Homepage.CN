@@ -114,7 +114,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       orderBy: { wonRank: "asc" },
       select: {
         id: true,
-        signatureUrl: true,
+        drawingUrl: true,
         wonRank: true,
         riskScore: true,
       },

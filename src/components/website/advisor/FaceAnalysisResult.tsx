@@ -9,13 +9,12 @@ import {
   CheckCircle2,
   AlertCircle,
   Target,
-  TrendingUp,
   MapPin,
 } from "lucide-react";
 import type { FaceAnalysisResult as FaceAnalysisData } from "@/app/api/advisor/face-analyze/route";
 import { SkinRadarChart } from "./SkinRadarChart";
 import { FaceZoneHeatmap } from "./FaceZoneHeatmap";
-import { DIMENSION_LABELS, GRADE_LABELS, scoreToGrade } from "@/lib/advisor-utils";
+import { DIMENSION_LABELS } from "@/lib/advisor-utils";
 
 interface FaceAnalysisResultProps {
   /** 分析结果数据 */

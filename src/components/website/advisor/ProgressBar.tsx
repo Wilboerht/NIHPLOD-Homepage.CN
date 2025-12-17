@@ -64,7 +64,7 @@ export function ProgressBar({
           const stepNum = i + 1;
           const isCompleted = stepNum < current;
           const isCurrent = stepNum === current;
-          const isPending = stepNum > current;
+          const _isPending = stepNum > current;
 
           return (
             <m.div

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { m } from "framer-motion";
-import { Loader2, CheckCircle, AlertCircle, Gift, Phone } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Gift } from "lucide-react";
 import Link from "next/link";
 
 interface WinnerInfo {
@@ -25,7 +25,7 @@ interface WinnerInfo {
 
 export default function ClaimPage() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);

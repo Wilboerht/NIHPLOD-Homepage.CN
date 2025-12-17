@@ -24,7 +24,7 @@ interface FlowerItem {
     scale: number;
     rotation: number;
   } | null;
-  isWinner: boolean;
+  status: string;
   createdAt: string;
 }
 
@@ -266,28 +266,35 @@ export default function GardenPage() {
                   onClick={() => setSelectedFlower(flower)}
                   className="group relative cursor-pointer"
                 >
-                  <div
-                    className={`aspect-square overflow-hidden rounded-xl bg-brand-cream/30 shadow-sm transition-all duration-200 group-hover:shadow-lg ${
-                      flower.isWinner ? "ring-2 ring-brand-gold ring-offset-2" : ""
-                    }`}
-                  >
-                    <img
-                      src={flower.imageUrl}
-                      alt="花朵作品"
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  </div>
-                  {/* 中奖标记 */}
-                  {flower.isWinner && (
-                    <m.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-gold text-[10px] shadow-md"
-                    >
-                      ✨
-                    </m.div>
-                  )}
+                  {(() => {
+                    const isWinner = flower.status === "won" || flower.status === "verified";
+                    return (
+                      <>
+                        <div
+                          className={`aspect-square overflow-hidden rounded-xl bg-brand-cream/30 shadow-sm transition-all duration-200 group-hover:shadow-lg ${
+                            isWinner ? "ring-2 ring-brand-gold ring-offset-2" : ""
+                          }`}
+                        >
+                          <img
+                            src={flower.imageUrl}
+                            alt="花朵作品"
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        </div>
+                        {/* 中奖标记 */}
+                        {isWinner && (
+                          <m.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-gold text-[10px] shadow-md"
+                          >
+                            ✨
+                          </m.div>
+                        )}
+                      </>
+                    );
+                  })()}
                   {/* 悬停遮罩 */}
                   <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-brand-charcoal/0 opacity-0 transition-all duration-200 group-hover:bg-brand-charcoal/10 group-hover:opacity-100">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm">
@@ -369,7 +376,7 @@ export default function GardenPage() {
                 className="aspect-square w-full object-contain bg-brand-cream/30"
               />
               <div className="p-4 text-center">
-                {selectedFlower.isWinner && (
+                {(selectedFlower.status === "won" || selectedFlower.status === "verified") && (
                   <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-brand-gold/10 px-3 py-1 text-sm text-brand-gold">
                     <Sparkles className="h-3.5 w-3.5" />
                     <span>幸运中奖</span>

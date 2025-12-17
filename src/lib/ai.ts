@@ -413,13 +413,27 @@ function generateSkincareRoutine(currentRoutine?: string): SkincareRoutine {
 /**
  * 构建 AI 分析提示词（使用配置文件）
  */
+/** 获取主要关注点（处理单选或多选） */
+function getPrimaryConcernAsString(primaryConcern: string | string[] | undefined): string {
+  if (!primaryConcern) return "";
+  if (Array.isArray(primaryConcern)) return primaryConcern[0] || "";
+  return primaryConcern;
+}
+
+/** 获取所有关注点作为数组 */
+function getPrimaryConcernsAsArray(primaryConcern: string | string[] | undefined): string[] {
+  if (!primaryConcern) return [];
+  if (Array.isArray(primaryConcern)) return primaryConcern;
+  return [primaryConcern];
+}
+
 function buildAnalysisPrompt(
   answers: QuestionnaireAnswers,
   faceAnalysis?: FaceAnalysisResult
 ): string {
   return buildTextAnalysisPrompt({
     skinTypeLabel: getSkinTypeLabel(answers.skinType || ""),
-    concernLabel: getConcernLabel(answers.primaryConcern || ""),
+    concernLabel: getConcernLabel(getPrimaryConcernAsString(answers.primaryConcern)),
     ageRange: answers.ageRange,
     currentRoutine: answers.currentRoutine,
     allergies: answers.allergies,
@@ -572,11 +586,12 @@ function parseAIResponse(response: string, answers: QuestionnaireAnswers): SkinA
   }
 
   // 降级返回
+  const concerns = getPrimaryConcernsAsArray(answers.primaryConcern);
   return {
     skinType: answers.skinType || "combination",
     skinTypeLabel: getSkinTypeLabel(answers.skinType || "combination"),
-    concerns: answers.primaryConcern ? [answers.primaryConcern] : [],
-    concernLabels: answers.primaryConcern ? [getConcernLabel(answers.primaryConcern)] : [],
+    concerns,
+    concernLabels: concerns.map(getConcernLabel),
     summary: "根据您的问卷回答进行分析",
     details: [],
   };
@@ -967,7 +982,7 @@ function identifyConcerns(
   const concerns: string[] = [];
 
   if (answers.primaryConcern) {
-    concerns.push(answers.primaryConcern);
+    concerns.push(...getPrimaryConcernsAsArray(answers.primaryConcern));
   }
 
   if (faceAnalysis?.skinConditions) {
