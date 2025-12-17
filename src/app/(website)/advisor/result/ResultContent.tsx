@@ -384,6 +384,51 @@ export function ResultContent() {
     );
   }
 
+  // 检查面部分析是否因技术原因失败（降级结果）
+  const isFaceAnalysisFailed = faceAnalysis?.skinType?.description?.includes("技术原因");
+
+  // 技术原因分析失败状态 - 提示用户重新分析
+  if (isFaceAnalysisFailed) {
+    const handleReanalyze = () => {
+      // 清除当前的面部分析结果和综合分析结果
+      sessionStorage.removeItem("advisorFaceAnalysis");
+      sessionStorage.removeItem("advisorResult");
+      // 重新跳转到分析页面
+      router.push("/advisor/analyzing");
+    };
+
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-4">
+        <div className="mx-auto max-w-md text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
+            <AlertCircle className="h-8 w-8 text-amber-500" />
+          </div>
+          <h2 className="mb-3 font-serif text-xl text-brand-charcoal">
+            分析暂时无法完成
+          </h2>
+          <p className="mb-6 text-sm leading-relaxed text-brand-charcoal/60">
+            由于技术原因，面部分析未能成功完成。请稍后重新尝试，或在网络环境更好时再次分析。
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleReanalyze}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-gold px-6 py-3 text-sm font-medium text-white shadow-luxury transition-all hover:shadow-luxury-lg"
+            >
+              <RefreshCw className="h-4 w-4" />
+              重新分析
+            </button>
+            <button
+              onClick={handleRestart}
+              className="text-sm text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+            >
+              返回重新填写问卷
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!result) return null;
 
   return (
