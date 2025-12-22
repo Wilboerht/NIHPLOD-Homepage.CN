@@ -24,7 +24,6 @@ export interface FaceCaptureImages {
 
 interface FaceCaptureProps {
   onCapture: (images: FaceCaptureImages) => void;
-  onSkip?: () => void;
 }
 
 type LightLevel = "excellent" | "good" | "low" | "too_dark" | "too_bright" | "uneven" | "unknown";
@@ -55,7 +54,7 @@ const CAPTURE_STEPS: { step: CaptureStep; label: string; instruction: string; ic
  * - 光线检测提示
  * - 前置/后置摄像头切换
  */
-export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
+export function FaceCapture({ onCapture }: FaceCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const faceDetectionRef = useRef<number | null>(null);
@@ -1004,16 +1003,6 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
             </p>
           </div>
         </div>
-      )}
-
-      {/* 跳过按钮 */}
-      {onSkip && !isAllCaptured && (
-        <button
-          onClick={onSkip}
-          className="mt-4 text-sm text-brand-charcoal/50 transition-colors hover:text-brand-charcoal/70"
-        >
-          跳过此步骤
-        </button>
       )}
 
       {/* 隐私提示 */}

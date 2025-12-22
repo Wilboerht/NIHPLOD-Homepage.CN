@@ -4,19 +4,19 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
-import { ArrowLeft, Scan, SkipForward } from "lucide-react";
+import { ArrowLeft, Scan } from "lucide-react";
 import { FaceCapture, type FaceCaptureImages } from "@/components/website/advisor/FaceCapture";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations";
 
 /**
  * 面部扫描页面内容
- * 用户可以拍照或上传照片进行 AI 面部分析
+ * 用户必须拍照进行 AI 面部分析（必选步骤）
  */
 export function FaceScanContent() {
   const router = useRouter();
   const [hasAnswers, setHasAnswers] = useState(false);
-  const { trackFaceScanStart, trackFaceScanComplete, trackFaceScanSkip } = useAdvisorAnalytics();
+  const { trackFaceScanStart, trackFaceScanComplete } = useAdvisorAnalytics();
   const hasTrackedStart = useRef(false);
 
   // 检查是否有问答数据
@@ -53,19 +53,6 @@ export function FaceScanContent() {
     [router, trackFaceScanComplete]
   );
 
-  /**
-   * 跳过面部扫描
-   */
-  const handleSkip = useCallback(() => {
-    // 清除可能存在的旧照片数据
-    sessionStorage.removeItem("advisorFaceImage");
-    sessionStorage.removeItem("advisorFaceImages");
-    // 追踪跳过面部扫描
-    trackFaceScanSkip();
-    // 直接跳转到分析页面
-    router.push("/advisor/analyzing");
-  }, [router, trackFaceScanSkip]);
-
   // 等待检查问答数据
   if (!hasAnswers) {
     return (
@@ -78,7 +65,7 @@ export function FaceScanContent() {
   return (
     <div className="relative flex h-screen flex-col overflow-hidden px-4 py-3 md:px-6 md:py-4">
       {/* 顶部导航栏 */}
-      <header className="flex shrink-0 items-center justify-between">
+      <header className="flex shrink-0 items-center justify-start">
         {/* 返回按钮 */}
         <Link
           href="/advisor/questions"
@@ -87,15 +74,6 @@ export function FaceScanContent() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-
-        {/* 跳过按钮 */}
-        <button
-          onClick={handleSkip}
-          className="flex items-center gap-1.5 text-sm text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-        >
-          跳过此步
-          <SkipForward className="h-4 w-4" />
-        </button>
       </header>
 
       {/* 主内容区域 */}
@@ -128,7 +106,7 @@ export function FaceScanContent() {
 
           {/* 拍照组件 */}
           <m.div variants={fadeInUp} transition={defaultTransition} className="min-h-0 flex-1">
-            <FaceCapture onCapture={handleCapture} onSkip={handleSkip} />
+            <FaceCapture onCapture={handleCapture} />
           </m.div>
 
           {/* 提示说明 - 简化为一行 */}
