@@ -27,6 +27,7 @@ interface ApiKeys {
   deepseek: string;
   qwen: string;
   anthropic: string;
+  gemini: string;
 }
 
 interface HasApiKeys {
@@ -34,6 +35,7 @@ interface HasApiKeys {
   deepseek: boolean;
   qwen: boolean;
   anthropic: boolean;
+  gemini: boolean;
 }
 
 interface AISettings {
@@ -56,6 +58,7 @@ interface AISettings {
 const PROVIDER_OPTIONS = [
   { value: "deepseek", label: "DeepSeek (性价比最高)" },
   { value: "qwen", label: "通义千问 (国内推荐)" },
+  { value: "gemini", label: "Google Gemini (免费额度)" },
   { value: "openai", label: "OpenAI" },
   { value: "anthropic", label: "Anthropic Claude" },
 ];
@@ -89,6 +92,12 @@ const MODEL_OPTIONS_BY_PROVIDER: Record<string, { value: string; label: string }
     { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4 (推荐)" },
     { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
     { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku (经济)" },
+  ],
+  gemini: [
+    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (推荐)" },
+    { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite (经济)" },
+    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
   ],
 };
 
@@ -133,12 +142,14 @@ export default function AdvisorSettingsPage() {
       deepseek: "",
       qwen: "",
       anthropic: "",
+      gemini: "",
     },
     hasApiKeys: {
       openai: false,
       deepseek: false,
       qwen: false,
       anthropic: false,
+      gemini: false,
     },
   });
 
@@ -148,6 +159,7 @@ export default function AdvisorSettingsPage() {
     deepseek: "",
     qwen: "",
     anthropic: "",
+    gemini: "",
   });
 
   // 保留旧的 newApiKey 用于兼容（不再使用）
@@ -199,6 +211,7 @@ export default function AdvisorSettingsPage() {
       if (newApiKeys.deepseek) apiKeysToSave.deepseek = newApiKeys.deepseek;
       if (newApiKeys.qwen) apiKeysToSave.qwen = newApiKeys.qwen;
       if (newApiKeys.anthropic) apiKeysToSave.anthropic = newApiKeys.anthropic;
+      if (newApiKeys.gemini) apiKeysToSave.gemini = newApiKeys.gemini;
 
       const res = await fetch("/api/admin/advisor/settings", {
         method: "PUT",
@@ -231,6 +244,7 @@ export default function AdvisorSettingsPage() {
         deepseek: "",
         qwen: "",
         anthropic: "",
+        gemini: "",
       });
 
       // 更新 hasApiKeys 状态
@@ -319,6 +333,9 @@ export default function AdvisorSettingsPage() {
           )}
           {settings.provider === "anthropic" && (
             <p>🤖 <strong>Anthropic Claude</strong>：回复质量高，擅长复杂推理。<a href="https://console.anthropic.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a></p>
+          )}
+          {settings.provider === "gemini" && (
+            <p>✨ <strong>Google Gemini</strong>：有免费额度，多模态能力强，全球可用。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a></p>
           )}
         </div>
       </section>
@@ -497,6 +514,33 @@ export default function AdvisorSettingsPage() {
             />
             <p className="mt-1 text-xs text-gray-500">
               <a href="https://console.anthropic.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+            </p>
+          </div>
+
+          {/* Gemini API Key */}
+          <div className="rounded-lg border border-gray-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">Google Gemini</span>
+                <span className="text-xs text-gray-500">(文本分析)</span>
+              </div>
+              {settings.hasApiKeys?.gemini ? (
+                <Badge variant="success">已配置</Badge>
+              ) : (
+                <Badge variant="warning">未配置</Badge>
+              )}
+            </div>
+            {settings.hasApiKeys?.gemini && settings.apiKeys?.gemini && (
+              <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.gemini}</p>
+            )}
+            <Input
+              type="password"
+              value={newApiKeys.gemini}
+              onChange={(e) => setNewApiKeys((prev) => ({ ...prev, gemini: e.target.value }))}
+              placeholder="AIza..."
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
             </p>
           </div>
 

@@ -74,6 +74,18 @@ const PROVIDER_CONFIG: Record<string, {
     }),
     parseResponse: (data) => !!(data as { content?: unknown[] })?.content?.length,
   },
+  gemini: {
+    name: "Gemini",
+    getBaseUrl: () => process.env.GEMINI_API_URL || "https://generativelanguage.googleapis.com/v1beta",
+    getHeaders: () => ({
+      "Content-Type": "application/json",
+    }),
+    getBody: () => ({
+      contents: [{ role: "user", parts: [{ text: "Hi" }] }],
+      generationConfig: { maxOutputTokens: 5 },
+    }),
+    parseResponse: (data) => !!(data as { candidates?: unknown[] })?.candidates?.length,
+  },
 };
 
 // 获取 API Key
@@ -83,6 +95,7 @@ function getApiKey(provider: string, aiSettings: { apiKeys?: Record<string, stri
     deepseek: process.env.DEEPSEEK_API_KEY,
     qwen: process.env.QWEN_API_KEY,
     anthropic: process.env.ANTHROPIC_API_KEY,
+    gemini: process.env.GEMINI_API_KEY,
   };
   return aiSettings.apiKeys?.[provider] || envKeys[provider] || null;
 }
@@ -113,10 +126,17 @@ async function checkProvider(
 
   const startTime = Date.now();
   try {
-    const url = provider === "anthropic" 
-      ? config.getBaseUrl() 
-      : `${config.getBaseUrl()}/chat/completions`;
-    
+    // 根据不同服务商构建 URL
+    let url: string;
+    if (provider === "anthropic") {
+      url = config.getBaseUrl();
+    } else if (provider === "gemini") {
+      const geminiModel = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+      url = `${config.getBaseUrl()}/models/${geminiModel}:generateContent?key=${apiKey}`;
+    } else {
+      url = `${config.getBaseUrl()}/chat/completions`;
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒超时
 

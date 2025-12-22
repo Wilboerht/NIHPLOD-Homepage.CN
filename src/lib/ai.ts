@@ -148,6 +148,7 @@ export interface ApiKeys {
   deepseek?: string;
   qwen?: string;
   anthropic?: string;
+  gemini?: string;
 }
 
 /**
@@ -182,6 +183,7 @@ const DEFAULT_AI_SETTINGS: AISettings = {
     deepseek: "",
     qwen: "",
     anthropic: "",
+    gemini: "",
   },
 };
 
@@ -276,6 +278,8 @@ export function getApiKeyForProvider(provider: string): string | undefined {
       return process.env.ANTHROPIC_API_KEY;
     case "qwen":
       return process.env.QWEN_API_KEY;
+    case "gemini":
+      return process.env.GEMINI_API_KEY;
     default:
       return process.env.OPENAI_API_KEY;
   }
@@ -306,6 +310,15 @@ function getAnthropicApiUrl(): string {
 }
 
 /**
+ * 获取 Gemini API URL
+ * 支持通过环境变量配置自定义端点
+ */
+function getGeminiApiUrl(model: string): string {
+  const baseUrl = process.env.GEMINI_API_URL || "https://generativelanguage.googleapis.com/v1beta";
+  return `${baseUrl}/models/${model}:generateContent`;
+}
+
+/**
  * 获取对应 provider 的模型名称
  */
 function getModelForProvider(provider: string, defaultModel: string): string {
@@ -314,6 +327,8 @@ function getModelForProvider(provider: string, defaultModel: string): string {
       return process.env.DEEPSEEK_MODEL || "deepseek-chat";
     case "qwen":
       return process.env.QWEN_MODEL || "qwen-plus";
+    case "gemini":
+      return process.env.GEMINI_MODEL || "gemini-2.0-flash";
     case "openai":
     default:
       return defaultModel;
@@ -547,6 +562,56 @@ async function callAIProvider(
         model: model || "claude-sonnet-4-20250514",
         duration: Date.now() - startTime,
         tokenUsage: data.usage,
+      });
+
+      return content;
+    }
+
+    // Google Gemini
+    if (provider === "gemini") {
+      const geminiModel = getModelForProvider(provider, model || "gemini-2.0-flash");
+      const url = `${getGeminiApiUrl(geminiModel)}?key=${apiKey}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: `${effectiveSystemPrompt}\n\n${prompt}` }
+              ],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: effectiveMaxTokens,
+            temperature: effectiveTemperature,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        aiLogger.error("Gemini API request failed", {
+          provider,
+          status: response.status,
+          error: errorText,
+          duration: Date.now() - startTime,
+        });
+        throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      aiLogger.info("Gemini API request successful", {
+        provider,
+        model: geminiModel,
+        duration: Date.now() - startTime,
+        tokenUsage: data.usageMetadata,
       });
 
       return content;

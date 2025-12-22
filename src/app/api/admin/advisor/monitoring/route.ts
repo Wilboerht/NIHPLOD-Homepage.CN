@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
       deepseek: !!(aiSettings.apiKeys?.deepseek || process.env.DEEPSEEK_API_KEY),
       qwen: !!(aiSettings.apiKeys?.qwen || process.env.QWEN_API_KEY),
       anthropic: !!(aiSettings.apiKeys?.anthropic || process.env.ANTHROPIC_API_KEY),
+      gemini: !!(aiSettings.apiKeys?.gemini || process.env.GEMINI_API_KEY),
     };
 
     // 当前使用的服务商是否有配置 API Key
