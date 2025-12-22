@@ -151,7 +151,7 @@ const TabButton = ({
       )}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, delay: 0.12 + index * 0.05, ease: [0.32, 0.72, 0, 1] }}
+      transition={{ duration: 0.6, delay: 0.15 + index * 0.08, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
@@ -299,19 +299,11 @@ interface StoryContentProps {
  * 主内容区域使用 bg-[#EBE8DB] 不透明样式
  */
 export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
-  // 展开级别: 0=完全收起, 1=显示按钮区域, 2=完整展开（选中标签后的内容）
-  const [expandLevel, setExpandLevel] = useState<0 | 1 | 2>(0);
+  // 展开状态: false=完全收起(只剩按钮), true=完全展开(底部导航隐藏)
+  const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  // 页面加载时自动展开到第一阶段
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setExpandLevel(1);
-    }, 300); // 300ms 延迟，让页面先渲染
-    return () => clearTimeout(timer);
-  }, []);
 
   // 监听滚动，添加毛玻璃效果
   useEffect(() => {
@@ -335,11 +327,11 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
           className="object-cover"
           sizes="100vw"
         />
-        {/* 毛玻璃遮罩层 - 只在完整展开时显示 */}
+        {/* 毛玻璃遮罩层 - 展开时显示 */}
         <div
           className={cn(
             "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
-            isScrolled || expandLevel === 2 ? "opacity-100" : "opacity-0"
+            isScrolled || isExpanded ? "opacity-100" : "opacity-0"
           )}
         />
       </div>
@@ -348,8 +340,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
       <m.div
         className="safe-area-content !top-0"
         transition={{
-          duration: 0.5,
-          ease: [0.32, 0.72, 0, 1]
+          duration: 0.8,
+          ease: [0.22, 1, 0.36, 1]
         }}
       >
         {/* 主内容区域 + 展开按钮一体化 */}
@@ -359,36 +351,36 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
             opacity: 1,
             scale: 1
           }}
-          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           className="h-full"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center">
-            {/* 主内容区域 - 使用 bg-[#EBE8DB] 不透明样式，三阶段展开 */}
+            {/* 主内容区域 - 使用 bg-[#EBE8DB] 不透明样式，两阶段展开 */}
             <m.div
               className="w-full overflow-hidden rounded-b-2xl bg-[#EBE8DB] lg:rounded-b-3xl"
               animate={{
-                flexGrow: expandLevel === 2 ? 1 : 0,
-                height: expandLevel === 0 ? 0 : "auto"
+                flexGrow: isExpanded ? 1 : 0,
+                height: !isExpanded ? 0 : "auto"
               }}
               transition={{
-                duration: 0.6,
-                ease: [0.32, 0.72, 0, 1]
+                duration: 1,
+                ease: [0.22, 1, 0.36, 1]
               }}
             >
               <div className={cn(
                 "flex h-full flex-col justify-center overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10",
-                expandLevel === 0 && "hidden"
+                !isExpanded && "hidden"
               )}>
-                {/* 页面标题 - 仅在第一阶段且没有选中标签时显示 */}
+                {/* 页面标题 - 展开且没有选中标签时显示 */}
                 <AnimatePresence mode="wait">
-                  {expandLevel === 1 && !activeTab && (
+                  {isExpanded && !activeTab && (
                     <m.div
                       key="title"
-                      initial={{ opacity: 0, y: -10 }}
+                      initial={{ opacity: 0, y: -15 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
-                      transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+                      exit={{ opacity: 0, y: -20, transition: { duration: 0.4 } }}
+                      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
                       className="mb-6 text-center sm:mb-8"
                     >
                       <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
@@ -404,15 +396,15 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                   )}
                 </AnimatePresence>
 
-                {/* 第一阶段显示的按钮区域 */}
+                {/* 展开时显示的按钮区域 */}
                 <AnimatePresence mode="wait">
-                  {expandLevel === 1 && !activeTab && (
+                  {isExpanded && !activeTab && (
                     <m.div
                       key="tabs"
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
-                      transition={{ duration: 0.4, delay: 0.1, ease: [0.32, 0.72, 0, 1] }}
+                      exit={{ opacity: 0, y: -20, transition: { duration: 0.4 } }}
+                      transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
                       className="flex flex-col items-center"
                     >
 
@@ -421,7 +413,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                         className="mb-8 flex justify-center sm:mb-10"
                         initial={{ opacity: 0, scale: 0.96 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, delay: 0.08, ease: [0.32, 0.72, 0, 1] }}
+                        transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                       >
                         <div className="relative h-16 w-32 sm:h-20 sm:w-40 md:h-24 md:w-48">
                           <Image
@@ -444,7 +436,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                             _isLastInDesktop={index === tabs.length - 1}
                             onClick={() => {
                               setActiveTab(tab.id);
-                              setExpandLevel(2); // 进入第二阶段
+                              // 选中标签后保持展开状态
                             }}
                             className="flex-1"
                           />
@@ -453,14 +445,14 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                     </m.div>
                   )}
 
-                  {/* 选中标签后显示的内容（第二阶段） */}
-                  {expandLevel === 2 && activeTab && (
+                  {/* 选中标签后显示的内容 */}
+                  {isExpanded && activeTab && (
                     <m.div
                       key={activeTab}
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 30, transition: { duration: 0.2 } }}
-                      transition={{ duration: 0.5, delay: 0.15, ease: [0.32, 0.72, 0, 1] }}
+                      exit={{ opacity: 0, y: 30, transition: { duration: 0.4 } }}
+                      transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
                       className="flex h-full flex-col"
                     >
                       {/* 返回按钮和标题 */}
@@ -469,12 +461,12 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           type="button"
                           onClick={() => {
                             setActiveTab(null);
-                            setExpandLevel(1); // 返回第一阶段
+                            // 返回到按钮区域，保持展开状态
                           }}
                           className="flex items-center gap-2 text-brand-charcoal/70 transition-colors duration-300 hover:text-brand-charcoal"
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                         >
                           <svg className="h-5 w-5 sm:h-6 sm:w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M15 18l-6-6 6-6" />
@@ -485,7 +477,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           className="font-serif text-xl text-brand-gold sm:text-2xl md:text-3xl"
                           initial={{ opacity: 0, scale: 0.96 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.4, delay: 0.06, ease: [0.32, 0.72, 0, 1] }}
+                          transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                         >
                           {tabContents[activeTab].title}
                         </m.h2>
@@ -875,17 +867,17 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
               </div>
             </m.div>
 
-            {/* 展开/收起按钮 - 在1和2之间切换 */}
+            {/* 展开/收起按钮 - 两阶段切换：收起↔展开 */}
             <button
               type="button"
               onClick={() => {
-                if (expandLevel === 2) {
-                  // 完整展开 -> 收起到第一阶段
+                if (isExpanded) {
+                  // 展开 -> 收起
                   setActiveTab(null);
-                  setExpandLevel(1);
+                  setIsExpanded(false);
                 } else {
-                  // 第一阶段 -> 完整展开（但不选中任何标签，需要用户点击）
-                  // 这里保持第一阶段，用户需要点击标签才进入第二阶段
+                  // 收起 -> 展开
+                  setIsExpanded(true);
                 }
               }}
               className="group flex items-center justify-center rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
@@ -893,12 +885,12 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
               <m.div
                 className="flex flex-col items-center"
                 animate={{
-                  rotate: expandLevel === 2 ? 180 : 0,
+                  rotate: isExpanded ? 180 : 0,
                   scale: 1
                 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
               >
                 <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
                 <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
@@ -910,7 +902,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
 
       {/* 移动端菜单遮罩层 */}
       <AnimatePresence>
-        {isNavMenuOpen && expandLevel <= 1 && (
+        {isNavMenuOpen && !isExpanded && (
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -924,7 +916,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
 
       {/* 移动端弹出菜单 */}
       <AnimatePresence>
-        {isNavMenuOpen && expandLevel <= 1 && (
+        {isNavMenuOpen && !isExpanded && (
           <m.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -972,15 +964,15 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
         )}
       </AnimatePresence>
 
-      {/* 底部导航栏 - 第一阶段及以下时显示 */}
+      {/* 底部导航栏 - 收起时显示 */}
       <AnimatePresence>
-        {expandLevel <= 1 && (
+        {!isExpanded && (
           <m.header
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 40 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{
-              duration: 0.6,
+              duration: 0.35,
               ease: [0.32, 0.72, 0, 1]
             }}
             className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"

@@ -334,17 +334,10 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
       }
     };
   }, []);
-  // 页面加载时自动展开到第一阶段
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setExpandLevel(1);
-    }, 300); // 300ms 延迟，让页面先渲染
-    return () => clearTimeout(timer);
-  }, []);
 
-  // 初始展开动画 - 页面加载时自动选中第一个分类
+  // 当展开到分类栏时，自动选中第一个分类
   useEffect(() => {
-    if (!hasAnimated && sortedProducts.length > 0 && expandLevel === 1) {
+    if (!hasAnimated && sortedProducts.length > 0 && expandLevel >= 1) {
       // 延迟一小段时间后自动选中第一个产品的分类
       const timer = setTimeout(() => {
         setActiveCategory(sortedProducts[0]?.categoryId || null);
@@ -820,17 +813,20 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
               </div>
             </m.div>
 
-            {/* 展开/收起按钮 - 始终显示，紧贴内容区域，在1和2之间切换 */}
+            {/* 展开/收起按钮 - 始终显示，紧贴内容区域，三阶段切换：0→1→2→0 */}
             <button
               type="button"
               onClick={() => {
-                if (expandLevel === 2) {
-                  // 完整展开 -> 收起到只显示分类栏
+                if (expandLevel === 0) {
+                  // 完全收起 -> 展开分类栏
                   setExpandLevel(1);
-                } else {
-                  // 显示分类栏 -> 完整展开
+                } else if (expandLevel === 1) {
+                  // 展开分类栏 -> 完全展开
                   setActiveCategory(currentProduct?.categoryId || null);
                   setExpandLevel(2);
+                } else {
+                  // 完全展开 -> 完全收起
+                  setExpandLevel(0);
                 }
               }}
               className="group flex items-center justify-center rounded-b-xl bg-[#EBE8DB] px-6 py-2 shadow-sm sm:rounded-b-2xl sm:px-10 sm:py-2.5 lg:px-14 lg:py-3"
@@ -927,21 +923,18 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
           <m.header
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 40 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{
-              duration: 0.6,
+              duration: 0.35,
               ease: [0.32, 0.72, 0, 1]
             }}
-            className="fixed left-3 right-3 z-50 sm:left-6 sm:right-6 lg:left-16 lg:right-16"
-            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+            className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"
           >
             <nav
               className={cn(
                 "flex items-center justify-between",
-                // 移动端：更紧凑的设计
                 "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
-                // 平板和桌面端
                 "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
               )}
               aria-label="产品页导航"
