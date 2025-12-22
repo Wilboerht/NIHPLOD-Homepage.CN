@@ -166,18 +166,34 @@ export async function GET(request: NextRequest) {
     ]);
     
     // 4. 获取每日趋势数据
-    const sessions = await prisma.advisorSession.findMany({
+    // 辅助函数：将 Date 转为本地日期字符串 YYYY-MM-DD
+    const toLocalDateKey = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    // 查询时间范围内创建的会话（用于 sessions 计数）
+    const sessionsCreated = await prisma.advisorSession.findMany({
       where: { createdAt: { gte: start, lte: end } },
       select: {
         createdAt: true,
-        completedAt: true,
         faceScanUsed: true,
         faceScanSkipped: true,
         answers: true,
         deviceType: true,
       },
     });
-    
+
+    // 查询时间范围内完成的会话（用于 completed 计数，按 completedAt 日期）
+    const sessionsCompleted = await prisma.advisorSession.findMany({
+      where: { completedAt: { gte: start, lte: end } },
+      select: {
+        completedAt: true,
+      },
+    });
+
     // 按日期分组
     const dailyData: Record<string, {
       date: string;
@@ -186,11 +202,11 @@ export async function GET(request: NextRequest) {
       faceScanUsed: number;
       faceScanSkipped: number;
     }> = {};
-    
-    // 初始化日期
+
+    // 初始化日期（使用本地时间）
     const currentDate = new Date(start);
     while (currentDate <= end) {
-      const dateKey = currentDate.toISOString().split("T")[0];
+      const dateKey = toLocalDateKey(currentDate);
       dailyData[dateKey] = {
         date: dateKey,
         sessions: 0,
@@ -200,47 +216,83 @@ export async function GET(request: NextRequest) {
       };
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    
-    // 填充数据
-    sessions.forEach((session) => {
-      const dateKey = session.createdAt.toISOString().split("T")[0];
+
+    // 填充会话开始数据（按 createdAt 本地日期）
+    sessionsCreated.forEach((session) => {
+      const dateKey = toLocalDateKey(new Date(session.createdAt));
       if (dailyData[dateKey]) {
         dailyData[dateKey].sessions++;
-        if (session.completedAt) dailyData[dateKey].completed++;
         if (session.faceScanUsed) dailyData[dateKey].faceScanUsed++;
         if (session.faceScanSkipped) dailyData[dateKey].faceScanSkipped++;
       }
     });
+
+    // 填充会话完成数据（按 completedAt 本地日期）
+    sessionsCompleted.forEach((session) => {
+      if (session.completedAt) {
+        const dateKey = toLocalDateKey(new Date(session.completedAt));
+        if (dailyData[dateKey]) {
+          dailyData[dateKey].completed++;
+        }
+      }
+    });
     
-    // 5. 问卷答案分布
+    // 5. 问卷答案分布（覆盖所有8道问卷题目）
     const answerDistribution: Record<string, Record<string, number>> = {
       skinType: {},
       primaryConcern: {},
       ageRange: {},
       currentRoutine: {},
+      allergies: {},
       budget: {},
+      pregnancyStatus: {},
+      medicationHistory: {},
     };
-    
-    sessions.forEach((session) => {
+
+    // 多选题字段列表（这些字段的值可能是逗号分隔的多选值）
+    const multipleChoiceFields = ["primaryConcern"];
+
+    sessionsCreated.forEach((session) => {
       if (session.answers && typeof session.answers === "object") {
-        const answers = session.answers as Record<string, string>;
+        const answers = session.answers as Record<string, string | string[]>;
         Object.keys(answerDistribution).forEach((key) => {
-          if (answers[key]) {
-            answerDistribution[key][answers[key]] = 
-              (answerDistribution[key][answers[key]] || 0) + 1;
+          const answer = answers[key];
+          if (answer) {
+            // 处理多选题：可能是数组或逗号分隔的字符串
+            if (multipleChoiceFields.includes(key)) {
+              // 获取选项数组
+              let options: string[] = [];
+              if (Array.isArray(answer)) {
+                options = answer;
+              } else if (typeof answer === "string" && answer.includes(",")) {
+                options = answer.split(",").map(v => v.trim());
+              } else if (typeof answer === "string") {
+                options = [answer];
+              }
+              // 每个选项分别计数
+              options.forEach((opt) => {
+                if (opt) {
+                  answerDistribution[key][opt] = (answerDistribution[key][opt] || 0) + 1;
+                }
+              });
+            } else {
+              // 单选题：直接计数
+              const value = typeof answer === "string" ? answer : String(answer);
+              answerDistribution[key][value] = (answerDistribution[key][value] || 0) + 1;
+            }
           }
         });
       }
     });
-    
+
     // 6. 设备分布
     const deviceDistribution: Record<string, number> = {
       desktop: 0,
       mobile: 0,
       tablet: 0,
     };
-    
-    sessions.forEach((session) => {
+
+    sessionsCreated.forEach((session) => {
       if (session.deviceType && deviceDistribution[session.deviceType] !== undefined) {
         deviceDistribution[session.deviceType]++;
       }

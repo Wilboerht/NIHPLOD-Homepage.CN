@@ -18,8 +18,15 @@ import {
   Tablet,
   AlertCircle,
   Eye,
+  Brain,
+  FileText,
+  Loader2,
+  X,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 
 interface AnalyticsData {
@@ -58,6 +65,10 @@ interface AnalyticsData {
     mobile: number;
     tablet: number;
   };
+  dateRange?: {
+    start: string;
+    end: string;
+  };
 }
 
 type DateRange = "today" | "yesterday" | "7days" | "30days" | "90days";
@@ -66,6 +77,13 @@ export default function AdvisorAnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>("7days");
+
+  // AI 分析报告状态
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportContent, setReportContent] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -87,6 +105,49 @@ export default function AdvisorAnalyticsPage() {
   }, [fetchData]);
 
   const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
+
+  // 生成 AI 分析报告
+  const generateAIReport = async () => {
+    if (!data) return;
+
+    setReportModalOpen(true);
+    setReportLoading(true);
+    setReportError(null);
+    setReportContent(null);
+
+    try {
+      const res = await fetch("/api/admin/advisor/analytics/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analyticsData: data }),
+      });
+
+      const json = await res.json();
+
+      if (json.success) {
+        setReportContent(json.data.report);
+      } else {
+        setReportError(json.error?.message || "生成报告失败");
+      }
+    } catch (error) {
+      console.error("Failed to generate report:", error);
+      setReportError("网络错误，请稍后重试");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  // 复制报告内容
+  const copyReport = async () => {
+    if (!reportContent) return;
+    try {
+      await navigator.clipboard.writeText(reportContent);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Copy failed:", error);
+    }
+  };
 
   const dateRangeOptions: { value: DateRange; label: string }[] = [
     { value: "today", label: "今天" },
@@ -136,8 +197,95 @@ export default function AdvisorAnalyticsPage() {
           >
             刷新
           </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Brain className="h-4 w-4" />}
+            onClick={generateAIReport}
+            disabled={loading || !data}
+          >
+            AI 分析报告
+          </Button>
         </div>
       </div>
+
+      {/* AI 分析报告 Modal */}
+      <Modal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        title=""
+        size="full"
+      >
+        <div className="flex h-[75vh] flex-col">
+          {reportLoading ? (
+            <div className="flex flex-1 flex-col items-center justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 animate-ping rounded-full bg-blue-100" />
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
+                  <Brain className="h-8 w-8 animate-pulse text-blue-500" />
+                </div>
+              </div>
+              <p className="mt-6 text-base font-medium text-gray-700">AI 正在分析数据...</p>
+              <p className="mt-2 text-sm text-gray-400">预计需要 10-30 秒</p>
+            </div>
+          ) : reportError ? (
+            <div className="flex flex-1 flex-col items-center justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+                <AlertCircle className="h-8 w-8 text-red-400" />
+              </div>
+              <p className="mt-6 text-base font-medium text-gray-700">生成失败</p>
+              <p className="mt-2 text-sm text-red-500">{reportError}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-6"
+                leftIcon={<RefreshCw className="h-4 w-4" />}
+                onClick={generateAIReport}
+              >
+                重新生成
+              </Button>
+            </div>
+          ) : reportContent ? (
+            <>
+              {/* 顶部操作栏 */}
+              <div className="flex shrink-0 items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                    <Brain className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">AI 分析报告</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    onClick={copyReport}
+                    className="h-8 text-xs"
+                  >
+                    {copied ? "已复制" : "复制"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                    onClick={generateAIReport}
+                    className="h-8 text-xs"
+                  >
+                    重新生成
+                  </Button>
+                </div>
+              </div>
+              {/* 报告内容 */}
+              <div className="flex-1 overflow-y-auto pt-4">
+                <div className="prose prose-sm prose-gray max-w-none prose-headings:text-gray-800 prose-h2:mt-6 prose-h2:border-b prose-h2:border-gray-100 prose-h2:pb-2 prose-h2:text-base prose-h3:text-sm prose-p:text-gray-600 prose-li:text-gray-600">
+                  <MarkdownRenderer content={reportContent} />
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </Modal>
 
       {loading && !data ? (
         <div className="flex h-64 items-center justify-center">
@@ -145,6 +293,13 @@ export default function AdvisorAnalyticsPage() {
         </div>
       ) : data ? (
         <>
+          {/* 查询范围提示 */}
+          {data.dateRange && (
+            <div className="rounded-lg bg-gray-50 px-4 py-2 text-xs text-gray-500">
+              查询范围: {new Date(data.dateRange.start).toLocaleDateString()} ~ {new Date(data.dateRange.end).toLocaleDateString()}
+            </div>
+          )}
+
           {/* 核心指标卡片 */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
@@ -219,12 +374,14 @@ export default function AdvisorAnalyticsPage() {
 
           {/* 问卷答案分布 */}
           {Object.keys(data.answerDistribution).length > 0 && (
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-base font-semibold text-gray-900">问卷答案分布</h3>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                {Object.entries(data.answerDistribution).map(([field, distribution]) => (
-                  <AnswerDistribution key={field} field={field} distribution={distribution} />
-                ))}
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              <h3 className="mb-4 text-base font-semibold text-gray-900">问卷答案分布</h3>
+              <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+                {Object.entries(data.answerDistribution)
+                  .filter(([, dist]) => Object.keys(dist).length > 0)
+                  .map(([field, distribution]) => (
+                    <AnswerDistribution key={field} field={field} distribution={distribution} />
+                  ))}
               </div>
             </div>
           )}
@@ -503,54 +660,92 @@ function DailyTrendChart({ data }: { data: AnalyticsData["daily"] }) {
 // 答案分布组件
 function AnswerDistribution({ field, distribution }: { field: string; distribution: Record<string, number> }) {
   const total = Object.values(distribution).reduce((a, b) => a + b, 0);
-  const entries = Object.entries(distribution).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const entries = Object.entries(distribution).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+  // 字段标签
   const fieldLabels: Record<string, string> = {
     skinType: "肤质类型",
     primaryConcern: "主要困扰",
     ageRange: "年龄段",
-    skincareExperience: "护肤经验",
-    allergies: "过敏情况",
-    budget: "预算范围",
     currentRoutine: "护肤习惯",
+    allergies: "成分敏感",
+    budget: "预算范围",
+    pregnancyStatus: "特殊时期",
+    medicationHistory: "用药经历",
   };
-  const colors = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-purple-500",
-    "bg-amber-500",
-    "bg-pink-500",
-  ];
 
-  if (entries.length === 0) {
-    return (
-      <div className="text-center text-sm text-gray-400">暂无数据</div>
-    );
-  }
+  // 选项值到中文标签的映射
+  const valueLabels: Record<string, Record<string, string>> = {
+    skinType: {
+      dry: "干性", oily: "油性", combination: "混合性",
+      sensitive: "敏感性", normal: "中性", unknown: "不确定",
+    },
+    primaryConcern: {
+      aging: "抗老", dull: "提亮", hydration: "保湿",
+      pores: "毛孔", sensitive: "修护", acne: "净痘",
+    },
+    ageRange: {
+      "18-24": "18-24岁", "25-30": "25-30岁", "31-40": "31-40岁",
+      "41-50": "41-50岁", "50+": "50+岁",
+    },
+    currentRoutine: {
+      minimal: "极简", basic: "基础", complete: "完整",
+      advanced: "进阶", none: "起步",
+    },
+    allergies: {
+      none: "无敏感", fragrance: "香精", alcohol: "酒精",
+      acid: "酸类", multiple: "多重", unknown: "不清楚",
+    },
+    budget: {
+      budget: "精明", mid: "品质", premium: "臻享",
+      luxury: "奢享", unknown: "不确定",
+    },
+    pregnancyStatus: {
+      yes: "是", no: "否", private: "不透露",
+    },
+    medicationHistory: {
+      routine: "日常", occasional: "偶有", ongoing: "持续", complex: "复杂",
+    },
+  };
+
+  const getValueLabel = (fieldName: string, value: string): string => {
+    // 处理多选值（逗号分隔）
+    if (value.includes(",")) {
+      const parts = value.split(",");
+      return parts.map((p) => valueLabels[fieldName]?.[p.trim()] || p.trim()).join("+");
+    }
+    return valueLabels[fieldName]?.[value] || value;
+  };
+
+  const label = fieldLabels[field] || field;
+
+  if (entries.length === 0) return null;
 
   return (
     <div>
-      <h3 className="mb-4 flex items-center justify-between">
-        <span className="font-medium text-gray-900">{fieldLabels[field] || field}</span>
+      {/* 标题行 */}
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-800">{label}</span>
         <span className="text-xs text-gray-400">{total} 人</span>
-      </h3>
-      <div className="space-y-2.5">
-        {entries.map(([value, count], index) => {
+      </div>
+      {/* 分布条 */}
+      <div className="space-y-2">
+        {entries.map(([value, count]) => {
           const percent = total > 0 ? (count / total) * 100 : 0;
           return (
-            <div key={value} className="group">
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="truncate text-gray-600" title={value}>{value}</span>
-                <span className="ml-2 shrink-0 text-gray-400">{count}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+            <div key={value} className="flex items-center gap-2.5 text-xs">
+              <span className="w-14 shrink-0 truncate text-gray-600" title={getValueLabel(field, value)}>
+                {getValueLabel(field, value)}
+              </span>
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                 <div
-                  className={cn(
-                    "h-full transition-all duration-300 group-hover:opacity-80",
-                    colors[index % colors.length]
-                  )}
-                  style={{ width: `${percent}%` }}
+                  className="h-full rounded-full bg-blue-400 transition-all duration-300"
+                  style={{ width: `${Math.max(percent, 2)}%` }}
                 />
               </div>
+              <span className="w-8 shrink-0 text-right tabular-nums text-gray-500">
+                {percent.toFixed(0)}%
+              </span>
             </div>
           );
         })}
@@ -559,3 +754,220 @@ function AnswerDistribution({ field, distribution }: { field: string; distributi
   );
 }
 
+// 简单 Markdown 渲染器
+function MarkdownRenderer({ content }: { content: string }) {
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let listItems: string[] = [];
+  let tableRows: string[][] = [];
+  let tableHeaders: string[] = [];
+  let inTable = false;
+  let inCodeBlock = false;
+  let codeBlockLines: string[] = [];
+
+  // 内联样式处理（加粗、斜体等）
+  const renderInline = (text: string): React.ReactNode => {
+    // 处理加粗 **text** 和 斜体 *text*
+    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={i} className="font-semibold text-gray-800">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+        return <em key={i} className="italic">{part.slice(1, -1)}</em>;
+      }
+      return part;
+    });
+  };
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`list-${elements.length}`} className="my-3 list-disc pl-6 space-y-1.5">
+          {listItems.map((item, i) => (
+            <li key={i} className="text-gray-600">{renderInline(item)}</li>
+          ))}
+        </ul>
+      );
+      listItems = [];
+    }
+  };
+
+  const flushCodeBlock = () => {
+    if (codeBlockLines.length > 0) {
+      elements.push(
+        <pre key={`code-${elements.length}`} className="my-4 overflow-x-auto rounded-lg bg-gray-900 p-4 text-sm">
+          <code className="text-gray-100 whitespace-pre-wrap">{codeBlockLines.join("\n")}</code>
+        </pre>
+      );
+      codeBlockLines = [];
+    }
+    inCodeBlock = false;
+  };
+
+  const flushTable = () => {
+    if (tableHeaders.length > 0 || tableRows.length > 0) {
+      elements.push(
+        <div key={`table-${elements.length}`} className="my-4 overflow-x-auto">
+          <table className="min-w-full border-collapse text-sm">
+            {tableHeaders.length > 0 && (
+              <thead>
+                <tr className="bg-gray-50">
+                  {tableHeaders.map((h, i) => (
+                    <th key={i} className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
+                      {renderInline(h)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {tableRows.map((row, ri) => (
+                <tr key={ri} className={ri % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="border border-gray-200 px-3 py-2 text-gray-600">
+                      {renderInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      tableHeaders = [];
+      tableRows = [];
+      inTable = false;
+    }
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+
+    // 代码块开始/结束 ```
+    if (trimmed.startsWith("```")) {
+      if (inCodeBlock) {
+        flushCodeBlock();
+      } else {
+        flushList();
+        flushTable();
+        inCodeBlock = true;
+      }
+      return;
+    }
+
+    // 在代码块中
+    if (inCodeBlock) {
+      codeBlockLines.push(line);
+      return;
+    }
+
+    // 空行
+    if (!trimmed) {
+      flushList();
+      flushTable();
+      return;
+    }
+
+    // 分隔线 ---
+    if (/^-{3,}$/.test(trimmed) && !inTable) {
+      flushList();
+      elements.push(<hr key={index} className="my-4 border-gray-200" />);
+      return;
+    }
+
+    // 表格分隔符行 |---|---|
+    if (/^\|[-:\s|]+\|$/.test(trimmed)) {
+      inTable = true;
+      return; // 跳过分隔符行
+    }
+
+    // 表格行 | col1 | col2 |
+    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+      const cells = trimmed.slice(1, -1).split("|").map(c => c.trim());
+      if (!inTable && tableHeaders.length === 0) {
+        tableHeaders = cells;
+        inTable = true;
+      } else {
+        tableRows.push(cells);
+      }
+      return;
+    }
+
+    // 如果之前在表格中，但当前行不是表格，先flush
+    if (inTable) {
+      flushTable();
+    }
+
+    // 标题 # (h1)
+    if (trimmed.startsWith("# ") && !trimmed.startsWith("## ")) {
+      flushList();
+      elements.push(
+        <h1 key={index} className="mt-6 mb-4 text-xl font-bold text-gray-900">
+          {renderInline(trimmed.slice(2))}
+        </h1>
+      );
+      return;
+    }
+
+    // 标题 ## (h2)
+    if (trimmed.startsWith("## ")) {
+      flushList();
+      elements.push(
+        <h2 key={index} className="mt-6 mb-3 text-lg font-bold text-gray-900 flex items-center gap-2">
+          {renderInline(trimmed.slice(3))}
+        </h2>
+      );
+      return;
+    }
+
+    // 标题 ### (h3)
+    if (trimmed.startsWith("### ")) {
+      flushList();
+      elements.push(
+        <h3 key={index} className="mt-4 mb-2 text-base font-semibold text-gray-800">
+          {renderInline(trimmed.slice(4))}
+        </h3>
+      );
+      return;
+    }
+
+    // 引用 >
+    if (trimmed.startsWith("> ")) {
+      flushList();
+      elements.push(
+        <blockquote key={index} className="my-3 border-l-4 border-brand-gold/50 bg-amber-50/50 py-2 pl-4 pr-3 text-gray-600 italic">
+          {renderInline(trimmed.slice(2))}
+        </blockquote>
+      );
+      return;
+    }
+
+    // 列表项 - 或 *
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      listItems.push(trimmed.slice(2));
+      return;
+    }
+
+    // 数字列表 1. 2. 等
+    if (/^\d+\.\s/.test(trimmed)) {
+      listItems.push(trimmed.replace(/^\d+\.\s/, ""));
+      return;
+    }
+
+    // 普通段落
+    flushList();
+    elements.push(
+      <p key={index} className="my-2 text-gray-600 leading-relaxed">
+        {renderInline(trimmed)}
+      </p>
+    );
+  });
+
+  // 处理最后的内容
+  flushList();
+  flushTable();
+  flushCodeBlock();
+
+  return <div className="space-y-1">{elements}</div>;
+}
