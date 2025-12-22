@@ -182,34 +182,33 @@ export default function AdvisorAnalyticsPage() {
           {/* 转化漏斗 & 设备分布 & 每日趋势 */}
           <div className="grid gap-4 lg:grid-cols-2">
             {/* 转化漏斗 */}
-            <div className="rounded-xl bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-semibold text-gray-900">转化漏斗</h2>
-                <span className="text-xs text-gray-500">
-                  转化率 <span className="font-medium text-green-600">{formatPercent(data.overview.conversionRate)}</span>
-                </span>
-              </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-base font-semibold text-gray-900">转化漏斗</h3>
               <FunnelChart data={data} />
+              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                <span className="text-xs text-gray-400">整体转化率 = 查看结果 / 开始会话</span>
+                <span className="text-sm font-semibold text-green-600">{formatPercent(data.overview.conversionRate)}</span>
+              </div>
             </div>
 
             {/* 右侧：设备分布 + 每日趋势 */}
             <div className="flex flex-col gap-4">
               {/* 设备分布 */}
-              <div className="rounded-xl bg-white p-5 shadow-sm">
-                <h2 className="mb-4 font-semibold text-gray-900">设备分布</h2>
+              <div className="rounded-xl bg-white p-4 shadow-sm">
+                <h3 className="mb-3 text-base font-semibold text-gray-900">设备分布</h3>
                 <DeviceDistribution data={data.deviceDistribution} total={data.overview.totalSessions} />
               </div>
 
               {/* 每日趋势 */}
-              <div className="flex-1 rounded-xl bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">每日趋势</h2>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
+              <div className="flex-1 rounded-xl bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-gray-900">每日趋势</h3>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-blue-500" /> 会话
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> 会话
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-green-500" /> 完成
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> 完成
                     </span>
                   </div>
                 </div>
@@ -220,8 +219,8 @@ export default function AdvisorAnalyticsPage() {
 
           {/* 问卷答案分布 */}
           {Object.keys(data.answerDistribution).length > 0 && (
-            <div className="rounded-xl bg-white p-5 shadow-sm">
-              <h2 className="mb-4 font-semibold text-gray-900">问卷答案分布</h2>
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <h3 className="mb-3 text-base font-semibold text-gray-900">问卷答案分布</h3>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {Object.entries(data.answerDistribution).map(([field, distribution]) => (
                   <AnswerDistribution key={field} field={field} distribution={distribution} />
@@ -349,67 +348,56 @@ function InsightCard({ data, formatPercent }: { data: AnalyticsData; formatPerce
 // 转化漏斗图
 function FunnelChart({ data }: { data: AnalyticsData }) {
   const steps = [
-    { label: "开始会话", value: data.funnel.started, icon: Users, color: "bg-blue-500" },
-    { label: "完成问卷", value: data.funnel.completedQuestionnaire, icon: CheckCircle, color: "bg-indigo-500" },
-    { label: "完成分析", value: data.funnel.completedAnalysis, icon: Sparkles, color: "bg-purple-500" },
-    { label: "查看结果", value: data.funnel.viewedResult, icon: Eye, color: "bg-green-500" },
-    { label: "分享结果", value: data.funnel.shared, icon: Share2, color: "bg-amber-500" },
+    { label: "开始会话", value: data.funnel.started, color: "bg-blue-500", lightBg: "bg-blue-50", textColor: "text-blue-600" },
+    { label: "完成问卷", value: data.funnel.completedQuestionnaire, color: "bg-indigo-500", lightBg: "bg-indigo-50", textColor: "text-indigo-600" },
+    { label: "完成分析", value: data.funnel.completedAnalysis, color: "bg-purple-500", lightBg: "bg-purple-50", textColor: "text-purple-600" },
+    { label: "查看结果", value: data.funnel.viewedResult, color: "bg-emerald-500", lightBg: "bg-emerald-50", textColor: "text-emerald-600" },
+    { label: "分享结果", value: data.funnel.shared, color: "bg-amber-500", lightBg: "bg-amber-50", textColor: "text-amber-600" },
   ];
 
   const maxValue = Math.max(...steps.map(s => s.value), 1);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {steps.map((step, index) => {
         const percent = data.funnel.started > 0 ? (step.value / data.funnel.started) * 100 : 0;
-        const width = (step.value / maxValue) * 100;
-        const Icon = step.icon;
-        const dropRate = index > 0 && steps[index - 1].value > 0
-          ? ((steps[index - 1].value - step.value) / steps[index - 1].value) * 100
-          : 0;
+        const width = Math.max((step.value / maxValue) * 100, 2);
 
         return (
-          <div key={step.label} className="group">
-            <div className="mb-1.5 flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <Icon className="h-4 w-4 text-gray-400" />
-                <span className="font-medium text-gray-700">{step.label}</span>
+          <div key={step.label}>
+            {/* 主行 */}
+            <div className="flex items-center gap-3">
+              {/* 序号 */}
+              <div className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium text-white", step.color)}>
+                {index + 1}
               </div>
-              <div className="flex items-center gap-3">
-                {index > 0 && dropRate > 0 && (
-                  <span className="text-xs text-red-400">-{dropRate.toFixed(1)}%</span>
-                )}
+              {/* 标签 */}
+              <div className="w-20 shrink-0 text-sm text-gray-600">{step.label}</div>
+              {/* 进度条 */}
+              <div className="relative h-6 flex-1 overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className={cn("h-full rounded-full transition-all duration-500", step.color)}
+                  style={{ width: `${width}%` }}
+                />
+              </div>
+              {/* 数值 */}
+              <div className="flex w-24 shrink-0 items-center justify-end gap-2 text-sm">
                 <span className="font-semibold text-gray-900">{step.value}</span>
-                <span className="w-14 text-right text-gray-500">{percent.toFixed(1)}%</span>
+                <span className={cn("rounded px-1.5 py-0.5 text-xs font-medium", step.lightBg, step.textColor)}>
+                  {percent.toFixed(0)}%
+                </span>
               </div>
-            </div>
-            <div className="relative h-8 overflow-hidden rounded-lg bg-gray-100">
-              <div
-                className={cn(
-                  "h-full transition-all duration-500 ease-out",
-                  step.color,
-                  "group-hover:opacity-80"
-                )}
-                style={{ width: `${width}%` }}
-              />
-              {/* 漏斗形状遮罩效果 */}
-              <div
-                className="absolute inset-y-0 right-0 bg-gradient-to-l from-gray-100"
-                style={{ width: `${100 - width}%` }}
-              />
             </div>
             {/* 分支：面部扫描 */}
             {step.label === "完成问卷" && (
-              <div className="ml-8 mt-2 grid gap-2 md:grid-cols-2">
-                <div className="flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2 text-sm">
-                  <Camera className="h-4 w-4 text-purple-500" />
-                  <span className="text-purple-700">面部扫描</span>
-                  <span className="ml-auto font-medium text-purple-900">{data.funnel.completedFaceScan}</span>
+              <div className="ml-9 mt-1.5 flex gap-4 text-xs">
+                <div className="flex items-center gap-1.5 text-purple-600">
+                  <Camera className="h-3.5 w-3.5" />
+                  <span>扫描 {data.funnel.completedFaceScan}</span>
                 </div>
-                <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm">
-                  <SkipForward className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600">跳过扫描</span>
-                  <span className="ml-auto font-medium text-gray-900">{data.funnel.skippedFaceScan}</span>
+                <div className="flex items-center gap-1.5 text-gray-400">
+                  <SkipForward className="h-3.5 w-3.5" />
+                  <span>跳过 {data.funnel.skippedFaceScan}</span>
                 </div>
               </div>
             )}
