@@ -41,8 +41,8 @@ function getDateRange(range: string): { start: Date; end: Date } {
 
 export async function GET(request: NextRequest) {
   // 验证管理员身份
-  const authResult = await verifyAuth(request);
-  if (!authResult || !authResult.success) {
+  const admin = await verifyAuth(request);
+  if (!admin) {
     return NextResponse.json(
       { success: false, error: { message: "未授权访问" } },
       { status: 401 }
@@ -113,13 +113,17 @@ export async function GET(request: NextRequest) {
     ]);
     
     // 2. 计算转化率
-    const conversionRate = totalSessions > 0 
-      ? ((completedSessions / totalSessions) * 100).toFixed(1)
-      : "0";
-    
+    const conversionRate = totalSessions > 0
+      ? completedSessions / totalSessions
+      : 0;
+
     const faceScanRate = (faceScanUsed + faceScanSkipped) > 0
-      ? ((faceScanUsed / (faceScanUsed + faceScanSkipped)) * 100).toFixed(1)
-      : "0";
+      ? faceScanUsed / (faceScanUsed + faceScanSkipped)
+      : 0;
+
+    // AI 使用率
+    const totalAnalysis = aiAnalysis + fallbackAnalysis;
+    const aiUsageRate = totalAnalysis > 0 ? aiAnalysis / totalAnalysis : 0;
     
     // 3. 获取漏斗数据
     const [
@@ -245,28 +249,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        // 概览数据
+        // 概览数据 - 字段名与前端 AnalyticsData.overview 对应
         overview: {
           totalSessions,
           completedSessions,
-          conversionRate: parseFloat(conversionRate),
+          conversionRate,
           faceScanUsed,
           faceScanSkipped,
-          faceScanRate: parseFloat(faceScanRate),
-          aiAnalysis,
-          fallbackAnalysis,
-          sharedResults,
+          faceScanRate,
+          aiAnalysisCount: aiAnalysis,
+          fallbackAnalysisCount: fallbackAnalysis,
+          aiUsageRate,
+          totalShares: sharedResults,
         },
-        // 漏斗数据
+        // 漏斗数据 - 字段名与前端 AnalyticsData.funnel 对应
         funnel: {
           started: totalSessions,
-          startedQuestionnaire,
           completedQuestionnaire,
           startedFaceScan,
-          completedOrSkippedFaceScan: faceScanUsed + faceScanSkipped,
+          completedFaceScan: faceScanUsed,
+          skippedFaceScan: faceScanSkipped,
           completedAnalysis,
           viewedResult,
-          sharedResult: sharedResults,
+          shared: sharedResults,
         },
         // 每日趋势
         daily: Object.values(dailyData).sort((a, b) => a.date.localeCompare(b.date)),
