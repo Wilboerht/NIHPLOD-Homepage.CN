@@ -54,14 +54,46 @@
 
   /* ========== 全屏背景安全区域处理 ========== */
 
-  /* 全屏背景容器 - 延伸到安全区域外，覆盖状态栏/刘海区域 */
+  /* 底层背景 - 与内容区域颜色一致 */
+  .fullscreen-bg-base {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: #EBE8DB;
+  }
+
+  /* 全屏背景容器 - 带边距和圆角 */
   .fullscreen-bg {
     position: fixed;
-    top: calc(-1 * env(safe-area-inset-top, 0px));
-    left: calc(-1 * env(safe-area-inset-left, 0px));
-    right: calc(-1 * env(safe-area-inset-right, 0px));
-    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    top: 3px;
+    left: 3px;
+    right: 3px;
+    bottom: 3px;
     z-index: 0;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* 平板端背景边距调整 */
+  @media (min-width: 640px) {
+    .fullscreen-bg {
+      top: 5px;
+      left: 5px;
+      right: 5px;
+      bottom: 5px;
+      border-radius: 16px;
+    }
+  }
+
+  /* 桌面端背景边距调整 */
+  @media (min-width: 1024px) {
+    .fullscreen-bg {
+      top: 6px;
+      left: 6px;
+      right: 6px;
+      bottom: 6px;
+      border-radius: 20px;
+    }
   }
 
   /* 安全区域内的内容容器 */

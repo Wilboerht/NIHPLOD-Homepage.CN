@@ -54,8 +54,11 @@ export function AdvisorWelcome() {
 
   return (
     <>
-      {/* 全屏背景图片 */}
-      <div className="fixed inset-0 z-0">
+      {/* 底层暗金色背景 */}
+      <div className="fullscreen-bg-base" />
+
+      {/* 全屏背景图片 - 带边距和圆角 */}
+      <div className="fullscreen-bg">
         <Image
           src="/images/bg.png"
           alt="AI 护肤顾问"

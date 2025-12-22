@@ -303,7 +303,10 @@ export function RitualContent({ content, backgroundImage }: RitualContentProps) 
 
   return (
     <>
-      {/* 全屏背景图片 - 延伸到安全区域外，覆盖状态栏 */}
+      {/* 底层暗金色背景 */}
+      <div className="fullscreen-bg-base" />
+
+      {/* 全屏背景图片 - 带边距和圆角 */}
       <div className="fullscreen-bg">
         <Image
           src={backgroundImage || "/images/bg.png"}
