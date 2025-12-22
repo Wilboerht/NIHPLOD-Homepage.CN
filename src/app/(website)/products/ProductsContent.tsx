@@ -293,8 +293,8 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
  */
 export function ProductsContent({ categories, products, backgroundImage }: ProductsContentProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  // 初始状态为收起，这样可以看到导航栏收起 + 内容展开的动画
-  const [isExpanded, setIsExpanded] = useState(false);
+  // 展开级别: 0=完全收起, 1=显示分类栏, 2=完整展开（分类栏+产品卡片）
+  const [expandLevel, setExpandLevel] = useState<0 | 1 | 2>(0);
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
@@ -334,27 +334,25 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
       }
     };
   }, []);
-
-  // 页面加载后自动展开，触发导航栏收起 + 内容展开的动画
+  // 页面加载时自动展开到第一阶段
   useEffect(() => {
-    // 延迟后自动展开，让用户能先看到导航栏再看到收起动画
     const timer = setTimeout(() => {
-      setIsExpanded(true);
-    }, 800);
+      setExpandLevel(1);
+    }, 300); // 300ms 延迟，让页面先渲染
     return () => clearTimeout(timer);
   }, []);
 
-  // 初始展开动画 - 页面加载时自动展开
+  // 初始展开动画 - 页面加载时自动选中第一个分类
   useEffect(() => {
-    if (!hasAnimated && sortedProducts.length > 0) {
+    if (!hasAnimated && sortedProducts.length > 0 && expandLevel === 1) {
       // 延迟一小段时间后自动选中第一个产品的分类
       const timer = setTimeout(() => {
         setActiveCategory(sortedProducts[0]?.categoryId || null);
         setHasAnimated(true);
-      }, 300); // 300ms 延迟，让页面先渲染
+      }, 100);
       return () => clearTimeout(timer);
     }
-  }, [hasAnimated, sortedProducts]);
+  }, [hasAnimated, sortedProducts, expandLevel]);
 
   // 当前展示的产品（轮播显示所有产品，按分类顺序）
   const currentProduct = sortedProducts[currentProductIndex] || null;
@@ -464,8 +462,8 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
       setActiveCategory(categoryId);
       animateToIndex(firstProductIndex);
     }
-    // 点击分类时自动展开商品卡片
-    setIsExpanded(true);
+    // 点击分类时自动完整展开
+    setExpandLevel(2);
   };
 
   // 打开产品抽屉
@@ -509,135 +507,103 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
           priority
           quality={75}
           sizes="100vw"
-          className={cn(
-            "object-cover transition-all duration-700 ease-out",
-            isExpanded && "scale-105 blur-sm"
-          )}
+          className="object-cover"
         />
-        {/* 展开时的朦胧遮罩 */}
-        <m.div
-          className="absolute inset-0 bg-brand-cream/30"
-          initial={false}
-          animate={{ opacity: isExpanded ? 1 : 0 }}
-          transition={{
-            duration: isExpanded ? 0.5 : 0.6,
-            ease: [0.4, 0, 0.2, 1]
-          }}
+        {/* 毛玻璃遮罩层 - 只在完整展开时显示 */}
+        <div
+          className={cn(
+            "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
+            expandLevel === 2 ? "opacity-100" : "opacity-0"
+          )}
         />
       </div>
 
-      {/* 顶部分类导航栏 + 展开按钮 - 固定在顶部，考虑安全区域 */}
+      {/* 内容区域容器 - 紧贴顶部，使用 framer-motion 统一控制动画 */}
       <m.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed left-0 right-0 z-30"
-        style={{ top: "env(safe-area-inset-top, 0px)" }}
+        className="safe-area-content !top-0"
+        transition={{
+          duration: 0.5,
+          ease: [0.32, 0.72, 0, 1]
+        }}
       >
-        <div className="flex flex-col items-center">
-          {/* 分类图标区域 - 始终存在，通过高度控制显示/隐藏 */}
-          <m.div
-            initial={{ height: 0 }}
-            animate={{
-              height: isExpanded ? "auto" : 0
-            }}
-            transition={{
-              duration: 0.6,
-              ease: [0.4, 0, 0.2, 1],
-              delay: 0.2 // 延迟展开，让整体动画更流畅
-            }}
-            className="w-full overflow-hidden bg-[#EBE8DB] sm:w-fit sm:rounded-b-2xl lg:rounded-b-3xl"
-          >
-            <div className="px-2 py-2 sm:px-8 sm:py-3 md:px-12 lg:px-20 lg:py-4">
-              {/* 移动端：固定5列网格保证均匀布局，桌面端：flex单行 */}
-              <div className="grid grid-cols-5 gap-x-0.5 gap-y-1.5 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => handleCategoryChange(cat.id)}
-                    className={cn(
-                      "flex flex-col items-center gap-0.5 px-1 py-1.5 transition-all sm:gap-1 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5",
-                      "rounded-lg hover:bg-brand-beige/30 sm:rounded-xl",
-                      activeCategory === cat.id && "bg-brand-beige/50"
-                    )}
-                  >
-                    <CategoryIcon icon={cat.icon} isActive={activeCategory === cat.id} />
-                    <span className={cn(
-                      "line-clamp-1 text-center text-[9px] leading-tight sm:text-[11px] md:text-xs lg:text-sm",
-                      activeCategory === cat.id ? "font-medium text-brand-gold" : "text-brand-charcoal/70"
-                    )}>
-                      {cat.name}
-                    </span>
-                    <span className={cn(
-                      "line-clamp-1 text-center font-serif text-[6px] uppercase leading-tight tracking-wide sm:text-[9px] md:text-[10px] lg:text-xs",
-                      activeCategory === cat.id ? "text-brand-gold/80" : "text-brand-charcoal/50"
-                    )}>
-                      {cat.nameEn}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </m.div>
-
-          {/* 展开/收起按钮 - 始终显示，紧贴分类栏 */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isExpanded) {
-                // 收起时清除分类选中状态
-                setActiveCategory(null);
-                setIsExpanded(false);
-              } else {
-                // 展开时自动选中当前产品的分类
-                setActiveCategory(currentProduct?.categoryId || null);
-                setIsExpanded(true);
-              }
-            }}
-            className="group flex items-center justify-center rounded-b-xl bg-[#EBE8DB] px-6 py-2 shadow-sm sm:rounded-b-2xl sm:px-10 sm:py-2.5 lg:px-14 lg:py-3"
-          >
+        {/* 主内容区域 + 展开按钮一体化 */}
+        <m.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{
+            opacity: 1,
+            scale: 1
+          }}
+          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+          className="flex h-full flex-col"
+        >
+          {/* 主内容区域 + 按钮一体化容器 */}
+          <div className="flex h-full flex-col items-center">
+            {/* 主内容区域 - 使用 bg-[#EBE8DB] 不透明样式，三阶段展开 */}
             <m.div
-              className="flex flex-col items-center"
+              className="w-full overflow-hidden rounded-b-2xl bg-[#EBE8DB] lg:rounded-b-3xl"
               animate={{
-                rotate: isExpanded ? 180 : 0,
-                scale: 1
+                flexGrow: expandLevel === 2 ? 1 : 0,
+                height: expandLevel === 0 ? 0 : "auto"
               }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
               transition={{
                 duration: 0.5,
                 ease: [0.4, 0, 0.2, 1]
               }}
             >
-              <ChevronDown className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
-              <ChevronDown className="-mt-3 h-5 w-5 text-brand-gold sm:-mt-4 sm:h-6 sm:w-6 lg:-mt-5 lg:h-8 lg:w-8" />
-            </m.div>
-          </button>
-        </div>
-      </m.div>
+              <div className="flex h-full flex-col overflow-hidden">
+                {/* 分类图标区域 - 在第一阶段及以上显示 */}
+                <div className={cn(
+                  "shrink-0 px-2 py-2 sm:px-8 sm:py-3 md:px-12 lg:px-20 lg:py-4",
+                  expandLevel === 0 && "hidden"
+                )}>
+                  {/* 移动端：固定5列网格保证均匀布局，桌面端：flex单行 */}
+                  <div className="grid grid-cols-5 gap-x-0.5 gap-y-1.5 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => handleCategoryChange(cat.id)}
+                        className={cn(
+                          "flex flex-col items-center gap-0.5 px-1 py-1.5 transition-all sm:gap-1 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5",
+                          "rounded-lg hover:bg-brand-beige/30 sm:rounded-xl",
+                          activeCategory === cat.id && "bg-brand-beige/50"
+                        )}
+                      >
+                        <CategoryIcon icon={cat.icon} isActive={activeCategory === cat.id} />
+                        <span className={cn(
+                          "whitespace-nowrap text-center text-[9px] leading-tight sm:text-[11px] md:text-xs lg:text-sm",
+                          activeCategory === cat.id ? "font-medium text-brand-gold" : "text-brand-charcoal/70"
+                        )}>
+                          {cat.name}
+                        </span>
+                        <span className={cn(
+                          "whitespace-nowrap text-center font-serif text-[6px] uppercase leading-tight tracking-wide sm:text-[9px] md:text-[10px] lg:text-xs",
+                          activeCategory === cat.id ? "text-brand-gold/80" : "text-brand-charcoal/50"
+                        )}>
+                          {cat.nameEn}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-      {/* 产品展示区域 - 3D 旋转木马 - 独立的固定定位，考虑安全区域 */}
-      <AnimatePresence mode="wait">
-        {isExpanded && currentProduct && (
-          <m.div
-            key="carousel"
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            transition={{
-              duration: 0.7,
-              ease: [0.4, 0, 0.2, 1],
-              delay: 0.4, // 延迟出现，等分类栏展开后再显示
-              opacity: { duration: 0.5 }
-            }}
-            className="fixed inset-x-0 z-10"
-            style={{
-              perspective: "1200px",
-              top: "calc(env(safe-area-inset-top, 0px) + 9rem)",
-              bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)"
-            }}
-          >
+                {/* 产品展示区域 - 3D 旋转木马，只在完全展开时显示 */}
+                <AnimatePresence mode="wait">
+                  {expandLevel === 2 && currentProduct && (
+                    <m.div
+                      key="carousel"
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                      transition={{
+                        duration: 0.5,
+                        ease: [0.4, 0, 0.2, 1]
+                      }}
+                      className="relative flex-1"
+                      style={{
+                        perspective: "1200px"
+                      }}
+                    >
               {/* 手势滑动容器 */}
               <m.div
                 className="relative mx-auto flex h-full max-w-6xl cursor-grab items-center justify-center px-2 active:cursor-grabbing sm:px-4"
@@ -838,50 +804,62 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                   <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
                 </button>
 
-                {/* 底部指示点 - 移动端隐藏 */}
-                <div className="absolute bottom-2 left-1/2 z-30 hidden -translate-x-1/2 gap-2 sm:flex">
-                  {sortedProducts.map((_, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => animateToIndex(index)}
-                      className={cn(
-                        "h-2 rounded-full transition-all",
-                        index === currentProductIndex
-                          ? "w-6 bg-brand-gold"
-                          : "w-2 bg-brand-charcoal/30 hover:bg-brand-charcoal/50"
-                      )}
-                    />
-                  ))}
-                </div>
               </m.div>
             </m.div>
           )}
         </AnimatePresence>
 
-      {/* 无产品提示 */}
-      <AnimatePresence>
-        {isExpanded && sortedProducts.length === 0 && (
-          <m.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{
-              duration: 0.4,
-              ease: [0.4, 0, 0.2, 1]
-            }}
-            className="fixed inset-x-4 bottom-4 top-44 z-10 flex items-center justify-center lg:inset-x-6 lg:bottom-6 lg:top-48"
-          >
-            <div className="rounded-2xl bg-white/90 px-8 py-6 shadow-xl backdrop-blur-md">
-              <p className="text-brand-charcoal/50">暂无产品</p>
-            </div>
-          </m.div>
-        )}
-      </AnimatePresence>
+                {/* 无产品提示 */}
+                {sortedProducts.length === 0 && (
+                  <div className="flex flex-1 items-center justify-center">
+                    <div className="rounded-2xl bg-white/90 px-8 py-6 shadow-xl backdrop-blur-md">
+                      <p className="text-brand-charcoal/50">暂无产品</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </m.div>
+
+            {/* 展开/收起按钮 - 始终显示，紧贴内容区域，在1和2之间切换 */}
+            <button
+              type="button"
+              onClick={() => {
+                if (expandLevel === 2) {
+                  // 完整展开 -> 收起到只显示分类栏
+                  setExpandLevel(1);
+                } else {
+                  // 显示分类栏 -> 完整展开
+                  setActiveCategory(currentProduct?.categoryId || null);
+                  setExpandLevel(2);
+                }
+              }}
+              className="group flex items-center justify-center rounded-b-xl bg-[#EBE8DB] px-6 py-2 shadow-sm sm:rounded-b-2xl sm:px-10 sm:py-2.5 lg:px-14 lg:py-3"
+            >
+              <m.div
+                className="flex flex-col items-center"
+                animate={{
+                  // 完全展开时箭头向上，其他时候向下
+                  rotate: expandLevel === 2 ? 180 : 0,
+                  scale: 1
+                }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{
+                  duration: 0.5,
+                  ease: [0.4, 0, 0.2, 1]
+                }}
+              >
+                <ChevronDown className="h-5 w-5 text-brand-gold sm:h-6 sm:w-6 lg:h-8 lg:w-8" />
+                <ChevronDown className="-mt-3 h-5 w-5 text-brand-gold sm:-mt-4 sm:h-6 sm:w-6 lg:-mt-5 lg:h-8 lg:w-8" />
+              </m.div>
+            </button>
+          </div>
+        </m.div>
+      </m.div>
 
       {/* 移动端菜单遮罩层 */}
       <AnimatePresence>
-        {isNavMenuOpen && !isExpanded && (
+        {isNavMenuOpen && expandLevel <= 1 && (
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -895,7 +873,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
 
       {/* 移动端弹出菜单 */}
       <AnimatePresence>
-        {isNavMenuOpen && !isExpanded && (
+        {isNavMenuOpen && expandLevel <= 1 && (
           <m.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -943,9 +921,9 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
         )}
       </AnimatePresence>
 
-      {/* 底部导航栏 - 展开时隐藏 */}
+      {/* 底部导航栏 - 第一阶段及以下时显示 */}
       <AnimatePresence>
-        {!isExpanded && (
+        {expandLevel <= 1 && (
           <m.header
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

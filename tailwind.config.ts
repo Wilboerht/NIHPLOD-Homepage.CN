@@ -28,13 +28,14 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["Playfair Display", "Source Serif Pro", "serif"],
+        serif: ["PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
         sans: [
-          "Helvetica Neue",
-          "Source Han Sans",
           "PingFang SC",
+          "Source Han Sans",
+          "Microsoft YaHei",
           "sans-serif",
         ],
+        playfair: ["var(--font-playfair)", "serif"],
       },
       spacing: {
         xs: "8px",

@@ -156,7 +156,7 @@ export default function HomeClient({ content }: HomeClientProps) {
 
         {/* 中文名 */}
         <m.p
-          className="mt-2 font-serif text-xl text-brand-gold sm:mt-3 sm:text-2xl md:mt-4 md:text-3xl lg:text-4xl"
+          className="mt-2 font-playfair text-xl tracking-widest text-brand-gold sm:mt-3 sm:text-2xl md:mt-4 md:text-3xl lg:text-4xl"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}

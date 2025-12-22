@@ -84,41 +84,90 @@ function shouldRetry(status: number, retryCount: number): boolean {
 }
 
 /**
+ * 修复常见的 JSON 格式问题
+ */
+function fixJsonString(jsonStr: string): string {
+  let fixed = jsonStr;
+
+  // 1. 移除 trailing commas（对象和数组末尾的逗号）
+  fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
+
+  // 2. 修复未转义的换行符（在字符串值中）
+  // 这个比较复杂，暂时跳过
+
+  // 3. 移除可能的 BOM 或其他不可见字符
+  fixed = fixed.replace(/^\uFEFF/, '');
+
+  return fixed;
+}
+
+/**
  * 从 AI 响应中提取 JSON
  * 支持多种格式：纯 JSON、markdown 代码块、混合文本
+ * 增强了错误恢复能力
  */
 function extractJsonFromResponse(content: string): FaceAnalysisResult {
+  // 调试：打印原始内容长度和前100字符
+  console.log("[Face Analyze] Extracting JSON from response, length:", content.length);
+
   // 1. 尝试直接解析（纯 JSON 响应）
   try {
     const trimmed = content.trim();
     if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
       return JSON.parse(trimmed) as FaceAnalysisResult;
     }
-  } catch {
-    // 继续尝试其他方式
+  } catch (e) {
+    console.log("[Face Analyze] Direct parse failed:", (e as Error).message);
   }
 
   // 2. 尝试提取 markdown 代码块中的 JSON
   const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockMatch) {
     try {
-      return JSON.parse(codeBlockMatch[1].trim()) as FaceAnalysisResult;
-    } catch {
-      // 继续尝试其他方式
+      const jsonContent = codeBlockMatch[1].trim();
+      return JSON.parse(jsonContent) as FaceAnalysisResult;
+    } catch (e) {
+      // 尝试修复后再解析
+      try {
+        const fixed = fixJsonString(codeBlockMatch[1].trim());
+        return JSON.parse(fixed) as FaceAnalysisResult;
+      } catch {
+        console.log("[Face Analyze] Code block parse failed:", (e as Error).message);
+      }
     }
   }
 
-  // 3. 尝试提取最外层的 JSON 对象
+  // 3. 尝试提取最外层的 JSON 对象（使用贪婪匹配）
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     try {
       return JSON.parse(jsonMatch[0]) as FaceAnalysisResult;
-    } catch {
-      // JSON 格式无效
+    } catch (e) {
+      // 尝试修复后再解析
+      try {
+        const fixed = fixJsonString(jsonMatch[0]);
+        return JSON.parse(fixed) as FaceAnalysisResult;
+      } catch {
+        console.log("[Face Analyze] JSON object parse failed:", (e as Error).message);
+        console.log("[Face Analyze] Problematic JSON (first 500 chars):", jsonMatch[0].substring(0, 500));
+      }
     }
   }
 
-  // 4. 无法解析
+  // 4. 尝试查找嵌套的 JSON（有时 AI 会返回多个 JSON 对象）
+  // 寻找包含 "validation" 或 "skinType" 的 JSON 对象
+  const nestedJsonMatch = content.match(/\{[^{}]*(?:"validation"|"skinType")[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+  if (nestedJsonMatch) {
+    try {
+      return JSON.parse(nestedJsonMatch[0]) as FaceAnalysisResult;
+    } catch {
+      // 继续
+    }
+  }
+
+  // 5. 无法解析 - 打印更多调试信息
+  console.log("[Face Analyze] Failed to parse JSON. Raw content preview:");
+  console.log(content.substring(0, 800));
   throw new Error("AI: Failed to parse AI response as JSON");
 }
 
@@ -583,8 +632,8 @@ function createQwenConfig(apiKey: string, model: string, customSystemPrompt?: st
             ],
           },
         ],
-        max_tokens: 1500,
-        temperature: 0.3,
+        max_tokens: 2500, // 增加 token 限制以支持完整的 8 维度分析
+        temperature: 0.2, // 降低温度以提高输出稳定性
       };
     },
     extractContent: (data: unknown) => {

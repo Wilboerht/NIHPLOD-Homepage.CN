@@ -905,51 +905,22 @@ export function FaceCapture({ onCapture, onSkip }: FaceCaptureProps) {
                     faceStatus === "ready" ? "border-green-400" : "border-white"
                   )} />
 
-                  {/* 稳定度进度环 - 当检测到正确姿势时显示 */}
+                  {/* 倒计时数字 - 当检测到正确姿势时显示 */}
                   {faceStatus === "found" && stabilityProgress > 0 && (
                     <m.div
                       className="absolute inset-0 flex items-center justify-center"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <svg className="h-full w-full" viewBox="0 0 100 100">
-                        <ellipse
-                          cx="50"
-                          cy="50"
-                          rx="48"
-                          ry="48"
-                          fill="none"
-                          stroke="rgba(74, 222, 128, 0.3)"
-                          strokeWidth="3"
-                        />
-                        <m.ellipse
-                          cx="50"
-                          cy="50"
-                          rx="48"
-                          ry="48"
-                          fill="none"
-                          stroke="#4ade80"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeDasharray={`${stabilityProgress * 3.02} 302`}
-                          transform="rotate(-90 50 50)"
-                          initial={{ strokeDasharray: "0 302" }}
-                          animate={{ strokeDasharray: `${stabilityProgress * 3.02} 302` }}
-                          transition={{ duration: 0.2 }}
-                        />
-                      </svg>
-                      {/* 倒计时数字 */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <m.div
-                          className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20 backdrop-blur-sm"
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                        >
-                          <span className="text-2xl font-bold text-white">
-                            {Math.ceil((100 - stabilityProgress) / 25) || "✓"}
-                          </span>
-                        </m.div>
-                      </div>
+                      <m.div
+                        className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm"
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                      >
+                        <span className="text-2xl font-bold text-white">
+                          {Math.ceil((100 - stabilityProgress) / 25) || "✓"}
+                        </span>
+                      </m.div>
                     </m.div>
                   )}
 

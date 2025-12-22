@@ -5,7 +5,7 @@
 :root {
   --background: #faf8f5;
   --foreground: #2c2c2c;
-  --font-playfair: "Playfair Display", serif;
+  --font-playfair: "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
 }
 
 @layer base {
@@ -35,7 +35,7 @@
   body {
     color: var(--foreground);
     background: var(--background);
-    font-family: "Helvetica Neue", "Source Han Sans", "PingFang SC", sans-serif;
+    font-family: "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

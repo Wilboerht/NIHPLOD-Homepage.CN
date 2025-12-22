@@ -195,25 +195,15 @@ export function AdvisorWelcome() {
                     <span className="relative">开启体验</span>
                   </m.button>
 
-                  {/* 时间提示 + 花园入口 */}
-                  <m.div
-                    className="mt-5 flex items-center gap-3 sm:mt-6"
+                  {/* 时间提示 */}
+                  <m.p
+                    className="mt-5 text-[11px] font-light tracking-wider text-brand-charcoal/40 sm:mt-6 sm:text-xs"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.6, delay: 1.1 }}
                   >
-                    <span className="text-[11px] font-light tracking-wider text-brand-charcoal/40 sm:text-xs">
-                      约 2 分钟 · 专属定制
-                    </span>
-                    <span className="text-brand-gold/30">·</span>
-                    <Link
-                      href="/lottery/garden"
-                      className="group flex items-center gap-1.5 text-[11px] font-light tracking-wider text-brand-gold/70 transition-colors hover:text-brand-gold sm:text-xs"
-                    >
-                      <span>🌸</span>
-                      <span>幸运花园</span>
-                    </Link>
-                  </m.div>
+                    约 2 分钟 · 专属定制
+                  </m.p>
 
                   {/* 隐私说明 */}
                   <m.p

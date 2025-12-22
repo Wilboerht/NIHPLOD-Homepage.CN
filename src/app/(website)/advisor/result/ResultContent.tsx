@@ -28,7 +28,7 @@ import {
   shareToWeibo,
   generateShareText,
 } from "@/lib/share";
-import LotteryDrawer from "@/components/website/LotteryDrawer";
+
 
 /** 产品类型 */
 interface Product {
@@ -90,7 +90,7 @@ export function ResultContent() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [isMobile, setIsMobile] = useState(true); // 默认移动端，避免闪烁
-  const [showLotteryDrawer, setShowLotteryDrawer] = useState(false);
+
 
   // 检测是否支持原生分享和屏幕尺寸
   useEffect(() => {
@@ -662,17 +662,7 @@ export function ResultContent() {
                   )}
                 </button>
 
-                {/* 画花抽奖入口 */}
-                <button
-                  onClick={() => {
-                    setShowShareMenu(false);
-                    setShowLotteryDrawer(true);
-                  }}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 py-3.5 text-sm font-medium text-white shadow-sm transition-all hover:from-pink-600 hover:to-rose-600 active:scale-[0.98]"
-                >
-                  <span className="text-lg">🌸</span>
-                  画一朵花参与抽奖
-                </button>
+
               </div>
             </m.div>
           </>
@@ -833,12 +823,7 @@ export function ResultContent() {
         <div className="h-8" />
       </m.div>
 
-      {/* 画花抽奖弹窗 */}
-      <LotteryDrawer
-        isOpen={showLotteryDrawer}
-        onClose={() => setShowLotteryDrawer(false)}
-        sessionId={typeof window !== "undefined" ? sessionStorage.getItem("advisor_session_id") || undefined : undefined}
-      />
+
     </div>
   );
 }

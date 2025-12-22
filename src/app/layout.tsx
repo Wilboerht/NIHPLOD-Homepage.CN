@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import { Playfair_Display } from "next/font/google";
 import { ViewTransitions } from "next-view-transitions";
-import "@fontsource/playfair-display/400.css";
-import "@fontsource/playfair-display/500.css";
-import "@fontsource/playfair-display/600.css";
-import "@fontsource/playfair-display/700.css";
 import "./globals.css";
 import { MotionProvider } from "@/components/providers/MotionProvider";
 import { ChunkErrorBoundary } from "@/components/providers/ChunkErrorBoundary";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
 
+// Playfair Display 字体
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",

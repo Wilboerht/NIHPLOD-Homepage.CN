@@ -572,29 +572,54 @@ function parseAIResponse(response: string, answers: QuestionnaireAnswers): SkinA
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      const skinType = parsed.skinType || answers.skinType || "combination";
+      const concerns = parsed.concerns || getPrimaryConcernsAsArray(answers.primaryConcern);
+
+      // 如果 AI 返回了 details，使用它；否则生成默认详情
+      const details = (parsed.details && parsed.details.length > 0)
+        ? parsed.details
+        : generateAnalysisDetails(answers, skinType, concerns);
+
+      // 如果 AI 返回了 summary，使用它；否则生成默认摘要
+      const summary = parsed.summary || generateDefaultSummary(skinType, concerns);
+
       return {
-        skinType: parsed.skinType || answers.skinType || "combination",
-        skinTypeLabel: getSkinTypeLabel(parsed.skinType || answers.skinType || "combination"),
-        concerns: parsed.concerns || [],
-        concernLabels: (parsed.concerns || []).map(getConcernLabel),
-        summary: parsed.summary || "",
-        details: parsed.details || [],
+        skinType,
+        skinTypeLabel: getSkinTypeLabel(skinType),
+        concerns,
+        concernLabels: concerns.map(getConcernLabel),
+        summary,
+        details,
       };
     }
   } catch {
     // 解析失败，使用降级
   }
 
-  // 降级返回
+  // 降级返回 - 生成有意义的分析内容
+  const skinType = answers.skinType || "combination";
   const concerns = getPrimaryConcernsAsArray(answers.primaryConcern);
   return {
-    skinType: answers.skinType || "combination",
-    skinTypeLabel: getSkinTypeLabel(answers.skinType || "combination"),
+    skinType,
+    skinTypeLabel: getSkinTypeLabel(skinType),
     concerns,
     concernLabels: concerns.map(getConcernLabel),
-    summary: "根据您的问卷回答进行分析",
-    details: [],
+    summary: generateDefaultSummary(skinType, concerns),
+    details: generateAnalysisDetails(answers, skinType, concerns),
   };
+}
+
+/**
+ * 生成默认摘要（当 AI 未返回 summary 时使用）
+ */
+function generateDefaultSummary(skinType: string, concerns: string[]): string {
+  const skinTypeLabel = getSkinTypeLabel(skinType);
+  const concernLabels = concerns.map(getConcernLabel);
+
+  if (concerns.length > 0) {
+    return `根据您的问卷回答，您是${skinTypeLabel}，主要关注${concernLabels.join("、")}。我们已为您精选适合的护肤产品，帮助改善肌肤状态。`;
+  }
+  return `根据您的问卷回答，您是${skinTypeLabel}。我们已根据您的肤质特点，为您推荐适合的护肤产品。`;
 }
 
 /** 产品匹配评分 */
