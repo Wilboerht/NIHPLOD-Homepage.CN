@@ -225,7 +225,9 @@ model AdvisorSession {
   // 用户标识（匿名）
   fingerprint     String?   // 浏览器指纹（可选）
   userAgent       String?   // 用户代理
-  ip              String?   // IP地址（脱敏存储）
+  ip              String?   // IP地址
+  province        String?   // 省份（如：广东、北京）
+  city            String?   // 城市（如：深圳、朝阳）
 
   // 流程状态
   startedAt       DateTime  @default(now()) // 开始时间
@@ -269,6 +271,7 @@ model AdvisorSession {
   @@index([createdAt])
   @@index([faceScanSkipped])
   @@index([analysisSource])
+  @@index([province])
 }
 
 // 每日统计汇总（用于快速查询）

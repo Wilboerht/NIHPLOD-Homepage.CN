@@ -273,6 +273,9 @@ export async function GET(request: NextRequest) {
         faceScanSkipped: true,
         answers: true,
         deviceType: true,
+        ip: true,
+        province: true, // 省份（用于地图展示）
+        city: true,     // 城市
       },
     });
 
@@ -387,7 +390,48 @@ export async function GET(request: NextRequest) {
         deviceDistribution[session.deviceType]++;
       }
     });
-    
+
+    // 7. 时段分布（按小时统计）
+    const hourlyDistribution: Record<string, number> = {};
+    for (let i = 0; i < 24; i++) {
+      hourlyDistribution[String(i).padStart(2, "0")] = 0;
+    }
+
+    sessionsCreated.forEach((session) => {
+      const hour = String(session.createdAt.getHours()).padStart(2, "0");
+      hourlyDistribution[hour]++;
+    });
+
+    // 8. 省份地域分布（用于中国地图展示）
+    const provinceDistribution: Record<string, number> = {};
+
+    sessionsCreated.forEach((session) => {
+      if (session.province) {
+        provinceDistribution[session.province] = (provinceDistribution[session.province] || 0) + 1;
+      }
+    });
+
+    // 将省份分布转换为数组并按数量排序
+    const provinceStats = Object.entries(provinceDistribution)
+      .map(([province, count]) => ({ province, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // 9. 城市分布（可选，用于详细统计）
+    const cityDistribution: Record<string, number> = {};
+
+    sessionsCreated.forEach((session) => {
+      if (session.city) {
+        const cityKey = session.province ? `${session.province}-${session.city}` : session.city;
+        cityDistribution[cityKey] = (cityDistribution[cityKey] || 0) + 1;
+      }
+    });
+
+    // 城市分布取前 20
+    const topCities = Object.entries(cityDistribution)
+      .map(([city, count]) => ({ city, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -443,6 +487,12 @@ export async function GET(request: NextRequest) {
         answerDistribution,
         // 设备分布
         deviceDistribution,
+        // 时段分布（24小时）
+        hourlyDistribution,
+        // 省份地域分布（用于中国地图）
+        provinceDistribution: provinceStats,
+        // 城市分布（前20）
+        cityDistribution: topCities,
         // 查询时间范围
         dateRange: {
           start: start.toISOString(),

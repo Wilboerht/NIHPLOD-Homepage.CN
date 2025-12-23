@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
+import { resolveIPLocation } from "@/lib/geoip";
 
 // 事件类型定义
 const EventSchema = z.object({
@@ -101,10 +102,9 @@ function getClientInfo(request: NextRequest) {
     os = "ios";
   }
   
-  // IP脱敏：只保留前两段
-  const maskedIp = ip.split(".").slice(0, 2).join(".") + ".x.x";
-  
-  return { userAgent, ip: maskedIp, referer, deviceType, browser, os };
+  // 保存完整 IP 用于地理位置分析（符合数据分析需求）
+  // 注意：生产环境应确保隐私政策已披露 IP 收集
+  return { userAgent, ip, referer, deviceType, browser, os };
 }
 
 export async function POST(request: NextRequest) {
@@ -126,6 +126,9 @@ export async function POST(request: NextRequest) {
     // 根据事件类型更新会话记录
     switch (event) {
       case "session_start": {
+        // 解析 IP 地理位置
+        const geoLocation = resolveIPLocation(clientInfo.ip);
+
         // 创建或更新会话
         await prisma.advisorSession.upsert({
           where: { sessionId },
@@ -134,6 +137,8 @@ export async function POST(request: NextRequest) {
             startedAt: now,
             userAgent: clientInfo.userAgent,
             ip: clientInfo.ip,
+            province: geoLocation.province,
+            city: geoLocation.city,
             referrer: clientInfo.referer,
             deviceType: clientInfo.deviceType,
             browser: clientInfo.browser,

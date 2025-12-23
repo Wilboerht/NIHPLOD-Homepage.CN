@@ -30,10 +30,23 @@ import {
   MessageCircle,
   Send,
   FileDown,
+  MapPin,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+// 动态导入 ECharts 地图组件（避免 SSR 问题）
+const ChinaMap = dynamic(() => import("@/components/charts/ChinaMap").then((mod) => mod.ChinaMap), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[350px] items-center justify-center text-gray-400">
+      <Loader2 className="h-6 w-6 animate-spin" />
+    </div>
+  ),
+});
 
 interface AnalyticsData {
   overview: {
@@ -91,6 +104,9 @@ interface AnalyticsData {
     mobile: number;
     tablet: number;
   };
+  hourlyDistribution?: Record<string, number>; // 24小时时段分布
+  provinceDistribution?: Array<{ province: string; count: number }>; // 省份地域分布
+  cityDistribution?: Array<{ city: string; count: number }>; // 城市分布
   dateRange?: {
     start: string;
     end: string;
@@ -756,6 +772,55 @@ export default function AdvisorAnalyticsPage() {
             </div>
           </div>
 
+          {/* 时段分布和地域分布 */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* 时段分布 */}
+            {data.hourlyDistribution && (
+              <div className="rounded-xl bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-brand-gold" />
+                  <h3 className="text-base font-semibold text-gray-900">使用时段分布</h3>
+                </div>
+                <HourlyDistribution data={data.hourlyDistribution} />
+              </div>
+            )}
+
+            {/* 省份地域分布 - 中国地图 */}
+            {data.provinceDistribution && data.provinceDistribution.length > 0 && (
+              <div className="rounded-xl bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-5 w-5 text-brand-gold" />
+                    <h3 className="text-base font-semibold text-gray-900">地域分布</h3>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    覆盖 {data.provinceDistribution.length} 个省份
+                  </span>
+                </div>
+                <ChinaMap data={data.provinceDistribution} height={350} />
+                {/* 省份排行榜 */}
+                <div className="mt-4 border-t pt-4">
+                  <div className="text-xs text-gray-500 mb-2">TOP 省份</div>
+                  <div className="flex flex-wrap gap-2">
+                    {data.provinceDistribution.slice(0, 8).map((item, i) => (
+                      <span
+                        key={item.province}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs",
+                          i === 0 ? "bg-brand-gold/10 text-brand-gold font-medium" : "bg-gray-100 text-gray-600"
+                        )}
+                      >
+                        {i < 3 && <span className="font-bold">{i + 1}</span>}
+                        {item.province}
+                        <span className="text-gray-400">({item.count})</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* 问卷答案分布 */}
           {Object.keys(data.answerDistribution).length > 0 && (
             <div className="rounded-xl bg-white p-5 shadow-sm">
@@ -1160,6 +1225,108 @@ function AnswerDistribution({ field, distribution }: { field: string; distributi
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// 时段分布组件 - 24小时柱状图
+function HourlyDistribution({ data }: { data: Record<string, number> }) {
+  const hours = Object.entries(data).sort(([a], [b]) => a.localeCompare(b));
+  const maxValue = Math.max(...Object.values(data), 1);
+
+  // 找出峰值时段
+  const peakHour = hours.reduce((prev, curr) => curr[1] > prev[1] ? curr : prev, hours[0]);
+
+  // 将24小时分成几个时段
+  const timeSlots = [
+    { label: "凌晨", range: "00-06", hours: hours.slice(0, 6) },
+    { label: "上午", range: "06-12", hours: hours.slice(6, 12) },
+    { label: "下午", range: "12-18", hours: hours.slice(12, 18) },
+    { label: "晚上", range: "18-24", hours: hours.slice(18, 24) },
+  ];
+
+  const slotTotals = timeSlots.map(slot => ({
+    ...slot,
+    total: slot.hours.reduce((sum, [, count]) => sum + count, 0),
+  }));
+
+  const maxSlotTotal = Math.max(...slotTotals.map(s => s.total), 1);
+
+  return (
+    <div className="space-y-4">
+      {/* 时段汇总 */}
+      <div className="grid grid-cols-4 gap-2">
+        {slotTotals.map((slot) => {
+          const percent = (slot.total / maxSlotTotal) * 100;
+          const isPeak = slot.total === maxSlotTotal && slot.total > 0;
+          return (
+            <div
+              key={slot.range}
+              className={cn(
+                "rounded-lg p-2 text-center transition-colors",
+                isPeak ? "bg-brand-gold/10 ring-1 ring-brand-gold/30" : "bg-gray-50"
+              )}
+            >
+              <div className="text-xs text-gray-500">{slot.label}</div>
+              <div className={cn("text-lg font-semibold", isPeak ? "text-brand-gold" : "text-gray-900")}>
+                {slot.total}
+              </div>
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className={cn("h-full rounded-full transition-all", isPeak ? "bg-brand-gold" : "bg-gray-400")}
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 24小时详细分布 */}
+      <div className="flex items-end gap-[2px] h-16">
+        {hours.map(([hour, count]) => {
+          const height = maxValue > 0 ? (count / maxValue) * 100 : 0;
+          const isPeak = hour === peakHour[0] && count > 0;
+          return (
+            <div
+              key={hour}
+              className="group relative flex-1"
+              title={`${hour}:00 - ${count} 次`}
+            >
+              <div
+                className={cn(
+                  "w-full rounded-t transition-all cursor-pointer",
+                  isPeak ? "bg-brand-gold" : "bg-blue-400 hover:bg-blue-500"
+                )}
+                style={{ height: `${Math.max(height, 4)}%` }}
+              />
+              {/* 悬浮提示 */}
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block z-10">
+                <div className="rounded bg-gray-800 px-2 py-1 text-xs text-white whitespace-nowrap">
+                  {hour}:00 · {count}次
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 时间刻度 */}
+      <div className="flex justify-between text-[10px] text-gray-400">
+        <span>00:00</span>
+        <span>06:00</span>
+        <span>12:00</span>
+        <span>18:00</span>
+        <span>24:00</span>
+      </div>
+
+      {/* 峰值提示 */}
+      {peakHour && peakHour[1] > 0 && (
+        <div className="text-xs text-gray-500">
+          📊 峰值时段：<span className="font-medium text-gray-700">{peakHour[0]}:00</span>
+          <span className="ml-1">({peakHour[1]} 次访问)</span>
+        </div>
+      )}
     </div>
   );
 }
