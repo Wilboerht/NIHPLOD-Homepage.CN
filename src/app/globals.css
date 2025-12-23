@@ -419,11 +419,49 @@
   }
 }
 
+/* 收起动画 - 缩小飞向右下角 */
+@keyframes minimize-window {
+  0% {
+    transform: scale(1) translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.02) translate(calc(50vw - 48px), calc(50vh - 48px));
+    opacity: 0;
+  }
+}
+
+.animate-minimize-window {
+  transform-origin: bottom right;
+  animation: minimize-window 0.3s ease-in forwards;
+}
+
+/* 淡入缩放动画 */
+@keyframes fade-scale-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-fade-scale-in {
+  animation: fade-scale-in 0.2s ease-out;
+}
+
 /* 尊重用户的减少动画偏好 */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(root),
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation-duration: 0.01ms !important;
+  }
+
+  .animate-minimize-window,
+  .animate-fade-scale-in {
+    animation: none !important;
   }
 }

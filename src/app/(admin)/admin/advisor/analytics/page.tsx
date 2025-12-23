@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import {
   Globe,
   BarChart3,
   Grid3X3,
+  Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -123,7 +124,7 @@ type DateRange = "today" | "yesterday" | "7days" | "30days" | "90days";
 export default function AdvisorAnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<DateRange>("7days");
+  const [dateRange, setDateRange] = useState<DateRange>("30days");
 
   // AI 分析报告状态
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -132,6 +133,9 @@ export default function AdvisorAnalyticsPage() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportGeneratedAt, setReportGeneratedAt] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
+  const [reportMinimized, setReportMinimized] = useState(false); // 是否收起到右下角
+  const [minimizeAnimating, setMinimizeAnimating] = useState(false); // 收起动画进行中
+  const reportAbortController = useRef<AbortController | null>(null); // 用于取消请求
 
   // 追问功能状态
   const [chatHistory, setChatHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
@@ -159,9 +163,24 @@ export default function AdvisorAnalyticsPage() {
 
   const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
 
+  // 取消正在进行的 AI 分析
+  const cancelReportGeneration = () => {
+    if (reportAbortController.current) {
+      reportAbortController.current.abort();
+      reportAbortController.current = null;
+    }
+  };
+
   // 生成 AI 分析报告 (流式输出)
   const generateAIReport = async () => {
     if (!data) return;
+
+    // 取消之前的请求（如果有）
+    cancelReportGeneration();
+
+    // 创建新的 AbortController
+    const abortController = new AbortController();
+    reportAbortController.current = abortController;
 
     setReportModalOpen(true);
     setReportLoading(true);
@@ -169,12 +188,14 @@ export default function AdvisorAnalyticsPage() {
     setReportContent("");
     setReportGeneratedAt(null);
     setChatHistory([]); // 重置追问历史
+    setReportMinimized(false);
 
     try {
       const res = await fetch("/api/admin/advisor/analytics/report/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ analyticsData: data }),
+        signal: abortController.signal,
       });
 
       if (!res.ok) {
@@ -197,6 +218,12 @@ export default function AdvisorAnalyticsPage() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
+        // 检查是否被取消
+        if (abortController.signal.aborted) {
+          reader.cancel();
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
@@ -224,9 +251,18 @@ export default function AdvisorAnalyticsPage() {
         }
       }
     } catch (error) {
+      // 如果是用户主动取消，不显示错误
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       console.error("Failed to generate report:", error);
       setReportError(error instanceof Error ? error.message : "网络错误，请稍后重试");
       setReportLoading(false);
+    } finally {
+      // 清理 controller 引用
+      if (reportAbortController.current === abortController) {
+        reportAbortController.current = null;
+      }
     }
   };
 
@@ -487,7 +523,16 @@ export default function AdvisorAnalyticsPage() {
             variant="primary"
             size="sm"
             leftIcon={<Brain className="h-4 w-4" />}
-            onClick={generateAIReport}
+            onClick={() => {
+              // 如果有收起的报告，直接展开
+              if (reportMinimized && reportContent) {
+                setReportModalOpen(true);
+                setReportMinimized(false);
+              } else {
+                // 否则生成新报告
+                generateAIReport();
+              }
+            }}
             disabled={loading || !data}
           >
             AI 分析报告
@@ -495,10 +540,42 @@ export default function AdvisorAnalyticsPage() {
         </div>
       </div>
 
+      {/* 收起动画 */}
+      {minimizeAnimating && (
+        <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center">
+          <div className="h-[80vh] w-[90vw] max-w-4xl rounded-xl bg-white shadow-2xl animate-minimize-window" />
+        </div>
+      )}
+
+      {/* AI 分析报告收起后的悬浮按钮（只有收起状态才显示） */}
+      {reportMinimized && reportContent && !reportModalOpen && !minimizeAnimating && (
+        <button
+          onClick={() => {
+            setReportModalOpen(true);
+            setReportMinimized(false);
+          }}
+          className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg transition-all duration-200 hover:bg-amber-600 hover:shadow-xl hover:scale-105 active:scale-95 animate-fade-scale-in"
+          title="展开 AI 分析报告"
+        >
+          <Brain className="h-5 w-5" />
+        </button>
+      )}
+
       {/* AI 分析报告 Modal */}
       <Modal
         open={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
+        onClose={() => {
+          // 取消正在进行的请求
+          cancelReportGeneration();
+          // 关闭时清除报告内容和收起状态
+          setReportModalOpen(false);
+          setReportMinimized(false);
+          setReportLoading(false);
+          setReportContent(null);
+          setReportError(null);
+          setReportGeneratedAt(null);
+          setChatHistory([]);
+        }}
         title=""
         size="full"
       >
@@ -606,6 +683,25 @@ export default function AdvisorAnalyticsPage() {
                     >
                       <RefreshCw className="h-3.5 w-3.5" />
                       重新生成
+                    </button>
+                    <div className="mx-1 h-4 w-px bg-gray-200" />
+                    <button
+                      onClick={() => {
+                        // 先关闭 Modal
+                        setReportModalOpen(false);
+                        // 开始动画
+                        setMinimizeAnimating(true);
+                        // 动画结束后显示悬浮按钮
+                        setTimeout(() => {
+                          setMinimizeAnimating(false);
+                          setReportMinimized(true);
+                        }, 500);
+                      }}
+                      className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-50"
+                      title="收起到右下角"
+                    >
+                      <Minimize2 className="h-3.5 w-3.5" />
+                      收起
                     </button>
                   </div>
                 </div>
