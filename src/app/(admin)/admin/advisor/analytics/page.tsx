@@ -32,6 +32,8 @@ import {
   FileDown,
   MapPin,
   Globe,
+  BarChart3,
+  Grid3X3,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -105,6 +107,7 @@ interface AnalyticsData {
     tablet: number;
   };
   hourlyDistribution?: Record<string, number>; // 24小时时段分布
+  weeklyHeatmap?: Record<string, Record<string, number>>; // 7天×24小时热力图数据
   provinceDistribution?: Array<{ province: string; count: number }>; // 省份地域分布
   cityDistribution?: Array<{ city: string; count: number }>; // 城市分布
   dateRange?: {
@@ -774,31 +777,30 @@ export default function AdvisorAnalyticsPage() {
 
           {/* 时段分布和地域分布 */}
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* 时段分布 */}
+            {/* 时段分布 - 支持柱状图/热力图切换 */}
             {data.hourlyDistribution && (
-              <div className="rounded-xl bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-brand-gold" />
-                  <h3 className="text-base font-semibold text-gray-900">使用时段分布</h3>
-                </div>
-                <HourlyDistribution data={data.hourlyDistribution} />
-              </div>
+              <TimeDistributionCard
+                hourlyData={data.hourlyDistribution}
+                heatmapData={data.weeklyHeatmap}
+              />
             )}
 
             {/* 省份地域分布 - 中国地图 */}
-            {data.provinceDistribution && data.provinceDistribution.length > 0 && (
-              <div className="rounded-xl bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-5 w-5 text-brand-gold" />
-                    <h3 className="text-base font-semibold text-gray-900">地域分布</h3>
-                  </div>
-                  <span className="text-xs text-gray-400">
-                    覆盖 {data.provinceDistribution.length} 个省份
-                  </span>
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-brand-gold" />
+                  <h3 className="text-base font-semibold text-gray-900">地域分布</h3>
                 </div>
-                <ChinaMap data={data.provinceDistribution} height={350} />
-                {/* 省份排行榜 */}
+                <span className="text-xs text-gray-400">
+                  {data.provinceDistribution && data.provinceDistribution.length > 0
+                    ? `覆盖 ${data.provinceDistribution.length} 个省份`
+                    : "暂无地域数据"}
+                </span>
+              </div>
+              <ChinaMap data={data.provinceDistribution || []} height={350} />
+              {/* 省份排行榜 */}
+              {data.provinceDistribution && data.provinceDistribution.length > 0 && (
                 <div className="mt-4 border-t pt-4">
                   <div className="text-xs text-gray-500 mb-2">TOP 省份</div>
                   <div className="flex flex-wrap gap-2">
@@ -817,8 +819,8 @@ export default function AdvisorAnalyticsPage() {
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* 问卷答案分布 */}
@@ -1229,80 +1231,41 @@ function AnswerDistribution({ field, distribution }: { field: string; distributi
   );
 }
 
-// 时段分布组件 - 24小时柱状图
+// 时段分布组件 - 24小时柱状图（极简版）
 function HourlyDistribution({ data }: { data: Record<string, number> }) {
   const hours = Object.entries(data).sort(([a], [b]) => a.localeCompare(b));
   const maxValue = Math.max(...Object.values(data), 1);
+  const total = Object.values(data).reduce((sum, v) => sum + v, 0);
 
   // 找出峰值时段
   const peakHour = hours.reduce((prev, curr) => curr[1] > prev[1] ? curr : prev, hours[0]);
 
-  // 将24小时分成几个时段
-  const timeSlots = [
-    { label: "凌晨", range: "00-06", hours: hours.slice(0, 6) },
-    { label: "上午", range: "06-12", hours: hours.slice(6, 12) },
-    { label: "下午", range: "12-18", hours: hours.slice(12, 18) },
-    { label: "晚上", range: "18-24", hours: hours.slice(18, 24) },
-  ];
-
-  const slotTotals = timeSlots.map(slot => ({
-    ...slot,
-    total: slot.hours.reduce((sum, [, count]) => sum + count, 0),
-  }));
-
-  const maxSlotTotal = Math.max(...slotTotals.map(s => s.total), 1);
-
   return (
-    <div className="space-y-4">
-      {/* 时段汇总 */}
-      <div className="grid grid-cols-4 gap-2">
-        {slotTotals.map((slot) => {
-          const percent = (slot.total / maxSlotTotal) * 100;
-          const isPeak = slot.total === maxSlotTotal && slot.total > 0;
-          return (
-            <div
-              key={slot.range}
-              className={cn(
-                "rounded-lg p-2 text-center transition-colors",
-                isPeak ? "bg-brand-gold/10 ring-1 ring-brand-gold/30" : "bg-gray-50"
-              )}
-            >
-              <div className="text-xs text-gray-500">{slot.label}</div>
-              <div className={cn("text-lg font-semibold", isPeak ? "text-brand-gold" : "text-gray-900")}>
-                {slot.total}
-              </div>
-              <div className="mt-1 h-1 overflow-hidden rounded-full bg-gray-200">
-                <div
-                  className={cn("h-full rounded-full transition-all", isPeak ? "bg-brand-gold" : "bg-gray-400")}
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 24小时详细分布 */}
-      <div className="flex items-end gap-[2px] h-16">
+    <div className="space-y-2">
+      {/* 24小时柱状图 */}
+      <div className="flex items-end gap-[3px] h-40 px-1">
         {hours.map(([hour, count]) => {
           const height = maxValue > 0 ? (count / maxValue) * 100 : 0;
           const isPeak = hour === peakHour[0] && count > 0;
           return (
             <div
               key={hour}
-              className="group relative flex-1"
-              title={`${hour}:00 - ${count} 次`}
+              className="group relative flex-1 flex flex-col justify-end h-full"
             >
               <div
                 className={cn(
-                  "w-full rounded-t transition-all cursor-pointer",
-                  isPeak ? "bg-brand-gold" : "bg-blue-400 hover:bg-blue-500"
+                  "w-full rounded-sm transition-all cursor-pointer",
+                  isPeak
+                    ? "bg-brand-gold"
+                    : count > 0
+                      ? "bg-blue-400 hover:bg-blue-500"
+                      : "bg-gray-200"
                 )}
-                style={{ height: `${Math.max(height, 4)}%` }}
+                style={{ height: count > 0 ? `${Math.max(height, 6)}%` : "3px" }}
               />
               {/* 悬浮提示 */}
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block z-10">
-                <div className="rounded bg-gray-800 px-2 py-1 text-xs text-white whitespace-nowrap">
+                <div className="rounded bg-gray-800 px-2 py-1 text-xs text-white whitespace-nowrap shadow-lg">
                   {hour}:00 · {count}次
                 </div>
               </div>
@@ -1312,7 +1275,7 @@ function HourlyDistribution({ data }: { data: Record<string, number> }) {
       </div>
 
       {/* 时间刻度 */}
-      <div className="flex justify-between text-[10px] text-gray-400">
+      <div className="flex justify-between text-[10px] text-gray-400 px-1">
         <span>00:00</span>
         <span>06:00</span>
         <span>12:00</span>
@@ -1320,13 +1283,263 @@ function HourlyDistribution({ data }: { data: Record<string, number> }) {
         <span>24:00</span>
       </div>
 
-      {/* 峰值提示 */}
-      {peakHour && peakHour[1] > 0 && (
+      {/* 底部统计 */}
+      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
         <div className="text-xs text-gray-500">
-          📊 峰值时段：<span className="font-medium text-gray-700">{peakHour[0]}:00</span>
-          <span className="ml-1">({peakHour[1]} 次访问)</span>
+          共 <span className="font-semibold text-gray-700">{total}</span> 次访问
         </div>
-      )}
+        {peakHour && peakHour[1] > 0 && (
+          <div className="text-xs text-gray-500">
+            🔥 峰值 <span className="font-medium text-brand-gold">{peakHour[0]}:00</span>
+            <span className="text-gray-400 ml-0.5">({peakHour[1]}次)</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 周热力图组件 - 7天×24小时热力矩阵
+function WeeklyHeatmap({ data }: { data: Record<string, Record<string, number>> }) {
+  // 星期名称（周一开始）
+  const dayNames = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+  // 将数据按周一到周日重新排序（原数据0=周日）
+  const reorderedDays = [1, 2, 3, 4, 5, 6, 0]; // 周一到周日
+
+  // 计算最大值用于颜色映射
+  const allValues = Object.values(data).flatMap((hours) => Object.values(hours));
+  const maxValue = Math.max(...allValues, 1);
+  const total = allValues.reduce((sum, v) => sum + v, 0);
+
+  // 找出峰值单元格
+  let peakDay = 0;
+  let peakHour = "00";
+  let peakValue = 0;
+  reorderedDays.forEach((dayIndex, i) => {
+    Object.entries(data[String(dayIndex)] || {}).forEach(([hour, count]) => {
+      if (count > peakValue) {
+        peakValue = count;
+        peakDay = i;
+        peakHour = hour;
+      }
+    });
+  });
+
+  // 获取热力颜色
+  const getHeatColor = (value: number) => {
+    if (value === 0) return "bg-gray-100";
+    const intensity = value / maxValue;
+    if (intensity < 0.2) return "bg-blue-100";
+    if (intensity < 0.4) return "bg-blue-200";
+    if (intensity < 0.6) return "bg-blue-300";
+    if (intensity < 0.8) return "bg-blue-400";
+    return "bg-blue-500";
+  };
+
+  // 获取文字颜色
+  const getTextColor = (value: number) => {
+    if (value === 0) return "text-gray-300";
+    const intensity = value / maxValue;
+    return intensity >= 0.6 ? "text-white" : "text-gray-700";
+  };
+
+  // 时间段标签（每4小时一个）
+  const hourLabels = ["00", "04", "08", "12", "16", "20"];
+
+  // 悬浮提示状态
+  const [hoveredCell, setHoveredCell] = useState<{ day: number; hour: string; value: number; x: number; y: number } | null>(null);
+
+  return (
+    <div className="space-y-2 relative">
+      {/* 热力图矩阵 */}
+      <div className="overflow-x-auto">
+        {/* 全局悬浮提示 - 使用 fixed 定位不影响布局 */}
+        {hoveredCell && (
+          <div
+            className="fixed z-50 pointer-events-none"
+            style={{ left: hoveredCell.x, top: hoveredCell.y - 35 }}
+          >
+            <div className="rounded bg-gray-800 px-2 py-1 text-xs text-white whitespace-nowrap shadow-lg -translate-x-1/2">
+              {dayNames[hoveredCell.day]} {hoveredCell.hour}:00 · {hoveredCell.value}次
+            </div>
+          </div>
+        )}
+        <div className="min-w-[500px]">
+          {/* 小时标签行 */}
+          <div className="flex mb-1">
+            <div className="w-10 shrink-0" /> {/* 空白占位 */}
+            <div className="flex-1 flex">
+              {hourLabels.map((hour) => (
+                <div
+                  key={hour}
+                  className="text-[10px] text-gray-400 text-center"
+                  style={{ width: `${100 / 6}%` }}
+                >
+                  {hour}:00
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 热力图行 */}
+          {reorderedDays.map((dayIndex, rowIndex) => {
+            const dayData = data[String(dayIndex)] || {};
+            const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+            const dayTotal = hours.reduce((sum, h) => sum + (dayData[h] || 0), 0);
+
+            return (
+              <div key={dayIndex} className="flex items-center mb-[2px]">
+                {/* 星期标签 */}
+                <div className="w-10 shrink-0 text-[11px] text-gray-500 pr-2 text-right">
+                  {dayNames[rowIndex]}
+                </div>
+                {/* 24小时格子 */}
+                <div className="flex-1 flex gap-[1px]">
+                  {hours.map((hour) => {
+                    const value = dayData[hour] || 0;
+                    const isPeak = rowIndex === peakDay && hour === peakHour && value > 0;
+                    return (
+                      <div
+                        key={hour}
+                        className={cn(
+                          "flex-1 h-6 rounded-[2px] flex items-center justify-center cursor-pointer transition-all hover:ring-1 hover:ring-brand-gold/50",
+                          getHeatColor(value),
+                          isPeak && "ring-2 ring-brand-gold"
+                        )}
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoveredCell({
+                            day: rowIndex,
+                            hour,
+                            value,
+                            x: rect.left + rect.width / 2,
+                            y: rect.top,
+                          });
+                        }}
+                        onMouseLeave={() => setHoveredCell(null)}
+                      >
+                        {/* 大于0时显示数字（hover时显示） */}
+                        <span
+                          className={cn(
+                            "text-[9px] font-medium transition-opacity",
+                            hoveredCell?.day === rowIndex && hoveredCell?.hour === hour
+                              ? "opacity-100"
+                              : "opacity-0",
+                            getTextColor(value)
+                          )}
+                        >
+                          {value > 0 ? value : ""}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* 该天总数 */}
+                <div className="w-10 shrink-0 text-[10px] text-gray-400 pl-2 text-left">
+                  {dayTotal}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 图例和统计 */}
+      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+        {/* 颜色图例 */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-gray-400 mr-1">少</span>
+          <div className="w-4 h-3 rounded-[2px] bg-gray-100" />
+          <div className="w-4 h-3 rounded-[2px] bg-blue-100" />
+          <div className="w-4 h-3 rounded-[2px] bg-blue-200" />
+          <div className="w-4 h-3 rounded-[2px] bg-blue-300" />
+          <div className="w-4 h-3 rounded-[2px] bg-blue-400" />
+          <div className="w-4 h-3 rounded-[2px] bg-blue-500" />
+          <span className="text-[10px] text-gray-400 ml-1">多</span>
+        </div>
+
+        {/* 峰值提示 */}
+        {peakValue > 0 && (
+          <div className="text-xs text-gray-500">
+            🔥 固定高峰：
+            <span className="font-medium text-brand-gold">
+              {dayNames[peakDay]} {peakHour}:00
+            </span>
+            <span className="ml-1 text-gray-400">({peakValue}次)</span>
+          </div>
+        )}
+      </div>
+
+      {/* 总计 */}
+      <div className="text-center text-xs text-gray-400">
+        共 <span className="font-medium text-gray-600">{total}</span> 次访问
+      </div>
+    </div>
+  );
+}
+
+// 时段分布卡片 - 支持柱状图和热力图切换
+function TimeDistributionCard({
+  hourlyData,
+  heatmapData,
+}: {
+  hourlyData: Record<string, number>;
+  heatmapData?: Record<string, Record<string, number>>;
+}) {
+  const [viewMode, setViewMode] = useState<"bar" | "heatmap">("bar");
+
+  return (
+    <div className="rounded-xl bg-white p-5 shadow-sm flex flex-col">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-brand-gold" />
+          <h3 className="text-base font-semibold text-gray-900">使用时段分布</h3>
+        </div>
+        {/* 视图切换按钮 */}
+        {heatmapData && (
+          <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
+            <button
+              onClick={() => setViewMode("bar")}
+              className={cn(
+                "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-all",
+                viewMode === "bar"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              )}
+              title="24小时柱状图"
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">柱状图</span>
+            </button>
+            <button
+              onClick={() => setViewMode("heatmap")}
+              className={cn(
+                "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-all",
+                viewMode === "heatmap"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              )}
+              title="7天×24小时热力图"
+            >
+              <Grid3X3 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">热力图</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 视图内容 - 垂直居中 */}
+      <div className="flex-1 flex items-center">
+        <div className="w-full">
+          {viewMode === "bar" ? (
+            <HourlyDistribution data={hourlyData} />
+          ) : heatmapData ? (
+            <WeeklyHeatmap data={heatmapData} />
+          ) : (
+            <HourlyDistribution data={hourlyData} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

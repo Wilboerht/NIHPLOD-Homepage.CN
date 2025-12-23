@@ -65,6 +65,7 @@ interface ChinaMapProps {
 export function ChinaMap({ data, height = 400 }: ChinaMapProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<echarts.ECharts | null>(null);
+  const mapRegistered = useRef(false);
 
   // 转换数据格式
   const mapData = useMemo(() => {
@@ -79,26 +80,33 @@ export function ChinaMap({ data, height = 400 }: ChinaMapProps) {
     return Math.max(...data.map((d) => d.count), 1);
   }, [data]);
 
+  const hasData = data.length > 0;
+
   useEffect(() => {
     if (!chartRef.current) return;
 
-    // 动态加载中国地图 JSON
-    const loadMap = async () => {
+    let isMounted = true;
+
+    const initChart = async () => {
       try {
-        // 从 CDN 加载中国地图数据
-        const response = await fetch(
-          "https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json"
-        );
-        const chinaJson = await response.json();
+        // 注册地图（只需一次）
+        if (!mapRegistered.current) {
+          const response = await fetch(
+            "https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json"
+          );
+          const chinaJson = await response.json();
+          echarts.registerMap("china", chinaJson);
+          mapRegistered.current = true;
+        }
 
-        // 注册地图
-        echarts.registerMap("china", chinaJson);
+        if (!isMounted || !chartRef.current) return;
 
-        // 初始化图表
+        // 初始化或复用图表实例
         if (!chartInstance.current) {
           chartInstance.current = echarts.init(chartRef.current);
         }
 
+        // 设置图表配置
         const option: echarts.EChartsOption = {
           tooltip: {
             trigger: "item",
@@ -107,20 +115,25 @@ export function ChinaMap({ data, height = 400 }: ChinaMapProps) {
               return `${p.name}<br/>访问量: ${p.value || 0}`;
             },
           },
-          visualMap: {
-            min: 0,
-            max: maxValue,
-            left: "left",
-            top: "bottom",
-            text: ["高", "低"],
-            textStyle: { color: "#666", fontSize: 10 },
-            inRange: {
-              color: ["#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"],
-            },
-            calculable: true,
-            itemWidth: 12,
-            itemHeight: 80,
-          },
+          visualMap: hasData
+            ? {
+                show: true,
+                min: 0,
+                max: maxValue,
+                left: "left",
+                top: "bottom",
+                text: ["高", "低"],
+                textStyle: { color: "#666", fontSize: 10 },
+                inRange: {
+                  color: ["#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"],
+                },
+                calculable: true,
+                itemWidth: 12,
+                itemHeight: 80,
+              }
+            : {
+                show: false,
+              },
           series: [
             {
               name: "访问量",
@@ -139,31 +152,38 @@ export function ChinaMap({ data, height = 400 }: ChinaMapProps) {
               itemStyle: {
                 borderColor: "#fff",
                 borderWidth: 0.5,
+                areaColor: "#e5e7eb",
               },
             },
           ],
         };
 
-        chartInstance.current.setOption(option);
+        chartInstance.current.setOption(option, true);
       } catch (error) {
         console.error("加载地图数据失败:", error);
       }
     };
 
-    loadMap();
+    initChart();
 
-    // 响应式调整
     const handleResize = () => {
       chartInstance.current?.resize();
     };
     window.addEventListener("resize", handleResize);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("resize", handleResize);
+    };
+  }, [mapData, maxValue, hasData]);
+
+  // 组件卸载时销毁
+  useEffect(() => {
+    return () => {
       chartInstance.current?.dispose();
       chartInstance.current = null;
     };
-  }, [mapData, maxValue]);
+  }, []);
 
   return <div ref={chartRef} style={{ width: "100%", height }} />;
 }

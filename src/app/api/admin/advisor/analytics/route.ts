@@ -402,6 +402,23 @@ export async function GET(request: NextRequest) {
       hourlyDistribution[hour]++;
     });
 
+    // 7.1 周热力图数据（按星期几 × 小时统计）
+    // 结构: { "0": { "00": 5, "01": 3, ... }, "1": {...}, ... }
+    // 键 "0"-"6" 代表周日到周六
+    const weeklyHeatmap: Record<string, Record<string, number>> = {};
+    for (let day = 0; day < 7; day++) {
+      weeklyHeatmap[String(day)] = {};
+      for (let hour = 0; hour < 24; hour++) {
+        weeklyHeatmap[String(day)][String(hour).padStart(2, "0")] = 0;
+      }
+    }
+
+    sessionsCreated.forEach((session) => {
+      const dayOfWeek = session.createdAt.getDay(); // 0 = 周日, 1 = 周一, ...
+      const hour = String(session.createdAt.getHours()).padStart(2, "0");
+      weeklyHeatmap[String(dayOfWeek)][hour]++;
+    });
+
     // 8. 省份地域分布（用于中国地图展示）
     const provinceDistribution: Record<string, number> = {};
 
@@ -489,6 +506,8 @@ export async function GET(request: NextRequest) {
         deviceDistribution,
         // 时段分布（24小时）
         hourlyDistribution,
+        // 周热力图数据（7天 × 24小时）
+        weeklyHeatmap,
         // 省份地域分布（用于中国地图）
         provinceDistribution: provinceStats,
         // 城市分布（前20）

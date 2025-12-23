@@ -26,7 +26,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
-      "connect-src 'self' https://api.openai.com",
+      "connect-src 'self' https://api.openai.com https://geo.datav.aliyun.com",
     ].join('; '),
   },
 ];
