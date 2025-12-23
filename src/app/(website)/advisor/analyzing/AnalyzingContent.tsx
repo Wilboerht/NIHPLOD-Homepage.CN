@@ -98,7 +98,7 @@ export function AnalyzingContent() {
           imagesToAnalyze = { front: processed.imageData };
         }
 
-        setProgress(20);
+        setProgress((prev) => Math.max(prev, 20));
 
         // 调用面部分析 API - 发送所有照片
         const faceRes = await fetch("/api/advisor/face-analyze", {
@@ -131,7 +131,7 @@ export function AnalyzingContent() {
           return;
         }
 
-        setProgress(50);
+        setProgress((prev) => Math.max(prev, 50));
       } catch (e) {
         console.error("Face analysis failed:", e);
         // 面部分析失败，阻止继续
@@ -151,7 +151,7 @@ export function AnalyzingContent() {
           }),
         });
 
-        setProgress(80);
+        setProgress((prev) => Math.max(prev, 80));
 
         if (!res.ok) {
           setFailureType("questionnaire");
@@ -172,7 +172,7 @@ export function AnalyzingContent() {
         // 追踪分析完成
         trackAnalysisComplete(data.data.source || "ai");
 
-        setProgress(100);
+        setProgress((prev) => Math.max(prev, 100));
 
         // 延迟跳转，让用户看到 100% 进度
         setTimeout(() => {
@@ -202,7 +202,8 @@ export function AnalyzingContent() {
       setProgress((prev) => {
         if (prev >= 95) return prev; // 接近完成时停止模拟
         // 缓慢增加，给真实请求时间
-        return prev + Math.random() * 2;
+        const simulatedProgress = prev + Math.random() * 2;
+        return simulatedProgress;
       });
     }, 300);
 
