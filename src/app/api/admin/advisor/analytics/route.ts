@@ -1,42 +1,62 @@
 /**
  * AI 顾问统计数据查询 API (管理后台)
  * GET /api/admin/advisor/analytics
- * 
- * 查询统计数据，支持日期范围筛选
+ *
+ * 查询统计数据，支持日期范围筛选和同期对比
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 
-// 获取日期范围
-function getDateRange(range: string): { start: Date; end: Date } {
+// 获取日期范围及上周期范围
+function getDateRange(range: string): {
+  start: Date;
+  end: Date;
+  prevStart: Date;
+  prevEnd: Date;
+  daysCount: number;
+} {
   const now = new Date();
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   let start: Date;
-  
+  let daysCount: number;
+
   switch (range) {
     case "today":
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      daysCount = 1;
       break;
     case "yesterday":
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
       end.setDate(end.getDate() - 1);
+      daysCount = 1;
       break;
     case "7days":
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+      daysCount = 7;
       break;
     case "30days":
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+      daysCount = 30;
       break;
     case "90days":
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
+      daysCount = 90;
       break;
     default:
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+      daysCount = 7;
   }
-  
-  return { start, end };
+
+  // 计算上周期时间范围
+  const prevEnd = new Date(start);
+  prevEnd.setMilliseconds(-1); // start 的前一毫秒
+  const prevStart = new Date(prevEnd);
+  prevStart.setDate(prevStart.getDate() - daysCount + 1);
+  prevStart.setHours(0, 0, 0, 0);
+
+  return { start, end, prevStart, prevEnd, daysCount };
 }
 
 export async function GET(request: NextRequest) {
@@ -52,9 +72,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get("range") || "7days";
-    const { start, end } = getDateRange(range);
-    
-    // 1. 获取总体统计
+    const { start, end, prevStart, prevEnd } = getDateRange(range);
+
+    // 1. 获取当前周期和上周期总体统计
     const [
       totalSessions,
       completedSessions,
@@ -63,50 +83,104 @@ export async function GET(request: NextRequest) {
       aiAnalysis,
       fallbackAnalysis,
       sharedResults,
+      // 上周期数据
+      prevTotalSessions,
+      prevCompletedSessions,
+      prevFaceScanUsed,
+      prevFaceScanSkipped,
+      prevAiAnalysis,
+      prevFallbackAnalysis,
+      prevSharedResults,
     ] = await Promise.all([
-      // 总会话数
+      // 当前周期 - 总会话数
       prisma.advisorSession.count({
         where: { createdAt: { gte: start, lte: end } },
       }),
       // 完成的会话数（到达结果页）
       prisma.advisorSession.count({
-        where: { 
+        where: {
           createdAt: { gte: start, lte: end },
           completedAt: { not: null },
         },
       }),
       // 使用面扫的会话数
       prisma.advisorSession.count({
-        where: { 
+        where: {
           createdAt: { gte: start, lte: end },
           faceScanUsed: true,
         },
       }),
       // 跳过面扫的会话数
       prisma.advisorSession.count({
-        where: { 
+        where: {
           createdAt: { gte: start, lte: end },
           faceScanSkipped: true,
         },
       }),
       // AI分析次数
       prisma.advisorSession.count({
-        where: { 
+        where: {
           createdAt: { gte: start, lte: end },
           analysisSource: "ai",
         },
       }),
       // 降级分析次数
       prisma.advisorSession.count({
-        where: { 
+        where: {
           createdAt: { gte: start, lte: end },
           analysisSource: "fallback",
         },
       }),
       // 分享次数
       prisma.advisorSession.count({
-        where: { 
+        where: {
           createdAt: { gte: start, lte: end },
+          resultShared: true,
+        },
+      }),
+      // 上周期 - 总会话数
+      prisma.advisorSession.count({
+        where: { createdAt: { gte: prevStart, lte: prevEnd } },
+      }),
+      // 上周期 - 完成的会话数
+      prisma.advisorSession.count({
+        where: {
+          createdAt: { gte: prevStart, lte: prevEnd },
+          completedAt: { not: null },
+        },
+      }),
+      // 上周期 - 使用面扫的会话数
+      prisma.advisorSession.count({
+        where: {
+          createdAt: { gte: prevStart, lte: prevEnd },
+          faceScanUsed: true,
+        },
+      }),
+      // 上周期 - 跳过面扫的会话数
+      prisma.advisorSession.count({
+        where: {
+          createdAt: { gte: prevStart, lte: prevEnd },
+          faceScanSkipped: true,
+        },
+      }),
+      // 上周期 - AI分析次数
+      prisma.advisorSession.count({
+        where: {
+          createdAt: { gte: prevStart, lte: prevEnd },
+          analysisSource: "ai",
+        },
+      }),
+      // 上周期 - 降级分析次数
+      prisma.advisorSession.count({
+        where: {
+          createdAt: { gte: prevStart, lte: prevEnd },
+          analysisSource: "fallback",
+        },
+      }),
+      // 上周期 - 分享次数
+      prisma.advisorSession.count({
+        where: {
+          createdAt: { gte: prevStart, lte: prevEnd },
           resultShared: true,
         },
       }),
@@ -124,6 +198,22 @@ export async function GET(request: NextRequest) {
     // AI 使用率
     const totalAnalysis = aiAnalysis + fallbackAnalysis;
     const aiUsageRate = totalAnalysis > 0 ? aiAnalysis / totalAnalysis : 0;
+
+    // 计算上周期各项比率
+    const prevConversionRate = prevTotalSessions > 0
+      ? prevCompletedSessions / prevTotalSessions
+      : 0;
+    const prevFaceScanRate = (prevFaceScanUsed + prevFaceScanSkipped) > 0
+      ? prevFaceScanUsed / (prevFaceScanUsed + prevFaceScanSkipped)
+      : 0;
+    const prevTotalAnalysis = prevAiAnalysis + prevFallbackAnalysis;
+    const prevAiUsageRate = prevTotalAnalysis > 0 ? prevAiAnalysis / prevTotalAnalysis : 0;
+
+    // 计算同期变化率的辅助函数
+    const calcChange = (current: number, previous: number): number | null => {
+      if (previous === 0) return current > 0 ? 100 : null; // 上期为0，本期有值则显示+100%
+      return ((current - previous) / previous) * 100;
+    };
     
     // 3. 获取漏斗数据
     const [
@@ -314,6 +404,28 @@ export async function GET(request: NextRequest) {
           aiUsageRate,
           totalShares: sharedResults,
         },
+        // 同期对比数据
+        comparison: {
+          totalSessionsChange: calcChange(totalSessions, prevTotalSessions),
+          completedSessionsChange: calcChange(completedSessions, prevCompletedSessions),
+          conversionRateChange: calcChange(conversionRate, prevConversionRate),
+          faceScanRateChange: calcChange(faceScanRate, prevFaceScanRate),
+          aiUsageRateChange: calcChange(aiUsageRate, prevAiUsageRate),
+          totalSharesChange: calcChange(sharedResults, prevSharedResults),
+          // 上周期原始数据
+          prev: {
+            totalSessions: prevTotalSessions,
+            completedSessions: prevCompletedSessions,
+            conversionRate: prevConversionRate,
+            faceScanUsed: prevFaceScanUsed,
+            faceScanSkipped: prevFaceScanSkipped,
+            faceScanRate: prevFaceScanRate,
+            aiAnalysisCount: prevAiAnalysis,
+            fallbackAnalysisCount: prevFallbackAnalysis,
+            aiUsageRate: prevAiUsageRate,
+            totalShares: prevSharedResults,
+          },
+        },
         // 漏斗数据 - 字段名与前端 AnalyticsData.funnel 对应
         funnel: {
           started: totalSessions,
@@ -332,7 +444,12 @@ export async function GET(request: NextRequest) {
         // 设备分布
         deviceDistribution,
         // 查询时间范围
-        dateRange: { start: start.toISOString(), end: end.toISOString() },
+        dateRange: {
+          start: start.toISOString(),
+          end: end.toISOString(),
+          prevStart: prevStart.toISOString(),
+          prevEnd: prevEnd.toISOString(),
+        },
       },
     });
     

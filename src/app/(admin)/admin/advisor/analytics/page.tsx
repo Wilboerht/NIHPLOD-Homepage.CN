@@ -27,6 +27,9 @@ import {
   Download,
   Clock,
   ChevronRight,
+  MessageCircle,
+  Send,
+  FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -44,6 +47,26 @@ interface AnalyticsData {
     fallbackAnalysisCount: number;
     aiUsageRate: number;
     totalShares: number;
+  };
+  comparison?: {
+    totalSessionsChange: number | null;
+    completedSessionsChange: number | null;
+    conversionRateChange: number | null;
+    faceScanRateChange: number | null;
+    aiUsageRateChange: number | null;
+    totalSharesChange: number | null;
+    prev: {
+      totalSessions: number;
+      completedSessions: number;
+      conversionRate: number;
+      faceScanUsed: number;
+      faceScanSkipped: number;
+      faceScanRate: number;
+      aiAnalysisCount: number;
+      fallbackAnalysisCount: number;
+      aiUsageRate: number;
+      totalShares: number;
+    };
   };
   funnel: {
     started: number;
@@ -71,6 +94,8 @@ interface AnalyticsData {
   dateRange?: {
     start: string;
     end: string;
+    prevStart?: string;
+    prevEnd?: string;
   };
 }
 
@@ -88,6 +113,11 @@ export default function AdvisorAnalyticsPage() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportGeneratedAt, setReportGeneratedAt] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // 追问功能状态
+  const [chatHistory, setChatHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -110,34 +140,73 @@ export default function AdvisorAnalyticsPage() {
 
   const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
 
-  // 生成 AI 分析报告
+  // 生成 AI 分析报告 (流式输出)
   const generateAIReport = async () => {
     if (!data) return;
 
     setReportModalOpen(true);
     setReportLoading(true);
     setReportError(null);
-    setReportContent(null);
+    setReportContent("");
+    setReportGeneratedAt(null);
+    setChatHistory([]); // 重置追问历史
 
     try {
-      const res = await fetch("/api/admin/advisor/analytics/report", {
+      const res = await fetch("/api/admin/advisor/analytics/report/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ analyticsData: data }),
       });
 
-      const json = await res.json();
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "生成报告失败");
+      }
 
-      if (json.success) {
-        setReportContent(json.data.report);
-        setReportGeneratedAt(new Date());
-      } else {
-        setReportError(json.error?.message || "生成报告失败");
+      const reader = res.body?.getReader();
+      if (!reader) {
+        throw new Error("无法获取响应流");
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullContent = "";
+
+      setReportLoading(false); // 开始接收内容后取消加载状态
+      setReportGeneratedAt(new Date());
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data: ")) {
+            const dataStr = trimmed.slice(6);
+            if (dataStr === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+              if (parsed.content) {
+                fullContent += parsed.content;
+                setReportContent(fullContent);
+              }
+            } catch (e) {
+              if (e instanceof SyntaxError) continue; // 忽略 JSON 解析错误
+              throw e;
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to generate report:", error);
-      setReportError("网络错误，请稍后重试");
-    } finally {
+      setReportError(error instanceof Error ? error.message : "网络错误，请稍后重试");
       setReportLoading(false);
     }
   };
@@ -166,6 +235,172 @@ export default function AdvisorAnalyticsPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // 导出 PDF (使用浏览器打印功能)
+  const exportToPDF = () => {
+    if (!reportContent) return;
+
+    // 创建打印窗口
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("请允许弹出窗口以导出 PDF");
+      return;
+    }
+
+    const dateStr = new Date().toLocaleDateString("zh-CN");
+    const dateRange = data?.dateRange
+      ? `${new Date(data.dateRange.start).toLocaleDateString("zh-CN")} - ${new Date(data.dateRange.end).toLocaleDateString("zh-CN")}`
+      : "";
+
+    // 将 Markdown 转换为简单 HTML
+    const htmlContent = reportContent
+      .replace(/^# (.+)$/gm, '<h1 style="font-size:24px;font-weight:bold;margin:24px 0 16px;border-bottom:2px solid #d4af37;padding-bottom:8px;">$1</h1>')
+      .replace(/^## (.+)$/gm, '<h2 style="font-size:18px;font-weight:bold;margin:20px 0 12px;color:#333;">$1</h2>')
+      .replace(/^### (.+)$/gm, '<h3 style="font-size:14px;font-weight:bold;margin:16px 0 8px;color:#555;">$1</h3>')
+      .replace(/^- (.+)$/gm, '<li style="margin:4px 0;padding-left:8px;">$1</li>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/\n\n/g, '</p><p style="margin:12px 0;line-height:1.6;">')
+      .replace(/\n/g, '<br>');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>NIHPLOD AI分析报告 - ${dateStr}</title>
+        <style>
+          @page { margin: 20mm; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+            font-size: 12px;
+            line-height: 1.6;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+          }
+          .logo { font-size: 24px; font-weight: bold; color: #d4af37; }
+          .meta { text-align: right; font-size: 11px; color: #666; }
+          table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; }
+          th { background: #f5f5f5; font-weight: bold; }
+          ul { padding-left: 20px; }
+          .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 10px; color: #999; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">NIHPLOD</div>
+          <div class="meta">
+            <div>AI 智能分析报告</div>
+            <div>生成时间：${dateStr}</div>
+            ${dateRange ? `<div>数据范围：${dateRange}</div>` : ""}
+          </div>
+        </div>
+        <div class="content">
+          <p style="margin:12px 0;line-height:1.6;">${htmlContent}</p>
+        </div>
+        <div class="footer">
+          © ${new Date().getFullYear()} NIHPLOD 旎柏护肤 · AI 分析报告 · 仅供内部参考
+        </div>
+      </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+
+    // 等待内容加载后打印
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
+  // 追问功能
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || chatLoading || !reportContent) return;
+
+    const question = chatInput.trim();
+    setChatInput("");
+    setChatLoading(true);
+
+    // 添加用户消息
+    const newHistory = [...chatHistory, { role: "user" as const, content: question }];
+    setChatHistory(newHistory);
+
+    try {
+      const res = await fetch("/api/admin/advisor/analytics/report/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          reportContent,
+          chatHistory,
+          analyticsData: data,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "请求失败");
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("无法获取响应流");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let assistantContent = "";
+
+      // 添加空的助手消息
+      setChatHistory([...newHistory, { role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data: ")) {
+            const dataStr = trimmed.slice(6);
+            if (dataStr === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.content) {
+                assistantContent += parsed.content;
+                setChatHistory([...newHistory, { role: "assistant", content: assistantContent }]);
+              }
+            } catch (e) {
+              if (e instanceof SyntaxError) continue;
+              throw e;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      setChatHistory([
+        ...newHistory,
+        { role: "assistant", content: `抱歉，发生错误：${error instanceof Error ? error.message : "未知错误"}` },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   // 从报告内容提取章节目录
@@ -337,7 +572,14 @@ export default function AdvisorAnalyticsPage() {
                       className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                     >
                       <Download className="h-3.5 w-3.5" />
-                      下载
+                      下载MD
+                    </button>
+                    <button
+                      onClick={exportToPDF}
+                      className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      导出PDF
                     </button>
                     <button
                       onClick={generateAIReport}
@@ -350,9 +592,73 @@ export default function AdvisorAnalyticsPage() {
                 </div>
 
                 {/* 报告内容 */}
-                <div className="flex-1 overflow-y-auto bg-white px-8 py-6 rounded-br-xl scrollbar-thin">
+                <div className="flex-1 overflow-y-auto bg-white px-8 py-6 scrollbar-thin">
                   <div className="mx-auto max-w-3xl pb-4">
                     <MarkdownRenderer content={reportContent} />
+
+                    {/* 追问区域 */}
+                    {chatHistory.length > 0 && (
+                      <div className="mt-8 border-t pt-6">
+                        <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-700">
+                          <MessageCircle className="h-4 w-4" />
+                          追问对话
+                        </h3>
+                        <div className="space-y-4">
+                          {chatHistory.map((msg, i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                "rounded-lg p-3",
+                                msg.role === "user"
+                                  ? "ml-8 bg-brand-gold/10 text-gray-800"
+                                  : "mr-8 bg-gray-50 text-gray-700"
+                              )}
+                            >
+                              <div className="mb-1 text-xs font-medium text-gray-500">
+                                {msg.role === "user" ? "您的问题" : "AI 回复"}
+                              </div>
+                              {msg.role === "assistant" ? (
+                                <MarkdownRenderer content={msg.content || "正在思考..."} />
+                              ) : (
+                                <p className="text-sm">{msg.content}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 追问输入框 */}
+                <div className="shrink-0 border-t bg-white px-6 py-3">
+                  <div className="mx-auto flex max-w-3xl items-center gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendChatMessage()}
+                      placeholder="对报告内容有疑问？输入问题继续追问..."
+                      className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold"
+                      disabled={chatLoading}
+                    />
+                    <button
+                      onClick={sendChatMessage}
+                      disabled={!chatInput.trim() || chatLoading}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                        chatInput.trim() && !chatLoading
+                          ? "bg-brand-gold text-white hover:bg-brand-gold/90"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      )}
+                    >
+                      {chatLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      发送
+                    </button>
                   </div>
                 </div>
               </div>
@@ -381,6 +687,7 @@ export default function AdvisorAnalyticsPage() {
               label="总会话数"
               value={data.overview.totalSessions}
               color="blue"
+              change={data.comparison?.totalSessionsChange}
             />
             <StatCard
               icon={<CheckCircle className="h-5 w-5" />}
@@ -388,6 +695,7 @@ export default function AdvisorAnalyticsPage() {
               value={formatPercent(data.overview.conversionRate)}
               subValue={`${data.overview.completedSessions} 完成`}
               color="green"
+              change={data.comparison?.conversionRateChange}
             />
             <StatCard
               icon={<Camera className="h-5 w-5" />}
@@ -395,6 +703,7 @@ export default function AdvisorAnalyticsPage() {
               value={formatPercent(data.overview.faceScanRate)}
               subValue={`${data.overview.faceScanUsed} 扫描 · ${data.overview.faceScanSkipped} 跳过`}
               color="purple"
+              change={data.comparison?.faceScanRateChange}
             />
             <StatCard
               icon={<Sparkles className="h-5 w-5" />}
@@ -402,6 +711,7 @@ export default function AdvisorAnalyticsPage() {
               value={formatPercent(data.overview.aiUsageRate)}
               subValue={`${data.overview.aiAnalysisCount} AI · ${data.overview.fallbackAnalysisCount} 规则`}
               color="amber"
+              change={data.comparison?.aiUsageRateChange}
             />
           </div>
 
@@ -470,14 +780,15 @@ export default function AdvisorAnalyticsPage() {
   );
 }
 
-// 统计卡片组件
-function StatCard({ icon, label, value, subValue, color, highlight }: {
+// 统计卡片组件 - 支持同期对比
+function StatCard({ icon, label, value, subValue, color, highlight, change }: {
   icon: React.ReactNode;
   label: string;
   value: string | number;
   subValue?: string;
   color: "blue" | "green" | "purple" | "amber";
   highlight?: boolean;
+  change?: number | null; // 同期变化百分比
 }) {
   const colorClasses = {
     blue: "bg-blue-50 text-blue-600",
@@ -486,16 +797,41 @@ function StatCard({ icon, label, value, subValue, color, highlight }: {
     amber: "bg-amber-50 text-amber-600",
   };
 
+  // 格式化涨跌幅显示
+  const formatChange = (val: number | null | undefined) => {
+    if (val === null || val === undefined) return null;
+    const sign = val >= 0 ? "+" : "";
+    return `${sign}${val.toFixed(1)}%`;
+  };
+
+  const changeText = formatChange(change);
+  const isPositive = change !== null && change !== undefined && change >= 0;
+
   return (
     <div className={cn(
       "rounded-xl bg-white p-5 shadow-sm",
       highlight && "ring-2 ring-purple-300"
     )}>
-      <div className="flex items-center gap-3">
-        <div className={cn("rounded-lg p-2", colorClasses[color])}>
-          {icon}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={cn("rounded-lg p-2", colorClasses[color])}>
+            {icon}
+          </div>
+          <span className="text-sm text-gray-500">{label}</span>
         </div>
-        <span className="text-sm text-gray-500">{label}</span>
+        {changeText && (
+          <span className={cn(
+            "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
+            isPositive ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+          )}>
+            {isPositive ? (
+              <TrendingUp className="h-3 w-3" />
+            ) : (
+              <TrendingUp className="h-3 w-3 rotate-180" />
+            )}
+            {changeText}
+          </span>
+        )}
       </div>
       <div className="mt-3">
         <p className="text-2xl font-bold text-gray-900">{value}</p>
