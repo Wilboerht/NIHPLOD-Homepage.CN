@@ -44,7 +44,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* 主内容区域 */}
         <div
           className={cn(
-            "flex flex-1 flex-col transition-all duration-300",
+            "flex min-h-screen flex-col transition-all duration-300",
             isMobile ? "ml-0" : isCollapsed ? "ml-16" : "ml-64"
           )}
         >
@@ -57,6 +57,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               {children}
             </Suspense>
           </main>
+
+          {/* 页脚 */}
+          <footer className="px-4 py-4 text-center text-xs text-gray-400 md:px-6">
+            © {new Date().getFullYear()} NIHPLOD All Rights Reserved.
+          </footer>
         </div>
       </div>
     </ToastProvider>

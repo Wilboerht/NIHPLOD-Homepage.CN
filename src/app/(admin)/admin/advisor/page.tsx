@@ -215,7 +215,10 @@ export default function AdminAdvisorPage() {
               系统监控
             </Button>
           </Link>
-          <Link href="/admin/advisor/analytics">
+          <Link href="/admin/advisor/analytics" className="relative">
+            <span className="absolute -right-2 -top-2 rounded-full bg-brand-gold px-1.5 py-0.5 text-[10px] font-medium text-white">
+              AI分析
+            </span>
             <Button variant="outline" leftIcon={<BarChart3 className="h-4 w-4" />}>
               用户统计
             </Button>

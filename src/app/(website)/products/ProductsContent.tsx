@@ -617,14 +617,18 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                         duration: 0.5,
                         ease: [0.4, 0, 0.2, 1]
                       }}
-                      className="relative flex-1"
+                      className="relative flex-1 px-2 sm:px-4 md:px-6 lg:px-8"
                       style={{
-                        perspective: "1200px"
+                        perspective: isMobile ? "800px" : "1200px"
                       }}
                     >
               {/* 手势滑动容器 */}
               <m.div
-                className="relative mx-auto flex h-full max-w-6xl cursor-grab items-center justify-center px-2 active:cursor-grabbing sm:px-4"
+                className={cn(
+                  "relative mx-auto flex h-full cursor-grab items-center justify-center active:cursor-grabbing",
+                  // 响应式最大宽度
+                  "max-w-sm sm:max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl"
+                )}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.2}
@@ -650,21 +654,21 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                   const isRight2 = normalizedDiff === 2;
 
                   // 计算位置、缩放、透明度、旋转、Z轴位移、模糊度
-                  // 使用 state 中的 isMobile 判断
+                  // 响应式3D变换参数 - 后面的卡片收紧靠近中心
                   const getTransform = () => {
                     if (isCenter) return { x: "0%", scale: 1, zIndex: 20, opacity: 1, rotateY: 0, z: 50, filter: "blur(0px)" };
                     if (isMobile) {
-                      // 移动端：左右卡片靠近中心
-                      if (isLeft1) return { x: "-55%", scale: 0.82, zIndex: 15, opacity: 0.8, rotateY: 8, z: -30, filter: "blur(1px)" };
-                      if (isRight1) return { x: "55%", scale: 0.82, zIndex: 15, opacity: 0.8, rotateY: -8, z: -30, filter: "blur(1px)" };
-                      if (isLeft2) return { x: "-95%", scale: 0.65, zIndex: 10, opacity: 0, rotateY: 12, z: -80, filter: "blur(3px)" };
-                      if (isRight2) return { x: "95%", scale: 0.65, zIndex: 10, opacity: 0, rotateY: -12, z: -80, filter: "blur(3px)" };
+                      // 移动端（<640px）：紧凑布局，卡片更靠近中心
+                      if (isLeft1) return { x: "-38%", scale: 0.75, zIndex: 15, opacity: 0.65, rotateY: 8, z: -25, filter: "blur(1px)" };
+                      if (isRight1) return { x: "38%", scale: 0.75, zIndex: 15, opacity: 0.65, rotateY: -8, z: -25, filter: "blur(1px)" };
+                      if (isLeft2) return { x: "-68%", scale: 0.55, zIndex: 10, opacity: 0, rotateY: 12, z: -60, filter: "blur(2px)" };
+                      if (isRight2) return { x: "68%", scale: 0.55, zIndex: 10, opacity: 0, rotateY: -12, z: -60, filter: "blur(2px)" };
                     } else {
-                      // PC端
-                      if (isLeft1) return { x: "-52%", scale: 0.78, zIndex: 15, opacity: 0.75, rotateY: 18, z: -60, filter: "blur(2px)" };
-                      if (isRight1) return { x: "52%", scale: 0.78, zIndex: 15, opacity: 0.75, rotateY: -18, z: -60, filter: "blur(2px)" };
-                      if (isLeft2) return { x: "-90%", scale: 0.58, zIndex: 10, opacity: 0.4, rotateY: 30, z: -120, filter: "blur(4px)" };
-                      if (isRight2) return { x: "90%", scale: 0.58, zIndex: 10, opacity: 0.4, rotateY: -30, z: -120, filter: "blur(4px)" };
+                      // 平板及桌面端（>=640px）：卡片收紧，更紧凑的布局
+                      if (isLeft1) return { x: "-42%", scale: 0.72, zIndex: 15, opacity: 0.6, rotateY: 12, z: -40, filter: "blur(1.5px)" };
+                      if (isRight1) return { x: "42%", scale: 0.72, zIndex: 15, opacity: 0.6, rotateY: -12, z: -40, filter: "blur(1.5px)" };
+                      if (isLeft2) return { x: "-75%", scale: 0.5, zIndex: 10, opacity: 0.3, rotateY: 20, z: -80, filter: "blur(3px)" };
+                      if (isRight2) return { x: "75%", scale: 0.5, zIndex: 10, opacity: 0.3, rotateY: -20, z: -80, filter: "blur(3px)" };
                     }
                     return { x: "0%", scale: 0, zIndex: 0, opacity: 0, rotateY: 0, z: -200, filter: "blur(8px)" };
                   };
@@ -699,11 +703,16 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       className={cn(
                         // 卡片基础样式
                         "absolute overflow-hidden select-none",
-                        // 移动端：竖向卡片（上图下文）
-                        "flex w-[58%] max-w-[240px] flex-col rounded-2xl",
-                        // PC端：横向卡片（左文右图）
-                        "sm:aspect-[16/10] sm:h-auto sm:w-[480px] sm:max-w-none sm:flex-row sm:rounded-2xl",
-                        "md:w-[560px] lg:w-[640px] lg:rounded-3xl",
+                        // 移动端（<640px）：竖向卡片（上图下文），自适应宽度
+                        "flex w-[65%] max-w-[280px] flex-col rounded-xl",
+                        // 平板端（640px-1024px）：横向卡片，中等尺寸
+                        "sm:aspect-[16/10] sm:h-auto sm:w-[420px] sm:max-w-none sm:flex-row sm:rounded-2xl",
+                        // 中等平板（768px+）
+                        "md:w-[520px]",
+                        // 桌面端（1024px+）：更大的卡片
+                        "lg:w-[600px] lg:rounded-3xl",
+                        // 大屏桌面（1280px+）
+                        "xl:w-[680px]",
                         // 中心卡片样式
                         isCenter && "cursor-grab bg-white shadow-2xl ring-1 ring-black/5 active:cursor-grabbing",
                         // 左1、右1
@@ -716,15 +725,18 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       {isCenter ? (
                         <>
                           {/* ===== 移动端：图片在上 / PC端：图片在右 ===== */}
-                          <div className="w-full p-4 sm:order-2 sm:flex sm:w-[55%] sm:items-center sm:justify-center sm:p-5 md:p-6 lg:p-7">
-                            <div className="relative aspect-square w-full overflow-hidden rounded-xl sm:h-full sm:w-auto md:rounded-2xl">
+                          <div className={cn(
+                            "w-full p-2 sm:order-2 sm:w-[55%] sm:h-full",
+                            "sm:p-2.5 md:p-3 lg:p-4 xl:p-5"
+                          )}>
+                            <div className="relative aspect-square w-full overflow-hidden rounded-lg sm:aspect-auto sm:h-full sm:rounded-xl md:rounded-2xl">
                               {product.images[0] && (
                                 <Image
                                   src={product.images[0].url}
                                   alt={product.images[0].alt || product.name}
                                   fill
                                   className="object-cover drop-shadow-lg"
-                                  sizes="(max-width: 640px) 200px, (max-width: 768px) 250px, 300px"
+                                  sizes="(max-width: 640px) 180px, (max-width: 768px) 200px, (max-width: 1024px) 240px, 280px"
                                   priority
                                 />
                               )}
@@ -732,48 +744,75 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                           </div>
 
                           {/* ===== 移动端：文字在下 / PC端：文字在左 ===== */}
-                          <div className="flex w-full flex-col items-center px-4 pb-4 pt-2 sm:order-1 sm:w-[45%] sm:items-start sm:justify-center sm:p-6 md:p-7 lg:p-8">
+                          <div className={cn(
+                            "flex w-full flex-col items-center px-3 pb-3 pt-1.5",
+                            "sm:order-1 sm:w-[45%] sm:items-start sm:justify-center sm:p-4",
+                            "md:p-5 lg:p-6 xl:p-7"
+                          )}>
                             {/* 产品名称 */}
-                            <h2 className="text-center text-xl font-medium tracking-wide text-brand-charcoal sm:text-left sm:text-xl md:text-2xl lg:text-[26px]">
+                            <h2 className={cn(
+                              "text-center text-lg font-medium tracking-wide text-brand-charcoal",
+                              "sm:text-left sm:text-lg md:text-xl lg:text-2xl xl:text-[26px]"
+                            )}>
                               {product.name}
                             </h2>
 
                             {/* 英文名 */}
-                            <p className="mt-1.5 font-serif text-[11px] uppercase tracking-widest text-brand-gold/70 sm:mt-1.5 sm:text-xs md:text-[13px]">
+                            <p className={cn(
+                              "mt-1 font-serif text-[10px] uppercase tracking-widest text-brand-gold/70",
+                              "sm:mt-1.5 sm:text-[11px] md:text-xs lg:text-[13px]"
+                            )}>
                               {product.nameEn}
                             </p>
 
                             {/* 分隔线 - 移动端居中 */}
-                            <div className="mt-2.5 h-px w-10 bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent sm:mt-4 sm:w-12 sm:bg-gradient-to-r sm:from-brand-gold/40 sm:to-transparent md:w-14 lg:w-16" />
+                            <div className={cn(
+                              "mt-2 h-px w-8 bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent",
+                              "sm:mt-3 sm:w-10 sm:bg-gradient-to-r sm:from-brand-gold/40 sm:to-transparent",
+                              "md:mt-4 md:w-12 lg:w-14"
+                            )} />
 
                             {/* 功效 - 移动端隐藏 */}
                             {product.benefits && product.benefits.length > 0 && (
-                              <p className="mt-2 hidden text-xs leading-relaxed text-brand-charcoal/60 sm:mt-3 sm:line-clamp-2 sm:block md:text-[13px]">
+                              <p className={cn(
+                                "mt-2 hidden text-[11px] leading-relaxed text-brand-charcoal/60",
+                                "sm:mt-2.5 sm:line-clamp-2 sm:block",
+                                "md:mt-3 md:text-xs lg:text-[13px]"
+                              )}>
                                 {product.benefits.slice(0, 3).join(" · ")}
                               </p>
                             )}
 
                             {/* 价格 */}
-                            <div className="mt-2.5 flex items-baseline gap-1 sm:mt-5 sm:gap-1.5">
-                              <span className="text-xl font-light text-brand-gold sm:text-2xl md:text-3xl lg:text-[32px]">
+                            <div className="mt-2 flex items-baseline gap-1 sm:mt-4 sm:gap-1.5 md:mt-5">
+                              <span className={cn(
+                                "text-lg font-light text-brand-gold",
+                                "sm:text-xl md:text-2xl lg:text-3xl xl:text-[32px]"
+                              )}>
                                 ¥{product.price}
                               </span>
                               {product.capacity && (
-                                <span className="text-[10px] text-brand-charcoal/40 sm:text-xs">
+                                <span className="text-[9px] text-brand-charcoal/40 sm:text-[10px] md:text-xs">
                                   / {product.capacity}
                                 </span>
                               )}
                             </div>
 
                             {/* 按钮 */}
-                            <div className="mt-3 flex gap-2 sm:mt-6 sm:gap-3">
+                            <div className="mt-2.5 flex gap-2 sm:mt-4 sm:gap-2.5 md:mt-5 md:gap-3">
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (!isDragging) handleProductClick(product);
                                 }}
-                                className="rounded-full border border-brand-charcoal/20 px-4 py-1.5 text-[11px] font-medium text-brand-charcoal transition-all hover:border-brand-charcoal/40 hover:bg-brand-charcoal/5 sm:px-5 sm:py-2 sm:text-xs md:px-6 md:py-2.5 md:text-sm"
+                                className={cn(
+                                  "rounded-full border border-brand-charcoal/20 px-3 py-1 text-[10px] font-medium text-brand-charcoal",
+                                  "transition-all hover:border-brand-charcoal/40 hover:bg-brand-charcoal/5",
+                                  "sm:px-4 sm:py-1.5 sm:text-[11px]",
+                                  "md:px-5 md:py-2 md:text-xs",
+                                  "lg:px-6 lg:py-2.5 lg:text-sm"
+                                )}
                               >
                                 了解详情
                               </button>
@@ -783,21 +822,21 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                         </>
                       ) : (
                         /* 侧边卡片 - 简洁的图片展示 */
-                        <div className="flex h-full w-full flex-col items-center justify-center p-4 sm:aspect-[16/10] sm:p-0">
-                          {/* 移动端：显示图片和产品名 */}
-                          <div className="relative aspect-square w-full overflow-hidden rounded-xl sm:h-full sm:w-full sm:rounded-none">
+                        <div className="flex h-full w-full flex-col items-center justify-center p-3 sm:p-4">
+                          {/* 图片容器 */}
+                          <div className="relative aspect-square w-full overflow-hidden rounded-lg sm:rounded-xl">
                             {product.images[0] && (
                               <Image
                                 src={product.images[0].url}
                                 alt={product.name}
                                 fill
-                                className="object-cover sm:object-contain sm:p-10 sm:opacity-50 sm:blur-[2px]"
-                                sizes="(max-width: 640px) 50vw, 280px"
+                                className="object-cover opacity-70 sm:opacity-50"
+                                sizes="(max-width: 640px) 140px, 200px"
                               />
                             )}
                           </div>
                           {/* 移动端：产品名称 */}
-                          <p className="mt-2 text-center text-xs font-medium text-brand-charcoal/70 sm:hidden">
+                          <p className="mt-1.5 text-center text-[10px] font-medium text-brand-charcoal/60 sm:hidden">
                             {product.name}
                           </p>
                         </div>
@@ -806,20 +845,42 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                   );
                 })}
 
-                {/* 左右箭头 */}
+                {/* 左右箭头 - 响应式位置和尺寸 */}
                 <button
                   type="button"
                   onClick={handlePrevProduct}
-                  className="absolute left-0 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-white sm:h-10 sm:w-10 sm:shadow-lg md:h-11 md:w-11 lg:left-2"
+                  className={cn(
+                    "absolute z-30 flex items-center justify-center rounded-full",
+                    "bg-white/80 text-brand-charcoal shadow-md backdrop-blur-sm",
+                    "transition-all hover:scale-110 hover:bg-white",
+                    // 移动端：更小的按钮，贴边
+                    "left-0 h-7 w-7",
+                    // 平板端：中等尺寸
+                    "sm:left-1 sm:h-9 sm:w-9 sm:shadow-lg",
+                    // 桌面端：更大的按钮，适当偏移
+                    "md:h-10 md:w-10 lg:left-4 lg:h-11 lg:w-11",
+                    "xl:left-6 xl:h-12 xl:w-12"
+                  )}
                 >
-                  <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                  <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
                 </button>
                 <button
                   type="button"
                   onClick={handleNextProduct}
-                  className="absolute right-0 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-white sm:h-10 sm:w-10 sm:shadow-lg md:h-11 md:w-11 lg:right-2"
+                  className={cn(
+                    "absolute z-30 flex items-center justify-center rounded-full",
+                    "bg-white/80 text-brand-charcoal shadow-md backdrop-blur-sm",
+                    "transition-all hover:scale-110 hover:bg-white",
+                    // 移动端：更小的按钮，贴边
+                    "right-0 h-7 w-7",
+                    // 平板端：中等尺寸
+                    "sm:right-1 sm:h-9 sm:w-9 sm:shadow-lg",
+                    // 桌面端：更大的按钮，适当偏移
+                    "md:h-10 md:w-10 lg:right-4 lg:h-11 lg:w-11",
+                    "xl:right-6 xl:h-12 xl:w-12"
+                  )}
                 >
-                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                  <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
                 </button>
 
               </m.div>

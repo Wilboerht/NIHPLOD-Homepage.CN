@@ -24,6 +24,9 @@ import {
   X,
   Copy,
   Check,
+  Download,
+  Clock,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -83,6 +86,7 @@ export default function AdvisorAnalyticsPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportContent, setReportContent] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [reportGeneratedAt, setReportGeneratedAt] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -126,6 +130,7 @@ export default function AdvisorAnalyticsPage() {
 
       if (json.success) {
         setReportContent(json.data.report);
+        setReportGeneratedAt(new Date());
       } else {
         setReportError(json.error?.message || "生成报告失败");
       }
@@ -147,6 +152,33 @@ export default function AdvisorAnalyticsPage() {
     } catch (error) {
       console.error("Copy failed:", error);
     }
+  };
+
+  // 下载报告为 Markdown 文件
+  const downloadReport = () => {
+    if (!reportContent) return;
+    const blob = new Blob([reportContent], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AI分析报告_${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // 从报告内容提取章节目录
+  const extractSections = (content: string): { title: string; id: string }[] => {
+    const sections: { title: string; id: string }[] = [];
+    const lines = content.split("\n");
+    lines.forEach((line, index) => {
+      if (line.startsWith("## ") && !line.startsWith("### ")) {
+        const title = line.slice(3).trim();
+        sections.push({ title, id: `section-${index}` });
+      }
+    });
+    return sections;
   };
 
   const dateRangeOptions: { value: DateRange; label: string }[] = [
@@ -216,73 +248,115 @@ export default function AdvisorAnalyticsPage() {
         title=""
         size="full"
       >
-        <div className="flex h-[75vh] flex-col">
+        <div className="flex h-[80vh] flex-col -mx-6 -my-4 overflow-hidden rounded-b-xl">
           {reportLoading ? (
             <div className="flex flex-1 flex-col items-center justify-center">
               <div className="relative">
-                <div className="absolute inset-0 animate-ping rounded-full bg-blue-100" />
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
-                  <Brain className="h-8 w-8 animate-pulse text-blue-500" />
+                <Brain className="h-10 w-10 text-gray-300" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-12 w-12 animate-spin rounded-full border-2 border-gray-200 border-t-gray-400" />
                 </div>
               </div>
-              <p className="mt-6 text-base font-medium text-gray-700">AI 正在分析数据...</p>
-              <p className="mt-2 text-sm text-gray-400">预计需要 10-30 秒</p>
+              <p className="mt-6 text-sm font-medium text-gray-700">AI 正在分析数据...</p>
+              <p className="mt-1 text-xs text-gray-400">预计需要 15-30 秒</p>
             </div>
           ) : reportError ? (
             <div className="flex flex-1 flex-col items-center justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
-                <AlertCircle className="h-8 w-8 text-red-400" />
-              </div>
-              <p className="mt-6 text-base font-medium text-gray-700">生成失败</p>
-              <p className="mt-2 text-sm text-red-500">{reportError}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-6"
-                leftIcon={<RefreshCw className="h-4 w-4" />}
+              <AlertCircle className="h-10 w-10 text-red-300" />
+              <p className="mt-6 text-sm font-medium text-gray-700">生成失败</p>
+              <p className="mt-1 text-xs text-red-500">{reportError}</p>
+              <button
                 onClick={generateAIReport}
+                className="mt-4 rounded-md bg-gray-100 px-4 py-2 text-sm text-gray-600 hover:bg-gray-200"
               >
                 重新生成
-              </Button>
+              </button>
             </div>
           ) : reportContent ? (
-            <>
-              {/* 顶部操作栏 */}
-              <div className="flex shrink-0 items-center justify-between border-b border-gray-100 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-                    <Brain className="h-4 w-4 text-blue-500" />
+            <div className="flex h-full">
+              {/* 左侧导航 */}
+              <div className="hidden w-52 shrink-0 border-r bg-gray-50/50 lg:block rounded-bl-xl overflow-hidden">
+                <div className="p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">目录</p>
+                  <nav className="mt-3 space-y-1">
+                    {extractSections(reportContent).map((section, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          const el = document.getElementById(section.id);
+                          el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        <ChevronRight className="h-3 w-3 text-gray-400" />
+                        <span className="truncate">{section.title}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+              </div>
+
+              {/* 主内容区 */}
+              <div className="flex flex-1 flex-col overflow-hidden">
+                {/* 顶部操作栏 */}
+                <div className="flex shrink-0 items-center justify-between border-b bg-white px-6 py-3">
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-sm font-medium text-gray-800">AI 分析报告</h2>
+                    {reportGeneratedAt && (
+                      <span className="flex items-center gap-1 text-xs text-gray-400">
+                        <Clock className="h-3 w-3" />
+                        {reportGeneratedAt.toLocaleString("zh-CN", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    )}
+                    {data?.dateRange && (
+                      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                        数据范围: {new Date(data.dateRange.start).toLocaleDateString("zh-CN")} - {new Date(data.dateRange.end).toLocaleDateString("zh-CN")}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-sm font-medium text-gray-700">AI 分析报告</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={copyReport}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded px-3 py-1.5 text-xs transition-colors",
+                        copied
+                          ? "bg-green-50 text-green-600"
+                          : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      )}
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied ? "已复制" : "复制"}
+                    </button>
+                    <button
+                      onClick={downloadReport}
+                      className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      下载
+                    </button>
+                    <button
+                      onClick={generateAIReport}
+                      className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      重新生成
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    onClick={copyReport}
-                    className="h-8 text-xs"
-                  >
-                    {copied ? "已复制" : "复制"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-                    onClick={generateAIReport}
-                    className="h-8 text-xs"
-                  >
-                    重新生成
-                  </Button>
+
+                {/* 报告内容 */}
+                <div className="flex-1 overflow-y-auto bg-white px-8 py-6 rounded-br-xl scrollbar-thin">
+                  <div className="mx-auto max-w-3xl pb-4">
+                    <MarkdownRenderer content={reportContent} />
+                  </div>
                 </div>
               </div>
-              {/* 报告内容 */}
-              <div className="flex-1 overflow-y-auto pt-4">
-                <div className="prose prose-sm prose-gray max-w-none prose-headings:text-gray-800 prose-h2:mt-6 prose-h2:border-b prose-h2:border-gray-100 prose-h2:pb-2 prose-h2:text-base prose-h3:text-sm prose-p:text-gray-600 prose-li:text-gray-600">
-                  <MarkdownRenderer content={reportContent} />
-                </div>
-              </div>
-            </>
+            </div>
           ) : null}
         </div>
       </Modal>
@@ -754,50 +828,50 @@ function AnswerDistribution({ field, distribution }: { field: string; distributi
   );
 }
 
-// 简单 Markdown 渲染器
+// Markdown 渲染器 - 简洁风格
 function MarkdownRenderer({ content }: { content: string }) {
   const lines = content.split("\n");
   const elements: React.ReactNode[] = [];
-  let listItems: string[] = [];
+  let listItems: { text: string; ordered: boolean; num?: number }[] = [];
   let tableRows: string[][] = [];
   let tableHeaders: string[] = [];
   let inTable = false;
   let inCodeBlock = false;
   let codeBlockLines: string[] = [];
 
-  // 内联样式处理（加粗、斜体等）
+  // 内联样式
   const renderInline = (text: string): React.ReactNode => {
-    // 处理加粗 **text** 和 斜体 *text*
     const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={i} className="font-semibold text-gray-800">{part.slice(2, -2)}</strong>;
+        return <strong key={i} className="font-medium text-gray-800">{part.slice(2, -2)}</strong>;
       }
       if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
-        return <em key={i} className="italic">{part.slice(1, -1)}</em>;
+        return <em key={i}>{part.slice(1, -1)}</em>;
       }
       return part;
     });
   };
 
   const flushList = () => {
-    if (listItems.length > 0) {
-      elements.push(
-        <ul key={`list-${elements.length}`} className="my-3 list-disc pl-6 space-y-1.5">
-          {listItems.map((item, i) => (
-            <li key={i} className="text-gray-600">{renderInline(item)}</li>
-          ))}
-        </ul>
-      );
-      listItems = [];
-    }
+    if (listItems.length === 0) return;
+    const isOrdered = listItems[0].ordered;
+    const ListTag = isOrdered ? "ol" : "ul";
+    elements.push(
+      <ListTag key={`list-${elements.length}`} className={cn("my-3 space-y-1.5", isOrdered ? "list-decimal pl-5" : "list-disc pl-5")}>
+        {listItems.map((item, i) => (
+          <li key={i} className="text-sm text-gray-600 pl-1">{renderInline(item.text)}</li>
+        ))}
+      </ListTag>
+    );
+    listItems = [];
   };
 
   const flushCodeBlock = () => {
     if (codeBlockLines.length > 0) {
       elements.push(
-        <pre key={`code-${elements.length}`} className="my-4 overflow-x-auto rounded-lg bg-gray-900 p-4 text-sm">
-          <code className="text-gray-100 whitespace-pre-wrap">{codeBlockLines.join("\n")}</code>
+        <pre key={`code-${elements.length}`} className="my-4 overflow-x-auto rounded bg-gray-100 p-3 text-xs">
+          <code className="text-gray-700">{codeBlockLines.join("\n")}</code>
         </pre>
       );
       codeBlockLines = [];
@@ -805,40 +879,60 @@ function MarkdownRenderer({ content }: { content: string }) {
     inCodeBlock = false;
   };
 
-  const flushTable = () => {
-    if (tableHeaders.length > 0 || tableRows.length > 0) {
-      elements.push(
-        <div key={`table-${elements.length}`} className="my-4 overflow-x-auto">
-          <table className="min-w-full border-collapse text-sm">
-            {tableHeaders.length > 0 && (
-              <thead>
-                <tr className="bg-gray-50">
-                  {tableHeaders.map((h, i) => (
-                    <th key={i} className="border border-gray-200 px-3 py-2 text-left font-medium text-gray-700">
-                      {renderInline(h)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-            )}
-            <tbody>
-              {tableRows.map((row, ri) => (
-                <tr key={ri} className={ri % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
-                  {row.map((cell, ci) => (
-                    <td key={ci} className="border border-gray-200 px-3 py-2 text-gray-600">
-                      {renderInline(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  // 渲染单元格，支持百分比进度条
+  const renderCell = (cell: string, isHeader: boolean = false): React.ReactNode => {
+    // 检测百分比格式，如 "45.5%" 或 "**45.5%**"
+    const percentMatch = cell.match(/^\*?\*?(\d+\.?\d*)%\*?\*?$/);
+    if (percentMatch && !isHeader) {
+      const value = parseFloat(percentMatch[1]);
+      return (
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full rounded-full bg-gray-400"
+              style={{ width: `${Math.min(value, 100)}%` }}
+            />
+          </div>
+          <span className="text-xs tabular-nums text-gray-600">{value}%</span>
         </div>
       );
-      tableHeaders = [];
-      tableRows = [];
-      inTable = false;
     }
+    return renderInline(cell);
+  };
+
+  const flushTable = () => {
+    if (tableHeaders.length === 0 && tableRows.length === 0) return;
+    elements.push(
+      <div key={`table-${elements.length}`} className="my-4 overflow-x-auto rounded-lg border border-gray-100">
+        <table className="w-full text-sm">
+          {tableHeaders.length > 0 && (
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/50">
+                {tableHeaders.map((h, i) => (
+                  <th key={i} className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                    {renderCell(h, true)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {tableRows.map((row, ri) => (
+              <tr key={ri} className="border-b border-gray-50 last:border-0">
+                {row.map((cell, ci) => (
+                  <td key={ci} className="px-3 py-2 text-gray-600">
+                    {renderCell(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+    tableHeaders = [];
+    tableRows = [];
+    inTable = false;
   };
 
   lines.forEach((line, index) => {
@@ -872,7 +966,7 @@ function MarkdownRenderer({ content }: { content: string }) {
     // 分隔线 ---
     if (/^-{3,}$/.test(trimmed) && !inTable) {
       flushList();
-      elements.push(<hr key={index} className="my-4 border-gray-200" />);
+      elements.push(<hr key={index} className="my-6 border-gray-200" />);
       return;
     }
 
@@ -903,18 +997,18 @@ function MarkdownRenderer({ content }: { content: string }) {
     if (trimmed.startsWith("# ") && !trimmed.startsWith("## ")) {
       flushList();
       elements.push(
-        <h1 key={index} className="mt-6 mb-4 text-xl font-bold text-gray-900">
+        <h1 key={index} className="mb-4 pb-3 border-b text-lg font-semibold text-gray-800">
           {renderInline(trimmed.slice(2))}
         </h1>
       );
       return;
     }
 
-    // 标题 ## (h2)
-    if (trimmed.startsWith("## ")) {
+    // 标题 ## (h2) - 添加 id 用于导航跳转
+    if (trimmed.startsWith("## ") && !trimmed.startsWith("### ")) {
       flushList();
       elements.push(
-        <h2 key={index} className="mt-6 mb-3 text-lg font-bold text-gray-900 flex items-center gap-2">
+        <h2 key={index} id={`section-${index}`} className="mt-8 mb-3 text-sm font-semibold text-gray-800 scroll-mt-4">
           {renderInline(trimmed.slice(3))}
         </h2>
       );
@@ -922,12 +1016,23 @@ function MarkdownRenderer({ content }: { content: string }) {
     }
 
     // 标题 ### (h3)
-    if (trimmed.startsWith("### ")) {
+    if (trimmed.startsWith("### ") && !trimmed.startsWith("#### ")) {
       flushList();
       elements.push(
-        <h3 key={index} className="mt-4 mb-2 text-base font-semibold text-gray-800">
+        <h3 key={index} className="mt-4 mb-2 text-sm font-medium text-gray-700">
           {renderInline(trimmed.slice(4))}
         </h3>
+      );
+      return;
+    }
+
+    // 标题 #### (h4)
+    if (trimmed.startsWith("#### ")) {
+      flushList();
+      elements.push(
+        <h4 key={index} className="mt-3 mb-1 text-sm text-gray-600">
+          {renderInline(trimmed.slice(5))}
+        </h4>
       );
       return;
     }
@@ -936,7 +1041,7 @@ function MarkdownRenderer({ content }: { content: string }) {
     if (trimmed.startsWith("> ")) {
       flushList();
       elements.push(
-        <blockquote key={index} className="my-3 border-l-4 border-brand-gold/50 bg-amber-50/50 py-2 pl-4 pr-3 text-gray-600 italic">
+        <blockquote key={index} className="my-3 border-l-2 border-gray-200 pl-3 text-sm text-gray-500 italic">
           {renderInline(trimmed.slice(2))}
         </blockquote>
       );
@@ -945,20 +1050,20 @@ function MarkdownRenderer({ content }: { content: string }) {
 
     // 列表项 - 或 *
     if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-      listItems.push(trimmed.slice(2));
+      listItems.push({ text: trimmed.slice(2), ordered: false });
       return;
     }
 
     // 数字列表 1. 2. 等
     if (/^\d+\.\s/.test(trimmed)) {
-      listItems.push(trimmed.replace(/^\d+\.\s/, ""));
+      listItems.push({ text: trimmed.replace(/^\d+\.\s/, ""), ordered: true });
       return;
     }
 
     // 普通段落
     flushList();
     elements.push(
-      <p key={index} className="my-2 text-gray-600 leading-relaxed">
+      <p key={index} className="my-2 text-sm text-gray-600 leading-relaxed">
         {renderInline(trimmed)}
       </p>
     );
@@ -969,5 +1074,5 @@ function MarkdownRenderer({ content }: { content: string }) {
   flushTable();
   flushCodeBlock();
 
-  return <div className="space-y-1">{elements}</div>;
+  return <div>{elements}</div>;
 }

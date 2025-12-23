@@ -32,44 +32,82 @@ function getGeminiApiUrl(model: string): string {
 }
 
 // 系统提示词
-const REPORT_SYSTEM_PROMPT = `你是一位严谨的数据分析师。你只能基于用户提供的真实数据进行分析，绝对不能编造任何数据或做出没有数据支撑的推测。
+const REPORT_SYSTEM_PROMPT = `你是一位资深的数据分析师，负责分析 NIHPLOD 旎柏护肤品牌的用户行为数据。
 
 ## 核心原则（必须严格遵守）
 
-1. **只用真实数据**：报告中引用的每一个数字都必须来自用户提供的数据，不能编造
-2. **不做无根据推测**：不要推测"可能"、"或许"的情况，只陈述数据显示的事实
-3. **数据量少时要诚实**：如果样本量太小（如<10），要明确指出数据量不足，结论仅供参考
-4. **不要夸大**：用客观、中性的语言描述数据，避免过度解读
-5. **承认局限**：如果某项数据缺失或为0，直接说明"暂无数据"
+1. **只用提供的数据**：所有数字、百分比必须直接引用输入数据，禁止编造任何数值
+2. **客观陈述事实**：用"数据显示..."、"从数据看..."开头，不用"表现优异"、"成绩斐然"等主观评价
+3. **承认数据局限**：样本量<50时必须注明"样本量较小，结论仅供参考"
+4. **不做过度推断**：如果数据不足以支撑某个结论，直接说明"现有数据无法判断"
+5. **建议要具体可行**：每条建议必须可量化、可执行、有明确责任方
 
-## 报告格式（Markdown）
+## 报告结构
 
-### 📊 数据摘要
-用1-2句话概括：总会话数、完成率、面部扫描使用率等核心指标。
+## 数据概览
+用2-3句话客观陈述：
+- 本周期内的会话总量和完成量
+- 整体转化率的具体数值
+- 最突出的一个数据特征（正面或负面均可）
 
-### 👤 用户特征
-根据问卷数据，列出：
-- 肤质分布（列出前3名及占比）
-- 年龄分布（列出前3名及占比）
-- 预算偏好（列出前3名及占比）
-- 主要护肤诉求（列出前3名及占比）
+## 用户画像
 
-每项都要标注具体数字和百分比，如果数据不足就写"数据不足"。
+### 肤质分布
+- 按占比从高到低列出，格式：肤质类型 X人（XX.X%）
+- 指出占比最高的群体是什么
+- 如果某类占比异常高或低，客观指出
 
-### 📱 行为数据
-- 设备分布：移动端 vs 桌面端占比
-- 转化漏斗：从开始到完成的各步骤流失情况
-- 面部扫描：使用率和跳过率
+### 年龄分布
+- 同上格式列出
+- 说明主力年龄段
 
-### 💡 观察与建议
-基于上述数据，给出2-3条具体、可执行的建议。每条建议必须引用具体数据作为依据。
+### 消费预算
+- 列出各档位分布
+- 说明用户消费意愿集中在哪个区间
+
+### 核心诉求
+- 列出TOP3护肤诉求及占比
+
+## 转化漏斗分析
+
+### 各环节数据
+按顺序列出每个环节的人数和相对上一环节的流失率：
+1. 开始会话 → 完成问卷：流失率XX.X%
+2. 完成问卷 → 开始扫描：流失率XX.X%
+3. ...依此类推
+
+### 关键发现
+- 指出流失最严重的环节及其流失率
+- 如果面部扫描跳过率高，说明具体数值
+- 不要猜测原因，只陈述数据事实
+
+## 设备分布
+- 移动端占比XX.X%，桌面端占比XX.X%
+- 客观说明主要访问场景
+
+## 待改进项
+列出3条基于数据的改进方向，每条必须：
+1. 引用具体数据作为依据
+2. 说明要改进什么
+3. 给出可量化的目标
+
+格式示例：
+- **问卷完成率提升**：当前从开始到完成问卷流失XX.X%，建议优化问卷长度，目标将流失率降至XX%以下
+
+## 数据局限性说明
+诚实说明当前数据的局限：
+- 样本量是否足够
+- 哪些维度数据缺失
+- 哪些结论需要更多数据验证
+
+---
 
 ## 禁止事项
-- 不要编造用户反馈或评价
-- 不要假设用户的心理或动机
-- 不要预测未来趋势（除非有时间序列数据）
-- 不要使用"据调查显示"、"研究表明"等外部引用
-- 不要添加数据中没有的信息`;
+- 禁止使用"优秀"、"出色"、"良好"、"不错"等主观评价词
+- 禁止编造任何数字
+- 禁止说"建议加大投入"、"建议优化体验"等空话
+- 禁止过度解读数据背后的原因
+- 禁止给出没有数据支撑的建议`;
 
 // 调用 AI 生成报告
 async function generateReport(
@@ -193,71 +231,101 @@ function buildDataPrompt(analyticsData: AnalyticsData): string {
       .join(", ");
   };
 
-  return `请根据以下用户行为统计数据生成分析报告：
+  // 计算漏斗流失率
+  const calcDropRate = (from: number, to: number): string => {
+    if (from === 0) return "N/A";
+    const rate = ((from - to) / from * 100).toFixed(1);
+    return `${rate}%`;
+  };
 
-## 数据时间范围
-${dateRange?.start ? new Date(dateRange.start).toLocaleDateString() : "未知"} ~ ${dateRange?.end ? new Date(dateRange.end).toLocaleDateString() : "未知"}
+  // 计算设备总数和占比
+  const totalDevices = deviceDistribution.mobile + deviceDistribution.desktop + deviceDistribution.tablet;
+  const mobilePercent = totalDevices > 0 ? ((deviceDistribution.mobile / totalDevices) * 100).toFixed(1) : "0";
+  const desktopPercent = totalDevices > 0 ? ((deviceDistribution.desktop / totalDevices) * 100).toFixed(1) : "0";
 
-## 核心指标
-- 总会话数: ${overview.totalSessions}
-- 完成会话数: ${overview.completedSessions}
-- 整体转化率: ${(overview.conversionRate * 100).toFixed(1)}%
-- 面部扫描使用: ${overview.faceScanUsed} 次
-- 面部扫描跳过: ${overview.faceScanSkipped} 次
-- 面部扫描使用率: ${(overview.faceScanRate * 100).toFixed(1)}%
-- AI 分析次数: ${overview.aiAnalysisCount}
-- 规则降级次数: ${overview.fallbackAnalysisCount}
-- AI 使用率: ${(overview.aiUsageRate * 100).toFixed(1)}%
-- 总分享次数: ${overview.totalShares}
+  return `# NIHPLOD 智能护肤顾问 - 用户数据分析
 
-## 转化漏斗
-1. 开始会话: ${funnel.started}
-2. 完成问卷: ${funnel.completedQuestionnaire}
-3. 开始面部扫描: ${funnel.startedFaceScan}
-4. 完成面部扫描: ${funnel.completedFaceScan}
-5. 跳过面部扫描: ${funnel.skippedFaceScan}
-6. 完成分析: ${funnel.completedAnalysis}
-7. 查看结果: ${funnel.viewedResult}
-8. 分享结果: ${funnel.shared}
-
-## 用户画像数据
-
-### 肤质分布
-${answerDistribution.skinType ? formatDistribution(answerDistribution.skinType) : "无数据"}
-
-### 主要护肤诉求
-${answerDistribution.primaryConcern ? formatDistribution(answerDistribution.primaryConcern) : "无数据"}
-
-### 年龄段分布
-${answerDistribution.ageRange ? formatDistribution(answerDistribution.ageRange) : "无数据"}
-
-### 护肤习惯
-${answerDistribution.currentRoutine ? formatDistribution(answerDistribution.currentRoutine) : "无数据"}
-
-### 成分敏感情况
-${answerDistribution.allergies ? formatDistribution(answerDistribution.allergies) : "无数据"}
-
-### 消费预算
-${answerDistribution.budget ? formatDistribution(answerDistribution.budget) : "无数据"}
-
-### 特殊时期
-${answerDistribution.pregnancyStatus ? formatDistribution(answerDistribution.pregnancyStatus) : "无数据"}
-
-### 用药经历
-${answerDistribution.medicationHistory ? formatDistribution(answerDistribution.medicationHistory) : "无数据"}
-
-## 设备分布
-- 移动端: ${deviceDistribution.mobile} 次
-- 桌面端: ${deviceDistribution.desktop} 次
-- 平板: ${deviceDistribution.tablet} 次
+## 分析周期
+${dateRange?.start ? new Date(dateRange.start).toLocaleDateString("zh-CN") : "未知"} 至 ${dateRange?.end ? new Date(dateRange.end).toLocaleDateString("zh-CN") : "未知"}
 
 ---
 
-请严格基于以上数据生成分析报告。注意：
-1. 只使用上面提供的数据，不要编造任何数字
-2. 如果某项数据为0或"无数据"，直接说明暂无该数据
-3. 样本量只有 ${overview.totalSessions} 个会话，如果数量少于10请特别说明结论仅供参考
-4. 每个结论都要引用具体数据支撑`;
+## 一、核心业务指标
+
+| 指标 | 数值 | 说明 |
+|------|------|------|
+| 总会话数 | ${overview.totalSessions} | 用户访问护肤顾问的总次数 |
+| 完成会话数 | ${overview.completedSessions} | 完整完成测评流程的会话 |
+| **整体转化率** | **${(overview.conversionRate * 100).toFixed(1)}%** | 完成/总会话 |
+| 面部扫描参与 | ${overview.faceScanUsed}次使用 / ${overview.faceScanSkipped}次跳过 | 参与率 ${(overview.faceScanRate * 100).toFixed(1)}% |
+| AI分析调用 | ${overview.aiAnalysisCount}次成功 / ${overview.fallbackAnalysisCount}次降级 | AI使用率 ${(overview.aiUsageRate * 100).toFixed(1)}% |
+| 结果分享 | ${overview.totalShares}次 | 用户主动分享行为 |
+
+---
+
+## 二、转化漏斗详情
+
+| 步骤 | 人数 | 环节流失率 | 累计转化率 |
+|------|------|------------|------------|
+| 1. 开始会话 | ${funnel.started} | - | 100% |
+| 2. 完成问卷 | ${funnel.completedQuestionnaire} | ${calcDropRate(funnel.started, funnel.completedQuestionnaire)} | ${funnel.started > 0 ? ((funnel.completedQuestionnaire / funnel.started) * 100).toFixed(1) : 0}% |
+| 3. 开始面部扫描 | ${funnel.startedFaceScan} | ${calcDropRate(funnel.completedQuestionnaire, funnel.startedFaceScan)} | ${funnel.started > 0 ? ((funnel.startedFaceScan / funnel.started) * 100).toFixed(1) : 0}% |
+| 4. 完成/跳过扫描 | ${funnel.completedFaceScan + funnel.skippedFaceScan} | (完成${funnel.completedFaceScan}/跳过${funnel.skippedFaceScan}) | - |
+| 5. 完成分析 | ${funnel.completedAnalysis} | ${calcDropRate(funnel.startedFaceScan, funnel.completedAnalysis)} | ${funnel.started > 0 ? ((funnel.completedAnalysis / funnel.started) * 100).toFixed(1) : 0}% |
+| 6. 查看结果 | ${funnel.viewedResult} | ${calcDropRate(funnel.completedAnalysis, funnel.viewedResult)} | ${funnel.started > 0 ? ((funnel.viewedResult / funnel.started) * 100).toFixed(1) : 0}% |
+| 7. 分享结果 | ${funnel.shared} | - | ${funnel.viewedResult > 0 ? ((funnel.shared / funnel.viewedResult) * 100).toFixed(1) : 0}%（分享率） |
+
+---
+
+## 三、用户画像数据
+
+> 注：问卷完成人数为${funnel.completedQuestionnaire}人，以下用户画像数据均基于此样本量。
+
+### 肤质分布
+${answerDistribution.skinType ? formatDistribution(answerDistribution.skinType) : "暂无数据"}
+
+### 年龄结构
+${answerDistribution.ageRange ? formatDistribution(answerDistribution.ageRange) : "暂无数据"}
+
+### 核心护肤诉求
+${answerDistribution.primaryConcern ? formatDistribution(answerDistribution.primaryConcern) : "暂无数据"}
+
+### 消费预算偏好
+${answerDistribution.budget ? formatDistribution(answerDistribution.budget) : "暂无数据"}
+
+### 护肤习惯成熟度
+${answerDistribution.currentRoutine ? formatDistribution(answerDistribution.currentRoutine) : "暂无数据"}
+
+### 成分敏感情况
+${answerDistribution.allergies ? formatDistribution(answerDistribution.allergies) : "暂无数据"}
+
+### 特殊生理期
+${answerDistribution.pregnancyStatus ? formatDistribution(answerDistribution.pregnancyStatus) : "暂无数据"}
+
+### 医美/用药史
+${answerDistribution.medicationHistory ? formatDistribution(answerDistribution.medicationHistory) : "暂无数据"}
+
+---
+
+## 四、设备与渠道
+
+| 设备类型 | 访问量 | 占比 |
+|----------|--------|------|
+| 移动端 | ${deviceDistribution.mobile} | ${mobilePercent}% |
+| 桌面端 | ${deviceDistribution.desktop} | ${desktopPercent}% |
+| 平板 | ${deviceDistribution.tablet} | ${totalDevices > 0 ? ((deviceDistribution.tablet / totalDevices) * 100).toFixed(1) : 0}% |
+
+---
+
+## 重要提醒
+
+1. **样本量**：${overview.totalSessions}个会话${overview.totalSessions < 30 ? "，样本量较小，所有结论仅供参考，请在报告中明确说明" : overview.totalSessions < 100 ? "，样本量中等，部分结论可能存在偏差" : ""}
+2. **数据完整性**：如某项显示"暂无数据"，在报告中如实说明"该维度暂无数据"
+3. **禁止编造**：报告中出现的所有数字必须能在上述数据中找到原始来源
+4. **客观表述**：用"数据显示"、"从数据看"开头，不用"表现优秀"、"成绩良好"等评价词
+5. **具体建议**：每条建议必须引用具体数据，说明要做什么、目标是什么
+
+请严格按照系统提示词中定义的报告结构生成报告。`;
 }
 
 // 类型定义

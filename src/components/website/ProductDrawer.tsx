@@ -266,10 +266,10 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               </button>
 
               {/* 产品图片区域 */}
-              <div className="relative aspect-square flex-shrink-0 bg-brand-beige/20 lg:aspect-auto lg:w-1/2">
+              <div className="relative aspect-square w-full flex-shrink-0 bg-brand-beige/30 lg:aspect-auto lg:h-full lg:w-1/2">
                 {/* 主图 */}
                 <AnimatePresence mode="wait">
-                  {product.images[currentImageIndex] && (
+                  {product.images[currentImageIndex] ? (
                     <m.div
                       key={currentImageIndex}
                       initial={{ opacity: 0 }}
@@ -286,6 +286,10 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         sizes="(max-width: 1024px) 100vw, 50vw"
                       />
                     </m.div>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-brand-charcoal/30">
+                      <span className="text-sm">暂无图片</span>
+                    </div>
                   )}
                 </AnimatePresence>
 
