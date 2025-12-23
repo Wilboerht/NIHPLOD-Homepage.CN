@@ -549,37 +549,59 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
               <div className="flex h-full flex-col overflow-hidden">
                 {/* 分类图标区域 - 在第一阶段及以上显示 */}
                 <div className={cn(
-                  "shrink-0 px-2 py-2 sm:px-8 sm:py-3 md:px-12 lg:px-20 lg:py-4",
+                  "shrink-0 py-2 sm:py-3 lg:py-4",
                   expandLevel === 0 && "hidden"
                 )}>
-                  {/* 移动端：固定5列网格保证均匀布局，桌面端：flex单行 */}
-                  <div className="grid grid-cols-5 gap-x-0.5 gap-y-1.5 sm:flex sm:items-center sm:justify-center sm:gap-4 md:gap-8 lg:gap-14">
-                    {categories.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => handleCategoryChange(cat.id)}
-                        className={cn(
-                          "flex flex-col items-center gap-0.5 px-1 py-1.5 transition-all sm:gap-1 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5",
-                          "rounded-lg hover:bg-brand-beige/30 sm:rounded-xl",
-                          activeCategory === cat.id && "bg-brand-beige/50"
-                        )}
-                      >
-                        <CategoryIcon icon={cat.icon} isActive={activeCategory === cat.id} />
-                        <span className={cn(
-                          "whitespace-nowrap text-center text-[9px] leading-tight sm:text-[11px] md:text-xs lg:text-sm",
-                          activeCategory === cat.id ? "font-medium text-brand-gold" : "text-brand-charcoal/70"
-                        )}>
-                          {cat.name}
-                        </span>
-                        <span className={cn(
-                          "whitespace-nowrap text-center font-serif text-[6px] uppercase leading-tight tracking-wide sm:text-[9px] md:text-[10px] lg:text-xs",
-                          activeCategory === cat.id ? "text-brand-gold/80" : "text-brand-charcoal/50"
-                        )}>
-                          {cat.nameEn}
-                        </span>
-                      </button>
-                    ))}
+                  {/*
+                    移动端：水平滚动容器，支持任意数量分类
+                    平板/桌面端：flex居中布局
+                  */}
+                  <div className="overflow-x-auto scrollbar-hide sm:overflow-visible">
+                    <div className={cn(
+                      // 移动端：横向flex布局，可滚动
+                      "flex items-center gap-1 px-3",
+                      // 移动端分类较少时居中
+                      categories.length <= 5 && "justify-center",
+                      // 平板端及以上：居中flex
+                      "sm:justify-center sm:gap-3 sm:px-8",
+                      "md:gap-6 md:px-12",
+                      "lg:gap-10 lg:px-20"
+                    )}>
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => handleCategoryChange(cat.id)}
+                          className={cn(
+                            // 移动端：固定最小宽度，防止挤压
+                            "flex min-w-[60px] flex-col items-center gap-0.5 px-2 py-1.5 transition-all",
+                            // 平板端及以上：更大的点击区域
+                            "sm:min-w-0 sm:gap-1 sm:px-3 sm:py-2",
+                            "md:px-4 md:py-2.5",
+                            "lg:px-5 lg:py-3",
+                            // 圆角和悬停效果
+                            "rounded-lg hover:bg-brand-beige/30 sm:rounded-xl",
+                            activeCategory === cat.id && "bg-brand-beige/50"
+                          )}
+                        >
+                          <CategoryIcon icon={cat.icon} isActive={activeCategory === cat.id} />
+                          <span className={cn(
+                            "whitespace-nowrap text-center text-[10px] leading-tight",
+                            "sm:text-[11px] md:text-xs lg:text-sm",
+                            activeCategory === cat.id ? "font-medium text-brand-gold" : "text-brand-charcoal/70"
+                          )}>
+                            {cat.name}
+                          </span>
+                          <span className={cn(
+                            "whitespace-nowrap text-center font-serif text-[7px] uppercase leading-tight tracking-wide",
+                            "sm:text-[9px] md:text-[10px] lg:text-xs",
+                            activeCategory === cat.id ? "text-brand-gold/80" : "text-brand-charcoal/50"
+                          )}>
+                            {cat.nameEn}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
