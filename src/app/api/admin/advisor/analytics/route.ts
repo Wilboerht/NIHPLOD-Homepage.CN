@@ -555,8 +555,20 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error("Analytics query error:", error);
+    // 在开发/调试时返回更详细的错误信息
+    const errorMessage = error instanceof Error ? error.message : "查询失败";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("Error details:", { message: errorMessage, stack: errorStack });
+
     return NextResponse.json(
-      { success: false, error: { message: "查询失败" } },
+      {
+        success: false,
+        error: {
+          message: "查询失败",
+          // 仅在非生产环境返回详细错误
+          ...(process.env.NODE_ENV !== "production" && { detail: errorMessage }),
+        }
+      },
       { status: 500 }
     );
   }
