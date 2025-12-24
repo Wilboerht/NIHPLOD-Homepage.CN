@@ -199,10 +199,12 @@ model AdvisorQuestion {
   options   Json     // 选项列表 [{ value: 'dry', label: '干性肌肤', labelEn: 'Dry' }]
   order     Int      @default(0) // 排序
   active    Boolean  @default(true) // 是否启用
+  gender    String   @default("all") // 性别过滤: male(男性), female(女性), all(全部)
   updatedAt DateTime @updatedAt
 
   @@unique([fieldName])
   @@index([active, order])
+  @@index([gender])
 }
 
 model RecommendationRule {

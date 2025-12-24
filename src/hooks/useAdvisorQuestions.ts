@@ -25,6 +25,7 @@ export interface Question {
   type?: "single" | "multiple";
   options: QuestionOption[];
   order?: number;
+  gender?: "male" | "female" | "all";
 }
 
 /**
@@ -47,23 +48,26 @@ interface UseAdvisorQuestionsResult {
 
 /**
  * AI 护肤顾问问题数据 Hook
- * 
+ *
  * 功能：
  * - 从 API 动态获取问卷问题
+ * - 支持根据性别过滤问题
  * - API 失败时自动降级到本地配置
  * - 提供加载状态和错误处理
- * 
+ *
+ * @param gender - 用户性别 (male/female/unspecified)，用于过滤问题
+ *
  * @example
  * ```tsx
- * const { questions, loading, error, totalQuestions } = useAdvisorQuestions();
- * 
+ * const { questions, loading, error, totalQuestions } = useAdvisorQuestions('female');
+ *
  * if (loading) return <Loading />;
  * if (error) return <Error message={error} />;
- * 
+ *
  * return questions.map(q => <Question key={q.id} {...q} />);
  * ```
  */
-export function useAdvisorQuestions(): UseAdvisorQuestionsResult {
+export function useAdvisorQuestions(gender?: "male" | "female" | "unspecified" | null): UseAdvisorQuestionsResult {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +81,15 @@ export function useAdvisorQuestions(): UseAdvisorQuestionsResult {
     setError(null);
 
     try {
-      const response = await fetch("/api/advisor/questions", {
+      // 构建 URL 参数
+      const params = new URLSearchParams();
+      if (gender && gender !== "unspecified") {
+        params.set("gender", gender);
+      }
+
+      const url = `/api/advisor/questions${params.toString() ? `?${params.toString()}` : ""}`;
+
+      const response = await fetch(url, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -105,7 +117,7 @@ export function useAdvisorQuestions(): UseAdvisorQuestionsResult {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [gender]);
 
   /**
    * 使用本地配置作为降级方案

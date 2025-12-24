@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { advisorQuestions as fallbackQuestions } from "@/config/advisor-questions";
 
@@ -24,19 +24,35 @@ interface QuestionResponse {
   type: "single" | "multiple";
   options: QuestionOption[];
   order: number;
+  gender?: string;
 }
 
 /**
  * GET /api/advisor/questions
  * 获取启用的问卷问题列表（公共接口，无需认证）
- * 
+ *
+ * Query 参数：
+ * - gender: 性别过滤 (male/female)，不传则返回所有问题
+ *
  * 优先从数据库获取，如果数据库为空则返回硬编码的默认问题
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // 获取性别参数
+    const { searchParams } = new URL(request.url);
+    const gender = searchParams.get("gender");
+
+    // 构建查询条件
+    const whereCondition: { active: boolean; gender?: { in: string[] } } = { active: true };
+
+    // 如果指定了性别，过滤出 gender 为 'all' 或指定性别的问题
+    if (gender && (gender === "male" || gender === "female")) {
+      whereCondition.gender = { in: ["all", gender] };
+    }
+
     // 从数据库获取启用的问题，按顺序排列
     const dbQuestions = await prisma.advisorQuestion.findMany({
-      where: { active: true },
+      where: whereCondition,
       orderBy: [{ order: "asc" }, { updatedAt: "desc" }],
     });
 
@@ -59,6 +75,7 @@ export async function GET() {
             emoji: opt.emoji,
           })),
           order: q.order,
+          gender: q.gender,
         };
       });
 

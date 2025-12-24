@@ -6,6 +6,7 @@ export { QuestionStep } from "./QuestionStep";
 export { ProgressBar } from "./ProgressBar";
 export { FaceCapture } from "./FaceCapture";
 export { FaceAnalysisResult } from "./FaceAnalysisResult";
+export { GenderSelection, type GenderType } from "./GenderSelection";
 
 // 动画配置
 export * from "./animations";

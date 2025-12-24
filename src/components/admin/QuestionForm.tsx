@@ -32,6 +32,7 @@ const QuestionFormSchema = z.object({
     emoji: z.string().optional(),
   })).min(1, "请添加至少一个选项"),
   active: z.boolean(),
+  gender: z.enum(["all", "male", "female"]),
 });
 
 type QuestionFormData = z.infer<typeof QuestionFormSchema>;
@@ -63,6 +64,7 @@ export function QuestionForm({
     type: "single",
     options: [{ value: "", label: "", labelEn: "", description: "", emoji: "" }],
     active: true,
+    gender: "all",
   });
 
   const [formData, setFormData] = useState<QuestionFormData>({
@@ -224,6 +226,17 @@ export function QuestionForm({
             ]}
             value={formData.type}
             onChange={(e) => updateField("type", e.target.value as "single" | "multiple")}
+            required
+          />
+          <Select
+            label="展示对象"
+            options={[
+              { value: "all", label: "全部展示" },
+              { value: "female", label: "仅女性" },
+              { value: "male", label: "仅男性" },
+            ]}
+            value={formData.gender}
+            onChange={(e) => updateField("gender", e.target.value as "all" | "male" | "female")}
             required
           />
         </div>

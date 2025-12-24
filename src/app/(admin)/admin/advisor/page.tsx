@@ -38,8 +38,16 @@ interface Question {
   options: Option[];
   order: number;
   active: boolean;
+  gender: "all" | "male" | "female";
   updatedAt: string;
 }
+
+/** 性别标签映射 */
+const genderLabels: Record<string, { label: string; variant: "default" | "outline" | "success" | "warning" | "secondary" }> = {
+  all: { label: "全部", variant: "default" },
+  female: { label: "女性", variant: "success" },
+  male: { label: "男性", variant: "warning" },
+};
 
 export default function AdminAdvisorPage() {
   const { success, error: showError } = useToast();
@@ -285,7 +293,7 @@ export default function AdminAdvisorPage() {
                   </button>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-gray-900">
                         {question.question}
                       </span>
@@ -294,6 +302,9 @@ export default function AdminAdvisorPage() {
                       </Badge>
                       <Badge variant="secondary">
                         {question.type === "single" ? "单选" : "多选"}
+                      </Badge>
+                      <Badge variant={genderLabels[question.gender]?.variant || "default"}>
+                        {genderLabels[question.gender]?.label || "全部"}
                       </Badge>
                     </div>
                     <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
@@ -372,6 +383,7 @@ export default function AdminAdvisorPage() {
                 type: editingQuestion.type as "single" | "multiple",
                 options: editingQuestion.options,
                 active: editingQuestion.active,
+                gender: editingQuestion.gender || "all",
               }
             : undefined
         }
