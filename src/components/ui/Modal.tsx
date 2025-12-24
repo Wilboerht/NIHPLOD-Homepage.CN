@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect, useCallback } from "react";
+import { ReactNode, useEffect, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ interface ModalProps {
 
 /**
  * 通用模态框组件
+ * 使用 Portal 渲染到 body，避免被父容器的层叠上下文影响
  */
 export function Modal({
   open,
@@ -30,6 +32,13 @@ export function Modal({
   closeOnEscape = true,
   showCloseButton = true,
 }: ModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  // 确保在客户端渲染
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // 处理 ESC 键关闭
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -53,7 +62,7 @@ export function Modal({
     };
   }, [open, handleKeyDown]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const sizeStyles = {
     sm: "max-w-sm",
@@ -63,8 +72,8 @@ export function Modal({
     full: "max-w-6xl",
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
@@ -119,6 +128,9 @@ export function Modal({
       </div>
     </div>
   );
+
+  // 使用 Portal 渲染到 body，避免被父容器的 transform/transition 影响
+  return createPortal(modalContent, document.body);
 }
 
 // 兼容旧版本 API

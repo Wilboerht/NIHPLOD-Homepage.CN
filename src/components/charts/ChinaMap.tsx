@@ -140,7 +140,9 @@ export function ChinaMap({ data, height = 400 }: ChinaMapProps) {
               type: "map",
               map: "china",
               roam: true,
-              scaleLimit: { min: 0.8, max: 3 },
+              zoom: 1.5, // 初始缩放比例，使地图更大
+              center: [105, 35], // 中国地理中心点
+              scaleLimit: { min: 1, max: 5 },
               label: {
                 show: false,
               },

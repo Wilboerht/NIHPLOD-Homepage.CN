@@ -110,6 +110,7 @@ interface AnalyticsData {
   hourlyDistribution?: Record<string, number>; // 24小时时段分布
   weeklyHeatmap?: Record<string, Record<string, number>>; // 7天×24小时热力图数据
   provinceDistribution?: Array<{ province: string; count: number }>; // 省份地域分布
+  otherRegions?: { overseas: number; unknown: number; total: number }; // 其他地区（海外+未知）
   cityDistribution?: Array<{ city: string; count: number }>; // 城市分布
   dateRange?: {
     start: string;
@@ -888,11 +889,29 @@ export default function AdvisorAnalyticsPage() {
                   <Globe className="h-5 w-5 text-brand-gold" />
                   <h3 className="text-base font-semibold text-gray-900">地域分布</h3>
                 </div>
-                <span className="text-xs text-gray-400">
-                  {data.provinceDistribution && data.provinceDistribution.length > 0
-                    ? `覆盖 ${data.provinceDistribution.length} 个省份`
-                    : "暂无地域数据"}
-                </span>
+                <div className="flex items-center gap-3 text-xs">
+                  {data.provinceDistribution && data.provinceDistribution.length > 0 && (
+                    <span className="text-gray-500">
+                      覆盖 <span className="font-medium text-gray-700">{data.provinceDistribution.length}</span> 个省份
+                    </span>
+                  )}
+                  {data.otherRegions && data.otherRegions.overseas > 0 && (
+                    <span className="inline-flex items-center gap-1 text-blue-600">
+                      <Globe className="h-3 w-3" />
+                      海外 {data.otherRegions.overseas}
+                    </span>
+                  )}
+                  {data.otherRegions && data.otherRegions.unknown > 0 && (
+                    <span className="inline-flex items-center gap-1 text-gray-400">
+                      <MapPin className="h-3 w-3" />
+                      未知 {data.otherRegions.unknown}
+                    </span>
+                  )}
+                  {(!data.provinceDistribution || data.provinceDistribution.length === 0) &&
+                   (!data.otherRegions || data.otherRegions.total === 0) && (
+                    <span className="text-gray-400">暂无地域数据</span>
+                  )}
+                </div>
               </div>
               <ChinaMap data={data.provinceDistribution || []} height={350} />
               {/* 省份排行榜 */}

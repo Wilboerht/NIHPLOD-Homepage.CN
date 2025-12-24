@@ -420,11 +420,36 @@ export async function GET(request: NextRequest) {
     });
 
     // 8. 省份地域分布（用于中国地图展示）
+    // 中国省份列表（用于判断是否为中国地区）
+    const CHINA_PROVINCES = new Set([
+      "北京", "天津", "河北", "山西", "内蒙古",
+      "辽宁", "吉林", "黑龙江",
+      "上海", "江苏", "浙江", "安徽", "福建", "江西", "山东",
+      "河南", "湖北", "湖南", "广东", "广西", "海南",
+      "重庆", "四川", "贵州", "云南", "西藏",
+      "陕西", "甘肃", "青海", "宁夏", "新疆",
+      "台湾", "香港", "澳门",
+    ]);
+
     const provinceDistribution: Record<string, number> = {};
+    let unknownRegionCount = 0; // 无法识别地区
+    let overseasCount = 0; // 海外地区（province 有值但不在中国省份列表中）
 
     sessionsCreated.forEach((session) => {
       if (session.province) {
-        provinceDistribution[session.province] = (provinceDistribution[session.province] || 0) + 1;
+        // 清理省份名称（去除"省"、"市"等后缀）
+        const cleanProvince = session.province.replace(/(省|市|自治区|特别行政区|壮族自治区|回族自治区|维吾尔自治区)$/g, "");
+
+        if (CHINA_PROVINCES.has(cleanProvince) || CHINA_PROVINCES.has(session.province)) {
+          const normalizedProvince = CHINA_PROVINCES.has(cleanProvince) ? cleanProvince : session.province;
+          provinceDistribution[normalizedProvince] = (provinceDistribution[normalizedProvince] || 0) + 1;
+        } else {
+          // 有值但不是中国省份，可能是海外
+          overseasCount++;
+        }
+      } else {
+        // 没有省份信息，归类为未知地区
+        unknownRegionCount++;
       }
     });
 
@@ -510,6 +535,12 @@ export async function GET(request: NextRequest) {
         weeklyHeatmap,
         // 省份地域分布（用于中国地图）
         provinceDistribution: provinceStats,
+        // 其他地区（海外 + 未知）
+        otherRegions: {
+          overseas: overseasCount,    // 海外地区
+          unknown: unknownRegionCount, // 未知地区（IP解析失败等）
+          total: overseasCount + unknownRegionCount,
+        },
         // 城市分布（前20）
         cityDistribution: topCities,
         // 查询时间范围
