@@ -220,16 +220,35 @@ export function getShareCapabilities(): {
 
 /**
  * 生成分享文案
+ * 不暴露用户具体肌肤问题，使用正向引导语
  */
 export function generateShareText(
-  skinType: string,
-  concerns: string[]
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _skinType?: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _concerns?: string[]
 ): { title: string; description: string } {
-  const concernText = concerns.length > 0 ? concerns.slice(0, 2).join("、") : "日常护理";
+  // 随机选择一条分享文案，保持新鲜感
+  const shareTemplates = [
+    {
+      title: "发现了超准的 AI 护肤顾问 ✨",
+      description: "刚做完肌肤测试，结果很惊喜！推荐你也来试试～",
+    },
+    {
+      title: "这个 AI 护肤测试也太准了吧",
+      description: "帮我分析了肌肤状态还推荐了适合的护肤方案，免费的快来！",
+    },
+    {
+      title: "姐妹们快来测肌肤状态 🌸",
+      description: "NIHPLOD 的 AI 护肤顾问，测完才知道自己适合什么护肤品",
+    },
+    {
+      title: "终于知道自己该怎么护肤了",
+      description: "这个 AI 肌肤分析好专业，还会推荐适合的护肤步骤！",
+    },
+  ];
 
-  return {
-    title: "我的 AI 肌肤分析报告 - NIHPLOD",
-    description: `我是${skinType}，主要关注${concernText}。来测测你的肌肤状态吧！`,
-  };
+  const template = shareTemplates[Math.floor(Math.random() * shareTemplates.length)];
+  return template;
 }
 

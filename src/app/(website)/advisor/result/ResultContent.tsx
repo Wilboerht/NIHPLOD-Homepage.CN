@@ -28,6 +28,8 @@ import {
   shareToWeibo,
   generateShareText,
 } from "@/lib/share";
+import { ShareFloatingButton, ShareIcons, type ShareOption } from "@/components/ui/ShareFloatingButton";
+import { useToast } from "@/components/ui/Toast";
 
 
 /** 产品类型 */
@@ -76,6 +78,7 @@ interface ComprehensiveResult {
  */
 export function ResultContent() {
   const router = useRouter();
+  const toast = useToast();
   const { trackResultView, trackResultShare } = useAdvisorAnalytics();
   const reportRef = useRef<HTMLDivElement>(null);
   const hasTrackedView = useRef(false);
@@ -253,6 +256,76 @@ export function ResultContent() {
   const handleShare = () => {
     setShowShareMenu(true);
   };
+
+  /**
+   * 分享到微信（复制链接并提示）
+   */
+  const handleShareWechat = useCallback(async () => {
+    if (!result) return;
+
+    const shareUrl = generateShareUrl("/advisor", { ref: "wechat" });
+
+    const success = await copyToClipboard(shareUrl);
+    if (success) {
+      setShareStatus("copied");
+      setTimeout(() => setShareStatus("idle"), 2000);
+      toast.success("链接已复制，快去微信分享给好友吧～");
+      trackResultShare("wechat");
+    }
+  }, [result, toast, trackResultShare]);
+
+  /**
+   * 分享到小红书（复制文案并提示）
+   */
+  const handleShareXiaohongshu = useCallback(async () => {
+    if (!result) return;
+
+    const shareUrl = generateShareUrl("/advisor", { ref: "xiaohongshu" });
+    const { title, description } = generateShareText();
+    const text = `${title}\n\n${description}\n\n🔗 ${shareUrl}`;
+
+    const success = await copyToClipboard(text);
+    if (success) {
+      setShareStatus("copied");
+      setTimeout(() => setShareStatus("idle"), 2000);
+      toast.success("文案已复制，快去小红书发笔记吧～");
+      trackResultShare("xiaohongshu");
+    }
+  }, [result, toast, trackResultShare]);
+
+  /**
+   * 悬浮球分享选项配置
+   */
+  const shareOptions: ShareOption[] = [
+    {
+      key: "wechat",
+      label: "微信",
+      icon: ShareIcons.Wechat,
+      bgColor: "bg-[#07C160] text-white",
+      onClick: handleShareWechat,
+    },
+    {
+      key: "weibo",
+      label: "微博",
+      icon: ShareIcons.Weibo,
+      bgColor: "bg-white text-gray-800",
+      onClick: handleShareWeibo,
+    },
+    {
+      key: "xiaohongshu",
+      label: "小红书",
+      icon: ShareIcons.Xiaohongshu,
+      bgColor: "bg-[#FE2C55] text-white",
+      onClick: handleShareXiaohongshu,
+    },
+    {
+      key: "copy",
+      label: "复制链接",
+      icon: ShareIcons.Copy,
+      bgColor: "bg-white text-gray-800",
+      onClick: handleCopyLink,
+    },
+  ];
 
   /**
    * 加载分析数据
@@ -823,7 +896,13 @@ export function ResultContent() {
         <div className="h-8" />
       </m.div>
 
-
+      {/* 右侧悬浮分享球 */}
+      <ShareFloatingButton
+        options={shareOptions}
+        onSaveImage={handleSaveToGallery}
+        isGeneratingImage={isGeneratingImage}
+        copied={shareStatus === "copied"}
+      />
     </div>
   );
 }

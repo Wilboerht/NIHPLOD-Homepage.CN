@@ -5,6 +5,7 @@ import "./globals.css";
 import { MotionProvider } from "@/components/providers/MotionProvider";
 import { ChunkErrorBoundary } from "@/components/providers/ChunkErrorBoundary";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
+import { ToastProvider } from "@/components/ui/Toast";
 
 // Playfair Display 字体
 const playfair = Playfair_Display({
@@ -104,7 +105,9 @@ export default function RootLayout({
         </head>
         <body className={`${playfair.variable} font-sans antialiased`}>
           <ChunkErrorBoundary>
-            <MotionProvider>{children}</MotionProvider>
+            <MotionProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </MotionProvider>
           </ChunkErrorBoundary>
         </body>
       </html>
