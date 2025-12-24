@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -120,6 +120,43 @@ export function QuestionForm({
         i === index ? { ...opt, [field]: value } : opt
       ),
     }));
+  };
+
+  // 拖动排序状态
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
+  // 拖动开始
+  const handleDragStart = (index: number) => {
+    dragItem.current = index;
+  };
+
+  // 拖动经过
+  const handleDragEnter = (index: number) => {
+    dragOverItem.current = index;
+  };
+
+  // 拖动结束
+  const handleDragEnd = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    if (dragItem.current === dragOverItem.current) {
+      dragItem.current = null;
+      dragOverItem.current = null;
+      return;
+    }
+
+    const newOptions = [...formData.options];
+    const draggedItem = newOptions[dragItem.current];
+    newOptions.splice(dragItem.current, 1);
+    newOptions.splice(dragOverItem.current, 0, draggedItem);
+
+    setFormData((prev) => ({
+      ...prev,
+      options: newOptions,
+    }));
+
+    dragItem.current = null;
+    dragOverItem.current = null;
   };
 
   // 验证表单
@@ -262,12 +299,17 @@ export function QuestionForm({
             {formData.options.map((option, index) => (
               <div
                 key={index}
-                className="rounded-lg border border-gray-200 bg-gray-50 p-2 sm:p-3"
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragEnter={() => handleDragEnter(index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => e.preventDefault()}
+                className="rounded-lg border border-gray-200 bg-gray-50 p-2 transition-colors hover:border-gray-300 sm:p-3"
               >
                 {/* 移动端：垂直布局 */}
                 <div className="flex flex-col gap-2 sm:hidden">
                   <div className="flex items-center gap-2">
-                    <div className="cursor-move text-gray-400">
+                    <div className="cursor-grab text-gray-400 active:cursor-grabbing">
                       <GripVertical className="h-4 w-4" />
                     </div>
                     <Input
@@ -307,7 +349,7 @@ export function QuestionForm({
 
                 {/* 桌面端：水平布局 */}
                 <div className="hidden items-center gap-2 sm:flex">
-                  <div className="cursor-move text-gray-400">
+                  <div className="cursor-grab text-gray-400 active:cursor-grabbing">
                     <GripVertical className="h-4 w-4" />
                   </div>
                   <Input

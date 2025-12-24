@@ -21,6 +21,7 @@ const UpdateQuestionSchema = z.object({
   options: z.array(OptionSchema).min(1).optional(),
   active: z.boolean().optional(),
   order: z.number().optional(),
+  gender: z.enum(["all", "male", "female"]).optional(),
 });
 
 // GET /api/admin/advisor/questions/[id] - 获取问题详情
@@ -116,6 +117,7 @@ export async function PUT(
         ...(validated.options !== undefined && { options: validated.options }),
         ...(validated.active !== undefined && { active: validated.active }),
         ...(validated.order !== undefined && { order: validated.order }),
+        ...(validated.gender !== undefined && { gender: validated.gender }),
       },
     });
 
