@@ -17,10 +17,6 @@ import {
   Download,
   X,
   AlertCircle,
-  Sun,
-  Moon,
-  Heart,
-  Plane,
   ChevronRight,
 } from "lucide-react";
 

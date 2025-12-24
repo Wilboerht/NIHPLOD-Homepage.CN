@@ -195,7 +195,7 @@ export function useAdvisorAnalytics() {
   }, []);
   
   // 追踪结果分享
-  const trackResultShare = useCallback((method: "image" | "link" | "weibo" | "native") => {
+  const trackResultShare = useCallback((method: "image" | "link" | "weibo" | "native" | "wechat" | "xiaohongshu" | "douyin") => {
     sendTrackEvent("result_share", { method });
   }, []);
   
