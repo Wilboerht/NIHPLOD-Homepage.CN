@@ -265,19 +265,48 @@ export async function GET(request: NextRequest) {
     };
 
     // 查询时间范围内创建的会话（用于 sessions 计数）
-    const sessionsCreated = await prisma.advisorSession.findMany({
-      where: { createdAt: { gte: start, lte: end } },
-      select: {
-        createdAt: true,
-        faceScanUsed: true,
-        faceScanSkipped: true,
-        answers: true,
-        deviceType: true,
-        ip: true,
-        province: true, // 省份（用于地图展示）
-        city: true,     // 城市
-      },
-    });
+    // 注意：province 和 city 字段可能在某些数据库版本中不存在
+    let sessionsCreated: Array<{
+      createdAt: Date;
+      faceScanUsed: boolean;
+      faceScanSkipped: boolean;
+      answers: unknown;
+      deviceType: string | null;
+      ip: string | null;
+      province?: string | null;
+      city?: string | null;
+    }>;
+
+    try {
+      sessionsCreated = await prisma.advisorSession.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: {
+          createdAt: true,
+          faceScanUsed: true,
+          faceScanSkipped: true,
+          answers: true,
+          deviceType: true,
+          ip: true,
+          province: true,
+          city: true,
+        },
+      });
+    } catch {
+      // 如果 province/city 字段不存在，回退到不包含这些字段的查询
+      console.warn("Province/city fields may not exist, falling back to basic query");
+      const basicSessions = await prisma.advisorSession.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: {
+          createdAt: true,
+          faceScanUsed: true,
+          faceScanSkipped: true,
+          answers: true,
+          deviceType: true,
+          ip: true,
+        },
+      });
+      sessionsCreated = basicSessions.map(s => ({ ...s, province: null, city: null }));
+    }
 
     // 查询时间范围内完成的会话（用于 completed 计数，按 completedAt 日期）
     const sessionsCompleted = await prisma.advisorSession.findMany({

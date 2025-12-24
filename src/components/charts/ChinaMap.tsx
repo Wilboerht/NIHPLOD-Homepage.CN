@@ -89,11 +89,12 @@ export function ChinaMap({ data, height = 400 }: ChinaMapProps) {
 
     const initChart = async () => {
       try {
-        // 注册地图（只需一次）
+        // 注册地图（只需一次）- 使用本地静态文件
         if (!mapRegistered.current) {
-          const response = await fetch(
-            "https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json"
-          );
+          const response = await fetch("/data/china.json");
+          if (!response.ok) {
+            throw new Error(`Failed to load map data: ${response.status}`);
+          }
           const chinaJson = await response.json();
           echarts.registerMap("china", chinaJson);
           mapRegistered.current = true;
