@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
+import { logError } from "@/lib/logger";
 import { z } from "zod";
 
 // 选项 Schema
@@ -57,7 +58,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("获取问题详情失败:", error);
+    logError("AdvisorQuestionAPI", error, { action: "GET", questionId: (await params).id });
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取问题详情失败" } },
       { status: 500 }
@@ -126,7 +127,7 @@ export async function PUT(
       },
     });
   } catch (error) {
-    console.error("更新问题失败:", error);
+    logError("AdvisorQuestionAPI", error, { action: "PUT", questionId: (await params).id });
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" } },
@@ -173,7 +174,7 @@ export async function DELETE(
       data: { message: "问题已删除" },
     });
   } catch (error) {
-    console.error("删除问题失败:", error);
+    logError("AdvisorQuestionAPI", error, { action: "DELETE", questionId: (await params).id });
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "删除问题失败" } },
       { status: 500 }

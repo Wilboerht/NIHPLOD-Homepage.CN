@@ -1,0 +1,57 @@
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+
+/**
+ * 健康检查 API
+ * GET /api/health - 检查服务和数据库状态
+ */
+export async function GET() {
+  const checks: Record<string, { status: string; latency?: number; error?: string }> = {
+    server: { status: "ok" },
+  };
+
+  // 检查数据库连接
+  const dbStart = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    checks.database = {
+      status: "ok",
+      latency: Date.now() - dbStart,
+    };
+  } catch (error) {
+    checks.database = {
+      status: "error",
+      latency: Date.now() - dbStart,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+
+  // 检查 AdvisorQuestion 表
+  const tableStart = Date.now();
+  try {
+    const count = await prisma.advisorQuestion.count();
+    checks.advisorQuestionTable = {
+      status: "ok",
+      latency: Date.now() - tableStart,
+    };
+    checks.advisorQuestionTable.status = `ok (${count} records)`;
+  } catch (error) {
+    checks.advisorQuestionTable = {
+      status: "error",
+      latency: Date.now() - tableStart,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+
+  const allOk = Object.values(checks).every((c) => !c.error);
+
+  return NextResponse.json(
+    {
+      status: allOk ? "healthy" : "unhealthy",
+      timestamp: new Date().toISOString(),
+      checks,
+    },
+    { status: allOk ? 200 : 503 }
+  );
+}
+
