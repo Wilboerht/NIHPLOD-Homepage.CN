@@ -140,7 +140,7 @@ export default function AdvisorMonitoringPage() {
     { value: "30days", label: "近30天" },
   ];
 
-  const getHealthIcon = (health: string) => {
+  const _getHealthIcon = (health: string) => {
     switch (health) {
       case "healthy":
         return <CheckCircle className="h-5 w-5 text-green-500" />;

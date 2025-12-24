@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
-import { getAISettings } from "@/lib/ai";
+import { getAISettings, type AISettings } from "@/lib/ai";
 
 // 服务商配置
 const PROVIDER_CONFIG: Record<string, {
@@ -89,7 +89,7 @@ const PROVIDER_CONFIG: Record<string, {
 };
 
 // 获取 API Key
-function getApiKey(provider: string, aiSettings: { apiKeys?: Record<string, string> }): string | null {
+function getApiKey(provider: string, aiSettings: AISettings): string | null {
   const envKeys: Record<string, string | undefined> = {
     openai: process.env.OPENAI_API_KEY,
     deepseek: process.env.DEEPSEEK_API_KEY,
@@ -97,7 +97,8 @@ function getApiKey(provider: string, aiSettings: { apiKeys?: Record<string, stri
     anthropic: process.env.ANTHROPIC_API_KEY,
     gemini: process.env.GEMINI_API_KEY,
   };
-  return aiSettings.apiKeys?.[provider] || envKeys[provider] || null;
+  const apiKeys = aiSettings.apiKeys as Record<string, string | undefined> | undefined;
+  return apiKeys?.[provider] || envKeys[provider] || null;
 }
 
 // 健康检测结果

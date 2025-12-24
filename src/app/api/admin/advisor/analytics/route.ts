@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
     
     // 3. 获取漏斗数据
     const [
-      startedQuestionnaire,
+      _startedQuestionnaire,
       completedQuestionnaire,
       startedFaceScan,
       completedAnalysis,

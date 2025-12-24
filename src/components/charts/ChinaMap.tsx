@@ -107,7 +107,7 @@ export function ChinaMap({ data, height = 400 }: ChinaMapProps) {
         }
 
         // 设置图表配置
-        const option: echarts.EChartsOption = {
+        const option: echarts.EChartsCoreOption = {
           tooltip: {
             trigger: "item",
             formatter: (params: unknown) => {
