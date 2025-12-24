@@ -67,13 +67,13 @@ export function Modal({
   const sizeStyles = {
     sm: "max-w-sm",
     md: "max-w-md",
-    lg: "max-w-lg",
-    xl: "max-w-xl",
+    lg: "max-w-2xl",
+    xl: "max-w-4xl",
     full: "max-w-6xl",
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 md:p-8">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
@@ -90,17 +90,18 @@ export function Modal({
         className={cn(
           "relative z-10 w-full rounded-xl bg-white shadow-2xl",
           "animate-in fade-in-0 zoom-in-95 duration-200",
+          "flex max-h-[calc(100vh-2rem)] flex-col sm:max-h-[calc(100vh-3rem)] md:max-h-[calc(100vh-4rem)]",
           sizeStyles[size]
         )}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-start justify-between border-b border-gray-100 px-6 py-4">
+          <div className="flex shrink-0 items-start justify-between border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
             <div>
               {title && (
                 <h2
                   id="modal-title"
-                  className="text-lg font-semibold text-gray-900"
+                  className="text-base font-semibold text-gray-900 sm:text-lg"
                 >
                   {title}
                 </h2>
@@ -124,7 +125,7 @@ export function Modal({
         )}
 
         {/* Body */}
-        <div className="px-6 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">{children}</div>
       </div>
     </div>
   );

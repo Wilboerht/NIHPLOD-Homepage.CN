@@ -192,11 +192,11 @@ export function QuestionForm({
       open={isOpen}
       onClose={handleClose}
       title={isEdit ? "编辑问题" : "新增问题"}
-      size="lg"
+      size="xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* 基本信息 */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <Input
               label="问题内容"
@@ -230,7 +230,7 @@ export function QuestionForm({
 
         {/* 选项列表 */}
         <div>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between sm:mb-3">
             <label className="text-sm font-medium text-gray-700">选项列表</label>
             <Button
               type="button"
@@ -249,47 +249,78 @@ export function QuestionForm({
             {formData.options.map((option, index) => (
               <div
                 key={index}
-                className="rounded-lg border border-gray-200 bg-gray-50 p-3"
+                className="rounded-lg border border-gray-200 bg-gray-50 p-2 sm:p-3"
               >
-                <div className="flex items-center gap-2">
-                  {/* 拖拽 */}
+                {/* 移动端：垂直布局 */}
+                <div className="flex flex-col gap-2 sm:hidden">
+                  <div className="flex items-center gap-2">
+                    <div className="cursor-move text-gray-400">
+                      <GripVertical className="h-4 w-4" />
+                    </div>
+                    <Input
+                      placeholder="😀"
+                      value={option.emoji || ""}
+                      onChange={(e) => updateOption(index, "emoji", e.target.value)}
+                      className="w-12 shrink-0 text-center"
+                    />
+                    <Input
+                      placeholder="值"
+                      value={option.value}
+                      onChange={(e) => updateOption(index, "value", e.target.value)}
+                      className="flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeOption(index)}
+                      disabled={formData.options.length <= 1}
+                      className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <Input
+                    placeholder="中文标签"
+                    value={option.label}
+                    onChange={(e) => updateOption(index, "label", e.target.value)}
+                    className="w-full"
+                  />
+                  <Input
+                    placeholder="描述（可选）"
+                    value={option.description || ""}
+                    onChange={(e) => updateOption(index, "description", e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* 桌面端：水平布局 */}
+                <div className="hidden items-center gap-2 sm:flex">
                   <div className="cursor-move text-gray-400">
                     <GripVertical className="h-4 w-4" />
                   </div>
-
-                  {/* Emoji */}
                   <Input
                     placeholder="😀"
                     value={option.emoji || ""}
                     onChange={(e) => updateOption(index, "emoji", e.target.value)}
                     className="w-12 shrink-0 text-center"
                   />
-
-                  {/* 选项值 */}
                   <Input
                     placeholder="值"
                     value={option.value}
                     onChange={(e) => updateOption(index, "value", e.target.value)}
                     className="w-24 shrink-0"
                   />
-
-                  {/* 中文标签 */}
                   <Input
                     placeholder="中文标签"
                     value={option.label}
                     onChange={(e) => updateOption(index, "label", e.target.value)}
                     className="min-w-0 flex-1"
                   />
-
-                  {/* 描述 */}
                   <Input
                     placeholder="描述"
                     value={option.description || ""}
                     onChange={(e) => updateOption(index, "description", e.target.value)}
                     className="min-w-0 flex-1"
                   />
-
-                  {/* 删除 */}
                   <button
                     type="button"
                     onClick={() => removeOption(index)}
@@ -305,10 +336,10 @@ export function QuestionForm({
         </div>
 
         {/* 启用状态 */}
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3 sm:p-4">
           <div>
-            <p className="font-medium text-gray-900">启用问题</p>
-            <p className="text-sm text-gray-500">关闭后该问题不会在问卷中显示</p>
+            <p className="text-sm font-medium text-gray-900 sm:text-base">启用问题</p>
+            <p className="text-xs text-gray-500 sm:text-sm">关闭后该问题不会在问卷中显示</p>
           </div>
           <Switch
             checked={formData.active}
@@ -317,7 +348,7 @@ export function QuestionForm({
         </div>
 
         {/* 操作按钮 */}
-        <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
+        <div className="flex justify-end gap-2 border-t border-gray-200 pt-3 sm:gap-3 sm:pt-4">
           <Button type="button" variant="outline" onClick={handleClose}>
             取消
           </Button>
