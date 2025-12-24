@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
@@ -16,7 +17,47 @@ import {
   Download,
   X,
   AlertCircle,
+  Sun,
+  Moon,
+  Heart,
+  Plane,
+  ChevronRight,
 } from "lucide-react";
+
+// 自定义图标组件 - 与 ritual 页面一致
+const ICON_COLOR = "#C3BC9F";
+
+const SunIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M12 18.5C15.5898 18.5 18.5 15.5898 18.5 12C18.5 8.41015 15.5898 5.5 12 5.5C8.41015 5.5 5.5 8.41015 5.5 12C5.5 15.5898 8.41015 18.5 12 18.5Z" fill={ICON_COLOR} stroke={ICON_COLOR} strokeWidth="1.6" strokeLinejoin="round"/>
+    <path d="M12 3C12.6904 3 13.25 2.44036 13.25 1.75C13.25 1.05964 12.6904 0.5 12 0.5C11.3097 0.5 10.75 1.05964 10.75 1.75C10.75 2.44036 11.3097 3 12 3Z" fill={ICON_COLOR}/>
+    <path d="M19.25 6C19.9404 6 20.5 5.44035 20.5 4.75C20.5 4.05964 19.9404 3.5 19.25 3.5C18.5597 3.5 18 4.05964 18 4.75C18 5.44035 18.5597 6 19.25 6Z" fill={ICON_COLOR}/>
+    <path d="M22.25 13.25C22.9404 13.25 23.5 12.6904 23.5 12C23.5 11.3097 22.9404 10.75 22.25 10.75C21.5597 10.75 21 11.3097 21 12C21 12.6904 21.5597 13.25 22.25 13.25Z" fill={ICON_COLOR}/>
+    <path d="M19.25 20.5C19.9404 20.5 20.5 19.9404 20.5 19.25C20.5 18.5597 19.9404 18 19.25 18C18.5597 18 18 18.5597 18 19.25C18 19.9404 18.5597 20.5 19.25 20.5Z" fill={ICON_COLOR}/>
+    <path d="M12 23.5C12.6904 23.5 13.25 22.9404 13.25 22.25C13.25 21.5597 12.6904 21 12 21C11.3097 21 10.75 21.5597 10.75 22.25C10.75 22.9404 11.3097 23.5 12 23.5Z" fill={ICON_COLOR}/>
+    <path d="M4.75 20.5C5.44035 20.5 6 19.9404 6 19.25C6 18.5597 5.44035 18 4.75 18C4.05964 18 3.5 18.5597 3.5 19.25C3.5 19.9404 4.05964 20.5 4.75 20.5Z" fill={ICON_COLOR}/>
+    <path d="M1.75 13.25C2.44036 13.25 3 12.6904 3 12C3 11.3097 2.44036 10.75 1.75 10.75C1.05964 10.75 0.5 11.3097 0.5 12C0.5 12.6904 1.05964 13.25 1.75 13.25Z" fill={ICON_COLOR}/>
+    <path d="M4.75 6C5.44035 6 6 5.44035 6 4.75C6 4.05964 5.44035 3.5 4.75 3.5C4.05964 3.5 3.5 4.05964 3.5 4.75C3.5 5.44035 4.05964 6 4.75 6Z" fill={ICON_COLOR}/>
+  </svg>
+);
+
+const MoonIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M13.8237 3.18488C11.3623 3.82663 9.54547 6.06477 9.54547 8.72728C9.54547 11.8904 12.1096 14.4545 15.2727 14.4545C17.9352 14.4545 20.1734 12.6377 20.8151 10.1763C20.9363 10.7652 21 11.3752 21 12C21 16.9706 16.9706 21 12 21C7.02943 21 3 16.9706 3 12C3 7.02943 7.02943 3 12 3C12.6248 3 13.2348 3.06367 13.8237 3.18488Z" fill={ICON_COLOR} stroke={ICON_COLOR} strokeWidth="1.44" strokeLinejoin="round"/>
+  </svg>
+);
+
+const HeartIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M7.49983 4.00195C4.46222 4.00195 1.99976 6.46443 1.99976 9.50202C1.99976 15.0021 8.49984 20.0022 11.9999 21.1653C15.4999 20.0022 22 15.0021 22 9.50202C22 6.46443 19.5375 4.00195 16.4999 4.00195C14.6398 4.00195 12.9952 4.92542 11.9999 6.33888C11.0045 4.92542 9.36 4.00195 7.49983 4.00195Z" fill={ICON_COLOR} stroke={ICON_COLOR} strokeWidth="1.60002" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const TravelIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z" fill={ICON_COLOR} stroke={ICON_COLOR} strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 import { FaceAnalysisResult } from "@/components/website/advisor/FaceAnalysisResult";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations";
@@ -93,7 +134,13 @@ export function ResultContent() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [isMobile, setIsMobile] = useState(true); // 默认移动端，避免闪烁
+  const [routineModal, setRoutineModal] = useState<"morning" | "evening" | "family" | "travel" | null>(null);
+  const [mounted, setMounted] = useState(false);
 
+  // 用于 Portal 渲染
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 检测是否支持原生分享和屏幕尺寸
   useEffect(() => {
@@ -294,6 +341,25 @@ export function ResultContent() {
   }, [result, toast, trackResultShare]);
 
   /**
+   * 分享到抖音（复制文案并提示）
+   */
+  const handleShareDouyin = useCallback(async () => {
+    if (!result) return;
+
+    const shareUrl = generateShareUrl("/advisor", { ref: "douyin" });
+    const { title, description } = generateShareText();
+    const text = `${title}\n\n${description}\n\n🔗 ${shareUrl}`;
+
+    const success = await copyToClipboard(text);
+    if (success) {
+      setShareStatus("copied");
+      setTimeout(() => setShareStatus("idle"), 2000);
+      toast.success("文案已复制，快去抖音分享吧～");
+      trackResultShare("douyin");
+    }
+  }, [result, toast, trackResultShare]);
+
+  /**
    * 悬浮球分享选项配置
    */
   const shareOptions: ShareOption[] = [
@@ -317,6 +383,13 @@ export function ResultContent() {
       icon: ShareIcons.Xiaohongshu,
       bgColor: "bg-[#FE2C55] text-white",
       onClick: handleShareXiaohongshu,
+    },
+    {
+      key: "douyin",
+      label: "抖音",
+      icon: ShareIcons.Douyin,
+      bgColor: "bg-black text-white",
+      onClick: handleShareDouyin,
     },
     {
       key: "copy",
@@ -547,17 +620,18 @@ export function ResultContent() {
       </header>
 
       {/* 分享菜单弹窗 - 移动端底部抽屉，PC端居中弹窗 */}
-      <AnimatePresence>
-        {showShareMenu && (
-          <>
-            {/* 遮罩 */}
-            <m.div
-              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowShareMenu(false)}
-            />
+      {mounted && createPortal(
+        <AnimatePresence>
+          {showShareMenu && (
+            <>
+              {/* 遮罩 */}
+              <m.div
+                className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowShareMenu(false)}
+              />
             {/* 弹窗容器 - PC端居中，移动端底部 */}
             <m.div
               className={isMobile
@@ -740,7 +814,9 @@ export function ResultContent() {
             </m.div>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
 
       {/* 页面标题 - 高奢品牌风格 */}
       <m.div
@@ -825,24 +901,339 @@ export function ResultContent() {
           </ul>
         </m.div>
 
-        {/* 护肤方案 - 引导至护肤仪式页面 */}
+        {/* 护肤方案 - 四个按钮展示 */}
         <m.div
           variants={fadeInUp}
           transition={defaultTransition}
-          className="relative overflow-hidden rounded-2xl border border-brand-beige/50 bg-white/95 p-5 shadow-card backdrop-blur-sm"
+          className="relative overflow-hidden rounded-2xl bg-white/95 shadow-card backdrop-blur-sm"
         >
-          <h3 className="mb-3 font-serif text-base font-light tracking-wide text-brand-charcoal">专属护肤方案</h3>
-          <p className="mb-4 text-sm leading-relaxed text-brand-charcoal/60">
-            探索旎柏精心设计的晨间与夜间护肤仪式，开启您的精致护肤之旅。
-          </p>
-          <Link
-            href="/ritual"
-            className="group inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-gradient-to-r from-brand-gold to-brand-gold-light px-6 py-2.5 text-sm font-light tracking-wide text-white shadow-luxury transition-all duration-300 hover:shadow-luxury-lg"
-          >
-            <Sparkles className="h-4 w-4" />
-            查看护肤仪式
-          </Link>
+          {/* 标题区域 */}
+          <div className="px-5 pt-5 pb-2">
+            <h3 className="text-center font-serif text-base font-light tracking-wide text-brand-charcoal">专属护肤方案</h3>
+            <p className="mt-1 text-center text-xs text-brand-charcoal/50">点击查看详细护肤仪式</p>
+          </div>
+          {/* 按钮区域 */}
+          <div className="grid grid-cols-4 px-2 pb-4">
+            <button
+              onClick={() => setRoutineModal("morning")}
+              className="group flex flex-col items-center justify-center gap-3 rounded-xl px-2 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-champagne/30 active:translate-y-0 sm:gap-4 sm:px-4 sm:py-5"
+            >
+              <SunIcon className="h-10 w-10 transition-transform duration-300 group-hover:scale-110 sm:h-12 sm:w-12" />
+              <span className="text-xs font-medium text-brand-charcoal/60 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-sm">晨间仪式</span>
+            </button>
+            <button
+              onClick={() => setRoutineModal("evening")}
+              className="group flex flex-col items-center justify-center gap-3 rounded-xl px-2 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-champagne/30 active:translate-y-0 sm:gap-4 sm:px-4 sm:py-5"
+            >
+              <MoonIcon className="h-10 w-10 transition-transform duration-300 group-hover:scale-110 sm:h-12 sm:w-12" />
+              <span className="text-xs font-medium text-brand-charcoal/60 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-sm">晚间仪式</span>
+            </button>
+            <button
+              onClick={() => setRoutineModal("family")}
+              className="group flex flex-col items-center justify-center gap-3 rounded-xl px-2 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-champagne/30 active:translate-y-0 sm:gap-4 sm:px-4 sm:py-5"
+            >
+              <HeartIcon className="h-10 w-10 transition-transform duration-300 group-hover:scale-110 sm:h-12 sm:w-12" />
+              <span className="text-xs font-medium text-brand-charcoal/60 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-sm">家庭护肤</span>
+            </button>
+            <button
+              onClick={() => setRoutineModal("travel")}
+              className="group flex flex-col items-center justify-center gap-3 rounded-xl px-2 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-champagne/30 active:translate-y-0 sm:gap-4 sm:px-4 sm:py-5"
+            >
+              <TravelIcon className="h-10 w-10 transition-transform duration-300 group-hover:scale-110 sm:h-12 sm:w-12" />
+              <span className="text-xs font-medium text-brand-charcoal/60 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-sm">旅行护肤</span>
+            </button>
+          </div>
         </m.div>
+
+        {/* 护肤方案模态框 */}
+        {mounted && createPortal(
+          <AnimatePresence>
+            {routineModal && (
+              <>
+                {/* 遮罩 */}
+                <m.div
+                  className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setRoutineModal(null)}
+                />
+              {/* 模态框 */}
+              <m.div
+                className={isMobile
+                  ? "fixed bottom-0 left-0 right-0 z-50 flex max-h-[90vh] w-full flex-col overflow-hidden"
+                  : "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[480px] flex-col overflow-hidden"
+                }
+                initial={isMobile
+                  ? { y: "100%" }
+                  : { opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }
+                }
+                animate={isMobile
+                  ? { y: 0 }
+                  : { opacity: 1, scale: 1, x: "-50%", y: "-50%" }
+                }
+                exit={isMobile
+                  ? { y: "100%" }
+                  : { opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }
+                }
+                transition={isMobile
+                  ? { type: "spring", damping: 28, stiffness: 350 }
+                  : { duration: 0.2, ease: "easeOut" }
+                }
+              >
+                <div className={`flex flex-col bg-[#EBE8DB] ${isMobile ? "rounded-t-[2rem]" : "rounded-2xl shadow-2xl"}`}>
+                  {/* 固定头部区域 */}
+                  <div className={`flex-shrink-0 px-6 ${isMobile ? "pt-5" : "pt-5"}`}>
+                    {/* 顶部拖动指示条 - 仅移动端显示 */}
+                    {isMobile && <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-brand-charcoal/20" />}
+
+                    {/* 标题区域 */}
+                    <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {routineModal === "morning" && (
+                        <>
+                          <SunIcon className="h-12 w-12" />
+                          <div>
+                            <h3 className="font-serif text-xl text-brand-charcoal">晨间仪式</h3>
+                            <p className="text-xs uppercase tracking-widest text-brand-charcoal/50">MORNING RITUAL</p>
+                          </div>
+                        </>
+                      )}
+                      {routineModal === "evening" && (
+                        <>
+                          <MoonIcon className="h-12 w-12" />
+                          <div>
+                            <h3 className="font-serif text-xl text-brand-charcoal">晚间仪式</h3>
+                            <p className="text-xs uppercase tracking-widest text-brand-charcoal/50">EVENING RITUAL</p>
+                          </div>
+                        </>
+                      )}
+                      {routineModal === "family" && (
+                        <>
+                          <HeartIcon className="h-12 w-12" />
+                          <div>
+                            <h3 className="font-serif text-xl text-brand-charcoal">家庭护肤</h3>
+                            <p className="text-xs uppercase tracking-widest text-brand-charcoal/50">FAMILY SKINCARE</p>
+                          </div>
+                        </>
+                      )}
+                      {routineModal === "travel" && (
+                        <>
+                          <TravelIcon className="h-12 w-12" />
+                          <div>
+                            <h3 className="font-serif text-xl text-brand-charcoal">旅行护肤</h3>
+                            <p className="text-xs uppercase tracking-widest text-brand-charcoal/50">TRAVEL SKINCARE</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                      <button
+                        onClick={() => setRoutineModal(null)}
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal/40 transition-colors hover:bg-white/60 hover:text-brand-charcoal"
+                        aria-label="关闭"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 可滚动内容区域 */}
+                  <div className={`flex-1 overflow-y-auto px-6 scrollbar-hide ${isMobile ? "pb-10" : "pb-6"}`}>
+                    {/* 内容区域 - 晨间仪式 */}
+                    {routineModal === "morning" && (
+                      <div className="space-y-3">
+                        <p className="text-sm leading-relaxed text-brand-charcoal/60">清晨护肤，唤醒肌肤活力，为新的一天注入能量</p>
+                        {[
+                          { order: 1, name: "洁面", nameEn: "CLEANSE", duration: "1-2分钟", description: "用温水轻柔唤醒肌肤，云朵洁面慕斯打出绵密泡沫，轻轻按摩全脸后冲洗干净。", productSlug: "foam-cleanser" },
+                          { order: 2, name: "精华", nameEn: "SERUM", duration: "30秒", description: "取适量修护紧致精华于掌心温热，轻拍于面部，由内向外、由下向上轻柔按压至吸收。", productSlug: "serum" },
+                          { order: 3, name: "面霜", nameEn: "CREAM", duration: "1分钟", description: "取黄豆大小逆龄面霜，均匀涂抹于面部，配合提拉手法按摩，锁住水分与营养。", productSlug: "face-cream" },
+                          { order: 4, name: "防晒", nameEn: "SUNSCREEN", duration: "30秒", description: "最后一步，涂抹足量轻透防晒霜，为肌肤撑起保护伞，开启元气满满的一天。", productSlug: "sunscreen" },
+                        ].map((step, index, arr) => (
+                          <div key={step.order} className="group relative rounded-2xl bg-white/90 p-4 shadow-sm transition-all duration-200 hover:bg-white hover:shadow-md">
+                            {/* 连接线 - 除了最后一个 */}
+                            {index < arr.length - 1 && (
+                              <div className="absolute left-[26px] top-[calc(100%+2px)] h-[calc(0.75rem-4px)] w-px bg-gradient-to-b from-brand-gold/30 to-transparent" />
+                            )}
+                            <div className="flex items-start gap-3">
+                              {/* 序号圆圈 */}
+                              <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-champagne/80 to-brand-beige/60 shadow-sm">
+                                <span className="font-serif text-sm font-medium text-brand-charcoal/70">
+                                  {String(step.order).padStart(2, "0")}
+                                </span>
+                              </div>
+                              <div className="min-w-0 flex-1 pt-0.5">
+                                <div className="flex items-baseline gap-2">
+                                  <h4 className="font-serif text-[15px] font-medium text-brand-charcoal">{step.name}</h4>
+                                  <span className="text-[10px] uppercase tracking-widest text-brand-charcoal/35">{step.nameEn}</span>
+                                  <span className="ml-auto flex-shrink-0 rounded-full bg-brand-champagne/50 px-2 py-0.5 text-[10px] text-brand-charcoal/50">{step.duration}</span>
+                                </div>
+                                <p className="mt-1.5 text-[13px] leading-relaxed text-brand-charcoal/55">{step.description}</p>
+                                <Link
+                                  href={`/products/${step.productSlug}`}
+                                  onClick={() => setRoutineModal(null)}
+                                  className="mt-2 inline-flex items-center gap-0.5 text-xs text-brand-gold/70 transition-all hover:gap-1.5 hover:text-brand-gold"
+                                >
+                                  <span>查看推荐产品</span>
+                                  <ChevronRight className="h-3.5 w-3.5" />
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 内容区域 - 晚间仪式 */}
+                    {routineModal === "evening" && (
+                      <div className="space-y-3">
+                        <p className="text-sm leading-relaxed text-brand-charcoal/60">夜间护肤，修护一天的疲惫，让肌肤在睡眠中焕新</p>
+                        {[
+                          { order: 1, name: "洁面", nameEn: "CLEANSE", duration: "1-2分钟", description: "云朵洁面慕斯温和清洁，洗去一天的疲惫与污垢，为后续护肤做好准备。", productSlug: "foam-cleanser" },
+                          { order: 2, name: "精华", nameEn: "SERUM", duration: "30秒", description: "夜间是肌肤修护的黄金时段，修护紧致精华帮助深层滋养，修复日间损伤。", productSlug: "serum" },
+                          { order: 3, name: "护理油", nameEn: "OIL", duration: "30秒", description: "臻萃护理油加强滋养，轻柔按摩促进吸收，为肌肤注入奢润能量（可选步骤）。", productSlug: "treatment-oil" },
+                          { order: 4, name: "面霜", nameEn: "CREAM", duration: "1分钟", description: "逆龄面霜质地滋润，配合轻柔按摩，让营养在睡眠中持续渗透，次日醒来容光焕发。", productSlug: "face-cream" },
+                        ].map((step, index, arr) => (
+                          <div key={step.order} className="group relative rounded-2xl bg-white/90 p-4 shadow-sm transition-all duration-200 hover:bg-white hover:shadow-md">
+                            {/* 连接线 - 除了最后一个 */}
+                            {index < arr.length - 1 && (
+                              <div className="absolute left-[26px] top-[calc(100%+2px)] h-[calc(0.75rem-4px)] w-px bg-gradient-to-b from-brand-gold/30 to-transparent" />
+                            )}
+                            <div className="flex items-start gap-3">
+                              {/* 序号圆圈 */}
+                              <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-champagne/80 to-brand-beige/60 shadow-sm">
+                                <span className="font-serif text-sm font-medium text-brand-charcoal/70">
+                                  {String(step.order).padStart(2, "0")}
+                                </span>
+                              </div>
+                              <div className="min-w-0 flex-1 pt-0.5">
+                                <div className="flex items-baseline gap-2">
+                                  <h4 className="font-serif text-[15px] font-medium text-brand-charcoal">{step.name}</h4>
+                                  <span className="text-[10px] uppercase tracking-widest text-brand-charcoal/35">{step.nameEn}</span>
+                                  <span className="ml-auto flex-shrink-0 rounded-full bg-brand-champagne/50 px-2 py-0.5 text-[10px] text-brand-charcoal/50">{step.duration}</span>
+                                </div>
+                                <p className="mt-1.5 text-[13px] leading-relaxed text-brand-charcoal/55">{step.description}</p>
+                                <Link
+                                  href={`/products/${step.productSlug}`}
+                                  onClick={() => setRoutineModal(null)}
+                                  className="mt-2 inline-flex items-center gap-0.5 text-xs text-brand-gold/70 transition-all hover:gap-1.5 hover:text-brand-gold"
+                                >
+                                  <span>查看推荐产品</span>
+                                  <ChevronRight className="h-3.5 w-3.5" />
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 内容区域 - 家庭护肤 */}
+                    {routineModal === "family" && (
+                      <div className="space-y-3">
+                        <p className="text-sm leading-relaxed text-brand-charcoal/60">与家人一起，享受护肤的温馨时光，在彼此的呵护中，感受爱与美的交融</p>
+                        {[
+                          { order: 1, name: "面对面护肤", nameEn: "FACE TO FACE", description: "相对而坐，为彼此涂抹护肤品。用指尖传递温柔，在每一次触碰中加深情感连接。" },
+                          { order: 2, name: "互相按摩", nameEn: "MASSAGE", description: "轮流为对方进行面部按摩，配合舒缓的音乐与香氛，创造属于你们的私密SPA时光。" },
+                          { order: 3, name: "仪式感布置", nameEn: "AMBIANCE", description: "点上香薰蜡烛，播放轻柔音乐，准备好柔软的毛巾和温热的花茶，让护肤成为一场浪漫约会。" },
+                        ].map((step, index, arr) => (
+                          <div key={step.order} className="group relative rounded-2xl bg-white/90 p-4 shadow-sm transition-all duration-200 hover:bg-white hover:shadow-md">
+                            {/* 连接线 - 除了最后一个 */}
+                            {index < arr.length - 1 && (
+                              <div className="absolute left-[26px] top-[calc(100%+2px)] h-[calc(0.75rem-4px)] w-px bg-gradient-to-b from-brand-gold/30 to-transparent" />
+                            )}
+                            <div className="flex items-start gap-3">
+                              {/* 序号圆圈 */}
+                              <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-champagne/80 to-brand-beige/60 shadow-sm">
+                                <span className="font-serif text-sm font-medium text-brand-charcoal/70">
+                                  {String(step.order).padStart(2, "0")}
+                                </span>
+                              </div>
+                              <div className="min-w-0 flex-1 pt-0.5">
+                                <div className="flex items-baseline gap-2">
+                                  <h4 className="font-serif text-[15px] font-medium text-brand-charcoal">{step.name}</h4>
+                                  <span className="text-[10px] uppercase tracking-widest text-brand-charcoal/35">{step.nameEn}</span>
+                                </div>
+                                <p className="mt-1.5 text-[13px] leading-relaxed text-brand-charcoal/55">{step.description}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="mt-2 rounded-2xl bg-white/70 p-4 text-center">
+                          <p className="text-sm text-brand-charcoal/55">探索适合家庭护肤的产品组合</p>
+                          <Link
+                            href="/products"
+                            onClick={() => setRoutineModal(null)}
+                            className="mt-2 inline-flex items-center gap-0.5 text-xs text-brand-gold/70 transition-all hover:gap-1.5 hover:text-brand-gold"
+                          >
+                            <span>查看产品系列</span>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 内容区域 - 旅行护肤 */}
+                    {routineModal === "travel" && (
+                      <div className="space-y-3">
+                        <p className="text-sm leading-relaxed text-brand-charcoal/60">旅途中的护肤方案，轻便高效，让肌肤在任何目的地都保持最佳状态</p>
+                        {[
+                          { order: 1, name: "洁面", nameEn: "CLEANSE", duration: "1分钟", description: "旅行装云朵洁面慕斯，小巧便携，温和清洁旅途中的灰尘与疲惫。", productSlug: "foam-cleanser" },
+                          { order: 2, name: "多效精华", nameEn: "MULTI-SERUM", duration: "30秒", description: "一瓶精华，多重功效，简化护肤步骤，适合旅途中快节奏的生活方式。", productSlug: "serum" },
+                          { order: 3, name: "保湿锁水", nameEn: "MOISTURIZE", duration: "30秒", description: "旅途中机舱干燥、环境变化，面霜帮助锁住水分，保持肌肤滋润。", productSlug: "face-cream" },
+                        ].map((step, index, arr) => (
+                          <div key={step.order} className="group relative rounded-2xl bg-white/90 p-4 shadow-sm transition-all duration-200 hover:bg-white hover:shadow-md">
+                            {/* 连接线 - 除了最后一个 */}
+                            {index < arr.length - 1 && (
+                              <div className="absolute left-[26px] top-[calc(100%+2px)] h-[calc(0.75rem-4px)] w-px bg-gradient-to-b from-brand-gold/30 to-transparent" />
+                            )}
+                            <div className="flex items-start gap-3">
+                              {/* 序号圆圈 */}
+                              <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-champagne/80 to-brand-beige/60 shadow-sm">
+                                <span className="font-serif text-sm font-medium text-brand-charcoal/70">
+                                  {String(step.order).padStart(2, "0")}
+                                </span>
+                              </div>
+                              <div className="min-w-0 flex-1 pt-0.5">
+                                <div className="flex items-baseline gap-2">
+                                  <h4 className="font-serif text-[15px] font-medium text-brand-charcoal">{step.name}</h4>
+                                  <span className="text-[10px] uppercase tracking-widest text-brand-charcoal/35">{step.nameEn}</span>
+                                  <span className="ml-auto flex-shrink-0 rounded-full bg-brand-champagne/50 px-2 py-0.5 text-[10px] text-brand-charcoal/50">{step.duration}</span>
+                                </div>
+                                <p className="mt-1.5 text-[13px] leading-relaxed text-brand-charcoal/55">{step.description}</p>
+                                <Link
+                                  href={`/products/${step.productSlug}`}
+                                  onClick={() => setRoutineModal(null)}
+                                  className="mt-2 inline-flex items-center gap-0.5 text-xs text-brand-gold/70 transition-all hover:gap-1.5 hover:text-brand-gold"
+                                >
+                                  <span>查看推荐产品</span>
+                                  <ChevronRight className="h-3.5 w-3.5" />
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 底部查看完整护肤仪式链接 */}
+                    <div className="mt-5 pt-3">
+                      <Link
+                        href="/ritual"
+                        onClick={() => setRoutineModal(null)}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/80 py-3.5 text-sm text-brand-charcoal/70 shadow-sm transition-all hover:bg-white hover:text-brand-charcoal hover:shadow-md"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        查看完整护肤仪式
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </m.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+        )}
 
         {/* 免责声明 */}
         <m.div

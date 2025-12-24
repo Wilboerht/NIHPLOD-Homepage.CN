@@ -62,10 +62,14 @@ function getClientInfo(request: NextRequest) {
   const rawIP = request.headers.get("x-forwarded-for")?.split(",")[0].trim()
     || request.headers.get("x-real-ip")
     || "unknown";
-  // 脱敏处理 IP 地址
-  const ip = anonymizeIP(rawIP);
   const referer = request.headers.get("referer") || "";
-  
+
+  // 先用原始 IP 解析地理位置（必须在脱敏前）
+  const geoLocation = resolveIPLocation(rawIP);
+
+  // 然后再脱敏处理 IP 地址用于存储
+  const ip = anonymizeIP(rawIP);
+
   // 解析设备类型
   let deviceType = "desktop";
   if (/mobile/i.test(userAgent)) {
@@ -73,7 +77,7 @@ function getClientInfo(request: NextRequest) {
   } else if (/tablet|ipad/i.test(userAgent)) {
     deviceType = "tablet";
   }
-  
+
   // 解析浏览器
   let browser = "unknown";
   if (/chrome/i.test(userAgent) && !/edge/i.test(userAgent)) {
@@ -87,7 +91,7 @@ function getClientInfo(request: NextRequest) {
   } else if (/msie|trident/i.test(userAgent)) {
     browser = "ie";
   }
-  
+
   // 解析操作系统
   let os = "unknown";
   if (/windows/i.test(userAgent)) {
@@ -101,10 +105,9 @@ function getClientInfo(request: NextRequest) {
   } else if (/iphone|ipad|ipod/i.test(userAgent)) {
     os = "ios";
   }
-  
-  // 保存完整 IP 用于地理位置分析（符合数据分析需求）
-  // 注意：生产环境应确保隐私政策已披露 IP 收集
-  return { userAgent, ip, referer, deviceType, browser, os };
+
+  // 返回客户端信息，包括地理位置
+  return { userAgent, ip, referer, deviceType, browser, os, geoLocation };
 }
 
 export async function POST(request: NextRequest) {
@@ -126,10 +129,7 @@ export async function POST(request: NextRequest) {
     // 根据事件类型更新会话记录
     switch (event) {
       case "session_start": {
-        // 解析 IP 地理位置
-        const geoLocation = resolveIPLocation(clientInfo.ip);
-
-        // 创建或更新会话
+        // 创建或更新会话（地理位置已在 getClientInfo 中解析）
         await prisma.advisorSession.upsert({
           where: { sessionId },
           create: {
@@ -137,8 +137,8 @@ export async function POST(request: NextRequest) {
             startedAt: now,
             userAgent: clientInfo.userAgent,
             ip: clientInfo.ip,
-            province: geoLocation.province,
-            city: geoLocation.city,
+            province: clientInfo.geoLocation.province,
+            city: clientInfo.geoLocation.city,
             referrer: clientInfo.referer,
             deviceType: clientInfo.deviceType,
             browser: clientInfo.browser,
