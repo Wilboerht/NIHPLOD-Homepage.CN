@@ -22,9 +22,11 @@ interface AuthContextType {
   // 用户中心弹窗状态
   userCenterOpen: boolean;
   userCenterView: UserCenterView;
-  openUserCenter: (view?: UserCenterView) => void;
+  initialOrderId: string | null; // 打开订单面板时自动展示的订单 ID
+  openUserCenter: (view?: UserCenterView, orderId?: string) => void;
   closeUserCenter: () => void;
   setUserCenterView: (view: UserCenterView) => void;
+  clearInitialOrderId: () => void;
   // 结算弹窗状态
   checkoutOpen: boolean;
   openCheckout: () => void;
@@ -56,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 用户中心弹窗状态
   const [userCenterOpen, setUserCenterOpen] = useState(false);
   const [userCenterView, setUserCenterViewState] = useState<UserCenterView>("profile");
+  const [initialOrderId, setInitialOrderId] = useState<string | null>(null);
 
   // 结算弹窗状态
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -73,17 +76,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchToForgotPassword = useCallback(() => setActiveModal("forgot-password"), []);
 
   // 用户中心弹窗操作
-  const openUserCenter = useCallback((view: UserCenterView = "profile") => {
+  const openUserCenter = useCallback((view: UserCenterView = "profile", orderId?: string) => {
     setUserCenterViewState(view);
+    if (orderId) {
+      setInitialOrderId(orderId);
+    }
     setUserCenterOpen(true);
   }, []);
 
   const closeUserCenter = useCallback(() => {
     setUserCenterOpen(false);
+    setInitialOrderId(null);
   }, []);
 
   const setUserCenterView = useCallback((view: UserCenterView) => {
     setUserCenterViewState(view);
+  }, []);
+
+  const clearInitialOrderId = useCallback(() => {
+    setInitialOrderId(null);
   }, []);
 
   // 结算弹窗操作
@@ -152,9 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         activeModal,
         userCenterOpen,
         userCenterView,
+        initialOrderId,
         openUserCenter,
         closeUserCenter,
         setUserCenterView,
+        clearInitialOrderId,
         checkoutOpen,
         openCheckout,
         closeCheckout,

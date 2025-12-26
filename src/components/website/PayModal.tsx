@@ -124,9 +124,8 @@ export default function PayModal() {
             body: JSON.stringify({ orderId: order.id }),
           });
           closePay();
-          // 支付成功后跳转到用户中心订单页
-          openUserCenter("orders");
-          router.push("/");
+          // 支付成功后打开用户中心订单详情
+          openUserCenter("orders", order.id);
         }
         return;
       }
@@ -140,9 +139,8 @@ export default function PayModal() {
         WeixinJSBridge.invoke("getBrandWCPayRequest", data.data.payParams, (r: { err_msg: string }) => {
           if (r.err_msg === "get_brand_wcpay_request:ok") {
             closePay();
-            // 支付成功后跳转到用户中心订单页
-            openUserCenter("orders");
-            router.push("/");
+            // 支付成功后打开用户中心订单详情
+            openUserCenter("orders", order.id);
           } else if (r.err_msg === "get_brand_wcpay_request:cancel") {
             setError("支付已取消");
           } else {

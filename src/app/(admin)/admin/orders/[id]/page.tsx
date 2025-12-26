@@ -4,6 +4,7 @@
  * 订单详情页面
  */
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Truck, XCircle, CheckCircle } from "lucide-react";
@@ -123,7 +124,7 @@ export default function OrderDetailPage() {
           </Badge>
         </div>
         <div className="flex gap-2">
-          {order.status === "PENDING_SHIPMENT" && (
+          {(order.status === "PAID" || order.status === "PROCESSING") && (
             <Button onClick={() => setShowShipModal(true)}><Truck className="h-4 w-4 mr-1" /> 发货</Button>
           )}
           {order.status === "REFUNDING" && (
@@ -208,10 +209,10 @@ export default function OrderDetailPage() {
         </table>
       </div>
 
-      {/* 发货弹窗 */}
-      {showShipModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6">
+      {/* 发货弹窗 - 使用 Portal 渲染到 body，确保遮罩覆盖整个视口 */}
+      {showShipModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h3 className="mb-4 text-lg font-medium">发货</h3>
             <div className="space-y-4">
               <div>
@@ -244,7 +245,8 @@ export default function OrderDetailPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

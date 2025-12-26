@@ -38,6 +38,7 @@ const TABS = [
 ];
 
 export function OrdersPanel() {
+  const { initialOrderId, clearInitialOrderId } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
@@ -50,7 +51,19 @@ export function OrdersPanel() {
         const url = activeTab === "all" ? "/api/orders" : `/api/orders?status=${activeTab}`;
         const res = await fetch(url);
         const data = await res.json();
-        if (data.success) setOrders(data.data.orders || []);
+        if (data.success) {
+          const fetchedOrders = data.data.orders || [];
+          setOrders(fetchedOrders);
+
+          // 如果有初始订单 ID，自动选中该订单
+          if (initialOrderId) {
+            const targetOrder = fetchedOrders.find((o: Order) => o.id === initialOrderId);
+            if (targetOrder) {
+              setSelectedOrder(targetOrder);
+            }
+            clearInitialOrderId();
+          }
+        }
       } catch (e) {
         console.error("获取订单失败:", e);
       } finally {
@@ -58,7 +71,7 @@ export function OrdersPanel() {
       }
     };
     fetchOrders();
-  }, [activeTab]);
+  }, [activeTab, initialOrderId, clearInitialOrderId]);
 
   if (selectedOrder) {
     return <OrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} />;
