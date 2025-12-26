@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
+import { OrderStatus } from "@/generated/prisma/client";
 
 // 统计数据响应类型
 interface StatsResponse {
@@ -10,12 +11,24 @@ interface StatsResponse {
     categories: number;
     unreadMessages: number;
     jobs: number;
+    // 电商统计
+    totalUsers: number;
+    pendingOrders: number;
+    refundingOrders: number;
+    todayRevenue: number;
     recentMessages: {
       id: string;
       name: string;
       email: string;
       content: string;
       read: boolean;
+      createdAt: string;
+    }[];
+    recentOrders: {
+      id: string;
+      orderNo: string;
+      status: string;
+      payAmount: number;
       createdAt: string;
     }[];
   };
@@ -43,13 +56,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 今日开始时间
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
     // 并行获取统计数据
     const [
       productsCount,
       categoriesCount,
       unreadMessagesCount,
       jobsCount,
+      totalUsers,
+      pendingOrders,
+      refundingOrders,
+      todayRevenueData,
       recentMessages,
+      recentOrders,
     ] = await Promise.all([
       // 产品总数
       prisma.product.count(),
@@ -62,6 +84,24 @@ export async function GET(request: NextRequest) {
       // 职位总数（已发布）
       prisma.job.count({
         where: { published: true },
+      }),
+      // 用户总数
+      prisma.user.count(),
+      // 待发货订单 (已支付待处理)
+      prisma.order.count({
+        where: { status: OrderStatus.PAID },
+      }),
+      // 退款中订单
+      prisma.order.count({
+        where: { status: OrderStatus.REFUNDING },
+      }),
+      // 今日销售额
+      prisma.order.aggregate({
+        where: {
+          paymentTime: { gte: todayStart },
+          status: { in: [OrderStatus.PAID, OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
+        },
+        _sum: { payAmount: true },
       }),
       // 最近5条留言
       prisma.contactMessage.findMany({
@@ -76,6 +116,18 @@ export async function GET(request: NextRequest) {
           createdAt: true,
         },
       }),
+      // 最近5个订单
+      prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          orderNo: true,
+          status: true,
+          payAmount: true,
+          createdAt: true,
+        },
+      }),
     ]);
 
     return NextResponse.json<StatsResponse>({
@@ -85,9 +137,20 @@ export async function GET(request: NextRequest) {
         categories: categoriesCount,
         unreadMessages: unreadMessagesCount,
         jobs: jobsCount,
+        totalUsers,
+        pendingOrders,
+        refundingOrders,
+        todayRevenue: Number(todayRevenueData._sum.payAmount) || 0,
         recentMessages: recentMessages.map((msg) => ({
           ...msg,
           createdAt: msg.createdAt.toISOString(),
+        })),
+        recentOrders: recentOrders.map((order) => ({
+          id: order.id,
+          orderNo: order.orderNo,
+          status: order.status,
+          payAmount: Number(order.payAmount),
+          createdAt: order.createdAt.toISOString(),
         })),
       },
     });

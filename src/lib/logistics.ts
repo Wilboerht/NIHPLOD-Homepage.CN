@@ -1,0 +1,192 @@
+/**
+ * 物流服务
+ * 物流查询和状态更新
+ * 注意：此文件仅供服务端使用
+ */
+import { prisma } from "./prisma";
+import { OrderStatus } from "@/generated/prisma/client";
+import { LOGISTICS_COMPANIES } from "./logistics-constants";
+
+// 重新导出常量以保持兼容性
+export { LOGISTICS_COMPANIES } from "./logistics-constants";
+
+/**
+ * 物流轨迹信息
+ */
+export interface LogisticsTrace {
+  time: string;
+  status: string;
+  location?: string;
+}
+
+/**
+ * 物流信息
+ */
+export interface LogisticsInfo {
+  company: string;
+  companyName: string;
+  trackingNo: string;
+  status: string;
+  traces: LogisticsTrace[];
+}
+
+/**
+ * 发货（更新订单物流信息）
+ */
+export async function shipOrder(
+  orderId: string,
+  logisticsCompany: string,
+  trackingNo: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      return { success: false, error: "订单不存在" };
+    }
+
+    if (order.status !== OrderStatus.PAID && order.status !== OrderStatus.PROCESSING) {
+      return { success: false, error: "订单状态不正确" };
+    }
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.SHIPPED,
+        shippingCompany: logisticsCompany,
+        trackingNo,
+        shippedAt: new Date(),
+      },
+    });
+
+    console.log(`[Logistics] 订单发货: ${order.orderNo} - ${logisticsCompany} ${trackingNo}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Logistics] 发货失败:", error);
+    return { success: false, error: "发货失败" };
+  }
+}
+
+/**
+ * 查询物流信息（模拟）
+ * 实际项目中应对接快递100等物流查询API
+ */
+export async function queryLogistics(orderId: string): Promise<LogisticsInfo | null> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      shippingCompany: true,
+      trackingNo: true,
+      status: true,
+      shippedAt: true,
+    },
+  });
+
+  if (!order?.trackingNo) {
+    return null;
+  }
+
+  const company = LOGISTICS_COMPANIES.find((c) => c.code === order.shippingCompany);
+
+  // 模拟物流轨迹
+  const traces: LogisticsTrace[] = [];
+  
+  if (order.shippedAt) {
+    traces.push({
+      time: order.shippedAt.toISOString(),
+      status: "快件已发出",
+      location: "深圳市",
+    });
+  }
+
+  if (order.status === OrderStatus.SHIPPED) {
+    traces.push({
+      time: new Date().toISOString(),
+      status: "快件运输中",
+      location: "转运中心",
+    });
+  }
+
+  if (order.status === OrderStatus.COMPLETED) {
+    traces.push({
+      time: new Date().toISOString(),
+      status: "已签收",
+    });
+  }
+
+  return {
+    company: order.shippingCompany || "",
+    companyName: company?.name || order.shippingCompany || "",
+    trackingNo: order.trackingNo,
+    status: order.status,
+    traces: traces.reverse(),
+  };
+}
+
+// 购买奖励比例：每消费 1 元获得 1 点
+const PURCHASE_REWARD_RATIO = 1;
+
+/**
+ * 确认收货
+ */
+export async function confirmReceipt(
+  orderId: string,
+  userId: string
+): Promise<{ success: boolean; error?: string; pointsEarned?: number }> {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, userId },
+    });
+
+    if (!order) {
+      return { success: false, error: "订单不存在" };
+    }
+
+    if (order.status !== OrderStatus.SHIPPED) {
+      return { success: false, error: "订单状态不正确" };
+    }
+
+    // 计算购买奖励点数（每消费1元获得1点，向下取整）
+    const pointsEarned = Math.floor(Number(order.totalAmount) * PURCHASE_REWARD_RATIO);
+
+    // 使用事务确保数据一致性
+    await prisma.$transaction(async (tx) => {
+      // 更新订单状态
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.COMPLETED,
+          receivedAt: new Date(),
+        },
+      });
+
+      // 更新用户点数
+      if (pointsEarned > 0) {
+        const user = await tx.user.update({
+          where: { id: userId },
+          data: { points: { increment: pointsEarned } },
+        });
+
+        // 记录点数变动
+        await tx.pointRecord.create({
+          data: {
+            userId,
+            type: "PURCHASE_REWARD",
+            amount: pointsEarned,
+            balance: user.points,
+            description: `订单完成奖励 (${order.orderNo})`,
+          },
+        });
+      }
+    });
+
+    console.log(`[Logistics] 确认收货: ${order.orderNo}, 奖励点数: ${pointsEarned}`);
+    return { success: true, pointsEarned };
+  } catch (error) {
+    console.error("[Logistics] 确认收货失败:", error);
+    return { success: false, error: "操作失败" };
+  }
+}
+

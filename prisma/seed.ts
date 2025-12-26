@@ -123,6 +123,7 @@ async function main() {
       fieldName: "skinType",
       question: "你的肌肤类型是？",
       order: 1,
+      gender: "all",
       options: [
         { value: "dry", label: "干性肌肤", labelEn: "Dry", description: "常感紧绷、脱皮", emoji: "🏜️" },
         { value: "oily", label: "油性肌肤", labelEn: "Oily", description: "容易出油、有光泽", emoji: "✨" },
@@ -136,6 +137,7 @@ async function main() {
       fieldName: "primaryConcern",
       question: "你最关注的肌肤问题是？",
       order: 2,
+      gender: "all",
       options: [
         { value: "aging", label: "细纹抗老", labelEn: "Anti-aging", description: "淡化细纹、紧致提升", emoji: "⏰" },
         { value: "dull", label: "暗沉提亮", labelEn: "Brightening", description: "提亮肤色、焕发光彩", emoji: "💡" },
@@ -149,6 +151,7 @@ async function main() {
       fieldName: "ageRange",
       question: "你的年龄段是？",
       order: 3,
+      gender: "all",
       options: [
         { value: "18-24", label: "18-24 岁", labelEn: "18-24", description: "肌肤年轻、预防为主", emoji: "🌱" },
         { value: "25-30", label: "25-30 岁", labelEn: "25-30", description: "初抗老阶段", emoji: "🌿" },
@@ -161,6 +164,7 @@ async function main() {
       fieldName: "currentRoutine",
       question: "你目前的护肤习惯是？",
       order: 4,
+      gender: "all",
       options: [
         { value: "minimal", label: "极简护肤", labelEn: "Minimal", description: "洁面+保湿即可", emoji: "1️⃣" },
         { value: "basic", label: "基础护肤", labelEn: "Basic", description: "洁面、面霜基本步骤", emoji: "3️⃣" },
@@ -173,6 +177,7 @@ async function main() {
       fieldName: "allergies",
       question: "你有以下过敏情况吗？",
       order: 5,
+      gender: "all",
       options: [
         { value: "none", label: "没有过敏史", labelEn: "None", description: "大部分产品都能用", emoji: "✅" },
         { value: "fragrance", label: "香精过敏", labelEn: "Fragrance", description: "对香料成分敏感", emoji: "🌺" },
@@ -186,6 +191,7 @@ async function main() {
       fieldName: "budget",
       question: "你的护肤预算是？",
       order: 6,
+      gender: "all",
       options: [
         { value: "budget", label: "追求性价比", labelEn: "Budget", description: "¥500 以内/月", emoji: "💰" },
         { value: "mid", label: "中等预算", labelEn: "Mid-range", description: "¥500-1500/月", emoji: "💎" },
@@ -197,6 +203,7 @@ async function main() {
       fieldName: "pregnancyStatus",
       question: "您目前是否处于备孕、孕期、产后或哺乳期？",
       order: 7,
+      gender: "female",
       options: [
         { value: "yes", label: "是", labelEn: "Yes", description: "我们将提供特别关怀建议", emoji: "🤰" },
         { value: "no", label: "否", labelEn: "No", description: "无特殊时期", emoji: "✅" },
@@ -207,6 +214,7 @@ async function main() {
       fieldName: "medicationHistory",
       question: "关于肌肤的护理与用药经历，以下哪项最符合？",
       order: 8,
+      gender: "all",
       options: [
         { value: "routine", label: "常规护理", labelEn: "Routine Care", description: "仅使用护肤品，未长期使用药膏或口服药", emoji: "🧴" },
         { value: "occasional", label: "偶有用药", labelEn: "Occasional Medication", description: "仅在严重时短期使用过非处方药膏，非长期依赖", emoji: "💊" },
@@ -290,6 +298,7 @@ async function main() {
       order: 1,
       featured: true,
       published: true,
+      stock: 100,
     },
     {
       name: "匀衡磨砂膏",
@@ -305,6 +314,7 @@ async function main() {
       order: 2,
       featured: false,
       published: true,
+      stock: 80,
     },
     {
       name: "臻萃修护面膜",
@@ -320,6 +330,7 @@ async function main() {
       order: 3,
       featured: true,
       published: true,
+      stock: 200,
     },
     {
       name: "修护紧致精华",
@@ -335,6 +346,7 @@ async function main() {
       order: 4,
       featured: true,
       published: true,
+      stock: 50,
     },
     {
       name: "逆龄面霜",
@@ -350,6 +362,7 @@ async function main() {
       order: 5,
       featured: true,
       published: true,
+      stock: 60,
     },
     {
       name: "臻养护手霜",
@@ -365,6 +378,7 @@ async function main() {
       order: 6,
       featured: false,
       published: true,
+      stock: 150,
     },
     {
       name: "奢润身体乳",
@@ -380,6 +394,7 @@ async function main() {
       order: 7,
       featured: false,
       published: true,
+      stock: 120,
     },
     {
       name: "轻透防晒霜",
@@ -395,6 +410,7 @@ async function main() {
       order: 8,
       featured: true,
       published: true,
+      stock: 90,
     },
     {
       name: "臻萃护理油",
@@ -410,6 +426,7 @@ async function main() {
       order: 9,
       featured: false,
       published: true,
+      stock: 70,
     },
     {
       name: "臻享礼盒套装",
@@ -425,6 +442,7 @@ async function main() {
       order: 10,
       featured: true,
       published: true,
+      stock: 30,
     },
   ];
 
@@ -449,7 +467,321 @@ async function main() {
   }
   console.log("✅ NIHPLOD 产品已创建 (10 款产品)");
 
-  // 6. 创建默认页面
+  // 5.1 获取产品ID映射（用于后续关联）
+  const allProducts = await prisma.product.findMany({ select: { id: true, slug: true } });
+  const productMap: Record<string, string> = {};
+  for (const p of allProducts) {
+    productMap[p.slug] = p.id;
+  }
+
+  // 5.2 创建购买链接
+  const purchaseLinks = [
+    { productSlug: "serum", platform: "天猫旗舰店", url: "https://nihplod.tmall.com", order: 1 },
+    { productSlug: "serum", platform: "京东自营", url: "https://jd.com/nihplod", order: 2 },
+    { productSlug: "face-cream", platform: "天猫旗舰店", url: "https://nihplod.tmall.com", order: 1 },
+    { productSlug: "face-cream", platform: "京东自营", url: "https://jd.com/nihplod", order: 2 },
+    { productSlug: "sunscreen", platform: "天猫旗舰店", url: "https://nihplod.tmall.com", order: 1 },
+    { productSlug: "gift-box", platform: "官方商城", url: "https://nihplod.cn/products/gift-box", order: 1 },
+  ];
+  await prisma.purchaseLink.deleteMany({});
+  for (const link of purchaseLinks) {
+    if (productMap[link.productSlug]) {
+      await prisma.purchaseLink.create({
+        data: {
+          productId: productMap[link.productSlug],
+          platform: link.platform,
+          url: link.url,
+          order: link.order,
+        },
+      });
+    }
+  }
+  console.log("✅ 购买链接已创建");
+
+  // 6. 创建职位
+  await prisma.job.deleteMany({});
+  const jobs = [
+    {
+      title: "护肤顾问",
+      titleEn: "Skincare Consultant",
+      location: "上海",
+      type: "fulltime",
+      description: "1. 为客户提供专业的护肤咨询服务\n2. 了解客户肌肤状况，推荐适合的产品\n3. 维护客户关系，提供售后跟进服务\n4. 参与品牌活动和培训",
+      requirements: "1. 大专及以上学历，护肤/美容相关专业优先\n2. 1年以上护肤品销售或咨询经验\n3. 热爱美妆护肤行业，形象气质佳\n4. 具备良好的沟通能力和服务意识",
+      salary: "8K-15K",
+      order: 1,
+      published: true,
+    },
+    {
+      title: "市场营销专员",
+      titleEn: "Marketing Specialist",
+      location: "上海",
+      type: "fulltime",
+      description: "1. 负责品牌社交媒体运营（小红书、微博、抖音等）\n2. 策划并执行线上线下营销活动\n3. 与KOL/KOC合作，推广品牌产品\n4. 分析市场数据，优化营销策略",
+      requirements: "1. 本科及以上学历，市场营销相关专业\n2. 2年以上美妆/护肤品牌营销经验\n3. 熟悉社交媒体运营，有成功案例优先\n4. 具备数据分析能力和创意思维",
+      salary: "12K-20K",
+      order: 2,
+      published: true,
+    },
+    {
+      title: "前端开发工程师",
+      titleEn: "Frontend Developer",
+      location: "上海 / 远程",
+      type: "fulltime",
+      description: "1. 负责官网及电商平台前端开发\n2. 使用 React/Next.js 构建用户界面\n3. 优化网站性能和用户体验\n4. 与设计师和后端工程师协作",
+      requirements: "1. 本科及以上学历，计算机相关专业\n2. 3年以上前端开发经验\n3. 精通 React、TypeScript、Tailwind CSS\n4. 有电商项目经验优先",
+      salary: "20K-35K",
+      order: 3,
+      published: true,
+    },
+  ];
+  for (const job of jobs) {
+    await prisma.job.create({ data: job });
+  }
+  console.log("✅ 职位已创建 (3 个职位)");
+
+  // 7. 创建申请分类夹
+  await prisma.applicationFolder.deleteMany({});
+  const folders = [
+    { name: "待筛选", description: "新收到的简历，等待初筛", order: 1 },
+    { name: "初筛通过", description: "通过初筛，等待面试安排", order: 2 },
+    { name: "面试中", description: "正在面试流程中", order: 3 },
+    { name: "待录用", description: "面试通过，等待发放offer", order: 4 },
+    { name: "已录用", description: "已发放offer并入职", order: 5 },
+    { name: "已拒绝", description: "未通过筛选或面试", order: 6 },
+    { name: "人才库", description: "暂不合适但有潜力的候选人", order: 7 },
+  ];
+  for (const folder of folders) {
+    await prisma.applicationFolder.create({ data: folder });
+  }
+  console.log("✅ 申请分类夹已创建 (7 个分类)");
+
+  // 8. 创建 AI 推荐规则
+  await prisma.recommendationRule.deleteMany({});
+  const rules = [
+    {
+      conditions: { skinType: ["dry"], primaryConcern: ["hydration"] },
+      productIds: [productMap["serum"], productMap["face-cream"], productMap["face-mask"]].filter(Boolean),
+      priority: 10,
+      message: "针对您的干性肌肤和补水需求，我们推荐以修护紧致精华为核心的保湿方案。",
+    },
+    {
+      conditions: { skinType: ["oily"], primaryConcern: ["pores"] },
+      productIds: [productMap["foam-cleanser"], productMap["face-scrub"], productMap["sunscreen"]].filter(Boolean),
+      priority: 10,
+      message: "针对您的油性肌肤和毛孔问题，我们推荐控油清洁的护理方案。",
+    },
+    {
+      conditions: { skinType: ["sensitive"], primaryConcern: ["sensitive"] },
+      productIds: [productMap["foam-cleanser"], productMap["serum"], productMap["face-cream"]].filter(Boolean),
+      priority: 15,
+      message: "针对您的敏感肌肤，我们推荐温和修护的护理方案，所有产品均适合敏感肌使用。",
+    },
+    {
+      conditions: { primaryConcern: ["aging"], ageRange: ["31-40", "41-50", "50+"] },
+      productIds: [productMap["serum"], productMap["face-cream"], productMap["treatment-oil"], productMap["face-mask"]].filter(Boolean),
+      priority: 20,
+      message: "针对您的抗老需求，我们推荐以明星产品修护紧致精华为核心的抗衰方案。",
+    },
+    {
+      conditions: { skinType: ["combination"] },
+      productIds: [productMap["foam-cleanser"], productMap["serum"], productMap["sunscreen"]].filter(Boolean),
+      priority: 5,
+      message: "针对您的混合性肌肤，我们推荐平衡水油的护理方案。",
+    },
+  ];
+  for (const rule of rules) {
+    await prisma.recommendationRule.create({ data: rule });
+  }
+  console.log("✅ AI 推荐规则已创建 (5 条规则)");
+
+  // 9. 创建测试用户
+  await prisma.pointRecord.deleteMany({});
+  await prisma.address.deleteMany({});
+  await prisma.user.deleteMany({});
+  const testUserPassword = await bcrypt.hash("123456", 10);
+  const testUser = await prisma.user.create({
+    data: {
+      phone: "13800138000",
+      phoneVerified: true,
+      password: testUserPassword,
+      nickname: "测试用户",
+      points: 500,
+      totalPoints: 500,
+    },
+  });
+  console.log("✅ 测试用户已创建 (13800138000 / 123456)");
+
+  // 9.1 创建测试用户收货地址
+  const addresses = [
+    {
+      userId: testUser.id,
+      name: "张三",
+      phone: "13800138000",
+      province: "上海市",
+      city: "上海市",
+      district: "浦东新区",
+      detail: "陆家嘴环路1000号 恒生银行大厦 28楼",
+      postalCode: "200120",
+      isDefault: true,
+    },
+    {
+      userId: testUser.id,
+      name: "李四",
+      phone: "13900139000",
+      province: "北京市",
+      city: "北京市",
+      district: "朝阳区",
+      detail: "建国门外大街1号 国贸大厦A座 15层",
+      postalCode: "100004",
+      isDefault: false,
+    },
+    {
+      userId: testUser.id,
+      name: "王五",
+      phone: "13700137000",
+      province: "广东省",
+      city: "深圳市",
+      district: "南山区",
+      detail: "科技园南区 腾讯大厦 10楼",
+      postalCode: "518057",
+      isDefault: false,
+    },
+  ];
+  for (const addr of addresses) {
+    await prisma.address.create({ data: addr });
+  }
+  console.log("✅ 测试用户收货地址已创建 (3 个地址)");
+
+  // 9.2 创建测试用户点数记录
+  const pointRecords = [
+    {
+      userId: testUser.id,
+      type: "REGISTER_BONUS" as const,
+      amount: 100,
+      balance: 100,
+      description: "新用户注册奖励",
+    },
+    {
+      userId: testUser.id,
+      type: "QUESTIONNAIRE_BONUS" as const,
+      amount: 50,
+      balance: 150,
+      description: "完成护肤问卷奖励",
+    },
+    {
+      userId: testUser.id,
+      type: "SHARE_REWARD" as const,
+      amount: 20,
+      balance: 170,
+      description: "分享护肤报告奖励",
+    },
+    {
+      userId: testUser.id,
+      type: "PURCHASE_REWARD" as const,
+      amount: 350,
+      balance: 520,
+      description: "购买修护紧致精华返点",
+      relatedId: "order_test_001",
+    },
+    {
+      userId: testUser.id,
+      type: "AI_CHAT_CONSUME" as const,
+      amount: -10,
+      balance: 510,
+      description: "AI追问消耗",
+    },
+    {
+      userId: testUser.id,
+      type: "AI_CHAT_CONSUME" as const,
+      amount: -10,
+      balance: 500,
+      description: "AI追问消耗",
+    },
+  ];
+  for (const record of pointRecords) {
+    await prisma.pointRecord.create({ data: record });
+  }
+  console.log("✅ 测试用户点数记录已创建 (6 条记录)");
+
+  // 9.3 创建测试联系留言
+  await prisma.contactMessage.deleteMany({});
+  const contactMessages = [
+    {
+      name: "刘女士",
+      email: "liu@example.com",
+      content: "您好，我想咨询一下修护紧致精华是否适合敏感肌使用？我皮肤比较容易过敏，之前用过一些精华会刺痛，请问这款产品成分温和吗？",
+      read: false,
+    },
+    {
+      name: "陈先生",
+      email: "chen@example.com",
+      content: "请问你们的产品在北京有线下体验店吗？我想实际试用后再决定购买，希望能提供一下门店地址，谢谢！",
+      read: true,
+    },
+    {
+      name: "王小姐",
+      email: "wang@example.com",
+      content: "我之前在你们天猫旗舰店购买了逆龄面霜，使用了一周感觉非常好，皮肤明显变得更有光泽了。想问一下这个面霜和精华搭配使用效果会更好吗？",
+      read: true,
+    },
+    {
+      name: "张先生",
+      email: "zhang@example.com",
+      content: "你好，我是一家高端美容院的采购负责人，想咨询一下是否可以批量采购你们的产品？希望能获取批发价格和合作方式，期待回复。",
+      read: false,
+    },
+    {
+      name: "赵女士",
+      email: "zhao@example.com",
+      content: "我在官网购买的臻萃修护面膜，收到后发现包装有点变形，虽然产品本身没问题，但作为送礼用途有点担心，请问可以换货吗？订单号是 NP20241225001。",
+      read: false,
+    },
+  ];
+  for (const msg of contactMessages) {
+    await prisma.contactMessage.create({ data: msg });
+  }
+  console.log("✅ 测试联系留言已创建 (5 条留言)");
+
+  // 10. 创建电商相关设置
+  const ecommerceSettings = [
+    {
+      key: "shipping",
+      value: {
+        freeShippingThreshold: 299,  // 满299包邮
+        baseShippingFee: 15,         // 基础运费
+        expressCompanies: ["顺丰速运", "京东物流", "圆通速递", "中通快递"],
+      },
+    },
+    {
+      key: "points",
+      value: {
+        registerBonus: 100,          // 注册奖励
+        questionnaireBonus: 50,      // 完成问卷奖励
+        purchaseRate: 0.01,          // 消费返点比例（1%）
+        shareReward: 20,             // 分享奖励
+        aiChatCost: 10,              // AI追问消耗
+      },
+    },
+    {
+      key: "order",
+      value: {
+        autoCancelMinutes: 30,       // 未支付自动取消时间（分钟）
+        autoReceiveDays: 15,         // 自动确认收货天数
+        returnDays: 7,               // 可申请退货天数
+      },
+    },
+  ];
+  for (const s of ecommerceSettings) {
+    await prisma.setting.upsert({
+      where: { key: s.key },
+      update: { value: s.value },
+      create: s,
+    });
+  }
+  console.log("✅ 电商设置已创建 (运费/积分/订单规则)");
+
+  // 11. 创建默认页面
   const pages = [
     {
       title: "首页",

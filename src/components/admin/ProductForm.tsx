@@ -459,55 +459,90 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
         {/* 购买链接 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-900">购买链接</h2>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addPurchaseLink}
-              leftIcon={<Plus className="h-4 w-4" />}
-            >
-              添加平台
-            </Button>
-          </div>
-          {formData.purchaseLinks.length === 0 ? (
-            <p className="text-sm text-gray-500">暂无购买链接，点击右上角添加</p>
-          ) : (
-            <div className="space-y-3">
-              {formData.purchaseLinks.map((link, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3"
-                >
-                  <GripVertical className="h-4 w-4 flex-shrink-0 cursor-move text-gray-400" />
-                  <div className="grid flex-1 gap-3 sm:grid-cols-2">
-                    <Select
-                      options={platformOptions}
-                      value={link.platform}
-                      onChange={(e) => updatePurchaseLink(index, "platform", e.target.value)}
-                      placeholder="选择平台"
-                    />
-                    <Input
-                      value={link.url}
-                      onChange={(e) => updatePurchaseLink(index, "url", e.target.value)}
-                      placeholder="输入购买链接 URL"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removePurchaseLink(index)}
-                    className="flex-shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+          <h2 className="mb-4 text-lg font-medium text-gray-900">购买链接</h2>
+
+          {/* 直接购买链接 */}
+          <div className="mb-6">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                直接购买
+              </span>
+              <span className="text-xs text-gray-500">用户点击后直接跳转购买</span>
             </div>
-          )}
-          {errors.purchaseLinks && (
-            <p className="mt-2 text-sm text-red-500">{errors.purchaseLinks}</p>
-          )}
+            <Input
+              value={formData.purchaseUrl || ""}
+              onChange={(e) => updateField("purchaseUrl", e.target.value || null)}
+              placeholder="输入直接购买链接 URL（如官方商城、自有小程序等）"
+            />
+            {errors.purchaseUrl && (
+              <p className="mt-1 text-sm text-red-500">{errors.purchaseUrl}</p>
+            )}
+          </div>
+
+          {/* 分隔线 */}
+          <div className="mb-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs text-gray-400">或</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
+          {/* 第三方平台链接 */}
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                  第三方平台
+                </span>
+                <span className="text-xs text-gray-500">天猫、小红书、抖音等平台链接</span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addPurchaseLink}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                添加平台
+              </Button>
+            </div>
+            {formData.purchaseLinks.length === 0 ? (
+              <p className="text-sm text-gray-500">暂无第三方购买链接，点击右上角添加</p>
+            ) : (
+              <div className="space-y-3">
+                {formData.purchaseLinks.map((link, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3"
+                  >
+                    <GripVertical className="h-4 w-4 flex-shrink-0 cursor-move text-gray-400" />
+                    <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                      <Select
+                        options={platformOptions}
+                        value={link.platform}
+                        onChange={(e) => updatePurchaseLink(index, "platform", e.target.value)}
+                        placeholder="选择平台"
+                      />
+                      <Input
+                        value={link.url}
+                        onChange={(e) => updatePurchaseLink(index, "url", e.target.value)}
+                        placeholder="输入购买链接 URL"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePurchaseLink(index)}
+                      className="flex-shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {errors.purchaseLinks && (
+              <p className="mt-2 text-sm text-red-500">{errors.purchaseLinks}</p>
+            )}
+          </div>
         </section>
 
         {/* 其他设置 */}

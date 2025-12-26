@@ -128,10 +128,16 @@ function PlatformIcon({ platform, className }: { platform: string; className?: s
 }
 
 /**
- * 购买链接下拉菜单组件
- * 移动端使用底部弹出菜单，PC端使用传统下拉
+ * 购买按钮组件
+ * 直接购买和第三方购买是两个独立的按钮
  */
-function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
+function PurchaseButtons({
+  purchaseUrl,
+  links
+}: {
+  purchaseUrl?: string | null;
+  links: PurchaseLink[]
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -156,8 +162,11 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
     };
   }, [isOpen]);
 
-  // 没有链接时显示禁用状态的图标按钮
-  if (!links || links.length === 0) {
+  const hasDirectPurchase = !!purchaseUrl;
+  const hasThirdParty = links && links.length > 0;
+
+  // 没有任何购买链接时显示禁用状态
+  if (!hasDirectPurchase && !hasThirdParty) {
     return (
       <span className="flex cursor-not-allowed items-center justify-center rounded-full bg-brand-gold/20 p-2 text-brand-gold/50 sm:p-2.5">
         <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -165,8 +174,8 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
     );
   }
 
-  // 移动端底部弹出菜单（通过 Portal 渲染到 body，AnimatePresence 包在外层以支持退出动画）
-  const mobileMenu = isMounted ? createPortal(
+  // 移动端底部弹出菜单 - 仅用于第三方平台
+  const mobileMenu = isMounted && hasThirdParty ? createPortal(
     <AnimatePresence>
       {isOpen && (
         <m.div
@@ -178,7 +187,7 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
           className="fixed inset-0 z-[9999] sm:hidden"
           onClick={() => setIsOpen(false)}
         >
-          {/* 背景遮罩 - 毛玻璃效果 */}
+          {/* 背景遮罩 */}
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -199,8 +208,12 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
             <div className="flex justify-center pt-3">
               <div className="h-1 w-10 rounded-full bg-brand-gold/30" />
             </div>
-            {/* 购买选项 - 横向排列 */}
-            <div className="flex justify-center gap-6 px-6 py-6">
+            {/* 标题 */}
+            <div className="px-6 pt-3 pb-1 text-center">
+              <span className="text-sm font-medium text-brand-charcoal">选择购买渠道</span>
+            </div>
+            {/* 第三方购买选项 - 横向排列 */}
+            <div className="flex justify-center gap-6 px-6 py-4">
               {links.map((link) => (
                 <a
                   key={link.id}
@@ -237,52 +250,76 @@ function PurchaseDropdown({ links }: { links: PurchaseLink[] }) {
     document.body
   ) : null;
 
-  // 有链接时显示菜单
   return (
-    <div ref={dropdownRef} className="relative" onClick={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        className="flex items-center justify-center rounded-full bg-brand-gold/20 p-2 text-brand-gold transition-all active:scale-95 sm:p-2.5 sm:hover:bg-brand-gold/30"
-      >
-        <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
-      </button>
+    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      {/* 直接购买按钮 - 独立按钮，点击直接跳转 */}
+      {hasDirectPurchase && (
+        <a
+          href={purchaseUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-full bg-brand-gold px-3 py-1.5 text-[10px] font-medium text-white",
+            "transition-all hover:bg-brand-gold/90 active:scale-95",
+            "sm:px-4 sm:py-2 sm:text-[11px]",
+            "md:px-5 md:text-xs",
+            "lg:px-6 lg:py-2.5 lg:text-sm"
+          )}
+        >
+          <ShoppingBag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          立即购买
+        </a>
+      )}
 
-      {/* 移动端：底部弹出菜单 */}
-      {mobileMenu}
-
-      {/* PC端：传统下拉菜单 */}
-      <AnimatePresence>
-        {isOpen && (
-          <m.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-0 z-50 mb-2 hidden min-w-[140px] overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-black/5 sm:block"
+      {/* 第三方购买按钮 - 下拉菜单 */}
+      {hasThirdParty && (
+        <div ref={dropdownRef} className="relative">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(!isOpen);
+            }}
+            className="flex items-center justify-center rounded-full bg-brand-gold/20 p-2 text-brand-gold transition-all active:scale-95 sm:p-2.5 sm:hover:bg-brand-gold/30"
+            title="其他购买渠道"
           >
-            {links.map((link) => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsOpen(false);
-                }}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-charcoal transition-colors hover:bg-brand-gold/10"
+            <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
+          </button>
+
+          {/* 移动端：底部弹出菜单 */}
+          {mobileMenu}
+
+          {/* PC端：传统下拉菜单 */}
+          <AnimatePresence>
+            {isOpen && (
+              <m.div
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute bottom-full left-1/2 z-50 mb-2 hidden min-w-[140px] -translate-x-1/2 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-black/5 sm:block"
               >
-                <PlatformIcon platform={link.platform} className="h-5 w-5" />
-                {link.platform}
-              </a>
-            ))}
-          </m.div>
-        )}
-      </AnimatePresence>
+                {links.map((link) => (
+                  <a
+                    key={link.id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsOpen(false);
+                    }}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-charcoal transition-colors hover:bg-brand-gold/10"
+                  >
+                    <PlatformIcon platform={link.platform} className="h-5 w-5" />
+                    {link.platform}
+                  </a>
+                ))}
+              </m.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
@@ -816,7 +853,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                               >
                                 了解详情
                               </button>
-                              <PurchaseDropdown links={product.purchaseLinks} />
+                              <PurchaseButtons purchaseUrl={product.purchaseUrl} links={product.purchaseLinks} />
                             </div>
                           </div>
                         </>

@@ -54,7 +54,7 @@ const TravelIcon = ({ className }: { className?: string }) => (
     <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z" fill={ICON_COLOR} stroke={ICON_COLOR} strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-import { FaceAnalysisResult } from "@/components/website/advisor/FaceAnalysisResult";
+import { FaceAnalysisResult, AdvisorChatPanel } from "@/components/website/advisor";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { fadeInUp, staggerContainer, defaultTransition } from "@/lib/animations";
 import type { FaceAnalysisResult as FaceAnalysisData } from "@/app/api/advisor/face-analyze/route";
@@ -1289,6 +1289,12 @@ export function ResultContent() {
         onSaveImage={handleSaveToGallery}
         isGeneratingImage={isGeneratingImage}
         copied={shareStatus === "copied"}
+      />
+
+      {/* AI护肤顾问追问 */}
+      <AdvisorChatPanel
+        skinType={result?.skinProfile.type}
+        concerns={result?.skinProfile.concerns}
       />
     </div>
   );

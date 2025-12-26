@@ -1,0 +1,204 @@
+"use client";
+
+/**
+ * 购物车内容组件
+ */
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+
+// 地址类型（简化版，仅用于类型检查）
+interface Address {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string;
+  province: string;
+  city: string;
+  district: string;
+  detail: string;
+  postalCode: string | null;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface CartItem {
+  id: string;
+  product: {
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    featuredImage: string | null;
+    stock: number;
+  };
+  variant: {
+    id: string;
+    name: string;
+    price: number;
+    stock: number;
+  } | null;
+  quantity: number;
+  selected: boolean;
+  price: number;
+}
+
+interface CartContentProps {
+  initialItems: CartItem[];
+  defaultAddress: Address | null;
+}
+
+export default function CartContent({ initialItems, defaultAddress: _defaultAddress }: CartContentProps) {
+  const router = useRouter();
+  const [items, setItems] = useState(initialItems);
+  const [loading, _setLoading] = useState(false);
+
+  // 计算选中商品总价
+  const selectedItems = items.filter((i) => i.selected);
+  const totalPrice = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const totalCount = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
+
+  // 更新数量
+  const updateQuantity = async (id: string, quantity: number) => {
+    if (quantity < 1) return;
+    
+    try {
+      await fetch(`/api/cart/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity }),
+      });
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity } : i)));
+    } catch (e) {
+      console.error("更新数量失败:", e);
+    }
+  };
+
+  // 删除商品
+  const removeItem = async (id: string) => {
+    try {
+      await fetch(`/api/cart/${id}`, { method: "DELETE" });
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    } catch (e) {
+      console.error("删除失败:", e);
+    }
+  };
+
+  // 切换选中状态
+  const toggleSelect = async (id: string, selected: boolean) => {
+    try {
+      await fetch(`/api/cart/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selected }),
+      });
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, selected } : i)));
+    } catch (e) {
+      console.error("更新失败:", e);
+    }
+  };
+
+  // 去结算
+  const handleCheckout = () => {
+    if (selectedItems.length === 0) {
+      alert("请选择商品");
+      return;
+    }
+    router.push("/checkout");
+  };
+
+  if (items.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <p className="text-gray-500 mb-4">购物车是空的</p>
+        <Link href="/products" className="text-pink-500 hover:underline">
+          去逛逛 →
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-6">
+      {/* 商品列表 */}
+      <div className="space-y-4 mb-24">
+        {items.map((item) => (
+          <div key={item.id} className="bg-white rounded-xl p-4 flex gap-4">
+            {/* 选择框 */}
+            <input
+              type="checkbox"
+              checked={item.selected}
+              onChange={(e) => toggleSelect(item.id, e.target.checked)}
+              className="w-5 h-5 mt-8 accent-pink-500"
+            />
+
+            {/* 商品图片 */}
+            <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+              {item.product.featuredImage && (
+                <Image
+                  src={item.product.featuredImage}
+                  alt={item.product.name}
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+
+            {/* 商品信息 */}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-gray-900 truncate">{item.product.name}</h3>
+              {item.variant && (
+                <p className="text-sm text-gray-500">{item.variant.name}</p>
+              )}
+              <p className="text-pink-500 font-bold mt-1">¥{item.price.toFixed(2)}</p>
+
+              {/* 数量控制 */}
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                  className="w-7 h-7 bg-gray-100 rounded text-gray-600"
+                >
+                  -
+                </button>
+                <span className="w-8 text-center">{item.quantity}</span>
+                <button
+                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  className="w-7 h-7 bg-gray-100 rounded text-gray-600"
+                >
+                  +
+                </button>
+                <button
+                  onClick={() => removeItem(item.id)}
+                  className="ml-auto text-sm text-gray-400 hover:text-red-500"
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 底部结算栏 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 flex items-center">
+        <div className="flex-1">
+          <p className="text-sm text-gray-500">
+            已选 <span className="text-pink-500 font-bold">{totalCount}</span> 件
+          </p>
+          <p className="text-lg font-bold text-pink-500">¥{totalPrice.toFixed(2)}</p>
+        </div>
+        <button
+          onClick={handleCheckout}
+          disabled={selectedItems.length === 0 || loading}
+          className="px-8 py-3 bg-pink-500 text-white rounded-full font-medium disabled:opacity-50"
+        >
+          去结算
+        </button>
+      </div>
+    </div>
+  );
+}
+

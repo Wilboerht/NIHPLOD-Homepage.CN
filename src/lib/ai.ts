@@ -162,10 +162,21 @@ export interface AISettings {
   systemPrompt: string; // 废弃，保留兼容
   textSystemPrompt: string;
   visionSystemPrompt: string;
+  chatSystemPrompt: string; // 追问对话专用系统提示词
   maxTokens: number;
   temperature: number;
   apiKeys?: ApiKeys;
 }
+
+// 默认追问对话系统提示词
+const DEFAULT_CHAT_SYSTEM_PROMPT = `你是一位专业的护肤顾问，名叫"朵朵"。你的特点是：
+1. 专业但亲切，用简洁易懂的语言回答用户问题
+2. 基于用户的肤质、关注点给出个性化建议
+3. 回答简洁明了，控制在200字以内
+4. 如果涉及产品推荐，只推荐适合用户肤质的产品
+5. 遇到医学问题时建议咨询专业医生
+
+请用中文回答用户的问题。`;
 
 // 默认设置
 const DEFAULT_AI_SETTINGS: AISettings = {
@@ -176,6 +187,7 @@ const DEFAULT_AI_SETTINGS: AISettings = {
   systemPrompt: "",
   textSystemPrompt: "",
   visionSystemPrompt: "",
+  chatSystemPrompt: DEFAULT_CHAT_SYSTEM_PROMPT,
   maxTokens: 1800, // 文本分析需要较长输出（5条详细分析）
   temperature: 0.3, // 保持一致性
   apiKeys: {
@@ -221,6 +233,7 @@ export async function getAISettings(): Promise<AISettings> {
         // 确保提示词字段正确传递
         textSystemPrompt: dbSettings.textSystemPrompt || DEFAULT_AI_SETTINGS.textSystemPrompt,
         visionSystemPrompt: dbSettings.visionSystemPrompt || DEFAULT_AI_SETTINGS.visionSystemPrompt,
+        chatSystemPrompt: dbSettings.chatSystemPrompt || DEFAULT_AI_SETTINGS.chatSystemPrompt,
         apiKeys: dbSettings.apiKeys || DEFAULT_AI_SETTINGS.apiKeys,
       };
     } else {

@@ -1,17 +1,22 @@
 /**
  * 短信服务
- * 
+ *
  * 支持多个服务商，通过环境变量配置：
  * - SMS_PROVIDER: aliyun | tencent | mock
  * - SMS_ACCESS_KEY_ID: 阿里云 AccessKeyId
  * - SMS_ACCESS_KEY_SECRET: 阿里云 AccessKeySecret
  * - SMS_SIGN_NAME: 短信签名
  * - SMS_TEMPLATE_CODE_VERIFY: 验证码模板ID
+ * - SMS_TEMPLATE_CODE_LOGIN: 登录验证码模板ID
  */
+
+import crypto from "crypto";
+
+export type SMSTemplate = "LOTTERY_VERIFY" | "LOTTERY_WINNER" | "LOGIN_CODE";
 
 export interface SMSParams {
   phone: string;
-  template: "LOTTERY_VERIFY" | "LOTTERY_WINNER";
+  template: SMSTemplate;
   params: Record<string, string>;
 }
 
@@ -78,10 +83,10 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
   }
 
   try {
-    // 阿里云短信 API 调用
-    // 这里使用 REST API 方式，避免引入 SDK
-    const _endpoint = "https://dysmsapi.aliyuncs.com";
-    const params = new URLSearchParams({
+    const endpoint = "https://dysmsapi.aliyuncs.com";
+
+    // 构建请求参数
+    const params: Record<string, string> = {
       Action: "SendSms",
       Version: "2017-05-25",
       RegionId: "cn-hangzhou",
@@ -93,28 +98,77 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
       Format: "JSON",
       SignatureMethod: "HMAC-SHA1",
       SignatureVersion: "1.0",
-      SignatureNonce: Math.random().toString(36).substring(2),
-      Timestamp: new Date().toISOString(),
+      SignatureNonce: crypto.randomUUID(),
+      Timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+    };
+
+    // 生成签名
+    const signature = generateAliyunSignature(params, accessKeySecret);
+    params.Signature = signature;
+
+    // 发送请求
+    const queryString = Object.entries(params)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join("&");
+
+    const response = await fetch(`${endpoint}?${queryString}`, {
+      method: "GET",
     });
 
-    // 生成签名（简化版，实际需要完整的签名算法）
-    // TODO: 实现完整的阿里云签名算法
-    console.log("[Aliyun SMS] 请求参数:", params.toString());
+    const result = await response.json();
 
-    return { success: false, error: "阿里云短信需要完整实现签名算法" };
+    if (result.Code === "OK") {
+      console.log("[Aliyun SMS] 发送成功:", result.BizId);
+      return { success: true, messageId: result.BizId };
+    } else {
+      console.error("[Aliyun SMS] 发送失败:", result);
+      return { success: false, error: result.Message || "短信发送失败" };
+    }
   } catch (error) {
-    console.error("[Aliyun SMS] 发送失败:", error);
+    console.error("[Aliyun SMS] 发送异常:", error);
     return { success: false, error: "短信发送失败" };
   }
 }
 
 /**
+ * 生成阿里云 API 签名
+ */
+function generateAliyunSignature(params: Record<string, string>, secret: string): string {
+  // 1. 按参数名排序
+  const sortedKeys = Object.keys(params).sort();
+
+  // 2. 构建规范化查询字符串
+  const canonicalizedQueryString = sortedKeys
+    .map(key => `${percentEncode(key)}=${percentEncode(params[key])}`)
+    .join("&");
+
+  // 3. 构建待签名字符串
+  const stringToSign = `GET&${percentEncode("/")}&${percentEncode(canonicalizedQueryString)}`;
+
+  // 4. 计算签名
+  const hmac = crypto.createHmac("sha1", secret + "&");
+  hmac.update(stringToSign);
+  return hmac.digest("base64");
+}
+
+/**
+ * 特殊 URL 编码（阿里云要求）
+ */
+function percentEncode(str: string): string {
+  return encodeURIComponent(str)
+    .replace(/\+/g, "%20")
+    .replace(/\*/g, "%2A")
+    .replace(/%7E/g, "~");
+}
+
+/**
  * 获取阿里云模板ID
  */
-function getAliyunTemplateCode(template: string): string | null {
-  const templates: Record<string, string | undefined> = {
+function getAliyunTemplateCode(template: SMSTemplate): string | null {
+  const templates: Record<SMSTemplate, string | undefined> = {
     LOTTERY_VERIFY: process.env.SMS_TEMPLATE_CODE_VERIFY,
     LOTTERY_WINNER: process.env.SMS_TEMPLATE_CODE_WINNER,
+    LOGIN_CODE: process.env.SMS_TEMPLATE_CODE_LOGIN,
   };
   return templates[template] || null;
 }
@@ -126,5 +180,23 @@ function getAliyunTemplateCode(template: string): string | null {
 async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
   console.log("[Tencent SMS] 腾讯云短信待实现:", options);
   return { success: false, error: "腾讯云短信待实现" };
+}
+
+/**
+ * 发送登录验证码
+ */
+export async function sendLoginCode(phone: string, code: string): Promise<SMSResult> {
+  return sendSMS({
+    phone,
+    template: "LOGIN_CODE",
+    params: { code },
+  });
+}
+
+/**
+ * 生成6位数字验证码
+ */
+export function generateVerifyCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 

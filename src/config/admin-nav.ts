@@ -13,6 +13,8 @@ import {
   MessageSquare,
   Settings,
   Gift,
+  ShoppingCart,
+  Users,
   LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +27,8 @@ export interface NavItem {
 
 export const adminNavItems: NavItem[] = [
   { title: "仪表盘", href: "/admin", icon: LayoutDashboard },
+  { title: "订单管理", href: "/admin/orders", icon: ShoppingCart },
+  { title: "用户管理", href: "/admin/users", icon: Users },
   { title: "产品管理", href: "/admin/products", icon: Package },
   { title: "分类管理", href: "/admin/categories", icon: FolderTree },
   { title: "页面内容", href: "/admin/pages", icon: FileText },

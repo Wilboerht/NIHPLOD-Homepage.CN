@@ -33,6 +33,10 @@ model Product {
   order         Int            @default(0) // 排序（数字越小越靠前）
   featured      Boolean        @default(false) // 是否推荐
   published     Boolean        @default(false) // 是否发布
+  // 库存与销量（官网直购）
+  stock         Int            @default(0) // 库存数量
+  salesCount    Int            @default(0) // 销量统计
+  cartItems     CartItem[]     // 关联购物车
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -414,6 +418,237 @@ model LotteryEntry {
   @@index([phoneHash])
   @@index([deviceId])
   @@index([invitedBy]) // 查询某人邀请了谁
+}
+
+// ============================================
+// C端用户系统
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  phone         String    @unique              // 手机号（唯一）
+  phoneVerified Boolean   @default(false)      // 手机验证状态
+  password      String?                        // 密码（哈希后）
+  nickname      String?                        // 昵称
+  avatar        String?                        // 头像 URL
+
+  // 微信登录
+  wechatOpenId  String?   @unique              // 微信 OpenID
+  wechatUnionId String?                        // 微信 UnionID
+
+  // 点数
+  points        Int       @default(0)          // 当前点数
+  totalPoints   Int       @default(0)          // 累计获得
+
+  // 关联
+  addresses     Address[]
+  orders        Order[]
+  cartItems     CartItem[]
+  pointRecords  PointRecord[]
+  conversations AdvisorConversation[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([phone])
+  @@index([wechatOpenId])
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String                           // 收件人
+  phone       String                           // 联系电话
+  province    String                           // 省
+  city        String                           // 市
+  district    String                           // 区
+  detail      String                           // 详细地址
+  postalCode  String?                          // 邮编
+  isDefault   Boolean  @default(false)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model SmsCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  type      String   @default("login")         // login | bind | reset
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone, type])
+  @@index([expiresAt])
+}
+
+// ============================================
+// 点数系统
+// ============================================
+
+model PointRecord {
+  id          String    @id @default(cuid())
+  userId      String
+  type        PointType
+  amount      Int                              // 正数增加，负数减少
+  balance     Int                              // 变动后余额
+  description String
+  relatedId   String?                          // 关联订单/对话ID
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([type])
+}
+
+enum PointType {
+  REGISTER_BONUS        // 注册奖励
+  QUESTIONNAIRE_BONUS   // 完成问卷
+  PURCHASE_REWARD       // 购买奖励
+  SHARE_REWARD          // 分享奖励
+  AI_CHAT_CONSUME       // AI追问消耗
+  ADMIN_ADJUST          // 管理员调整
+}
+
+// ============================================
+// AI 追问对话系统
+// ============================================
+
+model AdvisorConversation {
+  id              String    @id @default(cuid())
+  userId          String
+  sessionId       String?                      // 关联原始 AdvisorSession
+  analysisResult  Json?                        // 分析结果快照
+  messageCount    Int       @default(0)
+  pointsConsumed  Int       @default(0)
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages        ConversationMessage[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ConversationMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String                        // user | assistant
+  content        String   @db.Text
+  pointsCost     Int      @default(0)
+
+  conversation   AdvisorConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ============================================
+// 购物车
+// ============================================
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  quantity  Int      @default(1)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+// ============================================
+// 订单系统
+// ============================================
+
+model Order {
+  id             String      @id @default(cuid())
+  orderNo        String      @unique           // 订单号
+  userId         String
+
+  // 金额
+  totalAmount    Decimal     @db.Decimal(10, 2)
+  shippingFee    Decimal     @default(0) @db.Decimal(10, 2)
+  discountAmount Decimal     @default(0) @db.Decimal(10, 2)
+  payAmount      Decimal     @db.Decimal(10, 2)
+
+  // 收货信息快照
+  recipientName    String
+  recipientPhone   String
+  recipientAddress String    @db.Text
+
+  // 状态
+  status         OrderStatus @default(PENDING)
+
+  // 支付
+  paymentMethod  String?                       // wechat | alipay
+  paymentTime    DateTime?
+  paymentNo      String?
+
+  // 物流
+  shippingCompany String?
+  trackingNo      String?
+  shippedAt       DateTime?
+  receivedAt      DateTime?
+
+  // 点数
+  pointsEarned   Int         @default(0)
+
+  // 备注
+  remark         String?     @db.Text
+  adminNote      String?     @db.Text
+
+  user           User        @relation(fields: [userId], references: [id])
+  items          OrderItem[]
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+  @@index([orderNo])
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  orderId      String
+  productId    String
+  productName  String                          // 快照
+  productImage String?
+  price        Decimal  @db.Decimal(10, 2)
+  quantity     Int
+  subtotal     Decimal  @db.Decimal(10, 2)
+
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+enum OrderStatus {
+  PENDING      // 待支付
+  PAID         // 已支付
+  PROCESSING   // 处理中
+  SHIPPED      // 已发货
+  DELIVERED    // 已签收
+  COMPLETED    // 已完成
+  CANCELLED    // 已取消
+  REFUNDING    // 退款中
+  REFUNDED     // 已退款
 }
 
 // ============================================

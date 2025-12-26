@@ -217,3 +217,118 @@ export function formatShareUrl(url: string): string {
   }
 }
 
+// ============================================
+// 微信开放平台网页授权登录
+// ============================================
+
+/** 微信用户信息 */
+export interface WechatUserInfo {
+  openid: string;
+  unionid?: string;
+  nickname: string;
+  sex: number;
+  province: string;
+  city: string;
+  country: string;
+  headimgurl: string;
+  privilege: string[];
+}
+
+/**
+ * 生成微信网页授权 URL
+ * 用于 PC 端扫码登录
+ */
+export function getWechatOAuthUrl(redirectUri: string, state?: string): string {
+  const appId = process.env.WECHAT_OPEN_APP_ID || process.env.WECHAT_APP_ID;
+
+  if (!appId) {
+    throw new Error("微信 AppID 未配置");
+  }
+
+  const encodedRedirect = encodeURIComponent(redirectUri);
+  const oauthState = state || crypto.randomBytes(8).toString("hex");
+
+  // 微信开放平台网页授权 URL
+  return `https://open.weixin.qq.com/connect/qrconnect?appid=${appId}&redirect_uri=${encodedRedirect}&response_type=code&scope=snsapi_login&state=${oauthState}#wechat_redirect`;
+}
+
+/**
+ * 生成微信公众号网页授权 URL
+ * 用于微信内 H5 授权登录
+ */
+export function getWechatMpOAuthUrl(redirectUri: string, state?: string, scope: "snsapi_base" | "snsapi_userinfo" = "snsapi_userinfo"): string {
+  const appId = process.env.WECHAT_MP_APP_ID || process.env.WECHAT_APP_ID;
+
+  if (!appId) {
+    throw new Error("微信公众号 AppID 未配置");
+  }
+
+  const encodedRedirect = encodeURIComponent(redirectUri);
+  const oauthState = state || crypto.randomBytes(8).toString("hex");
+
+  return `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appId}&redirect_uri=${encodedRedirect}&response_type=code&scope=${scope}&state=${oauthState}#wechat_redirect`;
+}
+
+/**
+ * 通过 code 获取 Access Token 和 OpenID
+ * @param code 微信回调的 code
+ * @param type 登录类型: open(开放平台) | mp(公众号)
+ */
+export async function getWechatOAuthToken(code: string, type: "open" | "mp" = "open"): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  openid: string;
+  unionid?: string;
+  scope: string;
+}> {
+  let appId: string | undefined;
+  let appSecret: string | undefined;
+
+  if (type === "open") {
+    appId = process.env.WECHAT_OPEN_APP_ID || process.env.WECHAT_APP_ID;
+    appSecret = process.env.WECHAT_OPEN_APP_SECRET || process.env.WECHAT_APP_SECRET;
+  } else {
+    appId = process.env.WECHAT_MP_APP_ID || process.env.WECHAT_APP_ID;
+    appSecret = process.env.WECHAT_MP_APP_SECRET || process.env.WECHAT_APP_SECRET;
+  }
+
+  if (!appId || !appSecret) {
+    throw new Error("微信 AppID 或 AppSecret 未配置");
+  }
+
+  const url = `https://api.weixin.qq.com/sns/oauth2/access_token?appid=${appId}&secret=${appSecret}&code=${code}&grant_type=authorization_code`;
+
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (data.errcode) {
+    throw new Error(`获取微信 Access Token 失败: ${data.errmsg}`);
+  }
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    expiresIn: data.expires_in,
+    openid: data.openid,
+    unionid: data.unionid,
+    scope: data.scope,
+  };
+}
+
+/**
+ * 通过 Access Token 获取微信用户信息
+ */
+export async function getWechatUserInfo(accessToken: string, openid: string): Promise<WechatUserInfo> {
+  const url = `https://api.weixin.qq.com/sns/userinfo?access_token=${accessToken}&openid=${openid}&lang=zh_CN`;
+
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (data.errcode) {
+    throw new Error(`获取微信用户信息失败: ${data.errmsg}`);
+  }
+
+  return data as WechatUserInfo;
+}
+

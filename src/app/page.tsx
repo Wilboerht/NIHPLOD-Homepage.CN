@@ -1,4 +1,6 @@
 import HomeClient from "@/components/website/HomeClient";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthModal, UserCenterModal } from "@/components/website";
 import prisma from "@/lib/prisma";
 import type { HomePageContent } from "@/types/page-content";
 
@@ -26,6 +28,12 @@ export default async function Home() {
     console.error("获取首页内容失败:", error);
   }
 
-  return <HomeClient content={content} />;
+  return (
+    <AuthProvider>
+      <HomeClient content={content} />
+      <AuthModal />
+      <UserCenterModal />
+    </AuthProvider>
+  );
 }
 

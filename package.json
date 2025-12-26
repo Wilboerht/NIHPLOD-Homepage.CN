@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
@@ -20,6 +21,7 @@
   },
   "dependencies": {
     "@fontsource/playfair-display": "^5.2.8",
+    "@pansy/china-division": "^2.1.0",
     "@prisma/adapter-pg": "^7.0.1",
     "@prisma/client": "^7.0.1",
     "@react-three/fiber": "^8.18.0",
@@ -48,6 +50,7 @@
     "next-view-transitions": "^0.3.5",
     "nodemailer": "^7.0.11",
     "ogl": "^1.0.11",
+    "openai": "^6.15.0",
     "pg": "^8.16.3",
     "prisma": "^7.0.1",
     "react": "^18",

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { m } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
+import { UserButton } from "./UserButton";
 
 /**
  * 网格背景色值 - 2行4列 布局
@@ -118,6 +119,11 @@ export default function HomeClient({ content }: HomeClientProps) {
     <div className="fixed inset-0 flex flex-col">
       {/* 顶部线段 */}
       <div className="absolute left-0 right-0 top-0 z-20 h-2 bg-[#F0EDE1] sm:h-2.5 md:h-3 lg:h-4" />
+
+      {/* 右上角登录按钮 */}
+      <div className="absolute right-4 top-4 z-30 sm:right-6 sm:top-5 md:right-8 md:top-6">
+        <UserButton />
+      </div>
 
       {/* 底部线段 */}
       <div className="absolute bottom-0 left-0 right-0 z-20 h-2 bg-[#F0EDE1] sm:h-2.5 md:h-3 lg:h-4" />

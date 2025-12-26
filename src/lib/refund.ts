@@ -1,0 +1,154 @@
+/**
+ * 退款服务
+ * 处理订单退款申请和状态管理
+ */
+import { prisma } from "./prisma";
+import { OrderStatus } from "@/generated/prisma/client";
+
+/**
+ * 申请退款
+ */
+export async function applyRefund(
+  orderId: string,
+  userId: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, userId },
+    });
+
+    if (!order) {
+      return { success: false, error: "订单不存在" };
+    }
+
+    // 只有已支付/已发货的订单可以申请退款
+    const refundableStatus: OrderStatus[] = [
+      OrderStatus.PAID,
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPED,
+    ];
+
+    if (!refundableStatus.includes(order.status)) {
+      return { success: false, error: "该订单状态不支持退款" };
+    }
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.REFUNDING,
+        remark: reason,
+      },
+    });
+
+    console.log(`[Refund] 退款申请: ${order.orderNo}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Refund] 申请失败:", error);
+    return { success: false, error: "申请失败" };
+  }
+}
+
+/**
+ * 处理退款（管理员操作）
+ */
+export async function processRefund(
+  orderId: string,
+  approved: boolean,
+  adminRemark?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return { success: false, error: "订单不存在" };
+    }
+
+    if (order.status !== OrderStatus.REFUNDING) {
+      return { success: false, error: "订单状态不正确" };
+    }
+
+    if (approved) {
+      // 同意退款
+      await prisma.$transaction(async (tx) => {
+        // 更新订单状态
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            status: OrderStatus.REFUNDED,
+            adminNote: adminRemark,
+          },
+        });
+
+        // 恢复库存
+        for (const item of order.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+      });
+
+      // TODO: 调用微信退款接口
+
+      console.log(`[Refund] 退款成功: ${order.orderNo}`);
+    } else {
+      // 拒绝退款
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: order.trackingNo ? OrderStatus.SHIPPED : OrderStatus.PAID,
+          adminNote: adminRemark,
+        },
+      });
+
+      console.log(`[Refund] 退款拒绝: ${order.orderNo}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[Refund] 处理失败:", error);
+    return { success: false, error: "处理失败" };
+  }
+}
+
+/**
+ * 取消退款申请
+ */
+export async function cancelRefund(
+  orderId: string,
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, userId },
+    });
+
+    if (!order) {
+      return { success: false, error: "订单不存在" };
+    }
+
+    if (order.status !== OrderStatus.REFUNDING) {
+      return { success: false, error: "订单状态不正确" };
+    }
+
+    // 恢复到退款前状态
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: order.trackingNo ? OrderStatus.SHIPPED : OrderStatus.PAID,
+        remark: null,
+      },
+    });
+
+    console.log(`[Refund] 取消退款: ${order.orderNo}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Refund] 取消失败:", error);
+    return { success: false, error: "操作失败" };
+  }
+}
+

@@ -4,14 +4,19 @@
  */
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
-import { verifyToken, type AdminJWTPayload } from "./jwt";
-import { AUTH_COOKIE_NAME, type AdminUser } from "@/types/auth";
+import { verifyToken, verifyUserToken, type AdminJWTPayload, type UserJWTPayload } from "./jwt";
+import { AUTH_COOKIE_NAME, USER_COOKIE_NAME, type AdminUser, type UserInfo } from "@/types/auth";
+import { prisma } from "./prisma";
+
+// ============================================
+// 管理员认证
+// ============================================
 
 /**
- * 从 Cookie 中获取当前登录用户
+ * 从 Cookie 中获取当前登录管理员
  * 用于 Server Components 和 Server Actions
  */
-export async function getCurrentUser(): Promise<AdminUser | null> {
+export async function getCurrentAdmin(): Promise<AdminUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
 
@@ -31,8 +36,11 @@ export async function getCurrentUser(): Promise<AdminUser | null> {
   };
 }
 
+// 兼容旧接口
+export const getCurrentUser = getCurrentAdmin;
+
 /**
- * 从请求中获取 Token
+ * 从请求中获取管理员 Token
  * 支持 Cookie 和 Authorization Header
  */
 export function getTokenFromRequest(request: NextRequest): string | null {
@@ -52,7 +60,7 @@ export function getTokenFromRequest(request: NextRequest): string | null {
 }
 
 /**
- * 验证请求中的认证信息
+ * 验证请求中的管理员认证信息
  * 用于 API 路由
  */
 export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload | null> {
@@ -65,7 +73,7 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
 }
 
 /**
- * API 路由保护高阶函数
+ * API 路由保护高阶函数（管理员）
  * 包装 API 处理函数，自动验证认证
  */
 export function withAuth<T extends NextRequest>(
@@ -95,10 +103,104 @@ export function withAuth<T extends NextRequest>(
 }
 
 /**
- * 检查用户是否已认证
- * 用于客户端状态检查
+ * 检查管理员是否已认证
  */
 export async function isAuthenticated(): Promise<boolean> {
-  const user = await getCurrentUser();
+  const user = await getCurrentAdmin();
   return user !== null;
+}
+
+// ============================================
+// C端用户认证
+// ============================================
+
+/**
+ * 从请求中获取用户 Token
+ */
+export function getUserTokenFromRequest(request: NextRequest): string | null {
+  // 优先从 Cookie 获取
+  const cookieToken = request.cookies.get(USER_COOKIE_NAME)?.value;
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  // 回退到 Authorization Header
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+
+  return null;
+}
+
+/**
+ * 验证请求中的用户认证信息
+ */
+export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPayload | null> {
+  const token = getUserTokenFromRequest(request);
+  if (!token) {
+    return null;
+  }
+
+  return verifyUserToken(token);
+}
+
+/**
+ * 从 Cookie 中获取当前登录用户（完整信息）
+ */
+export async function getCurrentLoginUser(): Promise<UserInfo | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(USER_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return null;
+  }
+
+  const payload = await verifyUserToken(token);
+  if (!payload) {
+    return null;
+  }
+
+  // 从数据库获取最新用户信息
+  const user = await prisma.user.findUnique({
+    where: { id: payload.id },
+    select: {
+      id: true,
+      phone: true,
+      nickname: true,
+      avatar: true,
+      points: true,
+    },
+  });
+
+  return user;
+}
+
+/**
+ * API 路由保护高阶函数（C端用户）
+ */
+export function withUserAuth<T extends NextRequest>(
+  handler: (request: T, user: UserJWTPayload) => Promise<Response>
+): (request: T) => Promise<Response> {
+  return async (request: T) => {
+    const user = await verifyUserAuth(request);
+
+    if (!user) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "请先登录",
+          },
+        }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    return handler(request, user);
+  };
 }

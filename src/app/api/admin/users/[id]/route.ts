@@ -1,0 +1,71 @@
+/**
+ * 管理端用户详情 API
+ * GET /api/admin/users/:id
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/auth";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(request: NextRequest, context: RouteContext) {
+  try {
+    const admin = await verifyAuth(request);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await context.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        orders: {
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            orderNo: true,
+            status: true,
+            payAmount: true,
+            createdAt: true,
+          },
+        },
+        pointRecords: {
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            description: true,
+            createdAt: true,
+          },
+        },
+        _count: { select: { orders: true } },
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: { user },
+    });
+  } catch (error) {
+    console.error("[AdminUserDetail] 异常:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
+      { status: 500 }
+    );
+  }
+}
+

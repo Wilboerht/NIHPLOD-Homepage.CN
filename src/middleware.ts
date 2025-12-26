@@ -17,7 +17,7 @@ const secret = new TextEncoder().encode(
 const PROTECTED_PATHS = ["/admin"];
 
 // 公开的管理后台路径（登录页）
-const PUBLIC_ADMIN_PATHS = ["/login"];
+const PUBLIC_ADMIN_PATHS = ["/admin-login"];
 
 // API 路由需要认证的路径前缀
 const PROTECTED_API_PATHS = [
@@ -64,9 +64,9 @@ export async function middleware(request: NextRequest) {
 
   // 1. 处理管理后台页面路由
   if (matchesPath(pathname, PROTECTED_PATHS)) {
-    // 未登录时重定向到登录页
+    // 未登录时重定向到管理员登录页
     if (!isAuthenticated) {
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL("/admin-login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
@@ -103,7 +103,7 @@ export const config = {
   matcher: [
     // 管理后台页面
     "/admin/:path*",
-    "/login",
+    "/admin-login",
     // 需要保护的 API 路由
     "/api/admin/:path*",
     "/api/categories/:path*",
