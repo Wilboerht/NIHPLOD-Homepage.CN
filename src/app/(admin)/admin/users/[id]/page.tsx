@@ -3,10 +3,12 @@
 /**
  * 用户详情页面
  */
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Coins, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Coins, ShoppingBag, Calendar, Phone, User, TrendingUp, TrendingDown, Gift, MessageSquare, Settings, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 
 interface UserDetail {
   id: string;
@@ -14,21 +16,25 @@ interface UserDetail {
   nickname: string | null;
   avatar: string | null;
   points: number;
+  totalPoints: number;
   createdAt: string;
-  orders: { id: string; orderNo: string; status: string; payableAmount: number; createdAt: string }[];
-  pointsHistory: { id: string; type: string; amount: number; description: string; createdAt: string }[];
+  orders: { id: string; orderNo: string; status: string; payAmount: number; createdAt: string }[];
+  pointRecords: { id: string; type: string; amount: number; description: string; createdAt: string }[];
   _count: { orders: number };
 }
 
-const POINTS_TYPE_MAP: Record<string, string> = {
-  REGISTER_BONUS: "注册奖励",
-  PURCHASE_REWARD: "购买奖励",
-  AI_CHAT_CONSUME: "AI追问消耗",
-  ADMIN_ADJUST: "管理员调整",
+const POINTS_TYPE_MAP: Record<string, { label: string; icon: typeof Coins; color: string; bg: string }> = {
+  REGISTER_BONUS: { label: "注册奖励", icon: Gift, color: "text-emerald-600", bg: "bg-emerald-100" },
+  QUESTIONNAIRE_BONUS: { label: "问卷奖励", icon: MessageSquare, color: "text-blue-600", bg: "bg-blue-100" },
+  PURCHASE_REWARD: { label: "购买奖励", icon: ShoppingBag, color: "text-purple-600", bg: "bg-purple-100" },
+  SHARE_REWARD: { label: "分享奖励", icon: TrendingUp, color: "text-cyan-600", bg: "bg-cyan-100" },
+  AI_CHAT_CONSUME: { label: "AI追问消耗", icon: MessageSquare, color: "text-orange-600", bg: "bg-orange-100" },
+  ADMIN_ADJUST: { label: "管理员调整", icon: Settings, color: "text-gray-600", bg: "bg-gray-100" },
 };
 
-export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function UserDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
   const [user, setUser] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -72,75 +78,95 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-400">加载中...</div>;
-  if (!user) return <div className="p-8 text-center text-gray-400">用户不存在</div>;
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+        <User className="mb-2 h-12 w-12" />
+        <p>用户不存在</p>
+      </div>
+    );
+  }
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleString("zh-CN");
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 头部 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Link href="/admin/users">
             <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> 返回</Button>
           </Link>
           <h1 className="text-xl font-semibold">{user.nickname || user.phone || "用户详情"}</h1>
+          <Badge variant="success">已注册</Badge>
         </div>
-        <Button onClick={() => setShowAdjustModal(true)}>
+        <Button size="sm" onClick={() => setShowAdjustModal(true)}>
           <Coins className="h-4 w-4 mr-1" /> 调整积分
         </Button>
       </div>
 
-      {/* 用户信息 */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="rounded-xl bg-white p-6 shadow-sm text-center">
-          <div className="mx-auto mb-4 h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center text-3xl text-gray-400">
-            {user.avatar ? (
-              <img src={user.avatar} alt="" className="h-20 w-20 rounded-full object-cover" />
-            ) : (
-              user.nickname?.charAt(0) || "U"
-            )}
-          </div>
-          <h2 className="font-medium">{user.nickname || "未设置昵称"}</h2>
-          <p className="text-sm text-gray-500">{user.phone || "未绑定手机"}</p>
-          <p className="mt-2 text-xs text-gray-400">注册于 {new Date(user.createdAt).toLocaleDateString("zh-CN")}</p>
-        </div>
-
+      {/* 基本信息 + 统计 */}
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-amber-500 mb-2">
-            <Coins className="h-5 w-5" />
-            <span className="text-sm text-gray-500">积分余额</span>
-          </div>
-          <p className="text-3xl font-bold text-amber-500">{user.points}</p>
+          <h2 className="mb-4 font-medium">基本信息</h2>
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between"><dt className="text-gray-500">昵称</dt><dd>{user.nickname || "未设置"}</dd></div>
+            <div className="flex justify-between"><dt className="text-gray-500">手机号</dt><dd>{user.phone || "未绑定"}</dd></div>
+            <div className="flex justify-between"><dt className="text-gray-500">注册时间</dt><dd>{formatDate(user.createdAt)}</dd></div>
+          </dl>
         </div>
-
         <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-pink-500 mb-2">
-            <ShoppingBag className="h-5 w-5" />
-            <span className="text-sm text-gray-500">订单数量</span>
-          </div>
-          <p className="text-3xl font-bold text-pink-500">{user._count.orders}</p>
+          <h2 className="mb-4 font-medium">数据统计</h2>
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between"><dt className="text-gray-500">积分余额</dt><dd className="font-medium text-amber-600">{user.points}</dd></div>
+            <div className="flex justify-between"><dt className="text-gray-500">累计积分</dt><dd>{user.totalPoints}</dd></div>
+            <div className="flex justify-between"><dt className="text-gray-500">订单数量</dt><dd>{user._count?.orders ?? 0}</dd></div>
+          </dl>
         </div>
       </div>
 
       {/* 积分记录 */}
       <div className="rounded-xl bg-white p-6 shadow-sm">
         <h2 className="mb-4 font-medium">积分记录</h2>
-        {user.pointsHistory.length === 0 ? (
-          <p className="text-center text-gray-400 py-4">暂无记录</p>
+        {!user.pointRecords || user.pointRecords.length === 0 ? (
+          <p className="text-center text-gray-400 py-4 text-sm">暂无积分记录</p>
         ) : (
-          <div className="space-y-3">
-            {user.pointsHistory.map((record) => (
-              <div key={record.id} className="flex items-center justify-between border-b pb-2">
-                <div>
-                  <span className="font-medium">{POINTS_TYPE_MAP[record.type] || record.type}</span>
-                  <p className="text-sm text-gray-500">{record.description}</p>
-                </div>
-                <span className={`font-medium ${record.amount > 0 ? "text-green-500" : "text-red-500"}`}>
-                  {record.amount > 0 ? "+" : ""}{record.amount}
-                </span>
-              </div>
-            ))}
-          </div>
+          <table className="w-full text-sm">
+            <thead className="border-b text-left text-gray-500">
+              <tr>
+                <th className="pb-2 font-normal">类型</th>
+                <th className="pb-2 font-normal">描述</th>
+                <th className="pb-2 font-normal">变动</th>
+                <th className="pb-2 font-normal">时间</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {user.pointRecords.map((record) => {
+                const typeInfo = POINTS_TYPE_MAP[record.type] || { label: record.type };
+                const isPositive = record.amount > 0;
+                return (
+                  <tr key={record.id}>
+                    <td className="py-2">{typeInfo.label}</td>
+                    <td className="py-2 text-gray-500">{record.description}</td>
+                    <td className={`py-2 ${isPositive ? "text-green-600" : "text-red-500"}`}>
+                      {isPositive ? "+" : ""}{record.amount}
+                    </td>
+                    <td className="py-2 text-gray-400">{formatDate(record.createdAt)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
@@ -152,13 +178,22 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm text-gray-600">调整数量</label>
-                <input
-                  type="number"
-                  value={adjustForm.amount}
-                  onChange={(e) => setAdjustForm((f) => ({ ...f, amount: parseInt(e.target.value) || 0 }))}
-                  placeholder="正数增加，负数扣减"
-                  className="w-full rounded-lg border p-2"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={adjustForm.amount || ""}
+                    onChange={(e) => setAdjustForm((f) => ({ ...f, amount: parseInt(e.target.value) || 0 }))}
+                    placeholder="正数增加，负数扣减"
+                    className="w-full rounded-lg border p-2"
+                  />
+                  {adjustForm.amount !== 0 && (
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${
+                      adjustForm.amount > 0 ? "text-green-500" : "text-red-500"
+                    }`}>
+                      {adjustForm.amount > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                    </span>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-sm text-gray-600">调整原因</label>
@@ -173,7 +208,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowAdjustModal(false)}>取消</Button>
-              <Button onClick={handleAdjust} disabled={actionLoading}>
+              <Button onClick={handleAdjust} disabled={actionLoading || !adjustForm.amount || !adjustForm.description}>
                 {actionLoading ? "处理中..." : "确认调整"}
               </Button>
             </div>

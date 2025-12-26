@@ -3,8 +3,8 @@
 /**
  * 订单详情页面
  */
-import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Truck, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -45,8 +45,9 @@ const STATUS_MAP: Record<string, { label: string; color: "default" | "warning" |
   REFUNDED: { label: "已退款", color: "default" },
 };
 
-export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function OrderDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
   const router = useRouter();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);

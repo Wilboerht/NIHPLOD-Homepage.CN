@@ -6,16 +6,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { createPayment } from "@/lib/wechat-pay";
+import { createAlipayPayment } from "@/lib/alipay";
 import { z } from "zod";
 
 const createPaySchema = z.object({
   orderId: z.string().min(1, "订单ID不能为空"),
+  payMethod: z.enum(["wechat", "alipay"]).optional().default("wechat"),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);
-    
+
     if (!payload) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
@@ -24,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    
+
     const result = createPaySchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { orderId } = result.data;
+    const { orderId, payMethod } = result.data;
 
     // 验证订单归属
     const order = await prisma.order.findFirst({
@@ -47,33 +49,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 获取用户的微信 openId
+    // 开发环境模拟支付
+    if (process.env.NODE_ENV === "development") {
+      return NextResponse.json({
+        success: true,
+        data: {
+          payType: "mock",
+          orderId: order.id,
+          orderNo: order.orderNo,
+          amount: order.payAmount,
+        },
+      });
+    }
+
+    // 支付宝支付
+    if (payMethod === "alipay") {
+      const alipayResult = await createAlipayPayment(orderId);
+
+      if (!alipayResult.success) {
+        return NextResponse.json(
+          { success: false, error: { code: "PAY_FAILED", message: alipayResult.error } },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          payType: "alipay",
+          payUrl: alipayResult.payUrl,
+        },
+      });
+    }
+
+    // 微信支付
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
       select: { wechatOpenId: true },
     });
 
     if (!user?.wechatOpenId) {
-      // 如果没有微信 openId，返回模拟支付参数（开发环境）
-      if (process.env.NODE_ENV === "development") {
-        return NextResponse.json({
-          success: true,
-          data: {
-            payType: "mock",
-            orderId: order.id,
-            orderNo: order.orderNo,
-            amount: order.payAmount,
-          },
-        });
-      }
-
       return NextResponse.json(
         { success: false, error: { code: "NO_OPENID", message: "请使用微信登录后支付" } },
         { status: 400 }
       );
     }
 
-    // 创建微信支付
     const payResult = await createPayment(orderId, user.wechatOpenId);
 
     if (!payResult.success) {
