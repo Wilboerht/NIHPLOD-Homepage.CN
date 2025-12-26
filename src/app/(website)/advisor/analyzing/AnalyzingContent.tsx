@@ -169,6 +169,11 @@ export function AnalyzingContent() {
         // 保存分析结果
         sessionStorage.setItem("advisorResult", JSON.stringify(data.data));
 
+        // 保存用户位置信息（通过 IP 解析，用于护肤用量推荐）
+        if (data.userLocation) {
+          sessionStorage.setItem("advisorUserLocation", JSON.stringify(data.userLocation));
+        }
+
         // 追踪分析完成
         trackAnalysisComplete(data.data.source || "ai");
 

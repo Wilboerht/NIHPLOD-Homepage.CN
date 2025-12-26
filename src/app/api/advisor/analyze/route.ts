@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AnalyzeRequestSchema } from "@/schemas/advisor";
 import { analyzeWithAI, fallbackAnalysis } from "@/lib/ai";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { resolveIPLocation } from "@/lib/geoip";
 
 /**
  * POST /api/advisor/analyze
@@ -62,6 +63,9 @@ export async function POST(request: NextRequest) {
     // 将 null 转换为 undefined（函数签名使用 optional）
     const faceAnalysisData = faceAnalysis ?? undefined;
 
+    // 通过 IP 解析用户地理位置
+    const geoLocation = resolveIPLocation(ip);
+
     // 尝试 AI 分析
     if (process.env.AI_ENABLED === "true") {
       try {
@@ -70,6 +74,11 @@ export async function POST(request: NextRequest) {
           success: true,
           source: "ai",
           data: aiResult,
+          // 附加用户位置信息用于护肤用量推荐
+          userLocation: {
+            province: geoLocation.province,
+            city: geoLocation.city,
+          },
         });
       } catch (error) {
         console.error("AI 分析失败，使用降级方案:", error);
@@ -85,6 +94,11 @@ export async function POST(request: NextRequest) {
       source: "fallback",
       notice: "当前为智能推荐模式",
       data: fallbackResult,
+      // 附加用户位置信息用于护肤用量推荐
+      userLocation: {
+        province: geoLocation.province,
+        city: geoLocation.city,
+      },
     });
   } catch (error) {
     console.error("分析 API 错误:", error);
