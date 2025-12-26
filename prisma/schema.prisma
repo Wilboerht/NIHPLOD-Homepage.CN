@@ -33,12 +33,13 @@ model Product {
   order         Int            @default(0) // 排序（数字越小越靠前）
   featured      Boolean        @default(false) // 是否推荐
   published     Boolean        @default(false) // 是否发布
-  // 库存与销量（官网直购）
-  stock         Int            @default(0) // 库存数量
-  salesCount    Int            @default(0) // 销量统计
-  cartItems     CartItem[]     // 关联购物车
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  // 站内购买设置
+  allowDirectBuy Boolean       @default(false) // 是否允许站内购买
+  stock          Int           @default(0) // 库存数量
+  salesCount     Int           @default(0) // 销量统计
+  cartItems      CartItem[]    // 关联购物车
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([categoryId])
   @@index([published, order])

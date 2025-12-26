@@ -5,10 +5,12 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence, useMotionValue, PanInfo } from "framer-motion";
-import { ChevronDown, ChevronLeft, ChevronRight, Menu, X, ShoppingBag } from "lucide-react";
-import { ProductDrawer, ShopIcon, StoryIcon, RitualIcon, ContactIcon, HomeIcon } from "@/components/website";
+import { ChevronDown, ChevronLeft, ChevronRight, Menu, X, ShoppingBag, ShoppingCart, Loader2 } from "lucide-react";
+import { ProductDrawer, ShopIcon, StoryIcon, RitualIcon, ContactIcon, HomeIcon, CartDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
 
 /**
  * 底部导航项配置
@@ -49,6 +51,8 @@ interface Product {
   ingredients: string | null;
   usage: string | null;
   benefits: string[];
+  allowDirectBuy: boolean;
+  stock: number;
 }
 
 interface ProductsContentProps {
@@ -129,18 +133,27 @@ function PlatformIcon({ platform, className }: { platform: string; className?: s
 
 /**
  * 购买按钮组件
- * 直接购买和第三方购买是两个独立的按钮
+ * 站内购买、直接购买和第三方购买
  */
 function PurchaseButtons({
+  productId,
   purchaseUrl,
-  links
+  links,
+  allowDirectBuy,
+  stock
 }: {
+  productId: string;
   purchaseUrl?: string | null;
-  links: PurchaseLink[]
+  links: PurchaseLink[];
+  allowDirectBuy: boolean;
+  stock: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [adding, setAdding] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { user, openLoginModal } = useAuth();
+  const { success, error: showError } = useToast();
 
   // 客户端挂载后才渲染 Portal
   useEffect(() => {
@@ -162,11 +175,42 @@ function PurchaseButtons({
     };
   }, [isOpen]);
 
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    if (stock <= 0) {
+      showError("商品已售罄");
+      return;
+    }
+    setAdding(true);
+    try {
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, quantity: 1 }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        success("已加入购物车");
+      } else {
+        showError(data.error?.message || "添加失败");
+      }
+    } catch {
+      showError("网络错误");
+    } finally {
+      setAdding(false);
+    }
+  };
+
   const hasDirectPurchase = !!purchaseUrl;
   const hasThirdParty = links && links.length > 0;
+  const canBuyOnSite = allowDirectBuy && stock > 0;
 
-  // 没有任何购买链接时显示禁用状态
-  if (!hasDirectPurchase && !hasThirdParty) {
+  // 没有任何购买选项时显示禁用状态
+  if (!hasDirectPurchase && !hasThirdParty && !allowDirectBuy) {
     return (
       <span className="flex cursor-not-allowed items-center justify-center rounded-full bg-brand-gold/20 p-2 text-brand-gold/50 sm:p-2.5">
         <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -252,8 +296,34 @@ function PurchaseButtons({
 
   return (
     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-      {/* 直接购买按钮 - 独立按钮，点击直接跳转 */}
-      {hasDirectPurchase && (
+      {/* 站内购买按钮 - 加入购物车 */}
+      {allowDirectBuy && (
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={adding || !canBuyOnSite}
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-medium",
+            "transition-all active:scale-95",
+            "sm:px-4 sm:py-2 sm:text-[11px]",
+            "md:px-5 md:text-xs",
+            "lg:px-6 lg:py-2.5 lg:text-sm",
+            canBuyOnSite
+              ? "bg-brand-gold text-white hover:bg-brand-gold/90"
+              : "cursor-not-allowed bg-gray-300 text-gray-500"
+          )}
+        >
+          {adding ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
+          ) : (
+            <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          )}
+          {stock <= 0 ? "售罄" : "加入购物车"}
+        </button>
+      )}
+
+      {/* 外部直接购买按钮 */}
+      {hasDirectPurchase && !allowDirectBuy && (
         <a
           href={purchaseUrl}
           target="_blank"
@@ -341,6 +411,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
   const [isAnimating, setIsAnimating] = useState(false); // 防止动画中重复触发
   const animationRef = useRef<NodeJS.Timeout | null>(null); // 存储动画定时器
   const [hasAnimated, setHasAnimated] = useState(false); // 标记是否已经播放过初始动画
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false); // 购物车抽屉状态
 
   // 手势滑动相关
   const dragX = useMotionValue(0);
@@ -853,7 +924,13 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                               >
                                 了解详情
                               </button>
-                              <PurchaseButtons purchaseUrl={product.purchaseUrl} links={product.purchaseLinks} />
+                              <PurchaseButtons
+                                productId={product.id}
+                                purchaseUrl={product.purchaseUrl}
+                                links={product.purchaseLinks}
+                                allowDirectBuy={product.allowDirectBuy}
+                                stock={product.stock}
+                              />
                             </div>
                           </div>
                         </>
@@ -1157,11 +1234,31 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
         )}
       </AnimatePresence>
 
+      {/* 浮动购物车按钮 */}
+      <button
+        onClick={() => setCartDrawerOpen(true)}
+        className={cn(
+          "fixed z-50 flex items-center justify-center rounded-full bg-brand-gold text-white shadow-lg",
+          "transition-all hover:bg-brand-gold/90 active:scale-95",
+          "right-4 top-4 h-12 w-12",
+          "sm:right-6 sm:top-6 sm:h-14 sm:w-14"
+        )}
+        title="购物车"
+      >
+        <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
+      </button>
+
       {/* 产品详情抽屉 */}
       <ProductDrawer
         isOpen={drawerOpen}
         onClose={handleCloseDrawer}
         product={selectedProduct}
+      />
+
+      {/* 购物车抽屉 */}
+      <CartDrawer
+        isOpen={cartDrawerOpen}
+        onClose={() => setCartDrawerOpen(false)}
       />
     </>
   );

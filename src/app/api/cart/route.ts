@@ -120,6 +120,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 检查是否允许站内购买
+    if (!product.allowDirectBuy) {
+      return NextResponse.json(
+        { success: false, error: { code: "DIRECT_BUY_NOT_ALLOWED", message: "该商品不支持站内购买" } },
+        { status: 400 }
+      );
+    }
+
     // 检查库存
     if (product.stock < quantity) {
       return NextResponse.json(

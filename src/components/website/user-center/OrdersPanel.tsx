@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Package, ChevronRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface OrderItem {
   id: string;
@@ -116,7 +117,15 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
 }
 
 function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
+  const { openPay, closeUserCenter } = useAuth();
   const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-gray-500 bg-gray-100" };
+
+  const handlePay = () => {
+    // 先打开支付模态框，再关闭用户中心（避免组件卸载导致的闭包问题）
+    openPay(order.id);
+    closeUserCenter();
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex-shrink-0 p-6 pb-4 border-b border-[#E8E3DC]">
@@ -146,6 +155,15 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
         <div className="mt-6 bg-white/80 rounded-xl p-4 border border-[#E8E3DC]">
           <div className="flex items-center justify-between"><span className="text-[#8B8579]">实付金额</span><span className="text-[#A69374] text-xl">¥{Number(order.payAmount).toFixed(2)}</span></div>
         </div>
+        {/* 待付款订单显示付款按钮 */}
+        {order.status === "PENDING" && (
+          <button
+            onClick={handlePay}
+            className="w-full mt-6 py-3 bg-[#A69374] hover:bg-[#8B7A5E] text-white rounded-xl font-medium transition-colors"
+          >
+            立即付款
+          </button>
+        )}
       </div>
     </div>
   );

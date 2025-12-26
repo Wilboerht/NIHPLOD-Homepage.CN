@@ -183,6 +183,8 @@ export async function POST(request: NextRequest) {
         featured: validated.featured,
         published: validated.published,
         categoryId: validated.categoryId,
+        allowDirectBuy: validated.allowDirectBuy,
+        stock: validated.stock,
         images: {
           create: validated.images.map((img, index) => ({
             url: img.url,

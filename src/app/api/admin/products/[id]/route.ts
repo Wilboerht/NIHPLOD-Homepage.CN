@@ -203,7 +203,9 @@ export async function PUT(
           order: validated.order,
           featured: validated.featured,
           published: validated.published,
-          categoryId: validated.categoryId,
+          category: { connect: { id: validated.categoryId } },
+          allowDirectBuy: validated.allowDirectBuy,
+          stock: validated.stock,
         },
       });
 

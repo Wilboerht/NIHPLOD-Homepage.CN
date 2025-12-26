@@ -173,14 +173,59 @@ export async function handlePaymentNotify(xmlBody: string): Promise<{
       return { success: false, message: "订单号缺失" };
     }
 
-    // 更新订单状态
-    await prisma.order.update({
-      where: { orderNo },
-      data: {
-        status: OrderStatus.PAID,
-        paymentNo: transactionId,
-        paymentTime: new Date(),
-      },
+    // 购买奖励比例：每消费 1 元获得 1 点
+    const PURCHASE_REWARD_RATIO = 1;
+
+    // 使用事务更新订单状态和发放积分
+    await prisma.$transaction(async (tx) => {
+      // 获取订单信息
+      const order = await tx.order.findUnique({
+        where: { orderNo },
+      });
+
+      if (!order) {
+        throw new Error("订单不存在");
+      }
+
+      // 计算购买奖励点数
+      const pointsEarned = Math.floor(Number(order.payAmount) * PURCHASE_REWARD_RATIO);
+
+      // 更新订单状态
+      await tx.order.update({
+        where: { orderNo },
+        data: {
+          status: OrderStatus.PAID,
+          paymentMethod: "wechat",
+          paymentNo: transactionId,
+          paymentTime: new Date(),
+          pointsEarned,
+        },
+      });
+
+      // 发放积分
+      if (pointsEarned > 0) {
+        const user = await tx.user.update({
+          where: { id: order.userId },
+          data: {
+            points: { increment: pointsEarned },
+            totalPoints: { increment: pointsEarned },
+          },
+        });
+
+        // 记录积分变动
+        await tx.pointRecord.create({
+          data: {
+            userId: order.userId,
+            type: "PURCHASE_REWARD",
+            amount: pointsEarned,
+            balance: user.points,
+            description: `订单支付奖励 (${orderNo})`,
+            relatedId: order.id,
+          },
+        });
+
+        console.log(`[WechatPay] 发放积分: ${pointsEarned} 点`);
+      }
     });
 
     console.log(`[WechatPay] 订单支付成功: ${orderNo}`);

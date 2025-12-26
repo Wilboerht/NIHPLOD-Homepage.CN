@@ -25,6 +25,15 @@ interface AuthContextType {
   openUserCenter: (view?: UserCenterView) => void;
   closeUserCenter: () => void;
   setUserCenterView: (view: UserCenterView) => void;
+  // 结算弹窗状态
+  checkoutOpen: boolean;
+  openCheckout: () => void;
+  closeCheckout: () => void;
+  // 支付弹窗状态
+  payOpen: boolean;
+  payOrderId: string | null;
+  openPay: (orderId: string) => void;
+  closePay: () => void;
   // 登录弹窗
   openLoginModal: () => void;
   openRegisterModal: () => void;
@@ -48,6 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userCenterOpen, setUserCenterOpen] = useState(false);
   const [userCenterView, setUserCenterViewState] = useState<UserCenterView>("profile");
 
+  // 结算弹窗状态
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  // 支付弹窗状态
+  const [payOpen, setPayOpen] = useState(false);
+  const [payOrderId, setPayOrderId] = useState<string | null>(null);
+
   const openLoginModal = useCallback(() => setActiveModal("login"), []);
   const openRegisterModal = useCallback(() => setActiveModal("register"), []);
   const openForgotPasswordModal = useCallback(() => setActiveModal("forgot-password"), []);
@@ -68,6 +84,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setUserCenterView = useCallback((view: UserCenterView) => {
     setUserCenterViewState(view);
+  }, []);
+
+  // 结算弹窗操作
+  const openCheckout = useCallback(() => {
+    setCheckoutOpen(true);
+  }, []);
+
+  const closeCheckout = useCallback(() => {
+    setCheckoutOpen(false);
+  }, []);
+
+  // 支付弹窗操作
+  const openPay = useCallback((orderId: string) => {
+    console.log("[AuthContext] openPay called with orderId:", orderId);
+    setPayOrderId(orderId);
+    setPayOpen(true);
+    console.log("[AuthContext] setPayOpen(true) called");
+  }, []);
+
+  // 调试：监听 payOpen 状态变化
+  useEffect(() => {
+    console.log("[AuthContext useEffect] payOpen state is now:", payOpen, "payOrderId:", payOrderId);
+  }, [payOpen, payOrderId]);
+
+  const closePay = useCallback(() => {
+    setPayOpen(false);
+    setPayOrderId(null);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -112,6 +155,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         openUserCenter,
         closeUserCenter,
         setUserCenterView,
+        checkoutOpen,
+        openCheckout,
+        closeCheckout,
+        payOpen,
+        payOrderId,
+        openPay,
+        closePay,
         openLoginModal,
         openRegisterModal,
         openForgotPasswordModal,

@@ -4,9 +4,9 @@
  * 购物车内容组件
  */
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 // 地址类型（简化版，仅用于类型检查）
 interface Address {
@@ -51,7 +51,7 @@ interface CartContentProps {
 }
 
 export default function CartContent({ initialItems, defaultAddress: _defaultAddress }: CartContentProps) {
-  const router = useRouter();
+  const { user, openCheckout, openLoginModal } = useAuth();
   const [items, setItems] = useState(initialItems);
   const [loading, _setLoading] = useState(false);
 
@@ -106,7 +106,13 @@ export default function CartContent({ initialItems, defaultAddress: _defaultAddr
       alert("请选择商品");
       return;
     }
-    router.push("/checkout");
+    // 未登录先打开登录弹窗
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    // 打开结算弹窗
+    openCheckout();
   };
 
   if (items.length === 0) {

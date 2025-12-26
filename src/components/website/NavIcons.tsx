@@ -43,3 +43,10 @@ export const StoryIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+// 购物车图标
+export const CartIcon = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M4 4H5.62C6.12 4 6.57 4.31 6.75 4.78L8.25 8.56M8.25 8.56L10.1 13.07C10.45 13.93 11.28 14.5 12.2 14.5H17.8C18.72 14.5 19.55 13.93 19.9 13.07L21.5 9.06C21.73 8.5 21.32 7.88 20.71 7.88H8.25V8.56ZM9 18C9 18.55 8.55 19 8 19C7.45 19 7 18.55 7 18C7 17.45 7.45 17 8 17C8.55 17 9 17.45 9 18ZM19 18C19 18.55 18.55 19 18 19C17.45 19 17 18.55 17 18C17 17.45 17.45 17 18 17C18.55 17 19 17.45 19 18Z" stroke="#C3BC9F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+

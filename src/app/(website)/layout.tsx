@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { AuthModal, UserCenterModal } from "@/components/website";
+import { GlobalModals } from "@/components/website";
 
 interface WebsiteLayoutProps {
   children: ReactNode;
@@ -23,10 +23,8 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
           {children}
         </main>
 
-        {/* 登录模态框 */}
-        <AuthModal />
-        {/* 用户中心弹窗 */}
-        <UserCenterModal />
+        {/* 全局模态框 */}
+        <GlobalModals />
       </div>
     </AuthProvider>
   );

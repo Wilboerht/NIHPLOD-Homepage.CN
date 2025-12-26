@@ -15,30 +15,29 @@ interface OrderDetail {
   id: string;
   orderNo: string;
   status: string;
-  paymentStatus: string;
-  totalAmount: number;
-  discountAmount: number;
-  shippingFee: number;
-  payableAmount: number;
+  totalAmount: string | number;
+  discountAmount: string | number;
+  shippingFee: string | number;
+  payAmount: string | number;
   recipientName: string;
   recipientPhone: string;
   recipientAddress: string;
-  logisticsCompany: string | null;
+  shippingCompany: string | null;
   trackingNo: string | null;
-  refundNo: string | null;
-  refundReason: string | null;
   adminNote: string | null;
   user: { id: string; nickname: string | null; phone: string | null };
-  items: { id: string; productName: string; variantName: string | null; price: number; quantity: number }[];
+  items: { id: string; productName: string; variantName: string | null; price: string | number; quantity: number }[];
   createdAt: string;
-  paidAt: string | null;
+  paymentTime: string | null;
   shippedAt: string | null;
 }
 
 const STATUS_MAP: Record<string, { label: string; color: "default" | "warning" | "success" | "danger" | "primary" }> = {
-  PENDING_PAYMENT: { label: "待付款", color: "warning" },
-  PENDING_SHIPMENT: { label: "待发货", color: "primary" },
+  PENDING: { label: "待付款", color: "warning" },
+  PAID: { label: "已支付", color: "primary" },
+  PROCESSING: { label: "处理中", color: "primary" },
   SHIPPED: { label: "已发货", color: "success" },
+  DELIVERED: { label: "已签收", color: "success" },
   COMPLETED: { label: "已完成", color: "default" },
   CANCELLED: { label: "已取消", color: "default" },
   REFUNDING: { label: "退款中", color: "danger" },
@@ -148,7 +147,7 @@ export default function OrderDetailPage() {
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between"><dt className="text-gray-500">订单号</dt><dd>{order.orderNo}</dd></div>
             <div className="flex justify-between"><dt className="text-gray-500">下单时间</dt><dd>{new Date(order.createdAt).toLocaleString("zh-CN")}</dd></div>
-            {order.paidAt && <div className="flex justify-between"><dt className="text-gray-500">支付时间</dt><dd>{new Date(order.paidAt).toLocaleString("zh-CN")}</dd></div>}
+            {order.paymentTime && <div className="flex justify-between"><dt className="text-gray-500">支付时间</dt><dd>{new Date(order.paymentTime).toLocaleString("zh-CN")}</dd></div>}
             <div className="flex justify-between"><dt className="text-gray-500">用户</dt><dd>{order.user.nickname || order.user.phone}</dd></div>
           </dl>
         </div>
@@ -182,28 +181,28 @@ export default function OrderDetailPage() {
               <tr key={item.id}>
                 <td className="py-3">{item.productName}</td>
                 <td className="py-3 text-gray-500">{item.variantName || "-"}</td>
-                <td className="py-3">¥{item.price.toFixed(2)}</td>
+                <td className="py-3">¥{Number(item.price).toFixed(2)}</td>
                 <td className="py-3">{item.quantity}</td>
-                <td className="py-3 text-pink-500">¥{(item.price * item.quantity).toFixed(2)}</td>
+                <td className="py-3 text-pink-500">¥{(Number(item.price) * item.quantity).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot className="border-t">
             <tr>
               <td colSpan={4} className="py-3 text-right text-gray-500">商品总额</td>
-              <td className="py-3">¥{order.totalAmount.toFixed(2)}</td>
+              <td className="py-3">¥{Number(order.totalAmount).toFixed(2)}</td>
             </tr>
             <tr>
               <td colSpan={4} className="py-1 text-right text-gray-500">运费</td>
-              <td className="py-1">¥{order.shippingFee.toFixed(2)}</td>
+              <td className="py-1">¥{Number(order.shippingFee).toFixed(2)}</td>
             </tr>
             <tr>
               <td colSpan={4} className="py-1 text-right text-gray-500">优惠</td>
-              <td className="py-1 text-green-500">-¥{order.discountAmount.toFixed(2)}</td>
+              <td className="py-1 text-green-500">-¥{Number(order.discountAmount).toFixed(2)}</td>
             </tr>
             <tr>
               <td colSpan={4} className="py-3 text-right font-medium">实付金额</td>
-              <td className="py-3 text-lg font-bold text-pink-500">¥{order.payableAmount.toFixed(2)}</td>
+              <td className="py-3 text-lg font-bold text-pink-500">¥{Number(order.payAmount).toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>

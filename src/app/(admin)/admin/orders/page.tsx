@@ -15,18 +15,19 @@ interface OrderItem {
   id: string;
   orderNo: string;
   status: string;
-  paymentStatus: string;
-  totalAmount: number;
-  payableAmount: number;
+  totalAmount: string | number;
+  payAmount: string | number;
   user: { id: string; nickname: string | null; phone: string | null };
   items: { productName: string }[];
   createdAt: string;
 }
 
 const ORDER_STATUS_MAP: Record<string, { label: string; color: "default" | "warning" | "success" | "danger" | "primary" }> = {
-  PENDING_PAYMENT: { label: "待付款", color: "warning" },
-  PENDING_SHIPMENT: { label: "待发货", color: "primary" },
+  PENDING: { label: "待付款", color: "warning" },
+  PAID: { label: "已支付", color: "primary" },
+  PROCESSING: { label: "处理中", color: "primary" },
   SHIPPED: { label: "已发货", color: "success" },
+  DELIVERED: { label: "已签收", color: "success" },
   COMPLETED: { label: "已完成", color: "default" },
   CANCELLED: { label: "已取消", color: "default" },
   REFUNDING: { label: "退款中", color: "danger" },
@@ -143,7 +144,7 @@ export default function AdminOrdersPage() {
                 <td className="px-4 py-3 font-mono text-xs">{order.orderNo}</td>
                 <td className="px-4 py-3">{order.user.nickname || order.user.phone || "-"}</td>
                 <td className="px-4 py-3 truncate max-w-[150px]">{order.items[0]?.productName || "-"}</td>
-                <td className="px-4 py-3 text-pink-500 font-medium">¥{order.payableAmount.toFixed(2)}</td>
+                <td className="px-4 py-3 text-pink-500 font-medium">¥{Number(order.payAmount).toFixed(2)}</td>
                 <td className="px-4 py-3">
                   <Badge variant={ORDER_STATUS_MAP[order.status]?.color || "default"}>
                     {ORDER_STATUS_MAP[order.status]?.label || order.status}

@@ -1,5 +1,5 @@
 /**
- * 支付页面
+ * 支付页面 - 自动打开支付模态框
  */
 import { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
@@ -17,7 +17,7 @@ interface PayPageProps {
 
 export default async function PayPage({ params }: PayPageProps) {
   const user = await getCurrentLoginUser();
-  
+
   if (!user) {
     redirect("/login");
   }
@@ -38,16 +38,9 @@ export default async function PayPage({ params }: PayPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* 头部 */}
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-lg font-semibold text-gray-900">订单支付</h1>
-        </div>
-      </div>
-
-      {/* 支付内容 */}
-      <PayContent order={order} />
+    <div className="min-h-screen bg-[#FAF8F5] flex flex-col">
+      {/* 支付内容 - 自动打开模态框 */}
+      <PayContent orderId={orderId} />
     </div>
   );
 }

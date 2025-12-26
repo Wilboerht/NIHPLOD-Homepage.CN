@@ -41,6 +41,8 @@ interface ProductData {
   order: number;
   featured: boolean;
   published: boolean;
+  allowDirectBuy: boolean;
+  stock: number;
 }
 
 export default function EditProductPage() {
@@ -97,6 +99,8 @@ export default function EditProductPage() {
           order: data.order,
           featured: data.featured,
           published: data.published,
+          allowDirectBuy: data.allowDirectBuy ?? false,
+          stock: data.stock ?? 0,
         });
       })
       .catch((err) => {

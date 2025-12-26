@@ -4,10 +4,12 @@ import { useState } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { ChevronLeft, ExternalLink, ShoppingCart, Loader2 } from "lucide-react";
 import { ProductCard } from "@/components/website";
 import { fadeInUp, defaultTransition } from "@/lib/animations";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
 
 interface ProductImage {
   id: string;
@@ -36,6 +38,8 @@ interface Product {
   ingredients: string | null;
   usage: string | null;
   benefits: string[];
+  allowDirectBuy: boolean;
+  stock: number;
 }
 
 interface RelatedProduct {
@@ -199,18 +203,31 @@ export function ProductDetailContent({
           </div>
         )}
 
-        {/* 购买按钮 */}
-        {product.purchaseUrl && (
-          <a
-            href={product.purchaseUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-gold py-3 font-medium text-white transition-colors hover:bg-brand-gold/90"
-          >
-            <span>立即购买</span>
-            <ExternalLink className="h-4 w-4" />
-          </a>
-        )}
+        {/* 购买按钮区域 */}
+        <div className="mt-6 flex flex-col gap-3">
+          {/* 站内购买按钮 */}
+          {product.allowDirectBuy && (
+            <AddToCartButton productId={product.id} stock={product.stock} />
+          )}
+
+          {/* 外部购买链接 */}
+          {product.purchaseUrl && (
+            <a
+              href={product.purchaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
+                product.allowDirectBuy
+                  ? "border border-brand-gold text-brand-gold hover:bg-brand-gold/10"
+                  : "bg-brand-gold text-white hover:bg-brand-gold/90"
+              )}
+            >
+              <span>{product.allowDirectBuy ? "其他购买渠道" : "立即购买"}</span>
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          )}
+        </div>
 
         {/* Tab 切换 */}
         <div className="mt-8 border-b border-brand-beige">
@@ -286,3 +303,66 @@ export function ProductDetailContent({
   );
 }
 
+/**
+ * 加入购物车按钮组件
+ */
+function AddToCartButton({ productId, stock }: { productId: string; stock: number }) {
+  const [loading, setLoading] = useState(false);
+  const { user, openLoginModal } = useAuth();
+  const { success, error: showError } = useToast();
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+
+    if (stock <= 0) {
+      showError("商品已售罄");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, quantity: 1 }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        success("已加入购物车");
+      } else {
+        showError(data.error?.message || "添加失败");
+      }
+    } catch {
+      showError("网络错误，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isOutOfStock = stock <= 0;
+
+  return (
+    <button
+      type="button"
+      onClick={handleAddToCart}
+      disabled={loading || isOutOfStock}
+      className={cn(
+        "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
+        isOutOfStock
+          ? "cursor-not-allowed bg-gray-300 text-gray-500"
+          : "bg-brand-gold text-white hover:bg-brand-gold/90"
+      )}
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <ShoppingCart className="h-4 w-4" />
+      )}
+      <span>{isOutOfStock ? "已售罄" : "加入购物车"}</span>
+    </button>
+  );
+}

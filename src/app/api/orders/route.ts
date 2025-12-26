@@ -9,6 +9,9 @@ import { verifyUserAuth } from "@/lib/auth";
 import { createOrder } from "@/lib/order";
 import { z } from "zod";
 
+// 订单超时时间（30分钟）
+const ORDER_TIMEOUT_MINUTES = 30;
+
 // 创建订单参数验证
 const createOrderSchema = z.object({
   addressId: z.string().min(1, "请选择收货地址"),
@@ -20,17 +23,49 @@ const createOrderSchema = z.object({
   remark: z.string().max(200).optional(),
 });
 
+/**
+ * 自动取消超时未付款的订单
+ * @param userId 用户ID（可选，不传则处理所有用户）
+ */
+async function cancelTimeoutOrders(userId?: string) {
+  const timeoutDate = new Date(Date.now() - ORDER_TIMEOUT_MINUTES * 60 * 1000);
+
+  const where: Record<string, unknown> = {
+    status: "PENDING",
+    createdAt: { lt: timeoutDate },
+  };
+
+  if (userId) {
+    where.userId = userId;
+  }
+
+  // 批量更新超时订单为已取消状态
+  const result = await prisma.order.updateMany({
+    where,
+    data: { status: "CANCELLED" },
+  });
+
+  if (result.count > 0) {
+    console.log(`[Order] 已自动取消 ${result.count} 个超时订单`);
+  }
+
+  return result.count;
+}
+
 // 获取订单列表
 export async function GET(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);
-    
+
     if (!payload) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
       );
     }
+
+    // 先自动取消该用户的超时订单
+    await cancelTimeoutOrders(payload.id);
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");

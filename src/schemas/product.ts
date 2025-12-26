@@ -44,6 +44,9 @@ export const ProductSchema = z.object({
   order: z.number().int().min(0).default(0),
   featured: z.boolean().default(false),
   published: z.boolean().default(false),
+  // 站内购买
+  allowDirectBuy: z.boolean().default(false),
+  stock: z.number().int().min(0, "库存不能为负数").default(0),
 });
 
 // 产品查询参数 Schema

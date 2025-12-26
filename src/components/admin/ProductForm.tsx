@@ -49,6 +49,9 @@ interface FormData {
   order: number;
   featured: boolean;
   published: boolean;
+  // 站内购买
+  allowDirectBuy: boolean;
+  stock: number;
 }
 
 // 分类类型
@@ -96,6 +99,8 @@ const defaultFormData: FormData = {
   order: 0,
   featured: false,
   published: false,
+  allowDirectBuy: false,
+  stock: 0,
 };
 
 // 购买平台选项
@@ -457,32 +462,43 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           />
         </section>
 
-        {/* 购买链接 */}
+        {/* 购买设置 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">购买链接</h2>
+          <h2 className="mb-4 text-lg font-medium text-gray-900">购买设置</h2>
 
-          {/* 直接购买链接 */}
+          {/* 站内购买 */}
           <div className="mb-6">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                直接购买
+            <div className="mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                站内购买
               </span>
-              <span className="text-xs text-gray-500">用户点击后直接跳转购买</span>
+              <span className="text-xs text-gray-500">用户可直接在网站内下单购买</span>
             </div>
-            <Input
-              value={formData.purchaseUrl || ""}
-              onChange={(e) => updateField("purchaseUrl", e.target.value || null)}
-              placeholder="输入直接购买链接 URL（如官方商城、自有小程序等）"
-            />
-            {errors.purchaseUrl && (
-              <p className="mt-1 text-sm text-red-500">{errors.purchaseUrl}</p>
-            )}
+            <div className="flex items-center gap-6">
+              <Switch
+                label="允许站内购买"
+                checked={formData.allowDirectBuy}
+                onChange={(checked) => updateField("allowDirectBuy", checked)}
+              />
+              {formData.allowDirectBuy && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">库存数量</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.stock}
+                    onChange={(e) => updateField("stock", Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 分隔线 */}
           <div className="mb-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-xs text-gray-400">或</span>
+            <span className="text-xs text-gray-400">第三方购买渠道</span>
             <div className="h-px flex-1 bg-gray-200" />
           </div>
 
