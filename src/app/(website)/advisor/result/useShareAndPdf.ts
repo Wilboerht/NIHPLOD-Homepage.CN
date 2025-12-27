@@ -52,6 +52,7 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
   const { shareCardRef } = options;
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [hasShared, setHasShared] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(SHARE_STATUS_KEY) === "true";
@@ -138,10 +139,11 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
    * 下载 PDF 报告（服务端生成）
    */
   const downloadPdf = useCallback(async (): Promise<boolean> => {
-    // 防止重复点击
-    if (!canDownloadPdf || isGenerating) return false;
+    // 防止重复点击 - 使用独立的 PDF 生成状态
+    if (!canDownloadPdf || isPdfGenerating) return false;
 
     setIsGenerating(true);
+    setIsPdfGenerating(true);
 
     try {
       // 从 sessionStorage 读取数据
@@ -170,15 +172,25 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
         recommendations: faceAnalysis?.recommendations || [],
       };
 
+      // 使用 AbortController 防止重复请求
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+
       // 调用服务端 API 生成 PDF
       const response = await fetch("/api/advisor/pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+        },
         body: JSON.stringify(data),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error("PDF generation failed");
+        const errorText = await response.text().catch(() => "Unknown error");
+        throw new Error(`PDF generation failed: ${response.status} - ${errorText}`);
       }
 
       // 下载 PDF
@@ -194,12 +206,17 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
 
       return true;
     } catch (error) {
-      console.error("Failed to generate PDF:", error);
+      if (error instanceof Error && error.name === "AbortError") {
+        console.error("PDF generation timed out");
+      } else {
+        console.error("Failed to generate PDF:", error);
+      }
       return false;
     } finally {
       setIsGenerating(false);
+      setIsPdfGenerating(false);
     }
-  }, [canDownloadPdf, isGenerating]);
+  }, [canDownloadPdf, isPdfGenerating]);
 
   return {
     isGenerating,

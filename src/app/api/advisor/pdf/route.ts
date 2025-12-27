@@ -556,20 +556,24 @@ interface ReportData {
 
 export async function POST(request: NextRequest) {
   try {
-    // 读取请求体
+    // 读取请求体 - 使用 request.json() 直接解析，避免编码问题
     let data: ReportData;
     try {
-      const body = await request.text();
-      if (!body || body.trim() === "") {
-        console.error("Empty request body received");
-        return NextResponse.json({ error: "Empty request body" }, { status: 400 });
+      data = await request.json();
+    } catch {
+      // 如果 json() 失败，尝试使用 text() 手动解析
+      try {
+        const body = await request.text();
+        if (!body || body.trim() === "") {
+          console.error("Empty request body received");
+          return NextResponse.json({ error: "Empty request body" }, { status: 400 });
+        }
+        console.log("Request body preview:", body.substring(0, 100));
+        data = JSON.parse(body);
+      } catch (textParseError) {
+        console.error("JSON parse error:", textParseError);
+        return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
       }
-      // 记录请求体前50个字符用于调试
-      console.log("Request body preview:", body.substring(0, 100));
-      data = JSON.parse(body);
-    } catch (parseError) {
-      console.error("JSON parse error:", parseError);
-      return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
     }
 
     // 验证必要字段
