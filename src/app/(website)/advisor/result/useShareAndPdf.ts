@@ -5,7 +5,7 @@
  * PDF 通过服务端 API 生成
  */
 
-import { useState, useCallback, RefObject } from "react";
+import { useState, useCallback, useRef, RefObject } from "react";
 import html2canvas from "html2canvas";
 
 interface ShareAndPdfOptions {
@@ -13,7 +13,8 @@ interface ShareAndPdfOptions {
 }
 
 interface UseShareAndPdfReturn {
-  isGenerating: boolean;
+  isImageGenerating: boolean;
+  isPdfGenerating: boolean;
   hasShared: boolean;
   canDownloadPdf: boolean;
   generateShareImage: () => Promise<string | null>;
@@ -48,15 +49,38 @@ function getFaceAnalysis() {
   }
 }
 
+/**
+ * 等待元素内所有图片加载完成
+ */
+async function waitForImagesToLoad(element: HTMLElement): Promise<void> {
+  const images = element.querySelectorAll("img");
+  const promises = Array.from(images).map((img) => {
+    if (img.complete && img.naturalHeight !== 0) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      img.onload = () => resolve();
+      img.onerror = () => {
+        console.warn("Image failed to load:", img.src);
+        resolve(); // 即使加载失败也继续
+      };
+    });
+  });
+  await Promise.all(promises);
+}
+
 export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfReturn {
   const { shareCardRef } = options;
 
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isImageGenerating, setIsImageGenerating] = useState(false);
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [hasShared, setHasShared] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(SHARE_STATUS_KEY) === "true";
   });
+
+  // 使用 ref 追踪 PDF 请求状态，避免重复请求
+  const pdfRequestInFlight = useRef(false);
 
   const canDownloadPdf = hasShared;
 
@@ -67,11 +91,19 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
     if (!shareCardRef.current) return null;
 
     try {
+      // 等待所有图片加载完成
+      await waitForImagesToLoad(shareCardRef.current);
+
+      // 额外等待一小段时间确保渲染完成
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const canvas = await html2canvas(shareCardRef.current, {
         scale: 2,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false, // 改为 false，避免污染 canvas
         backgroundColor: "#FAF8F5",
+        logging: false,
+        imageTimeout: 15000, // 图片加载超时 15 秒
       });
 
       return canvas.toDataURL("image/png");
@@ -85,7 +117,7 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
    * 保存分享卡片到相册
    */
   const saveShareCard = useCallback(async (): Promise<boolean> => {
-    setIsGenerating(true);
+    setIsImageGenerating(true);
 
     try {
       const imageUrl = await generateShareImage();
@@ -131,7 +163,7 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
       console.error("Failed to save share card:", error);
       return false;
     } finally {
-      setIsGenerating(false);
+      setIsImageGenerating(false);
     }
   }, [generateShareImage]);
 
@@ -139,10 +171,10 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
    * 下载 PDF 报告（服务端生成）
    */
   const downloadPdf = useCallback(async (): Promise<boolean> => {
-    // 防止重复点击 - 使用独立的 PDF 生成状态
-    if (!canDownloadPdf || isPdfGenerating) return false;
+    // 防止重复点击 - 使用 ref 确保只发送一次请求
+    if (!canDownloadPdf || pdfRequestInFlight.current) return false;
 
-    setIsGenerating(true);
+    pdfRequestInFlight.current = true;
     setIsPdfGenerating(true);
 
     try {
@@ -213,13 +245,14 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
       }
       return false;
     } finally {
-      setIsGenerating(false);
       setIsPdfGenerating(false);
+      pdfRequestInFlight.current = false;
     }
-  }, [canDownloadPdf, isPdfGenerating]);
+  }, [canDownloadPdf]);
 
   return {
-    isGenerating,
+    isImageGenerating,
+    isPdfGenerating,
     hasShared,
     canDownloadPdf,
     generateShareImage,

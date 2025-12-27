@@ -3,10 +3,10 @@
 /**
  * 分享卡片组件
  * 专门设计用于截图分享的卡片布局
+ * 注意：使用原生 img 标签以确保 html2canvas 能正确渲染
  */
 
-import { forwardRef } from "react";
-import Image from "next/image";
+import { forwardRef, useMemo } from "react";
 import type { FaceAnalysisResult } from "@/app/api/advisor/face-analyze/route";
 
 interface ShareCardProps {
@@ -35,6 +35,13 @@ function getHydrationStatus(percent: number): { label: string; color: string } {
   return { label: "需要补水", color: "#EF4444" };
 }
 
+/** 获取完整的图片 URL（用于 html2canvas） */
+function getAbsoluteUrl(path: string): string {
+  if (typeof window === "undefined") return path;
+  if (path.startsWith("http") || path.startsWith("data:")) return path;
+  return `${window.location.origin}${path}`;
+}
+
 export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
   function ShareCard(
     { skinType, skinTypeLabel, concerns, skinAge, summary, faceAnalysis, userImage },
@@ -42,6 +49,10 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
   ) {
     const hydrationPercent = faceAnalysis?.hydration?.percent ?? 60;
     const hydrationStatus = getHydrationStatus(hydrationPercent);
+
+    // 预处理图片 URL
+    const logoUrl = useMemo(() => getAbsoluteUrl("/images/logo.png"), []);
+    const qrcodeUrl = useMemo(() => getAbsoluteUrl("/images/qrcode.png"), []);
 
     return (
       <div
@@ -52,12 +63,14 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         {/* 头部：品牌 */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image
-              src="/images/logo.png"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logoUrl}
               alt="NIHPLOD"
               width={32}
               height={32}
               className="rounded-lg"
+              crossOrigin="anonymous"
             />
             <span className="text-lg font-medium tracking-wider text-brand-charcoal">
               NIHPLOD
@@ -72,11 +85,13 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         {userImage && (
           <div className="mb-5 flex justify-center">
             <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-white shadow-lg">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={userImage}
                 alt="用户照片"
-                fill
-                className="object-cover"
+                className="absolute inset-0 h-full w-full object-cover"
+                // 只有非 data URL 才需要 crossOrigin
+                {...(!userImage.startsWith("data:") && { crossOrigin: "anonymous" })}
               />
             </div>
           </div>
@@ -149,12 +164,14 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
               AI 智能分析 · 专属护肤方案
             </div>
           </div>
-          <Image
-            src="/images/qrcode.png"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrcodeUrl}
             alt="扫码体验"
             width={64}
             height={64}
             className="rounded-lg"
+            crossOrigin="anonymous"
           />
         </div>
       </div>

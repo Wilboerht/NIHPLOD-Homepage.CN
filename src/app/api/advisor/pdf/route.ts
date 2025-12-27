@@ -11,36 +11,62 @@ import {
   type RoutineScenario,
 } from "@/lib/skincare-dosage";
 
-// 动态导入 jsPDF 避免服务端兼容性问题
+// ===== 资源缓存 - 避免每次请求都读取文件 =====
+let cachedFontBase64: string | null = null;
+let cachedLogoBase64: string | null = null;
+let cachedQrcodeBase64: string | null = null;
+let jsPDFModule: typeof import("jspdf") | null = null;
+
+/** 预加载并缓存资源 */
+async function loadResources() {
+  // 加载 jsPDF 模块
+  if (!jsPDFModule) {
+    jsPDFModule = await import("jspdf");
+  }
+
+  // 加载字体
+  if (!cachedFontBase64) {
+    const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansSC-Regular.ttf");
+    if (fs.existsSync(fontPath)) {
+      const fontBuffer = fs.readFileSync(fontPath);
+      cachedFontBase64 = fontBuffer.toString("base64");
+    } else {
+      throw new Error(`Font file not found: ${fontPath}`);
+    }
+  }
+
+  // 加载 logo
+  if (!cachedLogoBase64) {
+    const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
+    if (fs.existsSync(logoPath)) {
+      const logoBuffer = fs.readFileSync(logoPath);
+      cachedLogoBase64 = logoBuffer.toString("base64");
+    }
+  }
+
+  // 加载二维码
+  if (!cachedQrcodeBase64) {
+    const qrcodePath = path.join(process.cwd(), "public", "images", "qrcode.png");
+    if (fs.existsSync(qrcodePath)) {
+      const qrcodeBuffer = fs.readFileSync(qrcodePath);
+      cachedQrcodeBase64 = qrcodeBuffer.toString("base64");
+    }
+  }
+
+  return {
+    jsPDF: jsPDFModule.jsPDF,
+    fontBase64: cachedFontBase64,
+    logoBase64: cachedLogoBase64 || "",
+    qrcodeBase64: cachedQrcodeBase64 || "",
+  };
+}
+
+// 在模块加载时预热资源（后台加载）
+loadResources().catch(console.error);
+
 async function createPdf(data: ReportData): Promise<Buffer> {
-  // 动态导入
-  const { jsPDF } = await import("jspdf");
-
-  // 读取并注册中文字体
-  const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansSC-Regular.ttf");
-
-  if (!fs.existsSync(fontPath)) {
-    throw new Error(`Font file not found: ${fontPath}`);
-  }
-
-  const fontBuffer = fs.readFileSync(fontPath);
-  const fontBase64 = fontBuffer.toString("base64");
-
-  // 读取 logo 图片
-  const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
-  let logoBase64 = "";
-  if (fs.existsSync(logoPath)) {
-    const logoBuffer = fs.readFileSync(logoPath);
-    logoBase64 = logoBuffer.toString("base64");
-  }
-
-  // 读取二维码图片
-  const qrcodePath = path.join(process.cwd(), "public", "images", "qrcode.png");
-  let qrcodeBase64 = "";
-  if (fs.existsSync(qrcodePath)) {
-    const qrcodeBuffer = fs.readFileSync(qrcodePath);
-    qrcodeBase64 = qrcodeBuffer.toString("base64");
-  }
+  // 使用缓存的资源
+  const { jsPDF, fontBase64, logoBase64, qrcodeBase64 } = await loadResources();
 
   // 创建 PDF (A4 尺寸)
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -556,24 +582,13 @@ interface ReportData {
 
 export async function POST(request: NextRequest) {
   try {
-    // 读取请求体 - 使用 request.json() 直接解析，避免编码问题
+    // 读取请求体 - 直接使用 request.json()
     let data: ReportData;
     try {
       data = await request.json();
-    } catch {
-      // 如果 json() 失败，尝试使用 text() 手动解析
-      try {
-        const body = await request.text();
-        if (!body || body.trim() === "") {
-          console.error("Empty request body received");
-          return NextResponse.json({ error: "Empty request body" }, { status: 400 });
-        }
-        console.log("Request body preview:", body.substring(0, 100));
-        data = JSON.parse(body);
-      } catch (textParseError) {
-        console.error("JSON parse error:", textParseError);
-        return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
-      }
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
     }
 
     // 验证必要字段
