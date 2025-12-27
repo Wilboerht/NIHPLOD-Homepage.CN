@@ -172,10 +172,16 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
    */
   const downloadPdf = useCallback(async (): Promise<boolean> => {
     // 防止重复点击 - 使用 ref 确保只发送一次请求
-    if (!canDownloadPdf || pdfRequestInFlight.current) return false;
+    if (!canDownloadPdf || pdfRequestInFlight.current) {
+      console.log("PDF request blocked: canDownloadPdf=", canDownloadPdf, "inFlight=", pdfRequestInFlight.current);
+      return false;
+    }
 
     pdfRequestInFlight.current = true;
     setIsPdfGenerating(true);
+
+    // 保存当前请求的 controller，用于取消
+    const controller = new AbortController();
 
     try {
       // 从 sessionStorage 读取数据
@@ -204,9 +210,12 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
         recommendations: faceAnalysis?.recommendations || [],
       };
 
-      // 使用 AbortController 防止重复请求
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+      // 序列化 JSON - 确保正确处理中文
+      const jsonBody = JSON.stringify(data);
+      console.log("Sending PDF request, body length:", jsonBody.length);
+
+      // 设置超时
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120秒超时
 
       // 调用服务端 API 生成 PDF
       const response = await fetch("/api/advisor/pdf", {
@@ -214,7 +223,7 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
         headers: {
           "Content-Type": "application/json; charset=utf-8",
         },
-        body: JSON.stringify(data),
+        body: jsonBody,
         signal: controller.signal,
       });
 
@@ -246,7 +255,10 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
       return false;
     } finally {
       setIsPdfGenerating(false);
-      pdfRequestInFlight.current = false;
+      // 延迟重置 inFlight 状态，防止快速连续点击
+      setTimeout(() => {
+        pdfRequestInFlight.current = false;
+      }, 1000);
     }
   }, [canDownloadPdf]);
 

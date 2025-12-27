@@ -582,12 +582,43 @@ interface ReportData {
 
 export async function POST(request: NextRequest) {
   try {
-    // 读取请求体 - 直接使用 request.json()
+    // 诊断：打印请求头信息
+    const userAgent = request.headers.get("user-agent") || "unknown";
+    const contentLengthHeader = request.headers.get("content-length");
+    const requestId = Math.random().toString(36).substring(7);
+
+    // 检测可疑的 User-Agent（如 IE11 或其他异常来源）
+    const isIE = userAgent.includes("Trident") || userAgent.includes("MSIE");
+    if (isIE) {
+      console.warn(`[${requestId}] Rejecting request from IE/Trident browser`);
+      return NextResponse.json({ error: "Browser not supported" }, { status: 400 });
+    }
+
+    // 读取请求体 - 先读取文本再解析，以便更好地诊断问题
     let data: ReportData;
     try {
-      data = await request.json();
+      const rawBody = await request.text();
+      const actualLength = new TextEncoder().encode(rawBody).length;
+      const declaredLength = contentLengthHeader ? parseInt(contentLengthHeader, 10) : null;
+
+      console.log(`[${requestId}] Content-Length header: ${declaredLength}, Actual bytes: ${actualLength}`);
+
+      // 检查 Content-Length 是否匹配实际内容
+      if (declaredLength !== null && Math.abs(declaredLength - actualLength) > 10) {
+        console.error(`[${requestId}] Content-Length mismatch! Declared: ${declaredLength}, Actual: ${actualLength}`);
+        return NextResponse.json({ error: "Content-Length mismatch" }, { status: 400 });
+      }
+
+      if (!rawBody || rawBody.trim() === "") {
+        console.error(`[${requestId}] Empty request body received`);
+        return NextResponse.json({ error: "Empty request body" }, { status: 400 });
+      }
+
+      // 尝试解析 JSON
+      data = JSON.parse(rawBody);
+      console.log(`[${requestId}] JSON parsed successfully for:`, data.skinTypeLabel);
     } catch (parseError) {
-      console.error("JSON parse error:", parseError);
+      console.error(`[${requestId}] JSON parse error:`, parseError);
       return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
     }
 

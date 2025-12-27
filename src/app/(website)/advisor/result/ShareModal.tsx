@@ -315,15 +315,20 @@ export function ShareModal({
 
                   {/* 下载 PDF 卡片 */}
                   <m.button
-                    onClick={downloadPdf}
+                    onClick={() => {
+                      // 额外检查防止重复点击
+                      if (!isPdfGenerating && canDownloadPdf) {
+                        downloadPdf();
+                      }
+                    }}
                     disabled={!canDownloadPdf || isPdfGenerating}
                     className={`group relative w-full overflow-hidden rounded-2xl p-4 text-left transition-all ${
-                      canDownloadPdf
+                      canDownloadPdf && !isPdfGenerating
                         ? "bg-white ring-1 ring-brand-charcoal/10 hover:ring-brand-charcoal/20 hover:shadow-md"
                         : "bg-brand-charcoal/[0.02] ring-1 ring-brand-charcoal/5"
                     }`}
-                    whileHover={canDownloadPdf ? { scale: 1.01 } : {}}
-                    whileTap={canDownloadPdf ? { scale: 0.99 } : {}}
+                    whileHover={canDownloadPdf && !isPdfGenerating ? { scale: 1.01 } : {}}
+                    whileTap={canDownloadPdf && !isPdfGenerating ? { scale: 0.99 } : {}}
                   >
                     <div className="flex items-center gap-4">
                       <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${
