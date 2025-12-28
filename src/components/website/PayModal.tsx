@@ -23,10 +23,8 @@ interface OrderData {
 }
 
 export default function PayModal() {
-  console.log("[PayModal] Component rendering...");
   const router = useRouter();
   const { payOpen, payOrderId, closePay, openUserCenter } = useAuth();
-  console.log("[PayModal] Got from useAuth - payOpen:", payOpen, "payOrderId:", payOrderId);
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -164,17 +162,15 @@ export default function PayModal() {
 
   if (!mounted) return null;
 
-  console.log("[PayModal] payOpen:", payOpen, "payOrderId:", payOrderId);
-
   const content = (
     <AnimatePresence>
       {payOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* 遮罩 - 支付流程中不允许点击遮罩关闭 */}
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={closePay}
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           />
           <m.div

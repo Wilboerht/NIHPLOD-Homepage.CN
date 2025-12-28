@@ -161,12 +161,11 @@ export function CheckoutModal() {
     <AnimatePresence>
       {checkoutOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* 遮罩 */}
+          {/* 遮罩 - 支付流程中不允许点击遮罩关闭 */}
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={closeCheckout}
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           />
 

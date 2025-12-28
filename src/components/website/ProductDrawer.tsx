@@ -230,14 +230,13 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     <AnimatePresence>
       {isOpen && product && (
         <>
-          {/* 遮罩层 */}
+          {/* 遮罩层 - 不允许点击遮罩关闭，需要点击关闭按钮 */}
           <m.div
             className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={onClose}
             aria-hidden="true"
           />
 
