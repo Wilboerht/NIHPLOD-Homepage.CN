@@ -37,14 +37,6 @@ const navItems: { id: SectionId; label: string }[] = [
   { id: "awards", label: "媒体及获奖" },
 ];
 
-// 背景文字映射
-const bgTextMap: Record<SectionId, string> = {
-  story: "STORY",
-  mission: "MISSION",
-  philosophy: "VALUES",
-  awards: "AWARDS",
-};
-
 interface StoryContentProps {
   backgroundImage?: string;
 }
@@ -60,7 +52,6 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
   const [activeSection, setActiveSection] = useState<SectionId>("story");
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [bgTextOffset, setBgTextOffset] = useState({ x: 0, y: 0 });
   const contentRef = useRef<HTMLDivElement>(null);
 
   // 监听滚动，添加毛玻璃效果
@@ -71,20 +62,6 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // 视差效果 - 鼠标移动时背景文字跟随
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth) * 30;
-      const y = (e.clientY / window.innerHeight) * 30;
-      setBgTextOffset({ x, y });
-    };
-
-    if (isExpanded) {
-      window.addEventListener("mousemove", handleMouseMove);
-    }
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [isExpanded]);
 
   return (
     <>
