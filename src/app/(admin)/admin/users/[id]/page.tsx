@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Coins, ShoppingBag, Calendar, Phone, User, TrendingUp, TrendingDown, Gift, MessageSquare, Settings, Loader2 } from "lucide-react";
+import { ArrowLeft, Coins, ShoppingBag, User, TrendingUp, TrendingDown, Gift, MessageSquare, Settings, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 

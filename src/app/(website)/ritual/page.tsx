@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import { RitualContent } from "./RitualContent";
 import prisma from "@/lib/prisma";
-import type { RitualPageContent } from "@/types/page-content";
 
 // ISR: 护肤仪式页面每天重新验证一次
 export const revalidate = 86400; // 24小时
@@ -24,26 +23,23 @@ export const metadata: Metadata = {
   },
 };
 
-async function getPageData(): Promise<{ content?: RitualPageContent; backgroundImage?: string }> {
+async function getBackgroundImage(): Promise<string | undefined> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "ritual" },
-      select: { content: true, published: true, backgroundImage: true },
+      select: { backgroundImage: true, published: true },
     });
 
     if (page?.published) {
-      return {
-        content: page.content as unknown as RitualPageContent,
-        backgroundImage: page.backgroundImage || undefined,
-      };
+      return page.backgroundImage || undefined;
     }
   } catch (error) {
-    console.error("获取护肤仪式页面内容失败:", error);
+    console.error("获取护肤仪式页面背景图失败:", error);
   }
-  return {};
+  return undefined;
 }
 
 export default async function RitualPage() {
-  const pageData = await getPageData();
-  return <RitualContent content={pageData.content} backgroundImage={pageData.backgroundImage} />;
+  const backgroundImage = await getBackgroundImage();
+  return <RitualContent backgroundImage={backgroundImage} />;
 }

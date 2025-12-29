@@ -251,6 +251,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const typeInfo = jobTypeMap[job.type] || {
@@ -271,6 +272,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
 
     setIsSubmitting(true);
     setSubmitStatus("idle");
+    setErrorMessage(null);
 
     try {
       const formDataToSend = new FormData();
@@ -286,6 +288,8 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
         body: formDataToSend,
       });
 
+      const result = await response.json();
+
       if (response.ok) {
         setSubmitStatus("success");
         setTimeout(() => {
@@ -293,9 +297,19 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
         }, 2000);
       } else {
         setSubmitStatus("error");
+        // 如果有字段级错误详情，显示第一个具体错误
+        if (result.details) {
+          const firstFieldError = Object.values(result.details).flat()[0] as string;
+          setErrorMessage(firstFieldError || result.error || "投递失败，请稍后重试");
+        } else {
+          setErrorMessage(result.error || "投递失败，请稍后重试");
+        }
+        console.error("申请失败:", result);
       }
-    } catch {
+    } catch (err) {
       setSubmitStatus("error");
+      setErrorMessage("网络错误，请稍后重试");
+      console.error("申请异常:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -410,10 +424,12 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                   <input
                     type="text"
                     required
+                    minLength={2}
+                    maxLength={50}
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none transition-colors focus:border-brand-gold"
-                    placeholder="请输入您的姓名"
+                    placeholder="请输入您的姓名（2-50个字符）"
                   />
                 </div>
 
@@ -426,10 +442,17 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                   <input
                     type="tel"
                     required
+                    pattern="1[3-9]\d{9}"
+                    maxLength={11}
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      // 只允许输入数字
+                      const value = e.target.value.replace(/\D/g, "");
+                      setFormData({ ...formData, phone: value });
+                    }}
                     className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none transition-colors focus:border-brand-gold"
-                    placeholder="请输入您的手机号"
+                    placeholder="请输入11位手机号"
+                    title="请输入有效的手机号（以1开头的11位数字）"
                   />
                 </div>
 
@@ -446,6 +469,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none transition-colors focus:border-brand-gold"
                     placeholder="请输入您的邮箱"
+                    title="请输入有效的邮箱地址"
                   />
                 </div>
 
@@ -492,7 +516,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                 {/* 错误提示 */}
                 {submitStatus === "error" && (
                   <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                    投递失败，请稍后重试或直接发送简历至 {contactEmail || "hr@nihplod.com"}
+                    {errorMessage || "投递失败"}，请稍后重试或直接发送简历至 {contactEmail || "hr@nihplod.com"}
                   </div>
                 )}
 

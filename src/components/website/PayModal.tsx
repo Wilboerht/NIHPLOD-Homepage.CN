@@ -23,7 +23,7 @@ interface OrderData {
 }
 
 export default function PayModal() {
-  const router = useRouter();
+  const _router = useRouter();
   const { payOpen, payOrderId, closePay, openUserCenter } = useAuth();
 
   const [mounted, setMounted] = useState(false);
