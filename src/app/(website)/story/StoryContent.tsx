@@ -6,7 +6,7 @@ import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ShopIcon, RitualIcon, ContactIcon, HomeIcon } from "@/components/website";
+import { ShopIcon, RitualIcon, ContactIcon, HomeIcon, UserButton } from "@/components/website";
 
 /**
  * 底部导航项配置 - 与 ProductsContent 一致
@@ -195,19 +195,6 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                 )}
               </AnimatePresence>
 
-              {/* 背景大字装饰 */}
-              {isExpanded && (
-                <div
-                  className="pointer-events-none absolute -bottom-[5vh] -right-[2vw] z-0 whitespace-nowrap text-[15vh] font-black uppercase text-[#00263e] opacity-[0.03] sm:text-[20vh]"
-                  style={{
-                    transform: `translate(${bgTextOffset.x}px, ${bgTextOffset.y}px)`,
-                    transition: "transform 0.1s ease-out",
-                  }}
-                >
-                  {bgTextMap[activeSection]}
-                </div>
-              )}
-
               <div
                 ref={contentRef}
                 className={cn(
@@ -225,7 +212,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                       className="flex h-14 items-center justify-between px-4 sm:h-16 sm:px-10 lg:h-20 lg:px-20"
                     >
-                      {/* Logo */}
+                      {/* 左侧：Logo */}
                       <div className="relative h-6 w-20 sm:h-8 sm:w-24">
                         <Image
                           src="/images/logo.png"
@@ -235,8 +222,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                         />
                       </div>
 
-                      {/* 导航链接 */}
-                      <div className="flex gap-5 sm:gap-8 lg:gap-10">
+                      {/* 中间：导航链接 */}
+                      <div className="absolute left-1/2 flex -translate-x-1/2 gap-5 sm:gap-8 lg:gap-10">
                         {navItems.map((item) => (
                           <button
                             key={item.id}
@@ -260,6 +247,9 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           </button>
                         ))}
                       </div>
+
+                      {/* 右侧：用户登录状态 */}
+                      <UserButton />
                     </m.nav>
                   )}
                 </AnimatePresence>
@@ -279,7 +269,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                       >
                         {/* 左侧图片区域 */}
                         <div className="relative flex h-full flex-col justify-center gap-4 pl-4 sm:pl-6 lg:pl-8">
-                          <div className="relative h-40 w-[70%] self-start overflow-hidden rounded-lg bg-[#e5e2d5] shadow-lg sm:h-52 lg:h-64">
+                          <div className="relative h-40 w-[70%] self-start overflow-hidden bg-[#e5e2d5] sm:h-52 lg:h-64">
                             <Image
                               src="/images/story/dolphin-ocean.png"
                               alt="大自然"
@@ -287,7 +277,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                               className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
                             />
                           </div>
-                          <div className="relative -mt-10 ml-auto h-52 w-[80%] overflow-hidden rounded-xl border-8 border-[#F0EDE1]/80 bg-[#e5e2d5] shadow-xl sm:h-64 lg:-mt-14 lg:h-80">
+                          <div className="relative -mt-10 ml-auto h-52 w-[80%] overflow-hidden border-8 border-[#F0EDE1] bg-[#e5e2d5] sm:h-64 lg:-mt-14 lg:h-80">
                             <Image
                               src="/images/story/lab-research.png"
                               alt="科技"
@@ -322,9 +312,9 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex h-full items-center justify-center"
+                        className="flex h-full items-center justify-center pb-16 lg:pb-24"
                       >
-                        <div className="relative flex w-full max-w-5xl flex-col border border-[#00263e]/10 lg:flex-row">
+                        <div className="relative flex w-full max-w-5xl flex-col lg:flex-row">
                           {/* 左侧图片 */}
                           <div className="relative h-64 w-full overflow-hidden lg:h-auto lg:flex-[1.2]">
                             <Image
@@ -335,7 +325,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                             />
                           </div>
                           {/* 右侧文字卡片 */}
-                          <div className="z-10 flex flex-1 flex-col items-start justify-center bg-white p-8 shadow-[0_4px_20px_rgba(0,38,62,0.04),0_20px_60px_rgba(0,0,0,0.06)] sm:p-12 lg:-ml-16 lg:my-10 lg:p-16">
+                          <div className="z-10 flex flex-1 flex-col items-start justify-center bg-[#DDD9C9] p-8 shadow-[0_4px_20px_rgba(0,38,62,0.04),0_20px_60px_rgba(0,0,0,0.06)] sm:p-12 lg:-ml-16 lg:my-10 lg:p-16">
                             <span className="mb-2 text-xs uppercase tracking-[4px] text-[#00263e]/70 sm:text-sm">
                               Our Mission
                             </span>
@@ -347,9 +337,15 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                               <br /><br />
                               将逆转时光的不可能，慢慢变得「有可能」。
                             </p>
-                            <div className="mt-8 w-full border-t border-[#00263e] pt-4 sm:mt-10">
+                            <div className="mt-8 w-full border-t border-[#00263e]/30 pt-4 sm:mt-10">
                               <span className="block text-xs uppercase tracking-[4px] text-[#00263e]/70">CEO</span>
-                              <span className="font-serif text-lg italic text-[#00263e] sm:text-xl">John Morrell</span>
+                              <Image
+                                src="/images/story/mission-decoration.svg"
+                                alt="John Morrell"
+                                width={150}
+                                height={40}
+                                className="mt-1"
+                              />
                             </div>
                           </div>
                         </div>
@@ -394,10 +390,10 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex h-full flex-col justify-center px-2 sm:px-4 lg:px-6"
+                        className="flex h-full flex-col px-4 pb-14 pt-4 sm:px-5 sm:pb-16 sm:pt-5 lg:px-6 lg:pb-20 lg:pt-6"
                       >
-                        {/* 3x2 网格卡片布局 */}
-                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:gap-6">
+                        {/* 3x2 网格卡片布局 - 铺满容器 */}
+                        <div className="grid h-full grid-cols-2 grid-rows-3 gap-3 sm:grid-cols-3 sm:grid-rows-2 sm:gap-4 lg:gap-5">
                           {[
                             { year: "2023", title: "VOGUE BEAUTY AWARDS - 年度突破奖" },
                             { year: "2022", title: "ELLE 护肤科技金奖" },
@@ -411,12 +407,12 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                              className="group flex min-h-[100px] flex-col justify-center border border-[#00263e]/15 bg-[#F0EDE1]/50 p-5 transition-all duration-500 hover:border-[#00263e]/40 hover:bg-white/30 sm:min-h-[120px] sm:p-6 lg:min-h-[140px] lg:p-8"
+                              className="group flex flex-col justify-center border border-[#00263e]/15 bg-[#F0EDE1]/50 p-4 transition-all duration-500 hover:border-[#00263e]/40 hover:bg-white/30 sm:p-6 lg:p-8"
                             >
-                              <span className="mb-2 text-[10px] tracking-[2px] text-[#00263e]/50 sm:mb-3 sm:text-xs">
+                              <span className="mb-2 text-[11px] tracking-[2px] text-[#00263e]/50 sm:mb-3 sm:text-xs lg:text-sm">
                                 {award.year}
                               </span>
-                              <span className="text-sm font-normal leading-relaxed tracking-wide text-[#00263e] sm:text-base">
+                              <span className="text-sm font-normal leading-relaxed tracking-wide text-[#00263e] sm:text-base lg:text-lg">
                                 {award.title}
                               </span>
                             </m.div>

@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X, Clock, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ShopIcon, StoryIcon, ContactIcon, HomeIcon, RitualIcon } from "@/components/website";
+import { ShopIcon, StoryIcon, ContactIcon, HomeIcon, RitualIcon, UserButton } from "@/components/website";
 
 /**
  * 底部导航项配置
@@ -39,6 +39,9 @@ const modules: ModuleConfig[] = [
 interface RitualStep {
   title: string;
   description: string;
+  duration?: string; // 时长，如 "1-2分钟"
+  tips?: string; // 技巧提示
+  dosage?: string; // 用量建议
 }
 
 // 方案类型
@@ -62,9 +65,9 @@ const defaultModuleData: ModuleData = {
       tag: "唤醒",
       desc: "开启一天的透亮肌底",
       steps: [
-        { title: "温和洁面", description: "使用氨基酸洗面奶，轻柔除去夜间油脂。" },
-        { title: "纤维水膜", description: "湿敷3分钟，快速提升肌肤含水量。" },
-        { title: "光感防护", description: "涂抹自带提亮效果的日乳，抵御外界污染。" },
+        { title: "温和洁面", description: "使用氨基酸洗面奶，轻柔除去夜间油脂。", duration: "1-2分钟", tips: "用温水打湿面部，取适量洁面乳于掌心揉搓起泡后轻柔按摩。", dosage: "黄豆大小" },
+        { title: "纤维水膜", description: "湿敷3分钟，快速提升肌肤含水量。", duration: "3分钟", tips: "将化妆棉浸透后敷于两颊、额头、下巴，保持湿润状态。", dosage: "浸透化妆棉" },
+        { title: "光感防护", description: "涂抹自带提亮效果的日乳，抵御外界污染。", duration: "1分钟", tips: "从面部中心向外轻拍，确保均匀覆盖全脸及颈部。", dosage: "一元硬币大小" },
       ],
     },
     {
@@ -73,8 +76,8 @@ const defaultModuleData: ModuleData = {
       tag: "抗氧",
       desc: "对抗城市环境压力",
       steps: [
-        { title: "屏障修护", description: "建立微米级防护层。" },
-        { title: "抗蓝光精华", description: "阻隔电子屏幕带来的隐形伤害。" },
+        { title: "屏障修护", description: "建立微米级防护层。", duration: "2分钟", tips: "轻拍至完全吸收，重点关注T区和易敏感部位。", dosage: "2-3泵" },
+        { title: "抗蓝光精华", description: "阻隔电子屏幕带来的隐形伤害。", duration: "1分钟", tips: "点涂于面部后轻柔按压，特别是眼周区域。", dosage: "1-2泵" },
       ],
     },
   ],
@@ -85,9 +88,9 @@ const defaultModuleData: ModuleData = {
       tag: "修复",
       desc: "利用黄金睡眠期修护",
       steps: [
-        { title: "深度卸妆", description: "彻底溶解残妆与污垢。" },
-        { title: "夜间精华", description: "层层渗透，激活细胞自我更新。" },
-        { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。" },
+        { title: "深度卸妆", description: "彻底溶解残妆与污垢。", duration: "2-3分钟", tips: "以打圈方式轻柔按摩，让卸妆产品充分乳化。", dosage: "2-3泵" },
+        { title: "夜间精华", description: "层层渗透，激活细胞自我更新。", duration: "2分钟", tips: "沿肌肤纹理由下至上轻柔按摩，促进吸收。", dosage: "3-4滴" },
+        { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小" },
       ],
     },
     {
@@ -96,8 +99,8 @@ const defaultModuleData: ModuleData = {
       tag: "解压",
       desc: "放松身心的入眠仪式",
       steps: [
-        { title: "香氛喷雾", description: "营造宁静的睡眠氛围。" },
-        { title: "穴位按摩", description: "舒缓面部肌肉紧张感。" },
+        { title: "香氛喷雾", description: "营造宁静的睡眠氛围。", duration: "30秒", tips: "距离面部20cm喷洒，闭眼深呼吸感受香气。" },
+        { title: "穴位按摩", description: "舒缓面部肌肉紧张感。", duration: "3-5分钟", tips: "用指腹轻柔按压太阳穴、眉心、下颌，每个穴位停留5秒。" },
       ],
     },
   ],
@@ -108,8 +111,8 @@ const defaultModuleData: ModuleData = {
       tag: "排毒",
       desc: "家中的恒温理疗体验",
       steps: [
-        { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。" },
-        { title: "粘土清洁", description: "深层吸附毛孔深处杂质。" },
+        { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "3-5分钟", tips: "确保毛巾温度适中，覆盖全脸后轻轻按压。" },
+        { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "10-15分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层" },
       ],
     },
     {
@@ -118,8 +121,8 @@ const defaultModuleData: ModuleData = {
       tag: "紧致",
       desc: "塑造面部清晰轮廓",
       steps: [
-        { title: "拨筋手法", description: "配合刮痧板进行提拉按摩。" },
-        { title: "高倍滋养", description: "注入浓缩修护能量。" },
+        { title: "拨筋手法", description: "配合刮痧板进行提拉按摩。", duration: "5-8分钟", tips: "沿面部轮廓由下往上刮拭，力度适中，每个区域重复3-5次。" },
+        { title: "高倍滋养", description: "注入浓缩修护能量。", duration: "2分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "3-4泵" },
       ],
     },
   ],
@@ -130,8 +133,8 @@ const defaultModuleData: ModuleData = {
       tag: "极速",
       desc: "应对机舱干燥环境",
       steps: [
-        { title: "免洗洁肤", description: "便捷除去面部灰尘。" },
-        { title: "补水喷雾", description: "随时补充流失水分。" },
+        { title: "免洗洁肤", description: "便捷除去面部灰尘。", duration: "1分钟", tips: "用化妆棉蘸取后轻柔擦拭全脸。", dosage: "浸透化妆棉" },
+        { title: "补水喷雾", description: "随时补充流失水分。", duration: "30秒", tips: "距离面部15-20cm喷洒，用手轻拍帮助吸收。" },
       ],
     },
     {
@@ -140,8 +143,8 @@ const defaultModuleData: ModuleData = {
       tag: "舒缓",
       desc: "改善时差引起的倦怠",
       steps: [
-        { title: "冰感面膜", description: "降低表皮温度，消除浮肿。" },
-        { title: "维稳修护", description: "平复换季或地域带来的不适。" },
+        { title: "冰感面膜", description: "降低表皮温度，消除浮肿。", duration: "10-15分钟", tips: "提前冷藏效果更佳，敷后轻拍促进精华吸收。" },
+        { title: "维稳修护", description: "平复换季或地域带来的不适。", duration: "2分钟", tips: "选择舒缓成分，轻柔按压于敏感部位。", dosage: "2-3泵" },
       ],
     },
   ],
@@ -152,8 +155,8 @@ const defaultModuleData: ModuleData = {
       tag: "专业",
       desc: "医学级角质更新处理",
       steps: [
-        { title: "酸性激活", description: "软化陈旧角质，促进代谢。" },
-        { title: "中和平衡", description: "恢复肌肤天然酸碱值。" },
+        { title: "酸性激活", description: "软化陈旧角质，促进代谢。", duration: "5-10分钟", tips: "首次使用建议从短时间开始，逐步增加。避免眼周和唇部。", dosage: "薄薄一层" },
+        { title: "中和平衡", description: "恢复肌肤天然酸碱值。", duration: "2分钟", tips: "用专用中和液或清水彻底清洗，后续使用舒缓产品。" },
       ],
     },
     {
@@ -162,8 +165,8 @@ const defaultModuleData: ModuleData = {
       tag: "活氧",
       desc: "高压氧渗透嫩肤",
       steps: [
-        { title: "导入精粹", description: "配合专业设备深层透皮。" },
-        { title: "屏障封存", description: "强效锁水，持久焕发神采。" },
+        { title: "导入精粹", description: "配合专业设备深层透皮。", duration: "10-15分钟", tips: "确保肌肤洁净干燥，按照设备说明操作。", dosage: "根据设备要求" },
+        { title: "屏障封存", description: "强效锁水，持久焕发神采。", duration: "2分钟", tips: "趁导入后肌肤通道打开时立即涂抹封层产品。", dosage: "充足涂抹" },
       ],
     },
   ],
@@ -171,6 +174,53 @@ const defaultModuleData: ModuleData = {
 
 interface RitualContentProps {
   backgroundImage?: string;
+}
+
+/**
+ * 计算步骤总时长
+ * @param steps 步骤数组
+ * @returns 格式化的总时长字符串
+ */
+function calculateTotalDuration(steps: RitualStep[]): string {
+  let minTotal = 0;
+  let maxTotal = 0;
+
+  steps.forEach(step => {
+    if (step.duration) {
+      // 解析时长字符串，如 "1-2分钟", "30秒", "10-15分钟"
+      const durationStr = step.duration.replace(/分钟|秒/g, "");
+      const isSeconds = step.duration.includes("秒");
+
+      if (durationStr.includes("-")) {
+        const [min, max] = durationStr.split("-").map(Number);
+        if (isSeconds) {
+          minTotal += min / 60;
+          maxTotal += max / 60;
+        } else {
+          minTotal += min;
+          maxTotal += max;
+        }
+      } else {
+        const value = Number(durationStr);
+        if (isSeconds) {
+          minTotal += value / 60;
+          maxTotal += value / 60;
+        } else {
+          minTotal += value;
+          maxTotal += value;
+        }
+      }
+    }
+  });
+
+  // 四舍五入
+  minTotal = Math.round(minTotal);
+  maxTotal = Math.round(maxTotal);
+
+  if (minTotal === maxTotal) {
+    return `约 ${minTotal} 分钟`;
+  }
+  return `约 ${minTotal}-${maxTotal} 分钟`;
 }
 
 /**
@@ -191,6 +241,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   // 移动端菜单
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  // 展开的步骤索引（用于显示技巧提示）
+  const [expandedStepIndex, setExpandedStepIndex] = useState<number | null>(null);
 
   // 使用默认数据
   const moduleData = defaultModuleData;
@@ -288,10 +340,18 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                 "flex h-full flex-col overflow-hidden",
                 !isExpanded && "hidden"
               )}>
-                {/* 顶部栏：LOGO + 面包屑 */}
+                {/* 顶部栏：LOGO + 面包屑/用户按钮 */}
                 <div className="flex flex-shrink-0 items-center justify-between border-b border-brand-charcoal/5 px-4 py-3 sm:px-8 sm:py-4 lg:px-12">
-                  {/* 左侧：LOGO（始终显示） */}
-                  <Link href="/" className="block transition-opacity hover:opacity-70">
+                  {/* 左侧：LOGO - 点击返回 Level 1 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentLevel(1);
+                      setSelectedModule(null);
+                      setSelectedScheme(null);
+                    }}
+                    className="block transition-opacity hover:opacity-70"
+                  >
                     <Image
                       src="/images/logo.png"
                       alt="NIHPLOD"
@@ -300,12 +360,23 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                       className="h-6 w-auto sm:h-7 lg:h-8"
                       priority
                     />
-                  </Link>
+                  </button>
 
-                  {/* 右侧：面包屑导航（可点击返回）- 仅 Level 2/3 时显示 */}
+                  {/* 右侧：Level 1 显示用户按钮，Level 2/3 显示面包屑 */}
                   <AnimatePresence mode="wait">
-                    {currentLevel >= 2 && (
+                    {currentLevel === 1 ? (
+                      <m.div
+                        key="user-button"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      >
+                        <UserButton />
+                      </m.div>
+                    ) : currentLevel >= 2 ? (
                       <m.nav
+                        key="breadcrumb"
                         className="flex items-center gap-2 text-xs text-brand-charcoal/50 sm:text-sm"
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -354,7 +425,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                           </>
                         )}
                       </m.nav>
-                    )}
+                    ) : null}
                   </AnimatePresence>
                 </div>
 
@@ -453,7 +524,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                       </m.div>
                     )}
 
-                    {/* Level 2: 左右分栏式布局 */}
+                    {/* Level 2: 垂直面板布局 - 与 Level 1 类似 */}
                     {currentLevel === 2 && selectedModule && (
                       <m.div
                         key="level2"
@@ -461,105 +532,70 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute inset-0 flex flex-col overflow-hidden p-4 sm:p-6 lg:flex-row lg:p-8"
+                        className="absolute inset-0 flex gap-4 p-4 sm:gap-5 sm:p-5 lg:gap-6 lg:p-6"
                       >
-                        {/* 左侧：模块主题图 */}
-                        <m.div
-                          className="relative flex-shrink-0 overflow-hidden rounded-sm bg-brand-charcoal/5 lg:w-[45%]"
-                          initial={{ opacity: 0, x: -30 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                        >
-                          {/* 占位图背景 */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-brand-charcoal/5 to-brand-charcoal/10" />
-
-                          {/* 装饰性图形 */}
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <svg className="h-3/4 w-3/4 opacity-[0.07]" viewBox="0 0 200 200">
-                              <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                              <circle cx="100" cy="100" r="60" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                              <circle cx="100" cy="100" r="40" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                              <path d="M100 20 L100 180 M20 100 L180 100" stroke="currentColor" strokeWidth="0.3" />
-                            </svg>
-                          </div>
-
-                          {/* 模块信息覆盖层 */}
-                          <div className="relative flex h-full flex-col justify-end p-6 sm:p-10 lg:p-12">
-                            <m.div
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        {moduleData[selectedModule].map((scheme, index) => (
+                          <m.button
+                            key={scheme.id}
+                            type="button"
+                            onClick={() => selectScheme(scheme)}
+                            onMouseEnter={() => setHoveredIndex(index)}
+                            onMouseLeave={() => setHoveredIndex(null)}
+                            className={cn(
+                              "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-sm p-5 sm:p-8 lg:p-10",
+                              hoveredIndex === index
+                                ? "flex-[1.6] bg-white/50 shadow-[0_30px_60px_-10px_rgba(0,38,62,0.06)]"
+                                : hoveredIndex !== null
+                                  ? "flex-[0.9] bg-white/20"
+                                  : "flex-1 bg-white/25"
+                            )}
+                            style={{
+                              transition: "flex 0.9s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.7s cubic-bezier(0.16, 1, 0.3, 1)"
+                            }}
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.7, delay: 0.1 + index * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                          >
+                            {/* 标签 - 居中圆角边框 */}
+                            <span
+                              className={cn(
+                                "mb-4 rounded-full border px-4 py-1.5 text-[11px] tracking-wider sm:mb-5 sm:px-5 sm:text-xs",
+                                hoveredIndex === index
+                                  ? "border-brand-charcoal/25 text-brand-charcoal/70"
+                                  : "border-brand-charcoal/15 text-brand-charcoal/40"
+                              )}
+                              style={{ transition: "border-color 0.5s ease, color 0.5s ease" }}
                             >
-                              <span className="text-sm text-brand-charcoal/40">
-                                {modules.find(m => m.id === selectedModule)?.number}
-                              </span>
-                              <h2 className="mt-2 text-3xl font-light text-brand-charcoal sm:text-4xl lg:text-5xl">
-                                {modules.find(m => m.id === selectedModule)?.label}
-                              </h2>
-                              <p className="mt-4 max-w-[300px] text-sm leading-relaxed text-brand-charcoal/50 lg:text-base">
-                                {modules.find(m => m.id === selectedModule)?.description}
-                              </p>
-                            </m.div>
-                          </div>
-                        </m.div>
+                              {scheme.tag}
+                            </span>
 
-                        {/* 右侧：方案列表 */}
-                        <div className="flex flex-1 flex-col justify-center overflow-x-hidden overflow-y-auto py-4 sm:py-6 lg:py-8">
-                          <div className="flex flex-col gap-2 lg:gap-3 overflow-hidden">
-                            {moduleData[selectedModule].map((scheme, index) => (
-                              <m.button
-                                key={scheme.id}
-                                type="button"
-                                onClick={() => selectScheme(scheme)}
-                                className="group relative rounded-sm p-5 text-left sm:p-6 lg:p-8"
-                                style={{
-                                  transition: "background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1)"
-                                }}
-                                whileHover={{ backgroundColor: "rgba(255,255,255,0.7)" }}
-                                initial={{ opacity: 0, x: 30 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ duration: 0.6, delay: 0.2 + index * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                              >
-                                {/* 序号 */}
-                                <span className="mb-2 block text-xs text-brand-charcoal/30 sm:mb-3">
-                                  0{index + 1}
-                                </span>
+                            {/* 标题 - 居中 */}
+                            <h3
+                              className={cn(
+                                "mb-3 text-center font-light tracking-wide text-brand-charcoal sm:mb-4",
+                                hoveredIndex === index
+                                  ? "text-xl sm:text-2xl lg:text-[26px]"
+                                  : "text-lg sm:text-xl lg:text-2xl"
+                              )}
+                              style={{ transition: "font-size 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                            >
+                              {scheme.name}
+                            </h3>
 
-                                {/* 标题行：名称 + 标签 */}
-                                <div className="mb-2 flex items-center gap-3 sm:mb-3 sm:gap-4">
-                                  <h3 className="text-lg font-light text-brand-charcoal sm:text-xl lg:text-2xl">
-                                    {scheme.name}
-                                  </h3>
-                                  <span className="border border-brand-charcoal/25 px-2 py-0.5 text-[9px] tracking-wide text-brand-charcoal/45 sm:px-3 sm:text-[10px]">
-                                    {scheme.tag}
-                                  </span>
-                                </div>
-
-                                {/* 描述 */}
-                                <p className="max-w-[380px] pr-10 text-[12px] leading-relaxed text-brand-charcoal/40 sm:text-[13px]">
-                                  {scheme.desc}
-                                </p>
-
-                                {/* 右侧箭头 */}
-                                <div
-                                  className="absolute right-5 top-1/2 -translate-y-1/2 text-brand-charcoal/15 sm:right-6 lg:right-8"
-                                >
-                                  <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    className="transition-transform duration-500 group-hover:translate-x-1.5"
-                                  >
-                                    <path d="M5 12h14M12 5l7 7-7 7" />
-                                  </svg>
-                                </div>
-                              </m.button>
-                            ))}
-                          </div>
-                        </div>
+                            {/* 描述文字 - 居中 */}
+                            <p
+                              className={cn(
+                                "text-center text-[12px] leading-relaxed text-brand-charcoal/45 sm:text-[13px]",
+                                hoveredIndex === index
+                                  ? "text-brand-charcoal/55"
+                                  : "text-brand-charcoal/40"
+                              )}
+                              style={{ transition: "color 0.5s ease" }}
+                            >
+                              {scheme.desc}
+                            </p>
+                          </m.button>
+                        ))}
                       </m.div>
                     )}
 
@@ -591,11 +627,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                   "40% 60% 70% 30% / 40% 50% 60% 50%"
                                 ]
                               }}
-                              transition={{
-                                duration: 8,
-                                repeat: Infinity,
-                                ease: "easeInOut"
-                              }}
+                              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
                             />
                           </div>
 
@@ -658,15 +690,23 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             {selectedScheme.desc}
                           </m.p>
 
-                          {/* 步骤数量提示 */}
+                          {/* 步骤数量 + 总时长 */}
                           <m.div
-                            className="relative z-10 mt-4 flex items-center gap-3 text-[11px] text-brand-charcoal/40 sm:mt-8"
+                            className="relative z-10 mt-4 flex flex-wrap items-center gap-4 text-[11px] text-brand-charcoal/40 sm:mt-8 sm:gap-5"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 0.6, delay: 0.4 }}
                           >
-                            <span className="h-px w-8 bg-brand-charcoal/20 sm:w-10" />
-                            <span className="tracking-wide">{selectedScheme.steps.length} 个护理步骤</span>
+                            {/* 步骤数量 */}
+                            <div className="flex items-center gap-2">
+                              <span className="h-px w-8 bg-brand-charcoal/20 sm:w-10" />
+                              <span className="tracking-wide">{selectedScheme.steps.length} 个护理步骤</span>
+                            </div>
+                            {/* 总时长 */}
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3 text-brand-charcoal/30" />
+                              <span className="tracking-wide">{calculateTotalDuration(selectedScheme.steps)}</span>
+                            </div>
                           </m.div>
                         </m.div>
 
@@ -692,52 +732,114 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                           {/* 步骤列表 - 带连接线 */}
                           <div className="relative flex flex-1 flex-col justify-center gap-1">
-                            {selectedScheme.steps.map((step, index) => (
-                              <m.div
-                                key={step.title}
-                                className="group relative flex gap-4 rounded-lg px-2 py-4 transition-colors duration-300 hover:bg-brand-beige/20 sm:gap-5 sm:px-3 sm:py-5 lg:gap-6 lg:py-6"
-                                initial={{ opacity: 0, y: 25 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: 0.3 + index * 0.1, ease: [0.19, 1, 0.22, 1] }}
-                              >
-                                {/* 左侧：序号 + 连接线 */}
-                                <div className="relative flex flex-col items-center">
-                                  {/* 序号圆圈 - 增大尺寸、添加阴影 */}
-                                  <div className="z-10 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand-charcoal/70 bg-white text-[11px] font-semibold shadow-sm transition-all duration-300 group-hover:border-brand-charcoal group-hover:shadow-md sm:h-8 sm:w-8 sm:text-xs lg:h-9 lg:w-9 lg:text-[13px]">
-                                    {index + 1}
-                                  </div>
-                                  {/* 连接线 - 带流动动画 */}
-                                  {index < selectedScheme.steps.length - 1 && (
-                                    <div className="absolute left-1/2 top-7 h-[calc(100%+0.25rem)] w-[2px] -translate-x-1/2 overflow-hidden sm:top-8 lg:top-9">
-                                      {/* 静态背景线 */}
-                                      <div className="absolute inset-0 bg-gradient-to-b from-brand-charcoal/10 to-brand-charcoal/5" />
-                                      {/* 流动光效 */}
-                                      <m.div
-                                        className="absolute inset-x-0 h-8 bg-gradient-to-b from-transparent via-brand-charcoal/25 to-transparent"
-                                        initial={{ top: "-2rem" }}
-                                        animate={{ top: "100%" }}
-                                        transition={{
-                                          duration: 2,
-                                          repeat: Infinity,
-                                          ease: "easeInOut",
-                                          delay: index * 0.3
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
+                            {selectedScheme.steps.map((step, index) => {
+                              const isStepExpanded = expandedStepIndex === index;
+                              const hasTips = step.tips || step.dosage || step.duration;
 
-                                {/* 右侧：步骤内容 */}
-                                <div className="flex-1 pt-0.5 sm:pt-1">
-                                  <h4 className="mb-1 text-[13px] font-semibold text-brand-charcoal transition-colors duration-300 group-hover:text-brand-charcoal/90 sm:mb-1.5 sm:text-sm lg:text-base">
-                                    {step.title}
-                                  </h4>
-                                  <p className="max-w-[380px] text-[11px] leading-[1.7] text-brand-charcoal/50 transition-colors duration-300 group-hover:text-brand-charcoal/60 sm:text-[12px] lg:max-w-[420px] lg:text-[13px] lg:leading-[1.75]">
-                                    {step.description}
-                                  </p>
-                                </div>
-                              </m.div>
-                            ))}
+                              return (
+                                <m.div
+                                  key={step.title}
+                                  className="group relative flex gap-4 sm:gap-5 lg:gap-6"
+                                  initial={{ opacity: 0, y: 25 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.6, delay: 0.3 + index * 0.1, ease: [0.19, 1, 0.22, 1] }}
+                                >
+                                  {/* 左侧：序号 + 连接线 */}
+                                  <div className="flex flex-col items-center self-stretch">
+                                    {/* 序号圆圈 */}
+                                    <div className={cn(
+                                      "z-10 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-[1.5px] bg-white text-[11px] font-semibold shadow-sm transition-all duration-300 sm:h-8 sm:w-8 sm:text-xs lg:h-9 lg:w-9 lg:text-[13px]",
+                                      isStepExpanded
+                                        ? "border-brand-gold bg-brand-gold/5 shadow-md"
+                                        : "border-brand-charcoal/70 group-hover:border-brand-charcoal group-hover:shadow-md"
+                                    )}>
+                                      {index + 1}
+                                    </div>
+                                    {/* 连接线 - 静态线条 */}
+                                    {index < selectedScheme.steps.length - 1 && (
+                                      <div className="mt-1 mb-1 min-h-[8px] w-[2px] flex-1 rounded-full bg-gradient-to-b from-brand-charcoal/15 via-brand-charcoal/10 to-brand-charcoal/15" />
+                                    )}
+                                  </div>
+
+                                  {/* 右侧：步骤内容（可点击展开） */}
+                                  <div className="flex-1 pt-0.5 sm:pt-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => hasTips && setExpandedStepIndex(isStepExpanded ? null : index)}
+                                      className={cn(
+                                        "w-full rounded-lg px-2 py-3 text-left transition-colors duration-300 sm:px-3 sm:py-4 lg:py-5",
+                                        hasTips ? "cursor-pointer hover:bg-brand-beige/20" : "cursor-default",
+                                        isStepExpanded && "bg-brand-beige/30"
+                                      )}
+                                    >
+                                      {/* 标题行 */}
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1">
+                                          <h4 className="mb-1 text-[13px] font-semibold text-brand-charcoal transition-colors duration-300 group-hover:text-brand-charcoal/90 sm:mb-1.5 sm:text-sm lg:text-base">
+                                            {step.title}
+                                          </h4>
+                                          <p className="max-w-[380px] text-[11px] leading-[1.7] text-brand-charcoal/50 transition-colors duration-300 group-hover:text-brand-charcoal/60 sm:text-[12px] lg:max-w-[420px] lg:text-[13px] lg:leading-[1.75]">
+                                            {step.description}
+                                          </p>
+                                        </div>
+                                        {/* 展开指示器 */}
+                                        {hasTips && (
+                                          <m.div
+                                            className="mt-0.5 flex-shrink-0"
+                                            animate={{ rotate: isStepExpanded ? 90 : 0 }}
+                                            transition={{ duration: 0.3 }}
+                                          >
+                                            <ChevronRight className="h-4 w-4 text-brand-charcoal/30" />
+                                          </m.div>
+                                        )}
+                                      </div>
+
+                                      {/* 展开的详细信息 */}
+                                      <AnimatePresence>
+                                        {isStepExpanded && hasTips && (
+                                          <m.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                            className="overflow-hidden"
+                                          >
+                                            <div className="mt-3 space-y-2 border-t border-brand-charcoal/[0.08] pt-3 sm:mt-4 sm:space-y-2.5 sm:pt-4">
+                                              {/* 时长 */}
+                                              {step.duration && (
+                                                <div className="flex items-center gap-2 text-[11px] sm:text-[12px]">
+                                                  <Clock className="h-3 w-3 flex-shrink-0 text-brand-gold/70" />
+                                                  <span className="text-brand-charcoal/40">时长</span>
+                                                  <span className="text-brand-charcoal/70">{step.duration}</span>
+                                                </div>
+                                              )}
+                                              {/* 用量 */}
+                                              {step.dosage && (
+                                                <div className="flex items-center gap-2 text-[11px] sm:text-[12px]">
+                                                  <span className="flex h-3 w-3 flex-shrink-0 items-center justify-center text-[10px] text-brand-gold/70">●</span>
+                                                  <span className="text-brand-charcoal/40">用量</span>
+                                                  <span className="text-brand-charcoal/70">{step.dosage}</span>
+                                                </div>
+                                              )}
+                                              {/* 技巧提示 */}
+                                              {step.tips && (
+                                                <div className="flex gap-2 text-[11px] sm:text-[12px]">
+                                                  <span className="mt-0.5 flex h-3 w-3 flex-shrink-0 items-center justify-center text-[10px] text-brand-gold/70">✦</span>
+                                                  <div>
+                                                    <span className="text-brand-charcoal/40">技巧</span>
+                                                    <p className="mt-0.5 leading-relaxed text-brand-charcoal/60">{step.tips}</p>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </m.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </button>
+                                  </div>
+                                </m.div>
+                              );
+                            })}
                           </div>
                         </m.div>
                       </m.div>
@@ -751,17 +853,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
             <button
               type="button"
               onClick={() => {
-                if (isExpanded) {
-                  // 展开 -> 收起，重置所有状态
-                  setCurrentLevel(1);
-                  setSelectedModule(null);
-                  setSelectedScheme(null);
-                  setHoveredIndex(null);
-                  setIsExpanded(false);
-                } else {
-                  // 收起 -> 展开
-                  setIsExpanded(true);
-                }
+                // 切换展开/收起状态，保持当前层级和选择不变
+                setIsExpanded(!isExpanded);
               }}
               className="group flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
             >
