@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L'ESSENCE | 高端护肤品牌</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&family=Noto+Sans+SC:wght@300;400;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --vellum: #F0EDE1;
+            --cobalt: #00263e;
+            --accent: #00263e;
+            --transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--vellum);
+            color: var(--cobalt);
+            font-family: 'Montserrat', 'Noto Sans SC', sans-serif;
+        }
+
+        /* Vellum Texture Overlay */
+        .vellum-texture {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3ExternalIcon%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0; width: 100%;
+            padding: 2rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .logo-container img {
+            height: 28px;
+            filter: brightness(0) saturate(100%) invert(10%) sepia(45%) saturate(2256%) hue-rotate(180deg) brightness(95%) contrast(105%);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+        }
+
+        .nav-links span {
+            cursor: pointer;
+            position: relative;
+            padding-bottom: 2px;
+        }
+
+        .nav-links span::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; width: 0; height: 1px;
+            background: var(--cobalt);
+            transition: var(--transition);
+        }
+
+        .nav-links span:hover::after {
+            width: 100%;
+        }
+
+        .nav-icons {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .nav-icons svg {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            stroke: var(--cobalt);
+        }
+
+        /* Main Content */
+        main {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 4rem;
+        }
+
+        .hero-header {
+            margin-bottom: 3rem;
+            border-left: 4px solid var(--cobalt);
+            padding-left: 1.5rem;
+        }
+
+        .hero-header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4rem;
+            height: 55vh;
+        }
+
+        .product-card {
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .product-image-wrap {
+            flex-grow: 1;
+            background: #fff;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .product-card img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+            transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .product-card:hover img {
+            transform: scale(1.08);
+        }
+
+        .product-info {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .product-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .product-meta {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        /* Secondary Page (Overlay) */
+        #product-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--vellum);
+            z-index: 200;
+            display: none; /* Controlled by JS */
+            grid-template-columns: 1fr 1fr;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .overlay-close {
+            position: absolute;
+            top: 2rem; right: 2rem;
+            cursor: pointer;
+            z-index: 210;
+            font-size: 2rem;
+            font-weight: 200;
+        }
+
+        .overlay-visual {
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .carousel-img {
+            max-width: 70%;
+            max-height: 70%;
+            object-fit: contain;
+        }
+
+        .overlay-content {
+            padding: 6rem 4rem;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .overlay-content::-webkit-scrollbar {
+            width: 4px;
+        }
+        .overlay-content::-webkit-scrollbar-thumb {
+            background: var(--cobalt);
+        }
+
+        .detail-header {
+            margin-bottom: 2rem;
+        }
+
+        .brand-logo-small {
+            height: 20px;
+            margin-bottom: 2rem;
+            filter: brightness(0) saturate(100%) invert(10%);
+        }
+
+        .detail-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            border: 1px solid var(--cobalt);
+            padding: 2px 8px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+        }
+
+        .detail-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-price {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .detail-desc {
+            font-size: 0.95rem;
+            line-height: 1.8;
+            margin-bottom: 2.5rem;
+            max-width: 500px;
+        }
+
+        .scenarios {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .scenario-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.7rem;
+            gap: 0.5rem;
+        }
+
+        .scenario-item svg {
+            width: 24px;
+            height: 24px;
+            stroke-width: 1.5;
+        }
+
+        .accordion {
+            border-top: 1px solid rgba(0,38,62,0.1);
+            margin-bottom: 2rem;
+        }
+
+        details {
+            border-bottom: 1px solid rgba(0,38,62,0.1);
+        }
+
+        summary {
+            padding: 1.2rem 0;
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        summary::after {
+            content: '+';
+        }
+
+        details[open] summary::after {
+            content: '-';
+        }
+
+        .details-inner {
+            padding-bottom: 1.5rem;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            opacity: 0.8;
+        }
+
+        .external-link {
+            display: inline-block;
+            margin-bottom: 3rem;
+            color: var(--cobalt);
+            text-decoration: none;
+            border-bottom: 1px solid var(--cobalt);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .store-icons {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .store-icons img {
+            height: 32px;
+            width: auto;
+            object-fit: contain;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="vellum-texture"></div>
+
+    <nav>
+        <div class="logo-container">
+            <img src="https://wp-cdn.4ce.cn/v2/SItKqUC.png" alt="Logo">
+        </div>
+        <div class="nav-links">
+            <span>精华露</span>
+            <span onclick="openDetail(0)">面霜</span>
+            <span>护肤油</span>
+            <span>面膜</span>
+            <span onclick="openDetail(1)">身体乳</span>
+            <span>防晒</span>
+            <span>磨砂膏</span>
+            <span onclick="openDetail(2)">洁面</span>
+            <span>护手霜</span>
+        </div>
+        <div class="nav-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+    </nav>
+
+    <main>
+        <div class="hero-header">
+            <p style="font-size: 0.8rem; letter-spacing: 0.3em; margin-bottom: 0.5rem; opacity: 0.6;">CURRENTLY COVETED</p>
+            <h1>当季热卖</h1>
+        </div>
+
+        <div class="product-grid">
+            <!-- Product 1 -->
+            <div class="product-card" onclick="openDetail(0)">
+                <div class="product-image-wrap">
+                    <img src="https://wp-cdn.4ce.cn/v2/kjtSQ0w.jpeg" alt="面霜">
+                </div>
+                <div class="product-info">
+                    <div>
+                        <div class="product-name">恒采修护面霜</div>
+                        <div class="product-meta">ANTI-AGING CREAM</div>
+                    </div>
+                    <div class="product-meta">50ml</div>
+                </div>
+            </div>
+
+            <!-- Product 2 -->
+            <div class="product-card" onclick="openDetail(1)">
+                <div class="product-image-wrap">
+                    <img src="https://wp-cdn.4ce.cn/v2/PjbWO3H.png" alt="身体乳">
+                </div>
+                <div class="product-info">
+                    <div>
+                        <div class="product-name">新生焕活身体乳</div>
+                        <div class="product-meta">RENEWING BODY LOTION</div>
+                    </div>
+                    <div class="product-meta">250ml</div>
+                </div>
+            </div>
+
+            <!-- Product 3 -->
+            <div class="product-card" onclick="openDetail(2)">
+                <div class="product-image-wrap">
+                    <img src="https://wp-cdn.4ce.cn/v2/4xE49ai.jpeg" alt="洁面">
+                </div>
+                <div class="product-info">
+                    <div>
+                        <div class="product-name">净透温和洁面慕斯</div>
+                        <div class="product-meta">GENTLE CLEANSING MOUSSE</div>
+                    </div>
+                    <div class="product-meta">100ml</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Detail Overlay -->
+    <div id="product-overlay">
+        <div class="overlay-close" onclick="closeDetail()">&times;</div>
+        <div class="overlay-visual">
+            <img id="detail-img" class="carousel-img" src="" alt="Product Detail">
+        </div>
+        <div class="overlay-content">
+            <img src="https://wp-cdn.4ce.cn/v2/SItKqUC.png" class="brand-logo-small">
+            
+            <div class="detail-header">
+                <div class="detail-tags">
+                    <span class="tag">一般贸易版</span>
+                    <span class="tag">跨境版</span>
+                </div>
+                <h2 id="detail-name" class="detail-title">恒采修护面霜</h2>
+                <div style="font-family: 'Roboto Mono'; opacity: 0.6; font-size: 0.8rem; margin-bottom: 1rem;">
+                    规格: <span id="detail-spec">50ml</span> | 产地: 法国
+                </div>
+                <div id="detail-price" class="detail-price">¥1,280</div>
+            </div>
+
+            <p id="detail-desc" class="detail-desc">
+                蕴含珍稀植物精粹，深层滋养肌肤，修护岁月痕迹，令肌肤重焕紧致弹润光泽。
+            </p>
+
+            <div class="scenarios">
+                <div class="scenario-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 19.07-1.41-1.41"/><path d="M12 20v2"/><path d="m6.34 17.66-1.41 1.41"/><path d="M2 12h2"/><path d="m7.76 7.76-1.41-1.41"/><circle cx="12" cy="12" r="4"/></svg>
+                    <span>日间护肤</span>
+                </div>
+                <div class="scenario-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    <span>夜间修护</span>
+                </div>
+                <div class="scenario-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 2.67-2 3.5 0 1.21.95 2 2.18 2 4.4 0 3.51-3.04 6.64-3.54a2.72 2.72 0 0 0 0-5.42c-3.13-.5-2.24-3.54-6.64-3.54-1.23 0-2.18.79-2.18 2 0 .83.5 2.24 2 3.5Z"/><path d="M15 8.5c-1.5 1.26-2 2.67-2 3.5 0 1.21.95 2 2.18 2 4.4 0 3.51-3.04 6.64-3.54a2.72 2.72 0 0 0 0-5.42c-3.13-.5-2.24-3.54-6.64-3.54-1.23 0-2.18.79-2.18 2 0 .83.5 2.24 2 3.5Z"/></svg>
+                    <span>干燥急救</span>
+                </div>
+            </div>
+
+            <a href="https://www.xiaohongshu.com" target="_blank" class="external-link">去小红书查看更多评测 →</a>
+
+            <div class="accordion">
+                <details>
+                    <summary>主要成分</summary>
+                    <div class="details-inner">
+                        角鲨烷、透明质酸钠、积雪草提取物、胜肽复合物、大马士革玫瑰花水。
+                    </div>
+                </details>
+                <details>
+                    <summary>使用方法</summary>
+                    <div class="details-inner">
+                        取珍珠大小，在指尖揉开加热，轻柔按压于面部及颈部肌肤，直至完全吸收。
+                    </div>
+                </details>
+            </div>
+
+            <div style="font-size: 0.7rem; font-weight: 700; margin-bottom: 1rem;">官方旗舰店</div>
+            <div class="store-icons">
+                <img src="https://wp-cdn.4ce.cn/v2/Naomofj.png" alt="Store 1">
+                <img src="https://wp-cdn.4ce.cn/v2/R9cu5PA.png" alt="Store 2">
+                <img src="https://wp-cdn.4ce.cn/v2/aGy0IXZ.png" alt="Store 3">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const products = [
+            {
+                name: "恒采修护面霜",
+                spec: "50ml",
+                price: "¥1,280",
+                img: "https://wp-cdn.4ce.cn/v2/kjtSQ0w.jpeg",
+                desc: "专为亚洲肌肤研发的高活性修护面霜。蕴含多重胜肽与珍稀植物精华，触肤即融，构建丝滑锁水屏障，长效抵御氧化压力。"
+            },
+            {
+                name: "新生焕活身体乳",
+                spec: "250ml",
+                price: "¥450",
+                img: "https://wp-cdn.4ce.cn/v2/PjbWO3H.png",
+                desc: "丝绒质地，深层浸透。结合神经酰胺与天然油脂，瞬间舒缓干燥不适，令全身肌肤如丝绸般细腻柔滑，散发淡雅清香。"
+            },
+            {
+                name: "净透温和洁面慕斯",
+                spec: "100ml",
+                price: "¥320",
+                img: "https://wp-cdn.4ce.cn/v2/4xE49ai.jpeg",
+                desc: "氨基酸系温和配方，一按即出云朵般绵密泡沫。深层清洁毛孔污垢的同时保留肌肤原有水分，洁面后清爽不紧绷。"
+            }
+        ];
+
+        function openDetail(index) {
+            const product = products[index];
+            document.getElementById('detail-name').innerText = product.name;
+            document.getElementById('detail-spec').innerText = product.spec;
+            document.getElementById('detail-price').innerText = product.price;
+            document.getElementById('detail-img').src = product.img;
+            document.getElementById('detail-desc').innerText = product.desc;
+            
+            document.getElementById('product-overlay').style.display = 'grid';
+        }
+
+        function closeDetail() {
+            document.getElementById('product-overlay').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

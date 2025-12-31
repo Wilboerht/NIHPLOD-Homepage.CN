@@ -21,7 +21,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { isOpen, isCollapsed, isMobile, toggle, close, toggleCollapse } = useSidebar();
 
   // 登录页面使用独立的简洁布局
-  if (pathname === "/login") {
+  if (pathname === "/admin-login") {
     return (
       <Suspense fallback={<div className="flex min-h-screen items-center justify-center">加载中...</div>}>
         {children}

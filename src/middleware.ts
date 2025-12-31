@@ -62,20 +62,22 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   const isAuthenticated = token ? await verifyToken(token) : false;
 
-  // 1. 处理管理后台页面路由
+  // 1. 已登录用户访问登录页，重定向到管理后台
+  if (matchesPath(pathname, PUBLIC_ADMIN_PATHS)) {
+    if (isAuthenticated) {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    // 未登录访问登录页，直接放行
+    return NextResponse.next();
+  }
+
+  // 2. 处理管理后台页面路由（排除登录页后再检查）
   if (matchesPath(pathname, PROTECTED_PATHS)) {
     // 未登录时重定向到管理员登录页
     if (!isAuthenticated) {
       const loginUrl = new URL("/admin-login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
-    }
-  }
-
-  // 2. 已登录用户访问登录页，重定向到管理后台
-  if (matchesPath(pathname, PUBLIC_ADMIN_PATHS)) {
-    if (isAuthenticated) {
-      return NextResponse.redirect(new URL("/admin", request.url));
     }
   }
 
