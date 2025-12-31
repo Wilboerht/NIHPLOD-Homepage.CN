@@ -214,7 +214,9 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     alt={product.images[currentImageIndex].alt || product.name}
                     fill
                     className="object-contain"
-                    sizes="50vw"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    quality={90}
+                    priority
                   />
                 </m.div>
               ) : (
@@ -244,6 +246,26 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   <ChevronRight className="h-8 w-8" />
                 </button>
               </>
+            )}
+
+            {/* 图片指示器小点 */}
+            {product.images.length > 1 && (
+              <div className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
+                {product.images.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={cn(
+                      "rounded-full transition-all duration-300 ease-out",
+                      currentImageIndex === index
+                        ? "h-1.5 w-4 bg-[#00263E]"
+                        : "h-1.5 w-1.5 bg-[#00263E]/25 hover:bg-[#00263E]/50"
+                    )}
+                    aria-label={`查看第 ${index + 1} 张图片`}
+                  />
+                ))}
+              </div>
             )}
           </div>
 
@@ -311,8 +333,8 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               去小红书查看更多评测 →
             </a>
 
-            {/* 折叠面板 - 手风琴效果 */}
-            <div className="mb-8 border-t border-[#00263E]/10">
+            {/* 折叠面板 - 主要成分 & 使用方法 & 官方旗舰店 */}
+            <div className="border-t border-[#00263E]/10">
               {/* 主要成分 */}
               {product.ingredients && (
                 <div className="border-b border-[#00263E]/10">
@@ -350,26 +372,28 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   )}
                 </div>
               )}
-            </div>
 
-            {/* 官方旗舰店 */}
-            <div className="mb-4 text-[14px] font-semibold text-[#00263E]">官方旗舰店</div>
-            <div className="flex items-end gap-6">
-              {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
-                product.purchaseLinks.map((link) => (
-                  <a
-                    key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="transition-opacity hover:opacity-60"
-                  >
-                    <PlatformIcon platform={link.platform} />
-                  </a>
-                ))
-              ) : (
-                <span className="text-[13px] text-[#00263E]/50">暂无购买链接</span>
-              )}
+              {/* 官方旗舰店 - 始终展开 */}
+              <div className="py-4">
+                <div className="mb-4 text-[14px] font-semibold text-[#00263E]">官方旗舰店</div>
+                <div className="flex items-end gap-6">
+                  {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+                    product.purchaseLinks.map((link) => (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="transition-opacity hover:opacity-60"
+                      >
+                        <PlatformIcon platform={link.platform} />
+                      </a>
+                    ))
+                  ) : (
+                    <span className="text-[13px] text-[#00263E]/50">暂无购买链接</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </m.div>
