@@ -207,13 +207,13 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="relative h-[70%] w-[70%]"
+                  className="absolute inset-0"
                 >
                   <Image
                     src={product.images[currentImageIndex].url}
                     alt={product.images[currentImageIndex].alt || product.name}
                     fill
-                    className="object-contain"
+                    className="object-cover"
                     sizes="(max-width: 768px) 100vw, 50vw"
                     quality={90}
                     priority
@@ -302,24 +302,24 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
             </p>
 
             {/* 使用场景图标 */}
-            <div className="mb-12 flex gap-8">
-              <div className="flex flex-col items-center gap-2 text-[#00263E]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+            <div className="mb-12 flex gap-10">
+              <div className="flex flex-col items-center gap-3 text-[#00263E]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
                   <path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 19.07-1.41-1.41"/><path d="M12 20v2"/><path d="m6.34 17.66-1.41 1.41"/><path d="M2 12h2"/><path d="m7.76 7.76-1.41-1.41"/><circle cx="12" cy="12" r="4"/>
                 </svg>
-                <span className="text-[11px]">日间护肤</span>
+                <span className="text-xs">日间护肤</span>
               </div>
-              <div className="flex flex-col items-center gap-2 text-[#00263E]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+              <div className="flex flex-col items-center gap-3 text-[#00263E]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
                   <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
                 </svg>
-                <span className="text-[11px]">夜间修护</span>
+                <span className="text-xs">夜间修护</span>
               </div>
-              <div className="flex flex-col items-center gap-2 text-[#00263E]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+              <div className="flex flex-col items-center gap-3 text-[#00263E]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
                   <path d="M4.5 16.5c-1.5 1.26-2 2.67-2 3.5 0 1.21.95 2 2.18 2 4.4 0 3.51-3.04 6.64-3.54a2.72 2.72 0 0 0 0-5.42c-3.13-.5-2.24-3.54-6.64-3.54-1.23 0-2.18.79-2.18 2 0 .83.5 2.24 2 3.5Z"/><path d="M15 8.5c-1.5 1.26-2 2.67-2 3.5 0 1.21.95 2 2.18 2 4.4 0 3.51-3.04 6.64-3.54a2.72 2.72 0 0 0 0-5.42c-3.13-.5-2.24-3.54-6.64-3.54-1.23 0-2.18.79-2.18 2 0 .83.5 2.24 2 3.5Z"/>
                 </svg>
-                <span className="text-[11px]">干燥急救</span>
+                <span className="text-xs">干燥急救</span>
               </div>
             </div>
 
