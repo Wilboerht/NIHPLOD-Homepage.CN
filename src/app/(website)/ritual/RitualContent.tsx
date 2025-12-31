@@ -431,7 +431,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                 {/* 视口容器 - 三层级切换 */}
                 <div className="relative flex-1 overflow-hidden">
-                  {/* Level 1: 垂直模块面板 - 参照 ref sp1.html */}
+                  {/* Level 1: 垂直模块面板 - 桌面端水平排列，移动端垂直滚动 */}
                   <AnimatePresence mode="wait">
                     {currentLevel === 1 && (
                       <m.div
@@ -440,7 +440,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0, x: -30 }}
                         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute inset-0 flex gap-4 p-4 sm:gap-5 sm:p-5 lg:gap-6 lg:p-6"
+                        className="absolute inset-0 flex flex-col gap-3 overflow-y-auto p-4 sm:flex-row sm:gap-5 sm:overflow-visible sm:p-5 lg:gap-6 lg:p-6"
                       >
                         {modules.map((module, index) => (
                           <m.button
@@ -450,12 +450,16 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             onMouseEnter={() => setHoveredIndex(index)}
                             onMouseLeave={() => setHoveredIndex(null)}
                             className={cn(
-                              "group relative flex cursor-pointer flex-col justify-end overflow-hidden rounded-sm border-l p-5 sm:p-8 lg:p-10",
+                              // 移动端：水平卡片布局
+                              "group relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white/40 p-4 active:bg-white/60",
+                              // 桌面端：垂直面板布局
+                              "sm:flex-col sm:items-stretch sm:justify-end sm:gap-0 sm:rounded-sm sm:border-0 sm:border-l sm:p-8 lg:p-10",
+                              // 桌面端 hover 效果
                               hoveredIndex === index
-                                ? "flex-[1.6] border-brand-charcoal/15 bg-white/65 shadow-[0_30px_60px_-10px_rgba(0,38,62,0.08)]"
+                                ? "sm:flex-[1.6] sm:border-brand-charcoal/15 sm:bg-white/65 sm:shadow-[0_30px_60px_-10px_rgba(0,38,62,0.08)]"
                                 : hoveredIndex !== null
-                                  ? "flex-[0.9] border-brand-charcoal/5 bg-white/25"
-                                  : "flex-1 border-brand-charcoal/10 bg-white/30"
+                                  ? "sm:flex-[0.9] sm:border-brand-charcoal/5 sm:bg-white/25"
+                                  : "sm:flex-1 sm:border-brand-charcoal/10 sm:bg-white/30"
                             )}
                             style={{
                               transition: "flex 0.9s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.5s ease, box-shadow 0.7s cubic-bezier(0.16, 1, 0.3, 1)"
@@ -464,36 +468,50 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.7, delay: 0.1 + index * 0.05, ease: [0.16, 1, 0.3, 1] }}
                           >
-                            {/* 序号 */}
+                            {/* 序号 - 移动端在左侧，桌面端在顶部 */}
                             <span
                               className={cn(
-                                "mb-auto font-sans text-[13px] tracking-wide sm:text-sm",
+                                "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-charcoal/5 font-sans text-sm font-medium text-brand-charcoal/60",
+                                "sm:mb-auto sm:h-auto sm:w-auto sm:rounded-none sm:bg-transparent sm:text-[13px] sm:font-normal sm:tracking-wide",
                                 hoveredIndex === index
-                                  ? "text-brand-charcoal/55"
-                                  : "text-brand-charcoal/30"
+                                  ? "sm:text-brand-charcoal/55"
+                                  : "sm:text-brand-charcoal/30"
                               )}
                               style={{ transition: "color 0.5s cubic-bezier(0.16, 1, 0.3, 1)" }}
                             >
                               {module.number}
                             </span>
 
-                            {/* 标题 - 竖排 */}
+                            {/* 移动端：文字内容区域 */}
+                            <div className="flex flex-1 flex-col sm:hidden">
+                              <h2 className="text-base font-medium text-brand-charcoal">
+                                {module.label}
+                              </h2>
+                              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-brand-charcoal/50">
+                                {module.description}
+                              </p>
+                            </div>
+
+                            {/* 移动端：右侧箭头 */}
+                            <ChevronRight className="h-5 w-5 flex-shrink-0 text-brand-charcoal/30 sm:hidden" />
+
+                            {/* 桌面端：标题 - 竖排 */}
                             <h2
                               className={cn(
-                                "mb-4 font-light tracking-wide text-brand-charcoal [writing-mode:vertical-rl] sm:mb-5",
+                                "mb-4 hidden font-light tracking-wide text-brand-charcoal [writing-mode:vertical-rl] sm:mb-5 sm:block",
                                 hoveredIndex === index
-                                  ? "text-[24px] sm:text-[28px] lg:text-[32px]"
-                                  : "text-xl sm:text-2xl lg:text-[26px]"
+                                  ? "text-[28px] lg:text-[32px]"
+                                  : "text-2xl lg:text-[26px]"
                               )}
                               style={{ transition: "font-size 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}
                             >
                               {module.label}
                             </h2>
 
-                            {/* 描述文字 - hover 时显示 */}
+                            {/* 桌面端：描述文字 - hover 时显示 */}
                             <p
                               className={cn(
-                                "max-w-[180px] text-[12px] leading-relaxed text-brand-charcoal/50 sm:max-w-[200px] sm:text-[13px]",
+                                "hidden max-w-[200px] text-[13px] leading-relaxed text-brand-charcoal/50 sm:block",
                                 hoveredIndex === index
                                   ? "translate-y-0 opacity-100"
                                   : "pointer-events-none translate-y-3 opacity-0"
@@ -507,10 +525,10 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               {module.description}
                             </p>
 
-                            {/* 底部指示线 - hover 时显示 */}
+                            {/* 桌面端：底部指示线 - hover 时显示 */}
                             <div
                               className={cn(
-                                "absolute bottom-0 left-0 h-px bg-brand-charcoal/15",
+                                "absolute bottom-0 left-0 hidden h-px bg-brand-charcoal/15 sm:block",
                                 hoveredIndex === index ? "w-full" : "w-0"
                               )}
                               style={{
@@ -524,7 +542,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                       </m.div>
                     )}
 
-                    {/* Level 2: 垂直面板布局 - 与 Level 1 类似 */}
+                    {/* Level 2: 方案选择 - 桌面端水平排列，移动端垂直滚动 */}
                     {currentLevel === 2 && selectedModule && (
                       <m.div
                         key="level2"
@@ -532,7 +550,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute inset-0 flex gap-4 p-4 sm:gap-5 sm:p-5 lg:gap-6 lg:p-6"
+                        className="absolute inset-0 flex flex-col gap-3 overflow-y-auto p-4 sm:flex-row sm:gap-5 sm:overflow-visible sm:p-5 lg:gap-6 lg:p-6"
                       >
                         {moduleData[selectedModule].map((scheme, index) => (
                           <m.button
@@ -542,12 +560,16 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             onMouseEnter={() => setHoveredIndex(index)}
                             onMouseLeave={() => setHoveredIndex(null)}
                             className={cn(
-                              "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-sm p-5 sm:p-8 lg:p-10",
+                              // 移动端：卡片布局
+                              "group relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white/40 p-4 active:bg-white/60",
+                              // 桌面端：垂直居中面板
+                              "sm:flex-col sm:items-center sm:justify-center sm:gap-0 sm:rounded-sm sm:border-0 sm:p-8 lg:p-10",
+                              // 桌面端 hover 效果
                               hoveredIndex === index
-                                ? "flex-[1.6] bg-white/50 shadow-[0_30px_60px_-10px_rgba(0,38,62,0.06)]"
+                                ? "sm:flex-[1.6] sm:bg-white/50 sm:shadow-[0_30px_60px_-10px_rgba(0,38,62,0.06)]"
                                 : hoveredIndex !== null
-                                  ? "flex-[0.9] bg-white/20"
-                                  : "flex-1 bg-white/25"
+                                  ? "sm:flex-[0.9] sm:bg-white/20"
+                                  : "sm:flex-1 sm:bg-white/25"
                             )}
                             style={{
                               transition: "flex 0.9s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.7s cubic-bezier(0.16, 1, 0.3, 1)"
@@ -556,36 +578,63 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.7, delay: 0.1 + index * 0.05, ease: [0.16, 1, 0.3, 1] }}
                           >
-                            {/* 标签 - 居中圆角边框 */}
+                            {/* 移动端：左侧标签徽章 */}
+                            <span className="flex-shrink-0 rounded-full border border-brand-charcoal/20 bg-white/50 px-3 py-1 text-[11px] tracking-wider text-brand-charcoal/60 sm:hidden">
+                              {scheme.tag}
+                            </span>
+
+                            {/* 移动端：文字内容区域 */}
+                            <div className="flex flex-1 flex-col sm:hidden">
+                              <h3 className="text-base font-medium text-brand-charcoal">
+                                {scheme.name}
+                              </h3>
+                              <p className="mt-1 text-xs leading-relaxed text-brand-charcoal/50">
+                                {scheme.desc}
+                              </p>
+                              {/* 步骤数量 + 时长预览 */}
+                              <div className="mt-2 flex items-center gap-3 text-[10px] text-brand-charcoal/40">
+                                <span>{scheme.steps.length} 个步骤</span>
+                                <span>·</span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {calculateTotalDuration(scheme.steps)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* 移动端：右侧箭头 */}
+                            <ChevronRight className="h-5 w-5 flex-shrink-0 text-brand-charcoal/30 sm:hidden" />
+
+                            {/* 桌面端：标签 - 居中圆角边框 */}
                             <span
                               className={cn(
-                                "mb-4 rounded-full border px-4 py-1.5 text-[11px] tracking-wider sm:mb-5 sm:px-5 sm:text-xs",
+                                "mb-5 hidden rounded-full border px-5 text-xs tracking-wider sm:block",
                                 hoveredIndex === index
-                                  ? "border-brand-charcoal/25 text-brand-charcoal/70"
-                                  : "border-brand-charcoal/15 text-brand-charcoal/40"
+                                  ? "border-brand-charcoal/25 py-1.5 text-brand-charcoal/70"
+                                  : "border-brand-charcoal/15 py-1.5 text-brand-charcoal/40"
                               )}
                               style={{ transition: "border-color 0.5s ease, color 0.5s ease" }}
                             >
                               {scheme.tag}
                             </span>
 
-                            {/* 标题 - 居中 */}
+                            {/* 桌面端：标题 - 居中 */}
                             <h3
                               className={cn(
-                                "mb-3 text-center font-light tracking-wide text-brand-charcoal sm:mb-4",
+                                "mb-4 hidden text-center font-light tracking-wide text-brand-charcoal sm:block",
                                 hoveredIndex === index
-                                  ? "text-xl sm:text-2xl lg:text-[26px]"
-                                  : "text-lg sm:text-xl lg:text-2xl"
+                                  ? "text-2xl lg:text-[26px]"
+                                  : "text-xl lg:text-2xl"
                               )}
                               style={{ transition: "font-size 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}
                             >
                               {scheme.name}
                             </h3>
 
-                            {/* 描述文字 - 居中 */}
+                            {/* 桌面端：描述文字 - 居中 */}
                             <p
                               className={cn(
-                                "text-center text-[12px] leading-relaxed text-brand-charcoal/45 sm:text-[13px]",
+                                "hidden text-center text-[13px] leading-relaxed sm:block",
                                 hoveredIndex === index
                                   ? "text-brand-charcoal/55"
                                   : "text-brand-charcoal/40"
@@ -599,7 +648,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                       </m.div>
                     )}
 
-                    {/* Level 3: 详细步骤 - 极简左侧 + 连接线步骤 */}
+                    {/* Level 3: 详细步骤 - 移动端垂直堆叠，桌面端左右分栏 */}
                     {currentLevel === 3 && selectedScheme && (
                       <m.div
                         key="level3"
@@ -607,19 +656,19 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -30 }}
                         transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
-                        className="absolute inset-0 flex flex-col overflow-hidden p-4 sm:p-6 lg:flex-row lg:gap-8 lg:p-8"
+                        className="absolute inset-0 flex flex-col overflow-y-auto p-4 sm:overflow-hidden sm:p-6 lg:flex-row lg:gap-8 lg:p-8"
                       >
-                        {/* 左侧：极简视觉区域 */}
+                        {/* 顶部/左侧：方案信息区域 */}
                         <m.div
-                          className="relative flex flex-shrink-0 flex-col justify-center overflow-hidden rounded-sm bg-gradient-to-br from-brand-charcoal/[0.02] to-brand-charcoal/[0.06] p-5 sm:p-8 lg:w-[40%] lg:p-10"
+                          className="relative flex flex-shrink-0 flex-col justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand-charcoal/[0.02] to-brand-charcoal/[0.06] p-4 sm:rounded-sm sm:p-8 lg:w-[40%] lg:p-10"
                           initial={{ opacity: 0, x: -30 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.8, delay: 0.1, ease: [0.19, 1, 0.22, 1] }}
                         >
-                          {/* 装饰性流体图形 - 背景层 */}
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
+                          {/* 装饰性流体图形 - 背景层（移动端隐藏） */}
+                          <div className="pointer-events-none absolute inset-0 hidden items-center justify-center opacity-[0.04] sm:flex">
                             <m.div
-                              className="h-[280px] w-[280px] rounded-[40%_60%_70%_30%/40%_50%_60%_50%] bg-brand-charcoal sm:h-[320px] sm:w-[320px] lg:h-[380px] lg:w-[380px]"
+                              className="h-[320px] w-[320px] rounded-[40%_60%_70%_30%/40%_50%_60%_50%] bg-brand-charcoal lg:h-[380px] lg:w-[380px]"
                               animate={{
                                 borderRadius: [
                                   "40% 60% 70% 30% / 40% 50% 60% 50%",
@@ -631,9 +680,9 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             />
                           </div>
 
-                          {/* 装饰性 SVG 圆环 */}
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                            <svg className="h-48 w-48 opacity-[0.06] sm:h-56 sm:w-56 lg:h-64 lg:w-64" viewBox="0 0 200 200">
+                          {/* 装饰性 SVG 圆环（移动端隐藏） */}
+                          <div className="pointer-events-none absolute inset-0 hidden items-center justify-center sm:flex">
+                            <svg className="h-56 w-56 opacity-[0.06] lg:h-64 lg:w-64" viewBox="0 0 200 200">
                               <circle cx="100" cy="100" r="70" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-brand-charcoal" />
                               <circle cx="100" cy="100" r="50" fill="none" stroke="currentColor" strokeWidth="0.3" className="text-brand-charcoal" />
                               <m.path
@@ -647,67 +696,95 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             </svg>
                           </div>
 
-                          {/* 模块归属信息 */}
-                          <m.div
-                            className="relative z-10 mb-2 flex items-center gap-2 text-[10px] text-brand-charcoal/35 sm:mb-3 sm:text-[11px]"
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: 0.15 }}
-                          >
-                            <span className="tracking-wide">{modules.find(m => m.id === selectedModule)?.label}</span>
-                            <span className="text-brand-charcoal/20">·</span>
-                            <span className="tracking-wide">{modules.find(m => m.id === selectedModule)?.number}</span>
-                          </m.div>
-
-                          {/* 标签 */}
-                          <m.span
-                            className="relative z-10 mb-2 w-fit border border-brand-charcoal/20 bg-white/30 px-3 py-1 text-[10px] uppercase tracking-widest text-brand-charcoal/50 backdrop-blur-sm sm:mb-4 sm:px-4 sm:py-1.5"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.2 }}
-                          >
-                            {selectedScheme.tag}
-                          </m.span>
-
-                          {/* 方案标题 */}
-                          <m.h2
-                            className="relative z-10 mb-2 text-xl font-light text-brand-charcoal sm:mb-4 sm:text-2xl lg:text-3xl"
-                            style={{ letterSpacing: "-0.02em" }}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.7, delay: 0.25 }}
-                          >
-                            {selectedScheme.name}
-                          </m.h2>
-
-                          {/* 描述 */}
-                          <m.p
-                            className="relative z-10 line-clamp-2 max-w-[300px] text-[12px] leading-[1.8] text-brand-charcoal/50 sm:line-clamp-none sm:text-[13px] lg:max-w-[320px] lg:text-sm"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.7, delay: 0.3 }}
-                          >
-                            {selectedScheme.desc}
-                          </m.p>
-
-                          {/* 步骤数量 + 总时长 */}
-                          <m.div
-                            className="relative z-10 mt-4 flex flex-wrap items-center gap-4 text-[11px] text-brand-charcoal/40 sm:mt-8 sm:gap-5"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.6, delay: 0.4 }}
-                          >
-                            {/* 步骤数量 */}
-                            <div className="flex items-center gap-2">
-                              <span className="h-px w-8 bg-brand-charcoal/20 sm:w-10" />
-                              <span className="tracking-wide">{selectedScheme.steps.length} 个护理步骤</span>
+                          {/* 移动端：紧凑的水平布局 */}
+                          <div className="flex items-start gap-3 sm:hidden">
+                            {/* 左侧标签 */}
+                            <span className="flex-shrink-0 rounded-full border border-brand-charcoal/20 bg-white/50 px-2.5 py-1 text-[10px] uppercase tracking-wider text-brand-charcoal/60">
+                              {selectedScheme.tag}
+                            </span>
+                            {/* 右侧信息 */}
+                            <div className="flex-1">
+                              <h2 className="text-lg font-medium text-brand-charcoal">
+                                {selectedScheme.name}
+                              </h2>
+                              <p className="mt-1 text-xs leading-relaxed text-brand-charcoal/50">
+                                {selectedScheme.desc}
+                              </p>
+                              <div className="mt-2 flex items-center gap-3 text-[10px] text-brand-charcoal/40">
+                                <span>{selectedScheme.steps.length} 个步骤</span>
+                                <span>·</span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {calculateTotalDuration(selectedScheme.steps)}
+                                </span>
+                              </div>
                             </div>
-                            {/* 总时长 */}
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-3 w-3 text-brand-charcoal/30" />
-                              <span className="tracking-wide">{calculateTotalDuration(selectedScheme.steps)}</span>
-                            </div>
-                          </m.div>
+                          </div>
+
+                          {/* 桌面端：完整的垂直布局 */}
+                          <div className="hidden sm:block">
+                            {/* 模块归属信息 */}
+                            <m.div
+                              className="relative z-10 mb-3 flex items-center gap-2 text-[11px] text-brand-charcoal/35"
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.5, delay: 0.15 }}
+                            >
+                              <span className="tracking-wide">{modules.find(m => m.id === selectedModule)?.label}</span>
+                              <span className="text-brand-charcoal/20">·</span>
+                              <span className="tracking-wide">{modules.find(m => m.id === selectedModule)?.number}</span>
+                            </m.div>
+
+                            {/* 标签 */}
+                            <m.span
+                              className="relative z-10 mb-4 inline-block w-fit border border-brand-charcoal/20 bg-white/30 px-4 py-1.5 text-[10px] uppercase tracking-widest text-brand-charcoal/50 backdrop-blur-sm"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.6, delay: 0.2 }}
+                            >
+                              {selectedScheme.tag}
+                            </m.span>
+
+                            {/* 方案标题 */}
+                            <m.h2
+                              className="relative z-10 mb-4 text-2xl font-light text-brand-charcoal lg:text-3xl"
+                              style={{ letterSpacing: "-0.02em" }}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.7, delay: 0.25 }}
+                            >
+                              {selectedScheme.name}
+                            </m.h2>
+
+                            {/* 描述 */}
+                            <m.p
+                              className="relative z-10 max-w-[320px] text-[13px] leading-[1.8] text-brand-charcoal/50 lg:text-sm"
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.7, delay: 0.3 }}
+                            >
+                              {selectedScheme.desc}
+                            </m.p>
+
+                            {/* 步骤数量 + 总时长 */}
+                            <m.div
+                              className="relative z-10 mt-8 flex flex-wrap items-center gap-5 text-[11px] text-brand-charcoal/40"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.6, delay: 0.4 }}
+                            >
+                              {/* 步骤数量 */}
+                              <div className="flex items-center gap-2">
+                                <span className="h-px w-10 bg-brand-charcoal/20" />
+                                <span className="tracking-wide">{selectedScheme.steps.length} 个护理步骤</span>
+                              </div>
+                              {/* 总时长 */}
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="h-3 w-3 text-brand-charcoal/30" />
+                                <span className="tracking-wide">{calculateTotalDuration(selectedScheme.steps)}</span>
+                              </div>
+                            </m.div>
+                          </div>
                         </m.div>
 
                         {/* 右侧：步骤时间轴 */}

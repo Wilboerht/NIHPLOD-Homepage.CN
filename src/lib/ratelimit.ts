@@ -70,6 +70,10 @@ export const RATE_LIMIT_PRESETS = {
   form: { maxRequests: 10, windowMs: 60 * 1000 },
   /** 登录限制 - 防暴力破解 */
   login: { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+  /** AI Chat 限制 - 每分钟 10 次 */
+  chat: { maxRequests: 10, windowMs: 60 * 1000 },
+  /** 用户级 Chat 限制 - 每分钟 15 次 */
+  "chat-user": { maxRequests: 15, windowMs: 60 * 1000 },
 } as const;
 
 /**
@@ -156,4 +160,63 @@ export function getClientIP(request: Request): string {
 
   // 回退到默认值
   return "unknown";
+}
+
+/** 双重限流结果 */
+export interface DualRateLimitResult extends RateLimitResult {
+  /** 被限制的类型：ip | user | null（未被限制） */
+  limitedBy: "ip" | "user" | null;
+}
+
+/**
+ * 双重速率限制检查（IP + 用户级）
+ *
+ * 优先检查 IP 限流，再检查用户级限流
+ * 任一触发即拒绝请求
+ *
+ * @param ip - IP 地址
+ * @param userId - 用户 ID（可选，未登录用户只检查 IP）
+ * @param ipType - IP 限流类型
+ * @param userType - 用户限流类型
+ * @returns 限制检查结果
+ */
+export async function dualRateLimit(
+  ip: string,
+  userId: string | null | undefined,
+  ipType: keyof typeof RATE_LIMIT_PRESETS = "chat",
+  userType: keyof typeof RATE_LIMIT_PRESETS = "chat-user"
+): Promise<DualRateLimitResult> {
+  // 1. 检查 IP 限流
+  const ipResult = await rateLimit(ip, ipType);
+  if (!ipResult.success) {
+    return {
+      ...ipResult,
+      limitedBy: "ip",
+    };
+  }
+
+  // 2. 如果有用户 ID，检查用户级限流
+  if (userId) {
+    const userResult = await rateLimit(`user:${userId}`, userType);
+    if (!userResult.success) {
+      return {
+        ...userResult,
+        limitedBy: "user",
+      };
+    }
+
+    // 返回较严格的限制信息
+    return {
+      success: true,
+      remaining: Math.min(ipResult.remaining, userResult.remaining),
+      reset: Math.max(ipResult.reset, userResult.reset),
+      limit: Math.min(ipResult.limit, userResult.limit),
+      limitedBy: null,
+    };
+  }
+
+  return {
+    ...ipResult,
+    limitedBy: null,
+  };
 }

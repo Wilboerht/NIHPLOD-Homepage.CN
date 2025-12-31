@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { consumePoints, hasEnoughPoints, POINT_RULES } from "@/lib/points";
 import { getAISettings, getApiKeyForProvider } from "@/lib/ai";
+import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import OpenAI from "openai";
 
 // 请求参数验证
@@ -59,9 +60,37 @@ function getGeminiApiUrl(model: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // 验证用户身份
+    // 速率限制检查（IP + 用户双重限流）
+    const ip = getClientIP(request);
+
+    // 先进行基础 IP 限流（未登录也能生效）
     const payload = await verifyUserAuth(request);
-    
+
+    // 双重限流：IP 10次/分钟 + 用户 15次/分钟
+    const rateLimitResult = await dualRateLimit(ip, payload?.id, "chat", "chat-user");
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMIT_EXCEEDED",
+            message: rateLimitResult.limitedBy === "user"
+              ? "您的提问过于频繁，请稍后再试"
+              : "请求过于频繁，请稍后再试",
+          },
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(rateLimitResult.limit),
+            "X-RateLimit-Remaining": String(rateLimitResult.remaining),
+            "X-RateLimit-Reset": String(rateLimitResult.reset),
+            "Retry-After": String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)),
+          },
+        }
+      );
+    }
+
     if (!payload) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录后提问" } },
@@ -70,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    
+
     // 参数验证
     const result = chatSchema.safeParse(body);
     if (!result.success) {

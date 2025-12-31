@@ -57,6 +57,9 @@ interface StoredSession {
   concerns?: string[];
 }
 
+// 最小发送间隔（毫秒），防止快速重复点击
+const MIN_SEND_INTERVAL = 1000;
+
 export function AdvisorChatPanel({
   skinType,
   concerns,
@@ -71,10 +74,12 @@ export function AdvisorChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState("");
+  const [cooldown, setCooldown] = useState(false); // 冷却状态，防止快速重复点击
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastSendTimeRef = useRef<number>(0); // 上次发送时间
 
   // 从 sessionStorage 恢复会话
   useEffect(() => {
@@ -137,7 +142,15 @@ export function AdvisorChatPanel({
 
   // 发送消息（流式响应）
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    // 防止重复点击：检查 loading、冷却状态、输入内容
+    if (!input.trim() || loading || cooldown) return;
+
+    // 防抖：检查距离上次发送的时间间隔
+    const now = Date.now();
+    if (now - lastSendTimeRef.current < MIN_SEND_INTERVAL) {
+      return;
+    }
+    lastSendTimeRef.current = now;
 
     // 检查登录
     if (!user) {
@@ -149,7 +162,11 @@ export function AdvisorChatPanel({
     setInput("");
     setError(null);
     setLoading(true);
+    setCooldown(true); // 进入冷却状态
     setStreamingContent("");
+
+    // 冷却结束（即使请求失败也会在1秒后解除冷却）
+    setTimeout(() => setCooldown(false), MIN_SEND_INTERVAL);
 
     // 添加用户消息到列表
     const tempUserMsg: Message = {
@@ -189,6 +206,9 @@ export function AdvisorChatPanel({
           openLoginModal();
           setMessages(messages); // 恢复原消息
           return;
+        } else if (data.error?.code === "RATE_LIMIT_EXCEEDED") {
+          // 速率限制错误，显示友好提示
+          setError("您的提问太快啦，请稍等一下再试～");
         } else {
           setError(data.error?.message || "发送失败，请重试");
         }
@@ -459,19 +479,23 @@ export function AdvisorChatPanel({
                       onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
                       placeholder="输入你的护肤问题..."
                       className="flex-1 px-4 py-2.5 bg-white border border-[#E8E3DC] rounded-xl text-sm text-[#5C5347] placeholder:text-[#C4BDB2] focus:outline-none focus:border-[#A69374] transition-colors"
-                      disabled={loading}
+                      disabled={loading || cooldown}
                     />
                     <button
                       onClick={sendMessage}
-                      disabled={!input.trim() || loading}
+                      disabled={!input.trim() || loading || cooldown}
                       className={cn(
                         "p-2.5 rounded-xl transition-all",
-                        input.trim() && !loading
+                        input.trim() && !loading && !cooldown
                           ? "bg-gradient-to-r from-[#A69374] to-[#C4B896] text-white"
                           : "bg-[#E8E3DC] text-[#C4BDB2]"
                       )}
                     >
-                      <Send className="w-5 h-5" />
+                      {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Send className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
                 )}
