@@ -309,9 +309,9 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                 <Image
                   src="/images/watermark.png"
                   alt=""
-                  width={1200}
-                  height={1200}
-                  className="h-[85%] w-auto max-w-none opacity-[0.03]"
+                  width={2000}
+                  height={2000}
+                  className="h-[120%] w-auto max-w-none opacity-[0.03]"
                 />
               </div>
             </m.div>
