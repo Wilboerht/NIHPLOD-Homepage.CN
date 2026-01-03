@@ -204,12 +204,10 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                     }}
                   />
 
-                  {/* Skeletal Lines */}
-                  <div className="pointer-events-none fixed left-[5%] top-0 z-10 h-full w-px bg-[#00263e]/15" />
-                  <div className="pointer-events-none fixed right-[5%] top-0 z-10 h-full w-px bg-[#00263e]/15" />
+
 
                   {/* Header - Sticky Top */}
-                  <header className="sticky top-0 z-50 flex justify-center bg-[#F0EDE1] py-10 pb-5">
+                  <header className="sticky top-0 z-50 flex justify-center border-b border-[#00263e]/15 bg-[#F0EDE1] py-10 pb-5">
                     <div className="relative h-8 w-32">
                       <Image
                         src="/images/logo.png"
@@ -221,7 +219,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                   </header>
 
                   {/* Navigation - Sticky below Header */}
-                  <nav className="sticky top-[72px] z-40 flex justify-around border-y border-[#00263e]/15 bg-[#F0EDE1] px-[5%] py-3">
+                  <nav className="sticky top-[92px] z-40 flex justify-around border-b border-[#00263e]/15 bg-[#F0EDE1] px-[5%] py-3">
                     {navItems.map((item) => (
                       <button
                         key={item.id}
@@ -231,7 +229,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                       >
                         <span
                           className={cn(
-                            "text-[11px] font-semibold uppercase tracking-[0.15em] transition-all duration-600",
+                            "text-[13px] font-semibold uppercase tracking-[0.15em] transition-all duration-600",
                             activeSection === item.id ? "text-[#00263e] opacity-100" : "text-[#00263e] opacity-50"
                           )}
                         >
@@ -243,7 +241,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
 
                   {/* 移动端内容区域 - 垂直滚动 */}
                   {/* Main Content Area */}
-                  <div className="relative z-20 min-h-[80vh] px-[8%] py-[60px]">
+                  <div className="relative z-20 px-[8%] pb-[10px] pt-[40px]">
                     <AnimatePresence mode="wait">
                       {/* 移动端 Section 1: 品牌故事 */}
                       {activeSection === "story" && (
@@ -253,36 +251,20 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="min-h-[80vh]"
                         >
-                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[80%] after:bg-gradient-to-r after:from-[#00263e] after:to-transparent">
                             Brand Story
                           </h2>
 
                           {/* 第一个内容块 */}
-                          <div className="mb-12">
-                            <div className="relative my-5 w-full overflow-hidden border border-[#00263e]/15">
-                              <Image
-                                src="/images/story/dolphin-ocean.png"
-                                alt="Origin"
-                                width={600}
-                                height={400}
-                                className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
-                              />
-                            </div>
-                            <span className="mt-6 block text-[18px] font-normal leading-snug text-[#00263e]">
+
+                          <div className="mb-6">
+                            <span className="block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
                               来自大自然的神奇修复力
                             </span>
-                            <p className="mt-4 text-[15px] font-light leading-relaxed tracking-wide text-[#00263e] text-justify">
+                            <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                               海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
                             </p>
-
-                            {/* Word Play Animation */}
-                            <div className="mt-10 border-y border-[#00263e]/15 py-[30px] text-center">
-                              <span className="block text-[20px] tracking-[0.4em] text-[#00263e]">DOLPHIN</span>
-                              <span className="my-2.5 block text-[10px] opacity-50">REVERSED TO</span>
-                              <span className="block text-[20px] font-semibold tracking-[0.4em] text-[#00263e]">NIHPLOD</span>
-                            </div>
                           </div>
 
                           {/* 第二个内容块 */}
@@ -299,10 +281,10 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                                 className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
                               />
                             </div>
-                            <span className="mt-6 block text-[18px] font-normal leading-snug text-[#00263e]">
+                            <span className="mt-8 block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
                               前沿科技赋能精简护理
                             </span>
-                            <p className="mt-4 text-[15px] font-light leading-relaxed tracking-wide text-[#00263e] text-justify">
+                            <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                               创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
                             </p>
                           </div>
@@ -317,9 +299,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="min-h-[80vh]"
                         >
-                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[80%] after:bg-gradient-to-r after:from-[#00263e] after:to-transparent">
                             Our Mission
                           </h2>
 
@@ -332,19 +313,19 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                                 className="object-cover object-top"
                               />
                             </div>
-                            <p className="mt-8 text-[16px] font-light leading-relaxed tracking-wide text-[#00263e]">
+                            <p className="mt-10 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                               旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                             </p>
-                            <span className="mt-[25px] block text-[18px] font-normal leading-[1.4] text-[#6a7c88]">
-                              将逆转时光的不可能，慢慢变得「有可能」。
+                            <span className="mt-8 block text-[18px] font-normal leading-[1.6] tracking-wide text-[#6a7c88]">
+                              将逆转时光的不可能，<br />慢慢变得「有可能」。
                             </span>
 
                             {/* CEO 签名 */}
-                            <div className="mt-10 text-right">
-                              <span className="mb-[5px] block text-[10px] uppercase tracking-[0.1em] opacity-50">
+                            <div className="mt-16 text-right">
+                              <span className="mb-2 block text-[10px] uppercase tracking-[0.15em] opacity-50">
                                 CHIEF EXECUTIVE OFFICER
                               </span>
-                              <span className="text-[14px] font-semibold tracking-[0.1em]">John Morrell</span>
+                              <span className="font-serif text-[18px] italic tracking-[0.05em] text-[#00263e]">John Morrell</span>
                             </div>
                           </div>
                         </m.section>
@@ -358,23 +339,39 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="min-h-[80vh]"
                         >
-                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[80%] after:bg-gradient-to-r after:from-[#00263e] after:to-transparent">
                             Philosophy
                           </h2>
 
-                          <div className="flex flex-col gap-10">
+                          <div className="mb-12 flex flex-col">
                             {[
                               { num: "01", title: "更珍贵的产品", desc: "我们通过采集这个世上优质的原材料，结合前沿及有效的科技力量，不断更新和进步。" },
                               { num: "02", title: "更优越的体验", desc: "通过严选的供应渠道，极致的专员服务，我们力求为你做到最满意、舒适及专业。" },
                               { num: "03", title: "更积极的方式", desc: "我们提倡以健康的心态去面对每一天。通过适量的运动，合理的膳食及平衡的心理。" },
                               { num: "04", title: "更艰巨的责任", desc: "我们将售出的每款产品的 2% 捐赠给全球的慈善组织和非营利组织，包括 UNF、SPF 等。" },
-                            ].map((item) => (
-                              <div key={item.num} className="border-l border-[#00263e]/15 pl-5">
-                                <span className="-mb-5 block text-[40px] font-light text-[#00263e]/10">{item.num}</span>
-                                <span className="mb-2.5 block text-[15px] font-semibold tracking-[0.1em] text-[#00263e]">{item.title}</span>
-                                <p className="text-[15px] font-light leading-relaxed text-[#00263e]">{item.desc}</p>
+                            ].map((item, index, arr) => (
+                              <div
+                                key={item.num}
+                                className={cn(
+                                  "group relative py-8",
+                                  index !== arr.length - 1 && "border-b border-[#00263e]/10"
+                                )}
+                              >
+                                {/* Watermark Number */}
+                                <span className="absolute top-6 right-0 z-0 font-serif text-[60px] italic leading-none text-[#00263e]/5 select-none">
+                                  {item.num}
+                                </span>
+
+                                {/* Content */}
+                                <div className="relative z-10 pl-2 pt-4">
+                                  <span className="mb-4 block text-[16px] font-semibold tracking-[0.1em] text-[#00263e]">
+                                    {item.title}
+                                  </span>
+                                  <p className="text-[14px] font-light leading-[1.8] text-[#00263e]/80 text-justify">
+                                    {item.desc}
+                                  </p>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -389,46 +386,52 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="min-h-[80vh]"
                         >
-                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[80%] after:bg-gradient-to-r after:from-[#00263e] after:to-transparent">
                             Recognition
                           </h2>
                           <div className="mb-12">
                             {/* 奖项列表 */}
                             <ul className="list-none">
                               {[
-                                { year: "2023", title: "VOGUE BEAUTY AWARDS" },
-                                { year: "2022", title: "ELLE SKINCARE INNOVATION" },
-                                { year: "2022", title: "BAZAAR BEST FORMULA" },
-                                { year: "2021", title: "GLOBAL COSMETIC DESIGN" },
+                                { year: "2023", title: "VOGUE BEAUTY AWARDS", image: "/images/story/award-1.png" },
+                                { year: "2022", title: "ELLE SKINCARE INNOVATION", image: "/images/story/award-2.png" },
+                                { year: "2022", title: "BAZAAR BEST FORMULA", image: "/images/story/award-3.png" },
+                                { year: "2021", title: "GLOBAL COSMETIC DESIGN", image: "/images/story/award-1.png" },
                               ].map((award, idx) => (
                                 <li
                                   key={idx}
-                                  className="flex items-center justify-between border-b border-[#00263e]/15 py-5"
+                                  className="border-b border-[#00263e]/15 py-8"
                                 >
-                                  <span className="text-[15px] text-[#00263e]">{award.title}</span>
-                                  <span className="text-[13px] text-[#00263e]/40">{award.year}</span>
+                                  {/* Award Image */}
+                                  <div className="relative mb-6 h-[200px] w-full overflow-hidden bg-[#F0EDE1]">
+                                    <Image
+                                      src={award.image}
+                                      alt={award.title}
+                                      fill
+                                      className="object-contain object-center"
+                                    />
+                                  </div>
+
+                                  <div className="flex flex-col items-center gap-2 text-center">
+                                    <span className="text-[16px] font-medium uppercase tracking-wide text-[#00263e]">
+                                      {award.title}
+                                    </span>
+                                    <span className="text-[12px] font-light tracking-wider text-[#00263e]/60">
+                                      {award.year}
+                                    </span>
+                                  </div>
                                 </li>
                               ))}
                             </ul>
 
-                            {/* 底部卡片 */}
-                            <div className="mt-10 bg-[#00263e] p-[30px] text-center text-[#F0EDE1]">
-                              <p className="text-[12px] font-light tracking-[0.1em] leading-[1.6]">
-                                被全球顶级时尚媒体广泛报道<br />探索 NIHPLOD 的卓越科技
-                              </p>
-                            </div>
+
                           </div>
                         </m.section>
                       )}
                     </AnimatePresence>
 
-                    {/* Footer - Global for Mobile */}
-                    <footer className="mt-[60px] border-t border-[#00263e]/15 pt-[40px] text-center text-[10px] tracking-[0.1em] text-[#00263e] opacity-50">
-                      NIHPLOD LABORATORIES © 2024<br />
-                      PRECISION SKINCARE FROM MONACO
-                    </footer>
+
                   </div>
                 </div>
 
@@ -673,7 +676,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                   setIsExpanded(true);
                 }
               }}
-              className="group flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+              className="group -mt-[1px] flex flex-shrink-0 items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
             >
               <m.div
                 className="flex flex-col items-center"

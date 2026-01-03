@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X, User, ShoppingBag } from "lucide-react";
 import { ProductDrawer, StoryIcon, RitualIcon, ContactIcon, HomeIcon } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn } from "@/lib/utils";
@@ -82,6 +82,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
     return () => clearTimeout(timer);
   }, []);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
 
@@ -182,7 +183,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       animate={{ scaleY: 1, opacity: 1 }}
                       exit={{ scaleY: 0, opacity: 0 }}
                       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                      className="pointer-events-none absolute left-[5%] top-0 bottom-0 w-px origin-center"
+                      className="pointer-events-none absolute left-[5%] top-0 bottom-0 hidden w-px origin-center lg:block"
                       style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(0,38,62,0.08) 30%, rgba(0,38,62,0.08) 70%, transparent 100%)" }}
                     />
                     <m.div
@@ -190,7 +191,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       animate={{ scaleY: 1, opacity: 1 }}
                       exit={{ scaleY: 0, opacity: 0 }}
                       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-                      className="pointer-events-none absolute right-[5%] top-0 bottom-0 w-px origin-center"
+                      className="pointer-events-none absolute right-[5%] top-0 bottom-0 hidden w-px origin-center lg:block"
                       style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(0,38,62,0.08) 30%, rgba(0,38,62,0.08) 70%, transparent 100%)" }}
                     />
                     <m.div
@@ -198,7 +199,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       animate={{ scaleX: 1, opacity: 1 }}
                       exit={{ scaleX: 0, opacity: 0 }}
                       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-                      className="pointer-events-none absolute left-0 right-0 top-[120px] h-px origin-center"
+                      className="pointer-events-none absolute left-0 right-0 top-[120px] hidden h-px origin-center lg:block"
                       style={{ background: "linear-gradient(to right, transparent 0%, rgba(0,38,62,0.08) 20%, rgba(0,38,62,0.08) 80%, transparent 100%)" }}
                     />
                   </>
@@ -207,20 +208,52 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
 
               {/* 内容区域 */}
               <div className={cn("relative z-10 flex h-full flex-col overflow-hidden", !isExpanded && "hidden")}>
-                {/* 顶部导航栏 - First Page.html 风格 */}
-                <nav className="flex h-[80px] flex-shrink-0 items-center justify-between px-[5%] lg:h-[100px] lg:px-[8%]">
+                {/* 移动端专用 Header - Grid 布局保证完美对齐 */}
+                <nav className="grid h-[80px] flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center px-4 lg:hidden">
+                  {/* 左侧：用户图标 */}
+                  <Link href="/login" className="flex h-10 w-10 items-center justify-center justify-self-start text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
+                    <User className="h-5 w-5" strokeWidth={1.2} />
+                  </Link>
+
+                  {/* 中间：Logo */}
+                  <Link href="/" className="justify-self-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
+                      alt="Logo"
+                      className="h-8 w-auto opacity-90 transition-opacity hover:opacity-70"
+                    />
+                  </Link>
+
+                  {/* 右侧：购物袋图标 + 菜单按钮 */}
+                  <div className="flex items-center gap-1 justify-self-end">
+                    <Link href="/cart" className="flex h-10 w-10 items-center justify-center text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
+                      <ShoppingBag className="h-5 w-5" strokeWidth={1.2} />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setIsCategoryMenuOpen(true)}
+                      className="flex h-10 w-10 items-center justify-center text-[#00263E] opacity-80 transition-opacity hover:opacity-60"
+                    >
+                      <Menu className="h-6 w-6" strokeWidth={1.2} />
+                    </button>
+                  </div>
+                </nav>
+
+                {/* 桌面端专用 Header - Flex 布局 */}
+                <nav className="hidden h-[100px] flex-shrink-0 items-center justify-between px-[8%] lg:flex">
                   {/* Logo */}
                   <Link href="/">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
                       alt="Logo"
-                      className="h-8 w-auto opacity-90 transition-opacity hover:opacity-70 lg:h-10"
+                      className="h-10 w-auto opacity-90 transition-opacity hover:opacity-70"
                     />
                   </Link>
 
-                  {/* 导航链接 - 仅桌面端显示 */}
-                  <div className="hidden items-center gap-6 lg:flex">
+                  {/* 导航链接 */}
+                  <div className="flex items-center gap-6">
                     {categories.map((cat) => (
                       <button
                         key={cat.id}
@@ -238,16 +271,12 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                   </div>
 
                   {/* 图标按钮 */}
-                  <div className="flex items-center gap-4 lg:gap-5">
+                  <div className="flex items-center gap-5">
                     <Link href="/login" className="text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
-                      <svg viewBox="0 0 24 24" className="h-5 w-5 lg:h-6 lg:w-6" fill="currentColor">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      </svg>
+                      <User className="h-6 w-6" strokeWidth={1.2} />
                     </Link>
                     <Link href="/cart" className="text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
-                      <svg viewBox="0 0 24 24" className="h-5 w-5 lg:h-6 lg:w-6" fill="currentColor">
-                        <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" />
-                      </svg>
+                      <ShoppingBag className="h-6 w-6" strokeWidth={1.2} />
                     </Link>
                   </div>
                 </nav>
@@ -261,10 +290,10 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                     transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
                     className="mb-6 flex-shrink-0 border-l border-[#00263E] pl-4 lg:mb-10 lg:pl-6"
                   >
-                    <span className="mb-1 block text-[10px] tracking-[0.3em] text-[#00263E]/60 lg:text-xs">
+                    <span className="mb-1 block text-[12px] tracking-[0.3em] text-[#00263E]/60 lg:text-xs">
                       COLLECTION 2026
                     </span>
-                    <h1 className="text-xl font-light tracking-[0.2em] text-[#00263E] lg:text-3xl">
+                    <h1 className="text-[24px] font-light tracking-[0.2em] text-[#00263E] lg:text-3xl">
                       当季热卖
                     </h1>
                   </m.header>
@@ -304,14 +333,14 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                         </div>
                         {/* 产品信息 - 紧凑样式 */}
                         <div className="mt-3 flex-shrink-0 px-1 lg:mt-4">
-                          <span className="mb-1 block text-[10px] uppercase tracking-[0.15em] text-[#00263E]/50 lg:text-[11px]">
+                          <span className="mb-1 block text-[12px] uppercase tracking-[0.15em] text-[#00263E]/50 lg:text-[11px]">
                             {product.category.nameEn}
                           </span>
-                          <h2 className="text-sm font-medium tracking-wide text-[#00263E] lg:text-base">
+                          <h2 className="text-[18px] font-medium tracking-wide text-[#00263E] lg:text-base">
                             {product.name}
                           </h2>
                           {product.capacity && (
-                            <span className="mt-1 block text-[11px] text-[#00263E]/60 lg:text-xs">
+                            <span className="mt-1 block text-[12px] text-[#00263E]/60 lg:text-xs">
                               {product.capacity}
                             </span>
                           )}
@@ -339,7 +368,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="group flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
             >
               <m.div
                 className="flex flex-col items-center"
@@ -355,6 +384,69 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
           </div>
         </m.div>
       </m.div>
+
+      {/* 移动端产品分类菜单覆盖层 */}
+      <AnimatePresence>
+        {isCategoryMenuOpen && (
+          <m.div
+            initial={{ opacity: 0, y: "-100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "-100%" }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-50 flex flex-col bg-[#F0EDE1] lg:hidden"
+          >
+            {/* 菜单头部 */}
+            <header className="grid h-[80px] w-full flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center px-4">
+              <div /> {/* 左侧占位 */}
+
+              {/* 中间 Logo */}
+              <div className="justify-self-center">
+                <img
+                  src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
+                  alt="Logo"
+                  className="h-8 w-auto opacity-90"
+                />
+              </div>
+
+              {/* 右侧关闭按钮 */}
+              <button
+                type="button"
+                onClick={() => setIsCategoryMenuOpen(false)}
+                className="flex h-10 w-10 items-center justify-center justify-self-end text-[#00263E] opacity-80"
+              >
+                <X className="h-6 w-6" strokeWidth={1.2} />
+              </button>
+            </header>
+
+            {/* 菜单内容 - 垂直居中列表 */}
+            <div className="flex flex-1 flex-col items-center justify-center gap-8 pb-20">
+              {categories.map((cat, index) => (
+                <m.button
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.1, duration: 0.5 }}
+                  onClick={() => {
+                    const product = products.find(p => p.categoryId === cat.id);
+                    if (product) {
+                      handleProductClick(product);
+                      setIsCategoryMenuOpen(false);
+                    }
+                  }}
+                  className="group flex flex-col items-center gap-2"
+                >
+                  <span className="text-2xl font-light text-[#00263E] transition-colors group-hover:text-brand-gold">
+                    {cat.name}
+                  </span>
+                  <span className="text-xs uppercase tracking-[0.2em] text-[#00263E]/50 transition-colors group-hover:text-brand-gold/70">
+                    {cat.nameEn}
+                  </span>
+                </m.button>
+              ))}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
 
       {/* 移动端菜单遮罩层 */}
       <AnimatePresence>
@@ -390,8 +482,8 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                   <HomeIcon className="h-5 w-5" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium text-brand-charcoal">首页</span>
-                  <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">Home</span>
+                  <span className="text-[16px] font-medium text-brand-charcoal">首页</span>
+                  <span className="font-serif text-[12px] uppercase tracking-wide text-brand-charcoal/50">Home</span>
                 </div>
               </Link>
               {bottomNavItems.map((item) => {
@@ -407,8 +499,8 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
-                      <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">{item.labelEn}</span>
+                      <span className="text-[16px] font-medium text-brand-charcoal">{item.label}</span>
+                      <span className="font-serif text-[12px] uppercase tracking-wide text-brand-charcoal/50">{item.labelEn}</span>
                     </div>
                   </Link>
                 );
@@ -443,11 +535,11 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                 className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:gap-4 sm:hover:opacity-80"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
-                  <ShopNavIcon className="h-6 w-6 sm:h-10 sm:w-10 lg:h-14 lg:w-14" />
+                  <ShopNavIcon className="h-7 w-7 sm:h-10 sm:w-10 lg:h-14 lg:w-14" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">了解产品</span>
-                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">Products</span>
+                  <span className="text-[16px] font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">了解产品</span>
+                  <span className="font-serif text-[12px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">Products</span>
                 </div>
               </Link>
 

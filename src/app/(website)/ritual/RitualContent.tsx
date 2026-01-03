@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Menu, X, Clock, ChevronRight } from "lucide-react";
+import { ChevronDown, Menu, X, Clock, ChevronRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShopIcon, StoryIcon, ContactIcon, HomeIcon, RitualIcon, UserButton } from "@/components/website";
 
@@ -403,28 +403,35 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}
+                          className="flex h-full flex-col"
                         >
                           {/* 标题区 */}
-                          <div className="mb-10">
+                          <div className="mb-4 shrink-0 pt-2">
                             <p className="mb-2 text-xs uppercase tracking-[3px] text-[#00263e]/60">SKINCARE RITUAL</p>
                             <h1 className="text-4xl font-normal leading-none text-[#00263e]">护肤仪式</h1>
                           </div>
 
                           {/* 菜单列表 */}
-                          <div className="flex flex-col">
-                            {modules.map((module) => (
+                          <div className="flex flex-1 flex-col">
+                            {modules.map((module, index) => (
                               <button
                                 key={module.id}
                                 type="button"
                                 onClick={() => selectModule(module.id)}
-                                className="flex items-end justify-between border-b border-[#00263e]/10 py-6 text-left transition-transform duration-300 active:scale-[0.98]"
+                                className={cn(
+                                  "group flex flex-1 items-center justify-between py-4 text-left transition-transform duration-300 active:scale-[0.98]",
+                                  index !== modules.length - 1 && "border-b border-[#00263e]/10"
+                                )}
                               >
-                                <span className="text-[28px] font-light tracking-wide text-[#00263e]">
-                                  {module.label}
-                                </span>
-                                <span className="mb-2 text-xs font-semibold text-[#00263e]/50">
-                                  {module.number}
-                                </span>
+                                <div className="flex items-center gap-6">
+                                  <span className="font-serif text-3xl italic text-[#00263e]/20 group-hover:text-[#00263e]/30 transition-colors">
+                                    {module.number}
+                                  </span>
+                                  <span className="text-[24px] font-light tracking-wide text-[#00263e]">
+                                    {module.label}
+                                  </span>
+                                </div>
+                                <ArrowUpRight className="h-5 w-5 text-[#00263e]/20" />
                               </button>
                             ))}
                           </div>
@@ -458,8 +465,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 <span className="absolute right-0 top-0 bg-[#00263e] px-2.5 py-1 text-[10px] uppercase text-[#F0EDE1]">
                                   Protocol {index + 1}
                                 </span>
-                                <h3 className="mb-2 text-xl font-medium text-[#00263e]">{scheme.name}</h3>
-                                <p className="text-[13px] text-[#00263e]/70">{scheme.desc}</p>
+                                <h3 className="mb-2 text-[18px] font-medium text-[#00263e]">{scheme.name}</h3>
+                                <p className="text-[14px] text-[#00263e]/70">{scheme.desc}</p>
                               </button>
                             ))}
                           </div>
@@ -480,7 +487,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             <p className="mb-2 text-xs uppercase tracking-wide text-[#00263e]/50">
                               {modules.find(m => m.id === selectedModule)?.label}
                             </p>
-                            <h2 className="text-[32px] font-normal leading-tight text-[#00263e]">
+                            <h2 className="text-[24px] font-normal leading-tight text-[#00263e]">
                               {selectedScheme.name}
                             </h2>
                           </div>
@@ -522,8 +529,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                                 {/* 步骤信息 */}
                                 <div>
-                                  <h4 className="mb-2 text-lg font-medium text-[#00263e]">{step.title}</h4>
-                                  <p className="text-sm leading-relaxed text-[#00263e]/80">{step.description}</p>
+                                  <h4 className="mb-2 text-[18px] font-medium text-[#00263e]">{step.title}</h4>
+                                  <p className="text-[14px] leading-relaxed text-[#00263e]/80">{step.description}</p>
                                 </div>
                               </div>
                             ))}
@@ -1062,7 +1069,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                 // 切换展开/收起状态，保持当前层级和选择不变
                 setIsExpanded(!isExpanded);
               }}
-              className="group flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
             >
               <m.div
                 className="flex flex-col items-center"
