@@ -20,9 +20,9 @@ const bottomNavItems = [
 // 左侧导航图标 - 书本
 const StoryNavIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" className={className}>
-    <path d="M4.84204 17.4737C4.84204 14.2302 4.84204 6.52632 4.84204 6.52632C4.84204 5.13107 5.97311 4 7.36836 4H16.6315V14.9474C16.6315 14.9474 9.57156 14.9474 7.36836 14.9474C5.97888 14.9474 4.84204 16.0776 4.84204 17.4737Z" fill="#C3BC9F" stroke="#C3BC9F" strokeWidth="1.6" strokeLinejoin="round"/>
-    <path d="M16.6315 14.9471C16.6315 14.9471 7.85413 14.9471 7.36836 14.9471C5.97311 14.9471 4.84204 16.0781 4.84204 17.4734C4.84204 18.8686 5.97311 19.9997 7.36836 19.9997C8.2985 19.9997 12.7897 19.9997 19.1578 19.9997V4.8418" stroke="#C3BC9F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M7.78955 17.4746H16.2106" stroke="#C3BC9F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4.84204 17.4737C4.84204 14.2302 4.84204 6.52632 4.84204 6.52632C4.84204 5.13107 5.97311 4 7.36836 4H16.6315V14.9474C16.6315 14.9474 9.57156 14.9474 7.36836 14.9474C5.97888 14.9474 4.84204 16.0776 4.84204 17.4737Z" fill="#C3BC9F" stroke="#C3BC9F" strokeWidth="1.6" strokeLinejoin="round" />
+    <path d="M16.6315 14.9471C16.6315 14.9471 7.85413 14.9471 7.36836 14.9471C5.97311 14.9471 4.84204 16.0781 4.84204 17.4734C4.84204 18.8686 5.97311 19.9997 7.36836 19.9997C8.2985 19.9997 12.7897 19.9997 19.1578 19.9997V4.8418" stroke="#C3BC9F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M7.78955 17.4746H16.2106" stroke="#C3BC9F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -63,6 +63,15 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // 组件加载后自动展开，实现"导航栏先收起，抽屉再下拉"的动画序列
+  useEffect(() => {
+    // 稍微延迟一点，确保初始导航栏是可见状态
+    const timer = setTimeout(() => {
+      setIsExpanded(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <>
       {/* 底层暗金色背景 */}
@@ -85,6 +94,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
             "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
             isScrolled || isExpanded ? "opacity-100" : "opacity-0"
           )}
+          style={{ transitionDelay: isExpanded ? "400ms" : "0ms" }}
         />
       </div>
 
@@ -117,10 +127,15 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
               }}
               transition={{
                 duration: 1,
-                ease: [0.22, 1, 0.36, 1]
+                ease: [0.22, 1, 0.36, 1],
+                // 展开时延迟0.4s等待导航栏收起（大幅重叠以消除视觉间隔）；收起时不延迟
+                delay: isExpanded ? 0.4 : 0
               }}
             >
-              {/* 建筑风格装饰线条 - 渐变淡出 + 绘制动画 + 呼吸脉动 */}
+              {/* 矿物纹理覆盖层 */}
+              <div className="texture-overlay absolute inset-0" />
+
+              {/* 建筑风格装饰线条 - 渐变淡出 + 绘制动画 + 呼吸脉动 - 仅桌面端显示 */}
               <AnimatePresence>
                 {isExpanded && (
                   <>
@@ -130,7 +145,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                       animate={{ scaleY: 1, opacity: 1 }}
                       exit={{ scaleY: 0, opacity: 0 }}
                       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                      className="pointer-events-none absolute left-4 top-0 bottom-0 w-px origin-center animate-[breathe_4s_ease-in-out_infinite] sm:left-10 lg:left-20"
+                      className="pointer-events-none absolute top-0 bottom-0 hidden w-px origin-center animate-[breathe_4s_ease-in-out_infinite] sm:left-10 sm:block lg:left-20"
                       style={{
                         background: "linear-gradient(to bottom, transparent 0%, rgba(0,38,62,0.12) 30%, rgba(0,38,62,0.12) 70%, transparent 100%)"
                       }}
@@ -141,7 +156,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                       animate={{ scaleY: 1, opacity: 1 }}
                       exit={{ scaleY: 0, opacity: 0 }}
                       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-                      className="pointer-events-none absolute right-4 top-0 bottom-0 w-px origin-center animate-[breathe_4s_ease-in-out_infinite_0.5s] sm:right-10 lg:right-20"
+                      className="pointer-events-none absolute top-0 bottom-0 hidden w-px origin-center animate-[breathe_4s_ease-in-out_infinite_0.5s] sm:right-10 sm:block lg:right-20"
                       style={{
                         background: "linear-gradient(to bottom, transparent 0%, rgba(0,38,62,0.12) 30%, rgba(0,38,62,0.12) 70%, transparent 100%)"
                       }}
@@ -152,7 +167,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                       animate={{ scaleX: 1, opacity: 1 }}
                       exit={{ scaleX: 0, opacity: 0 }}
                       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-                      className="pointer-events-none absolute left-0 right-0 top-14 h-px origin-center animate-[breathe_4s_ease-in-out_infinite_1s] sm:top-16 lg:top-20"
+                      className="pointer-events-none absolute left-0 right-0 hidden h-px origin-center animate-[breathe_4s_ease-in-out_infinite_1s] sm:top-16 sm:block lg:top-20"
                       style={{
                         background: "linear-gradient(to right, transparent 0%, rgba(0,38,62,0.12) 20%, rgba(0,38,62,0.12) 80%, transparent 100%)"
                       }}
@@ -163,7 +178,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                       animate={{ scaleX: 1, opacity: 1 }}
                       exit={{ scaleX: 0, opacity: 0 }}
                       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
-                      className="pointer-events-none absolute left-0 right-0 bottom-14 h-px origin-center animate-[breathe_4s_ease-in-out_infinite_1.5s] sm:bottom-16 lg:bottom-20"
+                      className="pointer-events-none absolute left-0 right-0 hidden h-px origin-center animate-[breathe_4s_ease-in-out_infinite_1.5s] sm:bottom-16 sm:block lg:bottom-20"
                       style={{
                         background: "linear-gradient(to right, transparent 0%, rgba(0,38,62,0.12) 20%, rgba(0,38,62,0.12) 80%, transparent 100%)"
                       }}
@@ -179,227 +194,458 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                   !isExpanded && "hidden"
                 )}
               >
-                {/* 顶部导航栏 */}
-                <AnimatePresence mode="wait">
-                  {isExpanded && (
-                    <m.nav
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex h-14 items-center justify-between px-4 sm:h-16 sm:px-10 lg:h-20 lg:px-20"
-                    >
-                      {/* 左侧：Logo */}
-                      <div className="relative h-6 w-20 sm:h-8 sm:w-24">
-                        <Image
-                          src="/images/logo.png"
-                          alt="NIHPLOD Logo"
-                          fill
-                          className="object-contain brightness-[0.2]"
-                        />
-                      </div>
+                {/* ========== 移动端布局 - 参考 About us 移动端.html ========== */}
+                <div className="flex h-full flex-col sm:hidden">
+                  {/* 移动端顶部 Header - Logo 居中 */}
+                  <AnimatePresence mode="wait">
+                    {isExpanded && (
+                      <m.header
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        className="flex justify-center py-8"
+                      >
+                        <div className="relative h-8 w-28">
+                          <Image
+                            src="/images/logo.png"
+                            alt="NIHPLOD Logo"
+                            fill
+                            className="object-contain brightness-[0.2]"
+                          />
+                        </div>
+                      </m.header>
+                    )}
+                  </AnimatePresence>
 
-                      {/* 中间：导航链接 */}
-                      <div className="absolute left-1/2 flex -translate-x-1/2 gap-5 sm:gap-8 lg:gap-10">
+                  {/* 移动端导航栏 - 水平排列，带边框 */}
+                  <AnimatePresence mode="wait">
+                    {isExpanded && (
+                      <m.nav
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                        className="flex justify-around border-y border-[#00263e]/15 bg-[#F0EDE1] px-[5%] py-4"
+                      >
                         {navItems.map((item) => (
                           <button
                             key={item.id}
                             type="button"
                             onClick={() => setActiveSection(item.id)}
                             className={cn(
-                              "relative px-1 py-1 text-[10px] uppercase tracking-[1px] transition-opacity duration-300 sm:text-xs sm:tracking-[2px] lg:text-[13px]",
-                              activeSection === item.id
-                                ? "font-medium text-[#00263e] opacity-100"
-                                : "text-[#00263e] opacity-60 hover:opacity-80"
+                              "text-xs uppercase tracking-[2px] text-[#00263e] transition-opacity duration-300",
+                              activeSection === item.id ? "font-medium opacity-100" : "opacity-50"
                             )}
                           >
                             {item.label}
-                            {/* 下划线指示器 */}
-                            <span
-                              className={cn(
-                                "absolute bottom-0 left-0 h-px bg-[#00263e] transition-all duration-500",
-                                activeSection === item.id ? "w-full" : "w-0"
-                              )}
-                            />
                           </button>
                         ))}
-                      </div>
-
-                      {/* 右侧：用户登录状态 */}
-                      <UserButton />
-                    </m.nav>
-                  )}
-                </AnimatePresence>
-
-                {/* 内容区域 - 各 Section */}
-                <div className="flex-1 overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-10 sm:py-8 lg:px-20 lg:py-12 xl:py-14">
-                  <AnimatePresence mode="wait">
-                    {/* Section 1: 品牌故事 */}
-                    {activeSection === "story" && (
-                      <m.div
-                        key="story"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                        className="grid h-full grid-cols-1 items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12 xl:gap-16"
-                      >
-                        {/* 左侧图片区域 */}
-                        <div className="relative flex h-full flex-col justify-center gap-4 pl-4 sm:pl-6 lg:pl-8">
-                          <div className="relative h-40 w-[70%] self-start overflow-hidden bg-[#e5e2d5] sm:h-52 lg:h-64">
-                            <Image
-                              src="/images/story/dolphin-ocean.png"
-                              alt="大自然"
-                              fill
-                              className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
-                            />
-                          </div>
-                          <div className="relative -mt-10 ml-auto h-52 w-[80%] overflow-hidden border-8 border-[#F0EDE1] bg-[#e5e2d5] sm:h-64 lg:-mt-14 lg:h-80">
-                            <Image
-                              src="/images/story/lab-research.png"
-                              alt="科技"
-                              fill
-                              className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
-                            />
-                          </div>
-                        </div>
-
-                        {/* 右侧文字区域 */}
-                        <div className="pl-0 lg:pl-10">
-                          <span className="mb-3 block text-xs uppercase tracking-[5px] text-[#00263e]/60 sm:text-sm">
-                            Since 2008 | Monaco
-                          </span>
-                          <h2 className="mb-6 text-3xl font-light leading-tight tracking-[8px] text-[#00263e] sm:mb-8 sm:text-4xl lg:text-[42px]">
-                            来自大自然的<br />神奇修复力
-                          </h2>
-                          <p className="max-w-md text-sm leading-[2] tracking-wide text-[#00263e]/75 sm:text-[15px]">
-                            海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。所以我们将「DOLPHIN」这个单词逆转，这就是 NIHPLOD。
-                            <br /><br />
-                            创始人 Dr. Stefan 博士和他的团队，将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
-                          </p>
-                        </div>
-                      </m.div>
+                      </m.nav>
                     )}
+                  </AnimatePresence>
 
-                    {/* Section 2: 公司使命 */}
-                    {activeSection === "mission" && (
-                      <m.div
-                        key="mission"
-                        initial={{ opacity: 0, y: 20 }}
+                  {/* 移动端内容区域 - 垂直滚动 */}
+                  <div className="flex-1 overflow-y-auto px-[8%] py-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <AnimatePresence mode="wait">
+                      {/* 移动端 Section 1: 品牌故事 */}
+                      {activeSection === "story" && (
+                        <m.section
+                          key="story-mobile"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="min-h-[80vh]"
+                        >
+                          <h2 className="relative mb-10 inline-block text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                            Brand Story
+                          </h2>
+
+                          {/* 第一个内容块 */}
+                          <div className="mb-[60px]">
+                            <div className="relative my-5 w-full overflow-hidden border border-[#00263e]/15">
+                              <Image
+                                src="/images/story/dolphin-ocean.png"
+                                alt="Origin"
+                                width={600}
+                                height={400}
+                                className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                              />
+                            </div>
+                            <span className="mt-[25px] block text-[18px] font-normal leading-[1.4] text-[#00263e]">
+                              来自大自然的神奇修复力
+                            </span>
+                            <p className="mt-5 text-[14px] font-light leading-[1.6] text-[#00263e] text-justify">
+                              海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
+                            </p>
+                          </div>
+
+                          {/* 第二个内容块 */}
+                          <div className="mb-[60px]">
+                            <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
+                              2008 | 摩纳哥 | 联合实验室公司
+                            </span>
+                            <div className="relative my-5 w-full overflow-hidden border border-[#00263e]/15">
+                              <Image
+                                src="/images/story/lab-research.png"
+                                alt="Science"
+                                width={600}
+                                height={400}
+                                className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                              />
+                            </div>
+                            <span className="mt-[25px] block text-[18px] font-normal leading-[1.4] text-[#00263e]">
+                              前沿科技赋能精简护理
+                            </span>
+                            <p className="mt-5 text-[14px] font-light leading-[1.6] text-[#00263e] text-justify">
+                              创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
+                            </p>
+                          </div>
+                        </m.section>
+                      )}
+
+                      {/* 移动端 Section 2: 公司使命 */}
+                      {activeSection === "mission" && (
+                        <m.section
+                          key="mission-mobile"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="min-h-[80vh]"
+                        >
+                          <h2 className="relative mb-10 inline-block text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                            Our Mission
+                          </h2>
+
+                          <div className="mb-[60px]">
+                            <div className="relative my-5 h-[450px] w-full overflow-hidden border border-[#00263e]/15">
+                              <Image
+                                src="/images/story/mission-image.png?v=2"
+                                alt="Mission"
+                                fill
+                                className="object-cover object-top"
+                              />
+                            </div>
+                            <p className="mt-[30px] text-[16px] font-light leading-[1.6] text-[#00263e]">
+                              旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
+                            </p>
+                            <span className="mt-[25px] block text-[18px] font-normal leading-[1.4] text-[#6a7c88]">
+                              将逆转时光的不可能，慢慢变得「有可能」。
+                            </span>
+
+                            {/* CEO 签名 */}
+                            <div className="mt-10 text-right">
+                              <span className="mb-[5px] block text-[10px] uppercase tracking-[0.1em] opacity-50">
+                                CHIEF EXECUTIVE OFFICER
+                              </span>
+                              <span className="text-[14px] font-semibold tracking-[0.1em]">John Morrell</span>
+                            </div>
+                          </div>
+                        </m.section>
+                      )}
+
+                      {/* 移动端 Section 3: 品牌哲学 */}
+                      {activeSection === "philosophy" && (
+                        <m.section
+                          key="philosophy-mobile"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="min-h-[80vh]"
+                        >
+                          <h2 className="relative mb-10 inline-block text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                            Philosophy
+                          </h2>
+
+                          <div className="flex flex-col gap-10">
+                            {[
+                              { num: "01", title: "更珍贵的产品", desc: "我们通过采集这个世上优质的原材料，结合前沿及有效的科技力量，不断更新和进步。" },
+                              { num: "02", title: "更优越的体验", desc: "通过严选的供应渠道，极致的专员服务，我们力求为你做到最满意、舒适及专业。" },
+                              { num: "03", title: "更积极的方式", desc: "我们提倡以健康的心态去面对每一天。通过适量的运动，合理的膳食及平衡的心理。" },
+                              { num: "04", title: "更艰巨的责任", desc: "我们将售出的每款产品的 2% 捐赠给全球的慈善组织和非营利组织，包括 UNF、SPF 等。" },
+                            ].map((item) => (
+                              <div key={item.num} className="border-l border-[#00263e]/15 pl-5">
+                                <span className="-mb-5 block text-[40px] font-light text-[#00263e]/10">{item.num}</span>
+                                <span className="mb-2.5 block text-[14px] font-semibold tracking-[0.1em] text-[#00263e]">{item.title}</span>
+                                <p className="text-[14px] font-light leading-[1.6] text-[#00263e]">{item.desc}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </m.section>
+                      )}
+
+                      {/* 移动端 Section 4: 媒体获奖 */}
+                      {activeSection === "awards" && (
+                        <m.section
+                          key="awards-mobile"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="min-h-[80vh]"
+                        >
+                          <h2 className="relative mb-10 inline-block text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                            Recognition
+                          </h2>
+
+                          <div className="mb-[60px]">
+                            {/* 奖项列表 */}
+                            <ul className="list-none">
+                              {[
+                                { year: "2023", title: "VOGUE BEAUTY AWARDS" },
+                                { year: "2022", title: "ELLE SKINCARE INNOVATION" },
+                                { year: "2022", title: "BAZAAR BEST FORMULA" },
+                                { year: "2021", title: "GLOBAL COSMETIC DESIGN" },
+                              ].map((award, idx) => (
+                                <li
+                                  key={idx}
+                                  className="flex items-center justify-between border-b border-[#00263e]/15 py-5"
+                                >
+                                  <span className="text-[14px] text-[#00263e]">{award.title}</span>
+                                  <span className="text-[12px] text-[#00263e]/40">{award.year}</span>
+                                </li>
+                              ))}
+                            </ul>
+
+                            {/* 底部卡片 */}
+                            <div className="mt-10 bg-[#00263e] p-[30px] text-center text-[#F0EDE1]">
+                              <p className="text-[12px] font-light tracking-[0.1em] leading-[1.6]">
+                                被全球顶级时尚媒体广泛报道<br />探索 NIHPLOD 的卓越科技
+                              </p>
+                            </div>
+                          </div>
+                        </m.section>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* ========== 桌面端布局 - 保持原有样式 ========== */}
+                <div className="hidden h-full flex-col sm:flex">
+                  {/* 顶部导航栏 */}
+                  <AnimatePresence mode="wait">
+                    {isExpanded && (
+                      <m.nav
+                        initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex h-full items-center justify-center pb-16 lg:pb-24"
+                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        className="flex h-16 items-center justify-between px-10 lg:h-20 lg:px-20"
                       >
-                        <div className="relative flex w-full max-w-5xl flex-col lg:flex-row">
-                          {/* 左侧图片 */}
-                          <div className="relative h-64 w-full overflow-hidden lg:h-auto lg:flex-[1.2]">
-                            <Image
-                              src="/images/story/mission-image.png"
-                              alt="护肤专家"
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          {/* 右侧文字卡片 */}
-                          <div className="z-10 flex flex-1 flex-col items-start justify-center bg-[#DDD9C9] p-8 shadow-[0_4px_20px_rgba(0,38,62,0.04),0_20px_60px_rgba(0,0,0,0.06)] sm:p-12 lg:-ml-16 lg:my-10 lg:p-16">
-                            <span className="mb-2 text-xs uppercase tracking-[4px] text-[#00263e]/70 sm:text-sm">
-                              Our Mission
-                            </span>
-                            <h2 className="mb-6 text-3xl font-light leading-tight tracking-[8px] text-[#00263e] sm:mb-8 sm:text-4xl lg:text-[42px]">
-                              化繁为简<br />逆转时光
-                            </h2>
-                            <p className="max-w-md text-sm leading-[1.8] text-[#00263e]/80 sm:text-[15px]">
-                              旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
-                              <br /><br />
-                              将逆转时光的不可能，慢慢变得「有可能」。
-                            </p>
-                            <div className="mt-8 w-full border-t border-[#00263e]/30 pt-4 sm:mt-10">
-                              <span className="block text-xs uppercase tracking-[4px] text-[#00263e]/70">CEO</span>
+                        {/* 左侧：Logo */}
+                        <div className="relative h-8 w-24">
+                          <Image
+                            src="/images/logo.png"
+                            alt="NIHPLOD Logo"
+                            fill
+                            className="object-contain brightness-[0.2]"
+                          />
+                        </div>
+
+                        {/* 中间：导航链接 */}
+                        <div className="absolute left-1/2 flex -translate-x-1/2 gap-8 lg:gap-10">
+                          {navItems.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => setActiveSection(item.id)}
+                              className={cn(
+                                "relative px-1 py-1 text-xs uppercase tracking-[2px] transition-opacity duration-300 lg:text-[13px]",
+                                activeSection === item.id
+                                  ? "font-medium text-[#00263e] opacity-100"
+                                  : "text-[#00263e] opacity-60 hover:opacity-80"
+                              )}
+                            >
+                              {item.label}
+                              {/* 下划线指示器 */}
+                              <span
+                                className={cn(
+                                  "absolute bottom-0 left-0 h-px bg-[#00263e] transition-all duration-500",
+                                  activeSection === item.id ? "w-full" : "w-0"
+                                )}
+                              />
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* 右侧：用户登录状态 */}
+                        <UserButton />
+                      </m.nav>
+                    )}
+                  </AnimatePresence>
+
+                  {/* 内容区域 - 各 Section */}
+                  <div className="flex-1 overflow-y-auto px-10 py-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] lg:px-20 lg:py-12 xl:py-14">
+                    <AnimatePresence mode="wait">
+                      {/* Section 1: 品牌故事 */}
+                      {activeSection === "story" && (
+                        <m.div
+                          key="story"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                          className="grid h-full grid-cols-1 items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12 xl:gap-16"
+                        >
+                          {/* 左侧图片区域 */}
+                          <div className="relative flex h-full flex-col justify-center gap-4 pl-6 lg:pl-8">
+                            <div className="relative h-52 w-[70%] self-start overflow-hidden bg-[#e5e2d5] lg:h-64">
                               <Image
-                                src="/images/story/mission-decoration.svg"
-                                alt="John Morrell"
-                                width={150}
-                                height={40}
-                                className="mt-1"
+                                src="/images/story/dolphin-ocean.png"
+                                alt="大自然"
+                                fill
+                                className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
+                              />
+                            </div>
+                            <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#F0EDE1] bg-[#e5e2d5] lg:-mt-14 lg:h-80">
+                              <Image
+                                src="/images/story/lab-research.png"
+                                alt="科技"
+                                fill
+                                className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
                               />
                             </div>
                           </div>
-                        </div>
-                      </m.div>
-                    )}
 
-                    {/* Section 3: 品牌哲学 */}
-                    {activeSection === "philosophy" && (
-                      <m.div
-                        key="philosophy"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                        className="mx-2 grid h-[calc(100%-2rem)] grid-cols-2 gap-px self-center bg-[#00263e]/10 sm:mx-4 sm:h-[calc(100%-3rem)] lg:mx-6 lg:h-[calc(100%-4rem)] lg:grid-cols-4"
-                      >
-                        {[
-                          { num: "01", title: "更珍贵的产品", desc: "我们通过采集这个世上优质的原材料，结合前沿及有效的科技力量，不断更新和进步。" },
-                          { num: "02", title: "更优越的体验", desc: "通过严选的供应渠道，极致的专员服务，我们力求为你做到最满意、舒适及专业。" },
-                          { num: "03", title: "更积极的方式", desc: "我们提倡以健康的心态去面对每一天，通过适量的运动、合理的膳食及平衡的心理。" },
-                          { num: "04", title: "更艰巨的责任", desc: "我们将售出的每款产品的 2% 捐赠给全球的慈善组织和非营利组织，包括 UNF、SPF 等。" },
-                        ].map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex flex-col justify-between bg-[#F0EDE1] p-6 transition-all duration-300 hover:-translate-y-1 hover:bg-[#f7f5ef] hover:shadow-lg sm:p-8 lg:p-10"
-                          >
-                            <span className="text-5xl font-thin text-[#00263e]/10 sm:text-6xl">{item.num}</span>
-                            <div className="mt-auto">
-                              <h3 className="mb-3 text-base tracking-[3px] text-[#00263e] sm:mb-5 sm:text-lg">{item.title}</h3>
-                              <p className="text-xs leading-[2] text-[#00263e]/80 sm:text-[13px]">{item.desc}</p>
+                          {/* 右侧文字区域 */}
+                          <div className="pl-0 lg:pl-10">
+                            <span className="mb-3 block text-sm uppercase tracking-[5px] text-[#00263e]/60">
+                              Since 2008 | Monaco
+                            </span>
+                            <h2 className="mb-8 text-4xl font-light leading-tight tracking-[8px] text-[#00263e] lg:text-[42px]">
+                              来自大自然的<br />神奇修复力
+                            </h2>
+                            <p className="max-w-md text-[15px] leading-[2] tracking-wide text-[#00263e]/75">
+                              海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。所以我们将「DOLPHIN」这个单词逆转，这就是 NIHPLOD。
+                              <br /><br />
+                              创始人 Dr. Stefan 博士和他的团队，将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
+                            </p>
+                          </div>
+                        </m.div>
+                      )}
+
+                      {/* Section 2: 公司使命 */}
+                      {activeSection === "mission" && (
+                        <m.div
+                          key="mission"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                          className="flex h-full items-center justify-center pb-16 lg:pb-24"
+                        >
+                          <div className="relative flex w-full max-w-5xl flex-col lg:flex-row">
+                            {/* 左侧图片 */}
+                            <div className="relative h-64 w-full overflow-hidden lg:h-auto lg:flex-[1.2]">
+                              <Image
+                                src="/images/story/mission-image.png?v=2"
+                                alt="护肤专家"
+                                fill
+                                className="object-cover object-top"
+                              />
+                            </div>
+                            {/* 右侧文字卡片 */}
+                            <div className="z-10 flex flex-1 flex-col items-start justify-center bg-[#DDD9C9] p-12 shadow-[0_4px_20px_rgba(0,38,62,0.04),0_20px_60px_rgba(0,0,0,0.06)] lg:-ml-16 lg:my-10 lg:p-16">
+                              <span className="mb-2 text-sm uppercase tracking-[4px] text-[#00263e]/70">
+                                Our Mission
+                              </span>
+                              <h2 className="mb-8 text-4xl font-light leading-tight tracking-[8px] text-[#00263e] lg:text-[42px]">
+                                化繁为简<br />逆转时光
+                              </h2>
+                              <p className="max-w-md text-[15px] leading-[1.8] text-[#00263e]/80">
+                                旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
+                                <br /><br />
+                                将逆转时光的不可能，慢慢变得「有可能」。
+                              </p>
+                              <div className="mt-10 w-full border-t border-[#00263e]/30 pt-4">
+                                <span className="block text-xs uppercase tracking-[4px] text-[#00263e]/70">CEO</span>
+                                <Image
+                                  src="/images/story/mission-decoration.svg"
+                                  alt="John Morrell"
+                                  width={150}
+                                  height={40}
+                                  className="mt-1"
+                                />
+                              </div>
                             </div>
                           </div>
-                        ))}
-                      </m.div>
-                    )}
+                        </m.div>
+                      )}
 
-                    {/* Section 4: 媒体及获奖 - 参考 ref media1.html 样式 */}
-                    {activeSection === "awards" && (
-                      <m.div
-                        key="awards"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex h-full flex-col px-4 pb-14 pt-4 sm:px-5 sm:pb-16 sm:pt-5 lg:px-6 lg:pb-20 lg:pt-6"
-                      >
-                        {/* 3x2 网格卡片布局 - 铺满容器 */}
-                        <div className="grid h-full grid-cols-2 grid-rows-3 gap-3 sm:grid-cols-3 sm:grid-rows-2 sm:gap-4 lg:gap-5">
+                      {/* Section 3: 品牌哲学 */}
+                      {activeSection === "philosophy" && (
+                        <m.div
+                          key="philosophy"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                          className="mx-4 grid h-[calc(100%-3rem)] grid-cols-2 gap-px self-center bg-[#00263e]/10 lg:mx-6 lg:h-[calc(100%-4rem)] lg:grid-cols-4"
+                        >
                           {[
-                            { year: "2023", title: "VOGUE BEAUTY AWARDS - 年度突破奖" },
-                            { year: "2022", title: "ELLE 护肤科技金奖" },
-                            { year: "2022", title: "年度最具影响力可持续品牌" },
-                            { year: "2021", title: "BAZAAR 极致修护精华大奖" },
-                            { year: "2020", title: "Monaco Bio-Tech Innovation Lab Partner" },
-                            { year: "2019", title: "GLOBAL CHARITY PARTNER: UNF" },
-                          ].map((award, idx) => (
-                            <m.div
+                            { num: "01", title: "更珍贵的产品", desc: "我们通过采集这个世上优质的原材料，结合前沿及有效的科技力量，不断更新和进步。" },
+                            { num: "02", title: "更优越的体验", desc: "通过严选的供应渠道，极致的专员服务，我们力求为你做到最满意、舒适及专业。" },
+                            { num: "03", title: "更积极的方式", desc: "我们提倡以健康的心态去面对每一天，通过适量的运动、合理的膳食及平衡的心理。" },
+                            { num: "04", title: "更艰巨的责任", desc: "我们将售出的每款产品的 2% 捐赠给全球的慈善组织和非营利组织，包括 UNF、SPF 等。" },
+                          ].map((item, idx) => (
+                            <div
                               key={idx}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                              className="group flex flex-col justify-center border border-[#00263e]/15 bg-[#F0EDE1]/50 p-4 transition-all duration-500 hover:border-[#00263e]/40 hover:bg-white/30 sm:p-6 lg:p-8"
+                              className="flex flex-col justify-between bg-[#F0EDE1] p-8 transition-all duration-300 hover:-translate-y-1 hover:bg-[#f7f5ef] hover:shadow-lg lg:p-10"
                             >
-                              <span className="mb-2 text-[11px] tracking-[2px] text-[#00263e]/50 sm:mb-3 sm:text-xs lg:text-sm">
-                                {award.year}
-                              </span>
-                              <span className="text-sm font-normal leading-relaxed tracking-wide text-[#00263e] sm:text-base lg:text-lg">
-                                {award.title}
-                              </span>
-                            </m.div>
+                              <span className="text-6xl font-thin text-[#00263e]/10">{item.num}</span>
+                              <div className="mt-auto">
+                                <h3 className="mb-5 text-lg tracking-[3px] text-[#00263e]">{item.title}</h3>
+                                <p className="text-[13px] leading-[2] text-[#00263e]/80">{item.desc}</p>
+                              </div>
+                            </div>
                           ))}
-                        </div>
-                      </m.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                        </m.div>
+                      )}
 
+                      {/* Section 4: 媒体及获奖 - 参考 ref media1.html 样式 */}
+                      {activeSection === "awards" && (
+                        <m.div
+                          key="awards"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                          className="flex h-full flex-col px-5 pb-16 pt-5 lg:px-6 lg:pb-20 lg:pt-6"
+                        >
+                          {/* 3x2 网格卡片布局 - 铺满容器 */}
+                          <div className="grid h-full grid-cols-3 grid-rows-2 gap-4 lg:gap-5">
+                            {[
+                              { year: "2023", title: "VOGUE BEAUTY AWARDS - 年度突破奖" },
+                              { year: "2022", title: "ELLE 护肤科技金奖" },
+                              { year: "2022", title: "年度最具影响力可持续品牌" },
+                              { year: "2021", title: "BAZAAR 极致修护精华大奖" },
+                              { year: "2020", title: "Monaco Bio-Tech Innovation Lab Partner" },
+                              { year: "2019", title: "GLOBAL CHARITY PARTNER: UNF" },
+                            ].map((award, idx) => (
+                              <m.div
+                                key={idx}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                                className="group flex flex-col justify-center border border-[#00263e]/15 bg-[#F0EDE1]/50 p-6 transition-all duration-500 hover:border-[#00263e]/40 hover:bg-white/30 lg:p-8"
+                              >
+                                <span className="mb-3 text-xs tracking-[2px] text-[#00263e]/50 lg:text-sm">
+                                  {award.year}
+                                </span>
+                                <span className="text-base font-normal leading-relaxed tracking-wide text-[#00263e] lg:text-lg">
+                                  {award.title}
+                                </span>
+                              </m.div>
+                            ))}
+                          </div>
+                        </m.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
 
               </div>
             </m.div>
@@ -508,8 +754,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{
-              duration: 0.35,
-              ease: [0.32, 0.72, 0, 1]
+              duration: 1.2,
+              ease: [0.22, 1, 0.36, 1]
             }}
             className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"

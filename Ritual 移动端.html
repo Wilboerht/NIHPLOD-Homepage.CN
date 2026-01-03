@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ritual | 护肤仪式</title>
+    <style>
+        :root {
+            --bg-color: #F0EDE1;
+            --ink-color: #00263e;
+            --accent-soft: rgba(0, 38, 62, 0.05);
+            --transition-speed: 0.6s;
+            --ease-ink: cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--ink-color);
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Paper Grain Texture Overlay */
+        .paper-texture {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        #app {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            position: relative;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-top: 10px;
+        }
+
+        .logo {
+            height: 28px;
+            filter: brightness(0) saturate(100%) invert(11%) sepia(42%) saturate(3681%) hue-rotate(185deg) brightness(95%) contrast(106%);
+        }
+
+        .back-btn {
+            font-size: 14px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.4s var(--ease-ink);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .back-btn.visible {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        /* View Management */
+        .view {
+            position: absolute;
+            top: 100px;
+            left: 24px;
+            right: 24px;
+            transition: all var(--transition-speed) var(--ease-ink);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px);
+        }
+
+        .view.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+            position: relative;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+
+        /* Level 1: Main Menu */
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 24px 0;
+            border-bottom: 1px solid rgba(0, 38, 62, 0.1);
+            text-decoration: none;
+            color: var(--ink-color);
+            transition: transform 0.3s var(--ease-ink);
+        }
+
+        .menu-item:active {
+            transform: scale(0.98);
+        }
+
+        .menu-title {
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .menu-index {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+
+        /* Level 2: Solutions Grid */
+        .solution-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            padding-top: 20px;
+        }
+
+        .solution-card {
+            background: var(--bg-color);
+            border: 1px solid var(--ink-color);
+            padding: 30px 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 0 var(--ink-color);
+            transition: transform 0.3s var(--ease-ink);
+        }
+
+        .solution-card:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 var(--ink-color);
+        }
+
+        .solution-card h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .solution-card p {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        .solution-tag {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--ink-color);
+            color: var(--bg-color);
+            font-size: 10px;
+            padding: 4px 10px;
+            text-transform: uppercase;
+        }
+
+        /* Level 3: Steps Detail */
+        .detail-header {
+            margin-bottom: 30px;
+        }
+
+        .detail-header h2 {
+            font-size: 32px;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .ritual-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .step-block {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .step-image {
+            width: 100%;
+            height: 240px;
+            background: var(--ink-color);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Suspended Ink Buoyancy Illustration Effect */
+        .ink-blob {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: var(--bg-color);
+            filter: blur(40px);
+            opacity: 0.3;
+            border-radius: 50%;
+            animation: float 8s infinite alternate ease-in-out;
+        }
+
+        @keyframes float {
+            0% { transform: translate(-20%, -20%) scale(1); }
+            100% { transform: translate(20%, 20%) scale(1.2); }
+        }
+
+        .step-number {
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.5;
+            border-bottom: 1px solid var(--ink-color);
+            padding-bottom: 4px;
+            width: fit-content;
+        }
+
+        .step-info h4 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .step-info p {
+            font-size: 14px;
+            color: rgba(0, 38, 62, 0.8);
+        }
+
+        /* Footer Decoration */
+        .ritual-footer {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 4px;
+            opacity: 0.3;
+            padding-bottom: 40px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="paper-texture"></div>
+
+    <div id="app">
+        <header>
+            <div class="back-btn" id="backBtn" onclick="goBack()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M19 12H5M5 12L12 19M5 12L12 5"/>
+                </svg>
+                <span style="margin-left: 8px;">返回</span>
+            </div>
+            <img src="https://wp-cdn.4ce.cn/v2/SItKqUC.png" alt="Logo" class="logo">
+        </header>
+
+        <!-- Level 1: Main Modules -->
+        <div id="view1" class="view active">
+            <div style="margin-bottom: 40px;">
+                <p style="font-size: 12px; letter-spacing: 3px; opacity: 0.6; margin-bottom: 8px;">SKINCARE RITUAL</p>
+                <h1 style="font-size: 36px; font-weight: 400; line-height: 1;">护肤仪式</h1>
+            </div>
+            <div class="menu-list">
+                <div class="menu-item" onclick="showLevel2('优雅日间')">
+                    <div class="menu-title">优雅日间</div>
+                    <div class="menu-index">01</div>
+                </div>
+                <div class="menu-item" onclick="showLevel2('睡前仪式')">
+                    <div class="menu-title">睡前仪式</div>
+                    <div class="menu-index">02</div>
+                </div>
+                <div class="menu-item" onclick="showLevel2('居家SPA')">
+                    <div class="menu-title">居家SPA</div>
+                    <div class="menu-index">03</div>
+                </div>
+                <div class="menu-item" onclick="showLevel2('轻悦旅行')">
+                    <div class="menu-title">轻悦旅行</div>
+                    <div class="menu-index">04</div>
+                </div>
+                <div class="menu-item" onclick="showLevel2('专业水疗')">
+                    <div class="menu-title">专业水疗</div>
+                    <div class="menu-index">05</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Level 2: Solutions -->
+        <div id="view2" class="view">
+            <h2 id="l2-title" style="font-size: 24px; margin-bottom: 24px; font-weight: 400;"></h2>
+            <div class="solution-grid" id="solution-container">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+
+        <!-- Level 3: Steps -->
+        <div id="view3" class="view">
+            <div class="detail-header">
+                <p id="l3-category" style="font-size: 12px; letter-spacing: 2px; opacity: 0.5; margin-bottom: 8px;"></p>
+                <h2 id="l3-title"></h2>
+            </div>
+            <div class="ritual-steps" id="steps-container">
+                <!-- Dynamic Content -->
+            </div>
+            <div class="ritual-footer">END OF RITUAL</div>
+        </div>
+    </div>
+
+    <script>
+        const data = {
+            '优雅日间': [
+                { title: '晨曦焕活方案', desc: '唤醒沉睡肌肤，建立全天候防御屏障', steps: [
+                    { t: '净澈温和洁面', d: '使用常温水配合氨基酸洁面，温和去除夜间油脂。', color: '#cad2c5' },
+                    { t: '沁润补水导入', d: '掌心温热精华水，按压式涂抹，开启肌肤通道。', color: '#84a59d' },
+                    { t: '光感防护涂抹', d: '均匀涂抹防晒隔离，对抗紫外线与环境污染。', color: '#f5cac3' }
+                ]},
+                { title: '极简通勤方案', desc: '快节奏下的高效护肤，平衡油脂分泌', steps: [
+                    { t: '快速平衡调理', d: '喷雾式爽肤水迅速补水，缓解晨起干燥。', color: '#84a59d' },
+                    { t: '多效修护乳', d: '一抹化水，长效锁水并修饰肤色。', color: '#f7ede2' }
+                ]}
+            ],
+            '睡前仪式': [
+                { title: '深度修复仪式', desc: '利用黄金睡眠期，加速细胞再生更新', steps: [
+                    { t: '双重卸妆净颜', d: '深层清洁彩妆与PM2.5残留。', color: '#00263e' },
+                    { t: '极光晚霜厚敷', d: '指尖点涂，由内向外提拉按摩至吸收。', color: '#1d3557' }
+                ]}
+            ],
+            '居家SPA': [
+                { title: '禅意排浊护理', desc: '居家享受专业级排毒与深度放松', steps: [
+                    { t: '热敷打开毛孔', d: '40度恒温毛巾敷脸3分钟。', color: '#52796f' },
+                    { t: '深海泥膜覆盖', d: '均匀避开眼周，静候墨色沁入。', color: '#2f3e46' }
+                ]}
+            ],
+            '轻悦旅行': [
+                { title: '机舱急救护理', desc: '对抗高空干燥，维持肌肤水润透亮', steps: [
+                    { t: '免洗清洁拭擦', d: '便捷去除旅途疲惫感。', color: '#a8dadc' },
+                    { t: '补水炸弹面膜', d: '强力注水，形成隐形水膜。', color: '#457b9d' }
+                ]}
+            ],
+            '专业水疗': [
+                { title: '胜肽紧致理疗', desc: '针对细纹与松弛，重塑面部轮廓', steps: [
+                    { t: '多肽安瓶灌注', d: '高活性成分深层渗透。', color: '#d4a373' },
+                    { t: '塑颜手法按摩', d: '配合专业手法，提拉下颌线条。', color: '#faedcd' }
+                ]}
+            ]
+        };
+
+        let currentCategory = '';
+
+        function showLevel2(category) {
+            currentCategory = category;
+            document.getElementById('l2-title').innerText = category;
+            const container = document.getElementById('solution-container');
+            container.innerHTML = '';
+
+            data[category].forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'solution-card';
+                card.onclick = () => showLevel3(item);
+                card.innerHTML = `
+                    <div class="solution-tag">Protocol ${index + 1}</div>
+                    <h3>${item.title}</h3>
+                    <p>${item.desc}</p>
+                `;
+                container.appendChild(card);
+            });
+
+            switchView(2);
+        }
+
+        function showLevel3(item) {
+            document.getElementById('l3-category').innerText = currentCategory;
+            document.getElementById('l3-title').innerText = item.title;
+            const container = document.getElementById('steps-container');
+            container.innerHTML = '';
+
+            item.steps.forEach((step, index) => {
+                const block = document.createElement('div');
+                block.className = 'step-block';
+                block.innerHTML = `
+                    <div class="step-image" style="background-color: var(--ink-color)">
+                        <div class="ink-blob" style="background: ${step.color}; opacity: 0.4;"></div>
+                        <div class="ink-blob" style="background: ${step.color}; animation-delay: -2s; width: 100px; height: 100px;"></div>
+                        <span style="color: white; font-size: 12px; z-index: 2; opacity: 0.6; letter-spacing: 2px;">VISUAL CONCEPT</span>
+                    </div>
+                    <div class="step-number">STEP 0${index + 1}</div>
+                    <div class="step-info">
+                        <h4>${step.t}</h4>
+                        <p>${step.d}</p>
+                    </div>
+                `;
+                container.appendChild(block);
+            });
+
+            switchView(3);
+        }
+
+        function switchView(level) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`view${level}`).classList.add('active');
+            
+            const backBtn = document.getElementById('backBtn');
+            if (level > 1) {
+                backBtn.classList.add('visible');
+            } else {
+                backBtn.classList.remove('visible');
+            }
+            window.scrollTo(0, 0);
+        }
+
+        function goBack() {
+            const v2 = document.getElementById('view2');
+            const v3 = document.getElementById('view3');
+            
+            if (v3.classList.contains('active')) {
+                switchView(2);
+            } else if (v2.classList.contains('active')) {
+                switchView(1);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,228 +1,111 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { m } from "framer-motion";
-import { Sparkles } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 import { UserButton } from "./UserButton";
-
-/**
- * 网格背景色值 - 2行4列 布局
- */
-const gridColors = [
-  ["#F5F3EA", "#F9F5E7", "#EAE8DF", "#E9E5D5"], // 上面一行
-  ["#E2E0D7", "#EBE8DB", "#DDD9CE", "#D8D5CA"], // 下面一行
-];
-
-// 默认底部导航链接
-const defaultFooterLinks = [
-  { text: "联系我们", href: "/contact" },
-  { text: "加入我们", href: "/careers" },
-  { text: "隐私政策", href: "/privacy" },
-  { text: "服务入口", href: "/services" },
-];
-
-// 默认内容
-const defaultContent: HomePageContent = {
-  brand: { chineseName: "旎柏", slogan: "逆转时光" },
-  buttons: {
-    advisorText: "AI 护肤顾问",
-    advisorLink: "/advisor",
-    productsText: "探索产品",
-    productsLink: "/products",
-  },
-  footerLinks: defaultFooterLinks,
-  copyright: "NIHPLOD All Rights Reserved.",
-};
 
 interface HomeClientProps {
   content?: HomePageContent;
 }
 
-/**
- * 简洁探索按钮 - 直接跳转产品页
- */
-function ExploreButton() {
-  const [isHovered, setIsHovered] = useState(false);
+export default function HomeClient({ content: _content }: HomeClientProps) {
+  const wave1Ref = useRef<SVGSVGElement>(null);
+  const wave2Ref = useRef<SVGSVGElement>(null);
+
+  // 鼠标视差效果
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
+      const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+      if (wave1Ref.current) {
+        wave1Ref.current.style.transform = `translate(${moveX}px, ${moveY}px)`;
+      }
+      if (wave2Ref.current) {
+        wave2Ref.current.style.transform = `translate(${-moveX}px, ${-moveY}px)`;
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    return () => document.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   return (
-    <m.div
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-    >
-      <Link
-        href="/products"
-        className="group relative flex items-center"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* 脉冲光晕 */}
-        <m.div
-          className="absolute -inset-2 rounded-full bg-brand-gold/20"
-          animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.3, 0, 0.3],
-          }}
-          transition={{
-            duration: 2.5,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
+    <div className="home-container">
+      {/* 矿物纹理覆盖层 - 使用 base64 SVG 噪点 */}
+      <div
+        className="mineral-texture"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+        }}
+      />
 
-        {/* 按钮内容 */}
-        <div className="relative rounded-full border border-brand-gold/20 bg-[#EBE8DB] px-7 py-2.5 shadow-sm transition-all duration-300 group-hover:border-brand-gold/30 group-hover:bg-[#E5E1D3] group-hover:shadow-md sm:px-9 sm:py-3">
-          <div className="relative z-10 flex items-center justify-center gap-2">
-            {/* 星光图标 */}
-            <m.div
-              animate={{ rotate: isHovered ? 180 : 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            >
-              <Sparkles className="h-3.5 w-3.5 text-brand-gold sm:h-4 sm:w-4" />
-            </m.div>
-            <span className="text-sm font-medium tracking-wider text-brand-charcoal/80 transition-colors duration-300 group-hover:text-brand-charcoal sm:text-base">
-              开始探索
-            </span>
-            {/* 箭头图标 */}
-            <m.div
-              animate={{ x: isHovered ? 3 : 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              <svg
-                className="h-3 w-3 text-brand-charcoal/50 transition-colors duration-300 group-hover:text-brand-charcoal/70 sm:h-3.5 sm:w-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </m.div>
-          </div>
-        </div>
-      </Link>
-    </m.div>
-  );
-}
-
-/**
- * 首页客户端组件 - 网格色块背景布局
- */
-export default function HomeClient({ content }: HomeClientProps) {
-  // 合并默认内容和传入内容
-  const brand = content?.brand || defaultContent.brand;
-  const footerLinks = content?.footerLinks || defaultFooterLinks;
-  const copyright = content?.copyright || defaultContent.copyright;
-
-  return (
-    <div className="fixed inset-0 flex flex-col">
-      {/* 顶部线段 */}
-      <div className="absolute left-0 right-0 top-0 z-20 h-2 bg-[#F0EDE1] sm:h-2.5 md:h-3 lg:h-4" />
+      {/* 波浪背景 */}
+      <div className="wave-container">
+        <svg ref={wave1Ref} className="wave wave-1" viewBox="0 0 1200 120" preserveAspectRatio="none">
+          <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
+        </svg>
+        <svg ref={wave2Ref} className="wave wave-2" viewBox="0 0 1200 120" preserveAspectRatio="none">
+          <path d="M0,40 C200,90 400,0 600,40 C800,80 1000,0 1200,40" />
+        </svg>
+      </div>
 
       {/* 右上角登录按钮 */}
-      <div className="absolute right-4 top-4 z-30 sm:right-6 sm:top-5 md:right-8 md:top-6">
+      <div className="user-button-container">
         <UserButton />
       </div>
 
-      {/* 底部线段 */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 h-2 bg-[#F0EDE1] sm:h-2.5 md:h-3 lg:h-4" />
-
-      {/* 网格色块背景：移动端 4行2列，PC端 2行4列 */}
-      <div className="absolute inset-0 grid grid-cols-2 grid-rows-4 sm:grid-cols-4 sm:grid-rows-2">
-        {gridColors.flat().map((color, index) => (
-          <m.div
-            key={index}
-            className="h-full w-full"
-            style={{ backgroundColor: color }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: index * 0.05 }}
-          />
-        ))}
-      </div>
-
-      {/* 主内容 - 居中 */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pt-8 sm:px-6 sm:pt-12 md:pt-16">
+      {/* 主内容 */}
+      <main className="main-content">
         {/* Logo */}
         <m.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 1.2, delay: 0.2 }}
         >
           <Image
             src="/images/logo.png"
-            alt="NIHPLOD"
-            width={320}
-            height={100}
-            className="h-12 w-auto sm:h-16 md:h-20 lg:h-24 xl:h-28"
+            alt="Dolphin Skin"
+            width={220}
+            height={80}
+            className="logo"
             priority
           />
         </m.div>
 
-        {/* 中文名 */}
-        <m.p
-          className="mt-2 font-playfair text-xl tracking-widest text-brand-gold sm:mt-3 sm:text-2xl md:mt-4 md:text-3xl lg:text-4xl"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-        >
-          {brand.chineseName}
-        </m.p>
-
-        {/* 品牌语 */}
-        <m.p
-          className="mt-3 text-xs tracking-[0.2em] text-brand-charcoal/60 sm:mt-4 sm:text-sm sm:tracking-[0.3em] md:mt-5 md:text-base lg:text-lg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          {brand.slogan}
-        </m.p>
-
-        {/* 分隔线 */}
+        {/* 品牌文案 */}
         <m.div
-          className="my-6 h-px w-10 bg-brand-gold/40 sm:my-8 sm:w-12 md:my-10"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        />
-
-        {/* 探索按钮 */}
-        <m.div
-          className="relative flex h-12 items-center justify-center sm:h-14"
-          initial={{ opacity: 0, y: 10 }}
+          className="content-wrapper"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
+          transition={{ duration: 1.2, delay: 0.5 }}
         >
-          <ExploreButton />
+          <h1 className="title">
+            <span>海豚的肌肤，拥有每两小时</span><br />
+            <span>自我更新的神奇能力。</span><br />
+            <span>这种「逆转时光」的动物本能，</span><br />
+            <span>是我们灵感的来源。</span>
+          </h1>
         </m.div>
 
-      </div>
-
-      {/* 底部导航 */}
-      <m.footer
-        className="relative z-10 pb-4 pt-3 text-center sm:pb-6 sm:pt-4 md:pb-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.6 }}
-      >
-        <nav className="flex flex-wrap justify-center gap-3 text-[10px] text-brand-charcoal/50 sm:gap-4 sm:text-xs md:gap-6">
-          {footerLinks.map((link, index) => (
-            <Link
-              key={index}
-              href={link.href}
-              className="transition-colors hover:text-brand-gold"
-            >
-              {link.text}
-            </Link>
-          ))}
-        </nav>
-        <p className="mt-3 text-[9px] text-brand-charcoal/25 sm:mt-4 sm:text-[10px]">
-          © {new Date().getFullYear()} {copyright}
-        </p>
-      </m.footer>
+        {/* 按钮组 */}
+        <m.div
+          className="button-group"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, delay: 0.8 }}
+        >
+          <Link href="/products" className="btn btn-primary">
+            探索更多
+          </Link>
+          <Link href="/advisor" className="btn btn-secondary">
+            AI快速测肤
+            <span className="badge-new">NEW</span>
+          </Link>
+        </m.div>
+      </main>
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
@@ -21,9 +21,9 @@ const bottomNavItems = [
 // 左侧导航图标 - 购物袋
 const ShopNavIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" className={className}>
-    <path d="M6 6V5C6 3.34315 7.34315 2 9 2H15C16.6569 2 18 3.34315 18 5V6" stroke="#C3BC9F" strokeWidth="1.6" strokeLinecap="round"/>
-    <path d="M3 8C3 6.89543 3.89543 6 5 6H19C20.1046 6 21 6.89543 21 8V19C21 20.6569 19.6569 22 18 22H6C4.34315 22 3 20.6569 3 19V8Z" fill="#C3BC9F" stroke="#C3BC9F" strokeWidth="1.6"/>
-    <path d="M9 10V11C9 12.6569 10.3431 14 12 14C13.6569 14 15 12.6569 15 11V10" stroke="#F0EDE1" strokeWidth="1.6" strokeLinecap="round"/>
+    <path d="M6 6V5C6 3.34315 7.34315 2 9 2H15C16.6569 2 18 3.34315 18 5V6" stroke="#C3BC9F" strokeWidth="1.6" strokeLinecap="round" />
+    <path d="M3 8C3 6.89543 3.89543 6 5 6H19C20.1046 6 21 6.89543 21 8V19C21 20.6569 19.6569 22 18 22H6C4.34315 22 3 20.6569 3 19V8Z" fill="#C3BC9F" stroke="#C3BC9F" strokeWidth="1.6" />
+    <path d="M9 10V11C9 12.6569 10.3431 14 12 14C13.6569 14 15 12.6569 15 11V10" stroke="#F0EDE1" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
 
@@ -72,6 +72,15 @@ interface ProductsContentProps {
  */
 export function ProductsContent({ categories, products, backgroundImage }: ProductsContentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // 组件加载后自动展开，实现"导航栏先收起，抽屉再下拉"的动画序列
+  useEffect(() => {
+    // 稍微延迟一点，确保初始导航栏是可见状态
+    const timer = setTimeout(() => {
+      setIsExpanded(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
@@ -128,6 +137,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
             "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
             isExpanded ? "opacity-100" : "opacity-0"
           )}
+          style={{ transitionDelay: isExpanded ? "400ms" : "0ms" }}
         />
       </div>
 
@@ -148,12 +158,21 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
             {/* 主内容区域 - 抽屉 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              initial={{ height: 0, flexGrow: 0 }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
                 height: !isExpanded ? 0 : "auto"
               }}
-              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+              transition={{
+                duration: 1,
+                ease: [0.22, 1, 0.36, 1],
+                // 展开时延迟0.4s等待导航栏收起（大幅重叠以消除视觉间隔）；收起时不延迟
+                delay: isExpanded ? 0.4 : 0
+              }}
             >
+              {/* 矿物纹理覆盖层 */}
+              <div className="texture-overlay absolute inset-0" />
+
               {/* 装饰线条 */}
               <AnimatePresence>
                 {isExpanded && (
@@ -222,12 +241,12 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                   <div className="flex items-center gap-4 lg:gap-5">
                     <Link href="/login" className="text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
                       <svg viewBox="0 0 24 24" className="h-5 w-5 lg:h-6 lg:w-6" fill="currentColor">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                       </svg>
                     </Link>
                     <Link href="/cart" className="text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
                       <svg viewBox="0 0 24 24" className="h-5 w-5 lg:h-6 lg:w-6" fill="currentColor">
-                        <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+                        <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" />
                       </svg>
                     </Link>
                   </div>
@@ -406,7 +425,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
             className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
             role="banner"
           >
