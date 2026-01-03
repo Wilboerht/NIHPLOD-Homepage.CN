@@ -195,58 +195,55 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                 )}
               >
                 {/* ========== 移动端布局 - 参考 About us 移动端.html ========== */}
-                <div className="flex h-full flex-col sm:hidden">
-                  {/* 移动端顶部 Header - Logo 居中 */}
-                  <AnimatePresence mode="wait">
-                    {isExpanded && (
-                      <m.header
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex justify-center py-8"
-                      >
-                        <div className="relative h-8 w-28">
-                          <Image
-                            src="/images/logo.png"
-                            alt="NIHPLOD Logo"
-                            fill
-                            className="object-contain brightness-[0.2]"
-                          />
-                        </div>
-                      </m.header>
-                    )}
-                  </AnimatePresence>
+                <div className="relative flex h-full flex-col overflow-y-auto font-sans sm:hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* Background Texture Overlay */}
+                  <div
+                    className="pointer-events-none fixed inset-0 z-[1] opacity-[0.04]"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+                    }}
+                  />
 
-                  {/* 移动端导航栏 - 水平排列，带边框 */}
-                  <AnimatePresence mode="wait">
-                    {isExpanded && (
-                      <m.nav
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex justify-around border-y border-[#00263e]/15 bg-[#F0EDE1] px-[5%] py-4"
+                  {/* Skeletal Lines */}
+                  <div className="pointer-events-none fixed left-[5%] top-0 z-10 h-full w-px bg-[#00263e]/15" />
+                  <div className="pointer-events-none fixed right-[5%] top-0 z-10 h-full w-px bg-[#00263e]/15" />
+
+                  {/* Header - Sticky Top */}
+                  <header className="sticky top-0 z-50 flex justify-center bg-[#F0EDE1] py-10 pb-5">
+                    <div className="relative h-8 w-32">
+                      <Image
+                        src="/images/logo.png"
+                        alt="NIHPLOD Logo"
+                        fill
+                        className="object-contain brightness-[0.2]"
+                      />
+                    </div>
+                  </header>
+
+                  {/* Navigation - Sticky below Header */}
+                  <nav className="sticky top-[72px] z-40 flex justify-around border-y border-[#00263e]/15 bg-[#F0EDE1] px-[5%] py-3">
+                    {navItems.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setActiveSection(item.id)}
+                        className="relative"
                       >
-                        {navItems.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setActiveSection(item.id)}
-                            className={cn(
-                              "text-xs uppercase tracking-[2px] text-[#00263e] transition-opacity duration-300",
-                              activeSection === item.id ? "font-medium opacity-100" : "opacity-50"
-                            )}
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </m.nav>
-                    )}
-                  </AnimatePresence>
+                        <span
+                          className={cn(
+                            "text-[11px] font-semibold uppercase tracking-[0.15em] transition-all duration-600",
+                            activeSection === item.id ? "text-[#00263e] opacity-100" : "text-[#00263e] opacity-50"
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                      </button>
+                    ))}
+                  </nav>
 
                   {/* 移动端内容区域 - 垂直滚动 */}
-                  <div className="flex-1 overflow-y-auto px-[8%] py-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* Main Content Area */}
+                  <div className="relative z-20 min-h-[80vh] px-[8%] py-[60px]">
                     <AnimatePresence mode="wait">
                       {/* 移动端 Section 1: 品牌故事 */}
                       {activeSection === "story" && (
@@ -258,12 +255,12 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           transition={{ duration: 0.6, ease: "easeOut" }}
                           className="min-h-[80vh]"
                         >
-                          <h2 className="relative mb-10 inline-block text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
                             Brand Story
                           </h2>
 
                           {/* 第一个内容块 */}
-                          <div className="mb-[60px]">
+                          <div className="mb-12">
                             <div className="relative my-5 w-full overflow-hidden border border-[#00263e]/15">
                               <Image
                                 src="/images/story/dolphin-ocean.png"
@@ -273,16 +270,23 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                                 className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
                               />
                             </div>
-                            <span className="mt-[25px] block text-[18px] font-normal leading-[1.4] text-[#00263e]">
+                            <span className="mt-6 block text-[18px] font-normal leading-snug text-[#00263e]">
                               来自大自然的神奇修复力
                             </span>
-                            <p className="mt-5 text-[14px] font-light leading-[1.6] text-[#00263e] text-justify">
+                            <p className="mt-4 text-[15px] font-light leading-relaxed tracking-wide text-[#00263e] text-justify">
                               海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
                             </p>
+
+                            {/* Word Play Animation */}
+                            <div className="mt-10 border-y border-[#00263e]/15 py-[30px] text-center">
+                              <span className="block text-[20px] tracking-[0.4em] text-[#00263e]">DOLPHIN</span>
+                              <span className="my-2.5 block text-[10px] opacity-50">REVERSED TO</span>
+                              <span className="block text-[20px] font-semibold tracking-[0.4em] text-[#00263e]">NIHPLOD</span>
+                            </div>
                           </div>
 
                           {/* 第二个内容块 */}
-                          <div className="mb-[60px]">
+                          <div className="mb-12">
                             <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
                               2008 | 摩纳哥 | 联合实验室公司
                             </span>
@@ -295,10 +299,10 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                                 className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
                               />
                             </div>
-                            <span className="mt-[25px] block text-[18px] font-normal leading-[1.4] text-[#00263e]">
+                            <span className="mt-6 block text-[18px] font-normal leading-snug text-[#00263e]">
                               前沿科技赋能精简护理
                             </span>
-                            <p className="mt-5 text-[14px] font-light leading-[1.6] text-[#00263e] text-justify">
+                            <p className="mt-4 text-[15px] font-light leading-relaxed tracking-wide text-[#00263e] text-justify">
                               创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
                             </p>
                           </div>
@@ -315,11 +319,11 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           transition={{ duration: 0.6, ease: "easeOut" }}
                           className="min-h-[80vh]"
                         >
-                          <h2 className="relative mb-10 inline-block text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
                             Our Mission
                           </h2>
 
-                          <div className="mb-[60px]">
+                          <div className="mb-12">
                             <div className="relative my-5 h-[450px] w-full overflow-hidden border border-[#00263e]/15">
                               <Image
                                 src="/images/story/mission-image.png?v=2"
@@ -328,7 +332,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                                 className="object-cover object-top"
                               />
                             </div>
-                            <p className="mt-[30px] text-[16px] font-light leading-[1.6] text-[#00263e]">
+                            <p className="mt-8 text-[16px] font-light leading-relaxed tracking-wide text-[#00263e]">
                               旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                             </p>
                             <span className="mt-[25px] block text-[18px] font-normal leading-[1.4] text-[#6a7c88]">
@@ -356,7 +360,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           transition={{ duration: 0.6, ease: "easeOut" }}
                           className="min-h-[80vh]"
                         >
-                          <h2 className="relative mb-10 inline-block text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
                             Philosophy
                           </h2>
 
@@ -369,8 +373,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                             ].map((item) => (
                               <div key={item.num} className="border-l border-[#00263e]/15 pl-5">
                                 <span className="-mb-5 block text-[40px] font-light text-[#00263e]/10">{item.num}</span>
-                                <span className="mb-2.5 block text-[14px] font-semibold tracking-[0.1em] text-[#00263e]">{item.title}</span>
-                                <p className="text-[14px] font-light leading-[1.6] text-[#00263e]">{item.desc}</p>
+                                <span className="mb-2.5 block text-[15px] font-semibold tracking-[0.1em] text-[#00263e]">{item.title}</span>
+                                <p className="text-[15px] font-light leading-relaxed text-[#00263e]">{item.desc}</p>
                               </div>
                             ))}
                           </div>
@@ -387,11 +391,10 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                           transition={{ duration: 0.6, ease: "easeOut" }}
                           className="min-h-[80vh]"
                         >
-                          <h2 className="relative mb-10 inline-block text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
+                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-light uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[30px] after:bg-[#00263e]">
                             Recognition
                           </h2>
-
-                          <div className="mb-[60px]">
+                          <div className="mb-12">
                             {/* 奖项列表 */}
                             <ul className="list-none">
                               {[
@@ -404,8 +407,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                                   key={idx}
                                   className="flex items-center justify-between border-b border-[#00263e]/15 py-5"
                                 >
-                                  <span className="text-[14px] text-[#00263e]">{award.title}</span>
-                                  <span className="text-[12px] text-[#00263e]/40">{award.year}</span>
+                                  <span className="text-[15px] text-[#00263e]">{award.title}</span>
+                                  <span className="text-[13px] text-[#00263e]/40">{award.year}</span>
                                 </li>
                               ))}
                             </ul>
@@ -420,6 +423,12 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                         </m.section>
                       )}
                     </AnimatePresence>
+
+                    {/* Footer - Global for Mobile */}
+                    <footer className="mt-[60px] border-t border-[#00263e]/15 pt-[40px] text-center text-[10px] tracking-[0.1em] text-[#00263e] opacity-50">
+                      NIHPLOD LABORATORIES © 2024<br />
+                      PRECISION SKINCARE FROM MONACO
+                    </footer>
                   </div>
                 </div>
 
@@ -461,12 +470,14 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
                             >
                               {item.label}
                               {/* 下划线指示器 */}
-                              <span
-                                className={cn(
-                                  "absolute bottom-0 left-0 h-px bg-[#00263e] transition-all duration-500",
-                                  activeSection === item.id ? "w-full" : "w-0"
-                                )}
-                              />
+                              {activeSection === item.id && (
+                                <m.div
+                                  layout
+                                  layoutId="activeTabIndicator"
+                                  className="absolute bottom-0 left-0 h-px w-full bg-[#00263e]"
+                                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                />
+                              )}
                             </button>
                           ))}
                         </div>
@@ -679,189 +690,195 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
               </m.div>
             </button>
           </div>
-        </m.div>
-      </m.div>
+        </m.div >
+      </m.div >
 
       {/* 移动端菜单遮罩层 */}
       <AnimatePresence>
-        {isNavMenuOpen && !isExpanded && (
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm sm:hidden"
-            onClick={() => setIsNavMenuOpen(false)}
-          />
-        )}
-      </AnimatePresence>
+        {
+          isNavMenuOpen && !isExpanded && (
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm sm:hidden"
+              onClick={() => setIsNavMenuOpen(false)}
+            />
+          )
+        }
+      </AnimatePresence >
 
       {/* 移动端弹出菜单 */}
       <AnimatePresence>
-        {isNavMenuOpen && !isExpanded && (
-          <m.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed bottom-20 right-3 z-50 w-44 rounded-2xl bg-white/95 p-2 shadow-xl backdrop-blur-md sm:hidden"
-          >
-            <div className="flex flex-col gap-1">
-              {/* 首页 */}
-              <Link
-                href="/"
-                onClick={() => setIsNavMenuOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                  <HomeIcon className="h-5 w-5" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-brand-charcoal">首页</span>
-                  <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">Home</span>
-                </div>
-              </Link>
-              {/* 其他导航项 */}
-              {bottomNavItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsNavMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
-                      <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">{item.labelEn}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </m.div>
-        )}
-      </AnimatePresence>
-
-      {/* 底部导航栏 - 收起时显示 */}
-      <AnimatePresence>
-        {!isExpanded && (
-          <m.header
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{
-              duration: 1.2,
-              ease: [0.22, 1, 0.36, 1]
-            }}
-            className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
-            role="banner"
-          >
-            <nav
-              className={cn(
-                "flex items-center justify-between",
-                "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
-                "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
-              )}
-              aria-label="品牌故事页导航"
+        {
+          isNavMenuOpen && !isExpanded && (
+            <m.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="fixed bottom-20 right-3 z-50 w-44 rounded-2xl bg-white/95 p-2 shadow-xl backdrop-blur-md sm:hidden"
             >
-              {/* 左侧主导航 - 关于旎柏 */}
-              <Link
-                href="/story"
-                className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:gap-4 sm:hover:opacity-80"
-              >
-                {/* 图标容器 */}
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
-                  <StoryNavIcon className="h-6 w-6 sm:h-10 sm:w-10 lg:h-14 lg:w-14" />
-                </div>
-                {/* 文字 */}
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">
-                    关于旎柏
-                  </span>
-                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">
-                    Story
-                  </span>
-                </div>
-              </Link>
-
-              {/* 移动端：菜单按钮 */}
-              <button
-                type="button"
-                onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
-                className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-beige/30 transition-colors active:bg-brand-beige/50 sm:hidden"
-                aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
-              >
-                <AnimatePresence mode="wait" initial={false}>
-                  {isNavMenuOpen ? (
-                    <m.div
-                      key="close"
-                      initial={{ opacity: 0, rotate: -90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: 90 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <X className="h-5 w-5 text-brand-charcoal" />
-                    </m.div>
-                  ) : (
-                    <m.div
-                      key="menu"
-                      initial={{ opacity: 0, rotate: 90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: -90 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <Menu className="h-5 w-5 text-brand-charcoal" />
-                    </m.div>
-                  )}
-                </AnimatePresence>
-              </button>
-
-              {/* 平板/桌面端：直接显示导航图标 */}
-              <div className="hidden items-center gap-5 sm:flex lg:gap-8">
+              <div className="flex flex-col gap-1">
+                {/* 首页 */}
+                <Link
+                  href="/"
+                  onClick={() => setIsNavMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
+                    <HomeIcon className="h-5 w-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-brand-charcoal">首页</span>
+                    <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">Home</span>
+                  </div>
+                </Link>
+                {/* 其他导航项 */}
                 {bottomNavItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
+                      onClick={() => setIsNavMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
                     >
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
-                        <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
+                        <Icon className="h-5 w-5" />
                       </div>
-                      <span className="text-xs text-brand-charcoal/70 lg:text-sm">
-                        {item.label}
-                      </span>
-                      <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
-                        {item.labelEn}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
+                        <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">{item.labelEn}</span>
+                      </div>
                     </Link>
                   );
                 })}
-                {/* 回到首页按钮 */}
-                <Link
-                  href="/"
-                  className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
-                >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
-                    <HomeIcon className="h-8 w-8 lg:h-9 lg:w-9" />
-                  </div>
-                  <span className="text-xs text-brand-charcoal/70 lg:text-sm">
-                    首页
-                  </span>
-                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
-                    Home
-                  </span>
-                </Link>
               </div>
-            </nav>
-          </m.header>
-        )}
-      </AnimatePresence>
+            </m.div>
+          )
+        }
+      </AnimatePresence >
+
+      {/* 底部导航栏 - 收起时显示 */}
+      <AnimatePresence>
+        {
+          !isExpanded && (
+            <m.header
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{
+                duration: 1.2,
+                ease: [0.22, 1, 0.36, 1]
+              }}
+              className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
+              role="banner"
+            >
+              <nav
+                className={cn(
+                  "flex items-center justify-between",
+                  "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
+                  "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
+                )}
+                aria-label="品牌故事页导航"
+              >
+                {/* 左侧主导航 - 关于旎柏 */}
+                <Link
+                  href="/story"
+                  className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:gap-4 sm:hover:opacity-80"
+                >
+                  {/* 图标容器 */}
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+                    <StoryNavIcon className="h-6 w-6 sm:h-10 sm:w-10 lg:h-14 lg:w-14" />
+                  </div>
+                  {/* 文字 */}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">
+                      关于旎柏
+                    </span>
+                    <span className="font-serif text-[10px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">
+                      Story
+                    </span>
+                  </div>
+                </Link>
+
+                {/* 移动端：菜单按钮 */}
+                <button
+                  type="button"
+                  onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-beige/30 transition-colors active:bg-brand-beige/50 sm:hidden"
+                  aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
+                >
+                  <AnimatePresence mode="wait" initial={false}>
+                    {isNavMenuOpen ? (
+                      <m.div
+                        key="close"
+                        initial={{ opacity: 0, rotate: -90 }}
+                        animate={{ opacity: 1, rotate: 0 }}
+                        exit={{ opacity: 0, rotate: 90 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <X className="h-5 w-5 text-brand-charcoal" />
+                      </m.div>
+                    ) : (
+                      <m.div
+                        key="menu"
+                        initial={{ opacity: 0, rotate: 90 }}
+                        animate={{ opacity: 1, rotate: 0 }}
+                        exit={{ opacity: 0, rotate: -90 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <Menu className="h-5 w-5 text-brand-charcoal" />
+                      </m.div>
+                    )}
+                  </AnimatePresence>
+                </button>
+
+                {/* 平板/桌面端：直接显示导航图标 */}
+                <div className="hidden items-center gap-5 sm:flex lg:gap-8">
+                  {bottomNavItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
+                      >
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
+                          <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
+                        </div>
+                        <span className="text-xs text-brand-charcoal/70 lg:text-sm">
+                          {item.label}
+                        </span>
+                        <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
+                          {item.labelEn}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                  {/* 回到首页按钮 */}
+                  <Link
+                    href="/"
+                    className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
+                      <HomeIcon className="h-8 w-8 lg:h-9 lg:w-9" />
+                    </div>
+                    <span className="text-xs text-brand-charcoal/70 lg:text-sm">
+                      首页
+                    </span>
+                    <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
+                      Home
+                    </span>
+                  </Link>
+                </div>
+              </nav>
+            </m.header>
+          )
+        }
+      </AnimatePresence >
     </>
   );
 }
