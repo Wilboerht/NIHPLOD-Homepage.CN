@@ -66,6 +66,8 @@ export const RATE_LIMIT_PRESETS = {
   advisor: { maxRequests: 30, windowMs: 60 * 1000 },
   /** 面部分析限制 - 严格 */
   "face-analyze": { maxRequests: 5, windowMs: 60 * 60 * 1000 },
+  /** 综合分析限制 - 严格，与面部分析一致 */
+  "comprehensive-analyze": { maxRequests: 5, windowMs: 60 * 60 * 1000 },
   /** 表单提交限制 */
   form: { maxRequests: 10, windowMs: 60 * 1000 },
   /** 登录限制 - 防暴力破解 */

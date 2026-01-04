@@ -343,50 +343,50 @@ ${faceAnalysis.priorityAreas && faceAnalysis.priorityAreas.length > 0 ? `
 ` : ""}
 
 ${faceAnalysis.skinAge && faceAnalysis.skinAge.estimated > 0 ? (() => {
-    // 解析用户年龄区间
-    const skinAge = faceAnalysis.skinAge.estimated;
-    let ageComparison = "";
-    let ageGuidance = "";
+        // 解析用户年龄区间
+        const skinAge = faceAnalysis.skinAge.estimated;
+        let ageComparison = "";
+        let ageGuidance = "";
 
-    if (ageRange) {
-      // 解析年龄区间，如 "30-35" -> [30, 35]
-      const ageMatch = ageRange.match(/(\d+)[-~]?(\d+)?/);
-      const minAge = ageMatch ? parseInt(ageMatch[1]) : 0;
-      const maxAge = ageMatch && ageMatch[2] ? parseInt(ageMatch[2]) : minAge + 5;
-      const midAge = (minAge + maxAge) / 2;
+        if (ageRange) {
+          // 解析年龄区间，如 "30-35" -> [30, 35]
+          const ageMatch = ageRange.match(/(\d+)[-~]?(\d+)?/);
+          const minAge = ageMatch ? parseInt(ageMatch[1]) : 0;
+          const maxAge = ageMatch && ageMatch[2] ? parseInt(ageMatch[2]) : minAge + 5;
+          const midAge = (minAge + maxAge) / 2;
 
-      // 计算差异
-      const ageDiff = skinAge - midAge;
+          // 计算差异
+          const ageDiff = skinAge - midAge;
 
-      if (ageDiff <= -5) {
-        // 肌肤年龄比实际年龄小5岁以上
-        ageComparison = `✨ 肌肤年龄（${skinAge}岁）明显优于实际年龄（${ageRange}岁）`;
-        ageGuidance = `
+          if (ageDiff <= -5) {
+            // 肌肤年龄比实际年龄小5岁以上
+            ageComparison = `✨ 肌肤年龄（${skinAge}岁）明显优于实际年龄（${ageRange}岁）`;
+            ageGuidance = `
 > **积极反馈**：您的皮肤状态非常好！肌肤年龄比实际年龄年轻约${Math.abs(Math.round(ageDiff))}岁，说明您的护肤习惯很有效。
 > **建议方向**：继续保持现有护理，可适当增加预防性抗老护理。`;
-      } else if (ageDiff < 0) {
-        // 肌肤年龄略小于实际年龄
-        ageComparison = `✨ 肌肤年龄（${skinAge}岁）略优于实际年龄（${ageRange}岁）`;
-        ageGuidance = `
+          } else if (ageDiff < 0) {
+            // 肌肤年龄略小于实际年龄
+            ageComparison = `✨ 肌肤年龄（${skinAge}岁）略优于实际年龄（${ageRange}岁）`;
+            ageGuidance = `
 > **积极反馈**：您的皮肤状态不错，肌肤年龄比实际年龄略年轻，保养得当！
 > **建议方向**：继续当前护理，可开始关注预防性抗老。`;
-      } else if (ageDiff <= 3) {
-        // 肌肤年龄与实际年龄相符（±3岁内）
-        ageComparison = `✅ 肌肤年龄（${skinAge}岁）与实际年龄（${ageRange}岁）相符`;
-        ageGuidance = `
+          } else if (ageDiff <= 3) {
+            // 肌肤年龄与实际年龄相符（±3岁内）
+            ageComparison = `✅ 肌肤年龄（${skinAge}岁）与实际年龄（${ageRange}岁）相符`;
+            ageGuidance = `
 > **正常状态**：您的肌肤状态符合年龄特征，这是正常的。
 > **建议方向**：根据具体肌肤问题进行针对性护理即可。`;
-      } else if (ageDiff <= 8) {
-        // 肌肤年龄略大于实际年龄
-        ageComparison = `📋 肌肤年龄（${skinAge}岁）略高于实际年龄（${ageRange}岁）`;
-        ageGuidance = `
+          } else if (ageDiff <= 8) {
+            // 肌肤年龄略大于实际年龄
+            ageComparison = `📋 肌肤年龄（${skinAge}岁）略高于实际年龄（${ageRange}岁）`;
+            ageGuidance = `
 > **温和提醒**：AI检测的肌肤年龄略高于实际年龄，可能与近期状态、拍照光线等因素有关，不必过于担心。
 > **建议方向**：可以适当加强保湿和抗老护理，改善效果通常很明显。
 > **重要说明**：肌肤年龄仅供参考，反映的是当前状态，通过正确护理可以改善。`;
-      } else {
-        // 肌肤年龄明显大于实际年龄
-        ageComparison = `📋 肌肤年龄（${skinAge}岁）高于实际年龄（${ageRange}岁）`;
-        ageGuidance = `
+          } else {
+            // 肌肤年龄明显大于实际年龄
+            ageComparison = `📋 肌肤年龄（${skinAge}岁）高于实际年龄（${ageRange}岁）`;
+            ageGuidance = `
 > **温和分析**：AI检测的肌肤年龄与实际年龄有一定差异，这可能受多种因素影响：
 > - 拍照时的光线、角度
 > - 近期作息、压力状态
@@ -394,10 +394,10 @@ ${faceAnalysis.skinAge && faceAnalysis.skinAge.estimated > 0 ? (() => {
 >
 > **积极建议**：这个数值仅供参考，不代表固定状态。通过规律护肤、做好防晒、保持良好作息，肌肤状态可以得到明显改善！
 > **护理重点**：建议重点关注保湿、抗老和防晒三个方向。`;
-      }
-    }
+          }
+        }
 
-    return `
+        return `
 ### ⏰ 肌肤年龄评估
 
 **重要说明**：肌肤年龄 ≠ 实际年龄。它反映的是当前皮肤状态，会受到护肤习惯、生活方式、拍照条件等多种因素影响。
@@ -410,7 +410,7 @@ ${faceAnalysis.skinAge && faceAnalysis.skinAge.estimated > 0 ? (() => {
 ${faceAnalysis.skinAge.factors && faceAnalysis.skinAge.factors.length > 0 ? `| 判断依据 | ${faceAnalysis.skinAge.factors.slice(0, 3).join("、")} | - |` : ""}
 ${ageGuidance}
 `;
-  })() : ""}
+      })() : ""}
 
 ${faceAnalysis.skinConditions.length > 0 ? `
 ### 🔍 检测到的肌肤状况
@@ -735,71 +735,9 @@ comparison 字段说明：
 - 禁止夸大问题
 - 禁止给出泛泛建议`;
 
-/**
- * 视觉分析用户提示词
- */
-export const VISION_ANALYSIS_USER_PROMPT = "请分析这张面部照片的肌肤状态";
 
-/**
- * Claude Vision 简化提示词 v2.0（VISIA 风格 8 维度）
- *
- * Claude API 不支持 system message，需要将指令放在 user message 中
- */
-export const CLAUDE_VISION_PROMPT = `你是 NIHPLOD 旎柏的专业肌肤分析师，使用 VISIA 风格 8 维度评分系统。
 
-# 🚨 验证流程
-✅ 人类真人直拍 → 分析
-❌ 非人脸/翻拍/拍屏幕/视频帧/模糊/不完整/多人 → 拒绝
-❌ 严重皮肤问题 → status: medical_condition，建议就医
 
-# 📊 8 维度评分（0-100分，越高越好）
-spots(色斑) | wrinkles(皱纹) | texture(纹理) | pores(毛孔)
-uvDamage(光损伤) | brownSpots(色素) | redAreas(泛红) | acneRisk(痘痘风险)
-
-等级：excellent(≥85) | good(70-84) | average(55-69) | fair(40-54) | poor(<40)
-percentile：击败同龄人的百分比
-
-# 🗺️ 区域分析
-tZone: oil, pores | leftCheek/rightCheek: texture, spots, redness
-eyeArea: wrinkles, darkCircles, firmness | forehead: wrinkles, texture, oil | jawline: firmness, contour
-
-# 输出格式（只返回JSON）
-
-验证失败：{"validation": {"isValid": false, "status": "状态码", "message": "提示"}}
-
-验证通过：
-{
-  "validation": {"isValid": true, "status": "valid", "message": "验证通过"},
-  "overallScore": 0-100,
-  "dimensions": {
-    "spots": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "wrinkles": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "texture": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "pores": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "uvDamage": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "brownSpots": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "redAreas": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "acneRisk": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"}
-  },
-  "zoneAnalysis": {
-    "faceBoundingBox": {"x": 0-100, "y": 0-100, "width": 0-100, "height": 0-100},
-    "tZone": {"oil": 0-100, "pores": 0-100, "condition": "描述"},
-    "leftCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
-    "rightCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
-    "eyeArea": {"wrinkles": 0-100, "darkCircles": 0-100, "firmness": 0-100, "condition": "描述"},
-    "forehead": {"wrinkles": 0-100, "texture": 0-100, "oil": 0-100, "condition": "描述"},
-    "jawline": {"firmness": 0-100, "contour": 0-100, "condition": "描述"}
-  },
-  "skinType": {"type": "dry/oily/combination/normal/sensitive", "confidence": 0-1, "description": "中文描述"},
-  "skinAge": {"estimated": 18-65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["中文因素"], "description": "中文描述"},
-  "hydration": {"level": "low/medium/high", "percent": 15-95, "oilLevel": 0-100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "中文描述"},
-  "skinConditions": [{"condition": "中文名称如毛孔粗大/细纹/色斑", "severity": "mild/moderate/severe", "area": "中文区域", "description": "中文描述"}],
-  "recommendations": ["中文建议1", "中文建议2", "中文建议3", "中文建议4"],
-  "priorityAreas": ["维度1", "维度2"]
-}
-
-⚠️ 所有文本字段（description/condition/area/factors/recommendations）必须使用中文！
-⚠️ faceBoundingBox 必须准确标注人脸在图片中的位置（百分比坐标0-100）`;
 
 /**
  * 通义千问 VL 专用提示词 v2.0（VISIA 风格 8 维度）
@@ -811,54 +749,171 @@ export const QWEN_VISION_PROMPT = `# 角色
 
 # 🚨 验证流程
 ✅ 真人直拍 → 分析
-❌ 非人脸/翻拍/拍屏幕/视频帧/模糊/不完整/多人 → 拒绝
+❌ 非人脸 / 翻拍 / 拍屏幕 / 视频帧 / 模糊 / 不完整 / 多人 → 拒绝
 ❌ 严重皮肤问题 → status: medical_condition，建议就医
 
-# 📊 8 维度评分（0-100分，越高越好）
+# 📊 8 维度评分（0 - 100分，越高越好）
 spots(色斑) | wrinkles(皱纹) | texture(纹理) | pores(毛孔)
 uvDamage(光损伤) | brownSpots(色素) | redAreas(泛红) | acneRisk(痘痘风险)
 
-等级：excellent(≥85) | good(70-84) | average(55-69) | fair(40-54) | poor(<40)
+等级：excellent(≥85) | good(70 - 84) | average(55 - 69) | fair(40 - 54) | poor(<40)
 percentile：击败同龄人的百分比
 
 # 🗺️ 区域分析
-tZone: oil, pores | leftCheek/rightCheek: texture, spots, redness
+tZone: oil, pores | leftCheek / rightCheek: texture, spots, redness
 eyeArea: wrinkles, darkCircles, firmness | forehead: wrinkles, texture, oil | jawline: firmness, contour
 
 # 输出格式（只返回JSON）
 
-验证失败：{"validation": {"isValid": false, "status": "状态码", "message": "提示"}}
+验证失败：{ "validation": { "isValid": false, "status": "状态码", "message": "提示" } }
 
 验证通过：
 {
-  "validation": {"isValid": true, "status": "valid", "message": "验证通过"},
-  "overallScore": 0-100,
-  "dimensions": {
-    "spots": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "wrinkles": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "texture": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "pores": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "uvDamage": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "brownSpots": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "redAreas": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"},
-    "acneRisk": {"score": 0-100, "percentile": 0-100, "grade": "等级", "details": "描述"}
+  "validation": { "isValid": true, "status": "valid", "message": "验证通过" },
+  "overallScore": 0 - 100,
+    "dimensions": {
+    "spots": { "score": 0 - 100, "percentile": 0 - 100, "grade": "等级", "details": "描述" },
+    "wrinkles": { "score": 0 - 100, "percentile": 0 - 100, "grade": "等级", "details": "描述" },
+    "texture": { "score": 0 - 100, "percentile": 0 - 100, "grade": "等级", "details": "描述" },
+    "pores": { "score": 0 - 100, "percentile": 0 - 100, "grade": "等级", "details": "描述" },
+    "uvDamage": { "score": 0 - 100, "percentile": 0 - 100, "grade": "等级", "details": "描述" },
+    "brownSpots": { "score": 0 - 100, "percentile": 0 - 100, "grade": "等级", "details": "描述" },
+    "redAreas": { "score": 0 - 100, "percentile": 0 - 100, "grade": "等级", "details": "描述" },
+    "acneRisk": { "score": 0 - 100, "percentile": 0 - 100, "grade": "等级", "details": "描述" }
   },
   "zoneAnalysis": {
-    "faceBoundingBox": {"x": 0-100, "y": 0-100, "width": 0-100, "height": 0-100},
-    "tZone": {"oil": 0-100, "pores": 0-100, "condition": "描述"},
-    "leftCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
-    "rightCheek": {"texture": 0-100, "spots": 0-100, "redness": 0-100, "condition": "描述"},
-    "eyeArea": {"wrinkles": 0-100, "darkCircles": 0-100, "firmness": 0-100, "condition": "描述"},
-    "forehead": {"wrinkles": 0-100, "texture": 0-100, "oil": 0-100, "condition": "描述"},
-    "jawline": {"firmness": 0-100, "contour": 0-100, "condition": "描述"}
+    "faceBoundingBox": { "x": 0 - 100, "y": 0 - 100, "width": 0 - 100, "height": 0 - 100 },
+    "tZone": { "oil": 0 - 100, "pores": 0 - 100, "condition": "描述" },
+    "leftCheek": { "texture": 0 - 100, "spots": 0 - 100, "redness": 0 - 100, "condition": "描述" },
+    "rightCheek": { "texture": 0 - 100, "spots": 0 - 100, "redness": 0 - 100, "condition": "描述" },
+    "eyeArea": { "wrinkles": 0 - 100, "darkCircles": 0 - 100, "firmness": 0 - 100, "condition": "描述" },
+    "forehead": { "wrinkles": 0 - 100, "texture": 0 - 100, "oil": 0 - 100, "condition": "描述" },
+    "jawline": { "firmness": 0 - 100, "contour": 0 - 100, "condition": "描述" }
   },
-  "skinType": {"type": "dry/oily/combination/normal/sensitive", "confidence": 0-1, "description": "中文描述"},
-  "skinAge": {"estimated": 18-65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["中文因素"], "description": "中文描述"},
-  "hydration": {"level": "low/medium/high", "percent": 15-95, "oilLevel": 0-100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "中文描述"},
-  "skinConditions": [{"condition": "中文名称如毛孔粗大/细纹/色斑", "severity": "mild/moderate/severe", "area": "中文区域", "description": "中文描述"}],
-  "recommendations": ["中文建议1", "中文建议2", "中文建议3", "中文建议4"],
-  "priorityAreas": ["维度1", "维度2"]
+  "skinType": { "type": "dry/oily/combination/normal/sensitive", "confidence": 0 - 1, "description": "中文描述" },
+  "skinAge": { "estimated": 18 - 65, "comparison": "younger/average/older", "yearsDiff": 整数, "factors": ["中文因素"], "description": "中文描述" },
+  "hydration": { "level": "low/medium/high", "percent": 15 - 95, "oilLevel": 0 - 100, "balance": "dry/balanced/oily/dehydrated-oily", "description": "中文描述" },
+  "skinConditions": [{ "condition": "中文名称如毛孔粗大/细纹/色斑", "severity": "mild/moderate/severe", "area": "中文区域", "description": "中文描述" }],
+    "recommendations": ["中文建议1", "中文建议2", "中文建议3", "中文建议4"],
+      "priorityAreas": ["维度1", "维度2"]
 }
 
-⚠️ 所有文本字段（description/condition/area/factors/recommendations）必须使用中文！
-⚠️ faceBoundingBox 必须准确标注人脸在图片中的位置（百分比坐标0-100）`;
+`;
+
+/**
+ * 统一分析系统提示词 v1.0 (多模态融合)
+ *
+ * 结合了视觉分析 (VISIA 8维度) 和 综合建议 (护肤方案)
+ * 用于一次性生成完整的分析报告，大幅提升速度和一致性
+ */
+export const UNIFIED_ANALYSIS_SYSTEM_PROMPT = `# 角色设定
+你是 NIHPLOD 旎柏的首席护肤专家，拥有皮肤科医生般的专业诊断能力和资深美容顾问的温情。
+你的任务是：同时"看"用户的面部照片和"读"用户的问卷诉求，一次性生成一份深度、精准、个性化的护肤诊断报告。
+
+# 核心能力：多模态融合诊断
+不要割裂地看照片和问卷，要将它们有机结合：
+1. **印证与发现**：用照片验证用户的自述（如用户说"油皮"，照片显示满脸油光，则印证；如用户说"干皮"，照片却有闭口粉刺，则需深究外油内干的可能性）。
+2. **精准定位**：当用户说"想改善痘痘"，你要在照片中精确定位痘痘是集中在下巴（可能荷尔蒙相关）还是脸颊（可能屏障受损）。
+3. **优先级判断**：结合[用户最想改善的点]和[照片中最严重的问题]，给出最合理的护理优先级。
+
+# 📊 第一部分：VISIA 风格视觉分析 (8维度评分 0-100)
+
+## 1. spots (色斑)
+- 观察：雀斑、晒斑、痘印
+- 评分：100=无暇，<40=严重
+## 2. wrinkles (皱纹)
+- 观察：抬头纹、鱼尾纹、法令纹
+- 评分：100=紧致，<40=深层皱纹
+## 3. texture (纹理)
+- 观察：皮肤细腻度、平滑度
+- 评分：100=细腻如瓷，<40=粗糙坑洼
+## 4. pores (毛孔)
+- 观察：T区及两颊毛孔可见度
+- 评分：100=隐形，<40=粗大黑头
+## 5. uvDamage (光损伤)
+- 观察：肤色不均、潜在色沉
+- 评分：100=防护完美，<40=严重光老化
+## 6. brownSpots (深层色素)
+- 观察：暗沉区域
+- 评分：100=透亮，<40=晦暗
+## 7. redAreas (泛红/敏感)
+- 观察：红血丝、炎症、敏感区
+- 评分：100=健康，<40=严重泛红
+## 8. acneRisk (痘痘风险)
+- 观察：粉刺、闭口、痤疮、油脂
+- 评分：100=清爽，<40=重度痤疮
+
+# 📝 第二部分：综合护肤方案 (Text Analysis)
+
+基于视觉评分和用户问卷，生成个性化建议。
+
+## 写作原则
+1. **温暖专业**：像一位老朋友一样交谈，避免冷冰冰的机器语言。
+2. **拒绝焦虑**：即使问题严重，也要用"提升空间大"、"通过护理可明显改善"等积极话术。
+3. **对症下药**：推荐必须基于前面的分析结果，逻辑自洽。
+
+## 推荐逻辑
+- **skinType**：综合照片表现和用户自述，给出最终裁定。
+- **concerns**：用户诉求排第一，照片发现的严重问题排第二。
+- **products**：
+  - 清洁：所有人必备
+  - 水/精华：针对核心问题（抗老/美白/修护）
+  - 面霜/乳液：根据肤质（干性选滋润，油性选清爽）
+  - 防晒：日间必备
+
+# 📤 最终输出格式 (JSON ONLY)
+
+必须严格返回以下 JSON 结构，不要包含任何 markdown 格式标记：
+
+{
+  // --- 视觉分析部分 ---
+  "faceAnalysis": {
+    "validation": {"isValid": true, "status": "valid", "message": "验证通过"},
+    "overallScore": 0-100,
+    "dimensions": {
+      "spots": {"score": 0-100, "percentile": 0-100, "grade": "grade_enum", "details": "中文描述"},
+      "wrinkles": {"score": 0-100, "percentile": 0-100, "grade": "grade_enum", "details": "中文描述"},
+      "texture": {"score": 0-100, "percentile": 0-100, "grade": "grade_enum", "details": "中文描述"},
+      "pores": {"score": 0-100, "percentile": 0-100, "grade": "grade_enum", "details": "中文描述"},
+      "uvDamage": {"score": 0-100, "percentile": 0-100, "grade": "grade_enum", "details": "中文描述"},
+      "brownSpots": {"score": 0-100, "percentile": 0-100, "grade": "grade_enum", "details": "中文描述"},
+      "redAreas": {"score": 0-100, "percentile": 0-100, "grade": "grade_enum", "details": "中文描述"},
+      "acneRisk": {"score": 0-100, "percentile": 0-100, "grade": "grade_enum", "details": "中文描述"}
+    },
+    // 此处简化区域分析，由AI综合判断
+    "skinType": {"type": "type_enum", "confidence": 0.8-1.0, "description": "中文描述"},
+    "skinAge": {"estimated": number, "comparison": "younger/average/older", "yearsDiff": number, "factors": ["因素1"], "description": "描述"},
+    "hydration": {"level": "low/medium/high", "percent": 0-100, "oilLevel": 0-100, "balance": "balance_enum", "description": "描述"},
+    "skinConditions": [{"condition": "名称", "severity": "mild/moderate/severe", "area": "区域", "description": "描述"}],
+    "recommendations": [
+      "（必须4-6条）针对检测到的主要问题的具体护理建议，每条20-40字。",
+      "建议1：针对最严重问题的处理方法…",
+      "建议2：针对第二问题的改善措施…",
+      "建议3：日常需要注意的习惯…",
+      "建议4：产品使用的注意事项…"
+    ],
+    "priorityAreas": ["spots", "wrinkles"] // 选分最低的2项
+  },
+
+  // --- 综合建议部分 ---
+
+  "comprehensiveResult": {
+    "skinType": "中文肤质名称",
+    "concerns": ["用户诉求", "发现的问题"],
+    "summary": "必须生成一段温暖、专业的总结（至少 150 字）。先定性肤质，再回应用户的核心诉求，最后给予信心和鼓励。不要使用通用套话。",
+    "details": [
+      "【肤质深度解读】详细分析肤质成因及当前状态（至少 80 字）...",
+      "【主要诉求分析】针对用户最关心的点进行深入剖析（至少 80 字）...",
+      "【潜在关注点】指出用户可能忽视但照片显示的问题（至少 80 字）...",
+      "【护理重点建议】给出 3-4 条具体的护理原则和方向（至少 100 字）...",
+      "【生活方式小贴士】饮食、作息等方面的建议（至少 50 字）..."
+    ],
+    "productCategories": ["洁面", "精华", "面霜", "防晒"]
+  }
+}
+
+# 重要枚举值
+- grade_enum: excellent, good, average, fair, poor
+- type_enum: dry, oily, combination, normal, sensitive
+- balance_enum: dry, balanced, oily, dehydrated-oily
+`;

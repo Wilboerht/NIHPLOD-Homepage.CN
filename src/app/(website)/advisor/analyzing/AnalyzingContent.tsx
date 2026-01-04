@@ -72,16 +72,13 @@ export function AnalyzingContent() {
         return;
       }
 
-      let faceAnalysis = null;
+      // 图片预处理
+      let imagesToAnalyze: { front?: string; left?: string; right?: string } = {};
 
-      // 面部图片分析（必须成功）
       try {
-        let imagesToAnalyze: { front?: string; left?: string; right?: string } = {};
-
         if (faceImagesStr) {
           // 有三张照片，全部使用
           const faceImages = JSON.parse(faceImagesStr);
-          // 预处理所有图片
           const [frontProcessed, leftProcessed, rightProcessed] = await Promise.all([
             preprocessFaceImage(faceImages.front),
             preprocessFaceImage(faceImages.left),
@@ -98,99 +95,110 @@ export function AnalyzingContent() {
           imagesToAnalyze = { front: processed.imageData };
         }
 
-        setProgress((prev) => Math.max(prev, 20));
-
-        // 调用面部分析 API - 发送所有照片
-        const faceRes = await fetch("/api/advisor/face-analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ images: imagesToAnalyze }),
-        });
-
-        const faceData = await faceRes.json();
-
-        if (faceRes.ok && faceData.success) {
-          faceAnalysis = faceData.data;
-          // 保存面部分析结果
-          sessionStorage.setItem("advisorFaceAnalysis", JSON.stringify(faceData.data));
-        } else if (faceData.error?.code === "VALIDATION_FAILED") {
-          // 检查是否是需要就医的情况
-          if (faceData.error.status === "medical_condition") {
-            // 就医建议需要特殊处理，使用温和的界面展示
-            setMedicalAdvice(faceData.error.message);
-            return; // 直接返回，不继续分析
-          }
-          // 其他验证失败（非人脸、翻拍、视频帧等）- 标记为面部分析失败
-          setFailureType("face");
-          setError(faceData.error.message || "照片验证失败，请重新拍摄");
-          return;
-        } else {
-          // 其他错误（如 AI 服务不可用）- 必须成功，不能跳过
-          setFailureType("face");
-          setError(faceData.error?.message || "面部分析失败，请重试");
-          return;
-        }
-
-        setProgress((prev) => Math.max(prev, 50));
+        setProgress((prev) => Math.max(prev, 10)); // 图片处理完成
       } catch (e) {
-        console.error("Face analysis failed:", e);
-        // 面部分析失败，阻止继续
+        console.error("Image processing failed:", e);
         setFailureType("face");
-        setError(e instanceof Error ? e.message : "面部分析失败，请重试");
+        setError("照片处理失败，请重新拍摄");
         return;
       }
 
-      // 调用综合分析 API（必须成功）
+      // 调用统一分析 API (Single Unified Call)
       try {
-        const res = await fetch("/api/advisor/analyze", {
+        setProgress((prev) => Math.max(prev, 30)); // 开始分析
+
+        const res = await fetch("/api/advisor/comprehensive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             answers,
-            faceAnalysis,
+            images: imagesToAnalyze,
           }),
         });
 
-        setProgress((prev) => Math.max(prev, 80));
-
-        if (!res.ok) {
-          setFailureType("questionnaire");
-          setError("综合分析请求失败，请重试");
-          return;
-        }
+        // 模拟更快的进度，因为是并行/统一处理
+        setProgress((prev) => Math.max(prev, 60));
 
         const data = await res.json();
-        if (!data.success) {
-          setFailureType("questionnaire");
-          setError(data.error?.message || "综合分析失败，请重试");
+
+        if (!res.ok || !data.success) {
+          // 区分错误类型
+          if (data.error?.code === "VALIDATION_ERROR" || data.error?.code === "NO_IMAGES") {
+            setFailureType("face");
+            setError(data.error?.message || "照片验证失败");
+          } else if (data.error?.code === "RATE_LIMIT_EXCEEDED") {
+            setFailureType(null);
+            setError("分析请求过于频繁，请稍后再试");
+          } else {
+            setFailureType("questionnaire"); // 归类为综合失败
+            setError(data.error?.message || "深度分析服务繁忙，请重试");
+          }
           return;
         }
 
-        // 保存分析结果
-        sessionStorage.setItem("advisorResult", JSON.stringify(data.data));
+        // 分析成功！
+        const { faceAnalysis, comprehensiveResult } = data.data;
 
-        // 保存用户位置信息（通过 IP 解析，用于护肤用量推荐）
-        if (data.userLocation) {
-          sessionStorage.setItem("advisorUserLocation", JSON.stringify(data.userLocation));
+        // 检查面部分析中的特殊状态 (如 medical_condition)
+        if (faceAnalysis?.validation?.status === "medical_condition") {
+          setMedicalAdvice(faceAnalysis.validation.message);
+          return;
         }
 
-        // 追踪分析完成
-        trackAnalysisComplete(data.data.source || "ai");
+        // 保存面部分析结果
+        if (faceAnalysis) {
+          sessionStorage.setItem("advisorFaceAnalysis", JSON.stringify(faceAnalysis));
+        }
 
-        setProgress((prev) => Math.max(prev, 100));
+        // Transform and save comprehensive result
+        // ResultContent.tsx expects: { skinAnalysis: {skinType, skinTypeLabel, summary, details, ...}, products: [...], routine: {...}, source: "ai" }
+        if (comprehensiveResult) {
+          const transformedResult = {
+            skinAnalysis: {
+              skinType: comprehensiveResult.skinType || "combination",
+              skinTypeLabel: comprehensiveResult.skinType || "混合性肌肤", // Will be localized on result page if needed
+              summary: comprehensiveResult.summary || "",
+              details: comprehensiveResult.details || [],
+              concerns: comprehensiveResult.concerns || [],
+            },
+            products: [], // Unified API doesn't return products directly yet, rely on faceAnalysis recommendations or fetch separately
+            routine: {
+              morning: [
+                { order: 1, step: "洁面", description: "云朵洁面慕斯温和清洁" },
+                { order: 2, step: "精华", description: "修护紧致精华按压吸收" },
+                { order: 3, step: "面霜", description: "逆龄面霜滋润保湿" },
+                { order: 4, step: "防晒", description: "轻透防晒霜日间防护" },
+              ],
+              evening: [
+                { order: 1, step: "洁面", description: "云朵洁面慕斯深层清洁" },
+                { order: 2, step: "精华", description: "修护紧致精华夜间修护" },
+                { order: 3, step: "面霜", description: "逆龄面霜夜间滋养" },
+              ],
+            },
+            source: "ai",
+          };
+          sessionStorage.setItem("advisorResult", JSON.stringify(transformedResult));
+        }
 
-        // 延迟跳转，让用户看到 100% 进度
+        // 保存位置信息 (统一 API 暂未返回 location，如需要可后续补充，暂略)
+        // trackAnalysisComplete(data.data.source || "ai"); // Source field might differ
+
+        setProgress(100);
+
+        // 延迟跳转
         setTimeout(() => {
           router.push("/advisor/result");
         }, 500);
+
       } catch (e) {
-        console.error("Comprehensive analysis failed:", e);
+        console.error("Unified analysis failed:", e);
         setFailureType("questionnaire");
-        setError(e instanceof Error ? e.message : "综合分析失败，请重试");
+        setError(e instanceof Error ? e.message : "分析服务连接失败，请检查网络");
       }
+
     } catch (e) {
-      console.error("Analysis error:", e);
-      setError(e instanceof Error ? e.message : "分析失败，请重试");
+      console.error("Analysis process error:", e);
+      setError(e instanceof Error ? e.message : "分析流程异常，请重试");
     }
   }, [router, trackAnalysisStart, trackAnalysisComplete]);
 
@@ -301,7 +309,7 @@ export function AnalyzingContent() {
           {/* 错误标题 */}
           <h2 className="mb-4 text-xl font-medium text-brand-charcoal">
             {failureType === "face" ? "面部分析失败" :
-             failureType === "questionnaire" ? "综合分析失败" : "分析失败"}
+              failureType === "questionnaire" ? "综合分析失败" : "分析失败"}
           </h2>
 
           {/* 错误信息 */}
