@@ -510,18 +510,18 @@
   --home-dark: #6B655E;
   --home-gold: #FFD700;
 
-  position: fixed;
-  inset: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: var(--home-bg);
   overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 /* 矿物纹理覆盖层 */
 .home-container .mineral-texture {
-  position: fixed;
+  position: absolute;
   inset: 0;
   /* 背景图在内联样式中定义 */
   opacity: 0.04;
@@ -531,7 +531,7 @@
 
 /* 波浪容器 */
 .home-container .wave-container {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 1;
   overflow: hidden;

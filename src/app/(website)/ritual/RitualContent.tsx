@@ -2,20 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Menu, X, Clock, ChevronRight, ArrowUpRight } from "lucide-react";
+import { ChevronDown, Clock, ChevronRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ShopIcon, StoryIcon, ContactIcon, HomeIcon, RitualIcon, UserButton } from "@/components/website";
-
-/**
- * 底部导航项配置
- */
-const bottomNavItems = [
-  { href: "/products", label: "了解产品", labelEn: "Products", icon: ShopIcon },
-  { href: "/story", label: "关于旎柏", labelEn: "Story", icon: StoryIcon },
-  { href: "/advisor", label: "护肤顾问", labelEn: "Consultant", icon: ContactIcon },
-];
+import { UserButton, BottomNavBar } from "@/components/website";
 
 // 模块配置 - 5个护肤仪式模块
 type ModuleId = "morning" | "evening" | "spa" | "travel" | "professional";
@@ -238,8 +228,6 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const [selectedScheme, setSelectedScheme] = useState<Scheme | null>(null);
   // 悬停的模块索引
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  // 移动端菜单
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   // 展开的步骤索引（用于显示技巧提示）
   const [expandedStepIndex, setExpandedStepIndex] = useState<number | null>(null);
@@ -1089,187 +1077,11 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
         </m.div>
       </m.div>
 
-      {/* 移动端菜单遮罩层 */}
-      <AnimatePresence>
-        {isNavMenuOpen && !isExpanded && (
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm sm:hidden"
-            onClick={() => setIsNavMenuOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* 移动端弹出菜单 */}
-      <AnimatePresence>
-        {isNavMenuOpen && !isExpanded && (
-          <m.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed bottom-20 right-3 z-50 w-44 rounded-2xl bg-white/95 p-2 shadow-xl backdrop-blur-md sm:hidden"
-          >
-            <div className="flex flex-col gap-1">
-              {/* 首页 */}
-              <Link
-                href="/"
-                onClick={() => setIsNavMenuOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                  <HomeIcon className="h-5 w-5" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-brand-charcoal">首页</span>
-                  <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">Home</span>
-                </div>
-              </Link>
-              {/* 其他导航项 */}
-              {bottomNavItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsNavMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
-                      <span className="font-serif text-[9px] uppercase tracking-wide text-brand-charcoal/50">{item.labelEn}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </m.div>
-        )}
-      </AnimatePresence>
-
-      {/* 底部导航栏 - 第一阶段及以下时显示 */}
-      {/* 底部导航栏 - 收起时显示 */}
-      <AnimatePresence>
-        {!isExpanded && (
-          <m.header
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{
-              duration: 1.2,
-              ease: [0.22, 1, 0.36, 1]
-            }}
-            className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
-            role="banner"
-          >
-            <nav
-              className={cn(
-                "flex items-center justify-between",
-                "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
-                "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
-              )}
-              aria-label="护肤仪式页导航"
-            >
-              {/* 左侧主导航 - 护肤仪式 */}
-              <Link
-                href="/ritual"
-                className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:gap-4 sm:hover:opacity-80"
-              >
-                {/* 图标容器 */}
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
-                  <RitualIcon className="h-6 w-6 sm:h-10 sm:w-10 lg:h-14 lg:w-14" />
-                </div>
-                {/* 文字 */}
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">
-                    护肤仪式
-                  </span>
-                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">
-                    Ritual
-                  </span>
-                </div>
-              </Link>
-
-              {/* 移动端：菜单按钮 */}
-              <button
-                type="button"
-                onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
-                className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-beige/30 transition-colors active:bg-brand-beige/50 sm:hidden"
-                aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
-              >
-                <AnimatePresence mode="wait" initial={false}>
-                  {isNavMenuOpen ? (
-                    <m.div
-                      key="close"
-                      initial={{ opacity: 0, rotate: -90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: 90 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <X className="h-5 w-5 text-brand-charcoal" />
-                    </m.div>
-                  ) : (
-                    <m.div
-                      key="menu"
-                      initial={{ opacity: 0, rotate: 90 }}
-                      animate={{ opacity: 1, rotate: 0 }}
-                      exit={{ opacity: 0, rotate: -90 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <Menu className="h-5 w-5 text-brand-charcoal" />
-                    </m.div>
-                  )}
-                </AnimatePresence>
-              </button>
-
-              {/* 平板/桌面端：直接显示导航图标 */}
-              <div className="hidden items-center gap-5 sm:flex lg:gap-8">
-                {bottomNavItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
-                    >
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
-                        <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
-                      </div>
-                      <span className="text-xs text-brand-charcoal/70 lg:text-sm">
-                        {item.label}
-                      </span>
-                      <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
-                        {item.labelEn}
-                      </span>
-                    </Link>
-                  );
-                })}
-                {/* 回到首页按钮 */}
-                <Link
-                  href="/"
-                  className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
-                >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
-                    <HomeIcon className="h-8 w-8 lg:h-9 lg:w-9" />
-                  </div>
-                  <span className="text-xs text-brand-charcoal/70 lg:text-sm">
-                    首页
-                  </span>
-                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
-                    Home
-                  </span>
-                </Link>
-              </div>
-            </nav>
-          </m.header>
-        )}
-      </AnimatePresence>
+      <BottomNavBar
+        isExpanded={isExpanded}
+        currentPage="/ritual"
+        ariaLabel="护肤仪式页导航"
+      />
     </>
   );
 }

@@ -23,3 +23,4 @@ export {
   TimelineSkeleton,
 } from "./Skeleton";
 export { RitualIcon, ContactIcon, HomeIcon, ShopIcon, StoryIcon, CartIcon } from "./NavIcons";
+export { BottomNavBar } from "./BottomNavBar";

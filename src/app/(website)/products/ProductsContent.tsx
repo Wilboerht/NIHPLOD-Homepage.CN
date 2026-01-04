@@ -5,27 +5,9 @@ import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X, User, ShoppingBag } from "lucide-react";
-import { ProductDrawer, StoryIcon, RitualIcon, ContactIcon, HomeIcon } from "@/components/website";
+import { ProductDrawer, BottomNavBar } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn } from "@/lib/utils";
-
-/**
- * 底部导航项配置
- */
-const bottomNavItems = [
-  { href: "/story", label: "关于旎柏", labelEn: "Story", icon: StoryIcon },
-  { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: RitualIcon },
-  { href: "/advisor", label: "护肤顾问", labelEn: "Consultant", icon: ContactIcon },
-];
-
-// 左侧导航图标 - 购物袋
-const ShopNavIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className}>
-    <path d="M6 6V5C6 3.34315 7.34315 2 9 2H15C16.6569 2 18 3.34315 18 5V6" stroke="#C3BC9F" strokeWidth="1.6" strokeLinecap="round" />
-    <path d="M3 8C3 6.89543 3.89543 6 5 6H19C20.1046 6 21 6.89543 21 8V19C21 20.6569 19.6569 22 18 22H6C4.34315 22 3 20.6569 3 19V8Z" fill="#C3BC9F" stroke="#C3BC9F" strokeWidth="1.6" />
-    <path d="M9 10V11C9 12.6569 10.3431 14 12 14C13.6569 14 15 12.6569 15 11V10" stroke="#F0EDE1" strokeWidth="1.6" strokeLinecap="round" />
-  </svg>
-);
 
 interface Category {
   id: string;
@@ -81,7 +63,6 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
     }, 1200);
     return () => clearTimeout(timer);
   }, []);
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
@@ -448,151 +429,11 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
         )}
       </AnimatePresence>
 
-      {/* 移动端菜单遮罩层 */}
-      <AnimatePresence>
-        {isNavMenuOpen && !isExpanded && (
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm sm:hidden"
-            onClick={() => setIsNavMenuOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* 移动端弹出菜单 */}
-      <AnimatePresence>
-        {isNavMenuOpen && !isExpanded && (
-          <m.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed bottom-20 right-3 z-50 w-44 rounded-2xl bg-white/95 p-2 shadow-xl backdrop-blur-md sm:hidden"
-          >
-            <div className="flex flex-col gap-1">
-              <Link
-                href="/"
-                onClick={() => setIsNavMenuOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                  <HomeIcon className="h-5 w-5" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[16px] font-medium text-brand-charcoal">首页</span>
-                  <span className="font-serif text-[12px] uppercase tracking-wide text-brand-charcoal/50">Home</span>
-                </div>
-              </Link>
-              {bottomNavItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsNavMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[16px] font-medium text-brand-charcoal">{item.label}</span>
-                      <span className="font-serif text-[12px] uppercase tracking-wide text-brand-charcoal/50">{item.labelEn}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </m.div>
-        )}
-      </AnimatePresence>
-
-      {/* 底部导航栏 - 收起时显示 */}
-      <AnimatePresence>
-        {!isExpanded && (
-          <m.header
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
-            role="banner"
-          >
-            <nav
-              className={cn(
-                "flex items-center justify-between",
-                "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
-                "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
-              )}
-              aria-label="产品页导航"
-            >
-              {/* 左侧主导航 - 了解产品 */}
-              <Link
-                href="/products"
-                className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:gap-4 sm:hover:opacity-80"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
-                  <ShopNavIcon className="h-7 w-7 sm:h-10 sm:w-10 lg:h-14 lg:w-14" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[16px] font-semibold text-brand-charcoal sm:text-lg lg:text-2xl">了解产品</span>
-                  <span className="font-serif text-[12px] uppercase tracking-wide text-brand-gold/70 sm:text-xs lg:text-base">Products</span>
-                </div>
-              </Link>
-
-              {/* 移动端：菜单按钮 */}
-              <button
-                type="button"
-                onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
-                className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-beige/30 transition-colors active:bg-brand-beige/50 sm:hidden"
-                aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
-              >
-                <AnimatePresence mode="wait" initial={false}>
-                  {isNavMenuOpen ? (
-                    <m.div key="close" initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, rotate: 90 }} transition={{ duration: 0.15 }}>
-                      <X className="h-5 w-5 text-brand-charcoal" />
-                    </m.div>
-                  ) : (
-                    <m.div key="menu" initial={{ opacity: 0, rotate: 90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, rotate: -90 }} transition={{ duration: 0.15 }}>
-                      <Menu className="h-5 w-5 text-brand-charcoal" />
-                    </m.div>
-                  )}
-                </AnimatePresence>
-              </button>
-
-              {/* 平板/桌面端：直接显示导航图标 */}
-              <div className="hidden items-center gap-5 sm:flex lg:gap-8">
-                {bottomNavItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80"
-                    >
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
-                        <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
-                      </div>
-                      <span className="text-xs text-brand-charcoal/70 lg:text-sm">{item.label}</span>
-                      <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">{item.labelEn}</span>
-                    </Link>
-                  );
-                })}
-                <Link href="/" className="group flex flex-col items-center gap-1 transition-opacity hover:opacity-80">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl transition-colors group-hover:bg-brand-beige/50 lg:h-16 lg:w-16">
-                    <HomeIcon className="h-8 w-8 lg:h-9 lg:w-9" />
-                  </div>
-                  <span className="text-xs text-brand-charcoal/70 lg:text-sm">首页</span>
-                  <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">Home</span>
-                </Link>
-              </div>
-            </nav>
-          </m.header>
-        )}
-      </AnimatePresence>
+      <BottomNavBar
+        isExpanded={isExpanded}
+        currentPage="/products"
+        ariaLabel="产品页导航"
+      />
 
       {/* 产品详情抽屉 */}
       <ProductDrawer
