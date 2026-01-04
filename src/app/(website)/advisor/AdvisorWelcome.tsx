@@ -27,21 +27,12 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
   const { initSession } = useAdvisorAnalytics();
   const [isExpanded, setIsExpanded] = useState(false); // 默认收起以展示动画
   const [_imageError, _setImageError] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+
   const { setDrawerOpen } = useLayout();
 
   useEffect(() => {
     initSession();
   }, [initSession]);
-
-  // 监听滚动
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {

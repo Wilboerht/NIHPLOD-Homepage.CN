@@ -10,6 +10,14 @@ import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
+const FOOTER_LINKS = [
+  { href: "/terms", label: "服务条款" },
+  { href: "/services", label: "服务入口" },
+  { href: "/careers", label: "加入我们" },
+  { href: "/contact", label: "联系我们" },
+  { href: "/privacy", label: "隐私政策" },
+];
+
 interface HomeClientProps {
   content?: HomePageContent;
 }
@@ -65,9 +73,10 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center">
-            {/* 主内容区域 - 抽屉 */}
+            {/* 主内容区域 - 抽屉 - z-20 Ensure it sits on top of the button */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              className="relative z-20 w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              style={{ willChange: "flex-grow, height" }}
               initial={{ height: 0, flexGrow: 0 }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
@@ -79,7 +88,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              <div className="home-container relative h-full w-full">
+              <div className={cn("home-container relative h-full w-full", !isExpanded && "hidden")}>
                 {/* 矿物纹理覆盖层 - 使用 base64 SVG 噪点 */}
                 <div
                   className="mineral-texture absolute inset-0 z-0 opacity-50"
@@ -130,11 +139,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, delay: 0.6 }}
                   >
-                    <h1 className="title text-base sm:text-lg lg:text-xl font-light leading-relaxed tracking-widest text-brand-charcoal">
+                    <h1 className="title text-lg sm:text-xl lg:text-2xl font-light leading-relaxed tracking-widest text-brand-charcoal">
                       <span>海豚的肌肤，拥有每两小时</span><br className="lg:hidden" />
-                      <span>自我更新的神奇能力。</span><br />
+                      <span>自我更新的神奇能力</span><br />
                       <span>这种「逆转时光」的动物本能，</span><br className="lg:hidden" />
-                      <span>是我们灵感的来源。</span>
+                      <span>是我们灵感的来源</span>
                     </h1>
                   </m.div>
 
@@ -166,26 +175,58 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     transition={{ duration: 1.2, delay: 1 }}
                   >
                     {/* 辅助链接 */}
-                    <div className="flex items-center gap-3 sm:gap-6">
-                      {[
-                        { href: "/services", label: "服务入口" },
-                        { href: "/contact", label: "联系我们" },
-                        { href: "/careers", label: "加入我们" },
-                        { href: "/privacy", label: "隐私政策" },
-                        { href: "/terms", label: "服务条款" },
-                      ].map((link) => (
+                    {/* 辅助链接 - 桌面端 (静态列表) */}
+                    <div className="hidden sm:flex items-center gap-3 sm:gap-6">
+                      {FOOTER_LINKS.map((link) => (
                         <Link
                           key={link.href}
                           href={link.href}
-                          className="text-[10px] sm:text-[11px] uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                          className="text-xs sm:text-sm uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
                         >
                           {link.label}
                         </Link>
                       ))}
                     </div>
 
+                    {/* 辅助链接 - 移动端 (弧形排列 - 微笑曲线 - 景深效果) */}
+                    <div className="flex sm:hidden h-24 items-end justify-center relative w-full mb-2 pointer-events-none">
+                      {FOOTER_LINKS.map((link, index) => {
+                        const totalLinks = FOOTER_LINKS.length;
+                        const middleIndex = (totalLinks - 1) / 2;
+                        const offset = index - middleIndex;
+                        const absOffset = Math.abs(offset);
+
+                        // 微笑曲线：中间低，两边高 - 加大曲率 (使用抛物线方程 y = ax^2)
+                        const y = absOffset * absOffset * -5 - absOffset * 6; // 更陡峭的曲线
+
+                        // 水平间距 - 配合缩放调整 (字体变大，间距适当增加)
+                        const x = offset * 65;
+
+                        // 景深效果 - 保持清晰
+                        const opacity = 1 - absOffset * 0.25; // 0: 1, 1: 0.75, 2: 0.5
+                        const scale = 1 - absOffset * 0.1; // 0: 1, 1: 0.9, 2: 0.8
+                        const blur = 0; // 不模糊
+
+                        return (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            className="absolute bottom-2 left-1/2 text-xs transform -translate-x-1/2 pointer-events-auto font-medium uppercase tracking-widest text-brand-charcoal transition-all duration-300 hover:text-brand-charcoal hover:scale-110 hover:!blur-0 hover:!opacity-100"
+                            style={{
+                              transform: `translateX(calc(-50% + ${x}px)) translateY(${y}px) scale(${scale})`,
+                              opacity: opacity,
+                              filter: `blur(${blur}px)`,
+                              zIndex: 10 - absOffset, // 中间层级最高
+                            }}
+                          >
+                            {link.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+
                     {/* 版权文本 */}
-                    <p className="text-[10px] font-light tracking-widest text-brand-charcoal/70">
+                    <p className="text-xs font-light tracking-widest text-brand-charcoal/70 relative z-10">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </m.div>
@@ -216,8 +257,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               </m.div>
             </button>
           </div>
-        </m.div>
-      </m.div>
+        </m.div >
+      </m.div >
 
       {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
     </>

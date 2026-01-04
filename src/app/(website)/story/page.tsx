@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { StoryContent } from "./StoryContent";
-import prisma from "@/lib/prisma";
+
 
 // ISR: 品牌故事页面每天重新验证一次
 export const revalidate = 86400; // 24小时
@@ -23,25 +23,6 @@ export const metadata: Metadata = {
   },
 };
 
-async function getPageData(): Promise<{ backgroundImage?: string }> {
-  try {
-    const page = await prisma.page.findUnique({
-      where: { slug: "story" },
-      select: { published: true, backgroundImage: true },
-    });
-
-    if (page?.published) {
-      return {
-        backgroundImage: page.backgroundImage || undefined,
-      };
-    }
-  } catch (error) {
-    console.error("获取品牌故事页面数据失败:", error);
-  }
-  return {};
-}
-
 export default async function StoryPage() {
-  const pageData = await getPageData();
-  return <StoryContent backgroundImage={pageData.backgroundImage} />;
+  return <StoryContent />;
 }

@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { RitualContent } from "./RitualContent";
-import prisma from "@/lib/prisma";
+
 
 // ISR: 护肤仪式页面每天重新验证一次
 export const revalidate = 86400; // 24小时
@@ -23,23 +23,6 @@ export const metadata: Metadata = {
   },
 };
 
-async function getBackgroundImage(): Promise<string | undefined> {
-  try {
-    const page = await prisma.page.findUnique({
-      where: { slug: "ritual" },
-      select: { backgroundImage: true, published: true },
-    });
-
-    if (page?.published) {
-      return page.backgroundImage || undefined;
-    }
-  } catch (error) {
-    console.error("获取护肤仪式页面背景图失败:", error);
-  }
-  return undefined;
-}
-
 export default async function RitualPage() {
-  const backgroundImage = await getBackgroundImage();
-  return <RitualContent backgroundImage={backgroundImage} />;
+  return <RitualContent />;
 }

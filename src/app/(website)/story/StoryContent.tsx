@@ -19,31 +19,21 @@ const navItems: { id: SectionId; label: string }[] = [
   { id: "awards", label: "媒体及获奖" },
 ];
 
-interface StoryContentProps {
-  backgroundImage?: string;
-}
+
 
 /**
  * 品牌故事页面内容组件
  * 样式参考 about us.html，使用建筑风格布局
  * 保留展开/收起交互模式
  */
-export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
+export function StoryContent() {
   // 展开状态: false=完全收起(只剩按钮), true=完全展开(底部导航隐藏)
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>("story");
-  const [isScrolled, setIsScrolled] = useState(false);
+
   const contentRef = useRef<HTMLDivElement>(null);
   const { setDrawerOpen } = useLayout();
 
-  // 监听滚动，添加毛玻璃效果
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {

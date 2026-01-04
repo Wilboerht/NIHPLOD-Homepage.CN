@@ -47,7 +47,7 @@ export function BottomNavBar() {
     // 根据当前页面获取主导航项和其他导航项
     const primaryNav = allNavItems.find(item => item.href === currentPage) || allNavItems[4]; // 默认为Home
     const otherNavItems = allNavItems.filter(item => item.href !== currentPage);
-    const AdvisorIcon = ContactIcon; // 显式获取
+
 
     const PrimaryIcon = primaryNav.icon;
 

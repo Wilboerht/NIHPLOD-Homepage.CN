@@ -54,7 +54,7 @@ interface ProductsContentProps {
  * 产品列表内容组件
  * 基于 First Page.html 的三列错落网格布局设计，放在可展开/收起的抽屉中
  */
-export function ProductsContent({ categories, products, backgroundImage }: ProductsContentProps) {
+export function ProductsContent({ categories, products }: ProductsContentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { setDrawerOpen } = useLayout();
 

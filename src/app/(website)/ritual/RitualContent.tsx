@@ -163,9 +163,7 @@ const defaultModuleData: ModuleData = {
   ],
 };
 
-interface RitualContentProps {
-  backgroundImage?: string;
-}
+
 
 /**
  * 计算步骤总时长
@@ -218,7 +216,7 @@ function calculateTotalDuration(steps: RitualStep[]): string {
  * 护肤仪式页面内容组件
  * 三层级交互式布局：Level 1 模块选择 -> Level 2 方案选择 -> Level 3 详细步骤
  */
-export function RitualContent({ backgroundImage }: RitualContentProps) {
+export function RitualContent() {
   // 展开状态
   const [isExpanded, setIsExpanded] = useState(false);
   // 当前层级: 1=模块选择, 2=方案选择, 3=步骤详情
@@ -230,7 +228,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   // 悬停的模块索引
   const { setDrawerOpen } = useLayout();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [isScrolled, setIsScrolled] = useState(false);
+
   // 展开的步骤索引（用于显示技巧提示）
   const [expandedStepIndex, setExpandedStepIndex] = useState<number | null>(null);
 
@@ -260,14 +258,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
     }
   };
 
-  // 监听滚动，添加毛玻璃效果
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+
 
   // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {
