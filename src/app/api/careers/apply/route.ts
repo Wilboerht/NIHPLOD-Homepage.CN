@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { uploadFile } from "@/lib/upload";
 
 // 表单验证 schema
 const ApplyFormSchema = z.object({
@@ -102,24 +101,16 @@ export async function POST(request: NextRequest) {
     }
     console.log("✅ [Apply API] Job found:", job.title);
 
-    // 创建上传目录
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "resumes");
-    console.log("📂 [Apply API] Creating directory:", uploadDir);
-    await mkdir(uploadDir, { recursive: true });
+    // 上传文件到存储 (自动处理 Local/Supabase)
+    const fileBuffer = Buffer.from(await resumeFile.arrayBuffer());
+    const uploadResult = await uploadFile(
+      fileBuffer,
+      resumeFile.name,
+      resumeFile.type,
+      "resumes"
+    );
 
-    // 生成唯一文件名
-    const timestamp = Date.now();
-    const ext = path.extname(resumeFile.name);
-    const safeJobTitle = jobTitle.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "_");
-    const safeName = name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "_");
-    const fileName = `【应聘】${safeJobTitle}_${safeName}_${timestamp}${ext}`;
-    const filePath = path.join(uploadDir, fileName);
-
-    console.log("💾 [Apply API] Saving file to:", filePath);
-    // 保存文件
-    const buffer = Buffer.from(await resumeFile.arrayBuffer());
-    await writeFile(filePath, buffer);
-    console.log("✅ [Apply API] File saved");
+    console.log("✅ [Apply API] File uploaded:", uploadResult.url);
 
     // 保存申请记录到数据库
     console.log("💾 [Apply API] Creating DB record");
@@ -129,7 +120,7 @@ export async function POST(request: NextRequest) {
         name,
         phone,
         email,
-        resumePath: `/uploads/resumes/${fileName}`,
+        resumePath: uploadResult.url,
       },
     });
     console.log("✅ [Apply API] DB record created");
