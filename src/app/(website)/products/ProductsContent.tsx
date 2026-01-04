@@ -129,10 +129,10 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                 height: !isExpanded ? 0 : "auto"
               }}
               transition={{
-                duration: 1,
+                duration: 1.2,
                 ease: [0.22, 1, 0.36, 1],
                 // 展开时延迟0.4s等待导航栏收起（大幅重叠以消除视觉间隔）；收起时不延迟
-                delay: isExpanded ? 0.4 : 0
+                delay: isExpanded ? 0.3 : 0
               }}
             >
               {/* 矿物纹理覆盖层 */}

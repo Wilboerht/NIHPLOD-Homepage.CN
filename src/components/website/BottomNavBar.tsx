@@ -110,11 +110,11 @@ export function BottomNavBar() {
             <AnimatePresence>
                 {isVisible && (
                     <m.header
-                        initial={{ y: 0, opacity: 1 }}
+                        initial={{ y: 100, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: 100, opacity: 0 }}
                         transition={{
-                            duration: 0.8,
+                            duration: 0.6,
                             ease: [0.22, 1, 0.36, 1]
                         }}
                         className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"

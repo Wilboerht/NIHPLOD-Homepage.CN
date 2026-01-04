@@ -17,17 +17,12 @@ interface HomeClientProps {
 export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
   const { setDrawerOpen } = useLayout();
 
-  // 组件加载后自动展开
+  // 首页特殊处理：立即设置抽屉为展开状态，不需要动画
   useEffect(() => {
-    // 稍微延迟以展示"下拉"动画
-    const timer = setTimeout(() => {
-      setIsExpanded(true);
-      setDrawerOpen(true);
-    }, 100);
-    return () => clearTimeout(timer);
+    setDrawerOpen(true);
   }, [setDrawerOpen]);
 
   // 鼠标视差效果
@@ -79,9 +74,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 height: !isExpanded ? 0 : "auto"
               }}
               transition={{
-                duration: 1,
+                duration: 1.2,
                 ease: [0.22, 1, 0.36, 1],
-                delay: isExpanded ? 0.2 : 0
+                delay: isExpanded ? 0.3 : 0
               }}
             >
               <div className="home-container relative h-full w-full">

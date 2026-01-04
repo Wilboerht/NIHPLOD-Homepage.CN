@@ -311,10 +311,10 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                 minHeight: isExpanded ? 400 : 0
               }}
               transition={{
-                duration: 0.8,
+                duration: 1.2,
                 ease: [0.22, 1, 0.36, 1],
                 // 展开时延迟0.4s等待导航栏收起（大幅重叠以消除视觉间隔）；收起时不延迟
-                delay: isExpanded ? 0.4 : 0
+                delay: isExpanded ? 0.3 : 0
               }}
             >
               {/* 矿物纹理覆盖层 */}

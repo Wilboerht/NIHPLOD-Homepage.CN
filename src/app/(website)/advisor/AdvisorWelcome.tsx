@@ -88,10 +88,10 @@ export function AdvisorWelcome() {
                 height: isExpanded ? "auto" : 0
               }}
               transition={{
-                duration: 0.7,
+                duration: 1.2,
                 ease: [0.4, 0, 0.2, 1],
                 // 展开时延迟0.4s等待导航栏收起；收起时不延迟
-                delay: isExpanded ? 0.4 : 0
+                delay: isExpanded ? 0.3 : 0
               }}
             >
               {/* 矿物纹理覆盖层 */}
