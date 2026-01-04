@@ -17,15 +17,9 @@ interface HomeClientProps {
 export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
-  // 组件加载后自动展开
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsExpanded(true);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
+  // 组件加载后自动展开 - 已移除，改为默认展开
 
   // 鼠标视差效果
   useEffect(() => {
@@ -126,8 +120,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   <UserButton />
                 </div>
 
-                {/* 主内容 */}
-                <main className="main-content relative z-10 flex h-full flex-col items-center justify-center text-center">
+                {/* 主内容 - 添加底部padding以在视觉上居中(抵消底部absolute定位的元素) */}
+                <main className="main-content relative z-10 flex h-full flex-col items-center justify-center text-center pb-32 lg:pb-24">
                   {/* Logo */}
                   <m.div
                     initial={{ opacity: 0, y: 20 }}
@@ -174,6 +168,38 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       <span className="badge-new">NEW</span>
                     </Link>
                   </m.div>
+
+                  {/* 底部辅助导航与版权 */}
+                  <m.div
+                    className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1.2, delay: 1 }}
+                  >
+                    {/* 辅助链接 */}
+                    <div className="flex items-center gap-3 sm:gap-6">
+                      {[
+                        { href: "/services", label: "服务" },
+                        { href: "/contact", label: "联系我们" },
+                        { href: "/careers", label: "加入我们" },
+                        { href: "/privacy", label: "隐私政策" },
+                        { href: "/terms", label: "服务条款" },
+                      ].map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="text-[10px] sm:text-[11px] uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+
+                    {/* 版权文本 */}
+                    <p className="text-[10px] font-light tracking-widest text-brand-charcoal/70">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
+                  </m.div>
                 </main>
               </div>
             </m.div>
@@ -182,10 +208,12 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 overflow-hidden"
             >
+              {/* 矿物纹理覆盖层 - 使用与抽屉相同的 texture-overlay 类 */}
+              <div className="texture-overlay absolute inset-0" />
               <m.div
-                className="flex flex-col items-center"
+                className="relative z-10 flex flex-col items-center"
                 animate={{ rotate: isExpanded ? 180 : 0 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
