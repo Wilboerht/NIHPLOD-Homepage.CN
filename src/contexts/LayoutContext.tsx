@@ -12,7 +12,9 @@ interface LayoutContextType {
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
 
 export function LayoutProvider({ children }: { children: ReactNode }) {
-    const [isDrawerOpen, setDrawerOpen] = useState(false);
+    // 默认为 true，因为大多数页面加载时抽屉都会自动展开
+    // 这样可以避免页面导航时底部栏闪烁
+    const [isDrawerOpen, setDrawerOpen] = useState(true);
 
     // 包装 setState 以避免不必要的重渲染? 暂不需要，直接传递
     // console.log("[LayoutContext] isDrawerOpen:", isDrawerOpen);
