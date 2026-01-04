@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { cn } from "@/lib/utils";
-import { BottomNavBar } from "@/components/website";
+import { useLayout } from "@/contexts/LayoutContext";
 
 /**
  * AI 护肤顾问欢迎页
@@ -23,6 +24,7 @@ export function AdvisorWelcome() {
   const [isExpanded, setIsExpanded] = useState(false); // 默认收起以展示动画
   const [_imageError, _setImageError] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { setDrawerOpen } = useLayout();
 
   useEffect(() => {
     initSession();
@@ -37,14 +39,15 @@ export function AdvisorWelcome() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 组件加载后自动展开，实现"导航栏先收起，抽屉再下拉"的动画序列
+  // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {
-    // 稍微延迟一点，确保初始导航栏是可见状态
+    // 稍微延迟以展示"下拉"动画
     const timer = setTimeout(() => {
       setIsExpanded(true);
-    }, 1200);
+      setDrawerOpen(true);
+    }, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [setDrawerOpen]);
 
   const handleStart = () => {
     router.push("/advisor/questions");
@@ -52,29 +55,7 @@ export function AdvisorWelcome() {
 
   return (
     <>
-      {/* 底层暗金色背景 */}
-      <div className="fullscreen-bg-base" />
-
-      {/* 全屏背景图片 - 带边距和圆角 */}
-      <div className="fullscreen-bg">
-        <Image
-          src="/images/bg.png"
-          alt="AI 护肤顾问"
-          fill
-          priority
-          quality={75}
-          className="object-cover"
-          sizes="100vw"
-        />
-        {/* 毛玻璃遮罩层 - 滚动或展开时显示 */}
-        <div
-          className={cn(
-            "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
-            isScrolled || isExpanded ? "opacity-100" : "opacity-0"
-          )}
-          style={{ transitionDelay: isExpanded ? "400ms" : "0ms" }}
-        />
-      </div>
+      {/* 背景已移至 layout.tsx 实现无缝切换 */}
 
       {/* 主内容容器 */}
       <m.div
@@ -243,11 +224,17 @@ export function AdvisorWelcome() {
             {/* 展开/收起按钮 - 始终显示，紧贴内容区域 */}
             <button
               type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="group flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
+              onClick={() => {
+                const newState = !isExpanded;
+                setIsExpanded(newState);
+                setDrawerOpen(newState);
+              }}
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
             >
+              {/* 矿物纹理覆盖层 */}
+              <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
               <m.div
-                className="flex flex-col items-center"
+                className="relative z-10 flex flex-col items-center"
                 animate={{
                   rotate: isExpanded ? 180 : 0,
                   scale: 1
@@ -264,11 +251,7 @@ export function AdvisorWelcome() {
         </m.div >
       </m.div >
 
-      <BottomNavBar
-        isExpanded={isExpanded}
-        currentPage="/advisor"
-        ariaLabel="护肤顾问页导航"
-      />
+      {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
     </>
   );
 }

@@ -8,7 +8,7 @@ import { ChevronDown } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
-import { BottomNavBar } from "@/components/website";
+import { useLayout } from "@/contexts/LayoutContext";
 
 interface HomeClientProps {
   content?: HomePageContent;
@@ -17,9 +17,18 @@ interface HomeClientProps {
 export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { setDrawerOpen } = useLayout();
 
-  // 组件加载后自动展开 - 已移除，改为默认展开
+  // 组件加载后自动展开
+  useEffect(() => {
+    // 稍微延迟以展示"下拉"动画
+    const timer = setTimeout(() => {
+      setIsExpanded(true);
+      setDrawerOpen(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [setDrawerOpen]);
 
   // 鼠标视差效果
   useEffect(() => {
@@ -40,32 +49,13 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
     return () => document.removeEventListener("mousemove", handleMouseMove);
   }, [isExpanded]);
 
+  const handleCollapse = () => {
+    setIsExpanded(false);
+    setDrawerOpen(false);
+  };
+
   return (
     <>
-      {/* 底层暗金色背景 */}
-      <div className="fullscreen-bg-base" />
-
-      {/* 全屏背景图片 - 带边距和圆角 */}
-      <div className="fullscreen-bg">
-        <Image
-          src="/images/bg.png"
-          alt="Home Background"
-          fill
-          priority
-          quality={75}
-          sizes="100vw"
-          className="object-cover"
-        />
-        {/* 毛玻璃遮罩层 - 展开时显示 */}
-        <div
-          className={cn(
-            "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
-            isExpanded ? "opacity-100" : "opacity-0"
-          )}
-          style={{ transitionDelay: isExpanded ? "400ms" : "0ms" }}
-        />
-      </div>
-
       {/* 内容区域容器 */}
       <m.div
         className="safe-area-content !top-0"
@@ -162,7 +152,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   >
                     <button
                       type="button"
-                      onClick={() => setIsExpanded(false)}
+                      onClick={handleCollapse}
                       className="btn btn-primary"
                     >
                       探索更多
@@ -210,8 +200,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
             {/* 展开/收起按钮 */}
             <button
-              type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => {
+                const newState = !isExpanded;
+                setIsExpanded(newState);
+                setDrawerOpen(newState);
+              }}
               className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 overflow-hidden"
             >
               {/* 矿物纹理覆盖层 - 使用与抽屉相同的 texture-overlay 类 */}
@@ -231,11 +224,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
         </m.div>
       </m.div>
 
-      <BottomNavBar
-        isExpanded={isExpanded}
-        currentPage="/"
-        ariaLabel="首页导航"
-      />
+      {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
     </>
   );
 }

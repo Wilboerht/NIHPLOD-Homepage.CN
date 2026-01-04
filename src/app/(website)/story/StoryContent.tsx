@@ -5,7 +5,8 @@ import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UserButton, BottomNavBar } from "@/components/website";
+import { UserButton } from "@/components/website";
+import { useLayout } from "@/contexts/LayoutContext";
 
 // 展开内容的 Section ID 类型
 type SectionId = "story" | "mission" | "philosophy" | "awards";
@@ -33,6 +34,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
   const [activeSection, setActiveSection] = useState<SectionId>("story");
   const [isScrolled, setIsScrolled] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { setDrawerOpen } = useLayout();
 
   // 监听滚动，添加毛玻璃效果
   useEffect(() => {
@@ -43,40 +45,19 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 组件加载后自动展开，实现"导航栏先收起，抽屉再下拉"的动画序列
+  // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {
-    // 稍微延迟一点，确保初始导航栏是可见状态
+    // 稍微延迟以展示"下拉"动画
     const timer = setTimeout(() => {
       setIsExpanded(true);
-    }, 1200);
+      setDrawerOpen(true);
+    }, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [setDrawerOpen]);
 
   return (
     <>
-      {/* 底层暗金色背景 */}
-      <div className="fullscreen-bg-base" />
-
-      {/* 全屏背景图片 - 带边距和圆角 */}
-      <div className="fullscreen-bg">
-        <Image
-          src={backgroundImage || "/images/bg.png"}
-          alt="品牌故事"
-          fill
-          priority
-          quality={75}
-          className="object-cover"
-          sizes="100vw"
-        />
-        {/* 毛玻璃遮罩层 - 展开时显示 */}
-        <div
-          className={cn(
-            "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
-            isScrolled || isExpanded ? "opacity-100" : "opacity-0"
-          )}
-          style={{ transitionDelay: isExpanded ? "400ms" : "0ms" }}
-        />
-      </div>
+      {/* 背景已移至 layout.tsx 实现无缝切换 */}
 
       {/* 内容区域容器 - 紧贴顶部，使用 framer-motion 统一控制动画 */}
       <m.div
@@ -648,18 +629,16 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
             <button
               type="button"
               onClick={() => {
-                if (isExpanded) {
-                  // 展开 -> 收起
-                  setIsExpanded(false);
-                } else {
-                  // 收起 -> 展开
-                  setIsExpanded(true);
-                }
+                const newState = !isExpanded;
+                setIsExpanded(newState);
+                setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] flex flex-shrink-0 items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
             >
+              {/* 矿物纹理覆盖层 */}
+              <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
               <m.div
-                className="flex flex-col items-center"
+                className="relative z-10 flex flex-col items-center"
                 animate={{
                   rotate: isExpanded ? 180 : 0,
                   scale: 1
@@ -676,12 +655,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
         </m.div >
       </m.div >
 
-      <BottomNavBar
-        isExpanded={isExpanded}
-        currentPage="/story"
-        ariaLabel="品牌故事页导航"
-      />
+      {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
     </>
   );
 }
-

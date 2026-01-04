@@ -5,9 +5,10 @@ import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X, User, ShoppingBag } from "lucide-react";
-import { ProductDrawer, BottomNavBar } from "@/components/website";
+import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn } from "@/lib/utils";
+import { useLayout } from "@/contexts/LayoutContext";
 
 interface Category {
   id: string;
@@ -48,23 +49,27 @@ interface ProductsContentProps {
   products: Product[];
   backgroundImage?: string;
 }
+
 /**
  * 产品列表内容组件
  * 基于 First Page.html 的三列错落网格布局设计，放在可展开/收起的抽屉中
  */
 export function ProductsContent({ categories, products, backgroundImage }: ProductsContentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { setDrawerOpen } = useLayout();
 
-  // 组件加载后自动展开，实现"导航栏先收起，抽屉再下拉"的动画序列
+  // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {
-    // 稍微延迟一点，确保初始导航栏是可见状态
+    // 稍微延迟以展示"下拉"动画
     const timer = setTimeout(() => {
       setIsExpanded(true);
-    }, 1200);
+      setDrawerOpen(true);
+    }, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [setDrawerOpen]);
+
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
 
   // 打开产品抽屉
@@ -89,39 +94,17 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
       benefits: product.benefits,
     };
     setSelectedProduct(productData);
-    setDrawerOpen(true);
+    setProductDrawerOpen(true);
   };
 
   // 关闭抽屉
   const handleCloseDrawer = () => {
-    setDrawerOpen(false);
+    setProductDrawerOpen(false);
   };
 
   return (
     <>
-      {/* 底层暗金色背景 */}
-      <div className="fullscreen-bg-base" />
-
-      {/* 全屏背景图片 - 带边距和圆角 */}
-      <div className="fullscreen-bg">
-        <Image
-          src={backgroundImage || "/images/bg.png"}
-          alt="NIHPLOD 产品系列"
-          fill
-          priority
-          quality={75}
-          sizes="100vw"
-          className="object-cover"
-        />
-        {/* 毛玻璃遮罩层 - 展开时显示 */}
-        <div
-          className={cn(
-            "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
-            isExpanded ? "opacity-100" : "opacity-0"
-          )}
-          style={{ transitionDelay: isExpanded ? "400ms" : "0ms" }}
-        />
-      </div>
+      {/* 背景已移至 layout.tsx 实现无缝切换 */}
 
       {/* 内容区域容器 */}
       <m.div
@@ -345,14 +328,19 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
               </div>
             </m.div>
 
-            {/* 展开/收起按钮 */}
+            {/* 展开/收起按钮 - 放在 m.div 外部作为兄弟元素 */}
             <button
-              type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => {
+                const newState = !isExpanded;
+                setIsExpanded(newState);
+                setDrawerOpen(newState);
+              }}
               className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
             >
+              {/* 矿物纹理覆盖层 */}
+              <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
               <m.div
-                className="flex flex-col items-center"
+                className="relative z-10 flex flex-col items-center"
                 animate={{ rotate: isExpanded ? 180 : 0 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -429,15 +417,9 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
         )}
       </AnimatePresence>
 
-      <BottomNavBar
-        isExpanded={isExpanded}
-        currentPage="/products"
-        ariaLabel="产品页导航"
-      />
-
       {/* 产品详情抽屉 */}
       <ProductDrawer
-        isOpen={drawerOpen}
+        isOpen={productDrawerOpen}
         onClose={handleCloseDrawer}
         product={selectedProduct}
       />

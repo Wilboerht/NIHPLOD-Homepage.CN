@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, ContactIcon } from "@/components/website";
+import { useLayout } from "@/contexts/LayoutContext";
 
 /**
  * 导航项配置
@@ -29,45 +31,35 @@ const allNavItems: NavItem[] = [
 ];
 
 /**
- * BottomNavBar 组件属性
+ * 底部导航栏组件 - 全局单例
+ * 自动根据 pathname 高亮，并根据 LayoutContext 控制显示/隐藏
  */
-export interface BottomNavBarProps {
-    /** 抽屉是否展开（展开时隐藏导航栏） */
-    isExpanded: boolean;
-    /** 左侧主导航项的 href，用于确定当前页面并配置主导航 */
-    currentPage: "/" | "/advisor" | "/products" | "/story" | "/ritual";
-    /** 导航栏 aria-label */
-    ariaLabel?: string;
-}
-
-/**
- * 底部导航栏组件
- * 
- * 包含：
- * - 底部固定导航栏
- * - 移动端菜单遮罩层
- * - 移动端弹出菜单
- * - 桌面端直接显示导航图标
- */
-export function BottomNavBar({ isExpanded, currentPage, ariaLabel }: BottomNavBarProps) {
+export function BottomNavBar() {
+    const pathname = usePathname();
+    const { isDrawerOpen } = useLayout();
     const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
 
-    // 根据当前页面获取主导航项和其他导航项
-    const primaryNav = allNavItems.find(item => item.href === currentPage);
-    const otherNavItems = allNavItems.filter(item => item.href !== currentPage);
+    // 简单映射 pathname 到 currentPage，仅用于高亮和主导航判定
+    // 如果路径是嵌套的（如 /products/123），可能需要 startsWith 逻辑
+    // 这里暂时做精准匹配或一级匹配
+    const currentPage = allNavItems.find(item => item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href)))?.href || "/";
 
-    if (!primaryNav) {
-        console.warn(`BottomNavBar: Unknown currentPage "${currentPage}"`);
-        return null;
-    }
+    // 根据当前页面获取主导航项和其他导航项
+    const primaryNav = allNavItems.find(item => item.href === currentPage) || allNavItems[4]; // 默认为Home
+    const otherNavItems = allNavItems.filter(item => item.href !== currentPage);
+    const AdvisorIcon = ContactIcon; // 显式获取
 
     const PrimaryIcon = primaryNav.icon;
+
+    // 当抽屉展开时 (isDrawerOpen === true)，隐藏导航栏
+    // 也就是 !isDrawerOpen 时显示
+    const isVisible = !isDrawerOpen;
 
     return (
         <>
             {/* 移动端菜单遮罩层 */}
             <AnimatePresence>
-                {isNavMenuOpen && !isExpanded && (
+                {isNavMenuOpen && isVisible && (
                     <m.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -81,7 +73,7 @@ export function BottomNavBar({ isExpanded, currentPage, ariaLabel }: BottomNavBa
 
             {/* 移动端弹出菜单 */}
             <AnimatePresence>
-                {isNavMenuOpen && !isExpanded && (
+                {isNavMenuOpen && isVisible && (
                     <m.div
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -114,15 +106,15 @@ export function BottomNavBar({ isExpanded, currentPage, ariaLabel }: BottomNavBa
                 )}
             </AnimatePresence>
 
-            {/* 底部导航栏 - 展开时隐藏 */}
+            {/* 底部导航栏 - 抽屉展开时平滑滑出 */}
             <AnimatePresence>
-                {!isExpanded && (
+                {isVisible && (
                     <m.header
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        initial={{ y: 0, opacity: 1 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
                         transition={{
-                            duration: 1.2,
+                            duration: 0.8,
                             ease: [0.22, 1, 0.36, 1]
                         }}
                         className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
@@ -134,7 +126,7 @@ export function BottomNavBar({ isExpanded, currentPage, ariaLabel }: BottomNavBa
                                 "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
                                 "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
                             )}
-                            aria-label={ariaLabel || `${primaryNav.label}页导航`}
+                            aria-label="主要导航"
                         >
                             {/* ================= 移动端左侧主导航 (动态) ================= */}
                             <Link
