@@ -306,6 +306,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
             {/* 主内容区域 - 三层级布局 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              style={{ willChange: "height" }}
               animate={{
                 height: isExpanded ? "calc(100vh - 120px)" : 0,
                 minHeight: isExpanded ? 400 : 0

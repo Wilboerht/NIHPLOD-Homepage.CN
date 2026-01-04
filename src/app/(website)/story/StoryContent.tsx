@@ -82,6 +82,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps = {}) {
             {/* 主内容区域 - 使用 about us.html 风格 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              style={{ willChange: "flex-grow, height" }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
                 height: !isExpanded ? 0 : "auto"

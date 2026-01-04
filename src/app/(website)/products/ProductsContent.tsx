@@ -123,6 +123,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
             {/* 主内容区域 - 抽屉 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              style={{ willChange: "flex-grow, height" }}
               initial={{ height: 0, flexGrow: 0 }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
