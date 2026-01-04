@@ -73,9 +73,10 @@ export function StoryContent() {
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
               style={{ willChange: "flex-grow" }}
-              initial={{ flexGrow: 0 }}
+              initial={{ flexGrow: 0, flexBasis: 0 }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
+                flexBasis: 0
               }}
               transition={{
                 duration: 1.2,
@@ -277,7 +278,7 @@ export function StoryContent() {
                             <p className="mt-10 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                               旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                             </p>
-                            <span className="mt-8 block text-[18px] font-normal leading-[1.6] tracking-wide text-[#6a7c88]">
+                            <span className="mt-8 block text-[18px] font-normal leading-[1.6] tracking-wide text-[#00263e]">
                               将逆转时光的不可能，<br />慢慢变得「有可能」。
                             </span>
 

@@ -297,10 +297,11 @@ export function RitualContent() {
             {/* 主内容区域 - 三层级布局 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
-              style={{ willChange: "height" }}
+              style={{ willChange: "flex-grow" }}
+              initial={{ flexGrow: 0, flexBasis: 0 }}
               animate={{
-                height: isExpanded ? "calc(100vh - 120px)" : 0,
-                minHeight: isExpanded ? 400 : 0
+                flexGrow: isExpanded ? 1 : 0,
+                flexBasis: 0
               }}
               transition={{
                 duration: 1.2,
@@ -313,7 +314,7 @@ export function RitualContent() {
               <div className="texture-overlay absolute inset-0" />
 
               <div className={cn(
-                "flex h-full flex-col overflow-hidden",
+                "flex h-full flex-col overflow-hidden pb-3",
                 !isExpanded && "hidden"
               )}>
                 {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
@@ -354,7 +355,7 @@ export function RitualContent() {
                   </header>
 
                   {/* 移动端内容区域 */}
-                  <div className="flex-1 overflow-y-auto px-6 pb-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="flex-1 overflow-y-auto px-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <AnimatePresence mode="wait">
                       {/* 移动端 Level 1: 主菜单 */}
                       {currentLevel === 1 && (
