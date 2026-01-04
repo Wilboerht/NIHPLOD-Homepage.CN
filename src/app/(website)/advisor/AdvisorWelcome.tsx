@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { m } from "framer-motion";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -26,13 +26,16 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
   const router = useRouter();
   const { initSession } = useAdvisorAnalytics();
   const [isExpanded, setIsExpanded] = useState(false); // 默认收起以展示动画
+  const [isLoading, setIsLoading] = useState(false);
   const [_imageError, _setImageError] = useState(false);
 
   const { setDrawerOpen } = useLayout();
 
   useEffect(() => {
     initSession();
-  }, [initSession]);
+    // 预加载问卷页面
+    router.prefetch("/advisor/questions");
+  }, [initSession, router]);
 
   // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {
@@ -45,6 +48,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
   }, [setDrawerOpen]);
 
   const handleStart = () => {
+    setIsLoading(true);
     router.push("/advisor/questions");
   };
 
@@ -172,7 +176,8 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                   {/* 开始按钮 */}
                   <m.button
                     onClick={handleStart}
-                    className="group relative mt-10 overflow-hidden rounded-full border-2 border-brand-gold/60 bg-gradient-to-r from-brand-gold/10 via-brand-champagne/20 to-brand-gold/10 px-14 py-4 text-sm font-medium tracking-[0.2em] text-brand-charcoal shadow-luxury backdrop-blur-sm transition-all duration-300 hover:border-brand-gold hover:shadow-luxury-lg sm:mt-12 sm:px-16 sm:py-4.5 sm:text-base"
+                    disabled={isLoading}
+                    className="group relative mt-10 overflow-hidden rounded-full border-2 border-brand-gold/60 bg-gradient-to-r from-brand-gold/10 via-brand-champagne/20 to-brand-gold/10 px-14 py-4 text-sm font-medium tracking-[0.2em] text-brand-charcoal shadow-luxury backdrop-blur-sm transition-all duration-300 hover:border-brand-gold hover:shadow-luxury-lg sm:mt-12 sm:px-16 sm:py-4.5 sm:text-base disabled:opacity-70 disabled:cursor-not-allowed"
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.9 }}
@@ -180,8 +185,13 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                     whileTap={{ scale: 0.97 }}
                   >
                     {/* 光泽效果 */}
-                    <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
-                    <span className="relative">开启体验</span>
+                    {!isLoading && (
+                      <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
+                    )}
+                    <span className="relative flex items-center gap-2">
+                      {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {isLoading ? "加载中..." : "开启体验"}
+                    </span>
                   </m.button>
 
                   {/* 时间提示 */}

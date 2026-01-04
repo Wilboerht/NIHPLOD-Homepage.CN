@@ -257,15 +257,15 @@ export function QuestionsFlow() {
   }
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-gradient-cream px-4 py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-gradient-cream px-4 md:px-6 lg:px-12 xl:px-16">
       {/* 背景装饰 */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-gradient-radial-gold opacity-50" />
         <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-gradient-radial-gold opacity-30" />
       </div>
 
-      {/* 顶部导航栏 */}
-      <header className="relative z-10 flex items-center justify-between">
+      {/* 顶部导航栏 - 固定在顶部，增加上下内边距 */}
+      <header className="relative z-10 flex shrink-0 items-center justify-between py-6">
         {/* 返回按钮 - 优雅的圆形按钮 */}
         {showGenderStep ? (
           <Link
@@ -314,45 +314,47 @@ export function QuestionsFlow() {
         </div>
       </header>
 
-      {/* 主内容区域 */}
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center py-6 md:py-8">
-        <AnimatePresence mode="wait">
-          {showGenderStep ? (
-            /* 性别选择步骤 */
-            <m.div
-              key="gender-step"
-              className="w-full max-w-md lg:max-w-lg"
-              initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            >
-              <GenderSelection
-                selectedGender={selectedGender}
-                onSelect={handleGenderSelect}
-              />
-            </m.div>
-          ) : (
-            /* 问卷问题步骤 */
-            <m.div
-              key="question-step"
-              className="w-full max-w-md lg:max-w-lg"
-              initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            >
-              {currentQuestion && (
-                <QuestionStep
-                  question={currentQuestion}
-                  selectedValue={currentAnswer}
-                  onSelect={handleSelect}
-                  direction={direction}
+      {/* 主内容区域 - 可滚动，确保内容不被遮挡 */}
+      <main className="relative z-10 flex flex-1 flex-col overflow-y-auto overflow-x-hidden scroll-smooth">
+        <div className="flex min-h-full w-full flex-col items-center justify-center py-6">
+          <AnimatePresence mode="wait">
+            {showGenderStep ? (
+              /* 性别选择步骤 */
+              <m.div
+                key="gender-step"
+                className="w-full max-w-md lg:max-w-lg"
+                initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <GenderSelection
+                  selectedGender={selectedGender}
+                  onSelect={handleGenderSelect}
                 />
-              )}
-            </m.div>
-          )}
-        </AnimatePresence>
+              </m.div>
+            ) : (
+              /* 问卷问题步骤 */
+              <m.div
+                key="question-step"
+                className="w-full max-w-md lg:max-w-lg"
+                initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              >
+                {currentQuestion && (
+                  <QuestionStep
+                    question={currentQuestion}
+                    selectedValue={currentAnswer}
+                    onSelect={handleSelect}
+                    direction={direction}
+                  />
+                )}
+              </m.div>
+            )}
+          </AnimatePresence>
+        </div>
       </main>
 
       {/* 底部导航按钮 - 性别选择步骤不显示 */}

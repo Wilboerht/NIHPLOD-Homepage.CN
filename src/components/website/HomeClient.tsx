@@ -249,7 +249,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               <div className="texture-overlay absolute inset-0" />
               <m.div
                 className="relative z-10 flex flex-col items-center"
-                animate={{ rotate: isExpanded ? 180 : 0 }}
+                animate={{ rotate: isExpanded ? 180 : 0, scale: 1 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}

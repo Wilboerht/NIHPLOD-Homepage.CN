@@ -63,7 +63,7 @@ export function FaceScanContent() {
   }
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden px-4 py-3 md:px-6 md:py-4">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[#F0EDE1] px-4 py-3 md:px-6 md:py-4">
       {/* 顶部导航栏 */}
       <header className="flex shrink-0 items-center justify-start">
         {/* 返回按钮 */}
