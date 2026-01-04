@@ -217,6 +217,15 @@ export function StoryContent() {
                             <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                               海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
                             </p>
+                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/15">
+                              <Image
+                                src="/images/story/dolphin-ocean.png"
+                                alt="Dolphin Skin"
+                                width={600}
+                                height={400}
+                                className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                              />
+                            </div>
                           </div>
 
                           {/* 第二个内容块 */}
@@ -224,7 +233,13 @@ export function StoryContent() {
                             <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
                               2008 | 摩纳哥 | 联合实验室公司
                             </span>
-                            <div className="relative my-5 w-full overflow-hidden border border-[#00263e]/15">
+                            <span className="mt-4 block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
+                              前沿科技赋能精简护理
+                            </span>
+                            <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+                              创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
+                            </p>
+                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/15">
                               <Image
                                 src="/images/story/lab-research.png"
                                 alt="Science"
@@ -233,12 +248,6 @@ export function StoryContent() {
                                 className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
                               />
                             </div>
-                            <span className="mt-8 block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
-                              前沿科技赋能精简护理
-                            </span>
-                            <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                              创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
-                            </p>
                           </div>
                         </m.section>
                       )}

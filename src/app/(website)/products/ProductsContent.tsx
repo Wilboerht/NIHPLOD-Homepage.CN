@@ -263,8 +263,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     </h1>
                   </m.header>
 
-                  {/* 产品网格 - 三列错落布局 - 顶部和底部都不对齐 */}
-                  <section className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-10">
+                  {/* 产品网格/轮播 - 移动端轮播，桌面端网格 */}
+                  <section className="
+                    flex w-full snap-x snap-mandatory overflow-x-auto pb-6 scrollbar-hide px-[7.5vw]
+                    lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-3 lg:gap-10 lg:overflow-visible lg:pb-0 lg:px-0
+                  ">
                     {products.slice(0, 3).map((product, index) => (
                       <m.div
                         key={product.id}
@@ -273,7 +276,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1], delay: 0.1 + index * 0.1 }}
                         onClick={() => handleProductClick(product)}
                         className={cn(
-                          "group flex cursor-pointer flex-col",
+                          "group relative flex shrink-0 cursor-pointer flex-col h-full justify-between",
+                          // 移动端：宽度占屏幕 75%，居中对齐，Snap对齐 (容器添加 px-[7.5vw] + 父级5% ≈ 12.5% 确保居中)
+                          "w-[75vw] snap-center px-2",
+                          // 桌面端：重置宽度和内边距，应用错落布局
+                          "lg:w-auto lg:px-0 lg:block lg:justify-start lg:h-auto",
                           // 第一列：正常高度
                           index === 0 && "lg:h-[80%]",
                           // 第二列：最高，顶部下移
@@ -283,7 +290,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         )}
                       >
                         {/* 图片容器 */}
-                        <div className="relative min-h-0 flex-1 overflow-hidden bg-white p-4 transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)] lg:p-6">
+                        <div className="relative h-[40vh] w-full overflow-hidden bg-white p-4 transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)] lg:aspect-auto lg:h-full lg:p-6">
                           {/* 内部装饰边框 */}
                           <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08]" />
                           {product.images[0] && (
@@ -292,12 +299,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                               alt={product.images[0].alt || product.name}
                               fill
                               className="object-contain p-4 transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05] lg:p-6"
-                              sizes="(max-width: 1024px) 100vw, 33vw"
+                              sizes="(max-width: 1024px) 85vw, 33vw"
                             />
                           )}
                         </div>
                         {/* 产品信息 - 紧凑样式 */}
-                        <div className="mt-3 flex-shrink-0 px-1 lg:mt-4">
+                        <div className="mt-3 flex-shrink-0 px-1 text-center lg:mt-4 lg:text-left">
                           <span className="mb-1 block text-[12px] uppercase tracking-[0.15em] text-[#00263E]/50 lg:text-[11px]">
                             {product.category.nameEn}
                           </span>
@@ -313,6 +320,22 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       </m.div>
                     ))}
                   </section>
+
+                  {/* 查看全部产品按钮 - 仅移动端显示，点击效果同菜单按钮 */}
+                  <m.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5, duration: 0.8 }}
+                    className="flex justify-center px-[7.5vw] pb-8 lg:hidden"
+                  >
+                    <button
+                      onClick={() => setIsCategoryMenuOpen(true)}
+                      className="group flex w-full items-center justify-center gap-2 border border-[#00263E]/20 py-3 text-sm tracking-[0.2em] text-[#00263E] transition-all hover:border-[#00263E] hover:bg-[#00263E] hover:text-[#F0EDE1]"
+                    >
+                      查看全部产品
+                      <span className="text-xs transition-transform group-hover:translate-x-1">→</span>
+                    </button>
+                  </m.div>
                 </div>
 
               </div>
@@ -403,12 +426,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       setIsCategoryMenuOpen(false);
                     }
                   }}
-                  className="group flex flex-col items-center gap-2"
+                  className="group flex flex-col items-center gap-1"
                 >
-                  <span className="text-2xl font-light text-[#00263E] transition-colors group-hover:text-brand-gold">
+                  <span className="text-base font-normal tracking-widest text-[#00263E] transition-colors group-hover:text-brand-gold">
                     {cat.name}
                   </span>
-                  <span className="text-xs uppercase tracking-[0.2em] text-[#00263E]/50 transition-colors group-hover:text-brand-gold/70">
+                  <span className="text-[10px] uppercase tracking-[0.15em] text-[#00263E]/40 transition-colors group-hover:text-brand-gold/70">
                     {cat.nameEn}
                   </span>
                 </m.button>

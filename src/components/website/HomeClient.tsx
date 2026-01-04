@@ -111,10 +111,10 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   </svg>
                 </div>
 
-                {/* 右上角登录按钮 */}
-                <div className="user-button-container relative z-20">
+                {/* 右上角登录按钮 - 暂时隐藏 */}
+                {/* <div className="user-button-container relative z-20">
                   <UserButton />
-                </div>
+                </div> */}
 
                 {/* 主内容 - 添加底部padding以在视觉上居中(抵消底部absolute定位的元素) */}
                 <main className="main-content relative z-10 flex h-full flex-col items-center justify-center text-center pb-32 lg:pb-24">
@@ -183,7 +183,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                         <Link
                           key={link.href}
                           href={link.href}
-                          className="text-xs sm:text-sm uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                          className="text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
                         >
                           {link.label}
                         </Link>
@@ -228,7 +228,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     </div>
 
                     {/* 版权文本 */}
-                    <p className="text-xs font-light tracking-widest text-brand-charcoal/70 relative z-10">
+                    <p className="text-xs font-light tracking-widest text-brand-charcoal/60 relative z-10">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </m.div>
