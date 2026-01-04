@@ -6,7 +6,7 @@ import Image from "next/image";
 import { m } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
-import { UserButton } from "./UserButton";
+// import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
