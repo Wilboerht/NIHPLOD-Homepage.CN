@@ -166,9 +166,7 @@ export function BottomNavBar() {
                                             <span className="text-lg font-semibold text-brand-charcoal lg:text-2xl">
                                                 {advisorItem.label}
                                             </span>
-                                            <span className="font-serif text-xs uppercase tracking-wide text-brand-gold/70 lg:text-base">
-                                                {advisorItem.labelEn}
-                                            </span>
+
                                         </div>
                                     </Link>
                                 );
@@ -232,9 +230,7 @@ export function BottomNavBar() {
                                             <span className="text-xs text-brand-charcoal/70 lg:text-sm">
                                                 {item.label}
                                             </span>
-                                            <span className="font-serif text-[10px] uppercase tracking-wide text-brand-charcoal/50 lg:text-xs">
-                                                {item.labelEn}
-                                            </span>
+
                                         </Link>
                                     );
                                 })}

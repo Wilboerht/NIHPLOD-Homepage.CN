@@ -22,7 +22,7 @@ interface AdvisorLayoutProps {
  */
 export default function AdvisorLayout({ children }: AdvisorLayoutProps) {
   return (
-    <div className="min-h-screen bg-brand-cream">
+    <div className="min-h-screen">
       {children}
     </div>
   );

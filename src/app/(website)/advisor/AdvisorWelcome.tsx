@@ -10,6 +10,10 @@ import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
+interface AdvisorWelcomeProps {
+  backgroundImage?: string;
+}
+
 /**
  * AI 护肤顾问欢迎页
  *
@@ -18,7 +22,7 @@ import { useLayout } from "@/contexts/LayoutContext";
  *
  * 设计风格：大气、精致、清爽、简约不简单
  */
-export function AdvisorWelcome() {
+export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
   const router = useRouter();
   const { initSession } = useAdvisorAnalytics();
   const [isExpanded, setIsExpanded] = useState(false); // 默认收起以展示动画
@@ -55,42 +59,48 @@ export function AdvisorWelcome() {
 
   return (
     <>
-      {/* 背景已移至 layout.tsx 实现无缝切换 */}
+      {/* 自定义页面背景 - 覆盖全局背景 */}
+      {backgroundImage && (
+        <div className="fullscreen-bg">
+          <Image
+            src={backgroundImage}
+            alt="Background"
+            fill
+            priority
+            quality={75}
+            className="object-cover"
+            sizes="100vw"
+          />
+        </div>
+      )}
 
       {/* 主内容容器 */}
       <m.div
-        className="fixed inset-0 z-10"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: 0.6,
-          ease: [0.32, 0.72, 0, 1]
-        }}
+        className="safe-area-content !top-0"
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
         {/* 主内容区域 + 展开按钮一体化 */}
         <m.div
           initial={{ opacity: 0, scale: 0.98 }}
-          animate={{
-            opacity: 1,
-            scale: 1,
-            bottom: isExpanded ? 16 : 0
-          }}
-          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-          className="absolute left-6 right-6 top-0 z-20 sm:left-10 sm:right-10 lg:left-16 lg:right-16"
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="h-full"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center">
             {/* 主内容区域 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              style={{ willChange: "flex-grow, height" }}
+              initial={{ height: 0, flexGrow: 0 }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
-                height: isExpanded ? "auto" : 0
+                height: !isExpanded ? 0 : "auto"
               }}
               transition={{
                 duration: 1.2,
-                ease: [0.4, 0, 0.2, 1],
-                // 展开时延迟0.4s等待导航栏收起；收起时不延迟
+                ease: [0.22, 1, 0.36, 1],
+                // 展开时延迟0.3s等待导航栏收起；收起时不延迟
                 delay: isExpanded ? 0.3 : 0
               }}
             >
@@ -98,7 +108,8 @@ export function AdvisorWelcome() {
               <div className="texture-overlay absolute inset-0" />
               <div className={cn(
                 "flex h-full flex-col overflow-y-auto px-6 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12",
-                "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+                !isExpanded && "hidden"
               )}>
                 {/* 内容区域 - 垂直居中 */}
                 <div className="flex flex-1 flex-col items-center justify-center">
