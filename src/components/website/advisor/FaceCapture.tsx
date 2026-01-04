@@ -1,13 +1,12 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { m, AnimatePresence } from "framer-motion";
+import { m } from "framer-motion";
 import {
   RefreshCw,
   Sun,
   SunDim,
   AlertCircle,
-  Loader2,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -77,7 +76,6 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
   const [faceStatus, setFaceStatus] = useState<FaceStatus>("none");
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceApiLoaded, setFaceApiLoaded] = useState(false);
-  const [currentHeadPose, setCurrentHeadPose] = useState<HeadPose>("unknown");
   const [isAllCaptured, setIsAllCaptured] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const faceApiRef = useRef<any>(null);
@@ -290,7 +288,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
 
         // 计算头部朝向
         const headPose = calculateHeadPose(detection.landmarks);
-        setCurrentHeadPose(headPose);
+
 
         // 检查当前头部朝向是否匹配当前步骤
         const isPoseCorrect = headPose === currentStep;
@@ -317,7 +315,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
       } else {
         stableCountRef.current = 0;
         faceBoxRef.current = null;
-        setCurrentHeadPose("unknown");
+
         setFaceStatus("detecting");
       }
     } catch (err) {
@@ -444,7 +442,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
       // 进入下一步
       setCurrentStep(nextStep);
       setFaceStatus("none");
-      setCurrentHeadPose("unknown");
+
     } else {
       // 所有步骤完成 - 直接调用 onCapture 并传递所有照片
       setIsAllCaptured(true);
@@ -711,36 +709,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
   };
 
   // 获取当前步骤配置
-  const currentStepConfig = CAPTURE_STEPS.find(s => s.step === currentStep)!;
-  const currentStepIndex = CAPTURE_STEPS.findIndex(s => s.step === currentStep);
 
-  // 获取动作提示文字
-  const getActionHint = () => {
-    if (!modelsLoaded) return "正在加载面部识别...";
-    if (faceStatus === "none") return "请将面部置于框内";
-
-    const isPoseCorrect = currentHeadPose === currentStep;
-
-    if (faceStatus === "detecting") {
-      if (currentHeadPose === "unknown") {
-        return currentStepConfig.instruction;
-      }
-      if (!isPoseCorrect) {
-        return currentStepConfig.instruction;
-      }
-      return "请将面部居中";
-    }
-
-    if (faceStatus === "found") {
-      return "检测到正确姿势，请保持不动";
-    }
-
-    if (faceStatus === "ready") {
-      return "拍照中...";
-    }
-
-    return currentStepConfig.instruction;
-  };
 
   return (
     <div className="flex h-full flex-col items-center">

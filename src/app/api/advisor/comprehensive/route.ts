@@ -19,7 +19,9 @@ const ComprehensiveRequestSchema = z.object({
  * 统一分析结果类型
  */
 interface UnifiedAnalysisResult {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   faceAnalysis: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   comprehensiveResult: any;
 }
 
@@ -52,7 +54,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { answers, images } = result.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { answers, images } = result.data as { answers: any; images: any };
 
     // 收集有效图片
     const validImages: { angle: string; data: string }[] = [];
@@ -90,6 +93,7 @@ export async function POST(request: NextRequest) {
 /**
  * 构建用户 Prompt (包含问卷信息)
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildUserPrompt(answers: any, images: { angle: string }[]) {
   // 简单的问卷摘要
   const profile = [
@@ -167,7 +171,7 @@ async function callUnifiedAI(
 
   // 4. 执行 API 调用 (带重试机制)
   const MAX_RETRIES = 3;
-  let lastError: any = null;
+  let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -212,12 +216,13 @@ async function callUnifiedAI(
       const cleanContent = content.replace(/```json\s*|\s*```/g, "").trim();
       return JSON.parse(cleanContent) as UnifiedAnalysisResult;
 
-    } catch (e: any) {
+    } catch (e) {
       lastError = e;
-      const isNetworkError = e.name === 'AbortError' || e.message.includes('fetch');
-      const isServerError = e.message.includes('Server Error');
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const isNetworkError = e instanceof Error && (e.name === 'AbortError' || errorMessage.includes('fetch'));
+      const isServerError = errorMessage.includes('Server Error');
 
-      console.warn(`[Unified Analysis] Attempt ${attempt} failed: ${e.message}`);
+      console.warn(`[Unified Analysis] Attempt ${attempt} failed: ${errorMessage}`);
 
       // 只有网络错误或服务端错误才重试
       if (attempt < MAX_RETRIES && (isNetworkError || isServerError)) {
@@ -230,5 +235,6 @@ async function callUnifiedAI(
   }
 
   aiLogger.error("Unified Analysis Failed after retries", { error: lastError });
-  throw new Error(`Failed to process unified analysis: ${lastError?.message || "Unknown error"}`);
+  const finalErrorMessage = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`Failed to process unified analysis: ${finalErrorMessage || "Unknown error"}`);
 }

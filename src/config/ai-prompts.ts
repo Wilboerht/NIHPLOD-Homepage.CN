@@ -917,3 +917,33 @@ export const UNIFIED_ANALYSIS_SYSTEM_PROMPT = `# 角色设定
 - type_enum: dry, oily, combination, normal, sensitive
 - balance_enum: dry, balanced, oily, dehydrated-oily
 `;
+
+/**
+ * Claude Vision 专用提示词
+ * 优化为 User Message 格式，注重指令遵循
+ */
+export const CLAUDE_VISION_PROMPT = `你是一位专业的皮肤科医生和美容顾问。请基于 VISIA 皮肤检测标准，对提供的面部照片进行 8 维度深度分析。
+
+# 分析维度（0-100分）
+1. spots (色斑)
+2. wrinkles (皱纹)
+3. texture (纹理)
+4. pores (毛孔)
+5. uvDamage (光损伤)
+6. brownSpots (色素沉着)
+7. redAreas (泛红敏感)
+8. acneRisk (痘痘风险)
+
+# 输出要求
+请严格遵守系统指令中的 JSON 格式输出。
+- 评分必须客观、准确
+- 所有描述性文字使用中文
+- 如果照片不符合分析要求（非人脸、模糊等），请返回验证失败
+- 不要输出任何 Markdown 标记，只输出纯 JSON 字符串
+`;
+
+/**
+ * 视觉分析用户提示词
+ * 用于触发 AI 开始分析
+ */
+export const VISION_ANALYSIS_USER_PROMPT = "请分析提供的面部照片，严格按照系统指令生成 JSON 格式的 8 维度评分和诊断报告。";
