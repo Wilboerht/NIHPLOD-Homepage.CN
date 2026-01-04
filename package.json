@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@fontsource/playfair-display": "^5.2.8",
+    "@lottiefiles/react-lottie-player": "^3.6.0",
     "@pansy/china-division": "^2.1.0",
     "@prisma/adapter-pg": "^7.0.1",
     "@prisma/client": "^7.0.1",

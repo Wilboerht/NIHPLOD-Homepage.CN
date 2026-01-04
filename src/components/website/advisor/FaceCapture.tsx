@@ -4,16 +4,17 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import {
   RefreshCw,
-  Check,
   Sun,
   SunDim,
   AlertCircle,
   Loader2,
+  Check,
   ChevronLeft,
   ChevronRight,
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FaceScanOverlay } from "./FaceScanOverlay";
 
 // 三张照片的数据结构
 export interface FaceCaptureImages {
@@ -761,8 +762,8 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
                     isCompleted
                       ? "border-green-500 bg-green-500 text-white"
                       : isCurrent
-                      ? "border-brand-gold bg-brand-gold/10 text-brand-gold"
-                      : "border-gray-300 bg-gray-100 text-gray-400"
+                        ? "border-brand-gold bg-brand-gold/10 text-brand-gold"
+                        : "border-gray-300 bg-gray-100 text-gray-400"
                   )}
                 >
                   {isCompleted ? (
@@ -843,121 +844,11 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
 
             {/* 面部引导框 */}
             {!isLoading && !error && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="relative h-[70%] w-[65%]">
-                  {/* 椭圆形边框 */}
-                  <div
-                    className={cn(
-                      "absolute inset-0 rounded-[50%] border-2 transition-colors duration-300",
-                      faceStatus === "none" || faceStatus === "detecting"
-                        ? "border-dashed border-white/60"
-                        : faceStatus === "found"
-                        ? "border-solid border-yellow-400"
-                        : "border-solid border-green-400"
-                    )}
-                  />
-
-                  {/* 方向指示箭头 */}
-                  <AnimatePresence mode="wait">
-                    {currentStep !== "front" && faceStatus !== "ready" && (
-                      <m.div
-                        key={currentStep}
-                        initial={{ opacity: 0, x: currentStep === "left" ? 20 : -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0 }}
-                        className={cn(
-                          "absolute top-1/2 -translate-y-1/2",
-                          currentStep === "left" ? "-left-12" : "-right-12"
-                        )}
-                      >
-                        <div className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-full",
-                          currentHeadPose === currentStep
-                            ? "bg-green-500 text-white"
-                            : "bg-brand-gold/80 text-white animate-pulse"
-                        )}>
-                          {currentStep === "left" ? (
-                            <ChevronLeft className="h-6 w-6" />
-                          ) : (
-                            <ChevronRight className="h-6 w-6" />
-                          )}
-                        </div>
-                      </m.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* 四角标记 */}
-                  <div className={cn(
-                    "absolute -left-1 -top-1 h-4 w-4 border-l-2 border-t-2 transition-colors duration-300",
-                    faceStatus === "ready" ? "border-green-400" : "border-white"
-                  )} />
-                  <div className={cn(
-                    "absolute -right-1 -top-1 h-4 w-4 border-r-2 border-t-2 transition-colors duration-300",
-                    faceStatus === "ready" ? "border-green-400" : "border-white"
-                  )} />
-                  <div className={cn(
-                    "absolute -bottom-1 -left-1 h-4 w-4 border-b-2 border-l-2 transition-colors duration-300",
-                    faceStatus === "ready" ? "border-green-400" : "border-white"
-                  )} />
-                  <div className={cn(
-                    "absolute -bottom-1 -right-1 h-4 w-4 border-b-2 border-r-2 transition-colors duration-300",
-                    faceStatus === "ready" ? "border-green-400" : "border-white"
-                  )} />
-
-                  {/* 倒计时数字 - 当检测到正确姿势时显示 */}
-                  {faceStatus === "found" && stabilityProgress > 0 && (
-                    <m.div
-                      className="absolute inset-0 flex items-center justify-center"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      <m.div
-                        className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                      >
-                        <span className="text-2xl font-bold text-white">
-                          {Math.ceil((100 - stabilityProgress) / 25) || "✓"}
-                        </span>
-                      </m.div>
-                    </m.div>
-                  )}
-
-                </div>
-
-                {/* 状态提示文字 */}
-                <div className="absolute bottom-8 text-center">
-                  {!modelsLoaded ? (
-                    <div className="flex items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 text-xs text-white">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>正在加载面部识别...</span>
-                    </div>
-                  ) : (
-                    <m.div
-                      key={getActionHint()}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        "rounded-full px-4 py-2 text-sm",
-                        faceStatus === "ready"
-                          ? "bg-green-500/80 text-white"
-                          : faceStatus === "found"
-                          ? "bg-yellow-500/80 text-white"
-                          : "bg-black/50 text-white"
-                      )}
-                    >
-                      {getActionHint()}
-                    </m.div>
-                  )}
-                </div>
-
-                {/* 当前步骤提示 */}
-                <div className="absolute left-4 top-4">
-                  <div className="rounded-full bg-black/50 px-3 py-1 text-xs text-white">
-                    步骤 {currentStepIndex + 1}/3: {currentStepConfig.label}
-                  </div>
-                </div>
-              </div>
+              <FaceScanOverlay
+                currentStep={currentStep}
+                faceStatus={faceStatus}
+                stabilityProgress={stabilityProgress}
+              />
             )}
 
             {/* 加载状态 */}
