@@ -3,12 +3,89 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "next-view-transitions";
 import Image from "next/image";
-import { m } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { m, AnimatePresence } from "framer-motion";
+import { ChevronDown, Menu, X } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 // import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+
+/**
+ * 移动端底部菜单组件
+ * 点击 "更多" 按钮展开/收起链接列表
+ * 使用绝对定位，展开时向上浮动，不影响其他元素布局
+ */
+function MobileFooterMenu({ links }: { links: { href: string; label: string }[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="flex sm:hidden flex-col items-center mb-2 relative z-30">
+      {/* 展开的链接列表 - 绝对定位，从按钮上方向上展开 */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* 背景遮罩 */}
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-20"
+              onClick={() => setIsOpen(false)}
+            />
+            {/* 菜单面板 */}
+            <m.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute bottom-full mb-4 z-30 flex flex-col items-center overflow-hidden rounded-2xl border border-brand-beige/50 bg-[#F8F6F1]/95 shadow-xl backdrop-blur-md"
+              style={{ minWidth: "160px" }}
+            >
+              {links.map((link, index) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    "w-full px-6 py-3 text-center text-sm tracking-wide text-brand-charcoal/80 transition-all hover:bg-brand-gold/10 hover:text-brand-charcoal",
+                    index !== links.length - 1 && "border-b border-brand-beige/30"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </m.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 菜单切换按钮 */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "flex items-center gap-1.5 rounded-full px-4 py-2 text-xs uppercase tracking-wider transition-all",
+          isOpen
+            ? "bg-brand-charcoal/10 text-brand-charcoal"
+            : "text-brand-charcoal/60 hover:text-brand-charcoal"
+        )}
+      >
+        {isOpen ? (
+          <>
+            <X className="h-3.5 w-3.5" />
+            <span>收起</span>
+          </>
+        ) : (
+          <>
+            <Menu className="h-3.5 w-3.5" />
+            <span>更多</span>
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
 
 const FOOTER_LINKS = [
   { href: "/terms", label: "服务条款" },
@@ -190,42 +267,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       ))}
                     </div>
 
-                    {/* 辅助链接 - 移动端 (弧形排列 - 微笑曲线 - 景深效果) */}
-                    <div className="flex sm:hidden h-24 items-end justify-center relative w-full mb-2 pointer-events-none">
-                      {FOOTER_LINKS.map((link, index) => {
-                        const totalLinks = FOOTER_LINKS.length;
-                        const middleIndex = (totalLinks - 1) / 2;
-                        const offset = index - middleIndex;
-                        const absOffset = Math.abs(offset);
-
-                        // 微笑曲线：中间低，两边高 - 加大曲率 (使用抛物线方程 y = ax^2)
-                        const y = absOffset * absOffset * -5 - absOffset * 6; // 更陡峭的曲线
-
-                        // 水平间距 - 配合缩放调整 (字体变大，间距适当增加)
-                        const x = offset * 65;
-
-                        // 景深效果 - 保持清晰
-                        const opacity = 1 - absOffset * 0.25; // 0: 1, 1: 0.75, 2: 0.5
-                        const scale = 1 - absOffset * 0.1; // 0: 1, 1: 0.9, 2: 0.8
-                        const blur = 0; // 不模糊
-
-                        return (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            className="absolute bottom-2 left-1/2 text-xs transform -translate-x-1/2 pointer-events-auto font-medium uppercase tracking-widest text-brand-charcoal transition-all duration-300 hover:text-brand-charcoal hover:scale-110 hover:!blur-0 hover:!opacity-100"
-                            style={{
-                              transform: `translateX(calc(-50% + ${x}px)) translateY(${y}px) scale(${scale})`,
-                              opacity: opacity,
-                              filter: `blur(${blur}px)`,
-                              zIndex: 10 - absOffset, // 中间层级最高
-                            }}
-                          >
-                            {link.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
+                    {/* 辅助链接 - 移动端 (可折叠菜单) */}
+                    <MobileFooterMenu links={FOOTER_LINKS} />
 
                     {/* 版权文本 */}
                     <p className="text-xs font-light tracking-widest text-brand-charcoal/60 relative z-10">

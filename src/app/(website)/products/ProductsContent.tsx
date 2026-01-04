@@ -175,10 +175,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               <div className={cn("relative z-10 flex h-full flex-col overflow-hidden", !isExpanded && "hidden")}>
                 {/* 移动端专用 Header - Grid 布局保证完美对齐 */}
                 <nav className="grid h-[80px] flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center px-4 lg:hidden">
-                  {/* 左侧：用户图标 */}
-                  <Link href="/login" className="flex h-10 w-10 items-center justify-center justify-self-start text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
-                    <User className="h-5 w-5" strokeWidth={1.2} />
-                  </Link>
+                  {/* 左侧：占位 */}
+                  <div className="h-10 w-10 justify-self-start" />
 
                   {/* 中间：Logo */}
                   <Link href="/" className="justify-self-center">
@@ -190,11 +188,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     />
                   </Link>
 
-                  {/* 右侧：购物袋图标 + 菜单按钮 */}
-                  <div className="flex items-center gap-1 justify-self-end">
-                    <Link href="/cart" className="flex h-10 w-10 items-center justify-center text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
-                      <ShoppingBag className="h-5 w-5" strokeWidth={1.2} />
-                    </Link>
+                  {/* 右侧：菜单按钮 */}
+                  <div className="flex items-center justify-self-end">
                     <button
                       type="button"
                       onClick={() => setIsCategoryMenuOpen(true)}
@@ -235,15 +230,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     ))}
                   </div>
 
-                  {/* 图标按钮 */}
-                  <div className="flex items-center gap-5">
-                    <Link href="/login" className="text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
-                      <User className="h-6 w-6" strokeWidth={1.2} />
-                    </Link>
-                    <Link href="/cart" className="text-[#00263E] opacity-80 transition-opacity hover:opacity-60">
-                      <ShoppingBag className="h-6 w-6" strokeWidth={1.2} />
-                    </Link>
-                  </div>
+                  {/* 占位（用户和购物袋按钮暂时隐藏）*/}
+                  <div className="w-6" />
                 </nav>
 
                 {/* 产品网格内容 - First Page.html 风格 - 一屏显示 */}

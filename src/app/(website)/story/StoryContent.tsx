@@ -72,10 +72,10 @@ export function StoryContent() {
             {/* 主内容区域 - 使用 about us.html 风格 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
-              style={{ willChange: "flex-grow, height" }}
+              style={{ willChange: "flex-grow" }}
+              initial={{ flexGrow: 0 }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
-                height: !isExpanded ? 0 : "auto"
               }}
               transition={{
                 duration: 1.2,
@@ -142,7 +142,7 @@ export function StoryContent() {
               <div
                 ref={contentRef}
                 className={cn(
-                  "relative z-10 flex h-full flex-col overflow-hidden",
+                  "relative z-10 flex h-full flex-col overflow-hidden pb-3",
                   !isExpanded && "hidden"
                 )}
               >
@@ -193,7 +193,7 @@ export function StoryContent() {
 
                   {/* 移动端内容区域 - 垂直滚动 */}
                   {/* Main Content Area */}
-                  <div className="relative z-20 px-[8%] pb-[10px] pt-[40px]">
+                  <div className="relative z-20 px-[8%] pb-10 pt-[40px]">
                     <AnimatePresence mode="wait">
                       {/* 移动端 Section 1: 品牌故事 */}
                       {activeSection === "story" && (
@@ -286,7 +286,15 @@ export function StoryContent() {
                               <span className="mb-2 block text-[10px] uppercase tracking-[0.15em] opacity-50">
                                 CHIEF EXECUTIVE OFFICER
                               </span>
-                              <span className="font-serif text-[18px] italic tracking-[0.05em] text-[#00263e]">John Morrell</span>
+                              <div className="flex justify-end mt-2">
+                                <Image
+                                  src="/images/story/mission-decoration.svg"
+                                  alt="John Morrell"
+                                  width={120}
+                                  height={32}
+                                  className="opacity-90"
+                                />
+                              </div>
                             </div>
                           </div>
                         </m.section>

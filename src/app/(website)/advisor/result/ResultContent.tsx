@@ -436,7 +436,7 @@ export function ResultContent() {
   if (!result) return null;
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
+    <div className="min-h-screen bg-gradient-cream px-4 py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
       {/* 顶部导航 */}
       <header className="mx-auto mb-6 flex max-w-2xl items-center justify-between lg:max-w-3xl lg:mb-8">
         <Link
