@@ -160,9 +160,13 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, delay: 0.8 }}
                   >
-                    <Link href="/products" className="btn btn-primary">
+                    <button
+                      type="button"
+                      onClick={() => setIsExpanded(false)}
+                      className="btn btn-primary"
+                    >
                       探索更多
-                    </Link>
+                    </button>
                     <Link href="/advisor" className="btn btn-secondary">
                       AI快速测肤
                       <span className="badge-new">NEW</span>
@@ -179,7 +183,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     {/* 辅助链接 */}
                     <div className="flex items-center gap-3 sm:gap-6">
                       {[
-                        { href: "/services", label: "服务" },
+                        { href: "/services", label: "服务入口" },
                         { href: "/contact", label: "联系我们" },
                         { href: "/careers", label: "加入我们" },
                         { href: "/privacy", label: "隐私政策" },
