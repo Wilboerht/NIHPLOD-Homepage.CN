@@ -36,8 +36,8 @@ const allNavItems: NavItem[] = [
  */
 export function BottomNavBar() {
     const pathname = usePathname();
-    const { isDrawerOpen } = useLayout();
-    const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+    const { isDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
+    // const [isNavMenuOpen, setIsNavMenuOpen] = useState(false); // Removed local state
 
     // 简单映射 pathname 到 currentPage，仅用于高亮和主导航判定
     // 如果路径是嵌套的（如 /products/123），可能需要 startsWith 逻辑

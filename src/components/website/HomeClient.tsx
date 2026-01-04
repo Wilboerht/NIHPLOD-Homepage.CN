@@ -26,7 +26,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
-  const { setDrawerOpen } = useLayout();
+  const { setDrawerOpen, setNavMenuOpen } = useLayout();
 
   // 首页特殊处理：立即设置抽屉为展开状态，不需要动画
   useEffect(() => {
@@ -55,6 +55,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   const handleCollapse = () => {
     setIsExpanded(false);
     setDrawerOpen(false);
+    // 展开底部导航菜单
+    setNavMenuOpen(true);
   };
 
   return (
