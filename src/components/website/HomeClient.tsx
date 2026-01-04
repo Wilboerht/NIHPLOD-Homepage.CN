@@ -61,7 +61,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
     <>
       {/* 内容区域容器 */}
       <m.div
-        className="safe-area-content !top-0"
+        className="safe-area-content !-top-[1px]"
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
         {/* 主内容区域 + 展开按钮一体化 */}

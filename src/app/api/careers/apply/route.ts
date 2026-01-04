@@ -140,9 +140,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("💥 [Apply API] Error:", error);
-    // @ts-ignore
+    // @ts-expect-error - error is unknown type
     if (error.code) console.error("Error Code:", error.code);
-    // @ts-ignore
+    // @ts-expect-error - error is unknown type
     if (error.message) console.error("Error Message:", error.message);
 
     return NextResponse.json(
