@@ -145,8 +145,14 @@ export async function POST(request: NextRequest) {
     // @ts-expect-error - error is unknown type
     if (error.message) console.error("Error Message:", error.message);
 
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
     return NextResponse.json(
-      { error: "投递失败，请稍后重试" },
+      {
+        error: `投递失败: ${errorMessage}`,
+        details: errorStack
+      },
       { status: 500 }
     );
   }
