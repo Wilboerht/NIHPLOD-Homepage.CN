@@ -207,7 +207,7 @@ export function BottomNavBar() {
 
                             {/* ================= 桌面端右侧固定导航列表 ================= */}
                             {/* 排除 Advisor (已在左侧)，其余按顺序排列: Products, Story, Ritual, Home */}
-                            <div className="hidden items-center gap-5 sm:flex lg:gap-8">
+                            <div className="hidden items-center gap-3 sm:flex lg:gap-4">
                                 {allNavItems.filter(item => item.href !== "/advisor").map((item) => {
                                     const Icon = item.icon;
                                     const isActive = currentPage === item.href;
@@ -217,20 +217,16 @@ export function BottomNavBar() {
                                             key={item.href}
                                             href={item.href}
                                             className={cn(
-                                                "group flex flex-col items-center gap-1 transition-opacity hover:opacity-80",
-                                                isActive && "opacity-100" // 当前页面高亮逻辑可选，这里保持样式一致
+                                                "group flex flex-col items-center gap-1 rounded-2xl px-4 py-2 transition-all",
+                                                isActive
+                                                    ? "bg-brand-beige/80 text-brand-charcoal"
+                                                    : "bg-transparent text-brand-charcoal/70 hover:bg-brand-beige/50 hover:text-brand-charcoal"
                                             )}
                                         >
-                                            <div className={cn(
-                                                "flex h-14 w-14 items-center justify-center rounded-xl transition-colors lg:h-16 lg:w-16",
-                                                isActive ? "bg-brand-beige/80" : "group-hover:bg-brand-beige/50"
-                                            )}>
-                                                <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
-                                            </div>
-                                            <span className="text-xs text-brand-charcoal/70 lg:text-sm">
+                                            <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
+                                            <span className="text-xs font-medium lg:text-sm">
                                                 {item.label}
                                             </span>
-
                                         </Link>
                                     );
                                 })}
