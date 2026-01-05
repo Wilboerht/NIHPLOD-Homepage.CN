@@ -5,101 +5,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, ArrowRight, X, Menu } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 // import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
-/**
- * 移动端底部菜单组件
- * 点击 "更多" 按钮展开/收起链接列表
- * 使用绝对定位，展开时向上浮动，不影响其他元素布局
- */
-function MobileFooterMenu({ links }: { links: { href: string; label: string }[] }) {
-  const [isOpen, setIsOpen] = useState(false);
 
-  return (
-    <div className="flex sm:hidden flex-col items-center mb-2 relative z-30">
-      {/* 展开的链接列表 - 绝对定位，从按钮上方向上展开 */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* 背景遮罩 */}
-            <m.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-20"
-              onClick={() => setIsOpen(false)}
-            />
-            {/* 菜单面板 */}
-            <m.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.98 }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 25,
-                mass: 0.8
-              }}
-              className="absolute bottom-full mb-4 z-30 flex flex-col items-center overflow-hidden rounded-2xl glass-panel-light shadow-xl"
-              style={{ minWidth: "160px" }}
-            >
-              {links.map((link, index) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className={cn(
-                    "w-full px-6 py-3 text-center text-sm tracking-wide text-brand-charcoal/80 transition-all hover:bg-brand-gold/10 hover:text-brand-charcoal",
-                    index !== links.length - 1 && "border-b border-brand-beige/30"
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </m.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* 菜单切换按钮 */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex items-center gap-1.5 rounded-full px-4 py-2 text-xs uppercase tracking-wider transition-all",
-          isOpen
-            ? "bg-brand-charcoal/10 text-brand-charcoal"
-            : "text-brand-charcoal/60 hover:text-brand-charcoal"
-        )}
-      >
-        {isOpen ? (
-          <>
-            <X className="h-3.5 w-3.5" />
-            <span>收起</span>
-          </>
-        ) : (
-          <>
-            <Menu className="h-3.5 w-3.5" />
-            <span>更多</span>
-          </>
-        )}
-      </button>
-    </div>
-  );
-}
-
-const FOOTER_LINKS = [
-  { href: "/terms", label: "服务条款" },
-  { href: "/services", label: "服务入口" },
-  { href: "/careers", label: "加入我们" },
-  { href: "/contact", label: "联系我们" },
-  { href: "/privacy", label: "隐私政策" },
-];
 
 interface HomeClientProps {
   content?: HomePageContent;
@@ -309,24 +221,26 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   );
 }
 
+// 公告栏内容
+const ANNOUNCEMENTS = [
+  "新会员首单享奢宠礼遇 & 免运费配送",
+  "探索全新 NIHPLOD 逆转时光系列",
+  "加入会员，尊享积分兑换与生日礼遇"
+]
+
 // 独立的公告栏组件
 function AnnouncementBar() {
   const [index, setIndex] = useState(0)
-  const announcements = [
-    "新会员首单享奢宠礼遇 & 免运费配送",
-    "探索全新 NIHPLOD 逆转时光系列",
-    "加入会员，尊享积分兑换与生日礼遇"
-  ]
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % announcements.length)
+      setIndex((prev) => (prev + 1) % ANNOUNCEMENTS.length)
     }, 5000)
     return () => clearInterval(timer)
   }, [])
 
-  const next = () => setIndex((prev) => (prev + 1) % announcements.length)
-  const prev = () => setIndex((prev) => (prev - 1 + announcements.length) % announcements.length)
+  const next = () => setIndex((prev) => (prev + 1) % ANNOUNCEMENTS.length)
+  const prev = () => setIndex((prev) => (prev - 1 + ANNOUNCEMENTS.length) % ANNOUNCEMENTS.length)
 
   return (
     <div className="w-full border-b border-brand-charcoal/5 h-[36px] flex items-center bg-brand-light/20">
@@ -353,7 +267,7 @@ function AnnouncementBar() {
               transition={{ duration: 0.3 }}
               className="absolute inset-0 flex items-center justify-center text-center text-xs uppercase tracking-[0.1em] text-brand-charcoal/80 font-normal truncate select-none"
             >
-              {announcements[index]}
+              {ANNOUNCEMENTS[index]}
             </m.span>
           </AnimatePresence>
         </div>
