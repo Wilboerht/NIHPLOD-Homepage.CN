@@ -94,6 +94,7 @@ const config: Config = {
       },
       transitionTimingFunction: {
         "luxury": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "luxury-ease": "cubic-bezier(0.22, 1, 0.36, 1)",
         "bounce-soft": "cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
     },
