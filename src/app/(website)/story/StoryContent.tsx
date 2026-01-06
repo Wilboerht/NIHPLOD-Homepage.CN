@@ -5,7 +5,6 @@ import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UserButton } from "@/components/website";
 import { useLayout } from "@/contexts/LayoutContext";
 
 // 展开内容的 Section ID 类型
@@ -455,8 +454,8 @@ export function StoryContent() {
                           ))}
                         </div>
 
-                        {/* 右侧：用户登录状态 */}
-                        <UserButton />
+                        {/* 右侧：占位 */}
+                        <div className="w-24" />
                       </m.nav>
                     )}
                   </AnimatePresence>

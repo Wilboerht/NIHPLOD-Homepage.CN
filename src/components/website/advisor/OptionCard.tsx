@@ -102,7 +102,7 @@ export function OptionCard({
         <div className="flex-1 min-w-0 pt-0.5">
           <p
             className={cn(
-              "font-medium tracking-wide transition-colors duration-200",
+              "text-base font-medium tracking-wide transition-colors duration-200 sm:text-lg",
               isSelected
                 ? "text-brand-charcoal"
                 : "text-brand-charcoal group-hover:text-brand-charcoal"
@@ -112,7 +112,7 @@ export function OptionCard({
           </p>
           <p
             className={cn(
-              "mt-1 text-sm leading-relaxed transition-colors duration-200",
+              "mt-1 text-xs leading-relaxed transition-colors duration-200 sm:text-sm",
               isSelected
                 ? "text-brand-charcoal/70"
                 : "text-brand-charcoal/50 group-hover:text-brand-charcoal/60"

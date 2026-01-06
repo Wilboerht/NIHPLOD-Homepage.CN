@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
-import { m } from "framer-motion";
+import { useEffect, useState, useCallback } from "react";
+import { m, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, MapPin, X } from "lucide-react";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -29,6 +29,10 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [_imageError, _setImageError] = useState(false);
 
+  // 定位权限相关状态
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
+
   const { setDrawerOpen } = useLayout();
 
   useEffect(() => {
@@ -47,9 +51,75 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
     return () => clearTimeout(timer);
   }, [setDrawerOpen]);
 
-  const handleStart = () => {
+  // 地区选项（按气候类型分组）
+  const regionOptions = [
+    { group: "华北/东北", regions: ["北京", "天津", "河北", "山西", "内蒙古", "黑龙江", "吉林", "辽宁"] },
+    { group: "华东", regions: ["上海", "江苏", "浙江", "山东", "安徽", "江西"] },
+    { group: "华南", regions: ["广东", "广西", "海南", "福建", "台湾"] },
+    { group: "华中/西南", regions: ["湖北", "湖南", "河南", "四川", "重庆", "贵州", "云南"] },
+    { group: "西北", regions: ["陕西", "甘肃", "宁夏", "新疆"] },
+    { group: "高原", regions: ["西藏", "青海"] },
+  ];
+
+  // 状态：显示手动选择地区模态框
+  const [showRegionSelectModal, setShowRegionSelectModal] = useState(false);
+
+  // 处理定位权限同意
+  const handleLocationAccept = useCallback(async () => {
+    setShowLocationModal(false);
+
+    if ("geolocation" in navigator) {
+      try {
+        await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 300000,
+          });
+        });
+        // 定位成功，保存状态并继续
+        sessionStorage.setItem("locationConsent", "granted");
+        setIsLoading(true);
+        router.push("/advisor/questions");
+      } catch {
+        // 定位失败，显示手动选择地区模态框
+        setShowRegionSelectModal(true);
+      }
+    } else {
+      // 浏览器不支持，显示手动选择
+      setShowRegionSelectModal(true);
+    }
+  }, [router]);
+
+  // 处理手动选择地区
+  const handleRegionSelect = useCallback((region: string) => {
+    setShowRegionSelectModal(false);
+    sessionStorage.setItem("locationConsent", "granted");
+    sessionStorage.setItem("userRegion", region);
     setIsLoading(true);
     router.push("/advisor/questions");
+  }, [router]);
+
+  // 跳过手动选择
+  const handleSkipRegionSelect = useCallback(() => {
+    setShowRegionSelectModal(false);
+    sessionStorage.setItem("locationConsent", "declined");
+    setIsLoading(true);
+    router.push("/advisor/questions");
+  }, [router]);
+
+  // 处理定位权限拒绝
+  const handleLocationDecline = useCallback(() => {
+    setShowLocationModal(false);
+    sessionStorage.setItem("locationConsent", "declined");
+    setIsLoading(true);
+    router.push("/advisor/questions");
+  }, [router]);
+
+
+  const handleStart = () => {
+    // 显示定位权限询问模态框
+    setShowLocationModal(true);
   };
 
   return (
@@ -264,6 +334,174 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
       </m.div >
 
       {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
+
+      {/* 定位权限询问模态框 */}
+      <AnimatePresence>
+        {showLocationModal && (
+          <m.div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* 背景遮罩 */}
+            <m.div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLocationModal(false)}
+            />
+
+            {/* 模态框内容 */}
+            <m.div
+              className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-[#F8F6F0] shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {/* 关闭按钮 */}
+              <button
+                onClick={() => setShowLocationModal(false)}
+                className="absolute right-3 top-3 rounded-full p-1.5 text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/5 hover:text-brand-charcoal/60"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              {/* 内容区域 */}
+              <div className="px-6 pb-6 pt-8 text-center">
+                {/* 图标 */}
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10">
+                  <MapPin className="h-7 w-7 text-brand-gold" />
+                </div>
+
+                {/* 标题 */}
+                <h3 className="mb-2 font-serif text-xl font-light tracking-wide text-brand-charcoal">
+                  定位服务
+                </h3>
+
+                {/* 描述 */}
+                <p className="mb-6 text-sm font-light leading-relaxed text-brand-charcoal/60">
+                  为了给您提供更精准的护肤建议，我们希望获取您的位置信息，以便分析当地的气候、紫外线强度等环境因素。
+                </p>
+
+                {/* 按钮组 */}
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handleLocationAccept}
+                    className="group relative w-full overflow-hidden rounded-full border-2 border-brand-gold/60 bg-gradient-to-r from-brand-gold/20 via-brand-champagne/30 to-brand-gold/20 px-6 py-3 text-sm font-medium tracking-wider text-brand-charcoal transition-all duration-300 hover:border-brand-gold hover:shadow-lg"
+                  >
+                    <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
+                    <span className="relative">同意提供定位</span>
+                  </button>
+
+                  <button
+                    onClick={handleLocationDecline}
+                    className="w-full rounded-full border border-brand-charcoal/20 bg-transparent px-6 py-3 text-sm font-light tracking-wider text-brand-charcoal/60 transition-all duration-300 hover:border-brand-charcoal/40 hover:text-brand-charcoal/80"
+                  >
+                    暂不提供
+                  </button>
+                </div>
+
+                {/* 隐私说明 */}
+                <p className="mt-4 text-[10px] font-light leading-relaxed text-brand-charcoal/40">
+                  您的位置信息仅用于本次分析，不会被存储或用于其他用途
+                </p>
+              </div>
+            </m.div>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      {/* 手动选择地区模态框 - 定位失败时显示 */}
+      <AnimatePresence>
+        {showRegionSelectModal && (
+          <m.div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* 背景遮罩 */}
+            <m.div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleSkipRegionSelect}
+            />
+
+            {/* 模态框内容 */}
+            <m.div
+              className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-[#F8F6F0] shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {/* 关闭按钮 */}
+              <button
+                onClick={handleSkipRegionSelect}
+                className="absolute right-3 top-3 rounded-full p-1.5 text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/5 hover:text-brand-charcoal/60"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              {/* 内容区域 */}
+              <div className="px-6 pb-6 pt-8 text-center">
+                {/* 图标 */}
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10">
+                  <MapPin className="h-7 w-7 text-brand-gold" />
+                </div>
+
+                {/* 标题 */}
+                <h3 className="mb-2 font-serif text-xl font-light tracking-wide text-brand-charcoal">
+                  选择您的地区
+                </h3>
+
+                {/* 描述 */}
+                <p className="mb-4 text-sm font-light leading-relaxed text-brand-charcoal/60">
+                  自动定位失败，请手动选择您所在的地区，以便我们为您提供更精准的气候相关护肤建议
+                </p>
+
+                {/* 地区选择列表 */}
+                <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-brand-charcoal/10 bg-white/50">
+                  {regionOptions.map((group) => (
+                    <div key={group.group} className="border-b border-brand-charcoal/5 last:border-b-0">
+                      <div className="sticky top-0 bg-brand-cream/90 px-4 py-2 text-left text-xs font-medium tracking-wider text-brand-charcoal/50 backdrop-blur-sm">
+                        {group.group}
+                      </div>
+                      <div className="flex flex-wrap gap-2 px-4 py-2">
+                        {group.regions.map((region) => (
+                          <button
+                            key={region}
+                            onClick={() => handleRegionSelect(region)}
+                            className="rounded-full border border-brand-gold/30 bg-white px-3 py-1.5 text-sm text-brand-charcoal transition-all hover:border-brand-gold hover:bg-brand-gold/10"
+                          >
+                            {region}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 跳过按钮 */}
+                <button
+                  onClick={handleSkipRegionSelect}
+                  className="mt-4 w-full text-sm font-light text-brand-charcoal/50 transition-colors hover:text-brand-charcoal/70"
+                >
+                  跳过，使用简化分析
+                </button>
+              </div>
+            </m.div>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+
     </>
   );
 }
+

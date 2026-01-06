@@ -67,7 +67,7 @@ export function QuestionStep({
 
           {/* 主标题 */}
           <m.h2
-            className="font-serif text-xl font-light tracking-wide text-brand-charcoal sm:text-2xl md:text-[1.65rem]"
+            className="font-serif text-xl font-light tracking-wide text-brand-charcoal sm:text-2xl lg:text-3xl"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.4 }}
@@ -78,7 +78,7 @@ export function QuestionStep({
           {/* 副标题 */}
           {question.subtext && (
             <m.p
-              className="mt-2.5 text-sm font-light tracking-wider text-brand-charcoal/50"
+              className="mt-2.5 text-sm font-light tracking-wider text-brand-charcoal/50 sm:text-base"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.25, duration: 0.4 }}

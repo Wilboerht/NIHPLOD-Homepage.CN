@@ -368,7 +368,7 @@ export function QuestionsFlow() {
             onClick={isLastQuestion ? handleComplete : handleNext}
             disabled={!hasValidAnswer}
             className={cn(
-              "group relative flex items-center gap-2.5 overflow-hidden rounded-full px-10 py-3.5 text-sm font-light tracking-wider transition-all duration-300 sm:px-12 sm:py-4",
+              "group relative flex items-center gap-2.5 overflow-hidden rounded-full px-10 py-3.5 text-sm font-light tracking-wider transition-all duration-300 sm:px-12 sm:py-4 sm:text-base",
               hasValidAnswer
                 ? "border border-brand-gold/30 bg-white/90 text-brand-charcoal shadow-card backdrop-blur-sm hover:border-brand-gold hover:shadow-luxury"
                 : "cursor-not-allowed border border-brand-beige/40 bg-white/50 text-brand-charcoal/30"

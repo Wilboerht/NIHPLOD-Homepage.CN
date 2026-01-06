@@ -264,21 +264,21 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1], delay: 0.1 + index * 0.1 }}
                         onClick={() => handleProductClick(product)}
                         className={cn(
-                          "group relative flex shrink-0 cursor-pointer flex-col h-full justify-between",
+                          "group relative flex shrink-0 cursor-pointer flex-col",
                           // 移动端：宽度占屏幕 75%，居中对齐，Snap对齐 (容器添加 px-[7.5vw] + 父级5% ≈ 12.5% 确保居中)
-                          "w-[75vw] snap-center px-2",
+                          "w-[75vw] snap-center px-2 h-full justify-between",
                           // 桌面端：重置宽度和内边距，应用错落布局
-                          "lg:w-auto lg:px-0 lg:block lg:justify-start lg:h-auto",
+                          "lg:w-auto lg:px-0",
                           // 第一列：正常高度
-                          index === 0 && "lg:h-[80%]",
-                          // 第二列：最高，顶部下移
-                          index === 1 && "lg:mt-[10%] lg:h-[84%]",
-                          // 第三列：与第一列高度一致，顶部上移
-                          index === 2 && "lg:-mt-[2%] lg:h-[80%]"
+                          index === 0 && "lg:h-[78%]",
+                          // 第二列：最高，延伸到底部
+                          index === 1 && "lg:mt-[5%] lg:h-[95%]",
+                          // 第三列：与第一列高度一致
+                          index === 2 && "lg:h-[78%]"
                         )}
                       >
-                        {/* 图片容器 */}
-                        <div className="relative h-[40vh] w-full overflow-hidden bg-white p-4 transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)] lg:aspect-auto lg:h-full lg:p-6">
+                        {/* 图片容器 - 桌面端使用 flex-1 填充可用空间 */}
+                        <div className="relative h-[40vh] w-full overflow-hidden bg-white p-4 transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)] lg:flex-1 lg:h-auto lg:p-6">
                           {/* 内部装饰边框 */}
                           <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08]" />
                           {product.images[0] && (
@@ -291,8 +291,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             />
                           )}
                         </div>
-                        {/* 产品信息 - 紧凑样式 */}
-                        <div className="mt-3 flex-shrink-0 px-1 text-center lg:mt-4 lg:text-left">
+                        {/* 产品信息 - 固定高度区域 */}
+                        <div className="mt-3 flex-shrink-0 px-1 text-center lg:mt-4 lg:text-left lg:min-h-[70px]">
                           <span className="mb-1 block text-[12px] uppercase tracking-[0.15em] text-[#00263E]/50 lg:text-[11px]">
                             {product.category.nameEn}
                           </span>

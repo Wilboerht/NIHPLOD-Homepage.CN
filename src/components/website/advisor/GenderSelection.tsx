@@ -54,13 +54,13 @@ export function GenderSelection({ selectedGender, onSelect }: GenderSelectionPro
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <p className="mb-2 text-[11px] font-light uppercase tracking-[0.25em] text-brand-gold/70 sm:text-xs">
+        <p className="mb-2 text-xs font-light uppercase tracking-[0.25em] text-brand-gold/70 sm:text-sm">
           Before We Start
         </p>
-        <h2 className="font-serif text-2xl font-light tracking-wide text-brand-charcoal sm:text-3xl">
+        <h2 className="font-serif text-2xl font-light tracking-wide text-brand-charcoal sm:text-3xl lg:text-4xl">
           请选择您的性别
         </h2>
-        <p className="mt-3 text-sm font-light text-brand-charcoal/50">
+        <p className="mt-3 text-sm font-light text-brand-charcoal/50 sm:text-base">
           我们将为您推荐更适合的护肤方案
         </p>
       </m.div>
@@ -125,10 +125,10 @@ export function GenderSelection({ selectedGender, onSelect }: GenderSelectionPro
 
               {/* 文本 */}
               <div className="flex-1">
-                <p className="font-medium tracking-wide text-brand-charcoal">
+                <p className="text-base font-medium tracking-wide text-brand-charcoal sm:text-lg">
                   {option.label}
                 </p>
-                <p className="mt-0.5 text-sm text-brand-charcoal/50">
+                <p className="mt-0.5 text-sm text-brand-charcoal/50 sm:text-base">
                   {option.description}
                 </p>
               </div>

@@ -208,6 +208,10 @@ export function useShareAndPdf(options: ShareAndPdfOptions): UseShareAndPdfRetur
         summary: result.skinAnalysis?.summary || "",
         details: result.skinAnalysis?.details || [],
         recommendations: faceAnalysis?.recommendations || [],
+        // 传递定位授权状态，用于决定是否生成地理位置相关的内容
+        locationConsent: sessionStorage.getItem("locationConsent") || undefined,
+        // 传递用户手动选择的地区（如果有）
+        userRegion: sessionStorage.getItem("userRegion") || undefined,
       };
 
       // 序列化 JSON - 确保正确处理中文

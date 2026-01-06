@@ -5,7 +5,6 @@ import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Clock, ChevronRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UserButton } from "@/components/website";
 import { useLayout } from "@/contexts/LayoutContext";
 
 // 模块配置 - 5个护肤仪式模块
@@ -542,7 +541,7 @@ export function RitualContent() {
                           exit={{ opacity: 0, x: 10 }}
                           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                         >
-                          <UserButton />
+                          <div className="w-24" />
                         </m.div>
                       ) : currentLevel >= 2 ? (
                         <m.nav

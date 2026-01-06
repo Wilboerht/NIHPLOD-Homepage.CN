@@ -375,7 +375,12 @@ async function createPdf(data: ReportData): Promise<Buffer> {
 
   // ===== 五、专属护肤方案 =====
   if (data.skinType) {
-    const climate = adjustClimateForSeason(getClimateByRegion());
+    // 根据定位授权状态决定是否使用气候数据
+    // 优先使用用户手动选择的地区，否则使用默认地区
+    const hasLocationConsent = data.locationConsent === "granted";
+    const climate = hasLocationConsent
+      ? adjustClimateForSeason(getClimateByRegion(data.userRegion))
+      : "S1" as const; // 无定位授权时使用默认气候
     const routines = generateSkincareRoutines(data.skinType, climate);
 
     const levels: RoutineLevel[] = ["daily", "professional", "ultimate"];
@@ -392,7 +397,11 @@ async function createPdf(data: ReportData): Promise<Buffer> {
     y += 6;
     doc.setFontSize(8);
     doc.setTextColor(...rgb(gray));
-    doc.text("根据您的肤质与当前气候定制", pageWidth / 2, y, { align: "center" });
+    // 根据定位授权显示不同的副标题
+    const routineSubtitle = hasLocationConsent
+      ? "根据您的肤质与当前气候定制"
+      : "根据您的肤质定制";
+    doc.text(routineSubtitle, pageWidth / 2, y, { align: "center" });
     y += 12;
 
     // 遍历所有级别
@@ -578,6 +587,10 @@ interface ReportData {
   summary?: string;
   details?: string[];
   recommendations?: string[];
+  /** 用户定位授权状态：granted=已授权, declined/denied/unsupported=未授权 */
+  locationConsent?: string;
+  /** 用户手动选择的地区 */
+  userRegion?: string;
 }
 
 export async function POST(request: NextRequest) {
