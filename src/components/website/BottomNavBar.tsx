@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
@@ -44,6 +44,21 @@ const chatMessages = [
 export function BottomNavBar() {
     const pathname = usePathname();
     const { isDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
+
+    // 鼠标跟随视差效果 (Reference: Dock区域 IP 样式动效)
+    const avatarRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!avatarRef.current) return;
+            // 计算相对屏幕中心的偏移
+            const x = (window.innerWidth / 2 - e.pageX) / 50;
+            const y = (window.innerHeight / 2 - e.pageY) / 50;
+            avatarRef.current.style.transform = `translate(${x}px, ${y}px) rotate(${x / 2}deg)`;
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
 
     // 聊天气泡状态
     const [bubbleVisible, setBubbleVisible] = useState(false);
@@ -233,26 +248,34 @@ export function BottomNavBar() {
                                                 <div className="absolute bottom-[-10px] left-[35px] w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-black" />
                                             </div>
 
-                                            {/* 头像 - 渐变边框流动效果 */}
-                                            <div className="relative h-[110px] w-[110px] -mt-[55px] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-5px] group-hover:scale-105">
-                                                {/* 渐变边框背景 - 旋转动画 */}
-                                                <div
-                                                    className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite] z-[1]"
-                                                    style={{
-                                                        // 优化：加入白色高光(#FFFFFF)和深金(#BFB192)增加对比度，让流动感更清晰
-                                                        background: "conic-gradient(from 0deg, #E0D4C0, #FFFFFF, #E0D4C0, #BFB192, #E0D4C0)"
-                                                    }}
-                                                />
-                                                {/* 内部白色遮罩 - 只露出边框 */}
-                                                <div className="absolute inset-[3px] rounded-full bg-white z-[2]" />
-                                                {/* 头像图片 */}
-                                                <div className="absolute inset-[3px] rounded-full overflow-hidden z-[3] shadow-[0_10px_30px_rgba(0,0,0,0.1)]">
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img
-                                                        src="/images/xiaoni-avatar.png"
-                                                        alt="小旎老师"
-                                                        className="h-full w-full object-cover"
+                                            {/* 头像 - 视差 + 动效 */}
+                                            <div
+                                                ref={avatarRef}
+                                                className="relative h-[110px] w-[110px] -mt-[55px]"
+                                            >
+                                                {/* 悬停缩放容器 */}
+                                                <div className="relative h-full w-full transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-1">
+                                                    {/* 外圈 - 白色半透明 - 慢速旋转 */}
+                                                    <div className="absolute -inset-2 rounded-full border border-white/60 animate-[spin_10s_linear_infinite]" />
+
+                                                    {/* 内圈 - 金色 - 快速反向旋转 - 裁剪 */}
+                                                    <div
+                                                        className="absolute -inset-1 rounded-full border-[1.5px] border-[#D4C9B5]"
+                                                        style={{
+                                                            clipPath: "polygon(0 0, 50% 0, 50% 50%, 0 50%)",
+                                                            animation: "spin 4s linear infinite reverse"
+                                                        }}
                                                     />
+
+                                                    {/* 头像容器 */}
+                                                    <div className="absolute inset-0 rounded-full bg-white p-[4px] shadow-[0_10px_30px_rgba(0,0,0,0.15)]">
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src="/images/xiaoni-avatar.png"
+                                                            alt="小旎老师"
+                                                            className="h-full w-full rounded-full object-cover"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
