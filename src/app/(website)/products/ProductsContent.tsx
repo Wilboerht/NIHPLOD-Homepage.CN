@@ -140,19 +140,6 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0" />
 
-              {/* 动态背景图片 */}
-              {backgroundImage && (
-                <div className="absolute inset-0 z-0 opacity-30">
-                  <Image
-                    src={backgroundImage}
-                    alt="Background"
-                    fill
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-              )}
-
               {/* 装饰线条 */}
               <AnimatePresence>
                 {isExpanded && (
@@ -449,6 +436,21 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
         onClose={handleCloseDrawer}
         product={selectedProduct}
       />
+
+      {/* 动态背景图片 - 移至最底层，位于抽屉之外 */}
+      {backgroundImage && (
+        <div className="fixed inset-0 z-[-1]">
+          <Image
+            src={backgroundImage}
+            alt="Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          {/* 叠加层，确保文字可读性 */}
+          <div className="absolute inset-0 bg-black/10" />
+        </div>
+      )}
     </>
   );
 }
