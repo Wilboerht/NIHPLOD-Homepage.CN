@@ -281,16 +281,16 @@ export function BottomNavBar() {
                                         </div>
 
                                         {/* CTA信息 */}
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-[13px] font-semibold text-black/40 uppercase tracking-[2px]">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className="text-[20px] font-semibold text-black uppercase tracking-[2px]">
                                                 在线测肤
                                             </span>
                                             <Link
                                                 href={advisorItem.href}
-                                                className="flex items-center gap-2 bg-black text-[#F0EDE1] rounded-[50px] px-6 py-2 text-[15px] font-medium transition-all duration-300 ease-out hover:bg-[#333] hover:shadow-[0_4px_12px_rgba(0,0,0,0.25)]"
+                                                className="flex items-center gap-1.5 bg-black text-[#F0EDE1] rounded-[50px] px-4 py-1.5 text-[13px] font-medium transition-all duration-300 ease-out hover:text-[#F0EDE1] hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.3)]"
                                             >
                                                 免费使用
-                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                     <path d="M5 12h14M12 5l7 7-7 7" />
                                                 </svg>
                                             </Link>
