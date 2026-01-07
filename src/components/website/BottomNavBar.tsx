@@ -1,6 +1,6 @@
 "use client";
 
-
+import { useState, useEffect, useCallback } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
@@ -34,10 +34,57 @@ const allNavItems: NavItem[] = [
  * 底部导航栏组件 - 全局单例
  * 自动根据 pathname 高亮，并根据 LayoutContext 控制显示/隐藏
  */
+
+// 聊天气泡消息配置
+const chatMessages = [
+    { text: "Hi 🖐️ 我是护肤顾问 ", highlight: "小旎老师", suffix: ",\n很高兴见到你!" },
+    { text: "为获得更好的护肤效果,\n建议先用2分钟检测下自己当前的皮肤状况哦! ", highlight: "", suffix: "♥️" },
+];
+
 export function BottomNavBar() {
     const pathname = usePathname();
     const { isDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
-    // const [isNavMenuOpen, setIsNavMenuOpen] = useState(false); // Removed local state
+
+    // 聊天气泡状态
+    const [bubbleVisible, setBubbleVisible] = useState(false);
+    const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+    const [displayedText, setDisplayedText] = useState("");
+    const [isTyping, setIsTyping] = useState(false);
+
+    // 打字机效果
+    const typeMessage = useCallback(async (messageIndex: number) => {
+        const message = chatMessages[messageIndex];
+        const fullText = message.text + message.highlight + message.suffix;
+
+        setIsTyping(true);
+        setBubbleVisible(true);
+        setDisplayedText("");
+
+        // 逐字显示
+        for (let i = 0; i <= fullText.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+            setDisplayedText(fullText.slice(0, i));
+        }
+
+        setIsTyping(false);
+
+        // 显示6秒后隐藏
+        await new Promise(resolve => setTimeout(resolve, 6000));
+        setBubbleVisible(false);
+
+        // 等待淡出动画完成后切换到下一条消息
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setCurrentMessageIndex((prev) => (prev + 1) % chatMessages.length);
+    }, []);
+
+    // 自动循环显示消息
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            typeMessage(currentMessageIndex);
+        }, 1500);
+
+        return () => clearTimeout(timer);
+    }, [currentMessageIndex, typeMessage]);
 
     // 简单映射 pathname 到 currentPage，仅用于高亮和主导航判定
     // 如果路径是嵌套的（如 /products/123），可能需要 startsWith 逻辑
@@ -54,6 +101,9 @@ export function BottomNavBar() {
     // 当抽屉展开时 (isDrawerOpen === true)，隐藏导航栏
     // 也就是 !isDrawerOpen 时显示
     const isVisible = !isDrawerOpen;
+
+    // 获取当前消息的高亮部分
+    const currentMessage = chatMessages[currentMessageIndex];
 
     return (
         <>
@@ -117,14 +167,18 @@ export function BottomNavBar() {
                             duration: 0.6,
                             ease: [0.22, 1, 0.36, 1]
                         }}
-                        className="fixed bottom-2 left-3 right-3 z-50 sm:bottom-4 sm:left-6 sm:right-6 lg:bottom-6 lg:left-16 lg:right-16"
+                        className="fixed bottom-2 left-0 right-0 z-50 mx-auto w-full max-w-[95%] sm:bottom-4 sm:max-w-[90%] lg:bottom-6 lg:max-w-[1200px]"
                         role="banner"
                     >
                         <nav
                             className={cn(
                                 "flex items-center justify-between",
+                                // Mobile: compact rounded design
                                 "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
-                                "sm:px-5 sm:py-4 lg:rounded-3xl lg:px-8 lg:py-5"
+                                // Desktop: dock-style design from reference
+                                "sm:rounded-[20px] sm:bg-[#F0EDE1] sm:px-10 sm:py-0 sm:h-[100px]",
+                                "sm:shadow-[0_20px_50px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.8)]",
+                                "sm:backdrop-blur-none"
                             )}
                             aria-label="主要导航"
                         >
@@ -153,22 +207,72 @@ export function BottomNavBar() {
                                 const advisorItem = allNavItems.find(item => item.href === "/advisor")!;
                                 const AdvisorIcon = advisorItem.icon;
                                 return (
-                                    <Link
-                                        href={advisorItem.href}
-                                        className="group hidden items-center gap-4 transition-opacity hover:opacity-80 sm:flex"
-                                    >
-                                        {/* 图标容器 */}
-                                        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-brand-gold/10 lg:h-20 lg:w-20">
-                                            <AdvisorIcon className="h-10 w-10 lg:h-14 lg:w-14" />
-                                        </div>
-                                        {/* 文字 */}
-                                        <div className="flex flex-col">
-                                            <span className="text-lg font-semibold text-brand-charcoal lg:text-2xl">
-                                                {advisorItem.label}
-                                            </span>
+                                    <div className="hidden items-center gap-[25px] sm:flex">
+                                        {/* 头像容器 - 溢出导航栏顶部 */}
+                                        <div className="group relative">
+                                            {/* 聊天气泡 - 自动显示打字机效果 */}
+                                            <div
+                                                className={cn(
+                                                    "absolute bottom-[130px] left-0 min-w-[260px] max-w-[320px] rounded-[18px] border-2 border-black bg-white px-5 py-4 shadow-[8px_8px_0_rgba(0,0,0,0.05)] transition-all duration-400 ease-out pointer-events-none z-10",
+                                                    bubbleVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                                                )}
+                                            >
+                                                <p className="text-[14px] leading-[1.6] text-[#1a1a1a] tracking-[0.02em] whitespace-pre-line">
+                                                    {displayedText.includes(currentMessage.highlight) && currentMessage.highlight ? (
+                                                        <>
+                                                            {displayedText.split(currentMessage.highlight)[0]}
+                                                            <b className="font-bold text-black border-b-2 border-[#D4AF37]">{currentMessage.highlight}</b>
+                                                            {displayedText.split(currentMessage.highlight)[1] || ""}
+                                                        </>
+                                                    ) : (
+                                                        displayedText
+                                                    )}
+                                                    {isTyping && <span className="animate-pulse">|</span>}
+                                                </p>
+                                                {/* 气泡小三角 */}
+                                                <div className="absolute bottom-[-10px] left-[35px] w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-black" />
+                                            </div>
 
+                                            {/* 头像 - 渐变边框流动效果 */}
+                                            <div className="relative h-[110px] w-[110px] -mt-[55px] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-5px] group-hover:scale-105">
+                                                {/* 渐变边框背景 - 旋转动画 */}
+                                                <div
+                                                    className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite] z-[1]"
+                                                    style={{
+                                                        // 优化：加入白色高光(#FFFFFF)和深金(#BFB192)增加对比度，让流动感更清晰
+                                                        background: "conic-gradient(from 0deg, #E0D4C0, #FFFFFF, #E0D4C0, #BFB192, #E0D4C0)"
+                                                    }}
+                                                />
+                                                {/* 内部白色遮罩 - 只露出边框 */}
+                                                <div className="absolute inset-[3px] rounded-full bg-white z-[2]" />
+                                                {/* 头像图片 */}
+                                                <div className="absolute inset-[3px] rounded-full overflow-hidden z-[3] shadow-[0_10px_30px_rgba(0,0,0,0.1)]">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src="https://wp-cdn.4ce.cn/v2/3ZwM4mj.png"
+                                                        alt="小旎老师"
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
-                                    </Link>
+
+                                        {/* CTA信息 */}
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[13px] font-semibold text-black/40 uppercase tracking-[2px]">
+                                                在线测肤
+                                            </span>
+                                            <Link
+                                                href={advisorItem.href}
+                                                className="flex items-center gap-2 bg-black text-[#F0EDE1] rounded-[50px] px-6 py-2 text-[15px] font-medium transition-all duration-300 ease-out hover:bg-[#333] hover:shadow-[0_4px_12px_rgba(0,0,0,0.25)]"
+                                            >
+                                                免费使用
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M5 12h14M12 5l7 7-7 7" />
+                                                </svg>
+                                            </Link>
+                                        </div>
+                                    </div>
                                 );
                             })()}
 
@@ -207,27 +311,32 @@ export function BottomNavBar() {
 
                             {/* ================= 桌面端右侧固定导航列表 ================= */}
                             {/* 排除 Advisor (已在左侧)，其余按顺序排列: Products, Story, Ritual, Home */}
-                            <div className="hidden items-center gap-3 sm:flex lg:gap-4">
-                                {allNavItems.filter(item => item.href !== "/advisor").map((item) => {
+                            <div className="hidden items-center gap-3 sm:flex sm:gap-[35px]">
+                                {allNavItems.filter(item => item.href !== "/advisor").map((item, index, arr) => {
                                     const Icon = item.icon;
                                     const isActive = currentPage === item.href;
+                                    const isHome = item.href === "/";
 
                                     return (
-                                        <Link
-                                            key={item.href}
-                                            href={item.href}
-                                            className={cn(
-                                                "group flex flex-col items-center gap-1 rounded-2xl px-4 py-2 transition-all",
-                                                isActive
-                                                    ? "bg-brand-beige/80 text-brand-charcoal"
-                                                    : "bg-transparent text-brand-charcoal/70 hover:bg-brand-beige/50 hover:text-brand-charcoal"
+                                        <>
+                                            {/* 在首页前添加分割线 */}
+                                            {isHome && (
+                                                <div key="divider" className="h-10 w-px bg-black/20" />
                                             )}
-                                        >
-                                            <Icon className="h-8 w-8 lg:h-9 lg:w-9" />
-                                            <span className="text-xs font-medium lg:text-sm">
-                                                {item.label}
-                                            </span>
-                                        </Link>
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                className={cn(
+                                                    "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium text-[#1a1a1a] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)]",
+                                                    "hover:opacity-70"
+                                                )}
+                                            >
+                                                <Icon className="h-8 w-8 opacity-70 transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:opacity-100" />
+                                                <span>
+                                                    {item.label}
+                                                </span>
+                                            </Link>
+                                        </>
                                     );
                                 })}
                             </div>
