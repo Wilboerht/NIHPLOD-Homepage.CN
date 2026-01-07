@@ -215,7 +215,11 @@ function calculateTotalDuration(steps: RitualStep[]): string {
  * 护肤仪式页面内容组件
  * 三层级交互式布局：Level 1 模块选择 -> Level 2 方案选择 -> Level 3 详细步骤
  */
-export function RitualContent() {
+interface RitualContentProps {
+  backgroundImage?: string;
+}
+
+export function RitualContent({ backgroundImage }: RitualContentProps) {
   // 展开状态
   const [isExpanded, setIsExpanded] = useState(false);
   // 当前层级: 1=模块选择, 2=方案选择, 3=步骤详情
@@ -311,6 +315,9 @@ export function RitualContent() {
             >
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0" />
+
+              {/* 动态背景图片 */}
+
 
               <div className={cn(
                 "flex h-full flex-col overflow-hidden pb-3",
@@ -1051,6 +1058,21 @@ export function RitualContent() {
           </div>
         </m.div>
       </m.div>
+
+      {/* 动态背景图片 - 移至最底层，位于 safe-area-content 之外 */}
+      {backgroundImage && (
+        <div className="fixed inset-0 z-[-1]">
+          <Image
+            src={backgroundImage}
+            alt="Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          {/* 叠加层，确保文字可读性 */}
+          <div className="absolute inset-0 bg-black/10" />
+        </div>
+      )}
 
       {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
     </>

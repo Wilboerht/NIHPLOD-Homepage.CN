@@ -97,9 +97,10 @@ const FOOTER_LINKS = [
 
 interface HomeClientProps {
   content?: HomePageContent;
+  backgroundImage?: string | null;
 }
 
-export default function HomeClient({ content: _content }: HomeClientProps) {
+export default function HomeClient({ content: _content, backgroundImage }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
@@ -175,6 +176,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
                   }}
                 />
+
+
 
                 {/* 装饰线条 - 已移除 */}
 
@@ -304,6 +307,21 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
           </div>
         </m.div >
       </m.div >
+
+      {/* 动态背景图片 - 移至最底层，位于 safe-area-content 之外或作为其第一层 */}
+      {backgroundImage && (
+        <div className="fixed inset-0 z-[-1]">
+          <Image
+            src={backgroundImage}
+            alt="Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          {/* 叠加层，确保文字可读性 */}
+          <div className="absolute inset-0 bg-black/10" />
+        </div>
+      )}
 
       {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
     </>

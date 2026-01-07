@@ -1477,31 +1477,31 @@ function RitualTabEditor({
 
   const addStep = () => {
     const newStep: RitualStep = {
-      order: tabContent.steps.length + 1,
+      order: (tabContent?.steps?.length || 0) + 1,
       name: "",
       nameEn: "",
       description: "",
       duration: "",
       productSlug: null,
     };
-    onChange({ ...tabContent, steps: [...tabContent.steps, newStep] });
+    onChange({ ...tabContent, steps: [...(tabContent?.steps || []), newStep] });
   };
 
   const updateStep = (index: number, step: RitualStep) => {
-    const newSteps = [...tabContent.steps];
+    const newSteps = [...(tabContent?.steps || [])];
     newSteps[index] = step;
     onChange({ ...tabContent, steps: newSteps });
   };
 
   const removeStep = (index: number) => {
-    const newSteps = tabContent.steps.filter((_, i) => i !== index);
+    const newSteps = (tabContent?.steps || []).filter((_, i) => i !== index);
     // 重新排序
     const reorderedSteps = newSteps.map((s, i) => ({ ...s, order: i + 1 }));
     onChange({ ...tabContent, steps: reorderedSteps });
   };
 
   const moveStep = (from: number, to: number) => {
-    const newSteps = [...tabContent.steps];
+    const newSteps = [...(tabContent?.steps || [])];
     const [removed] = newSteps.splice(from, 1);
     newSteps.splice(to, 0, removed);
     // 重新排序
@@ -1533,7 +1533,7 @@ function RitualTabEditor({
           <div>
             <h4 className="font-medium text-gray-900">{tabLabel}</h4>
             <p className="text-xs text-gray-500">
-              {tabContent.steps.length} 个步骤
+              {tabContent?.steps?.length || 0} 个步骤
             </p>
           </div>
         </div>

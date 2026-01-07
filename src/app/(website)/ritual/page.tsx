@@ -23,6 +23,26 @@ export const metadata: Metadata = {
   },
 };
 
+import prisma from "@/lib/prisma";
+
+// ...
+
 export default async function RitualPage() {
-  return <RitualContent />;
+  let backgroundImage: string | undefined;
+
+  try {
+    const page = await prisma.page.findUnique({
+      where: { slug: "ritual" },
+      select: { published: true, backgroundImage: true },
+    });
+
+    // 只有在页面已发布时才使用配置的背景图
+    if (page?.published && page.backgroundImage) {
+      backgroundImage = page.backgroundImage;
+    }
+  } catch (error) {
+    console.error("获取护肤仪式页面数据失败:", error);
+  }
+
+  return <RitualContent backgroundImage={backgroundImage} />;
 }

@@ -556,16 +556,14 @@ export function ResultContent() {
         <m.div
           variants={fadeInUp}
           transition={defaultTransition}
-          className="relative overflow-hidden rounded-2xl border border-brand-beige/50 bg-white/95 p-5 shadow-card backdrop-blur-sm"
+          onClick={() => setAnalysisExpanded(!analysisExpanded)}
+          className={`relative overflow-hidden rounded-2xl border border-brand-beige/50 bg-white/95 p-5 shadow-card backdrop-blur-sm transition-all duration-300 ${analysisExpanded ? "" : "cursor-pointer hover:shadow-card-hover"}`}
         >
           {/* 装饰性背景 */}
           <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-radial-gold opacity-30" />
 
-          {/* 标题栏 - 可点击展开/收起 */}
-          <button
-            onClick={() => setAnalysisExpanded(!analysisExpanded)}
-            className="relative mb-4 flex w-full items-center justify-between"
-          >
+          {/* 标题栏 */}
+          <div className="relative mb-4 flex w-full items-center justify-between">
             <h3 className="flex items-center gap-2.5 font-serif text-base font-light tracking-wide text-brand-charcoal">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-champagne/40">
                 <Sparkles className="h-4 w-4 text-brand-gold" />
@@ -576,7 +574,7 @@ export function ResultContent() {
               className={`h-5 w-5 text-brand-charcoal/50 transition-transform duration-300 ${analysisExpanded ? "rotate-180" : ""
                 }`}
             />
-          </button>
+          </div>
 
           {/* 摘要（始终显示） */}
           <p className="relative mb-4 text-sm leading-relaxed text-brand-charcoal/80">{result.analysis.summary}</p>
@@ -590,7 +588,15 @@ export function ResultContent() {
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                onClick={(e) => e.stopPropagation()} // 防止点击详情内容时收起（可选，但通常点击详情不应收起？或者用户想点击收起？根据需求“点击展开”，通常再次点击是收起。如果不想误触，可以阻止冒泡。但为了简单交互，通常整卡切换更好，除非有复制需求。还是不阻止冒泡比较符合直觉的 toggle）
               >
+                {/* 移除 stopPropagation 以保持整卡 toggle 体验，或者保留以方便复制文字？
+                    用户需求是“点击展开”，没说点击收起。
+                    通常 toggle 是双向的。
+                    为了避免用户复制文字时意外收起，可以阻止冒泡？
+                    但如果卡片很大，收起如果不点击标题会很难找。
+                    让我们保持整卡点击都 toggle，这是最符合“卡片默认收起...点击展开”的直觉操作。
+                 */}
                 {result.analysis.details.map((detail, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed text-brand-charcoal/70">
                     <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full bg-brand-gold" />
@@ -601,14 +607,20 @@ export function ResultContent() {
             )}
           </AnimatePresence>
 
-          {/* 展开/收起提示 */}
+          {/* 展开提示 (仅收起时显示) */}
           {!analysisExpanded && result.analysis.details.length > 0 && (
-            <button
-              onClick={() => setAnalysisExpanded(true)}
-              className="mt-2 text-xs text-brand-gold hover:text-brand-gold/80 transition-colors"
-            >
-              查看详细分析 ({result.analysis.details.length} 条)
-            </button>
+            <div className="mt-2 flex justify-center sm:justify-start">
+              <span className="text-xs text-brand-gold">
+                查看详细分析 ({result.analysis.details.length} 条)
+              </span>
+            </div>
+          )}
+
+          {/* 收起提示 (仅展开时显示，可选，放在底部方便收起) */}
+          {analysisExpanded && (
+            <div className="mt-4 flex justify-center">
+              <span className="text-xs text-brand-charcoal/40">点击卡片收起</span>
+            </div>
           )}
         </m.div>
 

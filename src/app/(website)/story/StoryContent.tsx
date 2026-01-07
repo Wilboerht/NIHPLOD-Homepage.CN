@@ -25,7 +25,11 @@ const navItems: { id: SectionId; label: string }[] = [
  * 样式参考 about us.html，使用建筑风格布局
  * 保留展开/收起交互模式
  */
-export function StoryContent() {
+interface StoryContentProps {
+  backgroundImage?: string;
+}
+
+export function StoryContent({ backgroundImage }: StoryContentProps) {
   // 展开状态: false=完全收起(只剩按钮), true=完全展开(底部导航隐藏)
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>("story");
@@ -662,6 +666,21 @@ export function StoryContent() {
           </div>
         </m.div >
       </m.div >
+
+      {/* 动态背景图片 - 移至最底层 */}
+      {backgroundImage && (
+        <div className="fixed inset-0 z-[-1]">
+          <Image
+            src={backgroundImage}
+            alt="Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          {/* 叠加层，确保文字可读性 */}
+          <div className="absolute inset-0 bg-black/10" />
+        </div>
+      )}
 
       {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
     </>
