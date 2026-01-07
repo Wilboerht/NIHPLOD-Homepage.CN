@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 /**
@@ -119,11 +120,10 @@ export function UserCenterModal() {
                     <button
                       key={item.id}
                       onClick={() => setUserCenterView(item.id)}
-                      className={`w-full flex items-center gap-3 px-6 py-3 text-sm transition-all ${
-                        isActive
+                      className={`w-full flex items-center gap-3 px-6 py-3 text-sm transition-all ${isActive
                           ? "bg-[#A69374]/10 text-[#A69374] border-r-2 border-[#A69374]"
                           : "text-[#5C5347] hover:bg-[#F5F2ED]"
-                      }`}
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{item.label}</span>

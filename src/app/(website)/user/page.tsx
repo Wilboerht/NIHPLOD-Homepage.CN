@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /**
  * 用户中心页面
  */
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 export default async function UserPage() {
   // 获取当前用户
   const user = await getCurrentLoginUser();
-  
+
   if (!user) {
     redirect("/login?redirect=/user");
   }
@@ -35,7 +36,7 @@ export default async function UserPage() {
                 </svg>
               )}
             </div>
-            
+
             {/* 用户名和手机号 */}
             <div className="flex-1">
               <h1 className="text-xl font-bold">
@@ -45,16 +46,16 @@ export default async function UserPage() {
                 {user.phone.slice(0, 3)}****{user.phone.slice(-4)}
               </p>
             </div>
-            
+
             {/* 编辑按钮 */}
-            <Link 
-              href="/user/profile" 
+            <Link
+              href="/user/profile"
               className="px-4 py-2 bg-white/20 rounded-full text-sm hover:bg-white/30 transition-colors"
             >
               编辑资料
             </Link>
           </div>
-          
+
           {/* 积分展示 */}
           <div className="mt-6 flex items-center gap-8">
             <div>
@@ -68,28 +69,28 @@ export default async function UserPage() {
       {/* 功能菜单 */}
       <div className="container mx-auto px-4 py-6">
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <MenuItem 
-            href="/user/orders" 
-            icon="📦" 
-            title="我的订单" 
+          <MenuItem
+            href="/user/orders"
+            icon="📦"
+            title="我的订单"
             desc="查看全部订单"
           />
-          <MenuItem 
-            href="/user/addresses" 
-            icon="📍" 
-            title="收货地址" 
+          <MenuItem
+            href="/user/addresses"
+            icon="📍"
+            title="收货地址"
             desc="管理收货地址"
           />
-          <MenuItem 
-            href="/user/points" 
-            icon="🌟" 
-            title="积分记录" 
+          <MenuItem
+            href="/user/points"
+            icon="🌟"
+            title="积分记录"
             desc="查看积分明细"
           />
-          <MenuItem 
-            href="/user/conversations" 
-            icon="💬" 
-            title="咨询记录" 
+          <MenuItem
+            href="/user/conversations"
+            icon="💬"
+            title="咨询记录"
             desc="查看咨询历史"
           />
         </div>
@@ -104,14 +105,14 @@ export default async function UserPage() {
 }
 
 // 菜单项组件
-function MenuItem({ href, icon, title, desc }: { 
-  href: string; 
-  icon: string; 
-  title: string; 
+function MenuItem({ href, icon, title, desc }: {
+  href: string;
+  icon: string;
+  title: string;
   desc: string;
 }) {
   return (
-    <Link 
+    <Link
       href={href}
       className="flex items-center gap-4 px-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors"
     >
@@ -131,7 +132,7 @@ function MenuItem({ href, icon, title, desc }: {
 function LogoutButton() {
   return (
     <form action="/api/auth/logout" method="POST">
-      <button 
+      <button
         type="submit"
         className="w-full py-3 text-center text-red-500 bg-white rounded-xl shadow-sm hover:bg-red-50 transition-colors"
       >

@@ -205,7 +205,7 @@ export function BottomNavBar() {
                             {/* ================= 桌面端左侧固定导航 (Advisor) ================= */}
                             {(() => {
                                 const advisorItem = allNavItems.find(item => item.href === "/advisor")!;
-                                const AdvisorIcon = advisorItem.icon;
+
                                 return (
                                     <div className="hidden items-center gap-[25px] sm:flex">
                                         {/* 头像容器 - 溢出导航栏顶部 */}
@@ -312,9 +312,8 @@ export function BottomNavBar() {
                             {/* ================= 桌面端右侧固定导航列表 ================= */}
                             {/* 排除 Advisor (已在左侧)，其余按顺序排列: Products, Story, Ritual, Home */}
                             <div className="hidden items-center gap-3 sm:flex sm:gap-[35px]">
-                                {allNavItems.filter(item => item.href !== "/advisor").map((item, index, arr) => {
+                                {allNavItems.filter(item => item.href !== "/advisor").map((item) => {
                                     const Icon = item.icon;
-                                    const isActive = currentPage === item.href;
                                     const isHome = item.href === "/";
 
                                     return (

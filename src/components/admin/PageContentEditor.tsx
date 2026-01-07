@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";

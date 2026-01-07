@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { forwardRef } from "react";
@@ -149,7 +150,7 @@ export const ShareReportImage = forwardRef<HTMLDivElement, ShareReportImageProps
             <h3 style={{ fontSize: "14px", color: "#2D2D2D", margin: "0 0 12px", display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ color: "#C8AA6E" }}>◉</span> 检测到的肌肤状态
             </h3>
-            
+
             {/* 水分状态 */}
             <div style={{ marginBottom: "12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -271,9 +272,8 @@ export default function GardenPage() {
                     return (
                       <>
                         <div
-                          className={`aspect-square overflow-hidden rounded-xl bg-brand-cream/30 shadow-sm transition-all duration-200 group-hover:shadow-lg ${
-                            isWinner ? "ring-2 ring-brand-gold ring-offset-2" : ""
-                          }`}
+                          className={`aspect-square overflow-hidden rounded-xl bg-brand-cream/30 shadow-sm transition-all duration-200 group-hover:shadow-lg ${isWinner ? "ring-2 ring-brand-gold ring-offset-2" : ""
+                            }`}
                         >
                           <img
                             src={flower.imageUrl}

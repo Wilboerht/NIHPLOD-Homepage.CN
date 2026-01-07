@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -26,7 +27,7 @@ interface WinnerInfo {
 export default function ClaimPage() {
   const params = useParams();
   const _router = useRouter();
-  
+
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -79,7 +80,7 @@ export default function ClaimPage() {
       setError("请输入正确的手机号");
       return;
     }
-    
+
     setVerifying(true);
     try {
       const res = await fetch("/api/lottery/send-code", {

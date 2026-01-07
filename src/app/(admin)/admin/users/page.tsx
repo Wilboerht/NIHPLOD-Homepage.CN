@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, RefreshCw, Eye, Coins } from "lucide-react";
+/* eslint-disable @next/next/no-img-element */
 import { Button } from "@/components/ui/Button";
 
 interface UserItem {

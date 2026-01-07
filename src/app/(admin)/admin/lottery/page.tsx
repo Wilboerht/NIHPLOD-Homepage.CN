@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Search, Gift, Calendar, Users, Trophy, Eye, Trash2, Play, X, Loader2, ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
+/* eslint-disable @next/next/no-img-element */
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";

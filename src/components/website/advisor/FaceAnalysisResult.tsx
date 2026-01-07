@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { m } from "framer-motion";
@@ -256,11 +257,10 @@ export function FaceAnalysisResult({
                   </span>
                   {userAge && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] ${
-                        result.skinAge.estimated <= userAge
+                      className={`rounded-full px-2 py-0.5 text-[10px] ${result.skinAge.estimated <= userAge
                           ? "bg-green-100 text-green-700"
                           : "bg-amber-100 text-amber-700"
-                      }`}
+                        }`}
                     >
                       {result.skinAge.estimated <= userAge
                         ? `比实际年轻 ${userAge - result.skinAge.estimated} 岁 ✨`
@@ -355,16 +355,15 @@ export function FaceAnalysisResult({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8, duration: 0.4 }}
                 >
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    result.overallScore >= 85 ? "bg-green-100 text-green-700" :
-                    result.overallScore >= 70 ? "bg-brand-gold/15 text-brand-gold" :
-                    result.overallScore >= 55 ? "bg-amber-100 text-amber-700" :
-                    "bg-orange-100 text-orange-700"
-                  }`}>
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${result.overallScore >= 85 ? "bg-green-100 text-green-700" :
+                      result.overallScore >= 70 ? "bg-brand-gold/15 text-brand-gold" :
+                        result.overallScore >= 55 ? "bg-amber-100 text-amber-700" :
+                          "bg-orange-100 text-orange-700"
+                    }`}>
                     {result.overallScore >= 85 ? "✨ 优秀" :
-                     result.overallScore >= 70 ? "👍 良好" :
-                     result.overallScore >= 55 ? "📊 一般" :
-                     "⚠️ 需关注"}
+                      result.overallScore >= 70 ? "👍 良好" :
+                        result.overallScore >= 55 ? "📊 一般" :
+                          "⚠️ 需关注"}
                   </span>
                   <span className="text-[10px] text-brand-charcoal/40">综合评分</span>
                 </m.div>
@@ -393,9 +392,9 @@ export function FaceAnalysisResult({
                 transition={{ delay: 1, duration: 0.5 }}
               >
                 {result.overallScore >= 85 ? "肌肤状态优秀，持续保持您的护肤仪式" :
-                 result.overallScore >= 70 ? "肌肤状态良好，精心护理将更加出众" :
-                 result.overallScore >= 55 ? "肌肤有提升空间，让我们为您制定方案" :
-                 "肌肤需要关怀，专属护理方案已就绪"}
+                  result.overallScore >= 70 ? "肌肤状态良好，精心护理将更加出众" :
+                    result.overallScore >= 55 ? "肌肤有提升空间，让我们为您制定方案" :
+                      "肌肤需要关怀，专属护理方案已就绪"}
               </m.p>
             )}
 

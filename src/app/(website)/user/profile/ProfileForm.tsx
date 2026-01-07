@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 /**
@@ -49,11 +50,10 @@ export default function ProfileForm({ user }: ProfileFormProps) {
     <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 space-y-6">
       {/* 消息提示 */}
       {message.text && (
-        <div className={`p-3 rounded-lg text-sm ${
-          message.type === "success" 
-            ? "bg-green-50 text-green-600" 
+        <div className={`p-3 rounded-lg text-sm ${message.type === "success"
+            ? "bg-green-50 text-green-600"
             : "bg-red-50 text-red-600"
-        }`}>
+          }`}>
           {message.text}
         </div>
       )}

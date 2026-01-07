@@ -34,7 +34,7 @@ const BRAND_FACTS = [
  */
 export function AnalyzingContent() {
   const router = useRouter();
-  const { trackAnalysisStart, trackAnalysisComplete } = useAdvisorAnalytics();
+  const { trackAnalysisStart } = useAdvisorAnalytics();
   const [progress, setProgress] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
   const [factIndex, setFactIndex] = useState(0);
@@ -200,7 +200,7 @@ export function AnalyzingContent() {
       console.error("Analysis process error:", e);
       setError(e instanceof Error ? e.message : "分析流程异常，请重试");
     }
-  }, [router, trackAnalysisStart, trackAnalysisComplete]);
+  }, [router, trackAnalysisStart]);
 
   // 启动分析
   useEffect(() => {
