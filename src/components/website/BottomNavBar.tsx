@@ -167,7 +167,7 @@ export function BottomNavBar() {
                             duration: 0.6,
                             ease: [0.22, 1, 0.36, 1]
                         }}
-                        className="fixed bottom-2 left-0 right-0 z-50 mx-auto w-full max-w-[95%] sm:bottom-4 sm:max-w-[90%] lg:bottom-6 lg:max-w-[1200px]"
+                        className="fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] sm:bottom-6 sm:max-w-[90%] lg:bottom-8 lg:max-w-[1200px]"
                         role="banner"
                     >
                         <nav
