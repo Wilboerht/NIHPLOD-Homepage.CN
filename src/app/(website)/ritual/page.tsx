@@ -2,8 +2,8 @@ import { Metadata } from "next";
 import { RitualContent } from "./RitualContent";
 
 
-// ISR: 护肤仪式页面每天重新验证一次
-export const revalidate = 86400; // 24小时
+// ISR: 护肤仪式页面每60秒重新验证一次
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "护肤仪式",
