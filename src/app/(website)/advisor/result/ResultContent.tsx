@@ -14,6 +14,7 @@ import {
   Home,
   Star,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 import { FaceAnalysisResult, AdvisorChatPanel } from "@/components/website/advisor";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
@@ -89,6 +90,7 @@ export function ResultContent() {
 
   const [shareStatus, setShareStatus] = useState<"idle" | "copying" | "copied">("idle");
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [analysisExpanded, setAnalysisExpanded] = useState(false); // 综合分析默认收起
   const [isMobile, setIsMobile] = useState(true); // 默认移动端，避免闪烁
 
   // 检测是否为移动端
@@ -550,7 +552,7 @@ export function ResultContent() {
           </m.div>
         )}
 
-        {/* 综合分析摘要 - 高奢卡片风格 */}
+        {/* 综合分析摘要 - 可收起/展开 */}
         <m.div
           variants={fadeInUp}
           transition={defaultTransition}
@@ -559,21 +561,55 @@ export function ResultContent() {
           {/* 装饰性背景 */}
           <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-radial-gold opacity-30" />
 
-          <h3 className="relative mb-4 flex items-center gap-2.5 font-serif text-base font-light tracking-wide text-brand-charcoal">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-champagne/40">
-              <Sparkles className="h-4 w-4 text-brand-gold" />
-            </div>
-            综合分析
-          </h3>
+          {/* 标题栏 - 可点击展开/收起 */}
+          <button
+            onClick={() => setAnalysisExpanded(!analysisExpanded)}
+            className="relative mb-4 flex w-full items-center justify-between"
+          >
+            <h3 className="flex items-center gap-2.5 font-serif text-base font-light tracking-wide text-brand-charcoal">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-champagne/40">
+                <Sparkles className="h-4 w-4 text-brand-gold" />
+              </div>
+              综合分析
+            </h3>
+            <ChevronDown
+              className={`h-5 w-5 text-brand-charcoal/50 transition-transform duration-300 ${analysisExpanded ? "rotate-180" : ""
+                }`}
+            />
+          </button>
+
+          {/* 摘要（始终显示） */}
           <p className="relative mb-4 text-sm leading-relaxed text-brand-charcoal/80">{result.analysis.summary}</p>
-          <ul className="relative space-y-2">
-            {result.analysis.details.map((detail, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed text-brand-charcoal/70">
-                <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full bg-brand-gold" />
-                {detail}
-              </li>
-            ))}
-          </ul>
+
+          {/* 详情列表（仅展开时显示） */}
+          <AnimatePresence>
+            {analysisExpanded && (
+              <m.ul
+                className="relative space-y-2"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              >
+                {result.analysis.details.map((detail, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed text-brand-charcoal/70">
+                    <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full bg-brand-gold" />
+                    {detail}
+                  </li>
+                ))}
+              </m.ul>
+            )}
+          </AnimatePresence>
+
+          {/* 展开/收起提示 */}
+          {!analysisExpanded && result.analysis.details.length > 0 && (
+            <button
+              onClick={() => setAnalysisExpanded(true)}
+              className="mt-2 text-xs text-brand-gold hover:text-brand-gold/80 transition-colors"
+            >
+              查看详细分析 ({result.analysis.details.length} 条)
+            </button>
+          )}
         </m.div>
 
         {/* 专属护肤方案 - 三级别四场景 */}
