@@ -249,7 +249,7 @@ export function BottomNavBar() {
                                                 <div className="absolute inset-[3px] rounded-full overflow-hidden z-[3] shadow-[0_10px_30px_rgba(0,0,0,0.1)]">
                                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                                     <img
-                                                        src="https://wp-cdn.4ce.cn/v2/3ZwM4mj.png"
+                                                        src="/images/xiaoni-avatar.png"
                                                         alt="小旎老师"
                                                         className="h-full w-full object-cover"
                                                     />
