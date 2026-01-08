@@ -1,10 +1,10 @@
 "use client";
 
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, ScanLine, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, ScanLine, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type CaptureStep = "front" | "left" | "right";
+type CaptureStep = "front" | "left" | "right" | "chin";
 type FaceStatus = "none" | "detecting" | "found" | "ready";
 
 interface FaceScanOverlayProps {
@@ -107,7 +107,9 @@ export function FaceScanOverlay({
                                 <div className="relative">
                                     {currentStep === "left"
                                         ? <ChevronLeft className="h-7 w-7 text-brand-gold" />
-                                        : <ChevronRight className="h-7 w-7 text-brand-gold" />
+                                        : currentStep === "right"
+                                            ? <ChevronRight className="h-7 w-7 text-brand-gold" />
+                                            : <ChevronUp className="h-7 w-7 text-brand-gold" />
                                     }
                                 </div>
                             )}
@@ -131,7 +133,8 @@ export function FaceScanOverlay({
                             )}>
                                 {faceStatus === "ready" ? "扫描完成" :
                                     currentStep === "front" ? "正对屏幕" :
-                                        currentStep === "left" ? "向左转头" : "向右转头"}
+                                        currentStep === "left" ? "向左转头" :
+                                            currentStep === "right" ? "向右转头" : "微微抬头"}
                             </span>
 
                             {/* 状态子标题 (整合进胶囊，不再悬浮) */}

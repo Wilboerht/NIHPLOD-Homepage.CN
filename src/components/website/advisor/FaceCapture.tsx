@@ -10,16 +10,18 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FaceScanOverlay } from "./FaceScanOverlay";
 
-// 三张照片的数据结构
+// 四张照片的数据结构
 export interface FaceCaptureImages {
   front: string;
   left: string;
   right: string;
+  chin: string;
 }
 
 interface FaceCaptureProps {
@@ -30,16 +32,17 @@ type LightLevel = "excellent" | "good" | "low" | "too_dark" | "too_bright" | "un
 type FaceStatus = "none" | "detecting" | "found" | "ready";
 
 // 拍照步骤类型
-type CaptureStep = "front" | "left" | "right";
+type CaptureStep = "front" | "left" | "right" | "chin";
 
 // 头部朝向类型
-type HeadPose = "front" | "left" | "right" | "unknown";
+type HeadPose = "front" | "left" | "right" | "chin" | "unknown";
 
 // 步骤配置
 const CAPTURE_STEPS: { step: CaptureStep; label: string; instruction: string; icon: React.ReactNode }[] = [
   { step: "front", label: "正脸", instruction: "请正对镜头", icon: <User className="h-6 w-6" /> },
   { step: "left", label: "左转", instruction: "请向左转头", icon: <ChevronLeft className="h-6 w-6" /> },
   { step: "right", label: "右转", instruction: "请向右转头", icon: <ChevronRight className="h-6 w-6" /> },
+  { step: "chin", label: "下颚", instruction: "请微微抬头", icon: <ChevronUp className="h-6 w-6" /> },
 ];
 
 /**
@@ -65,6 +68,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     front: null,
     left: null,
     right: null,
+    chin: null,
   });
   const [currentStep, setCurrentStep] = useState<CaptureStep>("front");
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
@@ -194,6 +198,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
   /**
    * 根据面部关键点计算头部朝向
    * 使用鼻尖和眼睛位置来判断头部方向
+   * 包含左右转头和仰头（下颚）检测
    */
   const calculateHeadPose = useCallback((landmarks: { positions: { x: number; y: number }[] }): HeadPose => {
     const positions = landmarks.positions;
@@ -203,18 +208,24 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     // 右眼外角: 45, 右眼内角: 42
     // 鼻尖: 30
     // 面部左边缘: 0, 面部右边缘: 16
+    // 下巴: 8
+    // 眉心(鼻梁顶部): 27
 
     const leftEyeOuter = positions[36];
     const rightEyeOuter = positions[45];
     const noseTip = positions[30];
     const faceLeft = positions[0];
     const faceRight = positions[16];
+    const chin = positions[8];
+    const noseBridge = positions[27]; // 眉心/鼻梁顶部
 
     // 计算眼睛中心
     const eyesCenterX = (leftEyeOuter.x + rightEyeOuter.x) / 2;
+    const eyesCenterY = (leftEyeOuter.y + rightEyeOuter.y) / 2;
 
-    // 计算面部宽度
+    // 计算面部宽度和高度
     const faceWidth = faceRight.x - faceLeft.x;
+    const faceHeight = chin.y - noseBridge.y;
 
     // 计算鼻尖相对于眼睛中心的水平偏移比例
     const noseOffsetRatio = (noseTip.x - eyesCenterX) / faceWidth;
@@ -224,7 +235,19 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     const rightEyeToEdge = faceRight.x - rightEyeOuter.x;
     const eyeEdgeRatio = leftEyeToEdge / rightEyeToEdge;
 
+    // 计算仰头指标：鼻尖到眼睛中心的垂直距离 / 眼睛到下巴的垂直距离
+    // 正常情况下比例约为 0.3-0.5，仰头时鼻尖会更接近眼睛，比例变小
+    const noseToEyesY = noseTip.y - eyesCenterY;
+    const eyesToChinY = chin.y - eyesCenterY;
+    const tiltRatio = noseToEyesY / eyesToChinY;
+
     // 判断头部朝向
+    // 优先检测仰头（下颚拍摄）
+    // 仰头时：鼻尖更接近眼睛水平线，tiltRatio 变小（< 0.35）
+    if (tiltRatio < 0.35 && faceHeight > 0) {
+      return "chin";
+    }
+
     // 正脸: 鼻尖在眼睛中心附近，左右对称
     // 左转: 鼻尖偏向右侧（从摄像头看），右眼到边缘距离更小
     // 右转: 鼻尖偏向左侧（从摄像头看），左眼到边缘距离更小
@@ -328,7 +351,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
    * 获取下一步骤
    */
   const getNextStep = useCallback((current: CaptureStep): CaptureStep | null => {
-    const stepOrder: CaptureStep[] = ["front", "left", "right"];
+    const stepOrder: CaptureStep[] = ["front", "left", "right", "chin"];
     const currentIndex = stepOrder.indexOf(current);
     if (currentIndex < stepOrder.length - 1) {
       return stepOrder[currentIndex + 1];
@@ -459,11 +482,12 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
         setStream(null);
       }
 
-      // 直接调用 onCapture，传递所有三张照片
+      // 直接调用 onCapture，传递所有四张照片
       const allImages: FaceCaptureImages = {
         front: currentStep === "front" ? imageData : capturedImages.front!,
         left: currentStep === "left" ? imageData : capturedImages.left!,
-        right: imageData, // 最后一步一定是 right
+        right: currentStep === "right" ? imageData : capturedImages.right!,
+        chin: imageData, // 最后一步一定是 chin
       };
       onCapture(allImages);
     }

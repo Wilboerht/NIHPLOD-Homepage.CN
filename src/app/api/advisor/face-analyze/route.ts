@@ -26,6 +26,7 @@ const FaceAnalyzeSchema = z.object({
     front: z.string().optional(),
     left: z.string().optional(),
     right: z.string().optional(),
+    chin: z.string().optional(),
   }).optional(),
   // 兼容旧格式：单张照片
   image: z.string().optional(),
@@ -318,6 +319,9 @@ export async function POST(request: NextRequest) {
       }
       if (images.right && images.right.startsWith("data:image/")) {
         validImages.push({ angle: "右侧", data: images.right });
+      }
+      if (images.chin && images.chin.startsWith("data:image/")) {
+        validImages.push({ angle: "下颚", data: images.chin });
       }
     } else if (image && image.startsWith("data:image/")) {
       // 兼容旧格式：单张照片
