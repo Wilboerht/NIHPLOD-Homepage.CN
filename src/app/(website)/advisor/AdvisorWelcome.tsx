@@ -25,25 +25,24 @@ interface AdvisorWelcomeProps {
 export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
   const router = useRouter();
   const { initSession } = useAdvisorAnalytics();
-  const [isExpanded, setIsExpanded] = useState(false); // 默认收起以展示动画
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [_imageError, _setImageError] = useState(false);
 
-  // 定位权限相关状态
+  // Mouse parallax state
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Location/Region states
   const [showLocationModal, setShowLocationModal] = useState(false);
-
+  const [showRegionSelectModal, setShowRegionSelectModal] = useState(false);
 
   const { setDrawerOpen } = useLayout();
 
   useEffect(() => {
     initSession();
-    // 预加载问卷页面
     router.prefetch("/advisor/questions");
   }, [initSession, router]);
 
-  // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {
-    // 稍微延迟以展示"下拉"动画
     const timer = setTimeout(() => {
       setIsExpanded(true);
       setDrawerOpen(true);
@@ -51,7 +50,24 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
     return () => clearTimeout(timer);
   }, [setDrawerOpen]);
 
-  // 地区选项（按气候类型分组）
+  // Mouse interaction effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
+      const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+      setMousePos({ x: moveX, y: moveY });
+    };
+
+    if (isExpanded) {
+      window.addEventListener('mousemove', handleMouseMove);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isExpanded]);
+
+  // Region options
   const regionOptions = [
     { group: "华北/东北", regions: ["北京", "天津", "河北", "山西", "内蒙古", "黑龙江", "吉林", "辽宁"] },
     { group: "华东", regions: ["上海", "江苏", "浙江", "山东", "安徽", "江西"] },
@@ -61,13 +77,9 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
     { group: "高原", regions: ["西藏", "青海"] },
   ];
 
-  // 状态：显示手动选择地区模态框
-  const [showRegionSelectModal, setShowRegionSelectModal] = useState(false);
-
-  // 处理定位权限同意
+  /* --- Handlers --- */
   const handleLocationAccept = useCallback(async () => {
     setShowLocationModal(false);
-
     if ("geolocation" in navigator) {
       try {
         await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -77,21 +89,17 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
             maximumAge: 300000,
           });
         });
-        // 定位成功，保存状态并继续
         sessionStorage.setItem("locationConsent", "granted");
         setIsLoading(true);
         router.push("/advisor/questions");
       } catch {
-        // 定位失败，显示手动选择地区模态框
         setShowRegionSelectModal(true);
       }
     } else {
-      // 浏览器不支持，显示手动选择
       setShowRegionSelectModal(true);
     }
   }, [router]);
 
-  // 处理手动选择地区
   const handleRegionSelect = useCallback((region: string) => {
     setShowRegionSelectModal(false);
     sessionStorage.setItem("locationConsent", "granted");
@@ -100,7 +108,6 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
     router.push("/advisor/questions");
   }, [router]);
 
-  // 跳过手动选择
   const handleSkipRegionSelect = useCallback(() => {
     setShowRegionSelectModal(false);
     sessionStorage.setItem("locationConsent", "declined");
@@ -108,7 +115,6 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
     router.push("/advisor/questions");
   }, [router]);
 
-  // 处理定位权限拒绝
   const handleLocationDecline = useCallback(() => {
     setShowLocationModal(false);
     sessionStorage.setItem("locationConsent", "declined");
@@ -116,15 +122,17 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
     router.push("/advisor/questions");
   }, [router]);
 
-
   const handleStart = () => {
-    // 显示定位权限询问模态框
     setShowLocationModal(true);
   };
 
   return (
     <>
-      {/* 自定义页面背景 - 覆盖全局背景 */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@300&display=swap');
+      `}</style>
+
+      {/* Background */}
       {backgroundImage && (
         <div className="fullscreen-bg">
           <Image
@@ -139,21 +147,21 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
         </div>
       )}
 
-      {/* 主内容容器 */}
+      {/* Main Drawer Container */}
       <m.div
         className="safe-area-content !top-0"
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
-        {/* 主内容区域 + 展开按钮一体化 */}
         <m.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full"
+          className="h-full font-sans"
+          style={{ fontFamily: "'Inter', sans-serif" }}
         >
-          {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center">
-            {/* 主内容区域 */}
+
+            {/* Drawer Content */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
               style={{ willChange: "flex-grow, height" }}
@@ -165,148 +173,139 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
               transition={{
                 duration: 1.2,
                 ease: [0.22, 1, 0.36, 1],
-                // 展开时延迟0.3s等待导航栏收起；收起时不延迟
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              {/* 矿物纹理覆盖层 */}
-              <div className="texture-overlay absolute inset-0" />
+              {/* Paper Texture */}
+              <div
+                className="pointer-events-none absolute inset-0 z-50 opacity-[0.04]"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+                }}
+              />
+
               <div className={cn(
-                "flex h-full flex-col overflow-y-auto px-6 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12",
+                "flex h-full flex-col overflow-y-auto",
                 "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
                 !isExpanded && "hidden"
               )}>
-                {/* 内容区域 - 垂直居中 */}
-                <div className="flex flex-1 flex-col items-center justify-center">
-                  {/* 顾问头像 */}
-                  <m.div
-                    className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-brand-gold/30 shadow-lg sm:h-24 sm:w-24"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.8, delay: 0.1 }}
-                  >
-                    <Image
-                      src="/images/xiaoni-avatar.png"
-                      alt="小旎老师"
-                      fill
-                      className="object-cover"
+                {/* Grid Layout Container */}
+                <div className="mx-auto grid min-h-full max-w-[1600px] grid-cols-12 grid-rows-[auto_1fr_auto] gap-8 p-8 w-full">
+
+                  {/* Header */}
+                  <header className="col-span-12 flex items-start justify-between border-b border-[#3D4430]/15 pb-8">
+                    <img
+                      src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
+                      alt="Logo"
+                      className="h-8 mix-blend-multiply"
                     />
-                  </m.div>
+                    <div className="font-light tracking-[0.1em] text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem' }}>
+                      Ref: AI-DERMA-2024 / P-01
+                    </div>
+                  </header>
 
-                  {/* 装饰线条 */}
-                  <m.div
-                    className="mb-6 mt-4 h-px w-12 bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent sm:mb-8 sm:w-16"
-                    initial={{ scaleX: 0, opacity: 0 }}
-                    animate={{ scaleX: 1, opacity: 1 }}
-                    transition={{ duration: 1, delay: 0.2 }}
-                  />
+                  {/* Main Content */}
+                  <main className="col-span-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
 
-                  {/* 英文标题 */}
-                  <m.p
-                    className="text-[11px] font-light uppercase tracking-[0.35em] text-brand-gold/80 sm:text-xs"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.8, delay: 0.3 }}
-                  >
-                    Personalized Skin Analysis
-                  </m.p>
+                    {/* Spacer */}
+                    <div className="relative col-span-1 md:col-span-1 md:col-start-1" />
 
-                  {/* 中文主标题 */}
-                  <m.h1
-                    className="mt-4 text-center font-serif text-4xl font-light tracking-wide text-brand-charcoal sm:mt-5 sm:text-5xl md:text-6xl lg:text-7xl"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                  >
-                    臻享定制
-                  </m.h1>
+                    {/* Image Section */}
+                    <div className="relative col-span-1 md:col-span-4 md:col-start-2">
+                      <m.div
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                        className="relative"
+                      >
+                        {/* Frame Corner */}
+                        <div className="absolute -left-2.5 -top-2.5 h-10 w-10 border-l border-t border-[#3D4430]" />
 
-                  {/* 分隔装饰 */}
-                  <m.div
-                    className="my-6 flex items-center gap-3 sm:my-8"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.6 }}
-                  >
-                    <span className="h-px w-10 bg-gradient-to-r from-transparent to-brand-gold/40" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand-gold/60" />
-                    <span className="h-px w-10 bg-gradient-to-l from-transparent to-brand-gold/40" />
-                  </m.div>
+                        <img
+                          src="https://wp-cdn.4ce.cn/v2/bP048kN.png"
+                          alt="小旎老师"
+                          className="block h-auto w-full grayscale-[0.2] contrast-[1.05]"
+                          style={{
+                            maskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)',
+                            WebkitMaskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)',
+                            transform: `translate(${mousePos.x}px, ${mousePos.y}px)`,
+                            transition: 'transform 0.1s ease-out'
+                          }}
+                        />
+                      </m.div>
+                    </div>
 
-                  {/* 副标题 */}
-                  <m.p
-                    className="max-w-sm text-center text-sm font-light leading-relaxed tracking-wide text-brand-charcoal/60 sm:max-w-md sm:text-base"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.8, delay: 0.7 }}
-                  >
-                    几个简单问题
-                    <br className="sm:hidden" />
-                    <span className="hidden sm:inline">，</span>
-                    开启您的专属护肤之旅
-                  </m.p>
+                    {/* Text Content Section */}
+                    <div className="col-span-1 md:col-span-5 md:col-start-7 pl-0 md:pl-8">
+                      <m.div
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                      >
+                        <span className="mb-4 block text-[#3D4430]" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.8rem' }}># AI智能测肤</span>
 
-                  {/* 开始按钮 */}
-                  <m.button
-                    onClick={handleStart}
-                    disabled={isLoading}
-                    className="group relative mt-10 overflow-hidden rounded-full border-2 border-brand-gold/60 bg-gradient-to-r from-brand-gold/10 via-brand-champagne/20 to-brand-gold/10 px-14 py-4 text-sm font-medium tracking-[0.2em] text-brand-charcoal shadow-luxury backdrop-blur-sm transition-all duration-300 hover:border-brand-gold hover:shadow-luxury-lg sm:mt-12 sm:px-16 sm:py-4.5 sm:text-base disabled:opacity-70 disabled:cursor-not-allowed"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.9 }}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    {/* 光泽效果 */}
-                    {!isLoading && (
-                      <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
-                    )}
-                    <span className="relative flex items-center gap-2">
-                      {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {isLoading ? "加载中..." : "开启体验"}
-                    </span>
-                  </m.button>
+                        <h1 className="mb-8 font-light tracking-tight text-[#1A1A1A]" style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', lineHeight: '1.1', letterSpacing: '-0.02em' }}>
+                          您口袋里的
+                          <span className="block font-semibold">专属护肤导师</span>
+                        </h1>
 
-                  {/* 时间提示 */}
-                  <m.p
-                    className="mt-5 text-[11px] font-light tracking-wider text-brand-charcoal/40 sm:mt-6 sm:text-xs"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 1.1 }}
-                  >
-                    约 2 分钟 · 专属定制
-                  </m.p>
+                        <div className="relative mb-12 max-w-[480px] pl-8 text-[#5E5E5E]" style={{ fontSize: '1.1rem', lineHeight: '1.8' }}>
+                          {/* Accent Line */}
+                          <div className="absolute left-0 top-2 h-[80%] w-px bg-[#3D4430] opacity-30" />
 
-                  {/* 隐私说明 */}
-                  <m.p
-                    className="mt-4 max-w-xs text-center text-[10px] font-light leading-relaxed tracking-wide text-brand-charcoal/35 sm:max-w-sm sm:text-[11px]"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 1.2 }}
-                  >
-                    您的面部图像仅用于即时分析，我们承诺不会存储或保留任何影像数据
-                  </m.p>
+                          你好，我是小旎老师。
+                          <p>
+                            为了精准分析你的肌肤状态并生成专业定制化报告，接下来我将引导你进行 <strong className="font-semibold text-[#1A1A1A]">问卷调查</strong> 与 <strong className="font-semibold text-[#1A1A1A]">面部信息采集</strong>。
+                            <br /><br />
+                            整个过程非常简单，预计占用 <strong className="font-semibold text-[#1A1A1A]">2-5 分钟</strong>，请在 <strong className="font-semibold text-[#1A1A1A]">素颜</strong> 及光线充足的环境下进行操作。本测试严格遵守隐私保护条款，所有采集信息仅用于实时分析计算及临时版报告生成。
+                          </p>
+                        </div>
 
-                  {/* Logo */}
-                  <m.div
-                    className="mt-8 sm:mt-10"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 1.3 }}
-                  >
-                    <Image
-                      src="/images/logo.png"
-                      alt="NIHPLOD"
-                      width={120}
-                      height={40}
-                      className="h-8 w-auto opacity-40 sm:h-10"
-                    />
-                  </m.div>
+                        <button
+                          onClick={handleStart}
+                          disabled={isLoading}
+                          className="group relative inline-flex items-center overflow-hidden border border-[#3D4430] bg-[#3D4430] px-14 py-5 text-base text-white tracking-[0.05em] transition-all duration-300 hover:bg-transparent hover:text-[#3D4430] hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                          <span className={cn(
+                            "relative flex items-center transition-colors duration-300",
+                            isLoading ? "text-white" : "group-hover:text-[#3D4430]"
+                          )}>
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isLoading ? "加载中..." : "立即开启"}
+                          </span>
+                        </button>
+                      </m.div>
+                    </div>
+                  </main>
+
+                  {/* Footer */}
+                  <footer className="col-span-12 mt-8 flex flex-col items-center justify-between border-t border-[#3D4430]/15 pt-8 md:flex-row md:items-end">
+                    <div className="flex gap-8">
+                      <div className="text-[#5E5E5E]" style={{ fontSize: '0.75rem' }}>
+                        <strong className="mb-1 block text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Phase 01</strong>
+                        多维问卷调研
+                      </div>
+                      <div className="text-[#5E5E5E]" style={{ fontSize: '0.75rem' }}>
+                        <strong className="mb-1 block text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Phase 02</strong>
+                        面部数据采样
+                      </div>
+                      <div className="text-[#5E5E5E]" style={{ fontSize: '0.75rem' }}>
+                        <strong className="mb-1 block text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Phase 03</strong>
+                        定制报告生成
+                      </div>
+                    </div>
+
+                    <div className="mt-8 text-right leading-relaxed text-black/40 md:mt-0" style={{ fontSize: '0.7rem' }}>
+                      本站护肤检测相关大数据及人工智能技术
+                      <p>由 MySkin.Today 提供服务支持</p>
+                    </div>
+                  </footer>
+
                 </div>
               </div>
             </m.div>
 
-            {/* 展开/收起按钮 - 始终显示，紧贴内容区域 */}
+            {/* Toggle Button */}
             <button
               type="button"
               onClick={() => {
@@ -316,8 +315,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
               }}
               className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
             >
-              {/* 矿物纹理覆盖层 */}
-              <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
+              <div className="texture-overlay absolute inset-0 rounded-b-2xl opacity-[0.04]" />
               <m.div
                 className="relative z-10 flex flex-col items-center"
                 animate={{
@@ -328,26 +326,24 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
               >
-                <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                <ChevronDown className="h-7 w-7 text-[#3D4430] lg:h-8 lg:w-8" />
+                <ChevronDown className="-mt-5 h-7 w-7 text-[#3D4430] lg:h-8 lg:w-8" />
               </m.div>
             </button>
           </div>
         </m.div >
       </m.div >
 
-      {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
-
-      {/* 定位权限询问模态框 */}
+      {/* Modals */}
       <AnimatePresence>
         {showLocationModal && (
           <m.div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 font-sans"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            style={{ fontFamily: "'Inter', sans-serif" }}
           >
-            {/* 背景遮罩 */}
             <m.div
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
               initial={{ opacity: 0 }}
@@ -356,7 +352,6 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
               onClick={() => setShowLocationModal(false)}
             />
 
-            {/* 模态框内容 */}
             <m.div
               className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-[#F8F6F0] shadow-2xl"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -364,7 +359,6 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              {/* 关闭按钮 */}
               <button
                 onClick={() => setShowLocationModal(false)}
                 className="absolute right-3 top-3 rounded-full p-1.5 text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/5 hover:text-brand-charcoal/60"
@@ -372,43 +366,36 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                 <X className="h-5 w-5" />
               </button>
 
-              {/* 内容区域 */}
               <div className="px-6 pb-6 pt-8 text-center">
-                {/* 图标 */}
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10">
-                  <MapPin className="h-7 w-7 text-brand-gold" />
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#3D4430]/10">
+                  <MapPin className="h-7 w-7 text-[#3D4430]" />
                 </div>
 
-                {/* 标题 */}
-                <h3 className="mb-2 font-serif text-xl font-light tracking-wide text-brand-charcoal">
+                <h3 className="mb-2 text-xl font-light tracking-wide text-[#1A1A1A]">
                   定位服务
                 </h3>
 
-                {/* 描述 */}
-                <p className="mb-6 text-sm font-light leading-relaxed text-brand-charcoal/60">
+                <p className="mb-6 text-sm font-light leading-relaxed text-[#5E5E5E]">
                   为了给您提供更精准的护肤建议，我们希望获取您的位置信息，以便分析当地的气候、紫外线强度等环境因素。
                 </p>
 
-                {/* 按钮组 */}
                 <div className="flex flex-col gap-3">
                   <button
                     onClick={handleLocationAccept}
-                    className="group relative w-full overflow-hidden rounded-full border-2 border-brand-gold/60 bg-gradient-to-r from-brand-gold/20 via-brand-champagne/30 to-brand-gold/20 px-6 py-3 text-sm font-medium tracking-wider text-brand-charcoal transition-all duration-300 hover:border-brand-gold hover:shadow-lg"
+                    className="group relative w-full overflow-hidden rounded-full border border-[#3D4430] bg-[#3D4430] px-6 py-3 text-sm font-medium tracking-wider text-white transition-all duration-300 hover:bg-transparent hover:text-[#3D4430]"
                   >
-                    <span className="absolute inset-0 -translate-x-full bg-shimmer transition-transform duration-700 group-hover:translate-x-full" />
                     <span className="relative">同意提供定位</span>
                   </button>
 
                   <button
                     onClick={handleLocationDecline}
-                    className="w-full rounded-full border border-brand-charcoal/20 bg-transparent px-6 py-3 text-sm font-light tracking-wider text-brand-charcoal/60 transition-all duration-300 hover:border-brand-charcoal/40 hover:text-brand-charcoal/80"
+                    className="w-full rounded-full border border-[#3D4430]/20 bg-transparent px-6 py-3 text-sm font-light tracking-wider text-[#3D4430]/60 transition-all duration-300 hover:border-[#3D4430]/40 hover:text-[#3D4430]/80"
                   >
                     暂不提供
                   </button>
                 </div>
 
-                {/* 隐私说明 */}
-                <p className="mt-4 text-[10px] font-light leading-relaxed text-brand-charcoal/40">
+                <p className="mt-4 text-[10px] font-light leading-relaxed text-[#1A1A1A]/40">
                   您的位置信息仅用于本次分析，不会被存储或用于其他用途
                 </p>
               </div>
@@ -417,16 +404,15 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
         )}
       </AnimatePresence>
 
-      {/* 手动选择地区模态框 - 定位失败时显示 */}
       <AnimatePresence>
         {showRegionSelectModal && (
           <m.div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 font-sans"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            style={{ fontFamily: "'Inter', sans-serif" }}
           >
-            {/* 背景遮罩 */}
             <m.div
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
               initial={{ opacity: 0 }}
@@ -435,7 +421,6 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
               onClick={handleSkipRegionSelect}
             />
 
-            {/* 模态框内容 */}
             <m.div
               className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-[#F8F6F0] shadow-2xl"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -443,7 +428,6 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              {/* 关闭按钮 */}
               <button
                 onClick={handleSkipRegionSelect}
                 className="absolute right-3 top-3 rounded-full p-1.5 text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/5 hover:text-brand-charcoal/60"
@@ -451,28 +435,23 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                 <X className="h-5 w-5" />
               </button>
 
-              {/* 内容区域 */}
               <div className="px-6 pb-6 pt-8 text-center">
-                {/* 图标 */}
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10">
-                  <MapPin className="h-7 w-7 text-brand-gold" />
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#3D4430]/10">
+                  <MapPin className="h-7 w-7 text-[#3D4430]" />
                 </div>
 
-                {/* 标题 */}
-                <h3 className="mb-2 font-serif text-xl font-light tracking-wide text-brand-charcoal">
+                <h3 className="mb-2 text-xl font-light tracking-wide text-[#1A1A1A]">
                   选择您的地区
                 </h3>
 
-                {/* 描述 */}
-                <p className="mb-4 text-sm font-light leading-relaxed text-brand-charcoal/60">
+                <p className="mb-4 text-sm font-light leading-relaxed text-[#5E5E5E]">
                   自动定位失败，请手动选择您所在的地区，以便我们为您提供更精准的气候相关护肤建议
                 </p>
 
-                {/* 地区选择列表 */}
-                <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-brand-charcoal/10 bg-white/50">
+                <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-[#3D4430]/10 bg-white/50">
                   {regionOptions.map((group) => (
-                    <div key={group.group} className="border-b border-brand-charcoal/5 last:border-b-0">
-                      <div className="sticky top-0 bg-brand-cream/90 px-4 py-2 text-left text-xs font-medium tracking-wider text-brand-charcoal/50 backdrop-blur-sm">
+                    <div key={group.group} className="border-b border-[#3D4430]/5 last:border-b-0">
+                      <div className="sticky top-0 bg-[#F0EDE1]/90 px-4 py-2 text-left text-xs font-medium tracking-wider text-[#3D4430]/50 backdrop-blur-sm">
                         {group.group}
                       </div>
                       <div className="flex flex-wrap gap-2 px-4 py-2">
@@ -480,7 +459,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                           <button
                             key={region}
                             onClick={() => handleRegionSelect(region)}
-                            className="rounded-full border border-brand-gold/30 bg-white px-3 py-1.5 text-sm text-brand-charcoal transition-all hover:border-brand-gold hover:bg-brand-gold/10"
+                            className="rounded-full border border-[#3D4430]/30 bg-white px-3 py-1.5 text-sm text-[#3D4430] transition-all hover:border-[#3D4430] hover:bg-[#3D4430]/10"
                           >
                             {region}
                           </button>
@@ -490,10 +469,9 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                   ))}
                 </div>
 
-                {/* 跳过按钮 */}
                 <button
                   onClick={handleSkipRegionSelect}
-                  className="mt-4 w-full text-sm font-light text-brand-charcoal/50 transition-colors hover:text-brand-charcoal/70"
+                  className="mt-4 w-full text-sm font-light text-[#3D4430]/50 transition-colors hover:text-[#3D4430]/70"
                 >
                   跳过，使用简化分析
                 </button>
@@ -502,9 +480,6 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
           </m.div>
         )}
       </AnimatePresence>
-
-
     </>
   );
 }
-
