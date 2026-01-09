@@ -605,7 +605,7 @@ async function main() {
       message: "针对您的敏感肌肤，我们推荐温和修护的护理方案，所有产品均适合敏感肌使用。",
     },
     {
-      conditions: { primaryConcern: ["aging"], ageRange: ["31-40", "41-50", "50+"] },
+      conditions: { primaryConcern: ["anti_aging"], ageRange: ["31-40", "41-50", "above_50"] },
       productIds: [productMap["serum"], productMap["face-cream"], productMap["treatment-oil"], productMap["face-mask"]].filter(Boolean),
       priority: 20,
       message: "针对您的抗老需求，我们推荐以明星产品修护紧致精华为核心的抗衰方案。",
