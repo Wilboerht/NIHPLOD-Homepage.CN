@@ -15,6 +15,7 @@ import {
   Gift,
   ShoppingCart,
   Users,
+  Share2,
   LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ export const adminNavItems: NavItem[] = [
   { title: "媒体库", href: "/admin/media", icon: Image },
   { title: "AI 顾问", href: "/admin/advisor", icon: Bot },
   { title: "抽奖活动", href: "/admin/lottery", icon: Gift },
+  { title: "分享有礼", href: "/admin/share-reward/campaigns", icon: Share2 },
   { title: "职位管理", href: "/admin/jobs", icon: Briefcase },
   { title: "简历管理", href: "/admin/applications", icon: UserCheck },
   { title: "留言管理", href: "/admin/messages", icon: MessageSquare },
@@ -60,12 +62,12 @@ export function getActiveNavItem(pathname: string): NavItem | undefined {
  */
 export function getBreadcrumbs(pathname: string): { title: string; href: string }[] {
   const breadcrumbs = [{ title: "管理后台", href: "/admin" }];
-  
+
   const activeItem = getActiveNavItem(pathname);
   if (activeItem && activeItem.href !== "/admin") {
     breadcrumbs.push({ title: activeItem.title, href: activeItem.href });
   }
-  
+
   return breadcrumbs;
 }
 

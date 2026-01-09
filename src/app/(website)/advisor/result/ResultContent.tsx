@@ -15,7 +15,9 @@ import {
   Star,
   AlertCircle,
   ChevronDown,
+  Gift,
 } from "lucide-react";
+
 import { FaceAnalysisResult, AdvisorChatPanel } from "@/components/website/advisor";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { SkincareRoutinePanel } from "./SkincareRoutinePanel";
@@ -30,7 +32,6 @@ import {
 import { ShareFloatingButton, ShareIcons, type ShareOption } from "@/components/ui/ShareFloatingButton";
 import { useToast } from "@/components/ui/Toast";
 
-
 /** 产品类型 */
 interface Product {
   id: string;
@@ -42,6 +43,8 @@ interface Product {
   image?: string;
   description?: string | null;
 }
+
+
 
 /** 护肤步骤类型 */
 interface RoutineStep {
@@ -633,8 +636,13 @@ export function ResultContent() {
           />
         </m.div>
 
-
-
+        {/* 分享有礼活动入口 */}
+        {/* eslint-disable @typescript-eslint/no-explicit-any */}
+        <ShareRewardBanner
+          score={(faceAnalysis as any)?.score || 88}
+          percentile={(faceAnalysis as any)?.score ? Math.min(99, Math.floor((faceAnalysis as any).score * 1.1)) : 92}
+        />
+        {/* eslint-enable @typescript-eslint/no-explicit-any */}
 
         {/* 免责声明 */}
         <m.div
@@ -704,3 +712,34 @@ export function ResultContent() {
   );
 }
 
+
+// Add ShareRewardBanner component definition
+function ShareRewardBanner({ score, percentile }: { score: number; percentile: number }) {
+  const router = useRouter();
+
+  return (
+    <div
+      onClick={() => router.push(`/advisor/share-reward?score=${score}&percentile=${percentile}`)}
+      className="mb-8 cursor-pointer overflow-hidden rounded-xl bg-gradient-to-r from-red-50 to-pink-50 border border-red-100 p-4 shadow-sm hover:shadow-md transition-all relative group"
+    >
+      <div className="flex items-center gap-4">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500 group-hover:scale-110 transition-transform">
+          <Gift className="h-6 w-6" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-medium text-red-900 group-hover:text-red-700">
+            分享肌肤报告，赢取专属好礼
+          </h3>
+          <p className="text-sm text-red-700/80 mt-1">
+            您的肌肤评分 {score} 分，超越了 {percentile}% 的用户！
+            <span className="inline-block ml-2 text-red-600 font-medium group-hover:underline">
+              立即领取 &rarr;
+            </span>
+          </p>
+        </div>
+      </div>
+      {/* 装饰圆圈 */}
+      <div className="absolute -right-4 -bottom-8 h-24 w-24 rounded-full bg-red-200/20 group-hover:bg-red-200/30 transition-colors" />
+    </div>
+  );
+}

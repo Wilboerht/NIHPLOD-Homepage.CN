@@ -671,3 +671,69 @@ model Setting {
   value     Json     // 设置值
   updatedAt DateTime @updatedAt
 }
+
+// ============================================
+// 分享有礼
+// ============================================
+
+model ShareRewardCampaign {
+  id                  String   @id @default(cuid())
+  name                String   // 活动名称
+  description         String?  @db.Text // 活动规则描述
+  
+  // 时间设置
+  startDate           DateTime // 活动开始
+  endDate             DateTime // 活动结束
+  purchaseStartDate   DateTime // 购买凭证起始日期
+  purchaseEndDate     DateTime // 购买凭证截止日期
+  
+  // 奖励设置
+  rewardType          String   // coupon | sample
+  rewardDescription   String   // 奖励描述
+  
+  // 海报配置
+  posterTemplate      String?  // 海报模板图片URL
+  posterConfig        Json?    // 填充配置 { score: {x,y,fontSize,color}, percentile: {...}, code: {...} }
+  
+  // 状态
+  isActive            Boolean  @default(false)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  submissions         ShareRewardSubmission[]
+  
+  @@index([isActive, startDate])
+}
+
+model ShareRewardSubmission {
+  id               String   @id @default(cuid())
+  campaignId       String
+  
+  // 用户联系方式
+  contact          String   // 手机号或邮箱
+  
+  // 凭证截图
+  shareProofUrl    String   // 分享凭证截图
+  purchaseProofUrl String   // 购买凭证截图
+  
+  // 用户分析数据（生成海报用）
+  skinScore        Int?     // 肌肤评分
+  percentile       Int?     // 超越比例
+  
+  // 审核状态
+  status           String   @default("pending") // pending | approved | rejected
+  rejectReason     String?
+  
+  // 发货状态
+  shippingStatus   String   @default("none") // none | contacted | shipped
+  
+  reviewedAt       DateTime?
+  createdAt        DateTime @default(now())
+  
+  campaign         ShareRewardCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  @@unique([campaignId, contact]) // 同一活动同一联系方式只能提交一次
+  @@index([campaignId, status])
+  @@index([contact])
+}

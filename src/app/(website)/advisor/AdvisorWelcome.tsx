@@ -190,10 +190,10 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                 !isExpanded && "hidden"
               )}>
                 {/* Grid Layout Container */}
-                <div className="mx-auto grid min-h-full max-w-[1600px] grid-cols-12 grid-rows-[auto_1fr_auto] gap-8 p-8 w-full">
+                <div className="mx-auto grid min-h-full max-w-[1600px] grid-cols-12 grid-rows-[auto_1fr_auto] gap-4 p-4 md:gap-8 md:p-8 w-full">
 
                   {/* Header */}
-                  <header className="col-span-12 flex items-start justify-between border-b border-[#3D4430]/15 pb-8">
+                  <header className="col-span-12 flex items-start justify-between border-b border-[#3D4430]/15 pb-4 md:pb-8">
                     <img
                       src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
                       alt="Logo"
@@ -205,13 +205,13 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                   </header>
 
                   {/* Main Content */}
-                  <main className="col-span-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+                  <main className="col-span-12 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-center">
 
                     {/* Spacer */}
-                    <div className="relative col-span-1 md:col-span-1 md:col-start-1" />
+                    <div className="relative hidden md:block md:col-span-1 md:col-start-1" />
 
                     {/* Image Section */}
-                    <div className="relative col-span-1 md:col-span-4 md:col-start-2">
+                    <div className="relative col-span-1 max-w-[280px] mx-auto md:max-w-none md:mx-0 md:col-span-4 md:col-start-2">
                       <m.div
                         initial={{ opacity: 0, y: 40 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -244,12 +244,12 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                       >
                         <span className="mb-4 block text-[#3D4430]" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.8rem' }}># AI智能测肤</span>
 
-                        <h1 className="mb-8 font-light tracking-tight text-[#1A1A1A]" style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', lineHeight: '1.1', letterSpacing: '-0.02em' }}>
+                        <h1 className="mb-6 md:mb-8 font-light tracking-tight text-[#1A1A1A]" style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', lineHeight: '1.1', letterSpacing: '-0.02em' }}>
                           您口袋里的
                           <span className="block font-semibold">专属护肤导师</span>
                         </h1>
 
-                        <div className="relative mb-12 max-w-[480px] pl-8 text-[#5E5E5E]" style={{ fontSize: '1.1rem', lineHeight: '1.8' }}>
+                        <div className="relative mb-8 md:mb-12 max-w-full md:max-w-[480px] pl-6 md:pl-8 text-[#5E5E5E]" style={{ fontSize: 'clamp(1rem, 2vw, 1.1rem)', lineHeight: '1.8' }}>
                           {/* Accent Line */}
                           <div className="absolute left-0 top-2 h-[80%] w-px bg-[#3D4430] opacity-30" />
 
@@ -264,7 +264,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                         <button
                           onClick={handleStart}
                           disabled={isLoading}
-                          className="group relative inline-flex items-center overflow-hidden border border-[#3D4430] bg-[#3D4430] px-14 py-5 text-base text-white tracking-[0.05em] transition-all duration-300 hover:bg-transparent hover:text-[#3D4430] hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+                          className="group relative inline-flex w-full md:w-auto justify-center items-center overflow-hidden border border-[#3D4430] bg-[#3D4430] px-8 md:px-14 py-4 md:py-5 text-base text-white tracking-[0.05em] transition-all duration-300 hover:bg-transparent hover:text-[#3D4430] hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                           <span className={cn(
                             "relative flex items-center transition-colors duration-300",
@@ -279,8 +279,8 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                   </main>
 
                   {/* Footer */}
-                  <footer className="col-span-12 mt-8 flex flex-col items-center justify-between border-t border-[#3D4430]/15 pt-8 md:flex-row md:items-end">
-                    <div className="flex gap-8">
+                  <footer className="col-span-12 mt-4 md:mt-8 flex flex-col items-center justify-between border-t border-[#3D4430]/15 pt-4 md:pt-8 md:flex-row md:items-end gap-6 md:gap-0">
+                    <div className="flex flex-wrap justify-center gap-y-4 gap-x-8 md:justify-start">
                       <div className="text-[#5E5E5E]" style={{ fontSize: '0.75rem' }}>
                         <strong className="mb-1 block text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Phase 01</strong>
                         多维问卷调研
@@ -295,7 +295,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                       </div>
                     </div>
 
-                    <div className="mt-8 text-right leading-relaxed text-black/40 md:mt-0" style={{ fontSize: '0.7rem' }}>
+                    <div className="mt-2 md:mt-0 text-center md:text-right leading-relaxed text-black/40" style={{ fontSize: '0.7rem' }}>
                       本站护肤检测相关大数据及人工智能技术
                       <p>由 MySkin.Today 提供服务支持</p>
                     </div>
@@ -313,7 +313,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-6 py-2 md:px-10 md:py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
             >
               <div className="texture-overlay absolute inset-0 rounded-b-2xl opacity-[0.04]" />
               <m.div
