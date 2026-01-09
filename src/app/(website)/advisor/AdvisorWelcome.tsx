@@ -312,8 +312,8 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
               >
-                <ChevronDown className="h-7 w-7 text-[#3D4430] lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-[#3D4430] lg:h-8 lg:w-8" />
+                <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
               </m.div>
             </button>
           </div>

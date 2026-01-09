@@ -43,7 +43,7 @@ const chatMessages = [
 
 export function BottomNavBar() {
     const pathname = usePathname();
-    const { isDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
+    const { isDrawerOpen, setDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
 
     // 鼠标跟随视差效果 (Reference: Dock区域 IP 样式动效)
     const avatarRef = useRef<HTMLDivElement>(null);
@@ -109,6 +109,20 @@ export function BottomNavBar() {
     // 根据当前页面获取主导航项和其他导航项
     const primaryNav = allNavItems.find(item => item.href === currentPage) || allNavItems[4]; // 默认为Home
     const otherNavItems = allNavItems.filter(item => item.href !== currentPage);
+
+    /**
+     * 处理导航点击
+     * 如果点击的是当前页面，则展开抽屉而不是跳转
+     */
+    const handleNavClick = (href: string, e: React.MouseEvent) => {
+        const isCurrentPage = href === currentPage || (href !== "/" && pathname.startsWith(href));
+        if (isCurrentPage) {
+            e.preventDefault();
+            setDrawerOpen(true);
+        } else {
+            // 正常导航，Link 组件会处理
+        }
+    };
 
 
     const PrimaryIcon = primaryNav.icon;
@@ -200,6 +214,7 @@ export function BottomNavBar() {
                             {/* ================= 移动端左侧主导航 (动态) ================= */}
                             <Link
                                 href={primaryNav.href}
+                                onClick={(e) => handleNavClick(primaryNav.href, e)}
                                 className="group flex items-center gap-2 transition-opacity active:opacity-70 sm:hidden"
                             >
                                 {/* 图标容器 */}
@@ -287,6 +302,7 @@ export function BottomNavBar() {
                                             </span>
                                             <Link
                                                 href={advisorItem.href}
+                                                onClick={(e) => handleNavClick(advisorItem.href, e)}
                                                 className="flex items-center gap-1.5 bg-black text-[#F0EDE1] rounded-[50px] px-4 py-1.5 text-[13px] font-medium transition-all duration-300 ease-out hover:text-[#F0EDE1] hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.3)]"
                                             >
                                                 免费使用
@@ -348,6 +364,7 @@ export function BottomNavBar() {
                                             <Link
                                                 key={item.href}
                                                 href={item.href}
+                                                onClick={(e) => handleNavClick(item.href, e)}
                                                 className={cn(
                                                     "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium text-[#1a1a1a] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)]",
                                                     "hover:opacity-70"
