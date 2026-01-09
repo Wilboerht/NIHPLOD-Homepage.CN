@@ -81,7 +81,7 @@ export function OptionCard({
       )}
 
       {/* 内容区域 */}
-      <div className="relative z-10 flex items-start gap-3.5 p-4 sm:p-4.5">
+      <div className="relative z-10 flex items-start gap-3.5 p-3.5 sm:p-4.5">
         {/* Emoji 图标 - 优雅圆形容器 */}
         {emoji && (
           <m.div

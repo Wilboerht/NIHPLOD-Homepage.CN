@@ -52,7 +52,7 @@ export function QuestionStep({
         className="w-full"
       >
         {/* 问题标题区域 - 优雅的高奢风格 */}
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center sm:mb-8">
           {/* 装饰性分隔线 */}
           <m.div
             className="mx-auto mb-4 flex items-center justify-center gap-2"
@@ -67,7 +67,7 @@ export function QuestionStep({
 
           {/* 主标题 */}
           <m.h2
-            className="font-serif text-xl font-light tracking-wide text-brand-charcoal sm:text-2xl lg:text-3xl"
+            className="text-lg font-serif font-light tracking-wide text-brand-charcoal sm:text-2xl lg:text-3xl"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.4 }}

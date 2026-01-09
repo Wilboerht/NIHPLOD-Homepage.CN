@@ -199,9 +199,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                       alt="Logo"
                       className="h-8 mix-blend-multiply"
                     />
-                    <div className="font-light tracking-[0.1em] text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem' }}>
-                      Ref: AI-DERMA-2024 / P-01
-                    </div>
+
                   </header>
 
                   {/* Main Content */}
@@ -281,18 +279,6 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
                   {/* Footer */}
                   <footer className="col-span-12 mt-4 md:mt-8 flex flex-col items-center justify-between border-t border-[#3D4430]/15 pt-4 md:pt-8 md:flex-row md:items-end gap-6 md:gap-0">
                     <div className="flex flex-wrap justify-center gap-y-4 gap-x-8 md:justify-start">
-                      <div className="text-[#5E5E5E]" style={{ fontSize: '0.75rem' }}>
-                        <strong className="mb-1 block text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Phase 01</strong>
-                        多维问卷调研
-                      </div>
-                      <div className="text-[#5E5E5E]" style={{ fontSize: '0.75rem' }}>
-                        <strong className="mb-1 block text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Phase 02</strong>
-                        面部数据采样
-                      </div>
-                      <div className="text-[#5E5E5E]" style={{ fontSize: '0.75rem' }}>
-                        <strong className="mb-1 block text-[#3D4430] uppercase" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Phase 03</strong>
-                        定制报告生成
-                      </div>
                     </div>
 
                     <div className="mt-2 md:mt-0 text-center md:text-right leading-relaxed text-black/40" style={{ fontSize: '0.7rem' }}>

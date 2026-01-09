@@ -276,7 +276,7 @@ export function QuestionsFlow() {
       </div>
 
       {/* 顶部导航栏 - 固定在顶部，增加上下内边距 */}
-      <header className="relative z-10 flex shrink-0 items-center justify-between py-6">
+      <header className="relative z-10 flex shrink-0 items-center justify-between py-4 sm:py-6">
         {/* 返回按钮 - 优雅的圆形按钮 */}
         {showGenderStep ? (
           <Link
@@ -370,7 +370,7 @@ export function QuestionsFlow() {
 
       {/* 底部导航按钮 - 性别选择步骤不显示 */}
       {!showGenderStep && (
-        <footer className="relative z-10 flex items-center justify-center pb-6 pt-2">
+        <footer className="relative z-10 flex items-center justify-center pb-4 pt-2 sm:pb-6">
           {/* 优雅的下一题/完成按钮 */}
           <m.button
             initial={{ opacity: 0, y: 10 }}
@@ -379,7 +379,7 @@ export function QuestionsFlow() {
             onClick={isLastQuestion ? handleComplete : handleNext}
             disabled={!hasValidAnswer}
             className={cn(
-              "group relative flex items-center gap-2.5 overflow-hidden rounded-full px-10 py-3.5 text-sm font-light tracking-wider transition-all duration-300 sm:px-12 sm:py-4 sm:text-base",
+              "group relative flex items-center gap-2.5 overflow-hidden rounded-full px-8 py-3 text-sm font-light tracking-wider transition-all duration-300 sm:px-12 sm:py-4 sm:text-base",
               hasValidAnswer
                 ? "border border-brand-gold/30 bg-white/90 text-brand-charcoal shadow-card backdrop-blur-sm hover:border-brand-gold hover:shadow-luxury"
                 : "cursor-not-allowed border border-brand-beige/40 bg-white/50 text-brand-charcoal/30"

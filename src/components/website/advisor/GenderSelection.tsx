@@ -51,7 +51,7 @@ export function GenderSelection({ selectedGender, onSelect }: GenderSelectionPro
         <p className="mb-2 text-xs font-light uppercase tracking-[0.25em] text-brand-gold/70 sm:text-sm">
           Before We Start
         </p>
-        <h2 className="font-serif text-2xl font-light tracking-wide text-brand-charcoal sm:text-3xl lg:text-4xl">
+        <h2 className="font-serif text-xl font-light tracking-wide text-brand-charcoal sm:text-3xl lg:text-4xl">
           请选择您的性别
         </h2>
         <p className="mt-3 text-sm font-light text-brand-charcoal/50 sm:text-base">
@@ -104,7 +104,7 @@ export function GenderSelection({ selectedGender, onSelect }: GenderSelectionPro
             />
 
             {/* 内容 */}
-            <div className="relative z-10 flex items-center gap-4 p-4">
+            <div className="relative z-10 flex items-center gap-4 p-3.5 sm:p-4">
               {/* Emoji */}
               <div
                 className={cn(
