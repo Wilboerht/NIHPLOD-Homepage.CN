@@ -404,7 +404,7 @@ export async function fallbackAnalysis(
  * - 臻萃护理油 (Treatment Oil) - 可选加强护理
  */
 function generateSkincareRoutine(currentRoutine?: string): SkincareRoutine {
-  const isMinimal = currentRoutine === "minimal" || currentRoutine === "none";
+  const isMinimal = currentRoutine === "beginner" || currentRoutine === "basic" || !currentRoutine;
 
   // 极简护肤方案
   if (isMinimal) {
@@ -718,11 +718,13 @@ interface ProductScore {
 
 /** 关注点到功效标签的映射 */
 const CONCERN_TO_BENEFITS: Record<string, string[]> = {
-  aging: ["抗老", "紧致", "抗皱", "淡纹", "胶原", "弹力", "年轻"],
-  dull: ["提亮", "亮白", "焕亮", "光泽", "透亮", "均匀肤色"],
+  anti_aging: ["抗老", "紧致", "抗皱", "胶原", "弹力", "年轻"],
+  fine_lines: ["淡纹", "抗皱", "平滑", "抚纹"],
+  dullness: ["提亮", "亮白", "焕亮", "光泽", "透亮", "均匀肤色"],
+  pigmentation: ["淡斑", "美白", "均匀", "去印", "焕白"],
   hydration: ["补水", "保湿", "锁水", "滋润", "水润", "润泽"],
   pores: ["毛孔", "控油", "收缩", "细致", "平滑", "净化"],
-  sensitive: ["舒缓", "修护", "镇静", "敏感", "温和", "屏障"],
+  sensitivity: ["舒缓", "修护", "镇静", "敏感", "温和", "屏障"],
   acne: ["祛痘", "净痘", "控痘", "消炎", "净化", "调理"],
 };
 
@@ -731,9 +733,11 @@ const SKINTYPE_TO_BENEFITS: Record<string, string[]> = {
   dry: ["滋润", "保湿", "修护", "滋养", "营养"],
   oily: ["控油", "清爽", "净化", "平衡", "调理"],
   combination: ["平衡", "调理", "均衡", "双效"],
+  combination_dry: ["滋润", "保湿", "平衡", "分区"],
+  combination_oily: ["控油", "清爽", "平衡", "细致"],
   sensitive: ["舒缓", "温和", "修护", "镇静"],
   normal: ["维稳", "保养", "平衡", "健康"],
-  unknown: ["保湿", "温和", "平衡", "基础"], // 不确定肤质时推荐温和基础产品
+  unknown: ["保湿", "温和", "平衡", "基础"],
 };
 
 /** 预算到价格范围的映射 */
@@ -746,20 +750,20 @@ const BUDGET_TO_PRICE: Record<string, { min: number; max: number }> = {
 
 /** 年龄段到推荐功效的映射 */
 const AGE_TO_BENEFITS: Record<string, string[]> = {
-  "18-24": ["控油", "清爽", "补水", "净化", "祛痘"],
-  "25-30": ["补水", "保湿", "提亮", "抗氧化", "防护"],
+  "under_23": ["控油", "清爽", "补水", "净化", "祛痘"],
+  "23-30": ["补水", "保湿", "提亮", "抗氧化", "防护"],
   "31-40": ["抗老", "紧致", "淡纹", "修护", "保湿"],
   "41-50": ["抗皱", "紧致", "淡斑", "滋养", "胶原"],
-  "50+": ["紧致", "滋养", "修护", "抗皱", "弹力"],
+  "above_50": ["紧致", "滋养", "修护", "抗皱", "弹力"],
 };
 
 /** 护肤习惯到产品复杂度的映射 */
 const ROUTINE_COMPLEXITY: Record<string, number> = {
-  none: 1,      // 刚开始护肤 - 推荐基础单品
-  minimal: 1,   // 极简护肤 - 推荐基础单品
-  basic: 2,     // 基础护肤 - 推荐常规产品
-  complete: 3,  // 完整护肤 - 可推荐进阶产品
-  advanced: 4,  // 进阶护理 - 可推荐专业产品
+  beginner: 1,      // 全新小白
+  basic: 2,         // 基础入门
+  intermediate: 3,  // 略有心得
+  advanced: 4,      // 资深达人
+  expert: 5,        // 行业专家
 };
 
 /**
@@ -1029,11 +1033,13 @@ function generateProductReason(
   index: number = 0
 ): string {
   const concernReasons: Record<string, string[]> = {
-    aging: ["淡化细纹，紧致肌肤", "抗氧化修护"],
-    dull: ["提亮肤色，焕发光彩", "改善暗沉"],
+    anti_aging: ["淡化细纹，紧致肌肤", "抗氧化修护"],
+    fine_lines: ["淡化细纹", "平滑肌肤"],
+    dullness: ["提亮肤色，焕发光彩", "改善暗沉"],
+    pigmentation: ["淡化色斑", "均匀肤色"],
     hydration: ["深层补水，持久保湿", "修护肌肤屏障"],
     pores: ["收缩毛孔，细腻肌肤", "控油清透"],
-    sensitive: ["舒缓镇静，温和修护", "增强肌肤屏障"],
+    sensitivity: ["舒缓镇静，温和修护", "增强肌肤屏障"],
     acne: ["净化毛孔，预防痘痘", "控油调理"],
   };
 
@@ -1041,6 +1047,8 @@ function generateProductReason(
     dry: "滋润保湿，改善干燥",
     oily: "清爽控油，平衡水油",
     combination: "分区护理，平衡肤质",
+    combination_dry: "针对混干肤质，分区滋润",
+    combination_oily: "针对混油肤质，平衡水油",
     sensitive: "温和配方，适合敏感肌",
     normal: "日常保养，维持状态",
   };
@@ -1125,11 +1133,11 @@ function generateAnalysisDetails(
 
   if (answers.currentRoutine) {
     const routineLabels: Record<string, string> = {
-      minimal: "极简护肤",
-      basic: "基础护肤",
-      complete: "完整护肤",
-      advanced: "进阶护理",
-      none: "刚开始护肤",
+      beginner: "全新小白",
+      basic: "基础入门",
+      intermediate: "略有心得",
+      advanced: "资深达人",
+      expert: "行业专家",
     };
     details.push(`护肤习惯：${routineLabels[answers.currentRoutine] || answers.currentRoutine}`);
   }

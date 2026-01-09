@@ -30,30 +30,41 @@ export function QuestionsFlow() {
   const [selectedGender, setSelectedGender] = useState<GenderType | null>(null);
   const [showGenderStep, setShowGenderStep] = useState(true);
 
+  // 用户答案
+  const [answers, setAnswers] = useState<Answers>({});
+
   // 动态获取问题数据（传入性别参数）
   const { questions: allQuestions, loading, source: _source } = useAdvisorQuestions(
     showGenderStep ? undefined : selectedGender
   );
 
-  // 根据性别过滤问题（前端备用逻辑）
+  // 根据性别和前置条件过滤问题
   const questions = useMemo(() => {
-    if (!selectedGender || selectedGender === "unspecified") {
-      // 暂不透露：显示所有问题（gender 为 all 或对应性别的问题都显示）
-      return allQuestions;
+    let filtered = allQuestions;
+
+    // 1. 性别过滤
+    if (selectedGender && selectedGender !== "unspecified") {
+      filtered = allQuestions.filter(q => {
+        const qGender = (q as { gender?: string }).gender;
+        return !qGender || qGender === "all" || qGender === selectedGender;
+      });
     }
-    // 过滤：显示 gender 为 all 或匹配当前性别的问题
-    return allQuestions.filter(q => {
-      const qGender = (q as { gender?: string }).gender;
-      return !qGender || qGender === "all" || qGender === selectedGender;
+
+    // 2. 前置条件过滤 (Hardcoded logic)
+    return filtered.filter(q => {
+      // 医美经历问题：只有当处于“特殊时期”选“否”时才显示
+      if (q.fieldName === "medicalBeautyHistory") {
+        return answers["pregnancyStatus"] === "no";
+      }
+      return true;
     });
-  }, [allQuestions, selectedGender]);
+  }, [allQuestions, selectedGender, answers]);
 
   const totalQuestions = questions.length;
 
   // 当前问题索引（从 0 开始）
   const [currentIndex, setCurrentIndex] = useState(0);
-  // 用户答案
-  const [answers, setAnswers] = useState<Answers>({});
+
   // 动画方向：1 向前，-1 向后
   const [direction, setDirection] = useState(1);
   // 是否正在过渡动画中

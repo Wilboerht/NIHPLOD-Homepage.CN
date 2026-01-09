@@ -132,6 +132,7 @@ export function useAdvisorQuestions(gender?: "male" | "female" | "unspecified" |
       type: "single" as const,
       options: q.options,
       order: q.id,
+      gender: q.gender,
     }));
     setQuestions(localQuestions);
     setSource("fallback");

@@ -200,16 +200,14 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
    * 使用鼻尖和眼睛位置来判断头部方向
    * 包含左右转头和仰头（下颚）检测
    */
-  const calculateHeadPose = useCallback((landmarks: { positions: { x: number; y: number }[] }): HeadPose => {
+  const calculateHeadPose = useCallback((landmarks: { positions: { x: number; y: number }[] }, targetStep: CaptureStep): HeadPose => {
     const positions = landmarks.positions;
 
-    // 68点面部关键点索引:
-    // 左眼外角: 36, 左眼内角: 39
-    // 右眼外角: 45, 右眼内角: 42
+    // 68点面部关键点索引
+    // 左眼外角: 36, 右眼外角: 45
     // 鼻尖: 30
-    // 面部左边缘: 0, 面部右边缘: 16
-    // 下巴: 8
-    // 眉心(鼻梁顶部): 27
+    // 面部左右边缘: 0, 16
+    // 下巴: 8, 眉心: 27
 
     const leftEyeOuter = positions[36];
     const rightEyeOuter = positions[45];
@@ -217,51 +215,65 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     const faceLeft = positions[0];
     const faceRight = positions[16];
     const chin = positions[8];
-    const noseBridge = positions[27]; // 眉心/鼻梁顶部
+    const noseBridge = positions[27];
 
     // 计算眼睛中心
     const eyesCenterX = (leftEyeOuter.x + rightEyeOuter.x) / 2;
     const eyesCenterY = (leftEyeOuter.y + rightEyeOuter.y) / 2;
 
-    // 计算面部宽度和高度
+    // 计算面部宽度
     const faceWidth = faceRight.x - faceLeft.x;
-    const faceHeight = chin.y - noseBridge.y;
 
-    // 计算鼻尖相对于眼睛中心的水平偏移比例
+    // 计算鼻尖水平偏移比例 (Mirror mode: Left turn -> nose right -> ratio > 0)
     const noseOffsetRatio = (noseTip.x - eyesCenterX) / faceWidth;
 
-    // 计算左右眼到面部边缘的距离比例
-    const leftEyeToEdge = leftEyeOuter.x - faceLeft.x;
-    const rightEyeToEdge = faceRight.x - rightEyeOuter.x;
-    const eyeEdgeRatio = leftEyeToEdge / rightEyeToEdge;
-
-    // 计算仰头指标：鼻尖到眼睛中心的垂直距离 / 眼睛到下巴的垂直距离
-    // 正常情况下比例约为 0.3-0.5，仰头时鼻尖会更接近眼睛，比例变小
+    // 计算仰头指标：鼻尖到眼连线垂距 / 眼到下巴垂距
     const noseToEyesY = noseTip.y - eyesCenterY;
     const eyesToChinY = chin.y - eyesCenterY;
-    const tiltRatio = noseToEyesY / eyesToChinY;
+    // 避免除以零
+    const tiltRatio = eyesToChinY !== 0 ? noseToEyesY / eyesToChinY : 0.5;
 
-    // 判断头部朝向
-    // 优先检测仰头（下颚拍摄）
-    // 仰头时：鼻尖更接近眼睛水平线，tiltRatio 变小（< 0.35）
-    if (tiltRatio < 0.35 && faceHeight > 0) {
-      return "chin";
+    // --- 判定逻辑 ---
+
+    // 基础标志位
+    // 放宽左右转阈值 (0.20 -> 0.15)
+    const isLookingLeft = noseOffsetRatio > 0.15;
+    const isLookingRight = noseOffsetRatio < -0.15;
+    const isLookingCenter = Math.abs(noseOffsetRatio) < 0.25;
+
+    // 抬头标志: tiltRatio 越小越仰头。0.30 是一个经验阈值，低于此值可能有抬头倾向
+    const isLookingUp = tiltRatio < 0.32;
+
+    // 优先匹配当前目标步骤 (Bias towards user intent)
+
+    if (targetStep === 'left') {
+      // 只要往左转了，哪怕有点抬头/低头也通过
+      if (isLookingLeft) return "left";
     }
 
-    // 正脸: 鼻尖在眼睛中心附近，左右对称
-    // 左转: 鼻尖偏向右侧（从摄像头看），右眼到边缘距离更小
-    // 右转: 鼻尖偏向左侧（从摄像头看），左眼到边缘距离更小
-
-    // 对于前置摄像头，图像是镜像的，需要反转判断
-    if (Math.abs(noseOffsetRatio) < 0.08 && eyeEdgeRatio > 0.6 && eyeEdgeRatio < 1.5) {
-      return "front";
-    } else if (noseOffsetRatio > 0.1 || eyeEdgeRatio > 1.8) {
-      // 镜像后：用户向左转时，鼻尖在摄像头画面中偏右
-      return "left";
-    } else if (noseOffsetRatio < -0.1 || eyeEdgeRatio < 0.55) {
-      // 镜像后：用户向右转时，鼻尖在摄像头画面中偏左
-      return "right";
+    if (targetStep === 'right') {
+      // 只要往右转了，哪怕有点抬头/低头也通过
+      if (isLookingRight) return "right";
     }
+
+    if (targetStep === 'chin') {
+      // 必须有明显抬头特征
+      // 稍微放宽 tiltRatio (< 0.35)，同时要求不要转头太厉害
+      if (tiltRatio < 0.35 && Math.abs(noseOffsetRatio) < 0.35) {
+        return "chin";
+      }
+    }
+
+    if (targetStep === 'front') {
+      // 只要水平居中，允许自然的低头/抬头
+      if (isLookingCenter) return "front";
+    }
+
+    // Fallback: 如果不符合主要目标，就按默认严格优先级返回
+    if (isLookingUp && isLookingCenter) return "chin";
+    if (isLookingLeft) return "left";
+    if (isLookingRight) return "right";
+    if (isLookingCenter) return "front";
 
     return "unknown";
   }, []);
@@ -280,7 +292,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     try {
       // 使用 withFaceLandmarks 获取面部关键点
       const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.3 }))
         .withFaceLandmarks();
 
       if (detection) {
@@ -299,18 +311,19 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
         const videoCenterX = videoWidth / 2;
         const videoCenterY = videoHeight / 2;
 
-        // 检查面部是否在中心区域（允许25%的偏移）
+        // 检查面部是否在中心区域（允许45%的偏移 - 几乎只要在画面里就行）
         const offsetX = Math.abs(faceCenterX - videoCenterX) / videoWidth;
         const offsetY = Math.abs(faceCenterY - videoCenterY) / videoHeight;
 
         // 检查面部大小是否合适
         const faceRatio = box.height / videoHeight;
 
-        const isCentered = offsetX < 0.25 && offsetY < 0.25;
-        const isSizeOk = faceRatio > 0.15 && faceRatio < 0.7;
+        // 大幅放宽限制，只要检测到脸且大概在中间即可
+        const isCentered = offsetX < 0.45 && offsetY < 0.45;
+        const isSizeOk = faceRatio > 0.15 && faceRatio < 0.9;
 
-        // 计算头部朝向
-        const headPose = calculateHeadPose(detection.landmarks);
+        // 计算头部朝向 (传入 currentStep 以优化判定逻辑)
+        const headPose = calculateHeadPose(detection.landmarks, currentStep);
 
 
         // 检查当前头部朝向是否匹配当前步骤
@@ -322,9 +335,9 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
           // 更新稳定进度 (4次检测 = 100%)
           setStabilityProgress(Math.min(100, (stableCountRef.current / 4) * 100));
 
-          // 稳定检测约1.2秒后拍照（4次检测，每次300ms）
-          // 确保用户有足够时间保持姿势，拍摄清晰
-          if (stableCountRef.current >= 4) {
+          // 稳定检测约0.6秒后拍照（3次检测，每次200ms）
+          // 减少需要的稳定帧数，提高灵敏度
+          if (stableCountRef.current >= 3) {
             setFaceStatus("ready");
             setStabilityProgress(100);
             // 拍照
@@ -626,7 +639,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
 
     let animationId: number;
     let lastDetectionTime = 0;
-    const detectionInterval = 300; // 每 300ms 检测一次
+    const detectionInterval = 200; // 降低间隔到 200ms，提高响应速度
 
     const runDetection = (timestamp: number) => {
       if (timestamp - lastDetectionTime >= detectionInterval) {

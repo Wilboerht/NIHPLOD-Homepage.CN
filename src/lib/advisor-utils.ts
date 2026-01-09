@@ -204,22 +204,29 @@ export const SKIN_TYPE_LABELS: Record<string, string> = {
   dry: "干性肌肤",
   oily: "油性肌肤",
   combination: "混合性肌肤",
+  combination_dry: "混干性肌肤",
+  combination_oily: "混油性肌肤",
   normal: "中性肌肤",
   sensitive: "敏感性肌肤",
-  unknown: "待确定肤质",
+  unknown: "我不太确定",
 };
 
 /** 关注点 → 中文标签 */
 export const CONCERN_LABELS: Record<string, string> = {
-  aging: "抗老紧致",
-  dull: "提亮肤色",
+  anti_aging: "延衰抗老",
+  fine_lines: "淡化细纹",
+  dullness: "暗沉提亮",
+  pigmentation: "色素不均",
   hydration: "补水保湿",
-  pores: "毛孔护理",
-  sensitive: "舒缓修护",
-  acne: "祛痘净肤",
+  pores: "毛孔粗大",
+  sensitivity: "敏感泛红",
+  acne: "痘痘粉刺",
+  // 保持旧键名兼容
+  aging: "延衰抗老",
+  dull: "暗沉提亮",
   wrinkles: "淡化细纹",
-  spots: "淡斑匀肤",
-  dryness: "深层滋润",
+  spots: "色素不均",
+  dryness: "干燥缺水",
 };
 
 /** 8 维度 → 中文标签（VISIA 风格） */

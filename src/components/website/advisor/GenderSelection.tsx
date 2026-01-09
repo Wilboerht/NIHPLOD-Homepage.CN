@@ -27,12 +27,6 @@ const genderOptions: GenderOption[] = [
     emoji: "👨",
     description: "Male",
   },
-  {
-    value: "unspecified",
-    label: "暂不透露",
-    emoji: "🤫",
-    description: "Prefer not to say",
-  },
 ];
 
 interface GenderSelectionProps {

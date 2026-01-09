@@ -13,12 +13,14 @@ const OptionSchema = z.object({
 });
 
 // 创建问题 Schema
+// 创建问题 Schema
 const CreateQuestionSchema = z.object({
   question: z.string().min(1, "请输入问题内容").max(200),
   fieldName: z.string().min(1, "请输入字段名").max(50),
   type: z.enum(["single", "multiple"]).default("single"),
   options: z.array(OptionSchema).min(1, "请添加至少一个选项"),
   active: z.boolean().optional(),
+  gender: z.enum(["all", "male", "female"]).default("all"),
 });
 
 // GET /api/admin/advisor/questions - 获取问题列表
@@ -90,6 +92,7 @@ export async function POST(request: NextRequest) {
         type: validated.type,
         options: validated.options,
         active: validated.active ?? true,
+        gender: validated.gender,
         order: (maxOrder._max.order || 0) + 1,
       },
     });
