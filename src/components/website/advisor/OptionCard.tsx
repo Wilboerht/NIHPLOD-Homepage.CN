@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 interface OptionCardProps {
   value: string;
   label: string;
-  description: string;
+  description?: string;
   emoji?: string;
   isSelected: boolean;
   onClick: () => void;
@@ -110,16 +110,18 @@ export function OptionCard({
           >
             {label}
           </p>
-          <p
-            className={cn(
-              "mt-1 text-xs leading-relaxed transition-colors duration-200 sm:text-sm",
-              isSelected
-                ? "text-brand-charcoal/70"
-                : "text-brand-charcoal/50 group-hover:text-brand-charcoal/60"
-            )}
-          >
-            {description}
-          </p>
+          {description && (
+            <p
+              className={cn(
+                "mt-1 text-xs leading-relaxed transition-colors duration-200 sm:text-sm",
+                isSelected
+                  ? "text-brand-charcoal/70"
+                  : "text-brand-charcoal/50 group-hover:text-brand-charcoal/60"
+              )}
+            >
+              {description}
+            </p>
+          )}
         </div>
 
         {/* 选中指示器 - 优雅的金色圆环 */}

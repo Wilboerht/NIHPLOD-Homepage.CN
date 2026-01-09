@@ -215,7 +215,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     const faceLeft = positions[0];
     const faceRight = positions[16];
     const chin = positions[8];
-    const noseBridge = positions[27];
+    const _noseBridge = positions[27];
 
     // 计算眼睛中心
     const eyesCenterX = (leftEyeOuter.x + rightEyeOuter.x) / 2;

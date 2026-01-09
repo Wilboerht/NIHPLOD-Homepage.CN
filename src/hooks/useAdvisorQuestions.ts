@@ -10,7 +10,7 @@ export interface QuestionOption {
   value: string;
   label: string;
   labelEn?: string;
-  description: string;
+  description?: string;
   emoji?: string;
 }
 
