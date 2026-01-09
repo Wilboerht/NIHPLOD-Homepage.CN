@@ -703,11 +703,11 @@ export function ResultContent() {
         copied={shareStatus === "copied"}
       />
 
-      {/* AI护肤顾问追问 */}
-      <AdvisorChatPanel
+      {/* AI护肤顾问追问 - 暂时隐藏 */}
+      {/* <AdvisorChatPanel
         skinType={result?.skinProfile.type}
         concerns={result?.skinProfile.concerns}
-      />
+      /> */}
     </div>
   );
 }
