@@ -33,7 +33,12 @@ export async function GET(request: NextRequest) {
         }
 
         // 2. 获取模板图片
-        const templateRes = await fetch(campaign.posterTemplate);
+        let templateImgUrl = campaign.posterTemplate;
+        if (templateImgUrl.startsWith("/")) {
+            const origin = new URL(request.url).origin;
+            templateImgUrl = `${origin}${templateImgUrl}`;
+        }
+        const templateRes = await fetch(templateImgUrl);
         if (!templateRes.ok) throw new Error("无法加载模板图片");
         const templateBuffer = await templateRes.arrayBuffer();
 
@@ -103,7 +108,10 @@ export async function GET(request: NextRequest) {
         compositeList[1].left = Number(codeCfg.x);
         compositeList[1].top = Number(codeCfg.y);
 
+        // 6. 合成图片
+        // 确保底图大小为 1080x1920，以匹配 SVG 和坐标系
         const finalImage = await sharp(Buffer.from(templateBuffer))
+            .resize(1080, 1920, { fit: 'fill' })
             .composite(compositeList)
             .png()
             .toBuffer();
