@@ -368,8 +368,8 @@ export function ResultContent() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <div className="text-center">
-          <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-gold" />
-          <p className="mt-4 text-sm text-brand-charcoal/60">正在分析您的肌肤...</p>
+          <Loader2 className="mx-auto h-10 w-10 animate-spin text-brand-gold sm:h-12 sm:w-12" />
+          <p className="mt-3 text-xs text-brand-charcoal/60 sm:mt-4 sm:text-sm">正在分析您的肌肤...</p>
         </div>
       </div>
     );
@@ -408,14 +408,14 @@ export function ResultContent() {
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
-        <div className="mx-auto max-w-md text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
-            <AlertCircle className="h-8 w-8 text-amber-500" />
+        <div className="mx-auto max-w-sm text-center sm:max-w-md">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 sm:mb-6 sm:h-16 sm:w-16">
+            <AlertCircle className="h-7 w-7 text-amber-500 sm:h-8 sm:w-8" />
           </div>
-          <h2 className="mb-3 font-serif text-xl text-brand-charcoal">
+          <h2 className="mb-2 font-serif text-lg text-brand-charcoal sm:mb-3 sm:text-xl">
             分析暂时无法完成
           </h2>
-          <p className="mb-6 text-sm leading-relaxed text-brand-charcoal/60">
+          <p className="mb-5 text-xs leading-relaxed text-brand-charcoal/60 sm:mb-6 sm:text-sm">
             由于技术原因，面部分析未能成功完成。请稍后重新尝试，或在网络环境更好时再次分析。
           </p>
           <div className="flex flex-col gap-3">
@@ -441,21 +441,21 @@ export function ResultContent() {
   if (!result) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-cream px-4 py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
+    <div className="min-h-screen bg-gradient-cream px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-12 lg:py-8 xl:px-16">
       {/* 顶部导航 */}
-      <header className="mx-auto mb-6 flex max-w-2xl items-center justify-between lg:max-w-3xl lg:mb-8">
+      <header className="mx-auto mb-4 flex max-w-xl items-center justify-between sm:mb-6 sm:max-w-2xl lg:max-w-3xl lg:mb-8">
         <Link
           href="/"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal lg:h-11 lg:w-11"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal sm:h-10 sm:w-10 lg:h-11 lg:w-11"
         >
-          <Home className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
+          <Home className="h-4 w-4 sm:h-5 sm:w-5 lg:h-[22px] lg:w-[22px]" />
         </Link>
         <span className="text-xs tracking-wider text-brand-charcoal/60">
           {result.dataSource === "comprehensive" ? "综合分析" : "问卷分析"}
         </span>
         <button
           onClick={handleShare}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal lg:h-11 lg:w-11"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/60 text-brand-charcoal/70 transition-all hover:border-brand-charcoal/40 hover:bg-white/80 hover:text-brand-charcoal sm:h-10 sm:w-10 lg:h-11 lg:w-11"
           aria-label="分享"
         >
           <AnimatePresence mode="wait">
@@ -500,7 +500,7 @@ export function ResultContent() {
 
       {/* 页面标题 - 高奢品牌风格 */}
       <m.div
-        className="mb-8 text-center lg:mb-10"
+        className="mb-6 text-center sm:mb-8 lg:mb-10"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
@@ -531,7 +531,7 @@ export function ResultContent() {
 
         {/* 主标题 */}
         <m.h1
-          className="font-serif text-2xl font-light tracking-wide text-brand-charcoal lg:text-3xl"
+          className="font-serif text-xl font-light tracking-wide text-brand-charcoal sm:text-2xl lg:text-3xl"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.5 }}
@@ -543,7 +543,7 @@ export function ResultContent() {
       {/* 报告内容区域（用于截图） */}
       <m.div
         ref={reportRef}
-        className="mx-auto max-w-2xl space-y-6 lg:max-w-3xl"
+        className="mx-auto max-w-xl space-y-4 sm:max-w-2xl sm:space-y-6 lg:max-w-3xl"
         variants={staggerContainer}
         initial="initial"
         animate="animate"

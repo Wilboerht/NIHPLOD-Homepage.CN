@@ -268,7 +268,7 @@ export function QuestionsFlow() {
   }
 
   return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-gradient-cream px-4 md:px-6 lg:px-12 xl:px-16">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-gradient-cream px-3 sm:px-4 md:px-6 lg:px-12 xl:px-16">
       {/* 背景装饰 */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-gradient-radial-gold opacity-50" />
@@ -276,40 +276,40 @@ export function QuestionsFlow() {
       </div>
 
       {/* 顶部导航栏 - 固定在顶部，增加上下内边距 */}
-      <header className="relative z-10 flex shrink-0 items-center justify-between py-4 sm:py-6">
+      <header className="relative z-10 flex shrink-0 items-center justify-between py-3 sm:py-4 md:py-6">
         {/* 返回按钮 - 优雅的圆形按钮 */}
         {showGenderStep ? (
           <Link
             href="/advisor"
-            className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover lg:h-11 lg:w-11"
+            className="group flex h-9 w-9 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover sm:h-10 sm:w-10 lg:h-11 lg:w-11"
             aria-label="返回"
           >
-            <X className="h-5 w-5 transition-transform group-hover:scale-110 lg:h-[22px] lg:w-[22px]" />
+            <X className="h-4 w-4 transition-transform group-hover:scale-110 sm:h-5 sm:w-5 lg:h-[22px] lg:w-[22px]" />
           </Link>
         ) : currentIndex === 0 ? (
           <m.button
             onClick={handleBackToGender}
-            className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover lg:h-11 lg:w-11"
+            className="group flex h-9 w-9 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover sm:h-10 sm:w-10 lg:h-11 lg:w-11"
             aria-label="返回性别选择"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5 lg:h-[22px] lg:w-[22px]" />
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5 sm:h-5 sm:w-5 lg:h-[22px] lg:w-[22px]" />
           </m.button>
         ) : (
           <m.button
             onClick={handlePrev}
-            className="group flex h-10 w-10 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover lg:h-11 lg:w-11"
+            className="group flex h-9 w-9 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-brand-gold/40 hover:bg-white hover:text-brand-charcoal hover:shadow-card-hover sm:h-10 sm:w-10 lg:h-11 lg:w-11"
             aria-label="上一题"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5 lg:h-[22px] lg:w-[22px]" />
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5 sm:h-5 sm:w-5 lg:h-[22px] lg:w-[22px]" />
           </m.button>
         )}
 
         {/* 进度指示器 - 性别选择步骤不显示 */}
-        <div className="flex-1 px-4 lg:px-8">
+        <div className="flex-1 px-2 sm:px-4 lg:px-8">
           {showGenderStep ? (
             <div className="h-1" /> // 占位
           ) : (
@@ -318,8 +318,8 @@ export function QuestionsFlow() {
         </div>
 
         {/* 品牌标识占位 */}
-        <div className="flex h-10 w-10 items-center justify-center lg:h-11 lg:w-11">
-          <span className="text-[10px] font-light uppercase tracking-[0.2em] text-brand-gold/60">
+        <div className="flex h-9 w-9 items-center justify-center sm:h-10 sm:w-10 lg:h-11 lg:w-11">
+          <span className="text-[9px] font-light uppercase tracking-[0.15em] text-brand-gold/60 sm:text-[10px] sm:tracking-[0.2em]">
             旎柏
           </span>
         </div>
@@ -344,7 +344,7 @@ export function QuestionsFlow() {
               /* 性别选择步骤 */
               <m.div
                 key="gender-step"
-                className="w-full max-w-md lg:max-w-lg"
+                className="w-full max-w-sm sm:max-w-md lg:max-w-lg"
                 initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}
@@ -359,7 +359,7 @@ export function QuestionsFlow() {
               /* 问卷问题步骤 */
               <m.div
                 key="question-step"
-                className="w-full max-w-md lg:max-w-lg"
+                className="w-full max-w-sm sm:max-w-md lg:max-w-lg"
                 initial={{ opacity: 0, x: direction > 0 ? 50 : -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: direction > 0 ? -50 : 50 }}

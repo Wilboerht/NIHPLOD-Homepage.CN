@@ -41,7 +41,7 @@ export function ProgressBar({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-md items-center gap-3 lg:max-w-lg lg:gap-4">
+    <div className="mx-auto flex w-full max-w-xs items-center gap-2 sm:max-w-md sm:gap-3 lg:max-w-lg lg:gap-4">
       {/* 珠链式进度指示器 */}
       <div className="relative flex flex-1 items-center justify-between">
         {/* 连接线 - 背景 */}

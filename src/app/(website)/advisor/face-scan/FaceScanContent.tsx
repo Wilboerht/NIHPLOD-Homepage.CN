@@ -63,23 +63,23 @@ export function FaceScanContent() {
   }
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-[#F0EDE1] px-4 py-3 md:px-6 md:py-4">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[#F0EDE1] px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
       {/* 顶部导航栏 */}
       <header className="flex shrink-0 items-center justify-start">
         {/* 返回按钮 */}
         <Link
           href="/advisor/questions"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-brand-charcoal shadow-sm backdrop-blur-sm transition-colors hover:bg-white sm:h-9 sm:w-9"
           aria-label="返回"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
         </Link>
       </header>
 
       {/* 主内容区域 */}
-      <main className="flex min-h-0 flex-1 flex-col items-center justify-center py-3">
+      <main className="flex min-h-0 flex-1 flex-col items-center justify-center py-2 sm:py-3">
         <m.div
-          className="flex w-full max-w-md flex-col"
+          className="flex w-full max-w-sm flex-col sm:max-w-md"
           variants={staggerContainer}
           initial="initial"
           animate="animate"
@@ -88,18 +88,18 @@ export function FaceScanContent() {
           <m.div
             variants={fadeInUp}
             transition={defaultTransition}
-            className="mb-3 shrink-0 text-center"
+            className="mb-2 shrink-0 text-center sm:mb-3"
           >
             {/* 图标 + 标题 一行显示 */}
-            <div className="flex items-center justify-center gap-3">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-gold/10">
-                <Scan className="h-5 w-5 text-brand-gold" />
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
+              <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold/10 sm:h-10 sm:w-10">
+                <Scan className="h-4 w-4 text-brand-gold sm:h-5 sm:w-5" />
               </div>
-              <h1 className="font-serif text-xl text-brand-charcoal md:text-2xl">
+              <h1 className="font-serif text-lg text-brand-charcoal sm:text-xl md:text-2xl">
                 AI 肌肤检测
               </h1>
             </div>
-            <p className="mt-1 text-sm text-brand-charcoal/60">
+            <p className="mt-1 text-xs text-brand-charcoal/60 sm:text-sm">
               拍摄素颜照片，AI 将分析您的肌肤状态
             </p>
           </m.div>
@@ -113,7 +113,7 @@ export function FaceScanContent() {
           <m.div
             variants={fadeInUp}
             transition={defaultTransition}
-            className="mt-3 shrink-0 text-center text-xs text-brand-charcoal/50"
+            className="mt-2 shrink-0 text-center text-[10px] text-brand-charcoal/50 sm:mt-3 sm:text-xs"
           >
             💡 请在光线充足的环境下素颜拍摄，将面部正对镜头
           </m.div>

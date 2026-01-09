@@ -81,12 +81,12 @@ export function OptionCard({
       )}
 
       {/* 内容区域 */}
-      <div className="relative z-10 flex items-start gap-3.5 p-3.5 sm:p-4.5">
+      <div className="relative z-10 flex items-start gap-3 p-3 sm:gap-3.5 sm:p-4">
         {/* Emoji 图标 - 优雅圆形容器 */}
         {emoji && (
           <m.div
             className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl transition-all duration-300",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg transition-all duration-300 sm:h-11 sm:w-11 sm:text-xl",
               isSelected
                 ? "bg-gradient-to-br from-brand-gold/15 to-brand-champagne/40 shadow-sm"
                 : "bg-brand-cream/80 group-hover:bg-brand-cream"
@@ -102,7 +102,7 @@ export function OptionCard({
         <div className="flex-1 min-w-0 pt-0.5">
           <p
             className={cn(
-              "text-base font-medium tracking-wide transition-colors duration-200 sm:text-lg",
+              "text-sm font-medium tracking-wide transition-colors duration-200 sm:text-base md:text-lg",
               isSelected
                 ? "text-brand-charcoal"
                 : "text-brand-charcoal group-hover:text-brand-charcoal"
@@ -113,7 +113,7 @@ export function OptionCard({
           {description && (
             <p
               className={cn(
-                "mt-1 text-xs leading-relaxed transition-colors duration-200 sm:text-sm",
+                "mt-0.5 text-[11px] leading-relaxed transition-colors duration-200 sm:text-xs md:text-sm",
                 isSelected
                   ? "text-brand-charcoal/70"
                   : "text-brand-charcoal/50 group-hover:text-brand-charcoal/60"
@@ -128,7 +128,7 @@ export function OptionCard({
         <div className="flex-shrink-0 pt-0.5">
           <m.div
             className={cn(
-              "flex h-6 w-6 items-center justify-center rounded-full transition-all duration-300",
+              "flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 sm:h-6 sm:w-6",
               isSelected
                 ? "bg-gradient-to-br from-brand-gold to-brand-gold-dark shadow-sm"
                 : "border-2 border-brand-beige/70 bg-white group-hover:border-brand-gold/40"
@@ -142,7 +142,7 @@ export function OptionCard({
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 400, damping: 20 }}
               >
-                <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                <Check className="h-3 w-3 text-white sm:h-3.5 sm:w-3.5" strokeWidth={3} />
               </m.div>
             )}
           </m.div>

@@ -43,24 +43,24 @@ export function GenderSelection({ selectedGender, onSelect }: GenderSelectionPro
     <div className="flex flex-col items-center">
       {/* 标题区域 */}
       <m.div
-        className="mb-8 text-center"
+        className="mb-6 text-center sm:mb-8"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <p className="mb-2 text-xs font-light uppercase tracking-[0.25em] text-brand-gold/70 sm:text-sm">
+        <p className="mb-1.5 text-[10px] font-light uppercase tracking-[0.2em] text-brand-gold/70 sm:mb-2 sm:text-xs sm:tracking-[0.25em]">
           Before We Start
         </p>
-        <h2 className="font-serif text-xl font-light tracking-wide text-brand-charcoal sm:text-3xl lg:text-4xl">
+        <h2 className="font-serif text-lg font-light tracking-wide text-brand-charcoal sm:text-xl md:text-3xl lg:text-4xl">
           请选择您的性别
         </h2>
-        <p className="mt-3 text-sm font-light text-brand-charcoal/50 sm:text-base">
+        <p className="mt-2 text-xs font-light text-brand-charcoal/50 sm:mt-3 sm:text-sm">
           我们将为您推荐更适合的护肤方案
         </p>
       </m.div>
 
       {/* 选项列表 */}
-      <div className="w-full max-w-sm space-y-3">
+      <div className="w-full max-w-xs space-y-2.5 sm:max-w-sm sm:space-y-3">
         {genderOptions.map((option, index) => (
           <m.button
             key={option.value}
@@ -104,11 +104,11 @@ export function GenderSelection({ selectedGender, onSelect }: GenderSelectionPro
             />
 
             {/* 内容 */}
-            <div className="relative z-10 flex items-center gap-4 p-3.5 sm:p-4">
+            <div className="relative z-10 flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
               {/* Emoji */}
               <div
                 className={cn(
-                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl transition-all duration-300",
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl transition-all duration-300 sm:h-12 sm:w-12 sm:text-2xl",
                   selectedGender === option.value
                     ? "bg-gradient-to-br from-brand-gold/15 to-brand-champagne/40"
                     : "bg-brand-cream/80 group-hover:bg-brand-cream"
@@ -118,11 +118,11 @@ export function GenderSelection({ selectedGender, onSelect }: GenderSelectionPro
               </div>
 
               {/* 文本 */}
-              <div className="flex-1">
-                <p className="text-base font-medium tracking-wide text-brand-charcoal sm:text-lg">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium tracking-wide text-brand-charcoal sm:text-base md:text-lg">
                   {option.label}
                 </p>
-                <p className="mt-0.5 text-sm text-brand-charcoal/50 sm:text-base">
+                <p className="mt-0.5 text-xs text-brand-charcoal/50 sm:text-sm">
                   {option.description}
                 </p>
               </div>
@@ -130,14 +130,14 @@ export function GenderSelection({ selectedGender, onSelect }: GenderSelectionPro
               {/* 选中指示器 */}
               <div
                 className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-full transition-all duration-300",
+                  "flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 sm:h-6 sm:w-6",
                   selectedGender === option.value
                     ? "bg-gradient-to-br from-brand-gold to-brand-gold-dark"
                     : "border-2 border-brand-beige/70 bg-white group-hover:border-brand-gold/40"
                 )}
               >
                 {selectedGender === option.value && (
-                  <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                  <Check className="h-3 w-3 text-white sm:h-3.5 sm:w-3.5" strokeWidth={3} />
                 )}
               </div>
             </div>

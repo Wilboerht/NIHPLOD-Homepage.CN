@@ -249,21 +249,21 @@ export function AnalyzingContent() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-sm text-center"
+          className="w-full max-w-xs text-center sm:max-w-sm"
         >
           {/* 温和的图标 */}
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-rose-100 to-pink-50">
-            <Heart className="h-10 w-10 text-rose-400" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-rose-100 to-pink-50 sm:mb-6 sm:h-20 sm:w-20">
+            <Heart className="h-8 w-8 text-rose-400 sm:h-10 sm:w-10" />
           </div>
 
           {/* 温馨提示标题 */}
-          <h2 className="mb-4 text-xl font-medium text-brand-charcoal">
+          <h2 className="mb-3 text-lg font-medium text-brand-charcoal sm:mb-4 sm:text-xl">
             温馨提示
           </h2>
 
           {/* 就医建议内容 */}
-          <div className="mb-8 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 p-6">
-            <p className="leading-relaxed text-brand-charcoal/80">
+          <div className="mb-6 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 p-4 sm:mb-8 sm:p-6">
+            <p className="text-sm leading-relaxed text-brand-charcoal/80 sm:text-base">
               {medicalAdvice}
             </p>
           </div>
@@ -271,13 +271,13 @@ export function AnalyzingContent() {
           {/* 行动按钮 */}
           <button
             onClick={() => router.push("/advisor")}
-            className="w-full rounded-full bg-brand-gold px-6 py-3 text-white transition-colors hover:bg-brand-gold/90"
+            className="w-full rounded-full bg-brand-gold px-5 py-2.5 text-sm text-white transition-colors hover:bg-brand-gold/90 sm:px-6 sm:py-3"
           >
             我知道了
           </button>
 
           {/* 底部说明 */}
-          <p className="mt-6 text-xs text-brand-charcoal/50">
+          <p className="mt-4 text-[10px] text-brand-charcoal/50 sm:mt-6 sm:text-xs">
             您的健康是我们最关心的事情 💕
           </p>
         </m.div>
@@ -293,28 +293,28 @@ export function AnalyzingContent() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-sm text-center"
+          className="w-full max-w-xs text-center sm:max-w-sm"
         >
           {/* 错误图标 */}
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-red-100 to-orange-50">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-red-100 to-orange-50 sm:mb-6 sm:h-20 sm:w-20">
             {failureType === "face" ? (
-              <Camera className="h-10 w-10 text-red-400" />
+              <Camera className="h-8 w-8 text-red-400 sm:h-10 sm:w-10" />
             ) : failureType === "questionnaire" ? (
-              <FileText className="h-10 w-10 text-orange-400" />
+              <FileText className="h-8 w-8 text-orange-400 sm:h-10 sm:w-10" />
             ) : (
-              <RefreshCw className="h-10 w-10 text-red-400" />
+              <RefreshCw className="h-8 w-8 text-red-400 sm:h-10 sm:w-10" />
             )}
           </div>
 
           {/* 错误标题 */}
-          <h2 className="mb-4 text-xl font-medium text-brand-charcoal">
+          <h2 className="mb-3 text-lg font-medium text-brand-charcoal sm:mb-4 sm:text-xl">
             {failureType === "face" ? "面部分析失败" :
               failureType === "questionnaire" ? "综合分析失败" : "分析失败"}
           </h2>
 
           {/* 错误信息 */}
-          <div className="mb-8 rounded-2xl bg-gradient-to-br from-red-50 to-orange-50 p-6">
-            <p className="leading-relaxed text-brand-charcoal/80">
+          <div className="mb-6 rounded-2xl bg-gradient-to-br from-red-50 to-orange-50 p-4 sm:mb-8 sm:p-6">
+            <p className="text-sm leading-relaxed text-brand-charcoal/80 sm:text-base">
               {error}
             </p>
           </div>
@@ -415,9 +415,9 @@ export function AnalyzingContent() {
         <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-gradient-radial-gold opacity-30" />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm text-center">
+      <div className="relative z-10 w-full max-w-xs text-center sm:max-w-sm">
         {/* 优雅的旋转动画 */}
-        <div className="relative mx-auto mb-10 h-28 w-28" aria-hidden="true">
+        <div className="relative mx-auto mb-8 h-24 w-24 sm:mb-10 sm:h-28 sm:w-28" aria-hidden="true">
           {/* 外圈旋转 - 金色渐变 */}
           <m.div
             className="absolute inset-0 rounded-full border-2 border-brand-gold/40"
@@ -439,11 +439,11 @@ export function AnalyzingContent() {
           {/* 中心图标 */}
           <div className="absolute inset-0 flex items-center justify-center">
             <m.div
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-champagne/30 shadow-luxury"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-gold/20 to-brand-champagne/30 shadow-luxury sm:h-14 sm:w-14"
               animate={{ scale: [1, 1.08, 1] }}
               transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
             >
-              <Sparkles className="h-7 w-7 text-brand-gold" />
+              <Sparkles className="h-6 w-6 text-brand-gold sm:h-7 sm:w-7" />
             </m.div>
           </div>
           {/* 进度指示点 */}
@@ -456,7 +456,7 @@ export function AnalyzingContent() {
         </div>
 
         {/* 动态提示文案 */}
-        <div className="mb-8 h-8">
+        <div className="mb-6 h-8 sm:mb-8">
           <AnimatePresence mode="wait">
             <m.div
               key={tipIndex}
@@ -464,16 +464,16 @@ export function AnalyzingContent() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-              className="flex items-center justify-center gap-2.5 font-light tracking-wide text-brand-charcoal"
+              className="flex items-center justify-center gap-2 text-sm font-light tracking-wide text-brand-charcoal sm:gap-2.5"
             >
-              <span className="text-xl">{currentTip.icon}</span>
+              <span className="text-lg sm:text-xl">{currentTip.icon}</span>
               <span>{currentTip.text}</span>
             </m.div>
           </AnimatePresence>
         </div>
 
         {/* 优雅进度条 */}
-        <div className="mb-10">
+        <div className="mb-8 sm:mb-10">
           <div
             className="relative mb-3 h-1.5 overflow-hidden rounded-full bg-brand-beige/50"
             role="progressbar"
@@ -501,7 +501,7 @@ export function AnalyzingContent() {
         </div>
 
         {/* 品牌小知识 - 优雅卡片 */}
-        <div className="rounded-2xl border border-brand-beige/40 bg-white/60 p-5 shadow-card backdrop-blur-sm">
+        <div className="rounded-2xl border border-brand-beige/40 bg-white/60 p-4 shadow-card backdrop-blur-sm sm:p-5">
           <div className="mb-2 flex items-center justify-center gap-1.5 text-xs tracking-wider text-brand-gold/70">
             <span>✨</span>
             <span>旎柏品牌</span>
