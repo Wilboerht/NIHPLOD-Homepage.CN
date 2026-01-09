@@ -18,7 +18,7 @@ import {
   Gift,
 } from "lucide-react";
 
-import { FaceAnalysisResult, AdvisorChatPanel } from "@/components/website/advisor";
+import { FaceAnalysisResult } from "@/components/website/advisor";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { SkincareRoutinePanel } from "./SkincareRoutinePanel";
 import { ShareModal } from "./ShareModal";
