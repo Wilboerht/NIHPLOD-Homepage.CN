@@ -325,9 +325,20 @@ export function QuestionsFlow() {
         </div>
       </header>
 
-      {/* 主内容区域 - 可滚动，确保内容不被遮挡 */}
-      <main className="relative z-10 flex flex-1 flex-col overflow-y-auto overflow-x-hidden scroll-smooth">
-        <div className="flex min-h-full w-full flex-col items-center justify-center py-6">
+      {/* 主内容区域 - 垂直居中，隐藏滚动条 */}
+      <main
+        className="relative z-10 flex flex-1 flex-col overflow-y-auto overflow-x-hidden"
+        style={{
+          scrollbarWidth: 'none', /* Firefox */
+          msOverflowStyle: 'none', /* IE/Edge */
+        }}
+      >
+        <style jsx>{`
+          main::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+          }
+        `}</style>
+        <div className="my-auto flex w-full flex-col items-center justify-center py-6">
           <AnimatePresence mode="wait">
             {showGenderStep ? (
               /* 性别选择步骤 */
