@@ -81,6 +81,8 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
   const [cooldownProgress, setCooldownProgress] = useState<number>(0); // 冷却进度 0-100
   const [isLoading, setIsLoading] = useState(true);
   const [faceStatus, setFaceStatus] = useState<FaceStatus>("none");
+  const [detectionStartTime, setDetectionStartTime] = useState<number | null>(null); // 检测开始时间，用于计算5秒后显示手动按钮
+  const [showManualButton, setShowManualButton] = useState(false); // 是否显示手动拍照按钮
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceApiLoaded, setFaceApiLoaded] = useState(false);
   const [isAllCaptured, setIsAllCaptured] = useState(false);
@@ -726,49 +728,68 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     return () => clearInterval(interval);
   }, [stream, isAllCaptured, analyzeLightLevel]);
 
+  // 5秒后显示手动拍照按钮
+  useEffect(() => {
+    if (isAllCaptured || isLoading || error || isInCooldown) {
+      setShowManualButton(false);
+      setDetectionStartTime(null);
+      return;
+    }
+
+    // 开始计时
+    if (!detectionStartTime) {
+      setDetectionStartTime(Date.now());
+    }
+
+    const timer = setInterval(() => {
+      if (detectionStartTime && Date.now() - detectionStartTime >= 5000) {
+        setShowManualButton(true);
+      }
+    }, 500);
+
+    return () => clearInterval(timer);
+  }, [isAllCaptured, isLoading, error, isInCooldown, detectionStartTime]);
+
   /**
-   * 渲染光线提示 - 增强版
+   * 渲染光线提示 - 精简版
+   * 只显示图标+状态文字，去掉分数和建议
    */
   const renderLightIndicator = () => {
-    const configs: Record<LightLevel, { icon: typeof Sun; text: string; className: string; tip?: string }> = {
+    const configs: Record<LightLevel, { icon: typeof Sun; text: string; className: string }> = {
       excellent: {
         icon: Sun,
         text: "光线极佳",
-        className: "text-green-600 bg-green-50 border-green-200",
+        className: "text-green-600",
       },
       good: {
         icon: Sun,
         text: "光线良好",
-        className: "text-green-600 bg-green-50 border-green-200",
+        className: "text-green-600",
       },
       low: {
         icon: SunDim,
         text: "光线偏暗",
-        className: "text-yellow-600 bg-yellow-50 border-yellow-200",
-        tip: "建议移到更亮的地方",
+        className: "text-yellow-600",
       },
       too_dark: {
         icon: SunDim,
         text: "光线太暗",
-        className: "text-orange-600 bg-orange-50 border-orange-200",
-        tip: "请移到光线充足的地方",
+        className: "text-orange-600",
       },
       too_bright: {
         icon: Sun,
         text: "光线过强",
-        className: "text-orange-600 bg-orange-50 border-orange-200",
-        tip: "避免阳光直射，移到阴凉处",
+        className: "text-orange-600",
       },
       uneven: {
         icon: SunDim,
         text: "光线不均",
-        className: "text-yellow-600 bg-yellow-50 border-yellow-200",
-        tip: "避免侧面强光，面向光源",
+        className: "text-yellow-600",
       },
       unknown: {
         icon: Sun,
-        text: "检测光线中...",
-        className: "text-gray-500 bg-gray-50 border-gray-200",
+        text: "检测中...",
+        className: "text-gray-400",
       },
     };
 
@@ -776,30 +797,9 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     const Icon = config.icon;
 
     return (
-      <div className="flex flex-col items-center gap-1">
-        <div
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-all duration-300",
-            config.className
-          )}
-        >
-          <Icon className="h-4 w-4" />
-          <span>{config.text}</span>
-          {/* 光线质量分数 */}
-          <span className="ml-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-medium">
-            {lightScore}分
-          </span>
-        </div>
-        {/* 提示文字 */}
-        {config.tip && (
-          <m.p
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-[10px] text-brand-charcoal/50"
-          >
-            💡 {config.tip}
-          </m.p>
-        )}
+      <div className={cn("inline-flex items-center gap-1.5 text-xs", config.className)}>
+        <Icon className="h-3.5 w-3.5" />
+        <span>{config.text}</span>
       </div>
     );
   };
@@ -945,27 +945,18 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
         )}
       </div>
 
-      {/* 光线提示 */}
+      {/* 光线提示 + 拍照提示 (精简版) - 固定高度避免抖动 */}
       {!isAllCaptured && !error && !isLoading && (
-        <div className="mb-2">{renderLightIndicator()}</div>
-      )}
-
-      {/* 拍照提示和手动拍照按钮 */}
-      {!isAllCaptured && !error && !isLoading && (
-        <div className="flex w-full max-w-sm shrink-0 flex-col items-center gap-3">
+        <div className="flex w-full max-w-sm shrink-0 flex-col items-center justify-center" style={{ minHeight: '52px' }}>
           {/* 冷却状态提示 */}
-          {isInCooldown && (
-            <m.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center gap-2"
-            >
+          {isInCooldown ? (
+            <div className="flex flex-col items-center gap-1.5">
               <div className="flex items-center gap-2 text-brand-gold">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
-                <span className="text-sm font-medium">请调整姿势...</span>
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+                <span className="text-xs font-medium">请调整姿势...</span>
               </div>
               {/* 冷却进度条 */}
-              <div className="h-1 w-32 overflow-hidden rounded-full bg-gray-200">
+              <div className="h-0.5 w-24 overflow-hidden rounded-full bg-gray-200">
                 <m.div
                   className="h-full bg-brand-gold"
                   initial={{ width: "0%" }}
@@ -973,38 +964,40 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
                   transition={{ duration: 0.05 }}
                 />
               </div>
-            </m.div>
-          )}
+              <p className="text-center text-xs text-brand-charcoal/60">
+                下一步：{CAPTURE_STEPS.find(s => s.step === currentStep)?.instruction}
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-1.5">
+              {/* 光线状态 + 操作提示 */}
+              <div className="flex items-center gap-3">
+                {renderLightIndicator()}
+                <span className="text-xs text-brand-charcoal/40">|</span>
+                <span className="text-xs text-brand-charcoal/60">系统自动拍照</span>
+              </div>
 
-          {/* 提示文字 */}
-          <p className="text-center text-xs text-brand-charcoal/60">
-            {isInCooldown
-              ? `下一步：${CAPTURE_STEPS.find(s => s.step === currentStep)?.instruction}`
-              : "请按照提示完成四个动作，系统将自动拍照"
-            }
-          </p>
-
-          {/* 手动拍照按钮 - 当自动检测失效时使用 */}
-          {!isInCooldown && (
-            <button
-              onClick={() => {
-                if (faceStatus === "detecting" || faceStatus === "found" || faceStatus === "none") {
-                  // 强制拍照（即使没有检测到理想姿势）
-                  takePhotoAuto();
-                }
-              }}
-              className="mt-1 rounded-full border border-brand-charcoal/20 bg-white px-4 py-1.5 text-xs text-brand-charcoal/70 shadow-sm transition-all hover:bg-brand-gold/10 hover:border-brand-gold hover:text-brand-gold"
-            >
-              手动拍照（检测失效时使用）
-            </button>
+              {/* 手动拍照链接 - 5秒后才显示，否则显示占位符保持高度 */}
+              <div className="h-4">
+                {showManualButton && (
+                  <m.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    onClick={() => {
+                      if (faceStatus === "detecting" || faceStatus === "found" || faceStatus === "none") {
+                        takePhotoAuto();
+                      }
+                    }}
+                    className="text-[11px] text-brand-charcoal/40 underline decoration-dotted underline-offset-2 transition-colors hover:text-brand-gold"
+                  >
+                    检测困难？手动拍照
+                  </m.button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
-
-      {/* 隐私提示 */}
-      <p className="mt-6 text-center text-xs text-brand-charcoal/40">
-        🔒 照片仅用于 AI 分析，不会保存或分享
-      </p>
     </div>
   );
 }

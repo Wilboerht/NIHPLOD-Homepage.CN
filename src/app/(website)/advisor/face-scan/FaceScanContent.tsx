@@ -108,15 +108,6 @@ export function FaceScanContent() {
           <m.div variants={fadeInUp} transition={defaultTransition} className="min-h-0 flex-1">
             <FaceCapture onCapture={handleCapture} />
           </m.div>
-
-          {/* 提示说明 - 简化为一行 */}
-          <m.div
-            variants={fadeInUp}
-            transition={defaultTransition}
-            className="mt-2 shrink-0 text-center text-[10px] text-brand-charcoal/50 sm:mt-3 sm:text-xs"
-          >
-            💡 请在光线充足的环境下素颜拍摄，将面部正对镜头
-          </m.div>
         </m.div>
       </main>
     </div>
