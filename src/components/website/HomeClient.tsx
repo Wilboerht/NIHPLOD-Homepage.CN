@@ -104,12 +104,22 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
-  const { setDrawerOpen, setNavMenuOpen } = useLayout();
+  const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
 
   // 首页特殊处理：立即设置抽屉为展开状态，不需要动画
   useEffect(() => {
     setDrawerOpen(true);
   }, [setDrawerOpen]);
+
+  // 监听 LayoutContext 中的 isDrawerOpen 变化，同步本地 isExpanded 状态
+  // 解决：点击底部导航栏时，setDrawerOpen(true) 不会触发本地状态更新的问题
+  useEffect(() => {
+    if (isDrawerOpen && !isExpanded) {
+      setIsExpanded(true);
+    } else if (!isDrawerOpen && isExpanded) {
+      setIsExpanded(false);
+    }
+  }, [isDrawerOpen, isExpanded]);
 
   // 鼠标视差效果
   useEffect(() => {

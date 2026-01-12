@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, X, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, X, Loader2, LogOut } from "lucide-react";
 import { useAdvisorQuestions } from "@/hooks/useAdvisorQuestions";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { QuestionStep, ProgressBar, GenderSelection, type GenderType } from "@/components/website/advisor";
@@ -29,6 +30,9 @@ export function QuestionsFlow() {
   // 性别选择状态
   const [selectedGender, setSelectedGender] = useState<GenderType | null>(null);
   const [showGenderStep, setShowGenderStep] = useState(true);
+
+  // 退出确认对话框状态
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // 用户答案
   const [answers, setAnswers] = useState<Answers>({});
@@ -188,6 +192,30 @@ export function QuestionsFlow() {
   }, []);
 
   /**
+   * 打开退出确认对话框
+   */
+  const handleExitClick = useCallback(() => {
+    setShowExitConfirm(true);
+  }, []);
+
+  /**
+   * 确认退出测试
+   */
+  const handleConfirmExit = useCallback(() => {
+    // 清除已保存的数据
+    sessionStorage.removeItem("advisorAnswers");
+    sessionStorage.removeItem("advisorGender");
+    router.push("/advisor");
+  }, [router]);
+
+  /**
+   * 取消退出
+   */
+  const handleCancelExit = useCallback(() => {
+    setShowExitConfirm(false);
+  }, []);
+
+  /**
    * 完成问答，跳转到面部识别或结果页
    */
   const handleComplete = useCallback(() => {
@@ -317,12 +345,24 @@ export function QuestionsFlow() {
           )}
         </div>
 
-        {/* 品牌标识占位 */}
-        <div className="flex h-9 w-9 items-center justify-center sm:h-10 sm:w-10 lg:h-11 lg:w-11">
-          <span className="text-[9px] font-light uppercase tracking-[0.15em] text-brand-gold/60 sm:text-[10px] sm:tracking-[0.2em]">
-            旎柏
-          </span>
-        </div>
+        {/* 退出按钮 - 在问卷步骤显示 */}
+        {!showGenderStep ? (
+          <m.button
+            onClick={handleExitClick}
+            className="group flex h-9 w-9 items-center justify-center rounded-full border border-brand-beige bg-white/80 text-brand-charcoal/60 shadow-card backdrop-blur-sm transition-all duration-300 hover:border-red-400/50 hover:bg-white hover:text-red-500 hover:shadow-card-hover sm:h-10 sm:w-10 lg:h-11 lg:w-11"
+            aria-label="退出测试"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <LogOut className="h-4 w-4 transition-transform group-hover:translate-x-0.5 sm:h-5 sm:w-5 lg:h-[22px] lg:w-[22px]" />
+          </m.button>
+        ) : (
+          <div className="flex h-9 w-9 items-center justify-center sm:h-10 sm:w-10 lg:h-11 lg:w-11">
+            <span className="text-[9px] font-light uppercase tracking-[0.15em] text-brand-gold/60 sm:text-[10px] sm:tracking-[0.2em]">
+              旎柏
+            </span>
+          </div>
+        )}
       </header>
 
       {/* 主内容区域 - 垂直居中，隐藏滚动条 */}
@@ -410,6 +450,65 @@ export function QuestionsFlow() {
           </m.button>
         </footer>
       )}
+
+      {/* 退出确认对话框 - 使用 Portal 渲染到 body 确保正确居中 */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {showExitConfirm && (
+              <>
+                {/* 背景遮罩 */}
+                <m.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm"
+                  onClick={handleCancelExit}
+                />
+                {/* 对话框 */}
+                <m.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                  className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+                >
+                  <div className="w-full max-w-sm rounded-2xl border border-brand-beige/60 bg-white/95 p-6 shadow-luxury backdrop-blur-md sm:p-8">
+                    {/* 图标 */}
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-red-50 to-red-100">
+                      <LogOut className="h-6 w-6 text-red-500" />
+                    </div>
+                    {/* 标题 */}
+                    <h3 className="mb-2 text-center font-serif text-lg font-medium tracking-wide text-brand-charcoal">
+                      确认退出测试？
+                    </h3>
+                    {/* 描述 */}
+                    <p className="mb-6 text-center text-sm text-brand-charcoal/60">
+                      您的测试进度将不会被保存，确定要退出吗？
+                    </p>
+                    {/* 按钮组 */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleCancelExit}
+                        className="flex-1 rounded-full border border-brand-beige bg-white py-3 text-sm font-medium text-brand-charcoal transition-all duration-200 hover:border-brand-gold/40 hover:shadow-card"
+                      >
+                        继续测试
+                      </button>
+                      <button
+                        onClick={handleConfirmExit}
+                        className="flex-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 py-3 text-sm font-medium text-white shadow-md transition-all duration-200 hover:from-red-600 hover:to-red-700 hover:shadow-lg"
+                      >
+                        确认退出
+                      </button>
+                    </div>
+                  </div>
+                </m.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }

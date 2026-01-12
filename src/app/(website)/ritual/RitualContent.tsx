@@ -626,8 +626,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               onMouseEnter={() => setHoveredIndex(index)}
                               onMouseLeave={() => setHoveredIndex(null)}
                               className={cn(
-                                // 桌面端：垂直面板布局
-                                "group relative flex cursor-pointer flex-col items-stretch justify-end gap-0 overflow-hidden rounded-sm border-0 border-l p-8 lg:p-10",
+                                // 桌面端：垂直面板布局，居中对齐
+                                "group relative flex cursor-pointer flex-col items-center justify-end gap-0 overflow-hidden rounded-sm border-0 border-l p-8 lg:p-10",
                                 // 桌面端 hover 效果
                                 hoveredIndex === index
                                   ? "flex-[1.6] border-brand-charcoal/15 bg-white/65 shadow-[0_30px_60px_-10px_rgba(0,38,62,0.08)]"
@@ -655,10 +655,10 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 {module.number}
                               </span>
 
-                              {/* 标题 - 竖排 */}
+                              {/* 标题 */}
                               <h2
                                 className={cn(
-                                  "mb-5 font-light tracking-wide text-brand-charcoal [writing-mode:vertical-rl]",
+                                  "mb-5 text-center font-light tracking-wide text-brand-charcoal",
                                   hoveredIndex === index
                                     ? "text-[28px] lg:text-[32px]"
                                     : "text-2xl lg:text-[26px]"
@@ -671,7 +671,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               {/* 描述文字 - hover 时显示 */}
                               <p
                                 className={cn(
-                                  "max-w-[200px] text-[13px] leading-relaxed text-brand-charcoal/50",
+                                  "max-w-[200px] text-center text-[13px] leading-relaxed text-brand-charcoal/50",
                                   hoveredIndex === index
                                     ? "translate-y-0 opacity-100"
                                     : "pointer-events-none translate-y-3 opacity-0"
