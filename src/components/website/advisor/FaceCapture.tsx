@@ -74,7 +74,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
   const [currentStep, setCurrentStep] = useState<CaptureStep>("front");
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [lightLevel, setLightLevel] = useState<LightLevel>("unknown");
-  const [lightScore, setLightScore] = useState<number>(0); // 0-100 光线质量分数
+  const [_lightScore, setLightScore] = useState<number>(0); // 0-100 光线质量分数
   const [error, setError] = useState<string | null>(null);
   const [stabilityProgress, setStabilityProgress] = useState<number>(0); // 姿势稳定进度 0-100
   const [isInCooldown, setIsInCooldown] = useState<boolean>(false); // 冷却状态 UI 显示
