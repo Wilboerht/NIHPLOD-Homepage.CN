@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import { ShareRewardCampaignForm, CampaignFormData } from "@/components/admin/ShareRewardCampaignForm";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 interface PageProps {
-    params: Promise<{ id: string }>;
+    params: { id: string };
 }
 
 export default function EditCampaignPage({ params }: PageProps) {
-    const { id } = use(params);
+    const { id } = params;
     const [data, setData] = useState<CampaignFormData | null>(null);
     const [loading, setLoading] = useState(true);
     const toast = useToast();
