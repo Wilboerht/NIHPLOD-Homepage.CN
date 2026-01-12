@@ -909,4 +909,3 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     </div>
   );
 }
-

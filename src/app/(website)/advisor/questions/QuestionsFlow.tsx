@@ -134,10 +134,43 @@ export function QuestionsFlow() {
             setCurrentIndex((prev) => prev + 1);
             setIsTransitioning(false);
           }, 300);
+        } else {
+          // 最后一题：自动完成并跳转
+          setIsTransitioning(true);
+          setTimeout(() => {
+            // 这里需要使用最新的 value，而不是 state 中的值（因为 state 更新是异步的）
+            const finalAnswers = {
+              ...answers,
+              [currentQuestion.fieldName]: value,
+              gender: selectedGender,
+            };
+
+            // 将答案存储到 sessionStorage
+            sessionStorage.setItem("advisorAnswers", JSON.stringify(finalAnswers));
+
+            // 追踪问卷完成
+            trackQuestionnaireComplete({
+              ...finalAnswers,
+              gender: selectedGender || "unspecified",
+            });
+
+            // 跳转到面部识别页面
+            router.push("/advisor/face-scan");
+          }, 300);
         }
       }
     },
-    [currentIndex, currentQuestion, totalQuestions, isTransitioning, isMultipleChoice]
+    [
+      currentIndex,
+      currentQuestion,
+      totalQuestions,
+      isTransitioning,
+      isMultipleChoice,
+      answers,
+      selectedGender,
+      router,
+      trackQuestionnaireComplete
+    ]
   );
 
   /**

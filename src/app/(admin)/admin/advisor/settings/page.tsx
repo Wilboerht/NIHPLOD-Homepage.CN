@@ -425,14 +425,15 @@ export default function AdvisorSettingsPage() {
             {settings.hasApiKeys?.deepseek && settings.apiKeys?.deepseek && (
               <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.deepseek}</p>
             )}
-            <Input
-              type="password"
+            <Textarea
               value={newApiKeys.deepseek}
               onChange={(e) => setNewApiKeys((prev) => ({ ...prev, deepseek: e.target.value }))}
               placeholder="sk-..."
+              rows={3}
             />
             <p className="mt-1 text-xs text-gray-500">
-              <a href="https://platform.deepseek.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+              支持输入多个 Key (用逗号或换行分隔)，系统将自动轮询。
+              <a href="https://platform.deepseek.com/" target="_blank" rel="noopener" className="ml-1 text-brand-gold hover:underline">获取 API Key →</a>
             </p>
           </div>
 
@@ -452,14 +453,15 @@ export default function AdvisorSettingsPage() {
             {settings.hasApiKeys?.qwen && settings.apiKeys?.qwen && (
               <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.qwen}</p>
             )}
-            <Input
-              type="password"
+            <Textarea
               value={newApiKeys.qwen}
               onChange={(e) => setNewApiKeys((prev) => ({ ...prev, qwen: e.target.value }))}
               placeholder="sk-..."
+              rows={3}
             />
             <p className="mt-1 text-xs text-gray-500">
-              <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+              支持输入多个 Key (用逗号或换行分隔)。
+              <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener" className="ml-1 text-brand-gold hover:underline">获取 API Key →</a>
             </p>
           </div>
 
@@ -479,14 +481,15 @@ export default function AdvisorSettingsPage() {
             {settings.hasApiKeys?.openai && settings.apiKeys?.openai && (
               <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.openai}</p>
             )}
-            <Input
-              type="password"
+            <Textarea
               value={newApiKeys.openai}
               onChange={(e) => setNewApiKeys((prev) => ({ ...prev, openai: e.target.value }))}
               placeholder="sk-..."
+              rows={3}
             />
             <p className="mt-1 text-xs text-gray-500">
-              <a href="https://platform.openai.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+              支持输入多个 Key (用逗号或换行分隔)。
+              <a href="https://platform.openai.com/" target="_blank" rel="noopener" className="ml-1 text-brand-gold hover:underline">获取 API Key →</a>
             </p>
           </div>
 
@@ -506,14 +509,15 @@ export default function AdvisorSettingsPage() {
             {settings.hasApiKeys?.anthropic && settings.apiKeys?.anthropic && (
               <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.anthropic}</p>
             )}
-            <Input
-              type="password"
+            <Textarea
               value={newApiKeys.anthropic}
               onChange={(e) => setNewApiKeys((prev) => ({ ...prev, anthropic: e.target.value }))}
               placeholder="sk-ant-..."
+              rows={3}
             />
             <p className="mt-1 text-xs text-gray-500">
-              <a href="https://console.anthropic.com/" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+              支持输入多个 Key (用逗号或换行分隔)。
+              <a href="https://console.anthropic.com/" target="_blank" rel="noopener" className="ml-1 text-brand-gold hover:underline">获取 API Key →</a>
             </p>
           </div>
 
@@ -533,14 +537,15 @@ export default function AdvisorSettingsPage() {
             {settings.hasApiKeys?.gemini && settings.apiKeys?.gemini && (
               <p className="mb-2 text-xs text-gray-500">当前: {settings.apiKeys.gemini}</p>
             )}
-            <Input
-              type="password"
+            <Textarea
               value={newApiKeys.gemini}
               onChange={(e) => setNewApiKeys((prev) => ({ ...prev, gemini: e.target.value }))}
               placeholder="AIza..."
+              rows={3}
             />
             <p className="mt-1 text-xs text-gray-500">
-              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" className="text-brand-gold hover:underline">获取 API Key →</a>
+              支持输入多个 Key (用逗号或换行分隔)。
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" className="ml-1 text-brand-gold hover:underline">获取 API Key →</a>
             </p>
           </div>
 

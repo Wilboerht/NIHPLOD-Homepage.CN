@@ -11,6 +11,21 @@ import {
 import { aiLogger } from "./logger";
 import { getSkinTypeLabel, getConcernLabel } from "./advisor-utils";
 
+/**
+ * AI 服务商降级链配置
+ * 当主服务商失败时，按顺序尝试备用服务商
+ */
+const PROVIDER_FALLBACK_CHAIN: Record<string, string[]> = {
+  // 国内优先降级链
+  deepseek: ["qwen", "openai", "gemini"],
+  qwen: ["deepseek", "openai", "gemini"],
+
+  // 国际优先降级链
+  openai: ["anthropic", "gemini", "deepseek"],
+  anthropic: ["openai", "gemini", "deepseek"],
+  gemini: ["openai", "anthropic", "deepseek"],
+};
+
 export interface AIMessage {
   role: "user" | "assistant" | "system";
   content: string;
@@ -82,7 +97,7 @@ export async function chat(_messages: AIMessage[]): Promise<AIResponse> {
 }
 
 /**
- * 使用 AI 分析肌肤
+ * 使用 AI 分析肌肤 (增强版：支持自动降级)
  */
 export async function analyzeWithAI(
   answers: QuestionnaireAnswers,
@@ -90,46 +105,85 @@ export async function analyzeWithAI(
 ): Promise<AnalysisResult> {
   // 从数据库获取设置
   const settings = await getAISettings();
-  const provider = settings.provider || process.env.AI_PROVIDER || "openai";
-  const model = settings.model || process.env.AI_MODEL || "gpt-4o";
+  const primaryProvider = settings.provider || process.env.AI_PROVIDER || "openai";
+  const primaryModel = settings.model || process.env.AI_MODEL || "gpt-4o";
 
-  // 根据 provider 获取对应的 API Key
-  const apiKey = getApiKeyForProvider(provider);
+  // 构建服务商尝试队列：主服务商 -> 降级链
+  const fallbackProviders = PROVIDER_FALLBACK_CHAIN[primaryProvider] || [];
+  // 过滤掉未配置 Key 的服务商，避免无效尝试
+  const providerQueue = [primaryProvider, ...fallbackProviders].filter(p => hasValidKeyForProvider(p));
 
-  if (!apiKey) {
-    aiLogger.error("API key not configured", { provider });
-    throw new Error(`AI API key not configured for provider: ${provider}`);
+  if (providerQueue.length === 0) {
+    // 如果过滤后队列为空（说明连主服务商都没 Key），至少保留主服务商报错
+    providerQueue.push(primaryProvider);
   }
 
-  aiLogger.info("Starting AI analysis", { provider, model, hasPhoto: !!faceAnalysis });
+  aiLogger.info("Starting AI analysis with failover chain", {
+    primaryProvider,
+    queue: providerQueue,
+    hasPhoto: !!faceAnalysis
+  });
 
   // 构建提示词
   const prompt = buildAnalysisPrompt(answers, faceAnalysis);
-
-  // 获取自定义系统提示词（如果有）
   const systemPrompt = settings.textSystemPrompt || TEXT_ANALYSIS_SYSTEM_PROMPT;
-
-  // 获取 maxTokens 和 temperature（使用数据库设置或默认值）
   const maxTokens = settings.maxTokens || 1800;
   const temperature = settings.temperature ?? 0.3;
 
-  // 调用 AI API
-  const response = await callAIProvider(provider, apiKey, model, prompt, systemPrompt, maxTokens, temperature);
+  let lastError: Error | null = null;
+  let successResponse: string | null = null;
+  let usedProvider = "";
 
-  // 解析 AI 响应
-  const analysis = parseAIResponse(response, answers);
+  // 1. 尝试服务商队列
+  for (const provider of providerQueue) {
+    try {
+      // 如果不是主服务商，使用该服务商的默认模型
+      const model = provider === primaryProvider ? primaryModel : "";
 
-  // 匹配推荐产品
+      aiLogger.info(`Attempting analysis with provider: ${provider}`);
+
+      // 调用 AI (内部已包含 Key 轮询机制)
+      successResponse = await callAIProviderWithRetry(
+        provider,
+        model,
+        prompt,
+        systemPrompt,
+        maxTokens,
+        temperature
+      );
+
+      usedProvider = provider;
+      break; // 成功则跳出循环
+    } catch (error) {
+      console.warn(`Provider ${provider} failed:`, error);
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // 继续尝试下一个服务商
+      aiLogger.warn(`Failover: Switching from ${provider} due to error`, { error: lastError.message });
+      continue;
+    }
+  }
+
+  if (!successResponse) {
+    aiLogger.error("All AI providers failed", { error: lastError });
+    throw lastError || new Error("AI Analysis failed after trying all available providers");
+  }
+
+  // 2. 解析 AI 响应
+  const analysis = parseAIResponse(successResponse, answers);
+
+  // 3. 匹配推荐产品
   const products = await matchProducts(analysis.concerns, answers);
 
-  aiLogger.info("AI analysis completed", {
-    provider,
+  aiLogger.info("AI analysis completed successfully", {
+    provider: usedProvider,
+    fallbackOccurred: usedProvider !== primaryProvider,
     skinType: analysis.skinType,
     concerns: analysis.concerns,
     productCount: products.length,
   });
 
-  // 生成护肤方案
+  // 4. 生成护肤方案
   const routine = generateSkincareRoutine(answers.currentRoutine);
 
   return {
@@ -269,33 +323,60 @@ export function clearAISettingsCache(): void {
 }
 
 /**
- * 根据 provider 获取对应的 API Key
- * 优先从数据库缓存读取，降级到环境变量
+ * 获取对应 provider 的所有 API Keys (支持多 Key 配置)
  */
-export function getApiKeyForProvider(provider: string): string | undefined {
-  // 首先尝试从缓存的数据库设置中获取
+export function getApiKeysForProvider(provider: string): string[] {
+  let rawKeys: string | undefined;
+
+  // 1. 尝试从缓存的数据库设置中获取
   if (cachedSettings?.apiKeys) {
     const dbKey = cachedSettings.apiKeys[provider as keyof ApiKeys];
     if (dbKey && dbKey.length > 0) {
-      return dbKey;
+      rawKeys = dbKey;
     }
   }
 
-  // 降级到环境变量
-  switch (provider) {
-    case "openai":
-      return process.env.OPENAI_API_KEY;
-    case "deepseek":
-      return process.env.DEEPSEEK_API_KEY;
-    case "anthropic":
-      return process.env.ANTHROPIC_API_KEY;
-    case "qwen":
-      return process.env.QWEN_API_KEY;
-    case "gemini":
-      return process.env.GEMINI_API_KEY;
-    default:
-      return process.env.OPENAI_API_KEY;
+  // 2. 如果数据库没配，降级到环境变量
+  if (!rawKeys) {
+    switch (provider) {
+      case "openai":
+        rawKeys = process.env.OPENAI_API_KEY;
+        break;
+      case "deepseek":
+        rawKeys = process.env.DEEPSEEK_API_KEY;
+        break;
+      case "anthropic":
+        rawKeys = process.env.ANTHROPIC_API_KEY;
+        break;
+      case "qwen":
+        rawKeys = process.env.QWEN_API_KEY;
+        break;
+      case "gemini":
+        rawKeys = process.env.GEMINI_API_KEY;
+        break;
+    }
   }
+
+  if (!rawKeys) return [];
+
+  // 3. 解析 Keys (支持逗号、换行符、分号分隔)
+  return rawKeys
+    .split(/[,;\n]+/)
+    .map(k => k.trim())
+    .filter(k => k.length > 0);
+}
+
+/**
+ * 根据 provider 获取单个 API Key
+ * 为了兼容性保留此接口。如果配置了多 Key，随即返回一个实现负载均衡。
+ */
+export function getApiKeyForProvider(provider: string): string | undefined {
+  const keys = getApiKeysForProvider(provider);
+  if (keys.length === 0) return undefined;
+
+  // 随机返回一个 Key，实现简单的负载均衡
+  const randomIndex = Math.floor(Math.random() * keys.length);
+  return keys[randomIndex];
 }
 
 /**
@@ -470,6 +551,80 @@ function buildAnalysisPrompt(
     medicationHistory: answers.medicationHistory,
     faceAnalysis: faceAnalysis,
   });
+}
+
+/**
+ * 检查服务商是否有可用的 Key
+ */
+function hasValidKeyForProvider(provider: string): boolean {
+  const keys = getApiKeysForProvider(provider);
+  return keys.length > 0;
+}
+
+/**
+ * 调用 AI 服务 (支持 Key 轮询重试)
+ */
+async function callAIProviderWithRetry(
+  provider: string,
+  model: string,
+  prompt: string,
+  systemPrompt?: string,
+  maxTokens?: number,
+  temperature?: number
+): Promise<string> {
+  // 获取该服务商的所有 Keys
+  const apiKeys = getApiKeysForProvider(provider);
+
+  if (apiKeys.length === 0) {
+    throw new Error(`No API configuration found for provider: ${provider}`);
+  }
+
+  let lastError: Error | null = null;
+
+  // 遍历所有可用的 Keys
+  for (let i = 0; i < apiKeys.length; i++) {
+    const apiKey = apiKeys[i];
+    const isRetrying = i > 0;
+
+    try {
+      if (isRetrying) {
+        aiLogger.info(`Retrying with backup API Key ${i + 1}/${apiKeys.length} for ${provider}`);
+      }
+
+      // 执行实际的 API 调用
+      return await callAIProvider(
+        provider,
+        apiKey,
+        model,
+        prompt,
+        systemPrompt,
+        maxTokens,
+        temperature
+      );
+
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = lastError.message.toLowerCase();
+
+      // 检查错误类型，决定是否重试
+      // 401: Key 无效/过期
+      // 429: 额度用完/速率限制
+      const isAuthError = errorMessage.includes("401") || errorMessage.includes("unauthorized") || errorMessage.includes("invalid api key");
+      const isRateLimitError = errorMessage.includes("429") || errorMessage.includes("rate limit") || errorMessage.includes("quota");
+      const isServerOverload = errorMessage.includes("500") || errorMessage.includes("502") || errorMessage.includes("503") || errorMessage.includes("overloaded");
+
+      // 如果是上述错误，尝试下一个 Key
+      if (isAuthError || isRateLimitError || isServerOverload) {
+        console.warn(`Key ${i + 1} for ${provider} failed (${isAuthError ? 'Auth' : isRateLimitError ? 'RateLimit' : 'Server'}):`, lastError.message);
+        continue;
+      }
+
+      // 其他错误（如参数错误）直接抛出，不重试
+      throw lastError;
+    }
+  }
+
+  throw lastError || new Error(`All API keys failed for provider: ${provider}`);
 }
 
 /**
