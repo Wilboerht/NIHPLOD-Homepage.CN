@@ -62,6 +62,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const faceDetectionRef = useRef<number | null>(null);
   const stableCountRef = useRef<number>(0);
+  const cooldownRef = useRef<boolean>(false); // 步骤切换冷却标志
 
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImages, setCapturedImages] = useState<Record<CaptureStep, string | null>>({
@@ -76,6 +77,8 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
   const [lightScore, setLightScore] = useState<number>(0); // 0-100 光线质量分数
   const [error, setError] = useState<string | null>(null);
   const [stabilityProgress, setStabilityProgress] = useState<number>(0); // 姿势稳定进度 0-100
+  const [isInCooldown, setIsInCooldown] = useState<boolean>(false); // 冷却状态 UI 显示
+  const [cooldownProgress, setCooldownProgress] = useState<number>(0); // 冷却进度 0-100
   const [isLoading, setIsLoading] = useState(true);
   const [faceStatus, setFaceStatus] = useState<FaceStatus>("none");
   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -100,32 +103,38 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
         stream.getTracks().forEach((track) => track.stop());
       }
 
-      // 视频约束配置
-      // 添加高级约束以禁用美颜效果，确保获取原始相机画面
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const videoConstraints: MediaTrackConstraints & { advanced?: any[] } = {
-        facingMode,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        // 非标准的高级约束，用于禁用图像处理/美颜效果
-        // 这些约束在支持的浏览器/设备上会生效
-        advanced: [
-          // 禁用美颜模式（部分Android设备支持）
-          { beautificationMode: "off" },
-          // 禁用图像增强
-          { imageEnhancement: false },
-          // 禁用自动美化
-          { autoBeautify: false },
-          // 禁用人脸美化
-          { faceBeautification: false },
-          // 禁用皮肤平滑
-          { skinSmoothing: false },
-        ],
-      };
+      let mediaStream: MediaStream;
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraints,
-      });
+      try {
+        // 尝试优先使用高级约束（禁用美颜）
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const videoConstraints: MediaTrackConstraints & { advanced?: any[] } = {
+          facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          advanced: [
+            { beautificationMode: "off" },
+            { imageEnhancement: false },
+            { autoBeautify: false },
+            { faceBeautification: false },
+            { skinSmoothing: false },
+          ],
+        };
+
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraints,
+        });
+      } catch (err) {
+        console.warn("Advanced camera constraints failed, retrying with basic constraints:", err);
+        // 降级策略：使用基础约束
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+      }
 
       // 获取视频轨道并尝试应用更多约束
       const videoTrack = mediaStream.getVideoTracks()[0];
@@ -163,7 +172,21 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
       setIsLoading(false);
     } catch (err) {
       console.error("Camera error:", err);
-      setError("无法访问摄像头，请检查权限设置或使用上传功能");
+
+      let errorMessage = "无法访问摄像头，请检查权限设置或使用上传功能";
+      const errorName = (err as Error)?.name;
+
+      if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+        errorMessage = "摄像头权限被拒绝，请在浏览器地址栏点击锁图标允许访问摄像头";
+      } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+        errorMessage = "未检测到摄像头设备，请检查设备连接";
+      } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+        errorMessage = "摄像头可能被其他应用占用（如微信/Zoom），请关闭后重试";
+      } else if (errorName === 'OverconstrainedError') {
+        errorMessage = "摄像头不支持请求的分辨率，请尝试使用上传功能";
+      }
+
+      setError(errorMessage);
       setIsLoading(false);
     }
   }, [facingMode, stream]);
@@ -258,8 +281,9 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
 
     if (targetStep === 'chin') {
       // 必须有明显抬头特征
-      // 稍微放宽 tiltRatio (< 0.35)，同时要求不要转头太厉害
-      if (tiltRatio < 0.35 && Math.abs(noseOffsetRatio) < 0.35) {
+      // 收紧 tiltRatio 阈值 (< 0.28)，需要真正的抬头动作
+      // 同时要求头部基本正对镜头（不要偏转太厉害）
+      if (tiltRatio < 0.28 && Math.abs(noseOffsetRatio) < 0.30) {
         return "chin";
       }
     }
@@ -282,6 +306,10 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
    * 检测面部和头部朝向
    */
   const detectFace = useCallback(async () => {
+    // 如果处于冷却期，跳过检测
+    if (cooldownRef.current) {
+      return;
+    }
     if (!videoRef.current || !faceApiRef.current || !modelsLoaded || isAllCaptured) {
       return;
     }
@@ -332,12 +360,19 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
         if (isCentered && isSizeOk && isPoseCorrect) {
           stableCountRef.current += 1;
           setFaceStatus("found");
-          // 更新稳定进度 (4次检测 = 100%)
-          setStabilityProgress(Math.min(100, (stableCountRef.current / 4) * 100));
 
-          // 稳定检测约0.6秒后拍照（3次检测，每次200ms）
-          // 减少需要的稳定帧数，提高灵敏度
-          if (stableCountRef.current >= 3) {
+          // chin 步骤需要更多稳定帧数，防止误触发
+          // 普通步骤: 4帧约0.8秒, chin步骤: 6帧约1.2秒
+          const requiredFrames = currentStep === 'chin' ? 6 : 4;
+          const progressFrames = currentStep === 'chin' ? 7 : 5;
+
+          // 更新稳定进度
+          setStabilityProgress(Math.min(100, (stableCountRef.current / progressFrames) * 100));
+
+          // 稳定检测后拍照
+          // 普通步骤: 约0.6秒 (3帧 x 200ms)
+          // chin步骤: 约1秒 (5帧 x 200ms)，需要更稳定的姿势
+          if (stableCountRef.current >= requiredFrames) {
             setFaceStatus("ready");
             setStabilityProgress(100);
             // 拍照
@@ -475,9 +510,33 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
     const nextStep = getNextStep(currentStep);
 
     if (nextStep) {
+      // **关键修复：启用冷却期，防止连续拍照**
+      cooldownRef.current = true;
+      setIsInCooldown(true);
+      setFaceStatus("none");
+      setStabilityProgress(0);
+      setCooldownProgress(0);
+
       // 进入下一步
       setCurrentStep(nextStep);
-      setFaceStatus("none");
+
+      // 冷却期 2.5 秒，给用户足够时间调整姿势
+      const cooldownDuration = 2500;
+      const progressInterval = 50; // 每 50ms 更新一次进度
+      let elapsed = 0;
+
+      const progressTimer = setInterval(() => {
+        elapsed += progressInterval;
+        const progress = Math.min(100, (elapsed / cooldownDuration) * 100);
+        setCooldownProgress(progress);
+
+        if (elapsed >= cooldownDuration) {
+          clearInterval(progressTimer);
+          cooldownRef.current = false;
+          setIsInCooldown(false);
+          setCooldownProgress(0);
+        }
+      }, progressInterval);
 
     } else {
       // 所有步骤完成 - 直接调用 onCapture 并传递所有照片
@@ -891,14 +950,54 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
         <div className="mb-2">{renderLightIndicator()}</div>
       )}
 
-      {/* 拍照提示 */}
+      {/* 拍照提示和手动拍照按钮 */}
       {!isAllCaptured && !error && !isLoading && (
-        <div className="flex w-full max-w-sm shrink-0 gap-2">
-          <div className="flex w-full flex-col items-center gap-2">
-            <p className="text-center text-xs text-brand-charcoal/60">
-              请按照提示完成三个动作，系统将自动拍照
-            </p>
-          </div>
+        <div className="flex w-full max-w-sm shrink-0 flex-col items-center gap-3">
+          {/* 冷却状态提示 */}
+          {isInCooldown && (
+            <m.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="flex items-center gap-2 text-brand-gold">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+                <span className="text-sm font-medium">请调整姿势...</span>
+              </div>
+              {/* 冷却进度条 */}
+              <div className="h-1 w-32 overflow-hidden rounded-full bg-gray-200">
+                <m.div
+                  className="h-full bg-brand-gold"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${cooldownProgress}%` }}
+                  transition={{ duration: 0.05 }}
+                />
+              </div>
+            </m.div>
+          )}
+
+          {/* 提示文字 */}
+          <p className="text-center text-xs text-brand-charcoal/60">
+            {isInCooldown
+              ? `下一步：${CAPTURE_STEPS.find(s => s.step === currentStep)?.instruction}`
+              : "请按照提示完成四个动作，系统将自动拍照"
+            }
+          </p>
+
+          {/* 手动拍照按钮 - 当自动检测失效时使用 */}
+          {!isInCooldown && (
+            <button
+              onClick={() => {
+                if (faceStatus === "detecting" || faceStatus === "found" || faceStatus === "none") {
+                  // 强制拍照（即使没有检测到理想姿势）
+                  takePhotoAuto();
+                }
+              }}
+              className="mt-1 rounded-full border border-brand-charcoal/20 bg-white px-4 py-1.5 text-xs text-brand-charcoal/70 shadow-sm transition-all hover:bg-brand-gold/10 hover:border-brand-gold hover:text-brand-gold"
+            >
+              手动拍照（检测失效时使用）
+            </button>
+          )}
         </div>
       )}
 
