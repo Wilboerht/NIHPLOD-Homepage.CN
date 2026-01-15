@@ -35,7 +35,17 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showRegionSelectModal, setShowRegionSelectModal] = useState(false);
 
-  const { setDrawerOpen } = useLayout();
+  const { isDrawerOpen, setDrawerOpen } = useLayout();
+
+  // 监听 LayoutContext 中的 isDrawerOpen 变化，同步本地 isExpanded 状态
+  // 解决：点击底部导航栏时，setDrawerOpen(true) 不会触发本地状态更新的问题
+  useEffect(() => {
+    if (isDrawerOpen && !isExpanded) {
+      setIsExpanded(true);
+    } else if (!isDrawerOpen && isExpanded) {
+      setIsExpanded(false);
+    }
+  }, [isDrawerOpen, isExpanded]);
 
   useEffect(() => {
     initSession();
