@@ -6,6 +6,8 @@ import { m, AnimatePresence, LayoutGroup } from "framer-motion";
 import { ChevronDown, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+import { ProductDrawer } from "@/components/website";
+import type { ProductData } from "@/components/website/ProductDrawer";
 
 // 模块配置 - 4个护肤仪式模块
 type ModuleId = "daily" | "portable" | "spa" | "professional";
@@ -95,21 +97,21 @@ const defaultModuleData: ModuleData = {
           description: "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
           duration: "30秒",
           tips: "温水洗净，避免过冷或过热刺激。",
-          imageUrl: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"
+          imageUrl: "/images/ritual-step-1.png"
         },
         {
           title: "焕活",
           description: "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
           duration: "1-2分钟",
           tips: "掌心温热后按压效果更佳。",
-          imageUrl: "https://wp-cdn.4ce.cn/v2/2xPfQKk.png"
+          imageUrl: "/images/ritual-step-2.png"
         },
         {
           title: "防护",
           description: "在面部完全干爽后，取足量防晒霜，点涂于面部及颈部，顺着皮肤纹理均匀涂抹。防晒剂提供即时自然提亮效果。",
           duration: "1分钟",
           tips: "出门前15分钟涂抹。",
-          imageUrl: "https://wp-cdn.4ce.cn/v2/YjI5qTM.png"
+          imageUrl: "/images/ritual-step-3.png"
         },
       ],
     },
@@ -120,12 +122,12 @@ const defaultModuleData: ModuleData = {
       tag: "修复",
       desc: "利用黄金睡眠期修护",
       totalDuration: "10-15分钟",
-      products: "卸妆油、洁面、晚霜",
+      products: "洁面慕斯、面霜",
       benefits: ["深层清洁", "夜间修护", "滋养再生"],
       steps: [
-        { title: "深度卸妆", description: "彻底溶解彩妆与防晒残留。", duration: "2分钟", tips: "干手干脸按摩，充分乳化后洗净。", dosage: "3泵", imageUrl: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" },
-        { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" },
-        { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "https://wp-cdn.4ce.cn/v2/2xPfQKk.png" },
+        { title: "深度卸妆", description: "彻底溶解彩妆与防晒残留。", duration: "2分钟", tips: "干手干脸按摩，充分乳化后洗净。", dosage: "3泵", imageUrl: "/images/ritual-step-1.png" },
+        { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
+        { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "/images/ritual-step-2.png" },
       ],
     },
   ],
@@ -140,8 +142,8 @@ const defaultModuleData: ModuleData = {
       products: "护手霜、防晒乳、洁面慕斯、面膜",
       benefits: ["即时补水", "舒缓干燥"],
       steps: [
-        { title: "舒缓喷雾", description: "即刻缓解肌肤紧绷感。", duration: "10秒", tips: "距离面部20cm处呈Z字形喷洒。", imageUrl: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" },
-        { title: "维稳修护", description: "平复换季或地域带来的不适。", duration: "2分钟", tips: "选择舒缓成分，轻柔按压于敏感部位。", dosage: "2-3泵", imageUrl: "https://wp-cdn.4ce.cn/v2/2xPfQKk.png" },
+        { title: "舒缓喷雾", description: "即刻缓解肌肤紧绷感。", duration: "10秒", tips: "距离面部20cm处呈Z字形喷洒。", imageUrl: "/images/ritual-step-1.png" },
+        { title: "维稳修护", description: "平复换季或地域带来的不适。", duration: "2分钟", tips: "选择舒缓成分，轻柔按压于敏感部位。", dosage: "2-3泵", imageUrl: "/images/ritual-step-2.png" },
       ],
     },
   ],
@@ -156,8 +158,8 @@ const defaultModuleData: ModuleData = {
       products: "热敷毛巾、清洁面膜",
       benefits: ["毛孔清洁", "促进循环"],
       steps: [
-        { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "3-5分钟", tips: "确保毛巾温度适中，覆盖全脸后轻轻按压。", imageUrl: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" },
-        { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "10-15分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "https://wp-cdn.4ce.cn/v2/2xPfQKk.png" },
+        { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "3-5分钟", tips: "确保毛巾温度适中，覆盖全脸后轻轻按压。", imageUrl: "/images/ritual-step-1.png" },
+        { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "10-15分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "/images/ritual-step-2.png" },
       ],
     },
     {
@@ -170,8 +172,8 @@ const defaultModuleData: ModuleData = {
       products: "按摩油、刮痧板",
       benefits: ["提拉紧致", "淋巴排毒"],
       steps: [
-        { title: "拨筋手法", description: "配合刮痧板进行提拉按摩。", duration: "5-8分钟", tips: "沿面部轮廓由下往上刮拭，力度适中，每个区域重复3-5次。", imageUrl: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" },
-        { title: "高倍滋养", description: "注入浓缩修护能量。", duration: "2分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "3-4泵", imageUrl: "https://wp-cdn.4ce.cn/v2/2xPfQKk.png" },
+        { title: "拨筋手法", description: "配合刮痧板进行提拉按摩。", duration: "5-8分钟", tips: "沿面部轮廓由下往上刮拭，力度适中，每个区域重复3-5次。", imageUrl: "/images/ritual-step-1.png" },
+        { title: "高倍滋养", description: "注入浓缩修护能量。", duration: "2分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "3-4泵", imageUrl: "/images/ritual-step-2.png" },
       ],
     },
   ],
@@ -186,8 +188,8 @@ const defaultModuleData: ModuleData = {
       products: "酸类精华、中和液",
       benefits: ["角质更新", "提亮肤色"],
       steps: [
-        { title: "酸性激活", description: "软化陈旧角质，促进代谢。", duration: "5-10分钟", tips: "首次使用建议从短时间开始，逐步增加。避免眼周和唇部。", dosage: "薄薄一层", imageUrl: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" },
-        { title: "中和平衡", description: "恢复肌肤天然酸碱值。", duration: "2分钟", tips: "用专用中和液或清水彻底清洗，后续使用舒缓产品。", imageUrl: "https://wp-cdn.4ce.cn/v2/2xPfQKk.png" },
+        { title: "酸性激活", description: "软化陈旧角质，促进代谢。", duration: "5-10分钟", tips: "首次使用建议从短时间开始，逐步增加。避免眼周和唇部。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
+        { title: "中和平衡", description: "恢复肌肤天然酸碱值。", duration: "2分钟", tips: "用专用中和液或清水彻底清洗，后续使用舒缓产品。", imageUrl: "/images/ritual-step-2.png" },
       ],
     },
     {
@@ -200,8 +202,8 @@ const defaultModuleData: ModuleData = {
       products: "注氧仪、精华液",
       benefits: ["深层水润", "活肤注氧"],
       steps: [
-        { title: "导入精粹", description: "配合专业设备深层透皮。", duration: "10-15分钟", tips: "确保肌肤洁净干燥，按照设备说明操作。", dosage: "根据设备要求", imageUrl: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" },
-        { title: "屏障封存", description: "强效锁水，持久焕发神采。", duration: "2分钟", tips: "趁导入后肌肤通道打开时立即涂抹封层产品。", dosage: "充足涂抹", imageUrl: "https://wp-cdn.4ce.cn/v2/2xPfQKk.png" },
+        { title: "导入精粹", description: "配合专业设备深层透皮。", duration: "10-15分钟", tips: "确保肌肤洁净干燥，按照设备说明操作。", dosage: "根据设备要求", imageUrl: "/images/ritual-step-1.png" },
+        { title: "屏障封存", description: "强效锁水，持久焕发神采。", duration: "2分钟", tips: "趁导入后肌肤通道打开时立即涂抹封层产品。", dosage: "充足涂抹", imageUrl: "/images/ritual-step-2.png" },
       ],
     },
   ],
@@ -289,6 +291,88 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
   // 展开的步骤索引（用于显示技巧提示）
   const [_expandedStepIndex, _setExpandedStepIndex] = useState<number | null>(null);
+
+  // 产品详情弹窗状态
+  const [productDrawerOpen, setProductDrawerOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
+
+  // 产品名称到产品数据的映射
+  const productDataMap: Record<string, ProductData> = {
+    "洁面慕斯": {
+      id: "cleanser",
+      name: "氨基酸洁面慕斯",
+      nameEn: "AMINO ACID CLEANSING MOUSSE",
+      slug: "cleanser",
+      description: "温和洁面，深层清洁毛孔，保持肌肤水油平衡。采用氨基酸表活，亲肤温和不紧绷。",
+      price: 168,
+      capacity: "150ml",
+      images: [{ url: "/images/products/cleanser.png", alt: "洁面慕斯" }],
+      category: { name: "洁面" },
+      benefits: ["深层清洁", "温和不刺激", "保湿锁水"],
+    },
+    "面霜": {
+      id: "cream",
+      name: "多效修护面霜",
+      nameEn: "MULTI-REPAIR CREAM",
+      slug: "cream",
+      description: "深层滋养修护，增强肌肤屏障，提供持久保湿。",
+      price: 298,
+      capacity: "50ml",
+      images: [{ url: "/images/products/cream.png", alt: "面霜" }],
+      category: { name: "面霜" },
+      benefits: ["深层滋养", "屏障修护", "持久保湿"],
+    },
+    "防晒乳": {
+      id: "sunscreen",
+      name: "清透防晒乳",
+      nameEn: "LIGHT SUNSCREEN LOTION",
+      slug: "sunscreen",
+      description: "SPF50+ PA++++，轻薄透气，有效防护紫外线。",
+      price: 198,
+      capacity: "50ml",
+      images: [{ url: "/images/products/sunscreen.png", alt: "防晒乳" }],
+      category: { name: "防晒" },
+      benefits: ["高倍防护", "清爽不油腻", "自然提亮"],
+    },
+    "护手霜": {
+      id: "handcream",
+      name: "滋润护手霜",
+      nameEn: "NOURISHING HAND CREAM",
+      slug: "handcream",
+      description: "深层滋润双手肌肤，修护干燥粗糙，恢复柔嫩细滑。",
+      price: 88,
+      capacity: "50ml",
+      images: [{ url: "/images/products/handcream.png", alt: "护手霜" }],
+      category: { name: "身体护理" },
+      benefits: ["深层滋润", "修护干燥", "柔嫩双手"],
+    },
+    "面膜": {
+      id: "mask",
+      name: "补水修护面膜",
+      nameEn: "HYDRATING REPAIR MASK",
+      slug: "mask",
+      description: "密集补水，舒缓修护，让肌肤焕发健康光泽。",
+      price: 168,
+      capacity: "5片/盒",
+      images: [{ url: "/images/products/mask.png", alt: "面膜" }],
+      category: { name: "面膜" },
+      benefits: ["密集补水", "舒缓修护", "提亮肤色"],
+    },
+  };
+
+  // 打开产品详情弹窗
+  const handleProductClick = (productName: string) => {
+    const product = productDataMap[productName];
+    if (product) {
+      setSelectedProduct(product);
+      setProductDrawerOpen(true);
+    }
+  };
+
+  // 关闭产品详情弹窗
+  const handleCloseProductDrawer = () => {
+    setProductDrawerOpen(false);
+  };
 
   // 使用默认数据
   const moduleData = defaultModuleData;
@@ -948,7 +1032,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               <m.aside
                                 className={cn(
                                   "flex flex-shrink-0 flex-col gap-12 overflow-y-auto pr-4 scrollbar-thin",
-                                  selectedModule === "portable" ? "w-[420px]" : "w-[320px]"
+                                  selectedModule === "portable" ? "w-[420px]" : "w-[360px]"
                                 )}
                                 initial={{ opacity: 0, x: -30 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -1258,16 +1342,21 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                         const icon = productIcons[trimmedProduct] || defaultIcons[index % defaultIcons.length];
 
                                         return (
-                                          <div key={trimmedProduct} className="flex flex-col items-center gap-2">
+                                          <button
+                                            key={trimmedProduct}
+                                            type="button"
+                                            onClick={() => handleProductClick(trimmedProduct)}
+                                            className="group flex flex-col items-center gap-2 transition-transform hover:scale-105"
+                                          >
                                             {/* SVG 图标 - 白色圆形背景 */}
-                                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm border border-brand-charcoal/10">
+                                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm border border-brand-charcoal/10 transition-all group-hover:shadow-md group-hover:border-brand-gold/30">
                                               {icon}
                                             </div>
                                             {/* 产品名称 */}
-                                            <span className="text-sm text-brand-charcoal">
+                                            <span className="text-sm text-brand-charcoal group-hover:text-brand-gold transition-colors">
                                               {trimmedProduct}
                                             </span>
-                                          </div>
+                                          </button>
                                         );
                                       })}
                                   </div>
@@ -1341,7 +1430,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               ) : (
                                 <m.section
                                   className={cn(
-                                    "flex flex-1 items-center justify-center gap-10 pb-10 pr-4",
+                                    "flex flex-1 items-start justify-end gap-[52px] pb-10",
                                     selectedScheme.steps.length > 3
                                       ? "overflow-hidden"
                                       : "overflow-x-auto scrollbar-hide snap-x snap-mandatory"
@@ -1352,7 +1441,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 >
                                   <div
                                     className={cn(
-                                      "flex w-full justify-between gap-10",
+                                      "flex w-full justify-end gap-[52px]",
                                       selectedScheme.steps.length > 3 && "animate-marquee hover:[animation-play-state:paused]"
                                     )}
                                   >
@@ -1452,6 +1541,13 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
       )}
 
       {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
+
+      {/* 产品详情弹窗 */}
+      <ProductDrawer
+        isOpen={productDrawerOpen}
+        onClose={handleCloseProductDrawer}
+        product={selectedProduct}
+      />
     </>
   );
 }

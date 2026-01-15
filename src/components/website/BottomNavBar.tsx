@@ -83,8 +83,8 @@ export function BottomNavBar() {
 
         setIsTyping(false);
 
-        // 显示6秒后隐藏
-        await new Promise(resolve => setTimeout(resolve, 6000));
+        // 显示8秒后隐藏
+        await new Promise(resolve => setTimeout(resolve, 8000));
         setBubbleVisible(false);
 
         // 等待淡出动画完成后切换到下一条消息
@@ -96,7 +96,7 @@ export function BottomNavBar() {
     useEffect(() => {
         const timer = setTimeout(() => {
             typeMessage(currentMessageIndex);
-        }, 1500);
+        }, 15000); // 15秒间隔
 
         return () => clearTimeout(timer);
     }, [currentMessageIndex, typeMessage]);
