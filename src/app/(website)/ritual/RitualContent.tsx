@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, Clock, ChevronRight, ArrowUpRight } from "lucide-react";
+import { ChevronDown, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
@@ -214,7 +214,7 @@ const defaultModuleData: ModuleData = {
  * @param steps 步骤数组
  * @returns 格式化的总时长字符串
  */
-function calculateTotalDuration(steps: RitualStep[]): string {
+function _calculateTotalDuration(steps: RitualStep[]): string {
   let minTotal = 0;
   let maxTotal = 0;
 
@@ -288,7 +288,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   }, [isDrawerOpen, isExpanded]);
 
   // 展开的步骤索引（用于显示技巧提示）
-  const [expandedStepIndex, setExpandedStepIndex] = useState<number | null>(null);
+  const [_expandedStepIndex, _setExpandedStepIndex] = useState<number | null>(null);
 
   // 使用默认数据
   const moduleData = defaultModuleData;
