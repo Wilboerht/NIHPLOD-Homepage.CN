@@ -224,7 +224,7 @@ const defaultModuleData: ModuleData = {
       desc: "应对机舱干燥环境",
       totalDuration: "5分钟",
       products: "护手霜、防晒乳、洁面慕斯、面膜",
-      benefits: ["即时补水", "舒缓干燥"],
+      benefits: ["即时补水", "舒缓干燥", "抗氧化防护", "便携应急", "维稳修护"],
       steps: [
         { title: "舒缓喷雾", description: "即刻缓解肌肤紧绷感。", duration: "10秒", tips: "距离面部20cm处呈Z字形喷洒。", imageUrl: "/images/ritual-step-1.png" },
         { title: "维稳修护", description: "平复换季或地域带来的不适。", duration: "2分钟", tips: "选择舒缓成分，轻柔按压于敏感部位。", dosage: "2-3泵", imageUrl: "/images/ritual-step-2.png" },

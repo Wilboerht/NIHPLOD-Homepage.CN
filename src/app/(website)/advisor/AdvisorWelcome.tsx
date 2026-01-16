@@ -293,7 +293,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
 
                     <div className="mt-2 md:mt-0 text-center md:text-right leading-relaxed text-black/40" style={{ fontSize: '0.7rem' }}>
                       本站护肤检测相关大数据及人工智能技术
-                      <p>由 MySkin.Today 提供服务支持</p>
+                      <p>由 <a href="https://myskin.today" target="_blank" rel="noopener noreferrer" className="underline hover:text-black/60 transition-colors">MySkin.Today</a> 提供服务支持</p>
                     </div>
                   </footer>
 
