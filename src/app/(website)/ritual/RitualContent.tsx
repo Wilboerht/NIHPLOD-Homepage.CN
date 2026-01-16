@@ -1722,7 +1722,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                     transition={{ duration: 0.3, ease: "easeInOut" }}
                                   >
                                     <Image
-                                      src="/images/portable-ritual.png"
+                                      src="/images/portable-ritual.webp"
                                       alt="Portable Ritual"
                                       width={1200}
                                       height={800}
