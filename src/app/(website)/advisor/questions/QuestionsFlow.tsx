@@ -336,8 +336,12 @@ export function QuestionsFlow() {
         <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-gradient-radial-gold opacity-30" />
       </div>
 
-      {/* 顶部导航栏 - 固定在顶部，增加上下内边距 */}
-      <header className="relative z-10 flex shrink-0 items-center justify-between py-3 sm:py-4 md:py-6">
+      <header className={cn(
+        "z-10 flex shrink-0 items-center justify-between py-3 sm:py-4 md:py-6",
+        showGenderStep
+          ? "absolute left-0 top-0 w-full px-3 sm:px-4 md:px-6 lg:px-12 xl:px-16"
+          : "relative"
+      )}>
         {/* 返回按钮 - 优雅的圆形按钮 */}
         {showGenderStep ? (
           <Link
