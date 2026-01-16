@@ -61,13 +61,22 @@ interface RitualStep {
   imageUrl?: string;
 }
 
-// 方案类型
+// 子方案类型 (用于 Tab 切换)
+interface SubPlan {
+  id: string;
+  name: string;  // 如 "精简方案", "外出方案"
+  steps: RitualStep[];
+  products?: string; // 该子方案涉及的产品
+}
+
+// 情景类型 (如 "晨间焕活", "晚间呵护")
 interface Scheme {
   id: string;
   name: string;
   tag: string;
   desc: string;
-  steps: RitualStep[];
+  steps: RitualStep[];  // 保留原有 steps，兼容没有子方案的情景
+  subPlans?: SubPlan[]; // 新增：子方案列表（可选）
   totalDuration?: string;
   products?: string;
   benefits?: string[];
@@ -91,6 +100,7 @@ const defaultModuleData: ModuleData = {
       products: "洁面慕斯、面霜",
       benefits: ["保湿锁水", "屏障增强", "过敏修护", "抗初老", "维稳舒缓"],
       specialSupport: "孕期、月子期、轻医美术后",
+      // 原有 steps 作为默认显示
       steps: [
         {
           title: "净肤",
@@ -114,6 +124,58 @@ const defaultModuleData: ModuleData = {
           imageUrl: "/images/ritual-step-3.png"
         },
       ],
+      // 新增子方案 Tab
+      subPlans: [
+        {
+          id: "simple",
+          name: "精简方案",
+          products: "洁面慕斯、面霜",
+          steps: [
+            {
+              title: "净肤",
+              description: "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
+              duration: "30秒",
+              tips: "温水洗净，避免过冷或过热刺激。",
+              imageUrl: "/images/ritual-step-1.png"
+            },
+            {
+              title: "焕活",
+              description: "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
+              duration: "1-2分钟",
+              tips: "掌心温热后按压效果更佳。",
+              imageUrl: "/images/ritual-step-2.png"
+            },
+          ]
+        },
+        {
+          id: "outing",
+          name: "外出方案",
+          products: "洁面慕斯、面霜、防晒乳",
+          steps: [
+            {
+              title: "净肤",
+              description: "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
+              duration: "30秒",
+              tips: "温水洗净，避免过冷或过热刺激。",
+              imageUrl: "/images/ritual-step-1.png"
+            },
+            {
+              title: "焕活",
+              description: "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
+              duration: "1-2分钟",
+              tips: "掌心温热后按压效果更佳。",
+              imageUrl: "/images/ritual-step-2.png"
+            },
+            {
+              title: "防护",
+              description: "在面部完全干爽后，取足量防晒霜，点涂于面部及颈部，顺着皮肤纹理均匀涂抹。防晒剂提供即时自然提亮效果。",
+              duration: "1分钟",
+              tips: "出门前15分钟涂抹。",
+              imageUrl: "/images/ritual-step-3.png"
+            },
+          ]
+        }
+      ]
     },
     {
       id: "n1",
@@ -129,6 +191,26 @@ const defaultModuleData: ModuleData = {
         { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
         { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "/images/ritual-step-2.png" },
       ],
+      subPlans: [
+        {
+          id: "basic",
+          name: "基础方案",
+          steps: [
+            { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
+            { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        },
+        {
+          id: "deep",
+          name: "深度方案",
+          steps: [
+            { title: "深度卸妆", description: "彻底溶解彩妆与防晒残留。", duration: "2分钟", tips: "干手干脸按摩，充分乳化后洗净。", dosage: "3泵", imageUrl: "/images/ritual-step-1.png" },
+            { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
+            { title: "精华导入", description: "配合精华液进行轻柔按摩，促进吸收。", duration: "2分钟", tips: "从下往上提拉按摩，促进精华渗透。", dosage: "2-3滴", imageUrl: "/images/ritual-step-2.png" },
+            { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        }
+      ]
     },
   ],
   portable: [
@@ -161,6 +243,26 @@ const defaultModuleData: ModuleData = {
         { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "3-5分钟", tips: "确保毛巾温度适中，覆盖全脸后轻轻按压。", imageUrl: "/images/ritual-step-1.png" },
         { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "10-15分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "/images/ritual-step-2.png" },
       ],
+      subPlans: [
+        {
+          id: "quick",
+          name: "快速方案",
+          steps: [
+            { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "3分钟", tips: "快速热敷，为后续清洁做准备。", imageUrl: "/images/ritual-step-1.png" },
+            { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "8分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        },
+        {
+          id: "complete",
+          name: "完整方案",
+          steps: [
+            { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "5分钟", tips: "确保毛巾温度适中，覆盖全脸后轻轻按压。", imageUrl: "/images/ritual-step-1.png" },
+            { title: "蒸汽熏蒸", description: "利用蒸汽进一步软化角质。", duration: "5分钟", tips: "距离蒸汽源20cm，避免烫伤。", imageUrl: "/images/ritual-step-1.png" },
+            { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "15分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "/images/ritual-step-2.png" },
+            { title: "收缩毛孔", description: "使用冷敷收缩毛孔，锁住清洁效果。", duration: "3分钟", tips: "可使用冰敷面膜或冷藏的化妆水。", imageUrl: "/images/ritual-step-3.png" },
+          ]
+        }
+      ]
     },
     {
       id: "s2",
@@ -175,6 +277,26 @@ const defaultModuleData: ModuleData = {
         { title: "拨筋手法", description: "配合刮痧板进行提拉按摩。", duration: "5-8分钟", tips: "沿面部轮廓由下往上刮拭，力度适中，每个区域重复3-5次。", imageUrl: "/images/ritual-step-1.png" },
         { title: "高倍滋养", description: "注入浓缩修护能量。", duration: "2分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "3-4泵", imageUrl: "/images/ritual-step-2.png" },
       ],
+      subPlans: [
+        {
+          id: "daily",
+          name: "日常方案",
+          steps: [
+            { title: "手法按摩", description: "用指腹进行轻柔的提拉按摩。", duration: "3分钟", tips: "沿面部轮廓由下往上按摩，每个区域重复5次。", imageUrl: "/images/ritual-step-1.png" },
+            { title: "滋养锁水", description: "涂抹面霜锁住活性成分。", duration: "1分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "适量", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        },
+        {
+          id: "intensive",
+          name: "加强方案",
+          steps: [
+            { title: "精油润滑", description: "涂抹按摩油，为刮痧做准备。", duration: "1分钟", tips: "均匀涂抹，确保肌肤润滑。", dosage: "3-4滴", imageUrl: "/images/ritual-step-1.png" },
+            { title: "刮痧拨筋", description: "配合刮痧板进行提拉按摩。", duration: "8分钟", tips: "沿面部轮廓由下往上刮拭，力度适中，每个区域重复3-5次。", imageUrl: "/images/ritual-step-1.png" },
+            { title: "淋巴引流", description: "沿淋巴走向轻柔引流，排出废物。", duration: "3分钟", tips: "从面部中央向耳后引流，再向锁骨方向按摩。", imageUrl: "/images/ritual-step-2.png" },
+            { title: "高倍滋养", description: "注入浓缩修护能量。", duration: "2分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "3-4泵", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        }
+      ]
     },
   ],
   professional: [
@@ -191,6 +313,26 @@ const defaultModuleData: ModuleData = {
         { title: "酸性激活", description: "软化陈旧角质，促进代谢。", duration: "5-10分钟", tips: "首次使用建议从短时间开始，逐步增加。避免眼周和唇部。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
         { title: "中和平衡", description: "恢复肌肤天然酸碱值。", duration: "2分钟", tips: "用专用中和液或清水彻底清洗，后续使用舒缓产品。", imageUrl: "/images/ritual-step-2.png" },
       ],
+      subPlans: [
+        {
+          id: "gentle",
+          name: "温和方案",
+          steps: [
+            { title: "酵素软化", description: "使用低浓度酵素温和软化角质。", duration: "5分钟", tips: "适合敏感肌肤，首次使用建议从短时间开始。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
+            { title: "舒缓平衡", description: "使用舒缓水恢复肌肤平衡。", duration: "1分钟", tips: "轻拍至完全吸收。", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        },
+        {
+          id: "professional",
+          name: "专业方案",
+          steps: [
+            { title: "深层清洁", description: "彻底清洁面部，为焕肤做准备。", duration: "2分钟", tips: "使用洁面慕斯彻底清洁。", imageUrl: "/images/ritual-step-1.png" },
+            { title: "酸性激活", description: "软化陈旧角质，促进代谢。", duration: "10分钟", tips: "避免眼周和唇部，如感到刺痛立即清洗。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
+            { title: "中和平衡", description: "恢复肌肤天然酸碱值。", duration: "2分钟", tips: "用专用中和液彻底清洗。", imageUrl: "/images/ritual-step-2.png" },
+            { title: "舒缓修护", description: "涂抹舒缓精华，镇定肌肤。", duration: "2分钟", tips: "配合轻柔按压促进吸收。", dosage: "适量", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        }
+      ]
     },
     {
       id: "p2",
@@ -205,6 +347,26 @@ const defaultModuleData: ModuleData = {
         { title: "导入精粹", description: "配合专业设备深层透皮。", duration: "10-15分钟", tips: "确保肌肤洁净干燥，按照设备说明操作。", dosage: "根据设备要求", imageUrl: "/images/ritual-step-1.png" },
         { title: "屏障封存", description: "强效锁水，持久焕发神采。", duration: "2分钟", tips: "趁导入后肌肤通道打开时立即涂抹封层产品。", dosage: "充足涂抹", imageUrl: "/images/ritual-step-2.png" },
       ],
+      subPlans: [
+        {
+          id: "home",
+          name: "居家方案",
+          steps: [
+            { title: "精华叠加", description: "使用多层精华进行手动按压导入。", duration: "5分钟", tips: "每层精华等待吸收后再涂抹下一层。", dosage: "2-3种精华", imageUrl: "/images/ritual-step-1.png" },
+            { title: "面膜封存", description: "使用保湿面膜加速精华吸收。", duration: "15分钟", tips: "面膜不要等到完全干透再取下。", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        },
+        {
+          id: "device",
+          name: "仪器方案",
+          steps: [
+            { title: "洁净准备", description: "彻底清洁面部，确保毛孔畅通。", duration: "2分钟", tips: "可配合热敷打开毛孔。", imageUrl: "/images/ritual-step-1.png" },
+            { title: "注氧导入", description: "配合专业注氧仪深层导入精华。", duration: "15分钟", tips: "按设备说明操作，均匀覆盖全脸。", dosage: "根据设备要求", imageUrl: "/images/ritual-step-1.png" },
+            { title: "高倍精华", description: "叠加高浓度精华增强效果。", duration: "2分钟", tips: "趁肌肤通道打开时快速涂抹。", dosage: "充足", imageUrl: "/images/ritual-step-2.png" },
+            { title: "屏障封存", description: "强效锁水，持久焕发神采。", duration: "2分钟", tips: "使用滋润面霜封锁活性成分。", dosage: "充足涂抹", imageUrl: "/images/ritual-step-2.png" },
+          ]
+        }
+      ]
     },
   ],
 };
@@ -275,6 +437,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const [selectedModule, setSelectedModule] = useState<ModuleId | null>(null);
   // 选中的方案
   const [selectedScheme, setSelectedScheme] = useState<Scheme | null>(null);
+  // 选中的子方案（Tab）
+  const [selectedSubPlan, setSelectedSubPlan] = useState<SubPlan | null>(null);
   // 悬停的模块索引
   const { isDrawerOpen, setDrawerOpen } = useLayout();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -395,9 +559,15 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
     }
   };
 
-  // 选择方案
+  // 选择方案（情景）
   const selectScheme = (scheme: Scheme) => {
     setSelectedScheme(scheme);
+    // 如果有子方案，自动选中第一个
+    if (scheme.subPlans && scheme.subPlans.length > 0) {
+      setSelectedSubPlan(scheme.subPlans[0]);
+    } else {
+      setSelectedSubPlan(null);
+    }
     setCurrentLevel(3);
   };
 
@@ -418,6 +588,11 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
       setCurrentLevel(1);
     }
   };
+
+  // 获取当前应该显示的步骤（优先使用子方案的步骤）
+  const currentSteps = selectedSubPlan?.steps || selectedScheme?.steps || [];
+  // 获取当前应该显示的产品（优先使用子方案的产品）
+  const currentProducts = selectedSubPlan?.products || selectedScheme?.products || "洁面慕斯、面霜";
 
 
 
@@ -625,7 +800,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                           {/* 步骤列表 */}
                           <div className="flex flex-col gap-10">
-                            {selectedScheme.steps.map((step, index) => (
+                            {currentSteps.map((step, index) => (
                               <div key={step.title} className="flex flex-col gap-4">
                                 {/* 步骤图片区域 - 墨水效果 */}
                                 <div className="relative flex h-60 w-full items-center justify-center overflow-hidden bg-[#00263e]">
@@ -990,36 +1165,67 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 </p>
                               </div>
 
-                              {/* 右侧切换器 - 显示当前模块下的所有方案（随身好物不显示） */}
+                              {/* 右侧切换器 - 显示子方案Tab（如有）或情景列表（随身好物不显示） */}
                               {selectedModule !== "portable" && (
                                 <nav className="flex gap-10">
-                                  <LayoutGroup id={`tab-${selectedModule}`}>
-                                    {moduleData[selectedModule].map((scheme) => {
-                                      const isActive = scheme.id === selectedScheme.id;
-                                      return (
-                                        <button
-                                          key={scheme.id}
-                                          type="button"
-                                          onClick={() => selectScheme(scheme)}
-                                          className={cn(
-                                            "relative pb-2 text-[16px] tracking-widest transition-colors duration-300",
-                                            isActive
-                                              ? "text-brand-charcoal"
-                                              : "text-brand-charcoal-light/60 hover:text-brand-charcoal"
-                                          )}
-                                        >
-                                          {scheme.name}
-                                          {isActive && (
-                                            <m.div
-                                              layoutId="activeSchemeLine"
-                                              className="absolute bottom-0 left-0 h-[1.5px] w-full bg-brand-charcoal rounded-full"
-                                              initial={false}
-                                              transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                                            />
-                                          )}
-                                        </button>
-                                      );
-                                    })}
+                                  <LayoutGroup id={`tab-${selectedModule}-${selectedScheme.id}`}>
+                                    {/* 如果有子方案，显示子方案 Tab */}
+                                    {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
+                                      selectedScheme.subPlans.map((subPlan) => {
+                                        const isActive = selectedSubPlan?.id === subPlan.id;
+                                        return (
+                                          <button
+                                            key={subPlan.id}
+                                            type="button"
+                                            onClick={() => setSelectedSubPlan(subPlan)}
+                                            className={cn(
+                                              "relative pb-2 text-[16px] tracking-widest transition-colors duration-300",
+                                              isActive
+                                                ? "text-brand-charcoal"
+                                                : "text-brand-charcoal-light/60 hover:text-brand-charcoal"
+                                            )}
+                                          >
+                                            {subPlan.name}
+                                            {isActive && (
+                                              <m.div
+                                                layoutId="activeSubPlanLine"
+                                                className="absolute bottom-0 left-0 h-[1.5px] w-full bg-brand-charcoal rounded-full"
+                                                initial={false}
+                                                transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                                              />
+                                            )}
+                                          </button>
+                                        );
+                                      })
+                                    ) : (
+                                      /* 如果没有子方案，显示情景列表（原逻辑） */
+                                      moduleData[selectedModule].map((scheme) => {
+                                        const isActive = scheme.id === selectedScheme.id;
+                                        return (
+                                          <button
+                                            key={scheme.id}
+                                            type="button"
+                                            onClick={() => selectScheme(scheme)}
+                                            className={cn(
+                                              "relative pb-2 text-[16px] tracking-widest transition-colors duration-300",
+                                              isActive
+                                                ? "text-brand-charcoal"
+                                                : "text-brand-charcoal-light/60 hover:text-brand-charcoal"
+                                            )}
+                                          >
+                                            {scheme.name}
+                                            {isActive && (
+                                              <m.div
+                                                layoutId="activeSchemeLine"
+                                                className="absolute bottom-0 left-0 h-[1.5px] w-full bg-brand-charcoal rounded-full"
+                                                initial={false}
+                                                transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                                              />
+                                            )}
+                                          </button>
+                                        );
+                                      })
+                                    )}
                                   </LayoutGroup>
                                 </nav>
                               )}
@@ -1041,7 +1247,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                     涉及产品
                                   </h3>
                                   <div className="flex flex-wrap gap-6">
-                                    {(selectedScheme.products || "洁面慕斯、面霜")
+                                    {currentProducts
                                       .split("、")
                                       .map((product, index) => {
                                         // 产品图标占位符映射 - 根据产品名匹配或按索引循环
@@ -1307,10 +1513,34 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                           ),
                                           // 身体油
                                           "身体油": (
-                                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                              <rect x="18" y="16" width="12" height="24" rx="6" fill="#FFFBE6" stroke="#D2C9BC" strokeWidth="1.5" />
-                                              <rect x="22" y="10" width="4" height="6" fill="#D2C9BC" />
-                                              <path d="M24 10V6M22 6h4" stroke="#D2C9BC" strokeWidth="1.5" strokeLinecap="round" />
+                                            <svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                              <path d="M224.841 51.218H175.082C171.534 51.218 168.658 54.0941 168.658 57.642V173.865C168.658 177.413 171.534 180.289 175.082 180.289H224.841C228.389 180.289 231.265 177.413 231.265 173.865V57.642C231.265 54.0941 228.389 51.218 224.841 51.218Z" fill="url(#paint0_linear_22_2)" />
+                                              <path d="M262.405 186.466H137.594C133.539 186.466 130.252 189.753 130.252 193.808V345.634C130.252 349.689 133.539 352.976 137.594 352.976H262.405C266.46 352.976 269.747 349.689 269.747 345.634V193.808C269.747 189.753 266.46 186.466 262.405 186.466Z" fill="url(#paint1_radial_22_2)" />
+                                              <path d="M262.405 186.466H137.594C133.539 186.466 130.252 189.753 130.252 193.808V345.634C130.252 349.689 133.539 352.976 137.594 352.976H262.405C266.46 352.976 269.747 349.689 269.747 345.634V193.808C269.747 189.753 266.46 186.466 262.405 186.466Z" fill="url(#paint2_linear_22_2)" fill-opacity="0.6" />
+                                              <path d="M132.857 199.91C132.857 196.385 134.165 192.989 137.226 191.243C144.329 187.19 161.651 180.748 200 180.748C238.349 180.748 255.67 187.19 262.774 191.243C265.835 192.989 267.142 196.385 267.142 199.91V338.904C267.142 347.352 260.294 354.2 251.847 354.2H148.153C139.705 354.2 132.857 347.352 132.857 338.904V199.91Z" stroke="#355826" stroke-width="13.33" stroke-linejoin="round" />
+                                              <path d="M188.069 72.456C188.069 72.456 191.649 71.538 200 71.538C208.351 71.538 211.93 72.456 211.93 72.456" stroke="#383F36" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+                                              <path d="M152.344 202.315C152.344 202.315 166.641 201.397 200 201.397C233.359 201.397 247.656 202.315 247.656 202.315" stroke="#355826" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+                                              <path d="M199.955 46.3C190.409 46.3 180.864 49.478 176.606 51.602C175.358 52.224 174.717 53.535 174.717 54.929V70.62C170.886 71.089 167.594 72.421 165.284 74.505C164.507 75.205 164.155 76.224 164.149 77.27C164.087 87.712 164.131 137.955 164.163 164.229L162.787 166.982V180.289H200H237.213V166.982L235.837 164.229C235.869 137.955 235.913 87.712 235.851 77.27C235.845 76.224 235.493 75.205 234.716 74.505C232.406 72.421 229.114 71.089 225.283 70.62V54.929C225.283 53.535 224.642 52.224 223.394 51.602C219.136 49.478 209.591 46.3 200.045 46.3" stroke="#383F36" stroke-width="13.33" stroke-linecap="round" stroke-linejoin="round" />
+                                              <path d="M175.868 309.534L169.165 301.487H168.061V311.878H169.376V303.831L176.071 311.878H177.183V301.487H175.868V309.534ZM180.959 301.487H179.646V311.879H180.959V301.487ZM192.594 311.878V301.487H191.279V306.025H184.839V301.487H183.524V311.878H184.839V307.34H191.279V311.878H192.594ZM199.284 301.487H194.671V311.879H195.984V308.424H199.284C199.741 308.426 200.194 308.338 200.617 308.165C201.039 307.991 201.424 307.736 201.747 307.413C202.071 307.091 202.328 306.708 202.504 306.286C202.679 305.864 202.769 305.412 202.769 304.955C202.769 304.498 202.679 304.046 202.504 303.624C202.328 303.202 202.071 302.819 201.747 302.497C201.423 302.175 201.039 301.92 200.617 301.746C200.194 301.573 199.741 301.485 199.284 301.487ZM199.284 307.11H195.984V302.8H199.285C199.856 302.801 200.404 303.029 200.807 303.433C201.211 303.836 201.439 304.384 201.44 304.955C201.44 305.238 201.384 305.518 201.276 305.78C201.168 306.041 201.009 306.279 200.808 306.479C200.608 306.679 200.371 306.838 200.109 306.946C199.847 307.054 199.567 307.11 199.284 307.11ZM205.556 301.487H204.241V311.878H211.123V310.563H205.556V301.487ZM215.996 301.491C215.228 301.49 214.47 301.66 213.775 301.988C213.081 302.317 212.468 302.795 211.981 303.388C211.494 303.982 211.145 304.676 210.958 305.421C210.772 306.166 210.753 306.943 210.903 307.696C211.052 308.449 211.367 309.16 211.824 309.777C212.282 310.393 212.87 310.901 213.547 311.263C214.224 311.625 214.973 311.832 215.74 311.87C216.507 311.907 217.273 311.774 217.982 311.48C218.931 311.087 219.742 310.422 220.313 309.568C220.884 308.714 221.188 307.71 221.188 306.683C221.213 305.995 221.096 305.308 220.843 304.668C220.59 304.027 220.208 303.445 219.72 302.959C219.233 302.472 218.651 302.09 218.011 301.838C217.37 301.585 216.684 301.467 215.996 301.491ZM215.996 310.563C215.228 310.564 214.478 310.337 213.839 309.911C213.201 309.484 212.704 308.878 212.411 308.168C212.116 307.459 212.039 306.679 212.188 305.926C212.338 305.173 212.708 304.482 213.252 303.94C213.794 303.397 214.486 303.026 215.238 302.876C215.991 302.726 216.772 302.803 217.481 303.096C218.19 303.39 218.796 303.888 219.222 304.526C219.649 305.165 219.876 305.915 219.875 306.683C219.9 307.199 219.816 307.714 219.629 308.196C219.442 308.677 219.157 309.114 218.792 309.479C218.426 309.844 217.989 310.129 217.508 310.316C217.027 310.503 216.512 310.587 215.996 310.563ZM226.763 301.487H222.845V311.879H226.763C228.123 311.852 229.419 311.293 230.372 310.322C231.324 309.35 231.858 308.044 231.858 306.683C231.858 305.322 231.324 304.016 230.372 303.044C229.419 302.073 228.123 301.514 226.763 301.487ZM226.763 310.566H224.158V302.8H226.763C227.28 302.788 227.795 302.88 228.276 303.07C228.758 303.26 229.196 303.544 229.566 303.906C229.936 304.267 230.23 304.699 230.431 305.176C230.632 305.653 230.735 306.166 230.735 306.683C230.735 307.2 230.632 307.713 230.431 308.19C230.23 308.667 229.936 309.099 229.566 309.46C229.196 309.822 228.758 310.106 228.276 310.296C227.795 310.486 227.28 310.578 226.763 310.566ZM189.582 318.587L188.515 316.017H187.944V319.376H188.387V316.686L189.371 319.09H189.785L190.769 316.678V319.376H191.212V316.017H190.641L189.582 318.587ZM194.085 315.971C193.83 315.973 193.579 316.031 193.349 316.142C193.12 316.252 192.917 316.412 192.756 316.609C192.596 316.807 192.48 317.038 192.419 317.285C192.358 317.532 192.352 317.79 192.402 318.04C192.489 318.458 192.727 318.829 193.071 319.081C193.415 319.334 193.84 319.45 194.265 319.408C194.69 319.365 195.084 319.167 195.371 318.851C195.658 318.536 195.818 318.125 195.82 317.698C195.825 317.354 195.725 317.017 195.535 316.73C195.344 316.444 195.07 316.223 194.751 316.095C194.54 316.009 194.313 315.967 194.085 315.971ZM194.075 318.973C193.823 318.972 193.577 318.896 193.368 318.755C193.16 318.614 192.998 318.413 192.903 318.18C192.807 317.947 192.783 317.69 192.833 317.443C192.884 317.196 193.007 316.97 193.186 316.793C193.32 316.66 193.481 316.559 193.659 316.496C193.836 316.434 194.025 316.411 194.212 316.43C194.4 316.448 194.581 316.508 194.742 316.605C194.903 316.702 195.041 316.834 195.146 316.99C195.286 317.2 195.36 317.446 195.36 317.698C195.363 317.867 195.332 318.035 195.268 318.192C195.204 318.348 195.109 318.49 194.989 318.61C194.869 318.729 194.727 318.822 194.569 318.885C194.412 318.947 194.244 318.977 194.075 318.973ZM199.303 318.581L197.289 316.019H196.936V319.377H197.379V316.815L199.401 319.377H199.746V316.019H199.303V318.581ZM202.222 315.99L200.769 319.376H201.239L201.66 318.364H203.2L203.622 319.376H204.101L202.639 315.99H202.222ZM201.838 317.942L202.433 316.518L203.023 317.942H201.838ZM206.472 318.974C206.149 318.969 205.841 318.841 205.609 318.617C205.377 318.393 205.239 318.088 205.223 317.766C205.207 317.444 205.313 317.129 205.519 316.882C205.726 316.634 206.018 316.474 206.337 316.433C206.549 316.406 206.764 316.433 206.963 316.51C207.161 316.588 207.337 316.715 207.475 316.878L207.796 316.548C207.63 316.363 207.426 316.217 207.199 316.117C206.971 316.018 206.725 315.968 206.477 315.972C206.249 315.97 206.023 316.013 205.812 316.099C205.601 316.184 205.408 316.311 205.246 316.471C205.084 316.631 204.955 316.822 204.867 317.032C204.779 317.242 204.733 317.468 204.732 317.696C204.732 317.924 204.777 318.15 204.864 318.361C205.042 318.785 205.381 319.122 205.807 319.297C206.018 319.383 206.244 319.427 206.472 319.425C206.743 319.428 207.011 319.369 207.255 319.253C207.5 319.136 207.714 318.965 207.882 318.753L207.542 318.447C207.419 318.614 207.257 318.749 207.071 318.84C206.885 318.932 206.679 318.978 206.472 318.974ZM210.339 315.971C210.084 315.973 209.833 316.031 209.603 316.142C209.373 316.252 209.171 316.412 209.01 316.61C208.849 316.807 208.734 317.038 208.673 317.286C208.612 317.533 208.606 317.791 208.656 318.041C208.74 318.462 208.977 318.837 209.322 319.092C209.667 319.348 210.094 319.465 210.521 319.423C210.948 319.38 211.344 319.179 211.631 318.86C211.919 318.542 212.077 318.127 212.075 317.698C212.077 317.354 211.976 317.018 211.786 316.733C211.595 316.447 211.323 316.225 211.005 316.095C210.794 316.009 210.567 315.967 210.339 315.971ZM210.329 318.973C210.077 318.972 209.831 318.895 209.623 318.754C209.414 318.613 209.252 318.413 209.158 318.179C209.063 317.946 209.04 317.69 209.09 317.443C209.14 317.196 209.262 316.97 209.44 316.792C209.574 316.659 209.735 316.558 209.913 316.495C210.09 316.432 210.279 316.409 210.467 316.428C210.654 316.447 210.835 316.507 210.996 316.604C211.158 316.701 211.296 316.833 211.4 316.99C211.54 317.2 211.615 317.446 211.615 317.698C211.618 317.867 211.587 318.035 211.524 318.192C211.46 318.349 211.365 318.491 211.245 318.61C211.125 318.729 210.982 318.823 210.824 318.886C210.667 318.948 210.498 318.978 210.329 318.973Z" fill="white" />
+                                              <defs>
+                                                <linearGradient id="paint0_linear_22_2" x1="231.264" y1="115.754" x2="168.658" y2="115.754" gradientUnits="userSpaceOnUse">
+                                                  <stop offset="0.1" stop-color="#697265" />
+                                                  <stop offset="0.2" stop-color="#95A196" />
+                                                  <stop offset="0.45" stop-color="#364335" />
+                                                  <stop offset="0.55" stop-color="#364335" />
+                                                  <stop offset="0.8" stop-color="#95A196" />
+                                                  <stop offset="0.9" stop-color="#697265" />
+                                                </linearGradient>
+                                                <radialGradient id="paint1_radial_22_2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(200 317.499) rotate(-90) scale(131.034 69.7474)">
+                                                  <stop stop-color="#30482E" />
+                                                  <stop offset="0.862" stop-color="#8DA77E" />
+                                                </radialGradient>
+                                                <linearGradient id="paint2_linear_22_2" x1="263.622" y1="261.216" x2="136.098" y2="261.216" gradientUnits="userSpaceOnUse">
+                                                  <stop stop-color="#30482E" />
+                                                  <stop offset="0.524" stop-color="#B5F68E" stop-opacity="0" />
+                                                  <stop offset="1" stop-color="#30482E" />
+                                                </linearGradient>
+                                              </defs>
                                             </svg>
                                           ),
                                         };
@@ -1431,7 +1661,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 <m.section
                                   className={cn(
                                     "flex w-[75%] items-start justify-end gap-[52px] pb-10",
-                                    selectedScheme.steps.length > 3
+                                    currentSteps.length > 3
                                       ? "overflow-hidden"
                                       : "overflow-x-auto scrollbar-hide snap-x snap-mandatory"
                                   )}
@@ -1442,12 +1672,12 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                   <div
                                     className={cn(
                                       "flex w-full justify-end gap-[52px]",
-                                      selectedScheme.steps.length > 3 && "animate-marquee hover:[animation-play-state:paused]"
+                                      currentSteps.length > 3 && "animate-marquee hover:[animation-play-state:paused]"
                                     )}
                                   >
-                                    {(selectedScheme.steps.length > 3
-                                      ? [...selectedScheme.steps, ...selectedScheme.steps]
-                                      : selectedScheme.steps
+                                    {(currentSteps.length > 3
+                                      ? [...currentSteps, ...currentSteps]
+                                      : currentSteps
                                     ).map((step, index) => (
                                       <m.article
                                         key={`${step.title}-${index}`}
@@ -1456,7 +1686,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{
                                           duration: 0.8,
-                                          delay: 0.3 + (index % selectedScheme.steps.length) * 0.1,
+                                          delay: 0.3 + (index % currentSteps.length) * 0.1,
                                           ease: [0.23, 1, 0.32, 1]
                                         }}
                                       >
@@ -1472,7 +1702,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                         {/* Step Info */}
                                         <div className="flex flex-col gap-2">
                                           <div className="flex items-center gap-3 text-sm text-brand-charcoal-light opacity-60 after:flex-1 after:h-px after:bg-brand-charcoal/10">
-                                            STEP {String((index % selectedScheme.steps.length) + 1).padStart(2, "0")}
+                                            STEP {String((index % currentSteps.length) + 1).padStart(2, "0")}
                                           </div>
                                           <h2 className="font-display text-xl font-medium text-brand-charcoal">
                                             {step.title}
