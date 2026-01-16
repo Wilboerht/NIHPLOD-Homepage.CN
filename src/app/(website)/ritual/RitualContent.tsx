@@ -1244,7 +1244,10 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                           <button
                                             key={subPlan.id}
                                             type="button"
-                                            onClick={() => setSelectedSubPlan(subPlan)}
+                                            onClick={() => {
+                                              setSelectedSubPlan(subPlan);
+                                              setCurrentStepIndex(0); // 重置轮播索引
+                                            }}
                                             className={cn(
                                               "relative pb-2 text-[16px] tracking-widest transition-colors duration-300",
                                               isActive
@@ -1707,112 +1710,123 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 )}
                               </m.aside>
 
-                              {/* 右侧：步骤网格 (Steps Grid) */}
-                              {selectedModule === "portable" ? (
-                                <m.section
-                                  className="flex w-[75%] items-center justify-end overflow-hidden"
-                                  initial={{ opacity: 0, x: 30 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ duration: 0.8, delay: 0.2, ease: [0.19, 1, 0.22, 1] }}
-                                >
-                                  <Image
-                                    src="/images/portable-ritual.webp"
-                                    alt="Portable Ritual"
-                                    width={1200}
-                                    height={800}
-                                    className="max-w-[85%] max-h-[90%] object-contain object-right-top"
-                                    priority
-                                  />
-                                </m.section>
-                              ) : (
-                                <m.section
-                                  className="flex w-[75%] items-center gap-4 overflow-hidden"
-                                  initial={{ opacity: 0, x: 30 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ duration: 0.8, delay: 0.2, ease: [0.19, 1, 0.22, 1] }}
-                                >
-                                  {/* 左箭头 - 独立空间 (仅在步骤数 > 3 时显示) */}
-                                  {currentSteps.length > 3 && (
-                                    <button
-                                      type="button"
-                                      onClick={goToPrevStep}
-                                      disabled={currentStepIndex === 0}
-                                      className={cn(
-                                        "flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300",
-                                        currentStepIndex === 0
-                                          ? "text-brand-charcoal/20 cursor-not-allowed"
-                                          : "text-brand-charcoal/60 hover:border hover:border-brand-gold hover:text-brand-gold hover:bg-brand-gold/5"
-                                      )}
-                                    >
-                                      <ChevronLeft className="h-5 w-5" />
-                                    </button>
-                                  )}
-
-                                  {/* 步骤卡片容器 */}
-                                  <div
-                                    ref={stepsContainerRef}
-                                    className={cn(
-                                      "flex flex-1 min-w-0 overflow-x-auto scrollbar-hide",
-                                      currentSteps.length > 3
-                                        ? "justify-start snap-x snap-mandatory gap-[52px]"
-                                        : "justify-center gap-[80px]"
-                                    )}
+                              {/* 右侧：步骤网格 (Steps Grid) - 使用 AnimatePresence 实现交叉淡入淡出 */}
+                              <AnimatePresence mode="wait">
+                                {selectedModule === "portable" ? (
+                                  <m.section
+                                    key="portable-content"
+                                    className="flex w-[75%] items-center justify-end overflow-hidden"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.3, ease: "easeInOut" }}
                                   >
-                                    {currentSteps.map((step, index) => (
-                                      <m.article
-                                        key={`${step.title}-${index}`}
-                                        className="group flex w-[260px] flex-shrink-0 flex-col gap-5 snap-start h-full"
-                                        initial={{ opacity: 0, y: 30 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{
-                                          duration: 0.8,
-                                          delay: 0.3 + (index % currentSteps.length) * 0.1,
-                                          ease: [0.23, 1, 0.32, 1]
-                                        }}
+                                    <Image
+                                      src="/images/portable-ritual.png"
+                                      alt="Portable Ritual"
+                                      width={1200}
+                                      height={800}
+                                      className="max-w-[85%] max-h-[90%] object-contain object-right-top"
+                                      priority
+                                    />
+                                  </m.section>
+                                ) : (
+                                  <m.section
+                                    key={`steps-${selectedScheme?.id}-${selectedSubPlan?.id || 'default'}`}
+                                    className={cn(
+                                      "flex w-[75%] items-center overflow-hidden",
+                                      currentSteps.length > 3 && "gap-4"
+                                    )}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                  >
+                                    {/* 左箭头 - 独立空间 (仅在步骤数 > 3 时显示) */}
+                                    {currentSteps.length > 3 && (
+                                      <button
+                                        type="button"
+                                        onClick={goToPrevStep}
+                                        disabled={currentStepIndex === 0}
+                                        className={cn(
+                                          "flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300",
+                                          currentStepIndex === 0
+                                            ? "text-brand-charcoal/20 cursor-not-allowed"
+                                            : "text-brand-charcoal/60 hover:border hover:border-brand-gold hover:text-brand-gold hover:bg-brand-gold/5"
+                                        )}
                                       >
-                                        {/* Image Wrapper */}
-                                        <div className="relative w-full h-[347px] flex items-center justify-center overflow-hidden bg-brand-beige/20">
-                                          <img
-                                            src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
-                                            alt={step.title}
-                                            className="h-full w-full object-contain mix-blend-multiply transition-transform duration-[1.2s] ease-out group-hover:scale-105"
-                                          />
-                                        </div>
+                                        <ChevronLeft className="h-6 w-6" />
+                                      </button>
+                                    )}
 
-                                        {/* Step Info */}
-                                        <div className="flex flex-col gap-2">
-                                          <div className="flex items-center gap-3 text-sm text-brand-charcoal-light opacity-60 after:flex-1 after:h-px after:bg-brand-charcoal/10">
-                                            STEP {String((index % currentSteps.length) + 1).padStart(2, "0")}
-                                          </div>
-                                          <h2 className="font-display text-xl font-medium text-brand-charcoal">
-                                            {step.title}
-                                          </h2>
-                                          <p className="text-justify text-sm leading-relaxed text-brand-charcoal/80">
-                                            {step.description}
-                                          </p>
-                                        </div>
-                                      </m.article>
-                                    ))}
-                                  </div>
-
-                                  {/* 右箭头 - 独立空间 (仅在步骤数 > 3 时显示) */}
-                                  {currentSteps.length > 3 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => goToNextStep(currentSteps.length)}
-                                      disabled={currentStepIndex >= currentSteps.length - 3}
+                                    {/* 步骤卡片容器 */}
+                                    <div
+                                      ref={stepsContainerRef}
                                       className={cn(
-                                        "flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300",
-                                        currentStepIndex >= currentSteps.length - 3
-                                          ? "text-brand-charcoal/20 cursor-not-allowed"
-                                          : "text-brand-charcoal/60 hover:border hover:border-brand-gold hover:text-brand-gold hover:bg-brand-gold/5"
+                                        "flex flex-1 min-w-0 overflow-x-auto scrollbar-hide",
+                                        currentSteps.length > 3
+                                          ? "justify-start snap-x snap-mandatory gap-[52px]"
+                                          : currentSteps.length === 3
+                                            ? "justify-end gap-[80px]"
+                                            : "justify-center gap-[80px]"
                                       )}
                                     >
-                                      <ChevronRight className="h-5 w-5" />
-                                    </button>
-                                  )}
-                                </m.section>
-                              )}
+                                      {currentSteps.map((step, index) => (
+                                        <m.article
+                                          key={`${step.title}-${index}`}
+                                          className="group flex w-[260px] flex-shrink-0 flex-col gap-5 snap-start h-full"
+                                          initial={{ opacity: 0, y: 20 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          transition={{
+                                            duration: 0.5,
+                                            delay: 0.1 + index * 0.05,
+                                            ease: [0.23, 1, 0.32, 1]
+                                          }}
+                                        >
+                                          {/* Image Wrapper */}
+                                          <div className="relative w-full h-[347px] flex items-center justify-center overflow-hidden bg-brand-beige/20">
+                                            <img
+                                              src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
+                                              alt={step.title}
+                                              className="h-full w-full object-contain mix-blend-multiply transition-transform duration-[1.2s] ease-out group-hover:scale-105"
+                                            />
+                                          </div>
+
+                                          {/* Step Info */}
+                                          <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-3 text-sm text-brand-charcoal-light opacity-60 after:flex-1 after:h-px after:bg-brand-charcoal/10">
+                                              STEP {String((index % currentSteps.length) + 1).padStart(2, "0")}
+                                            </div>
+                                            <h2 className="font-display text-xl font-medium text-brand-charcoal">
+                                              {step.title}
+                                            </h2>
+                                            <p className="text-justify text-sm leading-relaxed text-brand-charcoal/80">
+                                              {step.description}
+                                            </p>
+                                          </div>
+                                        </m.article>
+                                      ))}
+                                    </div>
+
+                                    {/* 右箭头 - 独立空间 (仅在步骤数 > 3 时显示) */}
+                                    {currentSteps.length > 3 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => goToNextStep(currentSteps.length)}
+                                        disabled={currentStepIndex >= currentSteps.length - 3}
+                                        className={cn(
+                                          "flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300",
+                                          currentStepIndex >= currentSteps.length - 3
+                                            ? "text-brand-charcoal/20 cursor-not-allowed"
+                                            : "text-brand-charcoal/60 hover:border hover:border-brand-gold hover:text-brand-gold hover:bg-brand-gold/5"
+                                        )}
+                                      >
+                                        <ChevronRight className="h-6 w-6" />
+                                      </button>
+                                    )}
+                                  </m.section>
+                                )}
+                              </AnimatePresence>
                             </div>
                           </div>
                         </m.div>
