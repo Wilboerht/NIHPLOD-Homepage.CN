@@ -195,6 +195,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "basic",
           name: "基础方案",
+          products: "洁面慕斯、面霜",
           steps: [
             { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
             { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "/images/ritual-step-2.png" },
@@ -203,6 +204,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "deep",
           name: "深度方案",
+          products: "洁面慕斯、面霜、面膜",
           steps: [
             { title: "深度卸妆", description: "彻底溶解彩妆与防晒残留。", duration: "2分钟", tips: "干手干脸按摩，充分乳化后洗净。", dosage: "3泵", imageUrl: "/images/ritual-step-1.png" },
             { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
@@ -247,6 +249,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "quick",
           name: "快速方案",
+          products: "洁面慕斯、面膜",
           steps: [
             { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "3分钟", tips: "快速热敷，为后续清洁做准备。", imageUrl: "/images/ritual-step-1.png" },
             { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "8分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "/images/ritual-step-2.png" },
@@ -255,6 +258,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "complete",
           name: "完整方案",
+          products: "洁面慕斯、面膜、面霜",
           steps: [
             { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "5分钟", tips: "确保毛巾温度适中，覆盖全脸后轻轻按压。", imageUrl: "/images/ritual-step-1.png" },
             { title: "蒸汽熏蒸", description: "利用蒸汽进一步软化角质。", duration: "5分钟", tips: "距离蒸汽源20cm，避免烫伤。", imageUrl: "/images/ritual-step-1.png" },
@@ -281,6 +285,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "daily",
           name: "日常方案",
+          products: "面霜",
           steps: [
             { title: "手法按摩", description: "用指腹进行轻柔的提拉按摩。", duration: "3分钟", tips: "沿面部轮廓由下往上按摩，每个区域重复5次。", imageUrl: "/images/ritual-step-1.png" },
             { title: "滋养锁水", description: "涂抹面霜锁住活性成分。", duration: "1分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "适量", imageUrl: "/images/ritual-step-2.png" },
@@ -289,6 +294,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "intensive",
           name: "加强方案",
+          products: "面霜、面膜",
           steps: [
             { title: "精油润滑", description: "涂抹按摩油，为刮痧做准备。", duration: "1分钟", tips: "均匀涂抹，确保肌肤润滑。", dosage: "3-4滴", imageUrl: "/images/ritual-step-1.png" },
             { title: "刮痧拨筋", description: "配合刮痧板进行提拉按摩。", duration: "8分钟", tips: "沿面部轮廓由下往上刮拭，力度适中，每个区域重复3-5次。", imageUrl: "/images/ritual-step-1.png" },
@@ -317,6 +323,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "gentle",
           name: "温和方案",
+          products: "洁面慕斯、面霜",
           steps: [
             { title: "酵素软化", description: "使用低浓度酵素温和软化角质。", duration: "5分钟", tips: "适合敏感肌肤，首次使用建议从短时间开始。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
             { title: "舒缓平衡", description: "使用舒缓水恢复肌肤平衡。", duration: "1分钟", tips: "轻拍至完全吸收。", imageUrl: "/images/ritual-step-2.png" },
@@ -325,6 +332,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "professional",
           name: "专业方案",
+          products: "洁面慕斯、面霜、面膜",
           steps: [
             { title: "深层清洁", description: "彻底清洁面部，为焕肤做准备。", duration: "2分钟", tips: "使用洁面慕斯彻底清洁。", imageUrl: "/images/ritual-step-1.png" },
             { title: "酸性激活", description: "软化陈旧角质，促进代谢。", duration: "10分钟", tips: "避免眼周和唇部，如感到刺痛立即清洗。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
@@ -351,6 +359,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "home",
           name: "居家方案",
+          products: "面霜、面膜",
           steps: [
             { title: "精华叠加", description: "使用多层精华进行手动按压导入。", duration: "5分钟", tips: "每层精华等待吸收后再涂抹下一层。", dosage: "2-3种精华", imageUrl: "/images/ritual-step-1.png" },
             { title: "面膜封存", description: "使用保湿面膜加速精华吸收。", duration: "15分钟", tips: "面膜不要等到完全干透再取下。", imageUrl: "/images/ritual-step-2.png" },
@@ -359,6 +368,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "device",
           name: "仪器方案",
+          products: "洁面慕斯、面霜、面膜",
           steps: [
             { title: "洁净准备", description: "彻底清洁面部，确保毛孔畅通。", duration: "2分钟", tips: "可配合热敷打开毛孔。", imageUrl: "/images/ritual-step-1.png" },
             { title: "注氧导入", description: "配合专业注氧仪深层导入精华。", duration: "15分钟", tips: "按设备说明操作，均匀覆盖全脸。", dosage: "根据设备要求", imageUrl: "/images/ritual-step-1.png" },
@@ -1660,10 +1670,10 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               ) : (
                                 <m.section
                                   className={cn(
-                                    "flex w-[75%] items-start justify-end gap-[52px] pb-10",
+                                    "flex w-[75%] items-start pb-10",
                                     currentSteps.length > 3
-                                      ? "overflow-hidden"
-                                      : "overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+                                      ? "justify-start overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-[52px]"
+                                      : "justify-center overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-[80px]"
                                   )}
                                   initial={{ opacity: 0, x: 30 }}
                                   animate={{ opacity: 1, x: 0 }}
@@ -1671,14 +1681,13 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 >
                                   <div
                                     className={cn(
-                                      "flex w-full justify-end gap-[52px]",
-                                      currentSteps.length > 3 && "animate-marquee hover:[animation-play-state:paused]"
+                                      "flex w-full",
+                                      currentSteps.length > 3
+                                        ? "justify-start gap-[52px]"
+                                        : "justify-center gap-[80px]"
                                     )}
                                   >
-                                    {(currentSteps.length > 3
-                                      ? [...currentSteps, ...currentSteps]
-                                      : currentSteps
-                                    ).map((step, index) => (
+                                    {currentSteps.map((step, index) => (
                                       <m.article
                                         key={`${step.title}-${index}`}
                                         className="group flex w-[260px] flex-shrink-0 flex-col gap-5 snap-start h-full"
