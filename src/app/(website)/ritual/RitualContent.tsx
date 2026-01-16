@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, ArrowUpRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { ProductDrawer } from "@/components/website";
@@ -453,6 +453,38 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const { isDrawerOpen, setDrawerOpen } = useLayout();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
+  // 轮播导航状态
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const stepsContainerRef = useRef<HTMLDivElement>(null);
+
+  // 轮播导航函数 - 滚动到指定步骤
+  const scrollToStep = useCallback((index: number) => {
+    if (!stepsContainerRef.current) return;
+    const container = stepsContainerRef.current;
+    const stepWidth = 260 + 52; // 卡片宽度 + 间距
+    const scrollPosition = index * stepWidth;
+    container.scrollTo({
+      left: scrollPosition,
+      behavior: "smooth"
+    });
+    setCurrentStepIndex(index);
+  }, []);
+
+  // 上一步
+  const goToPrevStep = useCallback(() => {
+    if (currentStepIndex > 0) {
+      scrollToStep(currentStepIndex - 1);
+    }
+  }, [currentStepIndex, scrollToStep]);
+
+  // 下一步
+  const goToNextStep = useCallback((totalSteps: number) => {
+    // 当可见区域显示约3张卡片时，最大可滚动索引为 totalSteps - 3
+    if (currentStepIndex < totalSteps - 3) {
+      scrollToStep(currentStepIndex + 1);
+    }
+  }, [currentStepIndex, scrollToStep]);
+
   // 监听 LayoutContext 中的 isDrawerOpen 变化，同步本地 isExpanded 状态
   // 解决：点击底部导航栏时，setDrawerOpen(true) 不会触发本地状态更新的问题
   useEffect(() => {
@@ -572,6 +604,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   // 选择方案（情景）
   const selectScheme = (scheme: Scheme) => {
     setSelectedScheme(scheme);
+    setCurrentStepIndex(0); // 重置轮播索引
     // 如果有子方案，自动选中第一个
     if (scheme.subPlans && scheme.subPlans.length > 0) {
       setSelectedSubPlan(scheme.subPlans[0]);
@@ -605,6 +638,30 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const currentProducts = selectedSubPlan?.products || selectedScheme?.products || "洁面慕斯、面霜";
 
 
+
+  // 监听滚动事件，同步轮播索引 (用户手动滚动时更新)
+  useEffect(() => {
+    const container = stepsContainerRef.current;
+    if (!container) return;
+
+    let scrollTimeout: NodeJS.Timeout;
+
+    const handleScroll = () => {
+      // 使用防抖，避免与点击事件竞争
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const stepWidth = 260 + 52; // 卡片宽度 + 间距
+        const newIndex = Math.round(container.scrollLeft / stepWidth);
+        setCurrentStepIndex(Math.max(0, newIndex));
+      }, 50);
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []); // 移除 currentStepIndex 依赖，避免重复绑定
 
   // 组件加载后自动展开，实现"抽屉下拉"动画
   useEffect(() => {
@@ -1243,7 +1300,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                             {/* 内容主体：左侧边栏 + 右侧网格 */}
                             {/* 内容主体：左侧边栏 + 右侧网格 */}
-                            <div className="flex w-full flex-row gap-16 overflow-hidden items-start pb-10 max-h-[75vh]">
+                            <div className="flex w-full flex-row gap-16 items-start pb-10 max-h-[75vh]">
                               {/* 左侧：信息侧边栏 (Info Sidebar) */}
                               <m.aside
                                 className="flex w-[25%] flex-shrink-0 flex-col gap-12 overflow-y-auto pr-4 scrollbar-thin"
@@ -1669,21 +1726,35 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 </m.section>
                               ) : (
                                 <m.section
-                                  className={cn(
-                                    "flex w-[75%] items-start pb-10",
-                                    currentSteps.length > 3
-                                      ? "justify-start overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-[52px]"
-                                      : "justify-center overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-[80px]"
-                                  )}
+                                  className="flex w-[75%] items-center gap-4 overflow-hidden"
                                   initial={{ opacity: 0, x: 30 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ duration: 0.8, delay: 0.2, ease: [0.19, 1, 0.22, 1] }}
                                 >
+                                  {/* 左箭头 - 独立空间 (仅在步骤数 > 3 时显示) */}
+                                  {currentSteps.length > 3 && (
+                                    <button
+                                      type="button"
+                                      onClick={goToPrevStep}
+                                      disabled={currentStepIndex === 0}
+                                      className={cn(
+                                        "flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300",
+                                        currentStepIndex === 0
+                                          ? "text-brand-charcoal/20 cursor-not-allowed"
+                                          : "text-brand-charcoal/60 hover:border hover:border-brand-gold hover:text-brand-gold hover:bg-brand-gold/5"
+                                      )}
+                                    >
+                                      <ChevronLeft className="h-5 w-5" />
+                                    </button>
+                                  )}
+
+                                  {/* 步骤卡片容器 */}
                                   <div
+                                    ref={stepsContainerRef}
                                     className={cn(
-                                      "flex w-full",
+                                      "flex flex-1 min-w-0 overflow-x-auto scrollbar-hide",
                                       currentSteps.length > 3
-                                        ? "justify-start gap-[52px]"
+                                        ? "justify-start snap-x snap-mandatory gap-[52px]"
                                         : "justify-center gap-[80px]"
                                     )}
                                   >
@@ -1723,6 +1794,23 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                       </m.article>
                                     ))}
                                   </div>
+
+                                  {/* 右箭头 - 独立空间 (仅在步骤数 > 3 时显示) */}
+                                  {currentSteps.length > 3 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => goToNextStep(currentSteps.length)}
+                                      disabled={currentStepIndex >= currentSteps.length - 3}
+                                      className={cn(
+                                        "flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300",
+                                        currentStepIndex >= currentSteps.length - 3
+                                          ? "text-brand-charcoal/20 cursor-not-allowed"
+                                          : "text-brand-charcoal/60 hover:border hover:border-brand-gold hover:text-brand-gold hover:bg-brand-gold/5"
+                                      )}
+                                    >
+                                      <ChevronRight className="h-5 w-5" />
+                                    </button>
+                                  )}
                                 </m.section>
                               )}
                             </div>
