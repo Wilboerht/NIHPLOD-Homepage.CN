@@ -1030,10 +1030,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             <div className="flex w-full flex-row gap-16 overflow-hidden items-start pb-10 max-h-[75vh]">
                               {/* 左侧：信息侧边栏 (Info Sidebar) */}
                               <m.aside
-                                className={cn(
-                                  "flex flex-shrink-0 flex-col gap-12 overflow-y-auto pr-4 scrollbar-thin",
-                                  selectedModule === "portable" ? "w-[420px]" : "w-[360px]"
-                                )}
+                                className="flex w-[25%] flex-shrink-0 flex-col gap-12 overflow-y-auto pr-4 scrollbar-thin"
                                 initial={{ opacity: 0, x: -30 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.8, delay: 0.1, ease: [0.19, 1, 0.22, 1] }}
@@ -1392,7 +1389,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                       className="h-7 w-auto"
                                     />
                                     <img
-                                      src="/images/intertek.png"
+                                      src="/images/intertek-logo.png"
                                       alt="Intertek"
                                       title="Intertek 质量认证"
                                       className="h-7 w-auto"
@@ -1416,21 +1413,24 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               {/* 右侧：步骤网格 (Steps Grid) */}
                               {selectedModule === "portable" ? (
                                 <m.section
-                                  className="flex flex-1 items-center justify-end overflow-hidden"
+                                  className="flex w-[75%] items-center justify-end overflow-hidden"
                                   initial={{ opacity: 0, x: 30 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ duration: 0.8, delay: 0.2, ease: [0.19, 1, 0.22, 1] }}
                                 >
-                                  <img
-                                    src="/images/portable-ritual.png"
+                                  <Image
+                                    src="/images/portable-ritual.webp"
                                     alt="Portable Ritual"
+                                    width={1200}
+                                    height={800}
                                     className="max-w-[85%] max-h-[90%] object-contain object-right-top"
+                                    priority
                                   />
                                 </m.section>
                               ) : (
                                 <m.section
                                   className={cn(
-                                    "flex flex-1 items-start justify-end gap-[52px] pb-10",
+                                    "flex w-[75%] items-start justify-end gap-[52px] pb-10",
                                     selectedScheme.steps.length > 3
                                       ? "overflow-hidden"
                                       : "overflow-x-auto scrollbar-hide snap-x snap-mandatory"
