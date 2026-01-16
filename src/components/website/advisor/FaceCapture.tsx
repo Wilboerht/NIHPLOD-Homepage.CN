@@ -168,12 +168,24 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.warn("Video playback failed but stream is active:", playErr);
+          // 忽略播放中断等非致命错误，只要流可以正常获取即可
+        }
       }
 
       setIsLoading(false);
     } catch (err) {
       console.error("Camera error:", err);
+
+      // 如果流已经获取成功，或者是播放错误导致的跳转，不应视为严重错误
+      // 检查 err 是否是 'AbortError' 或类似的非权限错误
+      if ((err as Error)?.name === 'AbortError') {
+        console.warn("Camera init interrupted, ignoring.");
+        return;
+      }
 
       let errorMessage = "无法访问摄像头，请检查权限设置或使用上传功能";
       const errorName = (err as Error)?.name;

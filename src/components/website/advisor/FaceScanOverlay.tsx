@@ -100,21 +100,21 @@ export function FaceScanOverlay({
                         <div className="relative flex items-center justify-center">
                             {faceStatus === "ready" ? (
                                 <Check className="h-6 w-6 stroke-[3]" />
-                            ) : currentStep === "front" ? (
-                                <ScanLine className="h-6 w-6 text-brand-gold/80" />
                             ) : (
-                                // 转头图标
                                 <div className="relative">
-                                    {currentStep === "left"
-                                        ? <ChevronLeft className="h-7 w-7 text-brand-gold" />
-                                        : currentStep === "right"
-                                            ? <ChevronRight className="h-7 w-7 text-brand-gold" />
-                                            : <ChevronUp className="h-7 w-7 text-brand-gold" />
-                                    }
+                                    {currentStep === "front" ? (
+                                        <ScanLine className="h-6 w-6 text-brand-gold/80" />
+                                    ) : currentStep === "left" ? (
+                                        <ChevronLeft className="h-7 w-7 text-brand-gold" />
+                                    ) : currentStep === "right" ? (
+                                        <ChevronRight className="h-7 w-7 text-brand-gold" />
+                                    ) : (
+                                        <ChevronUp className="h-7 w-7 text-brand-gold" />
+                                    )}
                                 </div>
                             )}
 
-                            {/* 识别中的动态光圈 (仅在未完成且非Front时增强提示，或者Front识别时) */}
+                            {/* 识别中的动态光圈 */}
                             {faceStatus === "detecting" && (
                                 <m.div
                                     className="absolute inset-0 rounded-full border-2 border-brand-gold/30 border-t-brand-gold"
@@ -132,12 +132,12 @@ export function FaceScanOverlay({
                                 faceStatus === "ready" ? "text-white" : "text-gray-800"
                             )}>
                                 {faceStatus === "ready" ? "扫描完成" :
-                                    currentStep === "front" ? "正对屏幕" :
-                                        currentStep === "left" ? "向左转头" :
-                                            currentStep === "right" ? "向右转头" : "微微抬头"}
+                                    currentStep === "front" ? "请正对屏幕" :
+                                        currentStep === "left" ? "请向左转头" :
+                                            currentStep === "right" ? "请向右转头" : "请微微抬头"}
                             </span>
 
-                            {/* 状态子标题 (整合进胶囊，不再悬浮) */}
+                            {/* 状态子标题 */}
                             <AnimatePresence mode="wait">
                                 {faceStatus === "detecting" ? (
                                     <m.span
