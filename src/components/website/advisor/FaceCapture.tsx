@@ -187,7 +187,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
         return;
       }
 
-      let errorMessage = "无法访问摄像头，请检查权限设置或使用上传功能";
+      let errorMessage = "无法访问摄像头，请检查权限设置";
       const errorName = (err as Error)?.name;
 
       if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
@@ -197,7 +197,7 @@ export function FaceCapture({ onCapture }: FaceCaptureProps) {
       } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
         errorMessage = "摄像头可能被其他应用占用（如微信/Zoom），请关闭后重试";
       } else if (errorName === 'OverconstrainedError') {
-        errorMessage = "摄像头不支持请求的分辨率，请尝试使用上传功能";
+        errorMessage = "摄像头不支持请求的分辨率，请更换设备重试";
       }
 
       setError(errorMessage);
