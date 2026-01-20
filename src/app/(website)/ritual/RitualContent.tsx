@@ -29,18 +29,18 @@ const modules: ModuleConfig[] = [
     description: "每日专属的精简守护"
   },
   {
-    id: "portable",
+    id: "spa",
     number: "02",
+    label: "居家仪式",
+    subtitle: "让生活充满仪式感",
+    description: "享受DIY的美好时光"
+  },
+  {
+    id: "portable",
+    number: "03",
     label: "随身好物",
     subtitle: "外出 / 通勤 / 旅行",
     description: "随时随地按需使用"
-  },
-  {
-    id: "spa",
-    number: "03",
-    label: "居家SPA",
-    subtitle: "让生活充满仪式感",
-    description: "享受DIY的美好时光"
   },
   {
     id: "professional",
@@ -234,75 +234,37 @@ const defaultModuleData: ModuleData = {
   spa: [
     {
       id: "s1",
-      name: "热能排浊",
-      nameEn: "THERMAL DETOX",
-      tag: "排毒",
-      desc: "家中的恒温理疗体验",
-      totalDuration: "20分钟",
-      products: "热敷毛巾、清洁面膜",
-      benefits: ["毛孔清洁", "促进循环"],
+      name: "面部方案",
+      nameEn: "FACE RITUAL",
+      tag: "面部",
+      desc: "仅需 4 个步骤",
+      totalDuration: "30分钟",
+      products: "洁面慕斯、磨砂膏、护理油、面霜、面膜",
+      benefits: ["深层清洁", "多重修护", "提亮肤质", "增强免疫"],
       steps: [
-        { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "3-5分钟", tips: "确保毛巾温度适中，覆盖全脸后轻轻按压。", imageUrl: "/images/ritual-step-1.png" },
-        { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "10-15分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "/images/ritual-step-2.png" },
+        { title: "基础净肤", description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。", duration: "2分钟", tips: "温水洗净，避免过冷或过热刺激。", dosage: "2泵", imageUrl: "/images/ritual-step-1.png" },
+        { title: "深层清理", description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。", duration: "3-5分钟", tips: "避开眼唇周围，轻柔按摩。", dosage: "适量", imageUrl: "/images/ritual-step-1.png" },
+        { title: "混油养肤", description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。", duration: "3-5分钟", tips: "掌心温热混合后效果更佳。", dosage: "适量混合", imageUrl: "/images/ritual-step-2.png" },
+        { title: "膜法封存", description: "承接上个步骤，无需对面部做额外清理，将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养，有效提亮肤质、增强肌肤免疫力。", duration: "15分钟", tips: "无需清洗，剩余精华按摩至吸收。", imageUrl: "/images/ritual-step-2.png" },
       ],
-      subPlans: [
-        {
-          id: "quick",
-          name: "快速方案",
-          products: "洁面慕斯、面膜",
-          steps: [
-            { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "3分钟", tips: "快速热敷，为后续清洁做准备。", imageUrl: "/images/ritual-step-1.png" },
-            { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "8分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "/images/ritual-step-2.png" },
-          ]
-        },
-        {
-          id: "complete",
-          name: "完整方案",
-          products: "洁面慕斯、面膜、面霜",
-          steps: [
-            { title: "热敷开启", description: "42度恒温毛巾覆盖，打开毛孔。", duration: "5分钟", tips: "确保毛巾温度适中，覆盖全脸后轻轻按压。", imageUrl: "/images/ritual-step-1.png" },
-            { title: "蒸汽熏蒸", description: "利用蒸汽进一步软化角质。", duration: "5分钟", tips: "距离蒸汽源20cm，避免烫伤。", imageUrl: "/images/ritual-step-1.png" },
-            { title: "粘土清洁", description: "深层吸附毛孔深处杂质。", duration: "15分钟", tips: "避开眼周，待面膜八分干时用温水洗净。", dosage: "均匀涂抹一层", imageUrl: "/images/ritual-step-2.png" },
-            { title: "收缩毛孔", description: "使用冷敷收缩毛孔，锁住清洁效果。", duration: "3分钟", tips: "可使用冰敷面膜或冷藏的化妆水。", imageUrl: "/images/ritual-step-3.png" },
-          ]
-        }
-      ]
     },
     {
       id: "s2",
-      name: "丝滑塑颜",
-      nameEn: "SILKY CONTOURING",
-      tag: "紧致",
-      desc: "塑造面部清晰轮廓",
-      totalDuration: "10分钟",
-      products: "按摩油、刮痧板",
-      benefits: ["提拉紧致", "淋巴排毒"],
+      name: "全身方案",
+      nameEn: "FULL BODY RITUAL",
+      tag: "全身",
+      desc: "仅需 6 个步骤",
+      totalDuration: "45分钟",
+      products: "洁面慕斯、磨砂膏、护理油、面霜、面膜、身体乳",
+      benefits: ["全身放松", "柔嫩肌肤", "滋养修护", "延缓衰老"],
       steps: [
-        { title: "拨筋手法", description: "配合刮痧板进行提拉按摩。", duration: "5-8分钟", tips: "沿面部轮廓由下往上刮拭，力度适中，每个区域重复3-5次。", imageUrl: "/images/ritual-step-1.png" },
-        { title: "高倍滋养", description: "注入浓缩修护能量。", duration: "2分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "3-4泵", imageUrl: "/images/ritual-step-2.png" },
+        { title: "基础净肤", description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。", duration: "2分钟", tips: "温水洗净，避免过冷或过热刺激。", dosage: "2泵", imageUrl: "/images/ritual-step-1.png" },
+        { title: "深层清理", description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。", duration: "3-5分钟", tips: "打圈按摩，力度适中。", dosage: "适量", imageUrl: "/images/ritual-step-1.png" },
+        { title: "膜法守护", description: "取一片面膜完整贴合面部，静享 10-15 分钟后移除膜布 (可与泡澡环节同时进行)；确保珍贵成分能有效被面部吸收。", duration: "15分钟", tips: "可配合泡澡一同进行。", imageUrl: "/images/ritual-step-2.png" },
+        { title: "芳香浸愈 (可选)", description: "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。", duration: "15-20分钟", tips: "水温控制在38-40度为宜。", dosage: "几滴", imageUrl: "/images/ritual-step-2.png" },
+        { title: "全身滋养", description: "取适量身体乳，于掌心混合温热，从四肢向心脏方向进行长推式按摩，重点护理颈部、小腿、手臂及腹部；若所处的外部环境湿度/温度较低，建议额外按照 1:5 比例混合护理油加强滋润效果。", duration: "5分钟", tips: "趁身体微湿时涂抹效果更佳。", dosage: "充足", imageUrl: "/images/ritual-step-2.png" },
+        { title: "面部呵护", description: "取适量面霜，以由下至上、由内而外的手法进行全脸提拉按摩，重点按压眼周、法令纹及额头区域；确保全身及面部被完全呵护，实现更全面的修护及滋养，有效提亮肤质和弹性、延缓衰老、增强肌肤免疫力。", duration: "5分钟", tips: "配合按摩手法促进吸收。", dosage: "适量", imageUrl: "/images/ritual-step-2.png" },
       ],
-      subPlans: [
-        {
-          id: "daily",
-          name: "日常方案",
-          products: "面霜",
-          steps: [
-            { title: "手法按摩", description: "用指腹进行轻柔的提拉按摩。", duration: "3分钟", tips: "沿面部轮廓由下往上按摩，每个区域重复5次。", imageUrl: "/images/ritual-step-1.png" },
-            { title: "滋养锁水", description: "涂抹面霜锁住活性成分。", duration: "1分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "适量", imageUrl: "/images/ritual-step-2.png" },
-          ]
-        },
-        {
-          id: "intensive",
-          name: "加强方案",
-          products: "面霜、面膜",
-          steps: [
-            { title: "精油润滑", description: "涂抹按摩油，为刮痧做准备。", duration: "1分钟", tips: "均匀涂抹，确保肌肤润滑。", dosage: "3-4滴", imageUrl: "/images/ritual-step-1.png" },
-            { title: "刮痧拨筋", description: "配合刮痧板进行提拉按摩。", duration: "8分钟", tips: "沿面部轮廓由下往上刮拭，力度适中，每个区域重复3-5次。", imageUrl: "/images/ritual-step-1.png" },
-            { title: "淋巴引流", description: "沿淋巴走向轻柔引流，排出废物。", duration: "3分钟", tips: "从面部中央向耳后引流，再向锁骨方向按摩。", imageUrl: "/images/ritual-step-2.png" },
-            { title: "高倍滋养", description: "注入浓缩修护能量。", duration: "2分钟", tips: "趁肌肤温热时涂抹，按压至完全吸收。", dosage: "3-4泵", imageUrl: "/images/ritual-step-2.png" },
-          ]
-        }
-      ]
     },
   ],
   professional: [
