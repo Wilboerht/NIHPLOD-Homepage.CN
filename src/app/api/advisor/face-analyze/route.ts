@@ -8,7 +8,8 @@ import {
   QWEN_VISION_PROMPT,
 } from "@/config/ai-prompts";
 import { aiLogger } from "@/lib/logger";
-import { getAISettings, getApiKeyForProvider } from "@/lib/ai";
+import { getAISettings, getApiKeysForProvider } from "@/lib/ai";
+import { aiLogger as logger } from "@/lib/logger";
 import {
   type FaceAnalysisResult,
   getDefaultFaceAnalysisResult,
@@ -657,13 +658,42 @@ function createQwenConfig(apiKey: string, model: string, customSystemPrompt?: st
  * @param customSystemPrompt 自定义系统提示词
  */
 async function analyzeWithGPT4V(images: ImageInfo[], model?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
-  const apiKey = getApiKeyForProvider("openai");
-  if (!apiKey) {
+  const apiKeys = getApiKeysForProvider("openai");
+  if (apiKeys.length === 0) {
     throw new Error("AI: OpenAI API key not configured");
   }
 
-  const config = createOpenAIConfig(apiKey, model || "gpt-4o", customSystemPrompt);
-  return callVisionAPI(config, images);
+  let lastError: Error | null = null;
+
+  // 遍历所有可用的 Keys 进行轮询
+  for (let i = 0; i < apiKeys.length; i++) {
+    const apiKey = apiKeys[i];
+    try {
+      if (i > 0) {
+        logger.info(`Retrying OpenAI Vision with backup Key ${i + 1}/${apiKeys.length}`);
+      }
+      const config = createOpenAIConfig(apiKey, model || "gpt-4o", customSystemPrompt);
+      return await callVisionAPI(config, images);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = lastError.message.toLowerCase();
+
+      // 检查是否是可重试的错误
+      const isRetryable = errorMessage.includes("429") ||
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("quota") ||
+        errorMessage.includes("401") ||
+        errorMessage.includes("unauthorized");
+
+      if (isRetryable && i < apiKeys.length - 1) {
+        logger.warn(`OpenAI Key ${i + 1} failed, trying next: ${lastError.message}`);
+        continue;
+      }
+      throw lastError;
+    }
+  }
+
+  throw lastError || new Error("AI: All OpenAI API keys failed");
 }
 
 /**
@@ -672,13 +702,41 @@ async function analyzeWithGPT4V(images: ImageInfo[], model?: string, customSyste
  * @param customSystemPrompt 自定义系统提示词
  */
 async function analyzeWithClaudeVision(images: ImageInfo[], model?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
-  const apiKey = getApiKeyForProvider("anthropic");
-  if (!apiKey) {
+  const apiKeys = getApiKeysForProvider("anthropic");
+  if (apiKeys.length === 0) {
     throw new Error("AI: Anthropic API key not configured");
   }
 
-  const config = createAnthropicConfig(apiKey, model || "claude-sonnet-4-20250514", customSystemPrompt);
-  return callVisionAPI(config, images);
+  let lastError: Error | null = null;
+
+  // 遍历所有可用的 Keys 进行轮询
+  for (let i = 0; i < apiKeys.length; i++) {
+    const apiKey = apiKeys[i];
+    try {
+      if (i > 0) {
+        logger.info(`Retrying Claude Vision with backup Key ${i + 1}/${apiKeys.length}`);
+      }
+      const config = createAnthropicConfig(apiKey, model || "claude-sonnet-4-20250514", customSystemPrompt);
+      return await callVisionAPI(config, images);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = lastError.message.toLowerCase();
+
+      const isRetryable = errorMessage.includes("429") ||
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("quota") ||
+        errorMessage.includes("401") ||
+        errorMessage.includes("unauthorized");
+
+      if (isRetryable && i < apiKeys.length - 1) {
+        logger.warn(`Anthropic Key ${i + 1} failed, trying next: ${lastError.message}`);
+        continue;
+      }
+      throw lastError;
+    }
+  }
+
+  throw lastError || new Error("AI: All Anthropic API keys failed");
 }
 
 /**
@@ -687,16 +745,45 @@ async function analyzeWithClaudeVision(images: ImageInfo[], model?: string, cust
  * @param customSystemPrompt 自定义系统提示词
  */
 async function analyzeWithQwenVL(images: ImageInfo[], modelOverride?: string, customSystemPrompt?: string): Promise<FaceAnalysisResult> {
-  const apiKey = getApiKeyForProvider("qwen");
-  if (!apiKey) {
+  const apiKeys = getApiKeysForProvider("qwen");
+  if (apiKeys.length === 0) {
     throw new Error("AI: 通义千问 API key not configured");
   }
 
   const model = modelOverride || process.env.QWEN_VL_MODEL || "qwen-vl-max";
-  aiLogger.info("Calling Qwen VL API", { model, imageCount: images.length });
+  let lastError: Error | null = null;
 
-  const config = createQwenConfig(apiKey, model, customSystemPrompt);
-  return callVisionAPI(config, images);
+  // 遍历所有可用的 Keys 进行轮询
+  for (let i = 0; i < apiKeys.length; i++) {
+    const apiKey = apiKeys[i];
+    try {
+      if (i > 0) {
+        logger.info(`Retrying Qwen VL with backup Key ${i + 1}/${apiKeys.length}`);
+      } else {
+        aiLogger.info("Calling Qwen VL API", { model, imageCount: images.length, keyIndex: i + 1, totalKeys: apiKeys.length });
+      }
+      const config = createQwenConfig(apiKey, model, customSystemPrompt);
+      return await callVisionAPI(config, images);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = lastError.message.toLowerCase();
+
+      const isRetryable = errorMessage.includes("429") ||
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("quota") ||
+        errorMessage.includes("401") ||
+        errorMessage.includes("unauthorized") ||
+        errorMessage.includes("insufficient");
+
+      if (isRetryable && i < apiKeys.length - 1) {
+        logger.warn(`Qwen Key ${i + 1} failed, trying next: ${lastError.message}`);
+        continue;
+      }
+      throw lastError;
+    }
+  }
+
+  throw lastError || new Error("AI: All Qwen API keys failed");
 }
 
 /**

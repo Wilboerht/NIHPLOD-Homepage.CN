@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { UNIFIED_ANALYSIS_SYSTEM_PROMPT } from "@/config/ai-prompts";
-import { getAISettings, getApiKeyForProvider } from "@/lib/ai";
+import { getAISettings, getApiKeysForProvider } from "@/lib/ai";
 import { aiLogger } from "@/lib/logger";
+import { aiQueue } from "@/lib/ai-queue";
 
 // 定义请求 Schema
 const ComprehensiveRequestSchema = z.object({
@@ -28,7 +29,11 @@ interface UnifiedAnalysisResult {
 /**
  * POST /api/advisor/comprehensive
  * 统一分析 API - 整合视觉分析和综合建议
- * 相比分步调用，速度提升 40-50%
+ * 
+ * 功能：
+ * - 整合视觉分析和综合建议，速度提升 40-50%
+ * - 支持 AI 请求队列，高峰期有序处理
+ * - 响应头包含排队信息：X-Queue-Position, X-Queue-Wait-Seconds
  */
 export async function POST(request: NextRequest) {
   try {
@@ -73,13 +78,42 @@ export async function POST(request: NextRequest) {
     // 3. 构建 Prompt
     const userPrompt = buildUserPrompt(answers, validImages);
 
-    // 4. 调用 AI
-    const aiResult = await callUnifiedAI(validImages, userPrompt);
-
-    return NextResponse.json({
-      success: true,
-      data: aiResult,
+    // 4. 将请求加入队列
+    const queueResult = aiQueue.enqueue("comprehensive-analyze", async () => {
+      return await callUnifiedAI(validImages, userPrompt);
     });
+
+    // 记录初始排队位置
+    const initialPosition = queueResult.position;
+    const initialWaitSeconds = queueResult.estimatedWaitSeconds;
+
+    aiLogger.info("Comprehensive analysis queued", {
+      requestId: queueResult.requestId,
+      position: initialPosition,
+      estimatedWaitSeconds: initialWaitSeconds,
+    });
+
+    // 5. 等待结果
+    const aiResult = await queueResult.promise;
+
+    // 6. 返回结果，附带队列信息
+    return NextResponse.json(
+      {
+        success: true,
+        data: aiResult,
+        queue: {
+          requestId: queueResult.requestId,
+          initialPosition,
+          initialWaitSeconds,
+        },
+      },
+      {
+        headers: {
+          "X-Queue-Position": String(initialPosition),
+          "X-Queue-Wait-Seconds": String(initialWaitSeconds),
+        },
+      }
+    );
 
   } catch (error) {
     aiLogger.error("Unified analysis error", { error: String(error) });
@@ -117,7 +151,7 @@ ${profile}
 }
 
 /**
- * 调用 AI
+ * 调用 AI（支持多 Key 轮询）
  */
 async function callUnifiedAI(
   images: { angle: string; data: string }[],
@@ -128,19 +162,18 @@ async function callUnifiedAI(
   // 优先使用 visionProvider，因为这是一个多模态任务
   const provider = settings.visionProvider || "openai";
   const model = settings.visionModel || "gpt-4o";
-  const apiKey = getApiKeyForProvider(provider);
+  const apiKeys = getApiKeysForProvider(provider);
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     aiLogger.error("Unified Analysis: API Key missing", { provider });
     throw new Error(`AI API Key not configured for provider: ${provider}`);
   }
 
-  aiLogger.info("Starting Unified Analysis", { provider, model, imageCount: images.length });
+  aiLogger.info("Starting Unified Analysis", { provider, model, imageCount: images.length, keyCount: apiKeys.length });
 
   // 2. 确定 Base URL
   let baseUrl = "https://api.openai.com/v1";
   if (provider === "qwen") {
-    // 通义千问兼容接口
     baseUrl = process.env.QWEN_API_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1";
   } else if (provider === "deepseek") {
     baseUrl = process.env.DEEPSEEK_API_URL || "https://api.deepseek.com/v1";
@@ -159,7 +192,7 @@ async function callUnifiedAI(
           { type: "text", text: userPrompt },
           ...images.map(img => ({
             type: "image_url",
-            image_url: { url: img.data } // 大部分兼容接口自动推断 detail
+            image_url: { url: img.data }
           }))
         ]
       }
@@ -169,72 +202,99 @@ async function callUnifiedAI(
     response_format: { type: "json_object" }
   };
 
-  // 4. 执行 API 调用 (带重试机制)
-  const MAX_RETRIES = 3;
+  // 4. 执行 API 调用 - 支持多 Key 轮询
   let lastError: unknown = null;
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      if (attempt > 1) {
-        aiLogger.info(`Retrying Unified Analysis (Attempt ${attempt}/${MAX_RETRIES})...`);
-        // 简单的指数退避
-        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
-      }
+  // 遍历所有可用的 Keys
+  for (let keyIndex = 0; keyIndex < apiKeys.length; keyIndex++) {
+    const apiKey = apiKeys[keyIndex];
+    const MAX_RETRIES = 2; // 每个 Key 最多重试 2 次
 
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(requestBody),
-        // 增加 Signal 以支持自定义超时 (如 30s)
-        signal: AbortSignal.timeout(60000) // 1分钟总超时，防止连接无限挂起
-      });
-
-      if (!response.ok) {
-        const err = await response.text();
-
-        // 如果是 5xx 错误或 429，应该重试
-        if (response.status >= 500 || response.status === 429) {
-          throw new Error(`${provider} API Server Error (${response.status}): ${err}`);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (keyIndex > 0 || attempt > 1) {
+          aiLogger.info(`Unified Analysis: Key ${keyIndex + 1}/${apiKeys.length}, Attempt ${attempt}/${MAX_RETRIES}`);
+          await new Promise(r => setTimeout(r, 1000 * attempt));
         }
 
-        // 4xx 错误通常不重试 (除 429)
-        aiLogger.error("Unified Analysis API Client Error", { provider, status: response.status, error: err });
-        throw new Error(`${provider} API Client Error: ${err}`);
+        const response = await fetch(`${baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(60000)
+        });
+
+        if (!response.ok) {
+          const err = await response.text();
+          const errorLower = err.toLowerCase();
+
+          // 检查是否可以切换 Key 的错误
+          const isKeyError = response.status === 401 ||
+            response.status === 429 ||
+            errorLower.includes("quota") ||
+            errorLower.includes("rate limit") ||
+            errorLower.includes("unauthorized");
+
+          if (isKeyError && keyIndex < apiKeys.length - 1) {
+            aiLogger.warn(`Key ${keyIndex + 1} failed, switching to next key`, { status: response.status });
+            break; // 跳出 attempt 循环，进入下一个 key
+          }
+
+          // 服务端错误可以重试
+          if (response.status >= 500 || response.status === 429) {
+            throw new Error(`${provider} API Server Error (${response.status}): ${err}`);
+          }
+
+          aiLogger.error("Unified Analysis API Client Error", { provider, status: response.status, error: err });
+          throw new Error(`${provider} API Client Error: ${err}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices[0]?.message?.content;
+
+        if (!content) {
+          throw new Error("Empty response from AI");
+        }
+
+        // 解析结果
+        const cleanContent = content.replace(/```json\s*|\s*```/g, "").trim();
+        return JSON.parse(cleanContent) as UnifiedAnalysisResult;
+
+      } catch (e) {
+        lastError = e;
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        const isNetworkError = e instanceof Error && (e.name === 'AbortError' || errorMessage.includes('fetch'));
+        const isServerError = errorMessage.includes('Server Error');
+
+        console.warn(`[Unified Analysis] Key ${keyIndex + 1}, Attempt ${attempt} failed: ${errorMessage}`);
+
+        // 网络错误或服务端错误可以重试
+        if (attempt < MAX_RETRIES && (isNetworkError || isServerError)) {
+          continue;
+        }
+
+        // 如果是 Key 相关的错误，尝试下一个 Key
+        const isKeyRelated = errorMessage.includes("429") ||
+          errorMessage.includes("401") ||
+          errorMessage.includes("quota") ||
+          errorMessage.includes("rate");
+        if (isKeyRelated && keyIndex < apiKeys.length - 1) {
+          break; // 进入下一个 key
+        }
+
+        // 其他错误直接抛出
+        if (!isNetworkError && !isServerError) {
+          throw e;
+        }
       }
-
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content;
-
-      if (!content) {
-        throw new Error("Empty response from AI");
-      }
-
-      // 解析结果
-      const cleanContent = content.replace(/```json\s*|\s*```/g, "").trim();
-      return JSON.parse(cleanContent) as UnifiedAnalysisResult;
-
-    } catch (e) {
-      lastError = e;
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      const isNetworkError = e instanceof Error && (e.name === 'AbortError' || errorMessage.includes('fetch'));
-      const isServerError = errorMessage.includes('Server Error');
-
-      console.warn(`[Unified Analysis] Attempt ${attempt} failed: ${errorMessage}`);
-
-      // 只有网络错误或服务端错误才重试
-      if (attempt < MAX_RETRIES && (isNetworkError || isServerError)) {
-        continue;
-      }
-
-      // 如果不是可重试的错误，或已达最大重试次数，则抛出
-      break;
     }
   }
 
-  aiLogger.error("Unified Analysis Failed after retries", { error: lastError });
+  aiLogger.error("Unified Analysis Failed after all keys and retries", { error: lastError });
   const finalErrorMessage = lastError instanceof Error ? lastError.message : String(lastError);
   throw new Error(`Failed to process unified analysis: ${finalErrorMessage || "Unknown error"}`);
 }
+

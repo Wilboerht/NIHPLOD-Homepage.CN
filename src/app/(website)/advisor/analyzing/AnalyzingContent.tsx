@@ -3,12 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { Sparkles, Heart, Camera, FileText, RefreshCw } from "lucide-react";
+import { Sparkles, Heart, Camera, FileText, RefreshCw, Users } from "lucide-react";
 import { preprocessFaceImage } from "@/lib/image-processing";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 
 /** 失败类型 */
 type FailureType = "face" | "questionnaire" | null;
+
+/** 排队状态 */
+interface QueueStatus {
+  isQueuing: boolean;
+  position: number;
+  estimatedWaitSeconds: number;
+}
 
 /** 加载提示文案 - 高奢品牌语调 */
 const LOADING_TIPS = [
@@ -39,8 +46,9 @@ export function AnalyzingContent() {
   const [tipIndex, setTipIndex] = useState(0);
   const [factIndex, setFactIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [failureType, setFailureType] = useState<FailureType>(null); // 记录失败类型
-  const [medicalAdvice, setMedicalAdvice] = useState<string | null>(null); // 就医建议（需要特殊温和展示）
+  const [failureType, setFailureType] = useState<FailureType>(null);
+  const [medicalAdvice, setMedicalAdvice] = useState<string | null>(null);
+  const [queueStatus, setQueueStatus] = useState<QueueStatus>({ isQueuing: false, position: 0, estimatedWaitSeconds: 0 });
   const hasStarted = useRef(false);
 
   /**
@@ -107,6 +115,21 @@ export function AnalyzingContent() {
       try {
         setProgress((prev) => Math.max(prev, 30)); // 开始分析
 
+        // 先检查队列状态
+        try {
+          const queueRes = await fetch("/api/advisor/queue-status");
+          const queueData = await queueRes.json();
+          if (queueData.success && queueData.data.isBusy) {
+            setQueueStatus({
+              isQueuing: true,
+              position: queueData.data.queueLength + 1,
+              estimatedWaitSeconds: queueData.data.estimatedWaitSeconds,
+            });
+          }
+        } catch {
+          // 队列状态检查失败不影响主流程
+        }
+
         const res = await fetch("/api/advisor/comprehensive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -115,6 +138,9 @@ export function AnalyzingContent() {
             images: imagesToAnalyze,
           }),
         });
+
+        // 请求完成，清除排队状态
+        setQueueStatus({ isQueuing: false, position: 0, estimatedWaitSeconds: 0 });
 
         // 模拟更快的进度，因为是并行/统一处理
         setProgress((prev) => Math.max(prev, 60));
@@ -458,17 +484,38 @@ export function AnalyzingContent() {
         {/* 动态提示文案 */}
         <div className="mb-6 h-8 sm:mb-8">
           <AnimatePresence mode="wait">
-            <m.div
-              key={tipIndex}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-              className="flex items-center justify-center gap-2 text-sm font-light tracking-wide text-brand-charcoal sm:gap-2.5"
-            >
-              <span className="text-lg sm:text-xl">{currentTip.icon}</span>
-              <span>{currentTip.text}</span>
-            </m.div>
+            {queueStatus.isQueuing ? (
+              // 排队状态显示
+              <m.div
+                key="queue"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center gap-1"
+              >
+                <div className="flex items-center gap-2 text-sm text-brand-gold">
+                  <Users className="h-4 w-4" />
+                  <span>当前排队中，您前面还有 {queueStatus.position} 位</span>
+                </div>
+                <span className="text-xs text-brand-charcoal/50">
+                  预计等待约 {queueStatus.estimatedWaitSeconds} 秒
+                </span>
+              </m.div>
+            ) : (
+              // 正常提示文案
+              <m.div
+                key={tipIndex}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="flex items-center justify-center gap-2 text-sm font-light tracking-wide text-brand-charcoal sm:gap-2.5"
+              >
+                <span className="text-lg sm:text-xl">{currentTip.icon}</span>
+                <span>{currentTip.text}</span>
+              </m.div>
+            )}
           </AnimatePresence>
         </div>
 
