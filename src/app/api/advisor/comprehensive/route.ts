@@ -62,11 +62,23 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { answers, images } = result.data as { answers: any; images: any };
 
-    // 收集有效图片
+    // 收集有效图片（支持 Base64 和 URL）
     const validImages: { angle: string; data: string }[] = [];
-    if (images.front?.startsWith("data:image/")) validImages.push({ angle: "正脸", data: images.front });
-    if (images.left?.startsWith("data:image/")) validImages.push({ angle: "左侧", data: images.left });
-    if (images.right?.startsWith("data:image/")) validImages.push({ angle: "右侧", data: images.right });
+    const ossUrlsToDelete: string[] = [];
+
+    const addImage = (angle: string, data?: string) => {
+      if (!data) return;
+      if (data.startsWith("data:image/") || data.startsWith("http")) {
+        validImages.push({ angle, data });
+        if (data.startsWith("http") && data.includes("aliyuncs.com")) {
+          ossUrlsToDelete.push(data);
+        }
+      }
+    };
+
+    addImage("正脸", images.front);
+    addImage("左侧", images.left);
+    addImage("右侧", images.right);
 
     if (validImages.length === 0) {
       return NextResponse.json(
@@ -80,7 +92,18 @@ export async function POST(request: NextRequest) {
 
     // 4. 将请求加入队列
     const queueResult = aiQueue.enqueue("comprehensive-analyze", async () => {
-      return await callUnifiedAI(validImages, userPrompt);
+      try {
+        const result = await callUnifiedAI(validImages, userPrompt);
+        return result;
+      } finally {
+        // 分析完成后（无论成功失败），立即触发删除 OSS 隐私文件
+        if (ossUrlsToDelete.length > 0) {
+          // 异步删除，不阻塞返回
+          import("@/lib/ali-oss").then(({ deleteOSSFiles }) => {
+            deleteOSSFiles(ossUrlsToDelete).catch(e => console.error("OSS cleanup failed:", e));
+          });
+        }
+      }
     });
 
     // 记录初始排队位置

@@ -14,11 +14,27 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // 创建连接池（单例）
+// 创建连接池（单例）
+const poolConfig: pg.PoolConfig = {
+  connectionString: process.env.DATABASE_URL,
+  // 连接池优化配置
+  // 生产环境：限制最大连接数
+  // 建议值：
+  // 2核4G -> 10
+  // 4核8G -> 20-30
+  // 公式：CPU核心数 * 2 + 磁盘IO并发数
+  max: process.env.DATABASE_MAX_CONNECTIONS
+    ? parseInt(process.env.DATABASE_MAX_CONNECTIONS)
+    : (process.env.NODE_ENV === "production" ? 20 : 20),
+  // 连接空闲 30秒后释放，节省资源
+  idleTimeoutMillis: 30000,
+  // 获取连接等待超时 5秒，避免请求长时间卡死
+  connectionTimeoutMillis: 5000,
+};
+
 const pool =
   globalForPrisma.pool ??
-  new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
+  new pg.Pool(poolConfig);
 
 // 创建 adapter
 const adapter = new PrismaPg(pool);

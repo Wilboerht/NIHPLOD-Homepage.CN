@@ -55,7 +55,36 @@ export function AnalyzingContent() {
    * 执行分析
    * 问卷和扫脸数据缺一不可，任一失败都会阻止继续
    */
+  /**
+   * 执行分析
+   * 问卷和扫脸数据缺一不可，任一失败都会阻止继续
+   */
   const runAnalysis = useCallback(async () => {
+    // 防抖与重复执行检查
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
+    // 1. 检查缓存 (结果防抖)
+    // 如果用户刚才跑过一次，刷新页面不应该重跑，而是直接用缓存结果
+    try {
+      const cachedResult = sessionStorage.getItem("advisorAnalysisResult");
+      if (cachedResult) {
+        const parsed = JSON.parse(cachedResult);
+        // 简单验证缓存是否有效 (比如检查是否有 skinType)
+        if (parsed && parsed.skinType) {
+          console.log("Using cached analysis result");
+          setProgress(100);
+          setTimeout(() => {
+            router.push(`/advisor/result?id=${parsed.reportId || "cached"}`);
+          }, 800);
+          return;
+        }
+      }
+    } catch (e) {
+      // 缓存解析失败，忽略，继续跑新的
+      console.warn("Cache check failed", e);
+    }
+
     // 追踪分析开始
     trackAnalysisStart();
 
@@ -109,6 +138,50 @@ export function AnalyzingContent() {
         setFailureType("face");
         setError("照片处理失败，请重新拍摄");
         return;
+      }
+
+      // 尝试上传图片到 OSS (云加速)
+      try {
+        // 辅助函数：base64 转 blob
+        const dataURLtoBlob = async (dataurl: string) => {
+          const res = await fetch(dataurl);
+          return await res.blob();
+        };
+
+        const uploadPromises: Promise<void>[] = [];
+        // 为了类型安全，创建一个新的对象来存储可能的 URL
+        const ossImages: typeof imagesToAnalyze = { ...imagesToAnalyze };
+        let usedOSS = false;
+
+        // 检查是否应该尝试上传 (可以加个配置开关，这里默认尝试)
+        const tryUpload = async (key: keyof typeof imagesToAnalyze, base64Data?: string) => {
+          if (!base64Data) return;
+          try {
+            const blob = await dataURLtoBlob(base64Data);
+            // 动态导入上传工具，避免服务端渲染问题
+            const { uploadImageToOSS } = await import("@/lib/oss-upload-client");
+            const url = await uploadImageToOSS(blob, `face-${key}.jpg`);
+            ossImages[key] = url;
+            usedOSS = true;
+          } catch (e) {
+            console.warn(`Upload ${key} to OSS failed, fallback to base64`, e);
+            // 失败则保留 base64，不抛出异常
+          }
+        };
+
+        if (imagesToAnalyze.front) uploadPromises.push(tryUpload("front", imagesToAnalyze.front));
+        if (imagesToAnalyze.left) uploadPromises.push(tryUpload("left", imagesToAnalyze.left));
+        if (imagesToAnalyze.right) uploadPromises.push(tryUpload("right", imagesToAnalyze.right));
+
+        if (uploadPromises.length > 0) {
+          await Promise.all(uploadPromises);
+          if (usedOSS) {
+            imagesToAnalyze = ossImages;
+            console.log("Using OSS images for analysis");
+          }
+        }
+      } catch (e) {
+        console.warn("OSS upload process failed, fallback to base64", e);
       }
 
       // 调用统一分析 API (Single Unified Call)
@@ -174,6 +247,11 @@ export function AnalyzingContent() {
         // 保存面部分析结果
         if (faceAnalysis) {
           sessionStorage.setItem("advisorFaceAnalysis", JSON.stringify(faceAnalysis));
+        }
+
+        // 保存综合分析结果 (用于页面刷新缓存)
+        if (comprehensiveResult) {
+          sessionStorage.setItem("advisorAnalysisResult", JSON.stringify(comprehensiveResult));
         }
 
         // Transform and save comprehensive result

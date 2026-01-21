@@ -27,25 +27,21 @@ export interface PreprocessResult {
 
 /**
  * 默认预处理配置
+ * 优化：提高分辨率以提升 AI 识别率，降低质量以控制体积
  */
 const DEFAULT_OPTIONS: Required<PreprocessOptions> = {
-  targetSize: 512,
-  quality: 0.8,
-  maxFileSize: 500 * 1024, // 500KB
+  targetSize: 1024, // 提升至 1024 (原 512 太糊了)
+  quality: 0.7,     // 0.7 足够清晰且体积小
+  maxFileSize: 300 * 1024, // 300KB
 };
 
 /**
  * 预处理面部图像用于 AI 分析
  * 
  * 功能：
- * - 尺寸标准化为 512x512
- * - 居中正方形裁剪
- * - JPEG 80% 质量压缩
- * - Base64 编码
- * 
- * @param imageData - 原始图像 Base64 数据
- * @param options - 预处理配置
- * @returns 处理后的图像数据和元信息
+ * - 尺寸限制：最长边不超过 1024px，保持宽高比 (不裁切，防止丢失下巴/额头)
+ * - JPEG 70% 质量压缩
+ * - Base64 编码 (大小控制在 300KB 以内)
  */
 export async function preprocessFaceImage(
   imageData: string,
@@ -66,44 +62,58 @@ export async function preprocessFaceImage(
           return;
         }
 
-        // 计算裁剪区域（居中正方形）
-        const minDim = Math.min(img.width, img.height);
-        const sx = (img.width - minDim) / 2;
-        const sy = (img.height - minDim) / 2;
+        // 1. 计算目标尺寸 (保持宽高比)
+        let width = img.width;
+        let height = img.height;
 
-        // 设置目标尺寸
-        canvas.width = opts.targetSize;
-        canvas.height = opts.targetSize;
+        // 如果图片过大，按比例缩小
+        if (width > opts.targetSize || height > opts.targetSize) {
+          const ratio = width / height;
+          if (width > height) {
+            // 宽图
+            width = opts.targetSize;
+            height = Math.round(width / ratio);
+          } else {
+            // 长图 (手机自拍常见)
+            height = opts.targetSize;
+            width = Math.round(height * ratio);
+          }
+        }
 
-        // 绘制并缩放（居中裁剪）
-        ctx.drawImage(
-          img,
-          sx,
-          sy,
-          minDim,
-          minDim,
-          0,
-          0,
-          opts.targetSize,
-          opts.targetSize
-        );
+        // 设置画布尺寸
+        canvas.width = width;
+        canvas.height = height;
 
-        // 导出为 JPEG，初始质量
-        let processedImage = canvas.toDataURL("image/jpeg", opts.quality);
+        // 2. 绘制图像
+        // 优化：启用平滑缩放
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // 3. 智能压缩
+        // 尝试以 WebP 格式导出 (更小更清晰)，由于兼容性问题，保守回退到 JPEG
+        // 大多数现代浏览器支持 image/webp
+        const mimeType = "image/jpeg";
+
+        let processedImage = canvas.toDataURL(mimeType, opts.quality);
         let fileSize = getBase64Size(processedImage);
 
         // 如果超过最大大小，逐步降低质量
         let currentQuality = opts.quality;
-        while (fileSize > opts.maxFileSize && currentQuality > 0.3) {
-          currentQuality -= 0.1;
-          processedImage = canvas.toDataURL("image/jpeg", currentQuality);
+        // 限制循环次数，防止死循环卡死 UI
+        let attempts = 0;
+
+        while (fileSize > opts.maxFileSize && currentQuality > 0.3 && attempts < 5) {
+          currentQuality -= 0.15; // 步进稍微大一点，快速收敛
+          processedImage = canvas.toDataURL(mimeType, currentQuality);
           fileSize = getBase64Size(processedImage);
+          attempts++;
         }
 
         resolve({
           imageData: processedImage,
           originalSize: { width: img.width, height: img.height },
-          processedSize: { width: opts.targetSize, height: opts.targetSize },
+          processedSize: { width, height },
           fileSize,
         });
       } catch (error) {

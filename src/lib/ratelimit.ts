@@ -76,6 +76,8 @@ export const RATE_LIMIT_PRESETS = {
   chat: { maxRequests: 10, windowMs: 60 * 1000 },
   /** 用户级 Chat 限制 - 每分钟 15 次 */
   "chat-user": { maxRequests: 15, windowMs: 60 * 1000 },
+  /** OSS 签名获取限制 - 每分钟 20 次 */
+  "oss-sign": { maxRequests: 20, windowMs: 60 * 1000 },
 } as const;
 
 /**
