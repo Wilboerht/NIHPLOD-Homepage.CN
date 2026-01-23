@@ -447,7 +447,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                             alt="Logo"
                             width={120}
                             height={32}
-                            className="h-9 w-auto brightness-[0.2] opacity-90 transition-opacity hover:opacity-70"
+                            className="h-9 w-auto opacity-90 transition-opacity hover:opacity-70"
                           />
                         </Link>
 

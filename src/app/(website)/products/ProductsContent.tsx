@@ -196,7 +196,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       alt="Logo"
                       width={100}
                       height={28}
-                      className="h-8 w-auto brightness-[0.2] opacity-90 transition-opacity hover:opacity-70"
+                      className="h-8 w-auto opacity-90 transition-opacity hover:opacity-70"
                     />
                   </Link>
 
@@ -221,7 +221,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       alt="Logo"
                       width={120}
                       height={32}
-                      className="h-9 w-auto brightness-[0.2] opacity-90 transition-opacity hover:opacity-70"
+                      className="h-9 w-auto opacity-90 transition-opacity hover:opacity-70"
                     />
                   </Link>
 
