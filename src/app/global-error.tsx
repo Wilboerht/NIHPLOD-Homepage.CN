@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-// eslint-disable-next-line @next/next/no-img-element -- Using <img> intentionally as fallback since Next Image may fail in global error scenarios
+import Image from "next/image";
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
-
 interface GlobalErrorProps {
     error: Error & { digest?: string };
     reset: () => void;
@@ -35,13 +34,14 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                         {/* Logo - 使用 img 标签因为 Next Image 可能加载失败 */}
                         <div className="mb-8">
                             <a href="/" className="inline-block">
-                                <img
+                                <Image
                                     src="/images/logo.png"
                                     alt="NIHPLOD"
-                                    width="120"
-                                    height="40"
+                                    width={120}
+                                    height={40}
                                     className="mx-auto object-contain"
                                     style={{ width: '120px', height: 'auto' }}
+                                    unoptimized
                                 />
                             </a>
                         </div>

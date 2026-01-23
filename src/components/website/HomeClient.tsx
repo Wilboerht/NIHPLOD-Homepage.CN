@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link } from "next-view-transitions";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X } from "lucide-react";
@@ -127,7 +127,7 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
   const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
   const { openContact } = useAuth();
   const searchParams = useSearchParams();
-  const router = useRouter();
+  // const router = useRouter();
 
   // 检查 URL 参数是否需要自动打开联系模态框
   useEffect(() => {

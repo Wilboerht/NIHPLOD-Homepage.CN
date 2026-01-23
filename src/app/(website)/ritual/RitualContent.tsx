@@ -1640,16 +1640,20 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                     检测认证
                                   </h3>
                                   <div className="flex items-center gap-5">
-                                    <img
+                                    <Image
                                       src="/images/sgs.png"
                                       alt="SGS"
                                       title="SGS 权威认证"
+                                      width={28}
+                                      height={28}
                                       className="h-7 w-auto"
                                     />
-                                    <img
+                                    <Image
                                       src="/images/intertek-logo.png"
                                       alt="Intertek"
                                       title="Intertek 质量认证"
+                                      width={28}
+                                      height={28}
                                       className="h-7 w-auto"
                                     />
                                   </div>
@@ -1746,10 +1750,11 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                         >
                                           {/* Image Wrapper */}
                                           <div className="relative w-full h-[347px] flex items-center justify-center overflow-hidden bg-brand-beige/20">
-                                            <img
+                                            <Image
                                               src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
                                               alt={step.title}
-                                              className="h-full w-full object-contain mix-blend-multiply transition-transform duration-[1.2s] ease-out group-hover:scale-105"
+                                              fill
+                                              className="object-contain mix-blend-multiply transition-transform duration-[1.2s] ease-out group-hover:scale-105"
                                             />
                                           </div>
 

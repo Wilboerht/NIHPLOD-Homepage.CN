@@ -60,6 +60,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'gggmklbpdhsdwmmbkgzg.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'wp-cdn.4ce.cn',
+      },
     ],
     // 启用的图片格式 (优先使用 AVIF，其次 WebP)
     formats: ['image/avif', 'image/webp'],
