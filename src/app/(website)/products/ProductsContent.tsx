@@ -185,17 +185,18 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
               {/* 内容区域 */}
               <div className={cn("relative z-10 flex h-full flex-col overflow-hidden", !isExpanded && "hidden")}>
                 {/* 移动端专用 Header - Grid 布局保证完美对齐 */}
-                <nav className="grid h-[80px] flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center px-4 lg:hidden">
+                <nav className="grid h-[80px] flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center px-6 lg:hidden">
                   {/* 左侧：占位 */}
                   <div className="h-10 w-10 justify-self-start" />
 
                   {/* 中间：Logo */}
                   <Link href="/" className="justify-self-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
+                    <Image
+                      src="/images/logo.png"
                       alt="Logo"
-                      className="h-8 w-auto opacity-90 transition-opacity hover:opacity-70"
+                      width={100}
+                      height={28}
+                      className="h-8 w-auto brightness-[0.2] opacity-90 transition-opacity hover:opacity-70"
                     />
                   </Link>
 
@@ -215,11 +216,12 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                 <nav className="hidden h-[100px] flex-shrink-0 items-center justify-between px-[8%] lg:flex">
                   {/* Logo */}
                   <Link href="/">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
+                    <Image
+                      src="/images/logo.png"
                       alt="Logo"
-                      className="h-10 w-auto opacity-90 transition-opacity hover:opacity-70"
+                      width={120}
+                      height={32}
+                      className="h-9 w-auto brightness-[0.2] opacity-90 transition-opacity hover:opacity-70"
                     />
                   </Link>
 
@@ -233,10 +235,10 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                           const product = products.find(p => p.categoryId === cat.id);
                           if (product) handleProductClick(product);
                         }}
-                        className="group relative py-1 text-sm font-normal tracking-[0.1em] text-[#00263E] transition-all hover:opacity-80"
+                        className="group relative py-1 text-[15px] font-medium text-[#1a1a1a] transition-all hover:opacity-80"
                       >
                         {cat.name}
-                        <span className="absolute bottom-0 left-0 h-px w-0 bg-[#00263E] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
+                        <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-gold transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
                       </button>
                     ))}
                   </div>
@@ -427,10 +429,10 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                   }}
                   className="group flex flex-col items-center gap-1"
                 >
-                  <span className="text-base font-normal tracking-widest text-[#00263E] transition-colors group-hover:text-brand-gold">
+                  <span className="text-[14px] font-medium text-[#1a1a1a] transition-colors group-hover:text-brand-gold">
                     {cat.name}
                   </span>
-                  <span className="text-[10px] uppercase tracking-[0.15em] text-[#00263E]/40 transition-colors group-hover:text-brand-gold/70">
+                  <span className="text-[10px] uppercase tracking-wider text-[#1a1a1a]/40 transition-colors group-hover:text-brand-gold/70">
                     {cat.nameEn}
                   </span>
                 </m.button>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, ContactIcon } from "@/components/website";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -24,9 +24,10 @@ interface NavItem {
  */
 const allNavItems: NavItem[] = [
     { href: "/advisor", label: "护肤顾问", labelEn: "Consultant", icon: ContactIcon },
-    { href: "/products", label: "了解产品", labelEn: "Products", icon: ShopIcon },
+    { href: "/products", label: "探索产品", labelEn: "Products", icon: ShopIcon },
+    { href: "/ritual", label: "官方指南", labelEn: "Ritual", icon: RitualIcon },
+    { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: HelpCircle },
     { href: "/story", label: "关于旎柏", labelEn: "Story", icon: StoryIcon },
-    { href: "/ritual", label: "护肤仪式", labelEn: "Ritual", icon: RitualIcon },
     { href: "/", label: "首页", labelEn: "Home", icon: HomeIcon },
 ];
 
@@ -107,7 +108,7 @@ export function BottomNavBar() {
     const currentPage = allNavItems.find(item => item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href)))?.href || "/";
 
     // 根据当前页面获取主导航项和其他导航项
-    const primaryNav = allNavItems.find(item => item.href === currentPage) || allNavItems[4]; // 默认为Home
+    const primaryNav = allNavItems.find(item => item.href === currentPage) || allNavItems[5]; // 默认为Home
     const otherNavItems = allNavItems.filter(item => item.href !== currentPage);
 
     /**

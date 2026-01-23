@@ -688,7 +688,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                 {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
                 <div className="flex h-full flex-col sm:hidden">
                   {/* 移动端顶部 Header */}
-                  <header className="flex items-center justify-between px-6 pb-6 pt-4">
+                  <header className="flex h-[80px] shrink-0 items-center justify-between px-6">
                     {/* 返回按钮 - 仅在 Level 2/3 显示 */}
                     <m.button
                       type="button"
@@ -737,8 +737,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                         >
                           {/* 标题区 */}
                           <div className="mb-4 shrink-0 pt-2">
-                            <p className="mb-2 text-xs uppercase tracking-[3px] text-[#00263e]/60">SKINCARE RITUAL</p>
-                            <h1 className="text-4xl font-normal leading-none text-[#00263e]">护肤仪式</h1>
+                            <p className="mb-2 text-xs uppercase tracking-[3px] text-[#00263e]/60">OFFICIAL GUIDE</p>
+                            <h1 className="text-4xl font-normal leading-none text-[#00263e]">官方指南</h1>
                           </div>
 
                           {/* 菜单列表 */}
@@ -1683,14 +1683,17 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.3, ease: "easeInOut" }}
                                   >
-                                    <Image
-                                      src="/images/portable-ritual.webp"
-                                      alt="Portable Ritual"
-                                      width={1200}
-                                      height={800}
-                                      className="max-w-[85%] max-h-[90%] object-contain object-right-top"
-                                      priority
-                                    />
+                                    {/* 容器尺寸与晨间焕活步骤区域保持一致：940px宽 (3×260 + 2×80) */}
+                                    <div className="flex items-center justify-end" style={{ width: '940px', height: '450px' }}>
+                                      <Image
+                                        src="/images/portable-ritual.webp"
+                                        alt="Portable Ritual"
+                                        width={940}
+                                        height={450}
+                                        className="h-full w-full object-cover object-center"
+                                        priority
+                                      />
+                                    </div>
                                   </m.section>
                                 ) : (
                                   <m.section

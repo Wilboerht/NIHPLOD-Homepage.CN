@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -161,7 +162,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                 )}
               >
                 {/* ========== 移动端布局 - 参考 About us 移动端.html ========== */}
-                <div className="relative flex h-full flex-col overflow-y-auto font-sans sm:hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="relative flex h-full flex-col overflow-y-auto sm:hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {/* Background Texture Overlay */}
                   <div
                     className="pointer-events-none fixed inset-0 z-[1] opacity-[0.04]"
@@ -173,19 +174,18 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
 
 
                   {/* Header - Sticky Top */}
-                  <header className="sticky top-0 z-50 flex justify-center border-b border-[#00263e]/15 bg-[#F0EDE1] py-10 pb-5">
-                    <div className="relative h-8 w-32">
-                      <Image
-                        src="/images/logo.png"
-                        alt="NIHPLOD Logo"
-                        fill
-                        className="object-contain brightness-[0.2]"
-                      />
-                    </div>
+                  <header className="sticky top-0 z-50 flex h-[80px] shrink-0 items-center justify-center border-b border-[#00263e]/15 bg-[#F0EDE1] px-6">
+                    <Image
+                      src="/images/logo.png"
+                      alt="NIHPLOD Logo"
+                      width={100}
+                      height={28}
+                      className="h-8 w-auto brightness-[0.2]"
+                    />
                   </header>
 
                   {/* Navigation - Sticky below Header */}
-                  <nav className="sticky top-[92px] z-40 flex justify-around border-b border-[#00263e]/15 bg-[#F0EDE1] px-[5%] py-3">
+                  <nav className="sticky top-[80px] z-40 flex h-[50px] shrink-0 items-center justify-around border-b border-[#00263e]/15 bg-[#F0EDE1] px-[5%]">
                     {navItems.map((item) => (
                       <button
                         key={item.id}
@@ -195,8 +195,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                       >
                         <span
                           className={cn(
-                            "text-[13px] font-semibold uppercase tracking-[0.15em] transition-all duration-600",
-                            activeSection === item.id ? "text-[#00263e] opacity-100" : "text-[#00263e] opacity-50"
+                            "text-[14px] font-medium transition-all duration-600",
+                            activeSection === item.id ? "text-[#1a1a1a] opacity-100" : "text-[#1a1a1a] opacity-50"
                           )}
                         >
                           {item.label}
@@ -279,8 +279,8 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                             Our Mission
                           </h2>
 
-                          <div className="mb-12">
-                            <div className="relative my-5 h-[450px] w-full overflow-hidden border border-[#00263e]/15">
+                          <div className="mb-12 flex flex-col items-center">
+                            <div className="relative my-6 h-[400px] w-[90%] overflow-hidden border border-[#00263e]/10 shadow-sm">
                               <Image
                                 src="/images/story/mission-image.png?v=2"
                                 alt="Mission"
@@ -288,25 +288,27 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                                 className="object-cover object-top"
                               />
                             </div>
-                            <p className="mt-10 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                              旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
-                            </p>
-                            <span className="mt-8 block text-[18px] font-normal leading-[1.6] tracking-wide text-[#00263e]">
-                              将逆转时光的不可能，<br />慢慢变得「有可能」。
-                            </span>
+                            <div className="px-2">
+                              <p className="mt-8 text-[15px] font-light leading-[1.8] tracking-widest text-[#00263e]/90 text-justify">
+                                旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
+                              </p>
+                              <span className="mt-6 block text-[15px] font-normal leading-[1.6] tracking-widest text-[#00263e]">
+                                将逆转时光的不可能，<br />慢慢变得「有可能」。
+                              </span>
+                            </div>
 
                             {/* CEO 签名 */}
-                            <div className="mt-16 text-right">
-                              <span className="mb-2 block text-[10px] uppercase tracking-[0.15em] opacity-50">
+                            <div className="mt-12 w-full text-right">
+                              <span className="mb-2 block text-[9px] uppercase tracking-[0.15em] opacity-40">
                                 CHIEF EXECUTIVE OFFICER
                               </span>
-                              <div className="flex justify-end mt-2">
+                              <div className="flex justify-end mt-1">
                                 <Image
                                   src="/images/story/mission-decoration.svg"
                                   alt="John Morrell"
-                                  width={120}
-                                  height={32}
-                                  className="opacity-90"
+                                  width={100}
+                                  height={28}
+                                  className="opacity-80"
                                 />
                               </div>
                             </div>
@@ -416,6 +418,14 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
 
 
                   </div>
+
+                  {/* Mobile Footer Copyright */}
+                  <div className="flex flex-col items-center justify-center gap-2 pb-10">
+                    <div className="h-px w-20 bg-[#00263e]/10 mb-2"></div>
+                    <p className="text-xs font-light tracking-widest text-center text-[#00263e]/60">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
+                  </div>
                 </div>
 
                 {/* ========== 桌面端布局 - 保持原有样式 ========== */}
@@ -428,17 +438,18 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex h-16 items-center justify-between px-10 lg:h-20 lg:px-20"
+                        className="flex h-[100px] flex-shrink-0 items-center justify-between px-[8%]"
                       >
                         {/* 左侧：Logo */}
-                        <div className="relative h-8 w-24">
+                        <Link href="/">
                           <Image
                             src="/images/logo.png"
-                            alt="NIHPLOD Logo"
-                            fill
-                            className="object-contain brightness-[0.2]"
+                            alt="Logo"
+                            width={120}
+                            height={32}
+                            className="h-9 w-auto brightness-[0.2] opacity-90 transition-opacity hover:opacity-70"
                           />
-                        </div>
+                        </Link>
 
                         {/* 中间：导航链接 */}
                         <div className="absolute left-1/2 flex -translate-x-1/2 gap-8 lg:gap-10">
@@ -448,10 +459,10 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                               type="button"
                               onClick={() => setActiveSection(item.id)}
                               className={cn(
-                                "relative px-1 py-1 text-xs uppercase tracking-[2px] transition-opacity duration-300 lg:text-[13px]",
+                                "relative px-1 py-1 text-[15px] font-medium transition-opacity duration-300",
                                 activeSection === item.id
-                                  ? "font-medium text-[#00263e] opacity-100"
-                                  : "text-[#00263e] opacity-60 hover:opacity-80"
+                                  ? "opacity-100 text-[#1a1a1a]"
+                                  : "opacity-60 text-[#1a1a1a] hover:opacity-80"
                               )}
                             >
                               {item.label}
@@ -460,7 +471,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                                 <m.div
                                   layout
                                   layoutId="activeTabIndicator"
-                                  className="absolute bottom-0 left-0 h-px w-full bg-[#00263e]"
+                                  className="absolute bottom-0 left-0 h-px w-full bg-brand-gold"
                                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                                 />
                               )}
@@ -475,7 +486,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                   </AnimatePresence>
 
                   {/* 内容区域 - 各 Section */}
-                  <div className="flex-1 overflow-y-auto px-10 py-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] lg:px-20 lg:py-12 xl:py-14">
+                  <div className="flex-1 overflow-y-auto px-10 py-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] lg:px-[8%] lg:py-12 xl:py-14">
                     <AnimatePresence mode="wait">
                       {/* Section 1: 品牌故事 */}
                       {activeSection === "story" && (
@@ -488,7 +499,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                           className="grid h-full grid-cols-1 items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12 xl:gap-16"
                         >
                           {/* 左侧图片区域 */}
-                          <div className="relative flex h-full flex-col justify-center gap-4 pl-6 lg:pl-8">
+                          <div className="relative flex h-full flex-col justify-center gap-4">
                             <div className="relative h-52 w-[70%] self-start overflow-hidden bg-[#e5e2d5] lg:h-64">
                               <Image
                                 src="/images/story/dolphin-ocean.png"
@@ -532,11 +543,11 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="flex h-full items-center justify-center pb-16 lg:pb-24"
+                          className="flex h-full items-center justify-center -mt-4 lg:-mt-8"
                         >
-                          <div className="relative flex w-full max-w-5xl flex-col lg:flex-row">
-                            {/* 左侧图片 */}
-                            <div className="relative h-64 w-full overflow-hidden lg:h-auto lg:flex-[1.2]">
+                          <div className="relative flex w-full max-w-[1000px] items-center">
+                            {/* 左侧大图 - 基准高度 580px */}
+                            <div className="relative z-0 h-[580px] flex-[1.1] overflow-hidden shadow-2xl">
                               <Image
                                 src="/images/story/mission-image.png?v=2"
                                 alt="护肤专家"
@@ -544,28 +555,34 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                                 className="object-cover object-top"
                               />
                             </div>
-                            {/* 右侧文字卡片 */}
-                            <div className="z-10 flex flex-1 flex-col items-start justify-center bg-[#DDD9C9] p-12 shadow-[0_4px_20px_rgba(0,38,62,0.04),0_20px_60px_rgba(0,0,0,0.06)] lg:-ml-16 lg:my-10 lg:p-16">
-                              <span className="mb-2 text-sm uppercase tracking-[4px] text-[#00263e]/70">
-                                Our Mission
-                              </span>
-                              <h2 className="mb-8 text-4xl font-light leading-tight tracking-[8px] text-[#00263e] lg:text-[42px]">
-                                化繁为简<br />逆转时光
-                              </h2>
-                              <p className="max-w-md text-[15px] leading-[1.8] text-[#00263e]/80">
-                                旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
-                                <br /><br />
-                                将逆转时光的不可能，慢慢变得「有可能」。
-                              </p>
-                              <div className="mt-10 w-full border-t border-[#00263e]/30 pt-4">
-                                <span className="block text-xs uppercase tracking-[4px] text-[#00263e]/70">CEO</span>
-                                <Image
-                                  src="/images/story/mission-decoration.svg"
-                                  alt="John Morrell"
-                                  width={150}
-                                  height={40}
-                                  className="mt-1"
-                                />
+
+                            {/* 右侧悬浮卡片 - 减小高度并叠层 */}
+                            <div className="relative z-10 -ml-24 flex h-[500px] flex-1 flex-col justify-between bg-[#DDD9C9] p-10 shadow-[20px_20px_60px_rgba(0,0,0,0.1)] lg:p-14">
+                              <div>
+                                <span className="mb-3 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
+                                  OUR MISSION
+                                </span>
+                                <h2 className="mb-6 text-[36px] font-light leading-tight tracking-[6px] text-[#00263e]">
+                                  化繁为简<br />逆转时光
+                                </h2>
+                                <p className="max-w-[420px] text-[15px] font-light leading-[2] tracking-widest text-[#00263e]/75">
+                                  旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
+                                  <br /><br />
+                                  将逆转时光的不可能，慢慢变得「有可能」。
+                                </p>
+                              </div>
+
+                              <div className="w-full border-t border-[#00263e]/15 pt-6">
+                                <span className="mb-1 block text-[10px] uppercase tracking-[3px] text-[#00263e]/50">CEO</span>
+                                <div className="mt-1 text-left">
+                                  <Image
+                                    src="/images/story/mission-decoration.svg"
+                                    alt="John Morrell"
+                                    width={140}
+                                    height={36}
+                                    className="opacity-95"
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -580,7 +597,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="mx-4 grid h-[calc(100%-3rem)] grid-cols-2 gap-px self-center bg-[#00263e]/10 lg:mx-6 lg:h-[calc(100%-4rem)] lg:grid-cols-4"
+                          className="grid h-[calc(100%-3rem)] grid-cols-2 gap-px self-center bg-[#00263e]/10 lg:h-[calc(100%-4rem)] lg:grid-cols-4"
                         >
                           {[
                             { num: "01", title: "更珍贵的产品", desc: "我们通过采集这个世上优质的原材料，结合前沿及有效的科技力量，不断更新和进步。" },
@@ -610,7 +627,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="flex h-full flex-col px-5 pb-16 pt-5 lg:px-6 lg:pb-20 lg:pt-6"
+                          className="flex h-full flex-col pb-16 lg:pb-20"
                         >
                           {/* 3x2 网格卡片布局 - 铺满容器 */}
                           <div className="grid h-full grid-cols-3 grid-rows-2 gap-4 lg:gap-5">
@@ -641,6 +658,13 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                         </m.div>
                       )}
                     </AnimatePresence>
+                  </div>
+
+                  {/* Desktop Footer Copyright */}
+                  <div className="absolute bottom-4 left-0 right-0 z-10 flex justify-center pb-2 pointer-events-none">
+                    <p className="text-xs font-light tracking-widest text-[#00263e]/60">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
                   </div>
                 </div>
 

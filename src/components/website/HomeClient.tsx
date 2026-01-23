@@ -178,7 +178,7 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              <div className={cn("home-container relative h-full w-full", !isExpanded && "hidden")}>
+              <div className={cn("home-container relative h-full w-full transition-opacity duration-300", isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none")}>
                 {/* 矿物纹理覆盖层 - 使用 base64 SVG 噪点 */}
                 <div
                   className="mineral-texture absolute inset-0 z-0 opacity-50"
@@ -217,8 +217,8 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
                     <Image
                       src="/images/logo.png"
                       alt="Dolphin Skin"
-                      width={220}
-                      height={80}
+                      width={280}
+                      height={100}
                       className="logo"
                       priority
                     />

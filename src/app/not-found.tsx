@@ -85,7 +85,7 @@ export default function NotFound() {
               品牌故事
             </Link>
             <Link href="/ritual" className="text-brand-gold hover:underline">
-              护肤仪式
+              官方指南
             </Link>
             <Link href="/contact" className="text-brand-gold hover:underline">
               联系我们

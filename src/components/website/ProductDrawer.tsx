@@ -120,9 +120,8 @@ function PlatformIcon({ platform }: { platform: string }) {
 export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
-  const [showScrollHint, setShowScrollHint] = useState(true);
 
-  // 手风琴切换 - 点击展开一个时关闭另一个
+  // 手风琴切换
   const toggleAccordion = (id: string) => {
     setOpenAccordion(openAccordion === id ? null : id);
   };
@@ -157,13 +156,12 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     if (!isOpen) {
       setCurrentImageIndex(0);
       setOpenAccordion(null);
-    } else {
-      setShowScrollHint(true);
     }
   }, [isOpen]);
 
   // 切换图片
-  const handlePrevImage = () => {
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (product && product.images.length > 1) {
       setCurrentImageIndex((prev) =>
         prev === 0 ? product.images.length - 1 : prev - 1
@@ -171,7 +169,8 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     }
   };
 
-  const handleNextImage = () => {
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (product && product.images.length > 1) {
       setCurrentImageIndex((prev) =>
         prev === product.images.length - 1 ? 0 : prev + 1
@@ -182,252 +181,230 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
   return (
     <AnimatePresence>
       {isOpen && product && (
-        <m.div
-          className="fixed inset-0 z-[200] grid grid-cols-1 grid-rows-[45vh_1fr] bg-[#F0EDE1] lg:grid-cols-2 lg:grid-rows-none"
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {/* 关闭按钮 - Products Page.html 样式 */}
-          <button
-            type="button"
+        <>
+          {/* 遮罩层 */}
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm"
             onClick={onClose}
-            className="absolute right-6 top-6 z-[210] text-[2rem] font-extralight text-[#00263E] transition-opacity hover:opacity-60 lg:right-8 lg:top-8"
-            aria-label="关闭"
-          >
-            &times;
-          </button>
+          />
 
-          {/* 左侧 - 产品图片区域 */}
-          <div className="relative flex items-center justify-center bg-white">
-            {/* 主图 */}
-            <AnimatePresence mode="wait">
-              {product.images[currentImageIndex] ? (
-                <m.div
-                  key={currentImageIndex}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute inset-0"
-                >
-                  <Image
-                    src={product.images[currentImageIndex].url}
-                    alt={product.images[currentImageIndex].alt || product.name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    quality={90}
-                    priority
-                  />
-                </m.div>
-              ) : (
-                <div className="flex items-center justify-center text-[#00263E]/30">
-                  <span className="text-sm">暂无图片</span>
-                </div>
-              )}
-            </AnimatePresence>
-
-            {/* 左右切换按钮 */}
-            {product.images.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={handlePrevImage}
-                  className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-[#00263E]/50 transition-all hover:text-[#00263E]"
-                  aria-label="上一张"
-                >
-                  <ChevronLeft className="h-8 w-8" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextImage}
-                  className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-[#00263E]/50 transition-all hover:text-[#00263E]"
-                  aria-label="下一张"
-                >
-                  <ChevronRight className="h-8 w-8" />
-                </button>
-              </>
-            )}
-
-            {/* 图片指示器小点 */}
-            {product.images.length > 1 && (
-              <div className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
-                {product.images.map((_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={cn(
-                      "rounded-full transition-all duration-300 ease-out !min-h-0 !min-w-0 p-0",
-                      currentImageIndex === index
-                        ? "h-1.5 w-4 bg-[#00263E]/60"
-                        : "h-1.5 w-1.5 bg-[#00263E]/10 hover:bg-[#00263E]/30"
-                    )}
-                    aria-label={`查看第 ${index + 1} 张图片`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 右侧 - 产品信息区域 */}
-          <div
-            className="relative overflow-y-auto px-6 py-8 sm:px-12 lg:px-20 lg:py-16 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]"
-            onScroll={(e) => setShowScrollHint(e.currentTarget.scrollTop < 10)}
-          >
-            {/* 内容容器 - 最佳阅读宽度 */}
-            <div className="max-w-xl">
-              {/* 区块1: 产品基本信息 */}
-              <section className="mb-10">
-                {/* 标签 */}
-                <div className="mb-4">
-                  <span className="border border-[#00263E] px-2.5 py-1 text-xs uppercase tracking-[0.15em] text-[#00263E]">
-                    {product.category.name}
-                  </span>
-                </div>
-
-                {/* 标题 */}
-                <h2 className="mb-4 text-[1.75rem] font-bold leading-[1.2] text-[#00263E] lg:text-[2rem]">
-                  {product.name}
-                </h2>
-
-                {/* 规格和产地 */}
-                <div className="mb-4 text-xs tracking-wide text-[#00263E]/50">
-                  规格: {product.capacity || "N/A"} | 产地: 法国
-                </div>
-
-                {/* 价格 */}
-                <div className="text-xl font-medium text-[#00263E]">
-                  {formatPrice(product.price)}
-                </div>
-              </section>
-
-              {/* 区块2: 产品描述 */}
-              <section className="mb-10">
-                <p className="text-sm leading-[1.9] text-[#00263E]/70">
-                  {product.description}
-                </p>
-              </section>
-
-              {/* 区块3: 使用场景图标 */}
-              <section className="mb-10">
-                <div className="flex gap-6">
-                  <div className="flex flex-col items-center gap-2 text-[#00263E]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
-                      <path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 19.07-1.41-1.41" /><path d="M12 20v2" /><path d="m6.34 17.66-1.41 1.41" /><path d="M2 12h2" /><path d="m7.76 7.76-1.41-1.41" /><circle cx="12" cy="12" r="4" />
-                    </svg>
-                    <span className="text-xs tracking-wide">日间护肤</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 text-[#00263E]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
-                      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                    </svg>
-                    <span className="text-xs tracking-wide">夜间修护</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 text-[#00263E]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
-                      <path d="M4.5 16.5c-1.5 1.26-2 2.67-2 3.5 0 1.21.95 2 2.18 2 4.4 0 3.51-3.04 6.64-3.54a2.72 2.72 0 0 0 0-5.42c-3.13-.5-2.24-3.54-6.64-3.54-1.23 0-2.18.79-2.18 2 0 .83.5 2.24 2 3.5Z" /><path d="M15 8.5c-1.5 1.26-2 2.67-2 3.5 0 1.21.95 2 2.18 2 4.4 0 3.51-3.04 6.64-3.54a2.72 2.72 0 0 0 0-5.42c-3.13-.5-2.24-3.54-6.64-3.54-1.23 0-2.18.79-2.18 2 0 .83.5 2.24 2 3.5Z" />
-                    </svg>
-                    <span className="text-xs tracking-wide">干燥急救</span>
-                  </div>
-                </div>
-              </section>
-
-              {/* 区块4: 小红书链接 */}
-              <section className="mb-10">
-                <a
-                  href="https://www.xiaohongshu.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block border-b border-[#00263E] pb-0.5 text-xs font-medium text-[#00263E] transition-opacity hover:opacity-60"
-                >
-                  去小红书查看更多评测 →
-                </a>
-              </section>
-
-              {/* 区块5: 折叠面板 */}
-              <section className="border-t border-[#00263E]/10">
-                {/* 主要成分 */}
-                {product.ingredients && (
-                  <div className="border-b border-[#00263E]/10">
-                    <button
-                      type="button"
-                      onClick={() => toggleAccordion("ingredients")}
-                      className="flex w-full cursor-pointer items-center justify-between py-6 text-left text-sm font-semibold text-[#00263E]"
-                    >
-                      <span>主要成分</span>
-                      <span className={cn("text-lg transition-transform duration-200", openAccordion === "ingredients" && "rotate-45")}>+</span>
-                    </button>
-                    {openAccordion === "ingredients" && (
-                      <div className="pb-6 text-sm leading-[1.8] text-[#00263E]/60">
-                        {product.ingredients}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 使用方法 */}
-                {product.usage && (
-                  <div className="border-b border-[#00263E]/10">
-                    <button
-                      type="button"
-                      onClick={() => toggleAccordion("usage")}
-                      className="flex w-full cursor-pointer items-center justify-between py-6 text-left text-sm font-semibold text-[#00263E]"
-                    >
-                      <span>使用方法</span>
-                      <span className={cn("text-lg transition-transform duration-200", openAccordion === "usage" && "rotate-45")}>+</span>
-                    </button>
-                    {openAccordion === "usage" && (
-                      <div className="pb-6 text-sm leading-[1.8] text-[#00263E]/60">
-                        {product.usage}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 官方旗舰店 - 始终展开 */}
-                <div className="py-6">
-                  <div className="mb-4 text-sm font-semibold text-[#00263E]">官方旗舰店</div>
-                  <div className="flex items-end gap-6">
-                    {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
-                      product.purchaseLinks.map((link) => (
-                        <a
-                          key={link.id}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="transition-opacity hover:opacity-60"
-                        >
-                          <PlatformIcon platform={link.platform} />
-                        </a>
-                      ))
-                    ) : (
-                      <span className="text-xs text-[#00263E]/50">暂无购买链接</span>
-                    )}
-                  </div>
-                </div>
-              </section>
-            </div>
-          </div>
-
-          {/* 移动端向下滑动提示 - 仅在未滑动时显示 */}
-          <AnimatePresence>
-            {showScrollHint && (
-              <m.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.3 }}
-                className="pointer-events-none fixed bottom-6 right-6 z-20 flex flex-col items-center gap-1 text-[#00263E]/40 lg:hidden"
+          {/* 模态框容器 */}
+          <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+            <m.div
+              className="pointer-events-auto relative flex w-full max-w-6xl h-[85vh] flex-col overflow-hidden rounded-3xl bg-[#F0EDE1] shadow-2xl lg:h-[700px] lg:flex-row"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* 关闭按钮 */}
+              <button
+                type="button"
+                onClick={onClose}
+                className="absolute right-4 top-4 z-[220] flex h-8 w-8 items-center justify-center text-2xl font-light text-[#00263E] transition-opacity hover:opacity-60 lg:right-6 lg:top-6"
+                aria-label="关闭"
               >
-                <span className="text-[10px] tracking-widest uppercase">Scroll</span>
-                <ChevronDown className="h-4 w-4 animate-bounce" />
-              </m.div>
-            )}
-          </AnimatePresence>
-        </m.div>
+                &times;
+              </button>
+
+              {/* 左侧 - 产品图片区域 */}
+              <div className="relative h-[45%] w-full flex-shrink-0 bg-white lg:h-full lg:w-[45%]">
+                <AnimatePresence mode="wait">
+                  {product.images[currentImageIndex] ? (
+                    <m.div
+                      key={currentImageIndex}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="absolute inset-0"
+                    >
+                      <Image
+                        src={product.images[currentImageIndex].url}
+                        alt={product.images[currentImageIndex].alt || product.name}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                        quality={90}
+                        priority
+                      />
+                    </m.div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-[#00263E]/30">
+                      <span className="text-sm">暂无图片</span>
+                    </div>
+                  )}
+                </AnimatePresence>
+
+                {/* 左右切换按钮 */}
+                {product.images.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handlePrevImage}
+                      className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-[#00263E]/50 transition-all hover:text-[#00263E] lg:left-4"
+                    >
+                      <ChevronLeft className="h-6 w-6 lg:h-8 lg:w-8" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextImage}
+                      className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-[#00263E]/50 transition-all hover:text-[#00263E] lg:right-4"
+                    >
+                      <ChevronRight className="h-6 w-6 lg:h-8 lg:w-8" />
+                    </button>
+                  </>
+                )}
+
+                {/* 图片指示器 */}
+                {product.images.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 lg:bottom-6">
+                    {product.images.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={cn(
+                          "rounded-full transition-all duration-300 ease-out !min-h-0 !min-w-0 p-0",
+                          currentImageIndex === index
+                            ? "h-1.5 w-4 bg-[#00263E]/60"
+                            : "h-1.5 w-1.5 bg-[#00263E]/10 hover:bg-[#00263E]/30"
+                        )}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 右侧 - 产品信息区域 */}
+              <div className="flex-1 overflow-y-auto px-6 py-8 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] lg:px-10 lg:py-10">
+                <div className="max-w-none">
+                  {/* 基本信息 */}
+                  <section className="mb-6 lg:mb-8">
+                    {/* 删除了顶部分类标签 */}
+                    <h2 className="mb-3 text-2xl font-bold leading-tight text-[#00263E] lg:text-3xl">
+                      {product.name}
+                    </h2>
+                    <div className="mb-3 text-xs tracking-wide text-[#00263E]/50">
+                      规格: {product.capacity || "N/A"} | 产地: 法国
+                    </div>
+                    <div className="text-lg font-medium text-[#00263E]">
+                      {formatPrice(product.price)}
+                    </div>
+                  </section>
+
+                  {/* 描述 */}
+                  <section className="mb-8">
+                    <p className="text-[15px] leading-[1.8] text-[#00263E]/70 text-justify">
+                      {product.description}
+                    </p>
+                  </section>
+
+                  {/* Icon */}
+                  <section className="mb-8">
+                    <div className="flex gap-6">
+                      <div className="flex flex-col items-center gap-2 text-[#00263E]">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                          <path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 19.07-1.41-1.41" /><path d="M12 20v2" /><path d="m6.34 17.66-1.41 1.41" /><path d="M2 12h2" /><path d="m7.76 7.76-1.41-1.41" /><circle cx="12" cy="12" r="4" />
+                        </svg>
+                        <span className="text-[12px] tracking-wide">日间</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-2 text-[#00263E]">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                        </svg>
+                        <span className="text-[12px] tracking-wide">夜间</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* 折叠面板 */}
+                  <section className="border-t border-[#00263E]/10">
+                    {product.ingredients && (
+                      <div className="border-b border-[#00263E]/10">
+                        <button
+                          type="button"
+                          onClick={() => toggleAccordion("ingredients")}
+                          className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-[#00263E]"
+                        >
+                          <span>主要成分</span>
+                          <span className={cn("text-[18px] transition-transform duration-200", openAccordion === "ingredients" && "rotate-45")}>+</span>
+                        </button>
+                        <AnimatePresence>
+                          {openAccordion === "ingredients" && (
+                            <m.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60">
+                                {product.ingredients}
+                              </div>
+                            </m.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {product.usage && (
+                      <div className="border-b border-[#00263E]/10">
+                        <button
+                          type="button"
+                          onClick={() => toggleAccordion("usage")}
+                          className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-[#00263E]"
+                        >
+                          <span>使用方法</span>
+                          <span className={cn("text-[18px] transition-transform duration-200", openAccordion === "usage" && "rotate-45")}>+</span>
+                        </button>
+                        <AnimatePresence>
+                          {openAccordion === "usage" && (
+                            <m.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60">
+                                {product.usage}
+                              </div>
+                            </m.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {/* 购买链接 */}
+                    <div className="py-4">
+                      <div className="mb-3 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
+                      <div className="flex flex-wrap gap-4">
+                        {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+                          product.purchaseLinks.map((link) => (
+                            <a
+                              key={link.id}
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="transition-opacity hover:opacity-60"
+                            >
+                              <PlatformIcon platform={link.platform} />
+                            </a>
+                          ))
+                        ) : (
+                          <span className="text-[14px] text-[#00263E]/50">暂无购买链接</span>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </m.div>
+          </div>
+        </>
       )}
     </AnimatePresence>
   );
