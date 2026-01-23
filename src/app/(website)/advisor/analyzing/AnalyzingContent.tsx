@@ -60,8 +60,6 @@ export function AnalyzingContent() {
    * 问卷和扫脸数据缺一不可，任一失败都会阻止继续
    */
   const runAnalysis = useCallback(async () => {
-    console.log("========== [ANALYZING] runAnalysis started ==========");
-
     // 注意：hasStarted 检查已在 useEffect 中完成，这里不再重复检查
 
     // 1. 检查缓存 (结果防抖)
@@ -82,48 +80,39 @@ export function AnalyzingContent() {
       }
     } catch (e) {
       // 缓存解析失败，忽略，继续跑新的
-      console.warn("[ANALYZING] Cache check failed", e);
+      console.warn("Cache check failed", e);
     }
 
     // 追踪分析开始
-    console.log("[ANALYZING] Tracking analysis start...");
     trackAnalysisStart();
 
     try {
       // 获取问答数据（必须）
-      console.log("[ANALYZING] Getting answers from sessionStorage...");
       const answersStr = sessionStorage.getItem("advisorAnswers");
       if (!answersStr) {
-        console.log("[ANALYZING] No answers found, redirecting to /advisor");
         router.replace("/advisor");
         return;
       }
 
       const answers = JSON.parse(answersStr);
-      console.log("[ANALYZING] Answers loaded:", Object.keys(answers));
 
       // 获取面部图片（必须）- 优先使用三张照片，降级到单张
-      console.log("[ANALYZING] Getting face images from sessionStorage...");
       const faceImagesStr = sessionStorage.getItem("advisorFaceImages");
       const faceImage = sessionStorage.getItem("advisorFaceImage");
-      console.log("[ANALYZING] faceImagesStr:", faceImagesStr ? "exists" : "null", "faceImage:", faceImage ? "exists" : "null");
 
       // 检查是否有面部图片
       if (!faceImagesStr && !faceImage) {
         // 没有面部图片，跳转到扫脸页面
-        console.log("[ANALYZING] No face images found, redirecting to /advisor/face-scan");
         router.replace("/advisor/face-scan");
         return;
       }
 
       // 图片预处理
-      console.log("[ANALYZING] Starting image preprocessing...");
       let imagesToAnalyze: { front?: string; left?: string; right?: string; chin?: string } = {};
 
       try {
         if (faceImagesStr) {
           // 有四张照片（front, left, right, chin），全部使用
-          console.log("[ANALYZING] Processing 4 face images...");
           const faceImages = JSON.parse(faceImagesStr);
           const [frontProcessed, leftProcessed, rightProcessed, chinProcessed] = await Promise.all([
             preprocessFaceImage(faceImages.front),
@@ -137,18 +126,15 @@ export function AnalyzingContent() {
             right: rightProcessed.imageData,
             ...(chinProcessed && { chin: chinProcessed.imageData }),
           };
-          console.log(`[ANALYZING] ${chinProcessed ? 4 : 3} images preprocessed successfully`);
         } else if (faceImage) {
           // 只有一张照片（降级模式）
-          console.log("[ANALYZING] Processing 1 face image...");
           const processed = await preprocessFaceImage(faceImage);
           imagesToAnalyze = { front: processed.imageData };
-          console.log("[ANALYZING] 1 image preprocessed successfully");
         }
 
         setProgress((prev) => Math.max(prev, 10)); // 图片处理完成
       } catch (e) {
-        console.error("[ANALYZING] Image processing failed:", e);
+        console.error("Image processing failed:", e);
         setFailureType("face");
         setError("照片处理失败，请重新拍摄");
         return;
@@ -157,7 +143,6 @@ export function AnalyzingContent() {
       // 尝试上传图片到 OSS (云加速) - 仅在配置了 OSS 时尝试
       // 本地开发环境通常不配置 OSS，直接跳过使用 base64
       const shouldTryOSS = process.env.NEXT_PUBLIC_OSS_ENABLED === "true";
-      console.log("[ANALYZING] shouldTryOSS:", shouldTryOSS);
 
       if (shouldTryOSS) {
         try {
@@ -210,20 +195,17 @@ export function AnalyzingContent() {
           console.warn("OSS upload process failed, fallback to base64", e);
         }
       } else {
-        console.log("[ANALYZING] OSS not enabled, using base64 images directly");
+        console.log("OSS not enabled, using base64 images directly");
       }
 
       // 调用统一分析 API (Single Unified Call)
-      console.log("[ANALYZING] ===== Starting comprehensive API call =====");
       try {
         setProgress((prev) => Math.max(prev, 30)); // 开始分析
 
         // 先检查队列状态
-        console.log("[ANALYZING] Checking queue status...");
         try {
           const queueRes = await fetch("/api/advisor/queue-status");
           const queueData = await queueRes.json();
-          console.log("[ANALYZING] Queue status:", queueData);
           if (queueData.success && queueData.data.isBusy) {
             setQueueStatus({
               isQueuing: true,
