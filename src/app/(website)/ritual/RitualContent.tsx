@@ -73,7 +73,7 @@ interface SubPlan {
 interface Scheme {
   id: string;
   name: string;
-  tag: string;
+  tag?: string;
   desc: string;
   steps: RitualStep[];  // 保留原有 steps，兼容没有子方案的情景
   subPlans?: SubPlan[]; // 新增：子方案列表（可选）
@@ -94,7 +94,6 @@ const defaultModuleData: ModuleData = {
       id: "d1",
       name: "晨间焕活",
       nameEn: "MORNING VITALITY RITUAL",
-      tag: "唤醒",
       desc: "开启一天的透亮肌底",
       totalDuration: "5-10分钟",
       products: "洁面慕斯、面霜",
@@ -181,7 +180,6 @@ const defaultModuleData: ModuleData = {
       id: "n1",
       name: "晚间呵护",
       nameEn: "NIGHT REPAIR RITUAL",
-      tag: "修复",
       desc: "利用黄金睡眠期修护",
       totalDuration: "10-15分钟",
       products: "洁面慕斯、面霜",
@@ -236,7 +234,6 @@ const defaultModuleData: ModuleData = {
       id: "s1",
       name: "面部方案",
       nameEn: "FACE RITUAL",
-      tag: "面部",
       desc: "仅需 4 个步骤",
       totalDuration: "30分钟",
       products: "洁面慕斯、磨砂膏、护理油、面霜、面膜",
@@ -252,7 +249,6 @@ const defaultModuleData: ModuleData = {
       id: "s2",
       name: "全身方案",
       nameEn: "FULL BODY RITUAL",
-      tag: "全身",
       desc: "仅需 6 个步骤",
       totalDuration: "45分钟",
       products: "洁面慕斯、磨砂膏、护理油、面霜、面膜、身体乳",
@@ -1090,17 +1086,17 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                         </m.div>
                       )}
 
-                      {/* Level 2: 方案选择 - 桌面端水平排列 */}
+                      {/* Level 2: 方案选择 - 桌面端 Bento Box 布局 */}
                       {currentLevel === 2 && selectedModule && (
                         <m.div
                           key="level2"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                          className="absolute inset-0 flex items-center justify-center overflow-visible p-5 lg:p-6"
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                          className="absolute inset-0 flex items-center justify-center overflow-visible p-5"
                         >
-                          <div className="flex h-full w-full max-w-[1440px] flex-row gap-5 lg:gap-6">
+                          <div className="flex w-full max-w-5xl items-center justify-center gap-8 lg:gap-12">
                             {moduleData[selectedModule].map((scheme, index) => (
                               <m.button
                                 key={scheme.id}
@@ -1109,60 +1105,60 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 onMouseEnter={() => setHoveredIndex(index)}
                                 onMouseLeave={() => setHoveredIndex(null)}
                                 className={cn(
-                                  // 桌面端：垂直居中面板
-                                  "group relative flex cursor-pointer flex-col items-center justify-center gap-0 overflow-hidden rounded-sm border-0 p-8 lg:p-10",
-                                  // 桌面端 hover 效果
+                                  // Bento Box 样式：正方形卡片，宽高固定
+                                  "group relative flex aspect-[4/5] w-full max-w-md cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-0 bg-white/40 p-8 shadow-sm transition-all duration-500 lg:p-12",
                                   hoveredIndex === index
-                                    ? "flex-[1.6] bg-white/50 shadow-[0_30px_60px_-10px_rgba(0,38,62,0.06)]"
+                                    ? "scale-105 bg-white/80 shadow-2xl ring-1 ring-brand-charcoal/5"
                                     : hoveredIndex !== null
-                                      ? "flex-[0.9] bg-white/20"
-                                      : "flex-1 bg-white/25"
+                                      ? "opacity-50 blur-[2px] grayscale-[0.5]"
+                                      : "hover:bg-white/60"
                                 )}
-                                style={{
-                                  transition: "flex 0.9s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.7s cubic-bezier(0.16, 1, 0.3, 1)"
-                                }}
-                                initial={{ opacity: 0, y: 15 }}
+                                initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.7, delay: 0.1 + index * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                                exit={{ opacity: 0, y: 20 }}
+                                transition={{ duration: 0.5, delay: index * 0.1 }}
                               >
-                                {/* 标签 - 居中圆角边框 */}
-                                <span
-                                  className={cn(
-                                    "mb-5 rounded-full border px-5 py-1.5 text-xs tracking-wider",
-                                    hoveredIndex === index
-                                      ? "border-brand-charcoal/25 text-brand-charcoal/70"
-                                      : "border-brand-charcoal/15 text-brand-charcoal/40"
-                                  )}
-                                  style={{ transition: "border-color 0.5s ease, color 0.5s ease" }}
-                                >
-                                  {scheme.tag}
-                                </span>
+                                {/* 标签 - 仅存在时显示 */}
+                                {scheme.tag && (
+                                  <span className="mb-6 rounded-full border border-brand-charcoal/20 px-4 py-1 text-[11px] tracking-widest text-brand-charcoal/60">
+                                    {scheme.tag}
+                                  </span>
+                                )}
 
-                                {/* 标题 - 居中 */}
-                                <h3
-                                  className={cn(
-                                    "mb-4 text-center font-light tracking-wide text-brand-charcoal",
-                                    hoveredIndex === index
-                                      ? "text-2xl lg:text-[26px]"
-                                      : "text-xl lg:text-2xl"
-                                  )}
-                                  style={{ transition: "font-size 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}
-                                >
+                                {/* 标题 */}
+                                <h3 className="mb-4 text-center font-display text-2xl font-light tracking-widest text-brand-charcoal lg:text-3xl">
                                   {scheme.name}
                                 </h3>
 
-                                {/* 描述文字 - 居中 */}
-                                <p
-                                  className={cn(
-                                    "text-center text-[13px] leading-relaxed",
-                                    hoveredIndex === index
-                                      ? "text-brand-charcoal/55"
-                                      : "text-brand-charcoal/40"
-                                  )}
-                                  style={{ transition: "color 0.5s ease" }}
-                                >
+                                {/* 英文标题 (如果有) */}
+                                {scheme.nameEn && (
+                                  <span className="mb-6 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40">
+                                    {scheme.nameEn}
+                                  </span>
+                                )}
+
+                                {/* 分隔线 */}
+                                <div className="mb-6 h-px w-12 bg-brand-charcoal/10" />
+
+                                {/* 描述文字 */}
+                                <p className="mb-8 max-w-[260px] text-center text-sm leading-relaxed text-brand-charcoal/70">
                                   {scheme.desc}
                                 </p>
+
+                                {/* 预计用时 - 底部 */}
+                                <div className="mt-auto flex items-center gap-2 rounded-full bg-brand-charcoal/5 px-4 py-1.5 text-xs text-brand-charcoal/50">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    className="h-3.5 w-3.5"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 6v6l4 2" />
+                                  </svg>
+                                  <span>预计用时 {scheme.totalDuration}</span>
+                                </div>
                               </m.button>
                             ))}
                           </div>

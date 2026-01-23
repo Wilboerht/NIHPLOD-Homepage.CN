@@ -233,85 +233,38 @@ export function BottomNavBar() {
                                 </div>
                             </Link>
 
-                            {/* ================= 桌面端左侧固定导航 (Advisor) ================= */}
+                            {/* ================= 桌面端左侧固定导航 (Story - 关于旎柏 - 徽章设计) ================= */}
+                            {/* ================= 桌面端左侧固定导航 (Story - 关于旎柏 - 标签牌设计) ================= */}
                             {(() => {
-                                const advisorItem = allNavItems.find(item => item.href === "/advisor")!;
+                                const storyItem = allNavItems.find(item => item.href === "/story")!;
+                                const Icon = storyItem.icon;
 
                                 return (
-                                    <div className="hidden items-center gap-[25px] sm:flex">
-                                        {/* 头像容器 - 溢出导航栏顶部 */}
-                                        <div className="group relative">
-                                            {/* 聊天气泡 - 自动显示打字机效果 */}
-                                            <div
-                                                className={cn(
-                                                    "absolute bottom-[130px] left-0 min-w-[260px] max-w-[320px] rounded-[18px] border-2 border-black bg-white px-5 py-4 shadow-[8px_8px_0_rgba(0,0,0,0.05)] transition-all duration-400 ease-out pointer-events-none z-10",
-                                                    bubbleVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-                                                )}
-                                            >
-                                                <p className="text-[14px] leading-[1.6] text-[#1a1a1a] tracking-[0.02em] whitespace-pre-line">
-                                                    {displayedText.includes(currentMessage.highlight) && currentMessage.highlight ? (
-                                                        <>
-                                                            {displayedText.split(currentMessage.highlight)[0]}
-                                                            <b className="font-bold text-black border-b-2 border-[#D4AF37]">{currentMessage.highlight}</b>
-                                                            {displayedText.split(currentMessage.highlight)[1] || ""}
-                                                        </>
-                                                    ) : (
-                                                        displayedText
-                                                    )}
-                                                    {isTyping && <span className="animate-pulse">|</span>}
-                                                </p>
-                                                {/* 气泡小三角 */}
-                                                <div className="absolute bottom-[-10px] left-[35px] w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-black" />
-                                            </div>
+                                    <div className="hidden items-center gap-8 sm:flex">
+                                        <Link
+                                            href={storyItem.href}
+                                            onClick={(e) => handleNavClick(storyItem.href, e)}
+                                            className="group relative flex flex-col items-center justify-center gap-0.5 px-2 transition-opacity duration-300 hover:opacity-80"
+                                        >
+                                            {/* 顶部装饰线 (可选，增加标签感) */}
+                                            {/* <div className="absolute -top-[2px] h-[2px] w-8 bg-brand-charcoal/20" /> */}
 
-                                            {/* 头像 - 视差 + 动效 */}
-                                            <div
-                                                ref={avatarRef}
-                                                className="relative h-[110px] w-[110px] -mt-[55px]"
-                                            >
-                                                {/* 悬停缩放容器 */}
-                                                <div className="relative h-full w-full transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-translate-y-1">
-                                                    {/* 外圈 - 白色半透明 - 慢速旋转 */}
-                                                    <div className="absolute -inset-2 rounded-full border border-white/60 animate-[spin_10s_linear_infinite]" />
+                                            {/* 图标 (稍微放大) */}
+                                            <Icon className="mb-1 h-7 w-7 text-brand-charcoal" />
 
-                                                    {/* 内圈 - 金色 - 快速反向旋转 - 裁剪 */}
-                                                    <div
-                                                        className="absolute -inset-1 rounded-full border-[1.5px] border-[#D4C9B5]"
-                                                        style={{
-                                                            clipPath: "polygon(0 0, 50% 0, 50% 50%, 0 50%)",
-                                                            animation: "spin 4s linear infinite reverse"
-                                                        }}
-                                                    />
-
-                                                    {/* 头像容器 */}
-                                                    <div className="absolute inset-0 rounded-full bg-white p-[4px] shadow-[0_10px_30px_rgba(0,0,0,0.15)]">
-                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                        <img
-                                                            src="/images/xiaoni-avatar.png"
-                                                            alt="小旎老师"
-                                                            className="h-full w-full rounded-full object-cover"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* CTA信息 */}
-                                        <div className="flex flex-col items-center gap-1">
-                                            <span className="text-[20px] font-semibold text-black uppercase tracking-[2px]">
-                                                在线测肤
+                                            {/* 主标题 - 衬线体 */}
+                                            <span className="font-serif text-[15px] font-medium tracking-wide text-brand-charcoal">
+                                                关于旎柏
                                             </span>
-                                            <Link
-                                                href={advisorItem.href}
-                                                onClick={(e) => handleNavClick(advisorItem.href, e)}
-                                                className="flex items-center gap-1.5 bg-black text-[#F0EDE1] rounded-[50px] px-4 py-1.5 text-[13px] font-medium transition-all duration-300 ease-out hover:text-[#F0EDE1] hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.3)]"
-                                            >
-                                                免费使用
-                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M5 12h14M12 5l7 7-7 7" />
-                                                </svg>
-                                            </Link>
-                                        </div>
+
+                                            {/* 微小 Slogan */}
+                                            <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-brand-charcoal/40">
+                                                Est. 2024
+                                            </span>
+                                        </Link>
+
+                                        {/* 垂直分割线 */}
+                                        <div className="h-12 w-px bg-brand-charcoal/10" />
                                     </div>
                                 );
                             })()}
@@ -350,9 +303,9 @@ export function BottomNavBar() {
                             </button>
 
                             {/* ================= 桌面端右侧固定导航列表 ================= */}
-                            {/* 排除 Advisor (已在左侧)，其余按顺序排列: Products, Story, Ritual, Home */}
+                            {/* 排除 Story (已在左侧)，其余按顺序排列 */}
                             <div className="hidden items-center gap-3 sm:flex sm:gap-[35px]">
-                                {allNavItems.filter(item => item.href !== "/advisor").map((item) => {
+                                {allNavItems.filter(item => item.href !== "/story").map((item) => {
                                     const Icon = item.icon;
                                     const isHome = item.href === "/";
 
