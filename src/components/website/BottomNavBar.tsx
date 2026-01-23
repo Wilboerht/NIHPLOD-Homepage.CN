@@ -233,8 +233,7 @@ export function BottomNavBar() {
                                 </div>
                             </Link>
 
-                            {/* ================= 桌面端左侧固定导航 (Story - 关于旎柏 - 徽章设计) ================= */}
-                            {/* ================= 桌面端左侧固定导航 (Story - 关于旎柏 - 标签牌设计) ================= */}
+                            {/* ================= 桌面端左侧固定导航 (Story - 关于旎柏 - 极简横向锁定) ================= */}
                             {(() => {
                                 const storyItem = allNavItems.find(item => item.href === "/story")!;
                                 const Icon = storyItem.icon;
@@ -244,27 +243,19 @@ export function BottomNavBar() {
                                         <Link
                                             href={storyItem.href}
                                             onClick={(e) => handleNavClick(storyItem.href, e)}
-                                            className="group relative flex flex-col items-center justify-center gap-0.5 px-2 transition-opacity duration-300 hover:opacity-80"
+                                            className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
                                         >
-                                            {/* 顶部装饰线 (可选，增加标签感) */}
-                                            {/* <div className="absolute -top-[2px] h-[2px] w-8 bg-brand-charcoal/20" /> */}
+                                            {/* 图标 (放大作为视觉重心) */}
+                                            <Icon className="h-9 w-9 text-brand-charcoal transition-transform duration-500 group-hover:scale-105" />
 
-                                            {/* 图标 (稍微放大) */}
-                                            <Icon className="mb-1 h-7 w-7 text-brand-charcoal" />
-
-                                            {/* 主标题 - 衬线体 */}
-                                            <span className="font-serif text-[15px] font-medium tracking-wide text-brand-charcoal">
+                                            {/* 主标题 - 衬线体 大号 */}
+                                            <span className="font-serif text-[18px] font-medium tracking-wide text-brand-charcoal">
                                                 关于旎柏
-                                            </span>
-
-                                            {/* 微小 Slogan */}
-                                            <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-brand-charcoal/40">
-                                                Est. 2024
                                             </span>
                                         </Link>
 
                                         {/* 垂直分割线 */}
-                                        <div className="h-12 w-px bg-brand-charcoal/10" />
+                                        <div className="h-10 w-px bg-brand-charcoal/15" />
                                     </div>
                                 );
                             })()}
