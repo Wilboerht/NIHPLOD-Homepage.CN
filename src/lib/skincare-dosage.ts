@@ -49,62 +49,62 @@ interface DosageMatrix {
 
 /** 面霜用量 (ml) */
 export const FACE_CREAM_DOSAGE: DosageMatrix = {
-  oily:            { W1: 5.1, A2: 2.2, S1: 2.4, A1: 3.2, S2: 2.0, M1: 3.0 },
-  combination_oily:{ W1: 5.4, A2: 2.5, S1: 2.7, A1: 3.5, S2: 2.3, M1: 4.0 },
-  normal:          { W1: 5.7, A2: 2.8, S1: 3.0, A1: 3.8, S2: 2.7, M1: 5.0 },
+  oily: { W1: 5.1, A2: 2.2, S1: 2.4, A1: 3.2, S2: 2.0, M1: 3.0 },
+  combination_oily: { W1: 5.4, A2: 2.5, S1: 2.7, A1: 3.5, S2: 2.3, M1: 4.0 },
+  normal: { W1: 5.7, A2: 2.8, S1: 3.0, A1: 3.8, S2: 2.7, M1: 5.0 },
   combination_dry: { W1: 6.5, A2: 4.0, S1: 4.0, A1: 5.0, S2: 3.0, M1: 6.0 },
-  dry:             { W1: 8.0, A2: 4.5, S1: 4.0, A1: 5.5, S2: 3.0, M1: 7.0 },
-  sensitive:       { W1: 4.5, A2: 3.0, S1: 3.0, A1: 4.0, S2: 2.0, M1: 6.0 },
+  dry: { W1: 8.0, A2: 4.5, S1: 4.0, A1: 5.5, S2: 3.0, M1: 7.0 },
+  sensitive: { W1: 4.5, A2: 3.0, S1: 3.0, A1: 4.0, S2: 2.0, M1: 6.0 },
 };
 
 /** 精华用量 (ml) */
 export const SERUM_DOSAGE: DosageMatrix = {
-  oily:            { W1: 1.5, A2: 1.2, S1: 1.2, A1: 1.5, S2: 1.2, M1: 1.6 },
-  combination_oily:{ W1: 1.6, A2: 1.3, S1: 1.3, A1: 1.6, S2: 1.3, M1: 1.7 },
-  normal:          { W1: 1.6, A2: 1.3, S1: 1.4, A1: 1.6, S2: 1.3, M1: 1.7 },
+  oily: { W1: 1.5, A2: 1.2, S1: 1.2, A1: 1.5, S2: 1.2, M1: 1.6 },
+  combination_oily: { W1: 1.6, A2: 1.3, S1: 1.3, A1: 1.6, S2: 1.3, M1: 1.7 },
+  normal: { W1: 1.6, A2: 1.3, S1: 1.4, A1: 1.6, S2: 1.3, M1: 1.7 },
   combination_dry: { W1: 1.7, A2: 1.4, S1: 1.5, A1: 1.7, S2: 1.4, M1: 1.8 },
-  dry:             { W1: 2.0, A2: 1.5, S1: 1.6, A1: 1.8, S2: 1.5, M1: 2.0 },
-  sensitive:       { W1: 1.8, A2: 1.4, S1: 1.5, A1: 1.8, S2: 1.9, M1: 2.0 },
+  dry: { W1: 2.0, A2: 1.5, S1: 1.6, A1: 1.8, S2: 1.5, M1: 2.0 },
+  sensitive: { W1: 1.8, A2: 1.4, S1: 1.5, A1: 1.8, S2: 1.9, M1: 2.0 },
 };
 
 /** 洁面用量 (ml) - 按一次挤压量 */
 export const CLEANSER_DOSAGE: DosageMatrix = {
-  oily:            { W1: 1.5, A2: 1.0, S1: 1.2, A1: 1.3, S2: 0.8, M1: 1.4 },
-  combination_oily:{ W1: 1.6, A2: 1.0, S1: 1.2, A1: 1.3, S2: 0.8, M1: 1.4 },
-  normal:          { W1: 1.5, A2: 0.9, S1: 1.0, A1: 1.2, S2: 0.7, M1: 1.3 },
+  oily: { W1: 1.5, A2: 1.0, S1: 1.2, A1: 1.3, S2: 0.8, M1: 1.4 },
+  combination_oily: { W1: 1.6, A2: 1.0, S1: 1.2, A1: 1.3, S2: 0.8, M1: 1.4 },
+  normal: { W1: 1.5, A2: 0.9, S1: 1.0, A1: 1.2, S2: 0.7, M1: 1.3 },
   combination_dry: { W1: 1.4, A2: 0.8, S1: 0.9, A1: 1.1, S2: 0.6, M1: 1.2 },
-  dry:             { W1: 1.3, A2: 0.7, S1: 0.8, A1: 1.0, S2: 0.5, M1: 1.1 },
-  sensitive:       { W1: 1.3, A2: 0.7, S1: 0.8, A1: 1.0, S2: 0.5, M1: 1.1 },
+  dry: { W1: 1.3, A2: 0.7, S1: 0.8, A1: 1.0, S2: 0.5, M1: 1.1 },
+  sensitive: { W1: 1.3, A2: 0.7, S1: 0.8, A1: 1.0, S2: 0.5, M1: 1.1 },
 };
 
 /** 防晒用量 (ml) */
 export const SUNSCREEN_DOSAGE: DosageMatrix = {
-  oily:            { W1: 1.2, A2: 0.9, S1: 0.9, A1: 1.2, S2: 1.0, M1: 1.3 },
-  combination_oily:{ W1: 1.3, A2: 1.0, S1: 1.0, A1: 1.3, S2: 1.1, M1: 1.4 },
-  normal:          { W1: 1.2, A2: 0.9, S1: 1.0, A1: 1.2, S2: 1.1, M1: 1.3 },
+  oily: { W1: 1.2, A2: 0.9, S1: 0.9, A1: 1.2, S2: 1.0, M1: 1.3 },
+  combination_oily: { W1: 1.3, A2: 1.0, S1: 1.0, A1: 1.3, S2: 1.1, M1: 1.4 },
+  normal: { W1: 1.2, A2: 0.9, S1: 1.0, A1: 1.2, S2: 1.1, M1: 1.3 },
   combination_dry: { W1: 1.3, A2: 1.0, S1: 1.1, A1: 1.3, S2: 1.2, M1: 1.4 },
-  dry:             { W1: 2.0, A2: 1.5, S1: 1.5, A1: 1.5, S2: 1.6, M1: 1.8 },
-  sensitive:       { W1: 2.0, A2: 2.0, S1: 2.0, A1: 2.0, S2: 2.0, M1: 2.0 },
+  dry: { W1: 2.0, A2: 1.5, S1: 1.5, A1: 1.5, S2: 1.6, M1: 1.8 },
+  sensitive: { W1: 2.0, A2: 2.0, S1: 2.0, A1: 2.0, S2: 2.0, M1: 2.0 },
 };
 
 /** 磨砂膏用量 (ml) - 每周1-2次 */
 export const SCRUB_DOSAGE: DosageMatrix = {
-  oily:            { W1: 7.5, A2: 7.0, S1: 8.0, A1: 9.5, S2: 7.0, M1: 7.5 },
-  combination_oily:{ W1: 9.5, A2: 6.0, S1: 8.5, A1: 9.5, S2: 6.5, M1: 6.0 },
-  normal:          { W1: 9.0, A2: 5.0, S1: 7.0, A1: 9.0, S2: 5.5, M1: 5.5 },
+  oily: { W1: 7.5, A2: 7.0, S1: 8.0, A1: 9.5, S2: 7.0, M1: 7.5 },
+  combination_oily: { W1: 9.5, A2: 6.0, S1: 8.5, A1: 9.5, S2: 6.5, M1: 6.0 },
+  normal: { W1: 9.0, A2: 5.0, S1: 7.0, A1: 9.0, S2: 5.5, M1: 5.5 },
   combination_dry: { W1: 8.0, A2: 5.0, S1: 6.0, A1: 8.0, S2: 5.0, M1: 2.0 },
-  dry:             { W1: 7.0, A2: 4.0, S1: 6.5, A1: 7.0, S2: 4.5, M1: 3.5 },
-  sensitive:       { W1: 8.0, A2: 5.0, S1: 6.5, A1: 7.5, S2: 5.5, M1: 6.0 },
+  dry: { W1: 7.0, A2: 4.0, S1: 6.5, A1: 7.0, S2: 4.5, M1: 3.5 },
+  sensitive: { W1: 8.0, A2: 5.0, S1: 6.5, A1: 7.5, S2: 5.5, M1: 6.0 },
 };
 
 /** 面膜用量 (片/次) */
 export const MASK_DOSAGE: DosageMatrix = {
-  oily:            { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
-  combination_oily:{ W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
-  normal:          { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
+  oily: { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
+  combination_oily: { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
+  normal: { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
   combination_dry: { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
-  dry:             { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
-  sensitive:       { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
+  dry: { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
+  sensitive: { W1: 1, A2: 1, S1: 1, A1: 1, S2: 1, M1: 1 },
 };
 
 /** 产品用量推荐 */
@@ -456,44 +456,49 @@ function getStepsForRoutine(
     dosage: { productSlug: "treatment-oil", productName: "臻萃护理油", productNameEn: "Treatment Oil", dosage: 3, unit: "滴", description: "3-5滴，温热后轻拍" },
   };
 
+  // 辅助函数：为步骤数组设置正确的 order
+  const setOrders = (steps: SkincareStep[]): SkincareStep[] => {
+    return steps.map((step, index) => ({ ...step, order: index + 1 }));
+  };
+
   // 根据level和scenario组合步骤
   if (scenario === "morning") {
     if (level === "daily") {
-      return [cleanseStep, creamStep, { ...sunscreenStep, order: 3 }];
+      return setOrders([cleanseStep, creamStep, sunscreenStep]);
     } else if (level === "professional") {
-      return [cleanseStep, serumStep, creamStep, { ...sunscreenStep, order: 4 }];
+      return setOrders([cleanseStep, serumStep, creamStep, sunscreenStep]);
     } else {
-      return [cleanseStep, serumStep, { ...oilStep, order: 3, description: "护理油与精华混合使用，加强滋养" }, { ...creamStep, order: 4 }, { ...sunscreenStep, order: 5 }];
+      return setOrders([cleanseStep, serumStep, { ...oilStep, description: "护理油与精华混合使用，加强滋养" }, creamStep, sunscreenStep]);
     }
   }
 
   if (scenario === "evening") {
     if (level === "daily") {
-      return [cleanseStep, creamStep];
+      return setOrders([cleanseStep, creamStep]);
     } else if (level === "professional") {
-      return [cleanseStep, serumStep, creamStep];
+      return setOrders([cleanseStep, serumStep, creamStep]);
     } else {
-      return [cleanseStep, { ...scrubStep, frequency: "每周1次晚间使用" }, serumStep, maskStep, { ...oilStep, order: 5 }, { ...creamStep, order: 6 }];
+      return setOrders([cleanseStep, { ...scrubStep, frequency: "每周1次晚间使用" }, serumStep, maskStep, oilStep, creamStep]);
     }
   }
 
   if (scenario === "home") {
     if (level === "daily") {
-      return [cleanseStep, { ...maskStep, order: 2, frequency: "放松时敷用" }, creamStep];
+      return setOrders([cleanseStep, { ...maskStep, frequency: "放松时敷用" }, creamStep]);
     } else if (level === "professional") {
-      return [cleanseStep, scrubStep, maskStep, serumStep, creamStep];
+      return setOrders([cleanseStep, scrubStep, maskStep, serumStep, creamStep]);
     } else {
-      return [cleanseStep, scrubStep, { ...maskStep, order: 3, duration: "20分钟", description: "配合按摩仪使用效果更佳" }, serumStep, oilStep, creamStep];
+      return setOrders([cleanseStep, scrubStep, { ...maskStep, duration: "20分钟", description: "配合按摩仪使用效果更佳" }, serumStep, oilStep, creamStep]);
     }
   }
 
   // travel
   if (level === "daily") {
-    return [{ ...cleanseStep, description: "旅途便携装，快速清洁" }, { ...creamStep, order: 2, description: "机舱干燥环境下加强保湿" }];
+    return setOrders([{ ...cleanseStep, description: "旅途便携装，快速清洁" }, { ...creamStep, description: "机舱干燥环境下加强保湿" }]);
   } else if (level === "professional") {
-    return [cleanseStep, serumStep, creamStep, sunscreenStep];
+    return setOrders([cleanseStep, serumStep, creamStep, sunscreenStep]);
   } else {
-    return [cleanseStep, serumStep, maskStep, creamStep, sunscreenStep];
+    return setOrders([cleanseStep, serumStep, maskStep, creamStep, sunscreenStep]);
   }
 }
 

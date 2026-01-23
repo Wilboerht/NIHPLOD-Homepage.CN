@@ -185,26 +185,10 @@ async function callUnifiedAI(
   // 1. 获取动态配置
   const settings = await getAISettings();
 
-  // 调试日志：显示从数据库读取的设置
-  console.log("=== [DEBUG] AI Settings from DB ===");
-  console.log("Provider:", settings.provider);
-  console.log("Vision Provider:", settings.visionProvider);
-  console.log("Model:", settings.model);
-  console.log("Vision Model:", settings.visionModel);
-  console.log("API Keys configured:", {
-    openai: settings.apiKeys?.openai ? `已配置 (${settings.apiKeys.openai.length} chars)` : "❌ 未配置",
-    deepseek: settings.apiKeys?.deepseek ? `已配置 (${settings.apiKeys.deepseek.length} chars)` : "❌ 未配置",
-    qwen: settings.apiKeys?.qwen ? `已配置 (${settings.apiKeys.qwen.length} chars)` : "❌ 未配置",
-    anthropic: settings.apiKeys?.anthropic ? `已配置 (${settings.apiKeys.anthropic.length} chars)` : "❌ 未配置",
-  });
-
   // 优先使用 visionProvider，因为这是一个多模态任务
   const provider = settings.visionProvider || "openai";
   const model = settings.visionModel || "gpt-4o";
   const apiKeys = getApiKeysForProvider(provider);
-
-  console.log(`[DEBUG] Using provider: ${provider}, model: ${model}`);
-  console.log(`[DEBUG] Found ${apiKeys.length} API key(s) for provider ${provider}`);
 
   if (apiKeys.length === 0) {
     aiLogger.error("Unified Analysis: API Key missing", { provider });
