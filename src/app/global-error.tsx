@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Image from "next/image";
+// eslint-disable-next-line @next/next/no-img-element -- Using <img> intentionally as fallback since Next Image may fail in global error scenarios
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
 
 interface GlobalErrorProps {

@@ -62,10 +62,10 @@ export function BottomNavBar() {
     }, []);
 
     // 聊天气泡状态
-    const [bubbleVisible, setBubbleVisible] = useState(false);
+    const [_bubbleVisible, setBubbleVisible] = useState(false);
     const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
-    const [displayedText, setDisplayedText] = useState("");
-    const [isTyping, setIsTyping] = useState(false);
+    const [_displayedText, setDisplayedText] = useState("");
+    const [_isTyping, setIsTyping] = useState(false);
 
     // 打字机效果
     const typeMessage = useCallback(async (messageIndex: number) => {
@@ -133,7 +133,7 @@ export function BottomNavBar() {
     const isVisible = !isDrawerOpen;
 
     // 获取当前消息的高亮部分
-    const currentMessage = chatMessages[currentMessageIndex];
+    const _currentMessage = chatMessages[currentMessageIndex];
 
     return (
         <>

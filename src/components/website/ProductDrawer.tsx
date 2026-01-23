@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useState } from "react";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, ShoppingBag, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**

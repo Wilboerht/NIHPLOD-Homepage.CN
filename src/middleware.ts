@@ -30,7 +30,7 @@ const SENSITIVE_API_PREFIXES = [
 ];
 
 // 2. 混合 API: GET 公开，写操作 (POST/PUT/DELETE) 需鉴权
-const HYBRID_API_PREFIXES = [
+const _HYBRID_API_PREFIXES = [
   "/api/categories",
   "/api/products",
   "/api/pages",
