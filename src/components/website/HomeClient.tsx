@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { Link } from "next-view-transitions";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -12,6 +12,26 @@ import type { HomePageContent } from "@/types/page-content";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
+
+/**
+ * 独立的 URL 参数处理器组件
+ * 需要被包裹在 Suspense 中
+ */
+function ContactParamHandler() {
+  const searchParams = useSearchParams();
+  const { openContact } = useAuth();
+
+  useEffect(() => {
+    if (searchParams.get("contact") === "true") {
+      openContact();
+      // 清除 URL 参数
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams, openContact]);
+
+  return null;
+}
 
 /**
  * 移动端底部菜单组件
@@ -126,18 +146,7 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
   const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
   const { openContact } = useAuth();
-  const searchParams = useSearchParams();
   // const router = useRouter();
-
-  // 检查 URL 参数是否需要自动打开联系模态框
-  useEffect(() => {
-    if (searchParams.get("contact") === "true") {
-      openContact();
-      // 清除 URL 参数
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-    }
-  }, [searchParams, openContact]);
 
   // 首页特殊处理：立即设置抽屉为展开状态，不需要动画
   useEffect(() => {
@@ -182,6 +191,10 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
 
   return (
     <>
+      <Suspense fallback={null}>
+        <ContactParamHandler />
+      </Suspense>
+
       {/* 内容区域容器 */}
       <m.div
         className="safe-area-content !-top-[1px]"
