@@ -4,10 +4,14 @@ import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { Home, ArrowLeft } from "lucide-react";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 /**
  * 404 页面 - 品牌风格设计
  */
 export default function NotFound() {
+  const { openContact } = useAuth();
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-brand-cream px-4">
       {/* 装饰背景 */}
@@ -87,9 +91,9 @@ export default function NotFound() {
             <Link href="/ritual" className="text-brand-gold hover:underline">
               官方指南
             </Link>
-            <Link href="/contact" className="text-brand-gold hover:underline">
+            <button onClick={openContact} className="text-brand-gold hover:underline">
               联系我们
-            </Link>
+            </button>
           </div>
         </div>
       </div>

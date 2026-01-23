@@ -1,7 +1,9 @@
 "use client";
 
+
 import { useEffect, useRef, useState } from "react";
 import { Link } from "next-view-transitions";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X } from "lucide-react";
@@ -9,13 +11,14 @@ import type { HomePageContent } from "@/types/page-content";
 // import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * 移动端底部菜单组件
  * 点击 "更多" 按钮展开/收起链接列表
  * 使用绝对定位，展开时向上浮动，不影响其他元素布局
  */
-function MobileFooterMenu({ links }: { links: { href: string; label: string }[] }) {
+function MobileFooterMenu({ links, onContactClick }: { links: { href: string; label: string }[], onContactClick: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -42,19 +45,36 @@ function MobileFooterMenu({ links }: { links: { href: string; label: string }[] 
               className="absolute bottom-full mb-4 z-30 flex flex-col items-center overflow-hidden rounded-2xl border border-brand-beige/50 bg-[#F8F6F1]/95 shadow-xl backdrop-blur-md"
               style={{ minWidth: "160px" }}
             >
-              {links.map((link, index) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className={cn(
-                    "w-full px-6 py-3 text-center text-sm tracking-wide text-brand-charcoal/80 transition-all hover:bg-brand-gold/10 hover:text-brand-charcoal",
-                    index !== links.length - 1 && "border-b border-brand-beige/30"
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {links.map((link, index) => {
+                const isContact = link.href === "/contact";
+                return isContact ? (
+                  <button
+                    key={link.href}
+                    onClick={() => {
+                      setIsOpen(false);
+                      onContactClick();
+                    }}
+                    className={cn(
+                      "w-full px-6 py-3 text-center text-sm tracking-wide text-brand-charcoal/80 transition-all hover:bg-brand-gold/10 hover:text-brand-charcoal",
+                      index !== links.length - 1 && "border-b border-brand-beige/30"
+                    )}
+                  >
+                    {link.label}
+                  </button>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      "w-full px-6 py-3 text-center text-sm tracking-wide text-brand-charcoal/80 transition-all hover:bg-brand-gold/10 hover:text-brand-charcoal",
+                      index !== links.length - 1 && "border-b border-brand-beige/30"
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
             </m.div>
           </>
         )}
@@ -105,6 +125,19 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
   const wave2Ref = useRef<SVGSVGElement>(null);
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
   const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
+  const { openContact } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // 检查 URL 参数是否需要自动打开联系模态框
+  useEffect(() => {
+    if (searchParams.get("contact") === "true") {
+      openContact();
+      // 清除 URL 参数
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams, openContact]);
 
   // 首页特殊处理：立即设置抽屉为展开状态，不需要动画
   useEffect(() => {
@@ -269,19 +302,32 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
                     {/* 辅助链接 */}
                     {/* 辅助链接 - 桌面端 (静态列表) */}
                     <div className="hidden sm:flex items-center gap-3 sm:gap-6">
-                      {FOOTER_LINKS.map((link) => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          className="text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
+                      {FOOTER_LINKS.map((link) => {
+                        if (link.href === "/contact") {
+                          return (
+                            <button
+                              key={link.href}
+                              onClick={openContact}
+                              className="text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                            >
+                              {link.label}
+                            </button>
+                          );
+                        }
+                        return (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            className="text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                          >
+                            {link.label}
+                          </Link>
+                        );
+                      })}
                     </div>
 
                     {/* 辅助链接 - 移动端 (可折叠菜单) */}
-                    <MobileFooterMenu links={FOOTER_LINKS} />
+                    <MobileFooterMenu links={FOOTER_LINKS} onContactClick={openContact} />
 
                     {/* 版权文本 */}
                     <p className="text-xs font-light tracking-widest text-brand-charcoal/60 relative z-10">

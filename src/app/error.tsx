@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 interface ErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
@@ -14,6 +16,7 @@ interface ErrorProps {
  * 错误边界页面 - 品牌风格设计
  */
 export default function Error({ error, reset }: ErrorProps) {
+  const { openContact } = useAuth();
   useEffect(() => {
     // 记录错误到错误报告服务
     console.error("Application error:", error);
@@ -95,12 +98,12 @@ export default function Error({ error, reset }: ErrorProps) {
         <div className="text-sm text-brand-charcoal/50">
           <p>
             如果问题持续存在，请
-            <Link
-              href="/contact"
+            <button
+              onClick={openContact}
               className="ml-1 text-brand-gold hover:underline"
             >
               联系我们
-            </Link>
+            </button>
           </p>
         </div>
       </div>

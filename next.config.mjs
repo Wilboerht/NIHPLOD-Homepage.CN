@@ -100,6 +100,25 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/contact',
+        destination: '/?contact=true',
+        permanent: false,
+      },
+      {
+        source: '/(admin)',
+        destination: '/admin/dashboard',
+        permanent: false,
+      },
+      {
+        source: '/admin',
+        destination: '/admin/dashboard',
+        permanent: false,
+      }
+    ];
+  },
 };
 
 export default nextConfig;

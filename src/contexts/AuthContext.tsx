@@ -36,6 +36,10 @@ interface AuthContextType {
   payOrderId: string | null;
   openPay: (orderId: string) => void;
   closePay: () => void;
+  // 联系我们弹窗状态
+  contactOpen: boolean;
+  openContact: () => void;
+  closeContact: () => void;
   // 登录弹窗
   openLoginModal: () => void;
   openRegisterModal: () => void;
@@ -124,6 +128,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPayOrderId(null);
   }, []);
 
+  // 联系我们弹窗状态
+  const [contactOpen, setContactOpen] = useState(false);
+  const openContact = useCallback(() => setContactOpen(true), []);
+  const closeContact = useCallback(() => setContactOpen(false), []);
+
   const refreshUser = useCallback(async () => {
     try {
       const res = await fetch("/api/user/profile");
@@ -175,6 +184,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         payOrderId,
         openPay,
         closePay,
+        contactOpen,
+        openContact,
+        closeContact,
         openLoginModal,
         openRegisterModal,
         openForgotPasswordModal,

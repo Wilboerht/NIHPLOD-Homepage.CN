@@ -8,6 +8,7 @@ import { AuthModal } from "./AuthModal";
 import { UserCenterModal } from "./UserCenterModal";
 import { CheckoutModal } from "./CheckoutModal";
 import PayModal from "./PayModal";
+import { ContactModal } from "./ContactModal";
 
 export function GlobalModals() {
   const [mounted, setMounted] = useState(false);
@@ -37,6 +38,8 @@ export function GlobalModals() {
       <CheckoutModal />
       {/* 支付弹窗 */}
       <PayModal />
+      {/* 联系我们弹窗 */}
+      <ContactModal />
     </>
   );
 }

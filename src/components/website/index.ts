@@ -24,3 +24,4 @@ export {
 } from "./Skeleton";
 export { RitualIcon, ContactIcon, HomeIcon, ShopIcon, StoryIcon, CartIcon, FAQIcon } from "./NavIcons";
 export { BottomNavBar } from "./BottomNavBar";
+export { ContactModal } from "./ContactModal";
