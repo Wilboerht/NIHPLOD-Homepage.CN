@@ -118,24 +118,26 @@ export function AnalyzingContent() {
 
       // 图片预处理
       console.log("[ANALYZING] Starting image preprocessing...");
-      let imagesToAnalyze: { front?: string; left?: string; right?: string } = {};
+      let imagesToAnalyze: { front?: string; left?: string; right?: string; chin?: string } = {};
 
       try {
         if (faceImagesStr) {
-          // 有三张照片，全部使用
-          console.log("[ANALYZING] Processing 3 face images...");
+          // 有四张照片（front, left, right, chin），全部使用
+          console.log("[ANALYZING] Processing 4 face images...");
           const faceImages = JSON.parse(faceImagesStr);
-          const [frontProcessed, leftProcessed, rightProcessed] = await Promise.all([
+          const [frontProcessed, leftProcessed, rightProcessed, chinProcessed] = await Promise.all([
             preprocessFaceImage(faceImages.front),
             preprocessFaceImage(faceImages.left),
             preprocessFaceImage(faceImages.right),
+            faceImages.chin ? preprocessFaceImage(faceImages.chin) : Promise.resolve(null),
           ]);
           imagesToAnalyze = {
             front: frontProcessed.imageData,
             left: leftProcessed.imageData,
             right: rightProcessed.imageData,
+            ...(chinProcessed && { chin: chinProcessed.imageData }),
           };
-          console.log("[ANALYZING] 3 images preprocessed successfully");
+          console.log(`[ANALYZING] ${chinProcessed ? 4 : 3} images preprocessed successfully`);
         } else if (faceImage) {
           // 只有一张照片（降级模式）
           console.log("[ANALYZING] Processing 1 face image...");

@@ -13,6 +13,7 @@ const ComprehensiveRequestSchema = z.object({
     front: z.string().optional(),
     left: z.string().optional(),
     right: z.string().optional(),
+    chin: z.string().optional(), // 下颚照片
   }),
 });
 
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
     addImage("正脸", images.front);
     addImage("左侧", images.left);
     addImage("右侧", images.right);
+    addImage("下颚", images.chin);
 
     if (validImages.length === 0) {
       return NextResponse.json(
