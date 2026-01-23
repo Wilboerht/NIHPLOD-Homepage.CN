@@ -1,11 +1,8 @@
 "use client";
 
-/**
- * 联系我们模态框组件
- * 自然纹理风格
- */
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { X, Send, CheckCircle, AlertCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,9 +35,6 @@ interface FormData {
 }
 
 type FormStatus = "idle" | "loading" | "success" | "error";
-
-// 自然纹理背景样式
-const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`;
 
 export function ContactModal() {
     const { contactOpen, closeContact } = useAuth();
@@ -76,7 +70,7 @@ export function ContactModal() {
         };
     }, [contactOpen]);
 
-    // ESC 关闭
+    // ESC 关闭及重置
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === "Escape") closeContact();
@@ -193,65 +187,47 @@ export function ContactModal() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={closeContact}
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-md"
                     />
 
-                    {/* 弹窗主体 */}
+                    {/* 弹窗主体 - 双列布局 */}
                     <m.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="relative w-full max-w-lg max-h-[85vh] bg-[#FAF8F5] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-                        style={{ backgroundImage: TEXTURE_BG }}
+                        className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col md:flex-row h-auto max-h-[85vh] md:h-[600px]"
                     >
-                        {/* 关闭按钮 */}
-                        <button
-                            onClick={closeContact}
-                            className="absolute top-4 right-4 z-10 p-2 rounded-full text-[#8B8579] hover:text-[#5C5347] hover:bg-[#E8E3DC] transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-
-                        {/* 头部 */}
-                        <div className="px-6 pt-6 pb-4 border-b border-[#E8E3DC]">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-[#A69374]/10 flex items-center justify-center">
-                                    <Mail className="w-5 h-5 text-[#A69374]" />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-medium text-[#5C5347]">联系我们</h2>
-                                    <p className="text-xs text-[#A69B8C]">有任何问题？期待与您的交流</p>
-                                </div>
+                        {/* 左侧：表单区域 */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-10">
+                            <div className="mb-8">
+                                <h2 className="font-serif text-2xl text-brand-charcoal md:text-3xl">联系我们</h2>
+                                <p className="mt-2 text-sm text-brand-charcoal/60">
+                                    有任何问题？期待与您的每一次交流
+                                </p>
                             </div>
-                        </div>
-
-                        {/* 内容区域 */}
-                        <div className="flex-1 overflow-y-auto p-6">
 
                             {status === "success" && (
-                                <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-green-50/80 p-4 text-green-700 backdrop-blur-sm">
+                                <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-green-50/80 p-4 text-green-700">
                                     <CheckCircle className="h-5 w-5" />
                                     <span className="text-sm">{message}</span>
                                 </div>
                             )}
                             {status === "error" && (
-                                <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-red-50/80 p-4 text-red-700 backdrop-blur-sm">
+                                <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-red-50/80 p-4 text-red-700">
                                     <AlertCircle className="h-5 w-5" />
                                     <span className="text-sm">{message}</span>
                                 </div>
                             )}
 
-                            <form onSubmit={handleSubmit} className="space-y-4">
+                            <form onSubmit={handleSubmit} className="space-y-5">
                                 {/* 蜜罐字段 */}
                                 <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
 
-                                <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid gap-5 sm:grid-cols-2">
                                     {/* 姓名 */}
                                     <div>
-                                        <label htmlFor="modal-name" className="mb-1.5 block text-sm font-medium text-[#5C5347]">
-                                            姓名 <span className="text-red-500">*</span>
-                                        </label>
+
                                         <input
                                             type="text"
                                             id="modal-name"
@@ -259,10 +235,10 @@ export function ContactModal() {
                                             value={formData.name}
                                             onChange={handleChange}
                                             className={cn(
-                                                "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-all bg-white/60",
+                                                "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
                                                 errors.name
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                                    : "border-[#E8E3DC] focus:border-[#A69374] focus:ring-2 focus:ring-[#A69374]/10"
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                    : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
                                             )}
                                             placeholder="请输入您的姓名"
                                         />
@@ -271,9 +247,7 @@ export function ContactModal() {
 
                                     {/* 邮箱 */}
                                     <div>
-                                        <label htmlFor="modal-email" className="mb-1.5 block text-sm font-medium text-[#5C5347]">
-                                            邮箱 <span className="text-red-500">*</span>
-                                        </label>
+
                                         <input
                                             type="email"
                                             id="modal-email"
@@ -281,10 +255,10 @@ export function ContactModal() {
                                             value={formData.email}
                                             onChange={handleChange}
                                             className={cn(
-                                                "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-all bg-white/60",
+                                                "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
                                                 errors.email
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                                    : "border-[#E8E3DC] focus:border-[#A69374] focus:ring-2 focus:ring-[#A69374]/10"
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                    : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
                                             )}
                                             placeholder="请输入您的邮箱"
                                         />
@@ -294,18 +268,16 @@ export function ContactModal() {
 
                                 {/* 留言类型 */}
                                 <div ref={typeDropdownRef} className="relative">
-                                    <label htmlFor="modal-type" className="mb-1.5 block text-sm font-medium text-[#5C5347]">
-                                        留言类型 <span className="text-red-500">*</span>
-                                    </label>
+
                                     <button
                                         type="button"
-                                        onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                                         className={cn(
-                                            "flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm outline-none transition-all bg-white/60",
+                                            "flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4 text-left text-base outline-none transition-all",
                                             !formData.type && "text-gray-400",
                                             errors.type
-                                                ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                                : "border-[#E8E3DC] focus:border-[#A69374] focus:ring-2 focus:ring-[#A69374]/10",
+                                                ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10",
+                                            isTypeDropdownOpen && "border-brand-gold ring-1 ring-brand-gold/10"
                                         )}
                                     >
                                         <span className="flex items-center gap-2">
@@ -313,11 +285,11 @@ export function ContactModal() {
                                                 const selected = messageTypes.find(t => t.value === formData.type);
                                                 if (selected) {
                                                     const Icon = selected.icon;
-                                                    return <Icon className="h-4 w-4 text-[#A69374]" />;
+                                                    return <Icon className="h-4 w-4 text-brand-gold" />;
                                                 }
                                                 return null;
                                             })()}
-                                            <span className={formData.type ? "text-[#5C5347]" : ""}>
+                                            <span className={formData.type ? "text-brand-charcoal" : ""}>
                                                 {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
                                             </span>
                                         </span>
@@ -330,11 +302,11 @@ export function ContactModal() {
                                     <AnimatePresence>
                                         {isTypeDropdownOpen && (
                                             <m.div
-                                                initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                transition={{ duration: 0.15, ease: "easeOut" }}
-                                                className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-[#E8E3DC] bg-white shadow-lg shadow-black/5"
+                                                initial={{ opacity: 0, y: 5 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: 5 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl"
                                             >
                                                 {messageTypes.filter(t => t.value !== "").map((type, index) => {
                                                     const Icon = type.icon;
@@ -353,18 +325,18 @@ export function ContactModal() {
                                                             className={cn(
                                                                 "flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all",
                                                                 isSelected
-                                                                    ? "bg-[#A69374]/10 text-[#5C5347]"
-                                                                    : "text-[#5C5347]/70 hover:bg-[#F5F2ED] hover:text-[#5C5347]",
-                                                                index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-[#E8E3DC]/30"
+                                                                    ? "bg-brand-gold/5 text-brand-gold"
+                                                                    : "text-brand-charcoal/70 hover:bg-gray-50",
+                                                                index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-gray-50"
                                                             )}
                                                         >
                                                             <Icon className={cn(
                                                                 "h-4 w-4 transition-colors",
-                                                                isSelected ? "text-[#A69374]" : "text-gray-400"
+                                                                isSelected ? "text-brand-gold" : "text-gray-400"
                                                             )} />
                                                             <span>{type.label}</span>
                                                             {isSelected && (
-                                                                <CheckCircle className="ml-auto h-4 w-4 text-[#A69374]" />
+                                                                <CheckCircle className="ml-auto h-4 w-4 text-brand-gold" />
                                                             )}
                                                         </button>
                                                     );
@@ -375,42 +347,73 @@ export function ContactModal() {
                                     {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
                                 </div>
 
-                                {/* 内容跟随 */}
+                                {/* 留言内容 */}
                                 <div>
-                                    <label htmlFor="modal-content" className="mb-1.5 block text-sm font-medium text-[#5C5347]">
-                                        留言内容 <span className="text-red-500">*</span>
-                                    </label>
+
                                     <textarea
                                         id="modal-content"
                                         name="content"
                                         value={formData.content}
                                         onChange={handleChange}
-                                        placeholder="请输入您的留言内容..."
-                                        rows={4}
+                                        placeholder="请输入您的具体需求或建议..."
+                                        rows={6}
                                         className={cn(
-                                            "w-full resize-none rounded-xl border bg-white/60 px-3 py-2.5 text-sm outline-none transition-all",
+                                            "w-full resize-none rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
                                             errors.content
-                                                ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                                : "border-[#E8E3DC] focus:border-[#A69374] focus:ring-2 focus:ring-[#A69374]/10"
+                                                ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
                                         )}
                                     />
                                     {errors.content && <p className="mt-1 text-xs text-red-500">{errors.content}</p>}
                                 </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={status === "loading"}
-                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#A69374] py-3 text-sm font-medium text-white shadow-lg shadow-[#A69374]/20 transition-all hover:bg-[#8B7355] disabled:cursor-not-allowed disabled:opacity-60 mt-4"
-                                >
-                                    {status === "loading" ? (
-                                        <><Loader2 className="h-4 w-4 animate-spin" /><span>提交中...</span></>
-                                    ) : (
-                                        <><Send className="h-4 w-4" /><span>提交留言</span></>
-                                    )}
-                                </button>
-
+                                <div className="pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={status === "loading"}
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#8E8675] py-4 text-sm font-medium text-white shadow-lg shadow-[#8E8675]/20 transition-all hover:bg-[#7D7565] hover:shadow-xl hover:shadow-[#8E8675]/30 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {status === "loading" ? (
+                                            <><Loader2 className="h-5 w-5 animate-spin" /><span>正在提交...</span></>
+                                        ) : (
+                                            <><span>提交意向</span><Send className="h-4 w-4" /></>
+                                        )}
+                                    </button>
+                                </div>
                             </form>
                         </div>
+
+                        {/* 右侧：图片区域 */}
+                        <div className="hidden relative w-1/2 bg-[#F2F0EA] md:block overflow-hidden">
+                            {/* 关闭按钮 - 悬浮在右上角 */}
+                            <button
+                                onClick={closeContact}
+                                className="absolute top-6 right-6 z-20 rounded-full bg-white/20 p-2 text-brand-charcoal/60 backdrop-blur-md transition-colors hover:bg-white/40 hover:text-brand-charcoal"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+
+                            <Image
+                                src="/images/contact-modal-bg.png"
+                                alt="Contact Illustration"
+                                fill
+                                className="object-cover object-center opacity-90"
+                                priority
+                            />
+
+                            {/* 装饰性文字 */}
+                            {/* <div className="absolute bottom-10 left-10 z-10">
+                                <p className="font-serif text-3xl italic text-brand-charcoal/80">Skincare Ritual</p>
+                            </div> */}
+                        </div>
+
+                        {/* 移动端关闭按钮 */}
+                        <button
+                            onClick={closeContact}
+                            className="absolute right-4 top-4 z-10 p-2 text-brand-charcoal/50 md:hidden"
+                        >
+                            <X className="h-6 w-6" />
+                        </button>
                     </m.div>
                 </div>
             )}
