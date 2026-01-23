@@ -112,16 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 支付弹窗操作
   const openPay = useCallback((orderId: string) => {
-    console.log("[AuthContext] openPay called with orderId:", orderId);
     setPayOrderId(orderId);
     setPayOpen(true);
-    console.log("[AuthContext] setPayOpen(true) called");
   }, []);
-
-  // 调试：监听 payOpen 状态变化
-  useEffect(() => {
-    console.log("[AuthContext useEffect] payOpen state is now:", payOpen, "payOrderId:", payOrderId);
-  }, [payOpen, payOrderId]);
 
   const closePay = useCallback(() => {
     setPayOpen(false);

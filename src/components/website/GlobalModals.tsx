@@ -14,19 +14,13 @@ export function GlobalModals() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    console.log("[GlobalModals] useEffect running, setting mounted to true");
     setMounted(true);
   }, []);
 
-  console.log("[GlobalModals] Component function called, mounted:", mounted);
-
-  // 确保客户端渲染
+  // 确保客户端渲染 - SSG 期间返回 null 是正常行为
   if (!mounted) {
-    console.log("[GlobalModals] Not mounted yet, returning null");
     return null;
   }
-
-  console.log("[GlobalModals] Rendering modals...");
 
   return (
     <>

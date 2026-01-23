@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { GlobalModals } from "@/components/website";
 
 interface WebsiteLayoutProps {
@@ -15,37 +14,35 @@ import { WebsiteLayoutClient } from "@/components/website/WebsiteLayoutClient";
  */
 export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
   return (
-    <AuthProvider>
-      <div className="min-h-screen">
-        {/* Skip to main content 链接 - 可访问性 */}
-        <a href="#main-content" className="skip-link">
-          跳至主要内容
-        </a>
+    <div className="min-h-screen">
+      {/* Skip to main content 链接 - 可访问性 */}
+      <a href="#main-content" className="skip-link">
+        跳至主要内容
+      </a>
 
-        {/* 全局共享背景 - 消除页面切换闪烁 */}
-        <div className="fullscreen-bg-base" />
-        <div className="fullscreen-bg">
-          <Image
-            src="/images/bg.png"
-            alt="Background"
-            fill
-            priority
-            quality={75}
-            className="object-cover"
-            sizes="100vw"
-          />
-        </div>
-
-        {/* 主内容区域，包含 NavBar 逻辑 */}
-        <WebsiteLayoutClient>
-          <main id="main-content" tabIndex={-1} className="relative z-10">
-            {children}
-          </main>
-        </WebsiteLayoutClient>
-
-        {/* 全局模态框 */}
-        <GlobalModals />
+      {/* 全局共享背景 - 消除页面切换闪烁 */}
+      <div className="fullscreen-bg-base" />
+      <div className="fullscreen-bg">
+        <Image
+          src="/images/bg.png"
+          alt="Background"
+          fill
+          priority
+          quality={75}
+          className="object-cover"
+          sizes="100vw"
+        />
       </div>
-    </AuthProvider>
+
+      {/* 主内容区域，包含 NavBar 逻辑 */}
+      <WebsiteLayoutClient>
+        <main id="main-content" tabIndex={-1} className="relative z-10">
+          {children}
+        </main>
+      </WebsiteLayoutClient>
+
+      {/* 全局模态框 */}
+      <GlobalModals />
+    </div>
   );
 }
