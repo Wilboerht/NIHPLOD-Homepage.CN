@@ -294,9 +294,9 @@ export function BottomNavBar() {
                             </button>
 
                             {/* ================= 桌面端右侧固定导航列表 ================= */}
-                            {/* 排除 Story (已在左侧)，其余按顺序排列 */}
+                            {/* 排除 Story (已在左侧) 和 Advisor (护肤顾问)，其余按顺序排列 */}
                             <div className="hidden items-center gap-3 sm:flex sm:gap-[35px]">
-                                {allNavItems.filter(item => item.href !== "/story").map((item) => {
+                                {allNavItems.filter(item => item.href !== "/story" && item.href !== "/advisor").map((item) => {
                                     const Icon = item.icon;
                                     const isHome = item.href === "/";
 

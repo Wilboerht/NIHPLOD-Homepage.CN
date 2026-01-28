@@ -170,14 +170,6 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                       className="pointer-events-none absolute right-[5%] top-0 bottom-0 hidden w-px origin-center lg:block"
                       style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(0,38,62,0.08) 30%, rgba(0,38,62,0.08) 70%, transparent 100%)" }}
                     />
-                    <m.div
-                      initial={{ scaleX: 0, opacity: 0 }}
-                      animate={{ scaleX: 1, opacity: 1 }}
-                      exit={{ scaleX: 0, opacity: 0 }}
-                      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-                      className="pointer-events-none absolute left-0 right-0 top-[120px] hidden h-px origin-center lg:block"
-                      style={{ background: "linear-gradient(to right, transparent 0%, rgba(0,38,62,0.08) 20%, rgba(0,38,62,0.08) 80%, transparent 100%)" }}
-                    />
                   </>
                 )}
               </AnimatePresence>
@@ -213,7 +205,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                 </nav>
 
                 {/* 桌面端专用 Header - Flex 布局 */}
-                <nav className="hidden h-[100px] flex-shrink-0 items-center justify-between px-[8%] lg:flex">
+                <nav className="relative hidden h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[8%] lg:flex">
                   {/* Logo */}
                   <Link href="/">
                     <Image

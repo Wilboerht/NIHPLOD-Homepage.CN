@@ -618,7 +618,7 @@
   flex-direction: column;
   gap: 1.5rem;
   align-items: center;
-  margin-top: 4rem;
+  /* margin-top: 4rem; - Removed to use Tailwind for consistency */
 }
 
 /* 主按钮 */
@@ -719,7 +719,7 @@
   }
 
   .home-container .button-group {
-    margin-top: 3rem;
+    /* margin-top: 3rem; */
   }
 
   .home-container .btn-primary {

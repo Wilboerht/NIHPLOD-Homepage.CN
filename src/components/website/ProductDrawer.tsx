@@ -322,6 +322,22 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     </div>
                   </section>
 
+                  {/* 小红书链接 */}
+                  <section className="mb-8">
+                    <a
+                      href={`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(product.name)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-2 text-[14px] text-[#00263E] transition-opacity hover:opacity-70"
+                    >
+                      <span>去小红书了解更多</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform group-hover:translate-x-1">
+                        <path d="M5 12h14" />
+                        <path d="m12 5 7 7-7 7" />
+                      </svg>
+                    </a>
+                  </section>
+
                   {/* 折叠面板 */}
                   <section className="border-t border-[#00263E]/10">
                     {product.ingredients && (
@@ -380,7 +396,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                     {/* 购买链接 */}
                     <div className="py-4">
-                      <div className="mb-3 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
+                      <div className="mb-6 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
                       <div className="flex flex-wrap gap-4">
                         {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
                           product.purchaseLinks.map((link) => (

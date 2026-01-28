@@ -287,7 +287,7 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
 
                   {/* 按钮组 */}
                   <m.div
-                    className="button-group mt-10 sm:mt-16 flex gap-6"
+                    className="button-group mt-12 sm:mt-16 flex gap-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, delay: 0.8 }}
