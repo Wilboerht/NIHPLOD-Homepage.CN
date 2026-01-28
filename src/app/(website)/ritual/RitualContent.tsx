@@ -266,75 +266,19 @@ const defaultModuleData: ModuleData = {
   professional: [
     {
       id: "p1",
-      name: "酵素焕肤",
-      nameEn: "ENZYME PEELING",
-      tag: "专业",
-      desc: "医学级角质更新处理",
-      totalDuration: "15分钟",
-      products: "酸类精华、中和液",
-      benefits: ["角质更新", "提亮肤色"],
+      name: "专业水疗",
+      nameEn: "PROFESSIONAL SPA",
+      desc: "沉静式悦己体验",
+      totalDuration: "45分钟",
+      products: "洁面慕斯、磨砂膏、护理油、面霜、面膜",
+      benefits: ["深层放松", "焕活肌肤", "身心平衡", "专业护理"],
       steps: [
-        { title: "酸性激活", description: "软化陈旧角质，促进代谢。", duration: "5-10分钟", tips: "首次使用建议从短时间开始，逐步增加。避免眼周和唇部。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
-        { title: "中和平衡", description: "恢复肌肤天然酸碱值。", duration: "2分钟", tips: "用专用中和液或清水彻底清洗，后续使用舒缓产品。", imageUrl: "/images/ritual-step-2.png" },
+        { title: "净化准备", description: "取适量洁面慕斯，温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。", duration: "2分钟", tips: "温水洗净，避免过冷或过热刺激。", dosage: "2泵", imageUrl: "/images/ritual-step-1.png" },
+        { title: "深层焕肤", description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。", duration: "5分钟", tips: "避开眼唇周围，轻柔按摩。", dosage: "适量", imageUrl: "/images/ritual-step-1.png" },
+        { title: "芳香浸愈", description: "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。", duration: "15-20分钟", tips: "水温控制在38-40度为宜。", dosage: "几滴", imageUrl: "/images/ritual-step-2.png" },
+        { title: "精华导入", description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。", duration: "5分钟", tips: "掌心温热混合后效果更佳。", dosage: "适量混合", imageUrl: "/images/ritual-step-2.png" },
+        { title: "膜法封存", description: "将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养。", duration: "15分钟", tips: "无需清洗，剩余精华按摩至吸收。", imageUrl: "/images/ritual-step-2.png" },
       ],
-      subPlans: [
-        {
-          id: "gentle",
-          name: "温和方案",
-          products: "洁面慕斯、面霜",
-          steps: [
-            { title: "酵素软化", description: "使用低浓度酵素温和软化角质。", duration: "5分钟", tips: "适合敏感肌肤，首次使用建议从短时间开始。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
-            { title: "舒缓平衡", description: "使用舒缓水恢复肌肤平衡。", duration: "1分钟", tips: "轻拍至完全吸收。", imageUrl: "/images/ritual-step-2.png" },
-          ]
-        },
-        {
-          id: "professional",
-          name: "专业方案",
-          products: "洁面慕斯、面霜、面膜",
-          steps: [
-            { title: "深层清洁", description: "彻底清洁面部，为焕肤做准备。", duration: "2分钟", tips: "使用洁面慕斯彻底清洁。", imageUrl: "/images/ritual-step-1.png" },
-            { title: "酸性激活", description: "软化陈旧角质，促进代谢。", duration: "10分钟", tips: "避免眼周和唇部，如感到刺痛立即清洗。", dosage: "薄薄一层", imageUrl: "/images/ritual-step-1.png" },
-            { title: "中和平衡", description: "恢复肌肤天然酸碱值。", duration: "2分钟", tips: "用专用中和液彻底清洗。", imageUrl: "/images/ritual-step-2.png" },
-            { title: "舒缓修护", description: "涂抹舒缓精华，镇定肌肤。", duration: "2分钟", tips: "配合轻柔按压促进吸收。", dosage: "适量", imageUrl: "/images/ritual-step-2.png" },
-          ]
-        }
-      ]
-    },
-    {
-      id: "p2",
-      name: "注氧鲜肌",
-      nameEn: "OXYGEN INFUSION",
-      tag: "活氧",
-      desc: "高压氧渗透嫩肤",
-      totalDuration: "20分钟",
-      products: "注氧仪、精华液",
-      benefits: ["深层水润", "活肤注氧"],
-      steps: [
-        { title: "导入精粹", description: "配合专业设备深层透皮。", duration: "10-15分钟", tips: "确保肌肤洁净干燥，按照设备说明操作。", dosage: "根据设备要求", imageUrl: "/images/ritual-step-1.png" },
-        { title: "屏障封存", description: "强效锁水，持久焕发神采。", duration: "2分钟", tips: "趁导入后肌肤通道打开时立即涂抹封层产品。", dosage: "充足涂抹", imageUrl: "/images/ritual-step-2.png" },
-      ],
-      subPlans: [
-        {
-          id: "home",
-          name: "居家方案",
-          products: "面霜、面膜",
-          steps: [
-            { title: "精华叠加", description: "使用多层精华进行手动按压导入。", duration: "5分钟", tips: "每层精华等待吸收后再涂抹下一层。", dosage: "2-3种精华", imageUrl: "/images/ritual-step-1.png" },
-            { title: "面膜封存", description: "使用保湿面膜加速精华吸收。", duration: "15分钟", tips: "面膜不要等到完全干透再取下。", imageUrl: "/images/ritual-step-2.png" },
-          ]
-        },
-        {
-          id: "device",
-          name: "仪器方案",
-          products: "洁面慕斯、面霜、面膜",
-          steps: [
-            { title: "洁净准备", description: "彻底清洁面部，确保毛孔畅通。", duration: "2分钟", tips: "可配合热敷打开毛孔。", imageUrl: "/images/ritual-step-1.png" },
-            { title: "注氧导入", description: "配合专业注氧仪深层导入精华。", duration: "15分钟", tips: "按设备说明操作，均匀覆盖全脸。", dosage: "根据设备要求", imageUrl: "/images/ritual-step-1.png" },
-            { title: "高倍精华", description: "叠加高浓度精华增强效果。", duration: "2分钟", tips: "趁肌肤通道打开时快速涂抹。", dosage: "充足", imageUrl: "/images/ritual-step-2.png" },
-            { title: "屏障封存", description: "强效锁水，持久焕发神采。", duration: "2分钟", tips: "使用滋润面霜封锁活性成分。", dosage: "充足涂抹", imageUrl: "/images/ritual-step-2.png" },
-          ]
-        }
-      ]
     },
   ],
 };
@@ -545,11 +489,17 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const selectModule = (moduleId: ModuleId) => {
     setSelectedModule(moduleId);
 
-    // 特殊处理：随身好物 (portable) 直接进入 Level 3
-    if (moduleId === "portable") {
+    // 特殊处理：随身好物 (portable) 和 专业水疗 (professional) 直接进入 Level 3
+    if (moduleId === "portable" || moduleId === "professional") {
       const schemes = moduleData[moduleId];
       if (schemes && schemes.length > 0) {
         setSelectedScheme(schemes[0]);
+        // 如果有子方案，自动选中第一个
+        if (schemes[0].subPlans && schemes[0].subPlans.length > 0) {
+          setSelectedSubPlan(schemes[0].subPlans[0]);
+        } else {
+          setSelectedSubPlan(null);
+        }
         setCurrentLevel(3);
       } else {
         setCurrentLevel(2);
@@ -575,9 +525,10 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   // 返回上一级
   const _goBack = () => {
     if (currentLevel === 3) {
-      // 如果是随身好物，直接返回 Level 1
-      if (selectedModule === "portable") {
+      // 如果是随身好物或专业水疗，直接返回 Level 1
+      if (selectedModule === "portable" || selectedModule === "professional") {
         setSelectedScheme(null);
+        setSelectedSubPlan(null);
         setSelectedModule(null);
         setCurrentLevel(1);
       } else {
@@ -690,8 +641,16 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                       type="button"
                       onClick={() => {
                         if (currentLevel === 3) {
-                          setSelectedScheme(null);
-                          setCurrentLevel(2);
+                          // 如果是随身好物或专业水疗，直接返回 Level 1
+                          if (selectedModule === "portable" || selectedModule === "professional") {
+                            setSelectedScheme(null);
+                            setSelectedSubPlan(null);
+                            setSelectedModule(null);
+                            setCurrentLevel(1);
+                          } else {
+                            setSelectedScheme(null);
+                            setCurrentLevel(2);
+                          }
                         } else if (currentLevel === 2) {
                           setSelectedModule(null);
                           setCurrentLevel(1);
@@ -939,7 +898,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             {selectedModule && (
                               <>
                                 <span className="text-brand-charcoal/30">/</span>
-                                {currentLevel === 2 || selectedModule === "portable" ? (
+                                {currentLevel === 2 || selectedModule === "portable" || selectedModule === "professional" ? (
                                   <span className="text-brand-charcoal">
                                     {modules.find(m => m.id === selectedModule)?.label}
                                   </span>
@@ -958,7 +917,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               </>
                             )}
 
-                            {currentLevel === 3 && selectedScheme && selectedModule !== "portable" && (
+                            {currentLevel === 3 && selectedScheme && selectedModule !== "portable" && selectedModule !== "professional" && (
                               <>
                                 <span className="text-brand-charcoal/30">/</span>
                                 <span className="text-brand-charcoal">{selectedScheme.name}</span>
@@ -1674,9 +1633,9 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                               {/* 右侧：步骤网格 (Steps Grid) - 使用 AnimatePresence 实现交叉淡入淡出 */}
                               <AnimatePresence mode="wait">
-                                {selectedModule === "portable" ? (
+                                {(selectedModule === "portable" || selectedModule === "professional") ? (
                                   <m.section
-                                    key="portable-content"
+                                    key={`${selectedModule}-content`}
                                     className="flex w-[75%] items-center justify-end overflow-hidden"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -1686,8 +1645,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                     {/* 容器尺寸与晨间焕活步骤区域保持一致：940px宽 (3×260 + 2×80) */}
                                     <div className="flex items-center justify-end" style={{ width: '940px', height: '450px' }}>
                                       <Image
-                                        src="/images/portable-ritual.webp"
-                                        alt="Portable Ritual"
+                                        src={selectedModule === "professional" ? "/images/professional-spa.webp" : "/images/portable-ritual.webp"}
+                                        alt={selectedModule === "professional" ? "Professional Spa" : "Portable Ritual"}
                                         width={940}
                                         height={450}
                                         className="h-full w-full object-cover object-center"
