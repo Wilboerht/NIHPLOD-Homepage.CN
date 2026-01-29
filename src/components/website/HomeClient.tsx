@@ -299,7 +299,7 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
                     >
                       探索更多
                     </button>
-                    <Link href="/advisor" className="btn btn-secondary">
+                    <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
                       AI快速测肤
                       <span className="badge-new">NEW</span>
                     </Link>
