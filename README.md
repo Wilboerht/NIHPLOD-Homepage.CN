@@ -1,126 +1,100 @@
-# NIHPLOD China Official Website
+# NIHPLOD
 
-The official high-end digital platform for NIHPLOD, a luxury skincare brand. This platform integrates brand storytelling, a sophisticated e-commerce engine, and an advanced AI-powered skincare consultancy system.
+**NIHPLOD** is the official digital platform for the Monaco-based luxury skincare brand founded by David Nahmad and Dr. J. Stefan Rokem. This project represents a convergence of high-end beauty, biotechnology, and advanced artificial intelligence, designed to provide users with a personalized and immersive skincare experience.
 
-## Project Vision
+The platform is not merely a showcase but a comprehensive application featuring AI-driven skin analysis, a deeply interactive user interface, and a robust e-commerce system.
 
-Designed to deliver a premium, seamless digital experience that reflects the brand's commitment to cutting-edge science and luxury. The platform prioritizes visual excellence, interactive engagement, and personalized skincare analysis.
+## Project Overview
 
-## Core Features
+The NIHPLOD platform is built to reflect the brand's core philosophy: "Reversing Time." It combines a minimalist, luxury aesthetic with powerful functional modules.
 
-### Luxury E-commerce Engine
-- **Product Ecosystem**: Advanced product categorization with detailed ritual guides.
-- **Unified Checkout**: Seamless shopping cart and order processing.
-- **Multi-Payment Support**: Integration with WeChat Pay and Alipay.
-- **Loyalty & Points**: Integrated user point system for customer engagement and rewards.
-- **Logistics Tracking**: Real-time order status and logistics management.
+### Core Objectives
+*   **Digital Brand Experience:** To establish a premium online presence that conveys the brand's values of family, care, and scientific excellence.
+*   **AI Skin Consultation:** To democratize professional skincare advice through an intelligent, automated advisor that analyzes user skin conditions and lifestyle factors.
+*   **Seamless Commerce:** To facilitate product discovery and acquisition through a streamlined, integrated shopping experience.
 
-### AI Skincare Advisor (Advanced)
-- **Face Analysis**: Real-time biometric skin scanning using Face API.
-- **Smart Recommendations**: Specialized dosage and product prescriptions based on AI analysis.
-- **Smart Analysis**: Deep skin health insights powered by OpenAI.
-- **Social Integration**: Reward-sharing mechanisms for consultants and users.
+## Key Features
 
-### Content & Activity Management
-- **Brand Storytelling**: Immersive narrative experience with high-end animations.
-- **Ritual Guides**: Interactive skincare instructions and dosage calculators.
-- **Lottery System**: Engagement-driven activity system for brand promotions.
-- **Recruitment**: Integrated career portal and application management.
+### 1. AI Skin Advisor
+The centerpiece of the platform is the **Intelligent Skin Advisor**.
+*   **Face Scanning:** Utilizes client-side computer vision (Face-API) to analyze skin condition in real-time without compromising user privacy.
+*   **Deep Analysis:** Processes visual data alongside user-reported lifestyle habits (sleep, environment, routine) to generate a comprehensive skin report.
+*   **Personalized Regimen:** Recommends tailored product combinations and usage rituals based on specific skin needs.
 
-### Enterprise Admin Dashboard
-- **Data Visualization**: Real-time sales and user analytics using ECharts and Recharts.
-- **Asset Hub**: Comprehensive media and content management system.
-- **User Insights**: Detailed CRM for managing customer relationships and order histories.
-- **System Settings**: Global configuration for payments, notifications, and SEO.
+### 2. Immersive User Experience
+Designed with a "Mobile First" implementation that scales elegantly to desktop.
+*   **Dynamic Interactions:** Powered by Framer Motion and GSAP for fluid transitions and micro-interactions that mimic the physical sensation of premium skincare.
+*   **Visual Storytelling:** Dedicated modules for Brand Story, Rituals (SPA guides), and Product Exploration.
 
-## Technical Stack
+### 3. E-Commerce & User System
+A fully functional commerce engine.
+*   **Product Catalog:** Rich product presentations with ingredient breakdowns and usage guides.
+*   **Shopping Cart & Checkout:** Integrated cart management and secure checkout flows.
+*   **User Dashboard:** Personal center for managing orders, shipping addresses, and viewing history.
+*   **Loyalty Program:** Points system and coupon management to retain and reward customers.
 
-### Frontend Architecture
-- **Framework**: Next.js 14 (App Router) with View Transitions.
-- **Language**: TypeScript for type-safe development.
-- **Styling**: TailwindCSS for layout, GSAP and Framer Motion for high-end micro-interactions.
-- **Experience**: Three.js and OGL for 3D brand elements.
-- **Interactive**: Tiptap for rich content editing and Lottie for vector animations.
+### 4. Admin Management Dashboard
+A comprehensive CMS for operational control.
+*   **Product Management:** CRUD operations for the product catalog, inventory, and categories.
+*   **Order & User Management:** Tools for tracking orders, managing user accounts, and handling logistics.
+*   **Content Management:** Editors for site content, including articles, rituals, and media assets.
+*   **Analytics:** Visual dashboards for tracking sales, user growth, and system health.
 
-### Backend & Infrastructure
-- **Database**: PostgreSQL with Prisma ORM.
-- **Storage**: Supabase Storage for high-speed media delivery.
-- **AI Integration**: OpenAI API and Face API for smart features.
-- **Communications**: Integrated SMS and Email notification systems.
-- **Search & SEO**: Advanced JSON-LD structured data, dynamic sitemap, and robots optimization.
+## Technology Stack
 
-### Security & Optimization
-- **Rate Limiting**: Integrated security layers for API protection.
-- **Geo-targeting**: Maxmind integration for location-aware services.
-- **Image Optimization**: Sharp-based server-side image processing.
-- **Performance**: Edge-ready API routes and optimized static generation.
+The project utilizes a modern, type-safe full-stack TypeScript architecture.
 
-## Project Structure
+### Frontend
+*   **Framework:** Next.js 14 (App Router)
+*   **Language:** TypeScript
+*   **Styling:** Tailwind CSS
+*   **Animation:** Framer Motion, GSAP
+*   **State Management:** Zustand
 
-```
-src/
-├── app/              # Next.js App Router (Admin & Website)
-├── components/       # Visual components and UI primitives
-├── config/           # Site and system configurations
-├── contexts/         # State management providers
-├── hooks/            # Reusable business logic hooks
-├── lib/              # Core utilities (Payment, AI, Security)
-├── schemas/          # Data validation and Zod models
-└── types/            # Global type definitions
-```
+### Backend & Database
+*   **Runtime:** Node.js (via Next.js API Routes)
+*   **Database:** PostgreSQL
+*   **ORM:** Prisma
+*   **Authentication:** Custom JWT / NextAuth
+
+### Infrastructure & Tools
+*   **Deployment:** Docker / Vercel
+*   **Linting/Formatting:** ESLint, Prettier
+*   **Package Manager:** NPM
+
+## Architecture
+
+The codebase follows a modular structure optimized for Next.js App Router:
+
+*   `src/app`: Application routes (Pages and API endpoints).
+    *   `(website)`: Public-facing store and brand pages.
+    *   `(admin)`: Protected administrative dashboard.
+*   `src/components`: Reusable UI components, categorized by domain (web/admin) and atomic design.
+*   `src/lib`: Core utilities, including database clients, AI service wrappers, and helper functions.
+*   `src/store`: Global state definitions.
+*   `docs`: Comprehensive documentation including PRD, Tech Stack, and API references.
 
 ## Getting Started
 
-### Prerequisites
-- Node.js 18 or higher
-- PostgreSQL Database
-- Supabase Account
-- API Keys for OpenAI and Payment Gateways
+To set up the project locally for development:
 
-### Installation
-1. **Repository Setup**
-   ```bash
-   git clone <repository-url>
-   cd nihplod.cn
-   ```
+1.  **Clone the repository**
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+3.  **Environment Setup**:
+    Copy `.env.example` to `.env` and configure your database and API keys.
+4.  **Database Migration**:
+    ```bash
+    npx prisma generate
+    npx prisma db push
+    ```
+5.  **Run Development Server**:
+    ```bash
+    npm run dev
+    ```
 
-2. **Dependencies**
-   ```bash
-   npm install
-   ```
+## License
 
-3. **Environments**
-   ```bash
-   cp .env.example .env.local
-   # Configure your environment variables
-   ```
-
-4. **Database Initialization**
-   ```bash
-   npm run db:push
-   npm run db:seed
-   ```
-
-5. **Development**
-   ```bash
-   npm run dev
-   ```
-
-## Documentation
-
-Extensive documentation is available in the /docs directory:
-- Technical Architecture
-- API Definitions
-- Database Schema
-- UX/UI Guidelines
-- Deployment & Upgrade Plans
-
-## Proprietary Notice and License
-
-**CONFIDENTIAL AND PROPRIETARY.**
-
-This project is NOT an open-source software. All code, designs, and assets within this repository are the exclusive property of NIHPLOD. 
-
-Unauthorized copying, modification, distribution, or any form of use of these files, via any medium, is strictly prohibited without explicit written permission from the copyright owner.
-
-Copyright © 2026 NIHPLOD. All Rights Reserved.
+This project is proprietary software developed for NIHPLOD. All rights reserved.
