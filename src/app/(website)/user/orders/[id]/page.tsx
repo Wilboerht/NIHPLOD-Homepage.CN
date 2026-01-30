@@ -9,6 +9,9 @@ import { getCurrentLoginUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LOGISTICS_COMPANIES } from "@/lib/logistics-constants";
 import OrderActions from "./OrderActions";
+import LogisticsViewer from "./LogisticsViewer";
+
+// ...
 
 export const metadata: Metadata = {
   title: "订单详情 - 你好朵朵",
@@ -78,9 +81,14 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 <span>物流公司</span>
                 <span className="text-[#5C5347] font-medium">{companyName}</span>
               </div>
-              <div className="flex justify-between">
-                <span>快递单号</span>
-                <span className="text-[#5C5347] font-mono select-all">{order.trackingNo || "-"}</span>
+              <div className="flex justify-between items-start">
+                <span className="mt-1">快递单号</span>
+                <div className="flex-1 max-w-[70%] flex justify-end">
+                  <LogisticsViewer
+                    trackingNo={order.trackingNo}
+                    phone={order.recipientPhone}
+                  />
+                </div>
               </div>
             </div>
           </div>

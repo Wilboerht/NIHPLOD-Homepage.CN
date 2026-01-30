@@ -11,6 +11,7 @@
  */
 
 import crypto from "crypto";
+import * as tencentcloud from "tencentcloud-sdk-nodejs";
 
 export type SMSTemplate = "LOTTERY_VERIFY" | "LOTTERY_WINNER" | "LOGIN_CODE";
 
@@ -174,9 +175,11 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
 }
 
 /**
+import * as tencentcloud from "tencentcloud-sdk-nodejs";
+
 /**
  * 腾讯云短信
- * 使用 API V3 鉴权
+ * 使用 SDK
  */
 async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
   const secretId = process.env.TENCENT_SMS_SECRET_ID;
@@ -195,133 +198,45 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
   }
 
   try {
-    const endpoint = "sms.tencentcloudapi.com";
-    const service = "sms";
-    const region = "ap-guangzhou";
-    const action = "SendSms";
-    const version = "2021-01-11";
-    const timestamp = Math.floor(Date.now() / 1000);
-    // 格式化日期 YYYY-MM-DD
-    const date = new Date(timestamp * 1000).toISOString().split("T")[0];
+    const SmsClient = tencentcloud.sms.v20210111.Client;
+    const client = new SmsClient({
+      credential: { secretId, secretKey },
+      region: "ap-guangzhou",
+      profile: {
+        signMethod: "HmacSHA256",
+        httpProfile: {
+          reqMethod: "POST",
+          reqTimeout: 30,
+          endpoint: "sms.tencentcloudapi.com",
+        },
+      },
+    });
 
-    // 构建请求体 (参数转换: object -> array for Tencent)
-    // 腾讯云模板参数顺序很重要，通常是 [code] 或 [code, time]
-    // 这里简单处理：取 params 中的第一个值作为模板参数
-    // 或者根据模板类型定制参数顺序
-    const templateParamSet = Object.values(options.params);
+    // 转换参数: 只取 value 数组，顺序必须与模板匹配
+    // 例如 login code 模板参数 { code: "1234" } -> ["1234"]
+    const templateParams = Object.values(options.params);
 
-    const payload = {
-      PhoneNumberSet: [`+86${options.phone}`], // 必须带 +86
+    const res = await client.SendSms({
       SmsSdkAppId: appId,
       SignName: signName,
       TemplateId: templateId,
-      TemplateParamSet: templateParamSet,
-    };
-
-    const payloadStr = JSON.stringify(payload);
-
-    // ************* 签名过程 *************
-    // 1. 拼接规范请求串
-    const httpRequestMethod = "POST";
-    const canonicalUri = "/";
-    const canonicalQueryString = "";
-    const canonicalHeaders = `content-type:application/json\nhost:${endpoint}\n`;
-    const signedHeaders = "content-type;host";
-    const hashedRequestPayload = crypto
-      .createHash("sha256")
-      .update(payloadStr)
-      .digest("hex")
-      .toLowerCase();
-
-    const canonicalRequest =
-      httpRequestMethod +
-      "\n" +
-      canonicalUri +
-      "\n" +
-      canonicalQueryString +
-      "\n" +
-      canonicalHeaders +
-      "\n" +
-      signedHeaders +
-      "\n" +
-      hashedRequestPayload;
-
-    // 2. 拼接待签名字符串
-    const algorithm = "TC3-HMAC-SHA256";
-    const credentialScope = date + "/" + service + "/" + "tc3_request";
-    const hashedCanonicalRequest = crypto
-      .createHash("sha256")
-      .update(canonicalRequest)
-      .digest("hex")
-      .toLowerCase();
-
-    const stringToSign =
-      algorithm +
-      "\n" +
-      timestamp +
-      "\n" +
-      credentialScope +
-      "\n" +
-      hashedCanonicalRequest;
-
-    // 3. 计算签名
-    const kDate = crypto
-      .createHmac("sha256", "TC3" + secretKey)
-      .update(date)
-      .digest();
-    const kService = crypto.createHmac("sha256", kDate).update(service).digest();
-    const kSigning = crypto.createHmac("sha256", kService).update("tc3_request").digest();
-    const signature = crypto
-      .createHmac("sha256", kSigning)
-      .update(stringToSign)
-      .digest("hex")
-      .toLowerCase();
-
-    // 4. 拼接 Authorization
-    const authorization =
-      algorithm +
-      " " +
-      "Credential=" +
-      secretId +
-      "/" +
-      credentialScope +
-      ", " +
-      "SignedHeaders=" +
-      signedHeaders +
-      ", " +
-      "Signature=" +
-      signature;
-
-    // 发送请求
-    const response = await fetch(`https://${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: authorization,
-        Host: endpoint,
-        "X-TC-Action": action,
-        "X-TC-Version": version,
-        "X-TC-Timestamp": timestamp.toString(),
-        "X-TC-Region": region,
-      },
-      body: payloadStr,
+      TemplateParamSet: templateParams,
+      PhoneNumberSet: [`+86${options.phone}`],
     });
 
-    const result = await response.json();
-
-    if (result.Response && result.Response.SendStatusSet && result.Response.SendStatusSet[0].Code === "Ok") {
-      console.log("[Tencent SMS] 发送成功:", result.Response.RequestId);
-      return { success: true, messageId: result.Response.RequestId };
+    if (res.SendStatusSet && res.SendStatusSet[0].Code === "Ok") {
+      console.log("[Tencent SMS] 发送成功:", res.SendStatusSet[0].SerialNo);
+      return { success: true, messageId: res.SendStatusSet[0].SerialNo };
     } else {
-      console.error("[Tencent SMS] 发送失败:", JSON.stringify(result));
-      const errorMsg = result.Response?.Error?.Message ||
-        result.Response?.SendStatusSet?.[0]?.Message ||
-        "发送失败";
-      return { success: false, error: errorMsg };
+      console.error("[Tencent SMS] 发送失败:", res.SendStatusSet?.[0]);
+      return {
+        success: false,
+        error: res.SendStatusSet?.[0]?.Message || "发送失败"
+      };
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("[Tencent SMS] 发送异常:", error);
-    return { success: false, error: "短信发送异常" };
+    return { success: false, error: error.message || "短信发送异常" };
   }
 }
 
