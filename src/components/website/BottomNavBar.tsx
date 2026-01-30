@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
-import { Menu, X, ShoppingBag } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, ContactIcon, FAQIcon } from "@/components/website";
 import { useLayout } from "@/contexts/LayoutContext";
-import { useCartStore } from "@/store/cart";
+
 
 /**
  * 导航项配置
@@ -46,7 +46,7 @@ const chatMessages = [
 export function BottomNavBar() {
     const pathname = usePathname();
     const { isDrawerOpen, setDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
-    const { totalItems, toggleCart } = useCartStore();
+
 
     // 鼠标跟随视差效果 (Reference: Dock区域 IP 样式动效)
     const avatarRef = useRef<HTMLDivElement>(null);
