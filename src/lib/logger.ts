@@ -75,29 +75,44 @@ function createLogger(module: string) {
       context,
     };
 
-    const formattedLog = formatLogEntry(entry);
+    // 生产环境下使用 JSON 格式，以便被云端日志服务（如 Vercel, AWS CloudWatch, ELK）自动解析
+    if (process.env.NODE_ENV === "production") {
+      const jsonLog = JSON.stringify({
+        ...entry,
+        // 确保 context 中的 Error 对象被正确序列化
+        context: entry.context ? serializeContext(entry.context) : undefined
+      });
 
-    switch (level) {
-      case "debug":
-        if (process.env.NODE_ENV === "development") {
+      // 统一使用 console.log 输出 stdout，错误级别输出 stderr
+      if (level === "error") {
+        console.error(jsonLog);
+      } else {
+        console.log(jsonLog);
+      }
+    } else {
+      // 开发环境下保持可读性
+      const formattedLog = formatLogEntry(entry);
+
+      switch (level) {
+        case "debug":
           console.debug(formattedLog);
-        }
-        break;
-      case "info":
-        console.info(formattedLog);
-        break;
-      case "warn":
-        console.warn(formattedLog);
-        break;
-      case "error":
-        console.error(formattedLog);
-        break;
+          break;
+        case "info":
+          console.info(formattedLog);
+          break;
+        case "warn":
+          console.warn(formattedLog);
+          break;
+        case "error":
+          console.error(formattedLog);
+          break;
+      }
     }
 
-    // 在生产环境可以将日志发送到外部服务（如 Sentry、LogRocket 等）
-    // if (process.env.NODE_ENV === "production" && level === "error") {
-    //   sendToErrorTracking(entry);
-    // }
+    // 可扩展：调用外部监控 webhook
+    if (level === "error" && process.env.ENABLE_CLOUD_LOGGING === "true") {
+      reportToExternalService(entry).catch(err => console.error("Failed to report log:", err));
+    }
   };
 
   return {
@@ -106,6 +121,41 @@ function createLogger(module: string) {
     warn: (message: string, context?: LogContext) => log("warn", message, context),
     error: (message: string, context?: LogContext) => log("error", message, context),
   };
+}
+
+/**
+ * 序列化 Context，处理无法直接 stringify 的Error对象
+ */
+function serializeContext(context: LogContext): LogContext {
+  const sanitized = sanitizeContext(context);
+  const result: LogContext = {};
+
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (value instanceof Error) {
+      result[key] = {
+        name: value.name,
+        message: value.message,
+        stack: value.stack,
+        cause: (value as { cause?: unknown }).cause
+      };
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
+ * 模拟上报到外部服务 (如 Sentry, LogRocket, 自建监控)
+ */
+async function reportToExternalService(entry: LogEntry) {
+  // 示例：发送到自建的日志搜集 API
+  // await fetch("https://monitor.example.com/api/logs", { method: "POST", body: JSON.stringify(entry) });
+
+  // 暂时仅在控制台打印占位
+  if (process.env.NODE_ENV === "development") {
+    console.debug("[Mock Cloud Report]", entry.module, entry.level);
+  }
 }
 
 /**

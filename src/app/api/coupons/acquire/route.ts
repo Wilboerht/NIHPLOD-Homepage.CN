@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentLoginUser } from "@/lib/auth";
 import { z } from "zod";
+import { logError } from "@/lib/logger";
 
 const schema = z.object({
     couponId: z.string().optional(),
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true, data: userCoupon });
     } catch (e: unknown) {
-        console.error(e);
+        logError("AcquireCoupon", e);
         const message = e instanceof Error ? e.message : String(e);
         return NextResponse.json({ success: false, error: message || "领取失败" }, { status: 500 });
     }

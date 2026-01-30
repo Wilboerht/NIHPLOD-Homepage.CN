@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth"; // Admin auth
 import { z } from "zod";
+import { logError } from "@/lib/logger";
 
 const createSchema = z.object({
     name: z.string().min(1),
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true, data: coupon });
     } catch (e: unknown) {
+        logError("AdminCoupons", e, { action: "create" });
         const message = e instanceof Error ? e.message : String(e);
         return NextResponse.json({ success: false, error: message }, { status: 400 });
     }
@@ -56,6 +58,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ success: true, data: coupons });
     } catch (e: unknown) {
+        logError("AdminCoupons", e, { action: "list" });
         const message = e instanceof Error ? e.message : String(e);
         return NextResponse.json({ success: false, error: message || "Failed" }, { status: 500 });
     }

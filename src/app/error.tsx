@@ -6,6 +6,7 @@ import { Link } from "next-view-transitions";
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from "@/lib/logger";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -19,7 +20,11 @@ export default function Error({ error, reset }: ErrorProps) {
   const { openContact } = useAuth();
   useEffect(() => {
     // 记录错误到错误报告服务
-    console.error("Application error:", error);
+    logger.error("Application error", {
+      error,
+      digest: error.digest,
+      component: "ErrorPage"
+    });
   }, [error]);
 
   return (

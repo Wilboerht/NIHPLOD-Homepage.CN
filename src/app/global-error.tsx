@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
+import { logger } from "@/lib/logger";
+
 interface GlobalErrorProps {
     error: Error & { digest?: string };
     reset: () => void;
@@ -16,7 +18,11 @@ interface GlobalErrorProps {
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
     useEffect(() => {
         // 可以在这里上报错误到 Sentry 等日志服务
-        console.error("Global critical error:", error);
+        logger.error("Global critical error", {
+            error,
+            digest: error.digest,
+            component: "GlobalError"
+        });
     }, [error]);
 
     return (

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { createOrder } from "@/lib/order";
 import { z } from "zod";
+import { logError } from "@/lib/logger";
 
 // 创建订单参数验证
 const createOrderSchema = z.object({
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[CreateOrder] 异常:", error);
+    logError("CreateOrder", error, { body: await request.clone().text().catch(() => "unreadable") });
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
