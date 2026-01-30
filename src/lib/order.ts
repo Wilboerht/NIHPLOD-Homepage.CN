@@ -24,23 +24,45 @@ export interface OrderItemData {
   quantity: number;
 }
 
+export interface Recipient {
+  name: string;
+  phone: string;
+  address: string;
+}
+
 /**
  * 创建订单
+ * 支持通过 addressId 或直接传入 recipient 信息
  */
 export async function createOrder(
   userId: string,
-  addressId: string,
   items: OrderItemData[],
+  shippingInfo: { addressId?: string; recipient?: Recipient },
   remark?: string
 ): Promise<{ success: boolean; orderId?: string; orderNo?: string; error?: string }> {
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 1. 验证地址
-      const address = await tx.address.findFirst({
-        where: { id: addressId, userId },
-      });
-      if (!address) {
-        throw new Error("收货地址不存在");
+      let recipientName = "";
+      let recipientPhone = "";
+      let recipientAddress = "";
+
+      // 1. 处理收货信息
+      if (shippingInfo.recipient) {
+        recipientName = shippingInfo.recipient.name;
+        recipientPhone = shippingInfo.recipient.phone;
+        recipientAddress = shippingInfo.recipient.address;
+      } else if (shippingInfo.addressId) {
+        const address = await tx.address.findFirst({
+          where: { id: shippingInfo.addressId, userId },
+        });
+        if (!address) {
+          throw new Error("收货地址不存在");
+        }
+        recipientName = address.name;
+        recipientPhone = address.phone;
+        recipientAddress = `${address.province} ${address.city} ${address.district} ${address.detail}`;
+      } else {
+        throw new Error("请提供收货信息");
       }
 
       // 2. 获取商品信息并计算价格
@@ -97,11 +119,11 @@ export async function createOrder(
           userId,
           status: OrderStatus.PENDING,
           totalAmount,
-          payAmount: totalAmount, // 暂时等于总金额，后续可加优惠券逻辑
+          payAmount: totalAmount, // 暂时等于总金额
           // 收货信息快照
-          recipientName: address.name,
-          recipientPhone: address.phone,
-          recipientAddress: `${address.province} ${address.city} ${address.district} ${address.detail}`,
+          recipientName,
+          recipientPhone,
+          recipientAddress,
           remark,
           items: {
             create: orderItems,

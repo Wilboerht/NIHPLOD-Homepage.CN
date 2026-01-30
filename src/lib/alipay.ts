@@ -9,8 +9,8 @@ import { OrderStatus } from "@/generated/prisma/client";
 // 支付宝配置
 const ALIPAY_CONFIG = {
   appId: process.env.ALIPAY_APP_ID || "",
-  privateKey: process.env.ALIPAY_PRIVATE_KEY || "",
-  alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY || "",
+  privateKey: (process.env.ALIPAY_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+  alipayPublicKey: (process.env.ALIPAY_PUBLIC_KEY || "").replace(/\\n/g, "\n"),
   notifyUrl: process.env.ALIPAY_NOTIFY_URL || "",
   returnUrl: process.env.ALIPAY_RETURN_URL || "",
   gateway: "https://openapi.alipay.com/gateway.do",
@@ -128,14 +128,14 @@ export async function handleAlipayNotify(
     // 验证签名
     const sign = params.sign;
     const signType = params.sign_type;
-    
+
     // 移除 sign 和 sign_type 后验签
     const verifyParams = { ...params };
     delete verifyParams.sign;
     delete verifyParams.sign_type;
-    
+
     const signContent = buildSignContent(verifyParams);
-    
+
     if (signType === "RSA2" && !verifyWithRSA2(signContent, sign, ALIPAY_CONFIG.alipayPublicKey)) {
       console.error("[Alipay] 签名验证失败");
       return { success: false, message: "签名验证失败" };

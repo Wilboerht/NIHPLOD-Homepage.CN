@@ -1,9 +1,6 @@
-/**
- * 退款服务
- * 处理订单退款申请和状态管理
- */
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
+import { applyWechatRefund, generateRefundNo } from "./wechat-pay";
 
 /**
  * 申请退款
@@ -48,7 +45,6 @@ export async function applyRefund(
     return { success: false, error: "申请失败" };
   }
 }
-
 /**
  * 处理退款（管理员操作）
  */
@@ -72,14 +68,38 @@ export async function processRefund(
     }
 
     if (approved) {
-      // 同意退款
+      // 1. 如果是微信支付，先调用微信退款接口
+      let refundInfo = "";
+      if (order.paymentMethod === "wechat" && order.payAmount) {
+        const refundNo = generateRefundNo(order.orderNo);
+        const refundAmount = Number(order.payAmount);
+
+        console.log(`[Refund] 发起微信退款: ${order.orderNo}, 金额: ${refundAmount}`);
+
+        const refundRes = await applyWechatRefund(
+          order.orderNo,
+          refundNo,
+          refundAmount,
+          refundAmount, // 全额退款
+          adminRemark || "管理员同意退款"
+        );
+
+        if (!refundRes.success) {
+          console.error(`[Refund] 微信退款失败: ${refundRes.error}`);
+          return { success: false, error: `微信退款失败: ${refundRes.error}` };
+        }
+
+        refundInfo = ` | 微信退款申请成功 (单号: ${refundRes.refundId || refundNo})`;
+      }
+
+      // 2. 只有退款接口调用成功（或非微信支付），才更新数据库
       await prisma.$transaction(async (tx) => {
         // 更新订单状态
         await tx.order.update({
           where: { id: orderId },
           data: {
             status: OrderStatus.REFUNDED,
-            adminNote: adminRemark,
+            adminNote: (adminRemark || "") + refundInfo,
           },
         });
 
@@ -92,9 +112,7 @@ export async function processRefund(
         }
       });
 
-      // TODO: 调用微信退款接口
-
-      console.log(`[Refund] 退款成功: ${order.orderNo}`);
+      console.log(`[Refund] 退款处理成功: ${order.orderNo}`);
     } else {
       // 拒绝退款
       await prisma.order.update({

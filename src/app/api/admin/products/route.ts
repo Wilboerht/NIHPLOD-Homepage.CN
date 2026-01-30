@@ -194,12 +194,12 @@ export async function POST(request: NextRequest) {
         },
         purchaseLinks: validated.purchaseLinks?.length
           ? {
-              create: validated.purchaseLinks.map((link, index) => ({
-                platform: link.platform,
-                url: link.url,
-                order: link.order ?? index,
-              })),
-            }
+            create: validated.purchaseLinks.map((link, index) => ({
+              platform: link.platform,
+              url: link.url,
+              order: link.order ?? index,
+            })),
+          }
           : undefined,
       },
       include: {

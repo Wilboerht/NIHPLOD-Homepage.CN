@@ -7,11 +7,14 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { createPayment } from "@/lib/wechat-pay";
 import { createAlipayPayment } from "@/lib/alipay";
+import { createUnionPayPayment } from "@/lib/unionpay";
 import { z } from "zod";
 
+// 创建支付参数验证
 const createPaySchema = z.object({
   orderId: z.string().min(1, "订单ID不能为空"),
-  payMethod: z.enum(["wechat", "alipay"]).optional().default("wechat"),
+  payMethod: z.enum(["wechat", "alipay", "unionpay"]).optional().default("wechat"),
+  tradeType: z.enum(["NATIVE", "JSAPI", "MWEB"]).default("NATIVE"),
 });
 
 export async function POST(request: NextRequest) {
@@ -35,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { orderId, payMethod } = result.data;
+    const { orderId, payMethod, tradeType } = result.data;
 
     // 验证订单归属
     const order = await prisma.order.findFirst({
@@ -47,19 +50,6 @@ export async function POST(request: NextRequest) {
         { success: false, error: { code: "NOT_FOUND", message: "订单不存在" } },
         { status: 404 }
       );
-    }
-
-    // 开发环境模拟支付
-    if (process.env.NODE_ENV === "development") {
-      return NextResponse.json({
-        success: true,
-        data: {
-          payType: "mock",
-          orderId: order.id,
-          orderNo: order.orderNo,
-          amount: order.payAmount,
-        },
-      });
     }
 
     // 支付宝支付
@@ -82,35 +72,72 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // 银联支付 (银行卡)
+    if (payMethod === "unionpay") {
+      const uResult = await createUnionPayPayment(orderId);
+
+      if (!uResult.success) {
+        return NextResponse.json(
+          { success: false, error: { code: "PAY_FAILED", message: uResult.error } },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          payType: "unionpay",
+          payHtml: uResult.html,
+        }
+      });
+    }
+
     // 微信支付
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-      select: { wechatOpenId: true },
-    });
+    if (payMethod === "wechat") {
+      let openId: string | undefined = undefined;
 
-    if (!user?.wechatOpenId) {
-      return NextResponse.json(
-        { success: false, error: { code: "NO_OPENID", message: "请使用微信登录后支付" } },
-        { status: 400 }
-      );
+      // JSAPI 需要 OpenID
+      if (tradeType === "JSAPI") {
+        const user = await prisma.user.findUnique({
+          where: { id: payload.id },
+          select: { wechatOpenId: true },
+        });
+
+        if (!user?.wechatOpenId) {
+          return NextResponse.json(
+            { success: false, error: { code: "NO_OPENID", message: "请使用微信登录后支付" } },
+            { status: 400 }
+          );
+        }
+        openId = user.wechatOpenId;
+      }
+
+      const payResult = await createPayment(orderId, tradeType, openId);
+
+      if (!payResult.success) {
+        return NextResponse.json(
+          { success: false, error: { code: "PAY_FAILED", message: payResult.error } },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          payType: "wechat",
+          tradeType,
+          codeUrl: payResult.codeUrl,   // NATIVE
+          mwebUrl: payResult.mwebUrl,   // MWEB
+          payParams: payResult.payParams, // JSAPI
+        },
+      });
     }
 
-    const payResult = await createPayment(orderId, user.wechatOpenId);
+    return NextResponse.json(
+      { success: false, error: { code: "NOT_SUPPORTED", message: "暂不支持该支付方式" } },
+      { status: 400 }
+    );
 
-    if (!payResult.success) {
-      return NextResponse.json(
-        { success: false, error: { code: "PAY_FAILED", message: payResult.error } },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        payType: "wechat",
-        payParams: payResult.payParams,
-      },
-    });
   } catch (error) {
     console.error("[CreatePay] 异常:", error);
     return NextResponse.json(

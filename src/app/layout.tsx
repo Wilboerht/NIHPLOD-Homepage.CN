@@ -5,6 +5,7 @@ import "./globals.css";
 import { MotionProvider } from "@/components/providers/MotionProvider";
 import { ChunkErrorBoundary } from "@/components/providers/ChunkErrorBoundary";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
+import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 
@@ -108,7 +109,10 @@ export default function RootLayout({
           <ChunkErrorBoundary>
             <MotionProvider>
               <AuthProvider>
-                <ToastProvider>{children}</ToastProvider>
+                <ToastProvider>
+                  {children}
+                  <CartDrawer />
+                </ToastProvider>
               </AuthProvider>
             </MotionProvider>
           </ChunkErrorBoundary>

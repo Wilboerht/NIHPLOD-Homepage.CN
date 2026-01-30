@@ -156,7 +156,7 @@ export default function OrderList({ orders, pagination, currentStatus }: OrderLi
                 <>
                   <CancelButton orderId={order.id} />
                   <Link
-                    href={`/pay/${order.id}`}
+                    href={`/pay?orderNo=${order.orderNo}`}
                     className="px-4 py-1.5 bg-[#A69374] text-white text-sm rounded-full hover:bg-[#917F62] transition-colors"
                   >
                     去付款
@@ -209,11 +209,10 @@ export default function OrderList({ orders, pagination, currentStatus }: OrderLi
                 <Link
                   key={pageNum}
                   href={`/user/orders?${currentStatus !== "all" ? `status=${currentStatus}&` : ""}page=${pageNum}`}
-                  className={`w-9 h-9 flex items-center justify-center rounded-full text-sm transition-colors ${
-                    pagination.page === pageNum
+                  className={`w-9 h-9 flex items-center justify-center rounded-full text-sm transition-colors ${pagination.page === pageNum
                       ? "bg-[#A69374] text-white"
                       : "text-[#8B8579] hover:text-[#5C5347] hover:bg-white/80"
-                  }`}
+                    }`}
                 >
                   {pageNum}
                 </Link>

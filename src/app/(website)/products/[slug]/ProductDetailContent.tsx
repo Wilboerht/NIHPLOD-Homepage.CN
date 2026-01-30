@@ -10,6 +10,7 @@ import { fadeInUp, defaultTransition } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { useCartStore } from "@/store/cart";
 
 interface ProductImage {
   id: string;
@@ -306,10 +307,14 @@ export function ProductDetailContent({
 /**
  * 加入购物车按钮组件
  */
+/**
+ * 加入购物车按钮组件
+ */
 function AddToCartButton({ productId, stock }: { productId: string; stock: number }) {
   const [loading, setLoading] = useState(false);
   const { user, openLoginModal } = useAuth();
   const { success, error: showError } = useToast();
+  const { addToCart } = useCartStore();
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -324,17 +329,11 @@ function AddToCartButton({ productId, stock }: { productId: string; stock: numbe
 
     setLoading(true);
     try {
-      const res = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, quantity: 1 }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
+      const result = await addToCart(productId, 1);
+      if (result) {
         success("已加入购物车");
       } else {
-        showError(data.error?.message || "添加失败");
+        showError("添加失败，请重试");
       }
     } catch {
       showError("网络错误，请重试");
