@@ -1,6 +1,8 @@
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { applyWechatRefund, generateRefundNo } from "./wechat-pay";
+import { refundAlipayOrder } from "./alipay";
+import { refundUnionPayOrder } from "./unionpay";
 
 /**
  * 申请退款
@@ -90,6 +92,44 @@ export async function processRefund(
         }
 
         refundInfo = ` | 微信退款申请成功 (单号: ${refundRes.refundId || refundNo})`;
+      }
+
+      // 支付宝退款
+      if (order.paymentMethod === "alipay" && order.payAmount) {
+        const refundAmount = Number(order.payAmount);
+        console.log(`[Refund] 发起支付宝退款: ${order.orderNo}`);
+
+        const refundRes = await refundAlipayOrder(
+          order.orderNo,
+          refundAmount,
+          adminRemark || "退款"
+        );
+
+        if (!refundRes.success) {
+          console.error(`[Refund] 支付宝退款失败: ${refundRes.error}`);
+          return { success: false, error: `支付宝退款失败: ${refundRes.error}` };
+        }
+
+        refundInfo = " | 支付宝退款成功";
+      }
+
+      // 银联退款
+      if (order.paymentMethod === "unionpay" && order.payAmount && order.paymentNo) {
+        const refundAmount = Number(order.payAmount);
+        console.log(`[Refund] 发起银联退款: ${order.orderNo}`);
+
+        const refundRes = await refundUnionPayOrder(
+          order.orderNo,
+          order.paymentNo,
+          refundAmount
+        );
+
+        if (!refundRes.success) {
+          console.error(`[Refund] 银联退款失败: ${refundRes.error}`);
+          return { success: false, error: `银联退款失败: ${refundRes.error}` };
+        }
+
+        refundInfo = " | 银联退款受理成功";
       }
 
       // 2. 只有退款接口调用成功（或非微信支付），才更新数据库

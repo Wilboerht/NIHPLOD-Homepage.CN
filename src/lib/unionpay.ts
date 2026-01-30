@@ -155,3 +155,71 @@ export async function handleUnionPayNotify(params: Record<string, string>): Prom
         return { success: false, message: "数据库错误" };
     }
 }
+
+/**
+ * 银联退款
+ * @param originalOrderId 原订单号
+ * @param originalQueryId 原交易流水号 (paymentNo)
+ * @param refundAmount 退款金额 (元)
+ */
+export async function refundUnionPayOrder(
+    originalOrderId: string,
+    originalQueryId: string,
+    refundAmount: number
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const txnTime = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14);
+        const refundOrderId = "R" + txnTime + Math.floor(Math.random() * 1000); // 生成一个新的退款单号
+
+        const params: Record<string, string> = {
+            version: UNIONPAY_CONFIG.version,
+            encoding: UNIONPAY_CONFIG.encoding,
+            signMethod: UNIONPAY_CONFIG.signMethod,
+            txnType: "04", // 04: 退款
+            txnSubType: "00",
+            bizType: "000201",
+            channelType: "07",
+            merId: UNIONPAY_CONFIG.merId,
+            accessType: "0",
+            orderId: refundOrderId, // 退款这一笔交易的新单号
+            origQryId: originalQueryId, // 原消费交易的 queryId
+            txnTime: txnTime,
+            txnAmt: Math.round(refundAmount * 100).toString(),
+            backUrl: UNIONPAY_CONFIG.backUrl,
+        };
+
+        // 签名
+        params.signature = sign(params);
+
+        // 发起后台请求
+        const formData = new URLSearchParams();
+        Object.keys(params).forEach(key => formData.append(key, params[key]));
+
+        // 生产环境后台交易地址
+        const backTransUrl = "https://gateway.95516.com/gateway/api/backTransReq.do";
+
+        // 注意：如果没有配置真实银联证书，此请求会失败或返回错误
+        const res = await fetch(backTransUrl, {
+            method: "POST",
+            body: formData,
+            headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        });
+
+        // 解析返回数据 (key=value&...)
+        const text = await res.text();
+        const resultParams: Record<string, string> = {};
+        text.split("&").forEach(pair => {
+            const [key, value] = pair.split("=");
+            if (key) resultParams[key] = decodeURIComponent(value || "");
+        });
+
+        if (resultParams.respCode === "00" || resultParams.respCode === "A6") {
+            return { success: true };
+        } else {
+            return { success: false, error: resultParams.respMsg || `银联受理失败[${resultParams.respCode}]` };
+        }
+    } catch (error) {
+        console.error("[UnionPay] 退款异常:", error);
+        return { success: false, error: "UnionPay Refund API Error" };
+    }
+}

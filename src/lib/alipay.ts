@@ -212,3 +212,56 @@ export async function handleAlipayNotify(
   }
 }
 
+/**
+ * 支付宝退款
+ */
+export async function refundAlipayOrder(
+  outTradeNo: string,
+  refundAmount: number,
+  refundReason: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const bizContent = {
+      out_trade_no: outTradeNo,
+      refund_amount: refundAmount.toFixed(2),
+      refund_reason: refundReason,
+    };
+
+    const params: Record<string, string> = {
+      app_id: ALIPAY_CONFIG.appId,
+      method: "alipay.trade.refund",
+      format: "JSON",
+      charset: "utf-8",
+      sign_type: "RSA2",
+      timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+      version: "1.0",
+      biz_content: JSON.stringify(bizContent),
+    };
+
+    // 签名
+    const signContent = buildSignContent(params);
+    params.sign = signWithRSA2(signContent, ALIPAY_CONFIG.privateKey);
+
+    // 发起请求
+    const query = Object.keys(params)
+      .map((key) => `${key}=${encodeURIComponent(params[key])}`)
+      .join("&");
+
+    const url = `${ALIPAY_CONFIG.gateway}?${query}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const response = data.alipay_trade_refund_response;
+    if (response && response.code === "10000") {
+      return { success: true };
+    } else {
+      console.error("[Alipay] 退款失败:", response);
+      return { success: false, error: response?.sub_msg || response?.msg || "退款失败" };
+    }
+
+  } catch (e) {
+    console.error("[Alipay] 退款异常:", e);
+    return { success: false, error: "Alipay Refund API Error" };
+  }
+}
