@@ -111,16 +111,6 @@ const nextConfig = {
         destination: '/?contact=true',
         permanent: false,
       },
-      {
-        source: '/(admin)',
-        destination: '/admin/dashboard',
-        permanent: false,
-      },
-      {
-        source: '/admin',
-        destination: '/admin/dashboard',
-        permanent: false,
-      }
     ];
   },
 };
