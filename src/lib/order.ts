@@ -38,7 +38,8 @@ export async function createOrder(
   userId: string,
   items: OrderItemData[],
   shippingInfo: { addressId?: string; recipient?: Recipient },
-  remark?: string
+  remark?: string,
+  userCouponId?: string
 ): Promise<{ success: boolean; orderId?: string; orderNo?: string; error?: string }> {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -111,15 +112,75 @@ export async function createOrder(
         });
       }
 
-      // 3. 创建订单
+      // 3. 优惠券处理
+      let discountAmount = 0;
+      let usedCouponId: string | undefined = undefined;
+
+      if (userCouponId) {
+        const now = new Date();
+        const userCoupon = await tx.userCoupon.findFirst({
+          where: {
+            id: userCouponId,
+            userId,
+            status: 'UNUSED',
+            expiresAt: { gt: now }
+          },
+          include: { coupon: true }
+        });
+
+        if (!userCoupon) {
+          throw new Error("优惠券无效或已过期");
+        }
+
+        const { coupon } = userCoupon;
+
+        // 校验门槛
+        if (totalAmount < Number(coupon.minAmount)) {
+          throw new Error(`订单金额未满足优惠券门槛 (需满 ${coupon.minAmount}元)`);
+        }
+
+        // 计算优惠
+        if (coupon.type === 'DISCOUNT_AMOUNT') {
+          discountAmount = Number(coupon.value);
+        } else if (coupon.type === 'DISCOUNT_PERCENT') {
+          // 比如 0.9 折， value 0.9? 还是 9? 通常 value存 9折(0.9) 或者 90%
+          // 假设 value 0.9 (9折)
+          // 优惠金额 = 总价 * (1 - value)
+          // 如果 value > 1，可能是 90折？还是 value 是减去的比例？
+          // 统一：Value <= 1 (如0.8)，优惠 = total * (1-0.8)
+          // 如果 Value > 1 (不合理，除非是减免金额)
+          if (Number(coupon.value) < 1) {
+            discountAmount = totalAmount * (1 - Number(coupon.value));
+          }
+        }
+
+        // 防止负数
+        if (discountAmount > totalAmount) discountAmount = totalAmount;
+
+        usedCouponId = userCoupon.id;
+
+        // 锁定优惠券
+        await tx.userCoupon.update({
+          where: { id: userCoupon.id },
+          data: {
+            status: 'LOCKED',
+            // orderId 会在 order create 时关联，或者这里不用管，下面建立关联
+          }
+        });
+      }
+
+      // 4. 创建订单
+      const payAmount = totalAmount - discountAmount;
       const orderNo = generateOrderNo();
+
       const order = await tx.order.create({
         data: {
           orderNo,
           userId,
           status: OrderStatus.PENDING,
           totalAmount,
-          payAmount: totalAmount, // 暂时等于总金额
+          discountAmount,
+          payAmount: payAmount < 0 ? 0 : payAmount,
           // 收货信息快照
           recipientName,
           recipientPhone,
@@ -128,10 +189,20 @@ export async function createOrder(
           items: {
             create: orderItems,
           },
+          // 关联优惠券 (反向关联，如果在 UserCoupon 定义了 unique orderId，则 prisma 可以通过 userCoupon connect 处理)
+          // 我们的 Schema: Order { userCoupon UserCoupon? }
+          // UserCoupon { orderId String? @unique }
+          // 所以这里应该 update UserCoupon connect Order，或者在 create order 时 connect。
+          // 由于 UserCoupon 是 optional，prisma 语法:
+          ...(usedCouponId ? {
+            userCoupon: {
+              connect: { id: usedCouponId }
+            }
+          } : {})
         },
       });
 
-      // 4. 清除购物车中已购买的商品
+      // 5. 清除购物车中已购买的商品
       const productIds = items.map((i) => i.productId);
       await tx.cartItem.deleteMany({
         where: {
@@ -163,7 +234,7 @@ export async function cancelOrder(
     await prisma.$transaction(async (tx) => {
       const order = await tx.order.findFirst({
         where: { id: orderId, userId },
-        include: { items: true },
+        include: { items: true, userCoupon: true },
       });
 
       if (!order) {
@@ -179,6 +250,14 @@ export async function cancelOrder(
         await tx.product.update({
           where: { id: item.productId },
           data: { stock: { increment: item.quantity } },
+        });
+      }
+
+      // 释放优惠券
+      if (order.userCoupon) {
+        await tx.userCoupon.update({
+          where: { id: order.userCoupon.id },
+          data: { status: 'UNUSED' }
         });
       }
 

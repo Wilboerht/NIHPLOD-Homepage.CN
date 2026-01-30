@@ -6,6 +6,8 @@ import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 
+import https from "https";
+
 // 微信支付配置
 const WECHAT_PAY_CONFIG = {
   appId: process.env.WECHAT_PAY_APP_ID || process.env.WECHAT_APP_ID || "",
@@ -400,7 +402,7 @@ export async function applyWechatRefund(
     console.log(`[WechatPay] 申请退款: ${orderNo} -> ${refundNo}, 金额: ${refundFee}元`);
 
     // 调用微信退款接口（需要双向证书）
-    const https = await import("https");
+
     const response = await fetchWithCert(
       "https://api.mch.weixin.qq.com/secapi/pay/refund",
       xmlBody,
@@ -633,7 +635,6 @@ async function fetchWithCert(
   keyPem: string
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const https = require("https");
     const urlObj = new URL(url);
 
     const options = {

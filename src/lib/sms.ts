@@ -234,9 +234,10 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
         error: res.SendStatusSet?.[0]?.Message || "发送失败"
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Tencent SMS] 发送异常:", error);
-    return { success: false, error: error.message || "短信发送异常" };
+    const message = error instanceof Error ? error.message : String(error);
+    return { success: false, error: message || "短信发送异常" };
   }
 }
 

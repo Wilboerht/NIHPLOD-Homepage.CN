@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ExternalLink, Package, Truck, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 
 interface RouteNode {
     time: string;

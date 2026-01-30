@@ -16,11 +16,24 @@ import { CartItem } from "@/store/cart";
 
 export function CheckoutClient() {
     const router = useRouter();
-    const { items, totalItems, fetchCart } = useCartStore();
+    const { items, fetchCart } = useCartStore();
     const { user, isLoading: authLoading } = useAuth();
     const { error: showError, success: showSuccess } = useToast();
 
     const [submitting, setSubmitting] = useState(false);
+
+    interface UserCoupon {
+        id: string;
+        coupon: {
+            name: string;
+            minAmount: number;
+            type: string;
+            value: number;
+        }
+    }
+
+    const [coupons, setCoupons] = useState<UserCoupon[]>([]);
+    const [selectedCouponId, setSelectedCouponId] = useState<string>("");
 
     // 收货信息
     const [formData, setFormData] = useState({
@@ -41,9 +54,39 @@ export function CheckoutClient() {
         }
     }, [user, authLoading, router]);
 
+    // 拉取优惠券
+    useEffect(() => {
+        if (user) {
+            fetch('/api/user/coupons?status=UNUSED')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) setCoupons(data.data as UserCoupon[]);
+                })
+                .catch(console.error);
+        }
+    }, [user]);
+
     const totalPrice = items.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0);
     const shippingFee = 0; // 包邮
-    const payAmount = totalPrice + shippingFee;
+
+    // 计算优惠
+    const selectedCoupon = coupons.find(c => c.id === selectedCouponId);
+    let discountAmount = 0;
+    if (selectedCoupon) {
+        const { coupon } = selectedCoupon;
+        // 门槛校验
+        if (totalPrice >= Number(coupon.minAmount)) {
+            if (coupon.type === 'DISCOUNT_AMOUNT') {
+                discountAmount = Number(coupon.value);
+            } else if (coupon.type === 'DISCOUNT_PERCENT') {
+                // 假设 value <= 1 (如0.9表示9折)
+                if (Number(coupon.value) <= 1) {
+                    discountAmount = totalPrice * (1 - Number(coupon.value));
+                }
+            }
+        }
+    }
+    const payAmount = Math.max(0, totalPrice + shippingFee - discountAmount);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,7 +116,7 @@ export function CheckoutClient() {
                         phone: formData.phone,
                         address: formData.address,
                     },
-                    payAmount,
+                    userCouponId: selectedCouponId || undefined,
                 }),
             });
 
@@ -83,15 +126,16 @@ export function CheckoutClient() {
                 throw new Error(data.error?.message || "创建订单失败");
             }
 
-            const { orderId, orderNo } = data.data;
+            const { orderNo } = data.data;
 
             // 2. 发起支付 (待实现：跳转到支付页或唤起支付)
             // 现在先模拟成功跳转
             showSuccess("订单创建成功");
             router.push(`/pay?orderNo=${orderNo}`);
 
-        } catch (err: any) {
-            showError(err.message || "结算失败，请重试");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            showError(message || "结算失败，请重试");
         } finally {
             setSubmitting(false);
         }
@@ -211,6 +255,29 @@ export function CheckoutClient() {
                                     <span className="font-medium text-brand-brown">
                                         {shippingFee === 0 ? "免运费" : `¥${shippingFee}`}
                                     </span>
+                                </div>
+
+                                {/* Coupon Selector */}
+                                <div className="pt-4 border-t border-dashed border-[#E8E3DC] mt-4">
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="text-brand-brown/60">优惠券</span>
+                                        {discountAmount > 0 && <span className="text-[#A69374]">-¥{discountAmount.toFixed(2)}</span>}
+                                    </div>
+                                    <select
+                                        value={selectedCouponId}
+                                        onChange={(e) => setSelectedCouponId(e.target.value)}
+                                        className="w-full p-2 text-sm border border-[#E8E3DC] rounded bg-white text-[#5C5347] focus:outline-none focus:border-[#A69374]"
+                                    >
+                                        <option value="">不使用优惠券</option>
+                                        {coupons.map(uc => {
+                                            const disabled = totalPrice < Number(uc.coupon.minAmount);
+                                            return (
+                                                <option key={uc.id} value={uc.id} disabled={disabled}>
+                                                    {uc.coupon.name} (满{uc.coupon.minAmount}可用)
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
                                 </div>
                             </div>
 

@@ -23,10 +23,21 @@ interface CartState {
     removeItem: (itemId: string) => Promise<boolean>;
 }
 
+interface CartResponseItem {
+    id: string;
+    product: {
+        id: string;
+        name: string;
+        featuredImage: string;
+    };
+    price: number;
+    quantity: number;
+}
+
 interface CartResponse {
     success: boolean;
     data: {
-        items: any[];
+        items: CartResponseItem[];
         totalItems: number;
     };
 }
@@ -47,7 +58,7 @@ export const useCartStore = create<CartState>((set, get) => ({
                 const data: CartResponse = await res.json();
                 if (data.success) {
                     set({
-                        items: data.data.items.map((item: any) => ({
+                        items: data.data.items.map((item) => ({
                             id: item.id,
                             productId: item.product.id,
                             name: item.product.name,

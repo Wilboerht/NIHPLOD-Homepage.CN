@@ -82,6 +82,12 @@ export default async function UserPage() {
             desc="管理收货地址"
           />
           <MenuItem
+            href="/user/coupons"
+            icon="🎟️"
+            title="我的优惠券"
+            desc="查看可用优惠券"
+          />
+          <MenuItem
             href="/user/points"
             icon="🌟"
             title="积分记录"

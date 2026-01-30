@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   Users,
   Share2,
+  Ticket,
   LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ export const adminNavItems: NavItem[] = [
   { title: "AI 顾问", href: "/admin/advisor", icon: Bot },
   { title: "抽奖活动", href: "/admin/lottery", icon: Gift },
   { title: "分享有礼", href: "/admin/share-reward/campaigns", icon: Share2 },
+  { title: "优惠券管理", href: "/admin/coupons", icon: Ticket },
   { title: "职位管理", href: "/admin/jobs", icon: Briefcase },
   { title: "简历管理", href: "/admin/applications", icon: UserCheck },
   { title: "留言管理", href: "/admin/messages", icon: MessageSquare },

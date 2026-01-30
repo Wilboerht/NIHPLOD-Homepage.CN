@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/components/ui/Toast";
-import { Loader2, CheckCircle, Smartphone } from "lucide-react";
+import { Loader2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 interface Order {
@@ -78,7 +78,7 @@ export function PayClient() {
             try {
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-                const payload: any = {
+                const payload: Record<string, unknown> = {
                     orderId: order.id,
                     payMethod: payMethod,
                 };
@@ -133,7 +133,7 @@ export function PayClient() {
         };
 
         createPay();
-    }, [order, payMethod]); // 依赖 payMethod，切换时重新请求
+    }, [order, payMethod, showError]); // 依赖 payMethod，切换时重新请求
 
     // 3. 轮询订单状态
     useEffect(() => {
@@ -187,8 +187,8 @@ export function PayClient() {
                         <button
                             onClick={() => setPayMethod("wechat")}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${payMethod === "wechat"
-                                    ? "border-green-500 bg-green-50 text-green-700"
-                                    : "border-gray-200 hover:border-green-200"
+                                ? "border-green-500 bg-green-50 text-green-700"
+                                : "border-gray-200 hover:border-green-200"
                                 }`}
                         >
                             <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs">W</div>
@@ -197,8 +197,8 @@ export function PayClient() {
                         <button
                             onClick={() => setPayMethod("alipay")}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${payMethod === "alipay"
-                                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                                    : "border-gray-200 hover:border-blue-200"
+                                ? "border-blue-500 bg-blue-50 text-blue-700"
+                                : "border-gray-200 hover:border-blue-200"
                                 }`}
                         >
                             <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">A</div>
@@ -207,8 +207,8 @@ export function PayClient() {
                         <button
                             onClick={() => setPayMethod("unionpay")}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${payMethod === "unionpay"
-                                    ? "border-red-500 bg-red-50 text-red-700"
-                                    : "border-gray-200 hover:border-red-200"
+                                ? "border-red-500 bg-red-50 text-red-700"
+                                : "border-gray-200 hover:border-red-200"
                                 }`}
                         >
                             <div className="w-5 h-5 bg-gradient-to-r from-red-500 to-blue-500 rounded-full flex items-center justify-center text-white text-xs text-[8px] overflow-hidden">

@@ -4,13 +4,9 @@
  * POST /api/orders - 创建订单
  */
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { createOrder } from "@/lib/order";
 import { z } from "zod";
-
-// 订单超时时间（30分钟）
-const ORDER_TIMEOUT_MINUTES = 30;
 
 // 创建订单参数验证
 const createOrderSchema = z.object({
@@ -25,12 +21,13 @@ const createOrderSchema = z.object({
     quantity: z.number().int().min(1),
   })).min(1, "请选择商品"),
   remark: z.string().max(200).optional(),
+  userCouponId: z.string().optional(),
 }).refine(data => data.addressId || data.recipient, {
   message: "请提供收货地址ID或完整的收货信息",
   path: ["addressId"], // Error path
 });
 
-// ... existing GET ...
+// ... (GET logic unchanged)
 
 // 创建订单
 export async function POST(request: NextRequest) {
@@ -54,14 +51,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { addressId, recipient, items, remark } = result.data;
+    const { addressId, recipient, items, remark, userCouponId } = result.data;
 
     // 创建订单
     const orderResult = await createOrder(
       payload.id,
       items,
       { addressId, recipient },
-      remark
+      remark,
+      userCouponId
     );
 
     if (!orderResult.success) {

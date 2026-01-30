@@ -447,6 +447,7 @@ model User {
   cartItems     CartItem[]
   pointRecords  PointRecord[]
   conversations AdvisorConversation[]
+  userCoupons   UserCoupon[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -616,6 +617,7 @@ model Order {
 
   user           User        @relation(fields: [userId], references: [id])
   items          OrderItem[]
+  userCoupon     UserCoupon?
 
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -736,4 +738,55 @@ model ShareRewardSubmission {
   @@unique([campaignId, contact]) // 同一活动同一联系方式只能提交一次
   @@index([campaignId, status])
   @@index([contact])
+}
+
+// ============================================
+// 优惠券系统
+// ============================================
+
+model Coupon {
+  id          String   @id @default(cuid())
+  code        String?  @unique // 兑换码 (可选，为空时点击领取)
+  name        String   // 优惠券名称
+  type        String   // DISCOUNT_AMOUNT (满减) | DISCOUNT_PERCENT (折扣)
+  value       Decimal  @db.Decimal(10, 2)
+  minAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  
+  // 有效期规则
+  startDate   DateTime? // 固定开始时间
+  endDate     DateTime? // 固定结束时间
+  daysValid   Int?      // 领取后多少天有效 (相对时间)
+  
+  // 发放规则
+  totalLimit  Int?      // 总发行量
+  userLimit   Int       @default(1) // 每人限领张数
+  
+  isActive    Boolean   @default(true) // 上下架
+  createdAt   DateTime  @default(now())
+  
+  userCoupons UserCoupon[]
+}
+
+model UserCoupon {
+  id        String    @id @default(cuid())
+  userId    String
+  couponId  String
+  
+  status    String    // UNUSED (未使用), USED (已使用), EXPIRED (已过期), LOCKED (下单锁定)
+  
+  acquiredAt DateTime @default(now()) // 领取时间
+  expiresAt  DateTime // 过期时间
+  usedAt     DateTime? // 使用时间
+  
+  // 关联
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order     Order?   @relation(fields: [orderId], references: [id])
+  orderId   String?  @unique
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([expiresAt])
 }

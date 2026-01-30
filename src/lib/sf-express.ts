@@ -82,7 +82,7 @@ export async function getSFTrack(trackingNo: string, phoneLast4?: string): Promi
             if (routeResps && routeResps.routes) {
                 return {
                     success: true,
-                    data: routeResps.routes.map((r: any) => ({
+                    data: routeResps.routes.map((r: { acceptTime: string; acceptAddress?: string; remark: string }) => ({
                         time: r.acceptTime,
                         context: `${r.acceptAddress ? `【${r.acceptAddress}】` : ""}${r.remark}`
                     }))

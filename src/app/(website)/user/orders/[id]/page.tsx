@@ -4,7 +4,6 @@
 import { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { getCurrentLoginUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LOGISTICS_COMPANIES } from "@/lib/logistics-constants";
