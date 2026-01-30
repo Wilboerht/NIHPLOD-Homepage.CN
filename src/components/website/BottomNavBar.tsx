@@ -263,20 +263,8 @@ export function BottomNavBar() {
                             })()}
 
 
-                            {/* 移动端：购物车按钮 */}
-                            <button
-                                type="button"
-                                onClick={toggleCart}
-                                className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-brand-beige/30 transition-colors active:bg-brand-beige/50 sm:hidden"
-                                aria-label="购物车"
-                            >
-                                <ShoppingBag className="h-5 w-5 text-brand-charcoal" />
-                                {totalItems > 0 && (
-                                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-red text-[10px] text-white">
-                                        {totalItems}
-                                    </span>
-                                )}
-                            </button>
+                            {/* 移动端：购物车按钮 (已移除) */}
+
 
                             {/* 移动端：菜单按钮 */}
                             <button
@@ -342,25 +330,9 @@ export function BottomNavBar() {
                                 })}
 
                                 {/* 桌面端：分割线 */}
-                                <div className="h-10 w-px bg-black/20" />
+                                {/* <div className="h-10 w-px bg-black/20" /> */}
 
-                                {/* 桌面端：购物车按钮 */}
-                                <button
-                                    onClick={toggleCart}
-                                    className="group relative flex flex-col items-center gap-1 py-2 text-[15px] font-medium text-[#1a1a1a] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] hover:opacity-70"
-                                >
-                                    <div className="relative">
-                                        <ShoppingBag className="h-8 w-8 opacity-70 transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:opacity-100" />
-                                        {totalItems > 0 && (
-                                            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-red text-[10px] text-white">
-                                                {totalItems}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span>
-                                        购物袋
-                                    </span>
-                                </button>
+                                {/* 桌面端：购物车按钮 (已移除) */}
                             </div>
                         </nav>
                     </m.header>
