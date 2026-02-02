@@ -172,9 +172,6 @@ export function ProductDetailContent({
 
         {/* 产品名称 */}
         <div className="mt-4">
-          <p className="text-xs uppercase tracking-widest text-brand-gold">
-            {product.nameEn}
-          </p>
           <h1 className="mt-1 font-serif text-3xl text-brand-charcoal">
             {product.name}
           </h1>

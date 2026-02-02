@@ -296,11 +296,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                             />
                           )}
                         </div>
-                        {/* 产品信息 - 固定高度区域 */}
                         <div className="mt-3 flex-shrink-0 px-1 text-center lg:mt-4 lg:text-left lg:min-h-[70px]">
-                          <span className="mb-1 block text-[12px] uppercase tracking-[0.15em] text-[#00263E]/50 lg:text-[11px]">
-                            {product.category.nameEn}
-                          </span>
                           <h2 className="text-[18px] font-medium tracking-wide text-[#00263E] lg:text-base">
                             {product.name}
                           </h2>

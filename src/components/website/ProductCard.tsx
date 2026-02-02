@@ -246,11 +246,6 @@ export function ProductCard({
 
       {/* 产品信息 */}
       <div className="p-3 space-y-1 md:p-4">
-        {/* 英文名 */}
-        <p className="text-[11px] uppercase tracking-wider text-brand-gold md:text-xs">
-          {nameEn}
-        </p>
-
         {/* 中文名 */}
         <h3 className="font-serif text-base leading-tight text-brand-charcoal line-clamp-2 md:text-lg">
           {name}
