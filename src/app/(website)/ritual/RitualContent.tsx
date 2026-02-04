@@ -38,8 +38,8 @@ const modules: ModuleConfig[] = [
   {
     id: "portable",
     number: "03",
-    label: "随身好物",
-    subtitle: "外出 / 通勤 / 旅行",
+    label: "单品好物",
+    subtitle: "外出 / 通勤 / 旅行 / 多效芳疗",
     description: "随时随地按需使用"
   },
   {
@@ -515,7 +515,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const selectModule = (moduleId: ModuleId) => {
     setSelectedModule(moduleId);
 
-    // 特殊处理：随身好物 (portable), 专业水疗 (professional) 和 居家仪式 (spa) 直接进入 Level 3
+    // 特殊处理：单品好物 (portable), 专业水疗 (professional) 和 居家仪式 (spa) 直接进入 Level 3
     if (moduleId === "portable" || moduleId === "professional" || moduleId === "spa") {
       const schemes = moduleData[moduleId];
       if (schemes && schemes.length > 0) {
@@ -551,7 +551,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   // 返回上一级
   const _goBack = () => {
     if (currentLevel === 3) {
-      // 如果是随身好物、专业水疗或居家仪式，直接返回 Level 1
+      // 如果是单品好物、专业水疗或居家仪式，直接返回 Level 1
       if (selectedModule === "portable" || selectedModule === "professional" || selectedModule === "spa") {
         setSelectedScheme(null);
         setSelectedSubPlan(null);
@@ -667,7 +667,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                       type="button"
                       onClick={() => {
                         if (currentLevel === 3) {
-                          // 如果是随身好物、专业水疗或居家仪式，直接返回 Level 1
+                          // 如果是单品好物、专业水疗或居家仪式，直接返回 Level 1
                           if (selectedModule === "portable" || selectedModule === "professional" || selectedModule === "spa") {
                             setSelectedScheme(null);
                             setSelectedSubPlan(null);
@@ -1182,7 +1182,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 </p>
                               </div>
 
-                              {/* 右侧切换器 - 显示子方案Tab（如有）或情景列表（随身好物不显示） */}
+                              {/* 右侧切换器 - 显示子方案Tab（如有）或情景列表（单品好物不显示） */}
                               {selectedModule !== "portable" && (
                                 <nav className="flex gap-10">
                                   <LayoutGroup id={`tab-${selectedModule}-${selectedScheme.id}`}>
@@ -1706,30 +1706,73 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                         if (offset > length / 2) offset -= length;
 
                                         const isActive = offset === 0;
-                                        // 扩大渲染范围，展示更多卡片以形成环绕感
-                                        const isVisible = Math.abs(offset) <= 2;
 
-                                        if (!isVisible) return null;
+                                        // 只显示三张卡片
+                                        const isVisible = Math.abs(offset) <= 1;
+
+                                        // 所有的卡片都不倾斜
+                                        const rotateY = 0;
+
+                                        // 位置计算
+                                        // 位置计算
+                                        let x = 0;
+                                        let z = 0;
+                                        let scale = 1;
+                                        let opacity = 0;
+                                        let zIndex = 0;
+                                        let filter = "blur(0px)";
+
+                                        if (offset === 0) {
+                                          // 中间
+                                          x = 0;
+                                          z = 0;
+                                          scale = 1;
+                                          opacity = 1;
+                                          zIndex = 20;
+                                          filter = "blur(0px)";
+                                        } else if (Math.abs(offset) === 1) {
+                                          // 左右两张 - 朦胧效果
+                                          x = offset * 330;
+                                          z = -100;
+                                          scale = 0.9;
+                                          opacity = 0.8; // 稍微降低透明度
+                                          zIndex = 10;
+                                          filter = "blur(3px)"; // 添加高斯模糊
+                                        } else {
+                                          // 其他卡片藏在后面 (不消失，而是物理遮挡)
+                                          x = 0;
+                                          z = -200;
+                                          scale = 0.5; // 缩小以完全躲在中间卡片后面
+                                          opacity = 1; // 保持可见
+                                          zIndex = 0;
+                                          filter = "blur(0px)";
+                                        }
 
                                         return (
                                           <m.article
                                             key={`${step.title}-${index}`}
                                             className={cn(
                                               "absolute flex w-[300px] flex-col gap-5 bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-xl transition-all duration-500 border border-white/40",
-                                              isActive ? "z-20 cursor-default ring-1 ring-brand-gold/20" : "z-10 cursor-pointer hover:bg-white"
+                                              isActive ? "z-20 cursor-default ring-1 ring-brand-gold/20" : "cursor-pointer hover:bg-white"
                                             )}
                                             initial={false}
                                             animate={{
-                                              x: offset * 380, // 拉大间距，防止重叠
-                                              z: -Math.abs(offset) * 100, // 减小深度，避免太远
-                                              rotateY: offset * -15, // 减小旋转角度，更自然
-                                              scale: 1 - Math.abs(offset) * 0.1, // 保持大小适中
-                                              opacity: 1 - Math.abs(offset) * 0.2,
-                                              zIndex: 20 - Math.abs(offset)
+                                              x,
+                                              z,
+                                              rotateY,
+                                              scale,
+                                              opacity,
+                                              zIndex,
+                                              filter
                                             }}
                                             transition={{
-                                              duration: 0.5,
-                                              ease: [0.23, 1, 0.32, 1]
+                                              default: {
+                                                duration: 0.5,
+                                                ease: [0.23, 1, 0.32, 1]
+                                              },
+                                              filter: isActive
+                                                ? { duration: 0.4 } // 变清晰：正常速度
+                                                : { duration: 0.6, delay: 0.1 } // 变模糊：慢一点，且稍微延迟，保持移动时的清晰度
                                             }}
                                             onClick={() => {
                                               if (!isActive) setCurrentStepIndex(index);
