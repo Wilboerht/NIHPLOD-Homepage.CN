@@ -1778,8 +1778,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                               if (!isActive) setCurrentStepIndex(index);
                                             }}
                                           >
-                                            {/* Image Wrapper */}
-                                            <div className="relative w-full h-[280px] flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
+                                            {/* Image Wrapper - 调整高度比例 */}
+                                            <div className="relative w-full h-[250px] flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
                                               <Image
                                                 src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
                                                 alt={step.title}
@@ -1788,15 +1788,15 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                               />
                                             </div>
 
-                                            {/* Step Info */}
-                                            <div className="flex flex-col gap-2 items-center text-center">
+                                            {/* Step Info - 占据剩余空间 */}
+                                            <div className="flex flex-1 flex-col justify-center gap-3 items-center text-center px-4">
                                               <div className="text-xs tracking-widest text-brand-charcoal-light opacity-60">
                                                 STEP {String(index + 1).padStart(2, "0")}
                                               </div>
                                               <h2 className="font-display text-xl font-medium text-brand-charcoal">
                                                 {step.title}
                                               </h2>
-                                              <p className="line-clamp-3 text-xs leading-relaxed text-brand-charcoal/70">
+                                              <p className="line-clamp-5 text-sm leading-relaxed text-brand-charcoal/70">
                                                 {step.description}
                                               </p>
                                             </div>
