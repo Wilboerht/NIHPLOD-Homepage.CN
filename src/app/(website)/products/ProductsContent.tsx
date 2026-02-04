@@ -246,7 +246,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
-                    className="mb-6 flex-shrink-0 border-l border-[#00263E] pl-4 lg:mb-10 lg:pl-6"
+                    className="mb-6 flex-shrink-0 lg:mb-10"
                   >
                     <span className="mb-1 block text-[12px] tracking-[0.3em] text-[#00263E]/60 lg:text-xs">
                       COLLECTION 2026
