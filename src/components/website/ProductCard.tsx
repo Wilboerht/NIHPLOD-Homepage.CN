@@ -99,7 +99,7 @@ export function ProductCard({
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const { name, nameEn, price, capacity, images, category } = product;
+  const { name, nameEn: _nameEn, price, capacity, images, category } = product;
 
   // 是否有多张图片
   const hasMultipleImages = images.length > 1;
