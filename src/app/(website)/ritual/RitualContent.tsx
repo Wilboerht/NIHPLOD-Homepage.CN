@@ -1690,7 +1690,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 ) : selectedModule === "spa" ? (
                                   <m.section
                                     key="spa-carousel"
-                                    className="relative flex w-[75%] h-[500px] items-center justify-center perspective-[1000px]"
+                                    className="relative flex w-[75%] h-[530px] items-center justify-center perspective-[1000px]"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
@@ -1752,7 +1752,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                           <m.article
                                             key={`${step.title}-${index}`}
                                             className={cn(
-                                              "absolute flex w-[300px] flex-col gap-5 bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-xl transition-all duration-500 border border-white/40",
+                                              "absolute flex w-[300px] h-[480px] flex-col gap-5 bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-[0_20px_40px_-12px_rgba(0,0,0,0.06)] transition-all duration-500 border border-white/40",
                                               isActive ? "z-20 cursor-default ring-1 ring-brand-gold/20" : "cursor-pointer hover:bg-white"
                                             )}
                                             initial={false}
@@ -1779,7 +1779,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                             }}
                                           >
                                             {/* Image Wrapper */}
-                                            <div className="relative w-full h-[240px] flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
+                                            <div className="relative w-full h-[280px] flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
                                               <Image
                                                 src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
                                                 alt={step.title}
@@ -1805,23 +1805,41 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                       })}
                                     </div>
 
-                                    {/* 导航按钮 */}
-                                    <div className="absolute bottom-4 flex gap-8 z-30">
-                                      <button
-                                        type="button"
-                                        onClick={() => setCurrentStepIndex((currentStepIndex - 1 + currentSteps.length) % currentSteps.length)}
-                                        className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/50 backdrop-blur-sm transition-all hover:bg-white hover:border-brand-gold opacity-100"
-                                      >
-                                        <ChevronLeft className="h-5 w-5 text-brand-charcoal" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setCurrentStepIndex((currentStepIndex + 1) % currentSteps.length)}
-                                        className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/50 backdrop-blur-sm transition-all hover:bg-white hover:border-brand-gold opacity-100"
-                                      >
-                                        <ChevronRight className="h-5 w-5 text-brand-charcoal" />
-                                      </button>
+                                    {/* 左侧导航按钮 */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setCurrentStepIndex((currentStepIndex - 1 + currentSteps.length) % currentSteps.length)}
+                                      className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/50 backdrop-blur-sm transition-all hover:bg-white hover:border-brand-gold hover:scale-110 opacity-100 shadow-md"
+                                    >
+                                      <ChevronLeft className="h-6 w-6 text-brand-charcoal" />
+                                    </button>
+
+                                    {/* 右侧导航按钮 */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setCurrentStepIndex((currentStepIndex + 1) % currentSteps.length)}
+                                      className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/50 backdrop-blur-sm transition-all hover:bg-white hover:border-brand-gold hover:scale-110 opacity-100 shadow-md"
+                                    >
+                                      <ChevronRight className="h-6 w-6 text-brand-charcoal" />
+                                    </button>
+
+                                    {/* 分页指示点 */}
+                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 z-30">
+                                      {currentSteps.map((_, index) => (
+                                        <button
+                                          key={`dot-${index}`}
+                                          type="button"
+                                          onClick={() => setCurrentStepIndex(index)}
+                                          className={cn(
+                                            "h-1.5 rounded-full transition-all duration-300",
+                                            index === currentStepIndex
+                                              ? "w-4 bg-brand-charcoal/30"
+                                              : "w-1.5 bg-brand-charcoal/10 hover:bg-brand-charcoal/20"
+                                          )}
+                                        />
+                                      ))}
                                     </div>
+
                                   </m.section>
                                 ) : (
                                   <m.section
