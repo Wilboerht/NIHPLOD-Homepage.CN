@@ -74,7 +74,7 @@ interface Scheme {
   id: string;
   name: string;
   tag?: string;
-  desc: string;
+  desc?: string;
   steps: RitualStep[];  // 保留原有 steps，兼容没有子方案的情景
   subPlans?: SubPlan[]; // 新增：子方案列表（可选）
   totalDuration?: string;
@@ -82,6 +82,7 @@ interface Scheme {
   benefits?: string[];
   specialSupport?: string;
   nameEn?: string;
+  icon?: React.ReactNode;
 }
 
 // 模块数据类型
@@ -93,8 +94,28 @@ const defaultModuleData: ModuleData = {
     {
       id: "d1",
       name: "晨间焕活",
-      nameEn: "MORNING VITALITY RITUAL",
-      desc: "开启一天的透亮肌底",
+      // nameEn: "MORNING VITALITY RITUAL", // Removed
+      // desc: "开启一天的透亮肌底", // Removed
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g clipPath="url(#clip0_1328_320)">
+            <path d="M12 18.5C15.5898 18.5 18.5 15.5898 18.5 12C18.5 8.41015 15.5898 5.5 12 5.5C8.41015 5.5 5.5 8.41015 5.5 12C5.5 15.5898 8.41015 18.5 12 18.5Z" fill="#C3BC9F" stroke="#C3BC9F" strokeWidth="1.6" strokeLinejoin="round" />
+            <path d="M12 3C12.6904 3 13.25 2.44036 13.25 1.75C13.25 1.05964 12.6904 0.5 12 0.5C11.3097 0.5 10.75 1.05964 10.75 1.75C10.75 2.44036 11.3097 3 12 3Z" fill="#C3BC9F" />
+            <path d="M19.25 6C19.9404 6 20.5 5.44035 20.5 4.75C20.5 4.05964 19.9404 3.5 19.25 3.5C18.5597 3.5 18 4.05964 18 4.75C18 5.44035 18.5597 6 19.25 6Z" fill="#C3BC9F" />
+            <path d="M22.25 13.25C22.9404 13.25 23.5 12.6904 23.5 12C23.5 11.3097 22.9404 10.75 22.25 10.75C21.5597 10.75 21 11.3097 21 12C21 12.6904 21.5597 13.25 22.25 13.25Z" fill="#C3BC9F" />
+            <path d="M19.25 20.5C19.9404 20.5 20.5 19.9404 20.5 19.25C20.5 18.5597 19.9404 18 19.25 18C18.5597 18 18 18.5597 18 19.25C18 19.9404 18.5597 20.5 19.25 20.5Z" fill="#C3BC9F" />
+            <path d="M12 23.5C12.6904 23.5 13.25 22.9404 13.25 22.25C13.25 21.5597 12.6904 21 12 21C11.3097 21 10.75 21.5597 10.75 22.25C10.75 22.9404 11.3097 23.5 12 23.5Z" fill="#C3BC9F" />
+            <path d="M4.75 20.5C5.44035 20.5 6 19.9404 6 19.25C6 18.5597 5.44035 18 4.75 18C4.05964 18 3.5 18.5597 3.5 19.25C3.5 19.9404 4.05964 20.5 4.75 20.5Z" fill="#C3BC9F" />
+            <path d="M1.75 13.25C2.44036 13.25 3 12.6904 3 12C3 11.3097 2.44036 10.75 1.75 10.75C1.05964 10.75 0.5 11.3097 0.5 12C0.5 12.6904 1.05964 13.25 1.75 13.25Z" fill="#C3BC9F" />
+            <path d="M4.75 6C5.44035 6 6 5.44035 6 4.75C6 4.05964 5.44035 3.5 4.75 3.5C4.05964 3.5 3.5 4.05964 3.5 4.75C3.5 5.44035 4.05964 6 4.75 6Z" fill="#C3BC9F" />
+          </g>
+          <defs>
+            <clipPath id="clip0_1328_320">
+              <rect width="24" height="24" fill="white" />
+            </clipPath>
+          </defs>
+        </svg>
+      ),
       totalDuration: "5-10分钟",
       products: "洁面慕斯、面霜",
       benefits: ["保湿锁水", "屏障增强", "过敏修护", "抗初老", "维稳舒缓"],
@@ -179,8 +200,13 @@ const defaultModuleData: ModuleData = {
     {
       id: "n1",
       name: "晚间呵护",
-      nameEn: "NIGHT REPAIR RITUAL",
-      desc: "利用黄金睡眠期修护",
+      // nameEn: "NIGHT REPAIR RITUAL", // Removed
+      // desc: "利用黄金睡眠期修护", // Removed
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13.8237 3.18488C11.3623 3.82663 9.54547 6.06477 9.54547 8.72728C9.54547 11.8904 12.1096 14.4545 15.2727 14.4545C17.9352 14.4545 20.1734 12.6377 20.8151 10.1763C20.9363 10.7652 21 11.3752 21 12C21 16.9706 16.9706 21 12 21C7.02943 21 3 16.9706 3 12C3 7.02943 7.02943 3 12 3C12.6248 3 13.2348 3.06367 13.8237 3.18488Z" fill="#C3BC9F" stroke="#C3BC9F" strokeWidth="1.44" strokeLinejoin="round" />
+        </svg>
+      ),
       totalDuration: "10-15分钟",
       products: "洁面慕斯、面霜",
       benefits: ["深层清洁", "夜间修护", "滋养再生"],
@@ -489,8 +515,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const selectModule = (moduleId: ModuleId) => {
     setSelectedModule(moduleId);
 
-    // 特殊处理：随身好物 (portable) 和 专业水疗 (professional) 直接进入 Level 3
-    if (moduleId === "portable" || moduleId === "professional") {
+    // 特殊处理：随身好物 (portable), 专业水疗 (professional) 和 居家仪式 (spa) 直接进入 Level 3
+    if (moduleId === "portable" || moduleId === "professional" || moduleId === "spa") {
       const schemes = moduleData[moduleId];
       if (schemes && schemes.length > 0) {
         setSelectedScheme(schemes[0]);
@@ -525,8 +551,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   // 返回上一级
   const _goBack = () => {
     if (currentLevel === 3) {
-      // 如果是随身好物或专业水疗，直接返回 Level 1
-      if (selectedModule === "portable" || selectedModule === "professional") {
+      // 如果是随身好物、专业水疗或居家仪式，直接返回 Level 1
+      if (selectedModule === "portable" || selectedModule === "professional" || selectedModule === "spa") {
         setSelectedScheme(null);
         setSelectedSubPlan(null);
         setSelectedModule(null);
@@ -641,8 +667,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                       type="button"
                       onClick={() => {
                         if (currentLevel === 3) {
-                          // 如果是随身好物或专业水疗，直接返回 Level 1
-                          if (selectedModule === "portable" || selectedModule === "professional") {
+                          // 如果是随身好物、专业水疗或居家仪式，直接返回 Level 1
+                          if (selectedModule === "portable" || selectedModule === "professional" || selectedModule === "spa") {
                             setSelectedScheme(null);
                             setSelectedSubPlan(null);
                             setSelectedModule(null);
@@ -1065,12 +1091,10 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 onMouseLeave={() => setHoveredIndex(null)}
                                 className={cn(
                                   // Bento Box 样式：正方形卡片，宽高固定
-                                  "group relative flex aspect-[4/5] w-full max-w-md cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-0 bg-white/40 p-8 shadow-sm transition-all duration-500 lg:p-12",
+                                  "group relative flex aspect-square w-full max-w-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-0 shadow-sm transition-all duration-500",
                                   hoveredIndex === index
-                                    ? "scale-105 bg-white/80 shadow-2xl ring-1 ring-brand-charcoal/5"
-                                    : hoveredIndex !== null
-                                      ? "opacity-50 blur-[2px] grayscale-[0.5]"
-                                      : "hover:bg-white/60"
+                                    ? "scale-[1.03] bg-white/90 shadow-xl ring-1 ring-brand-charcoal/5"
+                                    : "bg-white/40 hover:bg-white/60 hover:shadow-md"
                                 )}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -1084,8 +1108,15 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                   </span>
                                 )}
 
+                                {/* 图标 - 仅存在时显示 */}
+                                {scheme.icon && (
+                                  <div className="mb-6 text-brand-charcoal/80 [&>svg]:h-14 [&>svg]:w-14 [&>svg]:stroke-[1.2]">
+                                    {scheme.icon}
+                                  </div>
+                                )}
+
                                 {/* 标题 */}
-                                <h3 className="mb-4 text-center font-display text-2xl font-light tracking-widest text-brand-charcoal lg:text-3xl">
+                                <h3 className="mb-6 text-center font-display text-2xl font-light tracking-widest text-brand-charcoal">
                                   {scheme.name}
                                 </h3>
 
@@ -1096,16 +1127,18 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                   </span>
                                 )}
 
-                                {/* 分隔线 */}
-                                <div className="mb-6 h-px w-12 bg-brand-charcoal/10" />
+                                {/* 分隔线 - 仅在有描述时显示 */}
+                                {scheme.desc && <div className="mb-6 h-px w-12 bg-brand-charcoal/10" />}
 
-                                {/* 描述文字 */}
-                                <p className="mb-8 max-w-[260px] text-center text-sm leading-relaxed text-brand-charcoal/70">
-                                  {scheme.desc}
-                                </p>
+                                {/* 描述文字 - 仅在有描述时显示 */}
+                                {scheme.desc && (
+                                  <p className="mb-8 max-w-[260px] text-center text-sm leading-relaxed text-brand-charcoal/70">
+                                    {scheme.desc}
+                                  </p>
+                                )}
 
-                                {/* 预计用时 - 底部 */}
-                                <div className="mt-auto flex items-center gap-2 rounded-full bg-brand-charcoal/5 px-4 py-1.5 text-xs text-brand-charcoal/50">
+                                {/* 预计用时 */}
+                                <div className="flex items-center gap-2 rounded-full bg-brand-charcoal/5 px-4 py-1.5 text-xs text-brand-charcoal/50 transition-colors group-hover:bg-brand-charcoal/10 group-hover:text-brand-charcoal/70">
                                   <svg
                                     viewBox="0 0 24 24"
                                     fill="none"
@@ -1652,6 +1685,99 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                         className="h-full w-full object-cover object-center"
                                         priority
                                       />
+                                    </div>
+                                  </m.section>
+                                ) : selectedModule === "spa" ? (
+                                  <m.section
+                                    key="spa-carousel"
+                                    className="relative flex w-[75%] h-[500px] items-center justify-center perspective-[1000px]"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.5 }}
+                                  >
+                                    {/* 旋转木马容器 */}
+                                    <div className="relative flex h-full w-full items-center justify-center transform-style-3d">
+                                      {currentSteps.map((step, index) => {
+                                        const length = currentSteps.length;
+                                        // 计算循环偏移量
+                                        let offset = (index - currentStepIndex + length) % length;
+                                        // 将偏移量调整为 -length/2 到 length/2 之间
+                                        if (offset > length / 2) offset -= length;
+
+                                        const isActive = offset === 0;
+                                        // 扩大渲染范围，展示更多卡片以形成环绕感
+                                        const isVisible = Math.abs(offset) <= 2;
+
+                                        if (!isVisible) return null;
+
+                                        return (
+                                          <m.article
+                                            key={`${step.title}-${index}`}
+                                            className={cn(
+                                              "absolute flex w-[300px] flex-col gap-5 bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-xl transition-all duration-500 border border-white/40",
+                                              isActive ? "z-20 cursor-default ring-1 ring-brand-gold/20" : "z-10 cursor-pointer hover:bg-white"
+                                            )}
+                                            initial={false}
+                                            animate={{
+                                              x: offset * 380, // 拉大间距，防止重叠
+                                              z: -Math.abs(offset) * 100, // 减小深度，避免太远
+                                              rotateY: offset * -15, // 减小旋转角度，更自然
+                                              scale: 1 - Math.abs(offset) * 0.1, // 保持大小适中
+                                              opacity: 1 - Math.abs(offset) * 0.2,
+                                              zIndex: 20 - Math.abs(offset)
+                                            }}
+                                            transition={{
+                                              duration: 0.5,
+                                              ease: [0.23, 1, 0.32, 1]
+                                            }}
+                                            onClick={() => {
+                                              if (!isActive) setCurrentStepIndex(index);
+                                            }}
+                                          >
+                                            {/* Image Wrapper */}
+                                            <div className="relative w-full h-[240px] flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
+                                              <Image
+                                                src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
+                                                alt={step.title}
+                                                fill
+                                                className="object-contain mix-blend-multiply"
+                                              />
+                                            </div>
+
+                                            {/* Step Info */}
+                                            <div className="flex flex-col gap-2 items-center text-center">
+                                              <div className="text-xs tracking-widest text-brand-charcoal-light opacity-60">
+                                                STEP {String(index + 1).padStart(2, "0")}
+                                              </div>
+                                              <h2 className="font-display text-xl font-medium text-brand-charcoal">
+                                                {step.title}
+                                              </h2>
+                                              <p className="line-clamp-3 text-xs leading-relaxed text-brand-charcoal/70">
+                                                {step.description}
+                                              </p>
+                                            </div>
+                                          </m.article>
+                                        );
+                                      })}
+                                    </div>
+
+                                    {/* 导航按钮 */}
+                                    <div className="absolute bottom-4 flex gap-8 z-30">
+                                      <button
+                                        type="button"
+                                        onClick={() => setCurrentStepIndex((currentStepIndex - 1 + currentSteps.length) % currentSteps.length)}
+                                        className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/50 backdrop-blur-sm transition-all hover:bg-white hover:border-brand-gold opacity-100"
+                                      >
+                                        <ChevronLeft className="h-5 w-5 text-brand-charcoal" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setCurrentStepIndex((currentStepIndex + 1) % currentSteps.length)}
+                                        className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/50 backdrop-blur-sm transition-all hover:bg-white hover:border-brand-gold opacity-100"
+                                      >
+                                        <ChevronRight className="h-5 w-5 text-brand-charcoal" />
+                                      </button>
                                     </div>
                                   </m.section>
                                 ) : (
