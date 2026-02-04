@@ -10,6 +10,9 @@ import { OrderStatus } from "@/generated/prisma/client";
 // 购买奖励比例：每消费 1 元获得 1 点
 const PURCHASE_REWARD_RATIO = 1;
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   // 仅开发环境可用
   if (process.env.NODE_ENV !== "development") {

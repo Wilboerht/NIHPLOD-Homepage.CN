@@ -11,6 +11,9 @@ import { sendSMS } from "@/lib/sms";
 
 type Params = { params: Promise<{ id: string }> };
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const admin = await verifyAuth(request);

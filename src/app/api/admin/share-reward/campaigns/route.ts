@@ -23,6 +23,9 @@ const CampaignSchema = z.object({
  * GET /api/admin/share-reward/campaigns
  * 获取活动列表
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         const campaigns = await prisma.shareRewardCampaign.findMany({

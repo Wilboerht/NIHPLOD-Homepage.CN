@@ -42,6 +42,9 @@ interface ChatMessage {
   content: string;
 }
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   // 验证管理员身份
   const admin = await verifyAuth(request);

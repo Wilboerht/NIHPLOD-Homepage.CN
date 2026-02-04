@@ -17,6 +17,9 @@ const createPaySchema = z.object({
   tradeType: z.enum(["NATIVE", "JSAPI", "MWEB"]).default("NATIVE"),
 });
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);

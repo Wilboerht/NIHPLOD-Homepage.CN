@@ -10,6 +10,9 @@ const BatchActionSchema = z.object({
 });
 
 // POST /api/admin/products/batch - 批量操作产品
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // 验证认证

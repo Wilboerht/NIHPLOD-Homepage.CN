@@ -7,6 +7,9 @@ interface RouteParams {
 }
 
 // GET /api/admin/applications/[id] - 获取单个申请详情
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const admin = await verifyAuth(request);

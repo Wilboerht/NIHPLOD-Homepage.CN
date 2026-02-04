@@ -12,6 +12,9 @@ const schema = z.object({
     message: "Either couponId or code is required",
 });
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
     try {
         const user = await getCurrentLoginUser();

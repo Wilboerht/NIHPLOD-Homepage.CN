@@ -14,6 +14,9 @@ const refundSchema = z.object({
   adminRemark: z.string().optional(),
 });
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const admin = await verifyAuth(request);

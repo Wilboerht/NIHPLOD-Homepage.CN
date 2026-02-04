@@ -8,6 +8,9 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 
 // 获取积分记录
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);

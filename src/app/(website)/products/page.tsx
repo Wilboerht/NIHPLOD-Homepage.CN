@@ -26,47 +26,57 @@ export const metadata: Metadata = {
  * 获取所有可见的分类
  */
 async function getCategories() {
-  const categories = await prisma.category.findMany({
-    where: { visible: true }, // 只获取在前台展示的分类
-    orderBy: { order: "asc" },
-    select: {
-      id: true,
-      name: true,
-      nameEn: true,
-      slug: true,
-      icon: true,
-    },
-  });
-  return categories;
+  try {
+    const categories = await prisma.category.findMany({
+      where: { visible: true }, // 只获取在前台展示的分类
+      orderBy: { order: "asc" },
+      select: {
+        id: true,
+        name: true,
+        nameEn: true,
+        slug: true,
+        icon: true,
+      },
+    });
+    return categories;
+  } catch (error) {
+    console.error("获取分类列表失败:", error);
+    return [];
+  }
 }
 
 /**
  * 获取已发布的产品
  */
 async function getProducts() {
-  const products = await prisma.product.findMany({
-    where: { published: true },
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    include: {
-      category: {
-        select: { id: true, name: true, nameEn: true, slug: true },
+  try {
+    const products = await prisma.product.findMany({
+      where: { published: true },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      include: {
+        category: {
+          select: { id: true, name: true, nameEn: true, slug: true },
+        },
+        images: {
+          orderBy: { order: "asc" },
+          select: { url: true, alt: true },
+        },
+        purchaseLinks: {
+          orderBy: { order: "asc" },
+          select: { id: true, platform: true, url: true },
+        },
       },
-      images: {
-        orderBy: { order: "asc" },
-        select: { url: true, alt: true },
-      },
-      purchaseLinks: {
-        orderBy: { order: "asc" },
-        select: { id: true, platform: true, url: true },
-      },
-    },
-  });
+    });
 
-  // 转换 Decimal 为 number
-  return products.map((p) => ({
-    ...p,
-    price: Number(p.price),
-  }));
+    // 转换 Decimal 为 number
+    return products.map((p) => ({
+      ...p,
+      price: Number(p.price),
+    }));
+  } catch (error) {
+    console.error("获取产品列表失败:", error);
+    return [];
+  }
 }
 
 /**

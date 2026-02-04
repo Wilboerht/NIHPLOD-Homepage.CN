@@ -68,6 +68,9 @@ function getTextAnalysisPromptExample(): string {
  * GET /api/admin/advisor/prompts
  * 获取默认系统提示词（用于管理端显示和恢复默认）
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await verifyAuth(request);

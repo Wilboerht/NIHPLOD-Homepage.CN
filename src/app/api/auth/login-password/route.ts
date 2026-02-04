@@ -15,6 +15,9 @@ const loginSchema = z.object({
   password: z.string().min(6, "密码至少6位").max(32, "密码最多32位"),
 });
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

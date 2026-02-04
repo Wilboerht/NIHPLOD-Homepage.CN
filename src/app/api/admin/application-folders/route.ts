@@ -10,6 +10,9 @@ const CreateFolderSchema = z.object({
 });
 
 // GET /api/admin/application-folders - 获取分类夹列表
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await verifyAuth(request);

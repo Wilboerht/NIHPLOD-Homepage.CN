@@ -36,6 +36,9 @@ interface QuestionResponse {
  *
  * 优先从数据库获取，如果数据库为空则返回硬编码的默认问题
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // 获取性别参数

@@ -7,22 +7,32 @@ import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 // ISR: 产品详情页每60秒重新验证一次
 export const revalidate = 60;
 
+// 允许动态生成未预渲染的路由参数
+export const dynamicParams = true;
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
 /**
  * 生成静态参数
+ * 在构建时尝试预渲染产品页面，如果数据库不可用则返回空数组
  */
 export async function generateStaticParams() {
-  const products = await prisma.product.findMany({
-    where: { published: true },
-    select: { slug: true },
-  });
+  try {
+    const products = await prisma.product.findMany({
+      where: { published: true },
+      select: { slug: true },
+    });
 
-  return products.map((product) => ({
-    slug: product.slug,
-  }));
+    return products.map((product) => ({
+      slug: product.slug,
+    }));
+  } catch (error) {
+    console.error("generateStaticParams 获取产品列表失败:", error);
+    // 返回空数组，页面将在运行时动态生成
+    return [];
+  }
 }
 
 /**
@@ -30,7 +40,7 @@ export async function generateStaticParams() {
  */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  
+
   const product = await prisma.product.findUnique({
     where: { slug },
     select: {

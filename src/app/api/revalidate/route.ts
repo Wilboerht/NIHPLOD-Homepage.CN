@@ -6,6 +6,9 @@ import { verifyAuth } from "@/lib/auth";
  * POST /api/revalidate - 按需重新验证缓存
  * 当后台更新数据后调用此 API 立即刷新前台页面
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // 验证管理员身份

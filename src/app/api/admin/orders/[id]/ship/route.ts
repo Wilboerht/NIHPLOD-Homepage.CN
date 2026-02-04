@@ -14,6 +14,9 @@ const shipSchema = z.object({
   trackingNo: z.string().min(1, "请填写快递单号"),
 });
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const admin = await verifyAuth(request);

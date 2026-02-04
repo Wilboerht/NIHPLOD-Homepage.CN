@@ -27,6 +27,9 @@ interface RouteParams {
  * GET /api/admin/share-reward/campaigns/[id]
  * 获取单个活动
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(_request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;

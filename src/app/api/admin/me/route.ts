@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 
 // GET /api/admin/me - 获取当前登录的管理员信息
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await verifyAuth(request);

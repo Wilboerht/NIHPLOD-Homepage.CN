@@ -6,6 +6,9 @@ import { AdminLoginSchema } from "@/schemas/api";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 
 // POST /api/admin/login - 管理员登录
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

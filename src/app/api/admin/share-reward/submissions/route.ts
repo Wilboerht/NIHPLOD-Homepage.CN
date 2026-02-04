@@ -5,6 +5,9 @@ import prisma from "@/lib/prisma";
  * GET /api/admin/share-reward/submissions
  * 获取提交列表（支持筛选）
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);

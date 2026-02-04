@@ -13,6 +13,9 @@ const UpdateFolderSchema = z.object({
 });
 
 // GET /api/admin/application-folders/[id] - 获取分类夹详情
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const admin = await verifyAuth(request);

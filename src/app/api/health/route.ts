@@ -5,6 +5,9 @@ import prisma from "@/lib/prisma";
  * 健康检查 API
  * GET /api/health - 检查服务和数据库状态
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const checks: Record<string, { status: string; latency?: number; error?: string }> = {
     server: { status: "ok" },

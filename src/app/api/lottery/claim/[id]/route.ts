@@ -16,6 +16,9 @@ const ClaimInfoSchema = z.object({
 });
 
 // GET - 获取中奖信息
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

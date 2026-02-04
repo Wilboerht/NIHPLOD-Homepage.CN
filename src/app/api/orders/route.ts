@@ -31,6 +31,9 @@ const createOrderSchema = z.object({
 // ... (GET logic unchanged)
 
 // 创建订单
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);

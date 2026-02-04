@@ -39,6 +39,9 @@ interface StatsResponse {
 }
 
 // GET /api/admin/stats - 获取仪表盘统计数据
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // 验证认证

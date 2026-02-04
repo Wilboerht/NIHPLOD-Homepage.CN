@@ -14,6 +14,9 @@ const OrderUpdateSchema = z.object({
 });
 
 // PUT /api/admin/products/order - 更新产品排序
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function PUT(request: NextRequest) {
   try {
     // 验证认证

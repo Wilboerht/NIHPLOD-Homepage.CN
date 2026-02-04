@@ -23,6 +23,9 @@ const ALLOWED_TYPES = [
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 // POST /api/careers/apply - 提交简历申请
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   console.log("🚀 [Apply API] Received request");
   try {

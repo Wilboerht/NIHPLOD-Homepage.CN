@@ -19,6 +19,9 @@ const CreateJobSchema = z.object({
 });
 
 // GET /api/admin/jobs - 获取职位列表
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await verifyAuth(request);

@@ -17,6 +17,9 @@ const updateSchema = z.object({
 });
 
 // 更新购物车项
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const payload = await verifyUserAuth(request);

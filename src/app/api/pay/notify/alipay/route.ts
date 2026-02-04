@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleAlipayNotify } from "@/lib/alipay";
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
     try {
         // 支付宝推送的数据是 Form Data

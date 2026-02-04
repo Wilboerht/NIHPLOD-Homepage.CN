@@ -110,6 +110,9 @@ function getClientInfo(request: NextRequest) {
   return { userAgent, ip, referer, deviceType, browser, os, geoLocation };
 }
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

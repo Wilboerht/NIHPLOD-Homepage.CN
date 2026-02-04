@@ -4,6 +4,9 @@ import { deleteUploadedFile } from "@/lib/upload";
 import prisma from "@/lib/prisma";
 
 // DELETE /api/upload/[...path] - 删除图片
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }

@@ -10,6 +10,9 @@ import { resolveIPLocation } from "@/lib/geoip";
  * 
  * 整合问卷数据和面部分析数据，生成综合护肤建议
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // 速率限制

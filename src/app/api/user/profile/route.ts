@@ -15,6 +15,9 @@ const updateSchema = z.object({
 });
 
 // GET - 获取用户资料
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // 验证用户身份

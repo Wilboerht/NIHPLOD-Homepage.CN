@@ -36,6 +36,9 @@ interface UnifiedAnalysisResult {
  * - 支持 AI 请求队列，高峰期有序处理
  * - 响应头包含排队信息：X-Queue-Position, X-Queue-Wait-Seconds
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // 1. 速率限制

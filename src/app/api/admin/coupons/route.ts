@@ -18,6 +18,9 @@ const createSchema = z.object({
     code: z.string().optional().nullable(),
 });
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
     try {
         const admin = await verifyAuth(req);

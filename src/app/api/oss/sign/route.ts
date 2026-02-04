@@ -6,6 +6,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateUploadSignature } from "@/lib/ali-oss";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
     try {
         // 1. 简单的身份/频率检查

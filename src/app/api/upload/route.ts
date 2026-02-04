@@ -7,6 +7,9 @@ import {
 } from "@/lib/upload";
 
 // POST /api/upload - 上传图片
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   console.log("[DEBUG API] 开始处理上传请求");
 

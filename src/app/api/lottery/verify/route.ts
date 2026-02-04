@@ -16,6 +16,9 @@ const RequestSchema = z.object({
   entryId: z.string(),
 });
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

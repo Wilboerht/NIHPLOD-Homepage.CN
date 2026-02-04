@@ -59,6 +59,9 @@ function getDateRange(range: string): {
   return { start, end, prevStart, prevEnd, daysCount };
 }
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   // 验证管理员身份
   const admin = await verifyAuth(request);

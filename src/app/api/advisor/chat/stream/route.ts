@@ -67,6 +67,9 @@ async function generateConversationSummary(
   return completion.choices[0]?.message?.content || "";
 }
 
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   // 速率限制检查（IP + 用户双重限流）
   const ip = getClientIP(request);

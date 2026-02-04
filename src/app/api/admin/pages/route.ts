@@ -4,6 +4,9 @@ import { verifyAuth } from "@/lib/auth";
 import { PAGE_META, getEmptyContent, type PageSlug } from "@/types/page-content";
 
 // GET /api/admin/pages - 获取页面列表
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await verifyAuth(request);

@@ -21,6 +21,9 @@ const PageUpdateSchema = z.object({
 });
 
 // GET /api/admin/pages/[slug] - 获取页面详情
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }

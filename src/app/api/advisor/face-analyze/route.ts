@@ -260,6 +260,9 @@ async function callVisionAPI(
  * POST /api/advisor/face-analyze
  * AI 面部肌肤分析 API
  */
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // 速率限制（面部分析更严格：每小时 5 次）

@@ -12,6 +12,9 @@ const ORDER_TIMEOUT_MINUTES = 30;
 type RouteContext = { params: Promise<{ id: string }> };
 
 // 获取订单详情
+// 强制动态渲染，禁止静态预渲染
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const payload = await verifyUserAuth(request);
