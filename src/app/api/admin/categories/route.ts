@@ -14,6 +14,7 @@ const CategorySchema = z.object({
     .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
   icon: z.string().max(10000, "图标代码不能超过10000个字符").optional().nullable(),
   order: z.number().int().min(0).default(0),
+  visible: z.boolean().default(true), // 是否在前台展示
 });
 
 // GET /api/admin/categories - 获取分类列表
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
         slug: cat.slug,
         icon: cat.icon,
         order: cat.order,
+        visible: cat.visible,
         productCount: cat._count.products,
         createdAt: cat.createdAt.toISOString(),
         updatedAt: cat.updatedAt.toISOString(),
@@ -100,6 +102,7 @@ export async function POST(request: NextRequest) {
         slug: validated.slug,
         icon: validated.icon,
         order,
+        visible: validated.visible,
       },
     });
 

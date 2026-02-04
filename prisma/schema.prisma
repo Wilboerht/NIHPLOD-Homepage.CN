@@ -65,6 +65,7 @@ model Category {
   slug      String    @unique // URL 标识
   icon      String?   @db.Text // 分类图标（SVG 代码）
   order     Int       @default(0) // 排序
+  visible   Boolean   @default(true) // 是否在前台展示
   products  Product[] // 关联产品
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

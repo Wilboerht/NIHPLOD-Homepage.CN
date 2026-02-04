@@ -15,6 +15,7 @@ const CategoryUpdateSchema = z.object({
     .optional(),
   icon: z.string().max(10000, "图标代码不能超过10000个字符").optional().nullable(),
   order: z.number().int().min(0).optional(),
+  visible: z.boolean().optional(), // 是否在前台展示
 });
 
 // GET /api/admin/categories/[id] - 获取分类详情

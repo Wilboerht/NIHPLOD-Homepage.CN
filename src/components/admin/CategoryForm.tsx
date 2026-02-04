@@ -17,6 +17,7 @@ interface Category {
   slug: string;
   icon?: string | null;
   order: number;
+  visible?: boolean;
 }
 
 interface CategoryFormProps {
@@ -110,6 +111,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
     nameEn: "",
     slug: "",
     icon: "" as string | null,
+    visible: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -126,12 +128,13 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
         nameEn: category.nameEn,
         slug: category.slug,
         icon: category.icon || null,
+        visible: category.visible ?? true,
       });
       // 判断是否为自定义图标
       const isPreset = presetIcons.some((p) => p.svg === category.icon);
       setIconMode(isPreset || !category.icon ? "preset" : "custom");
     } else {
-      setFormData({ name: "", nameEn: "", slug: "", icon: null });
+      setFormData({ name: "", nameEn: "", slug: "", icon: null, visible: true });
       setIconMode("preset");
     }
     setErrors({});
@@ -306,6 +309,29 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
           placeholder="自动生成，可修改"
           required
         />
+
+        {/* 前台展示开关 */}
+        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700">前台展示</label>
+            <p className="text-xs text-gray-500">关闭后该分类不会在产品页显示</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, visible: !prev.visible }))}
+            className={cn(
+              "relative h-6 w-11 rounded-full transition-colors",
+              formData.visible ? "bg-brand-gold" : "bg-gray-300"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+                formData.visible && "translate-x-5"
+              )}
+            />
+          </button>
+        </div>
 
         {/* 图标选择器 */}
         <div>

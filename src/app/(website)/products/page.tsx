@@ -23,10 +23,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * 获取所有分类
+ * 获取所有可见的分类
  */
 async function getCategories() {
   const categories = await prisma.category.findMany({
+    where: { visible: true }, // 只获取在前台展示的分类
     orderBy: { order: "asc" },
     select: {
       id: true,

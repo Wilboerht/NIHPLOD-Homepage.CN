@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -17,6 +17,7 @@ interface Category {
   slug: string;
   icon?: string | null;
   order: number;
+  visible: boolean;
   productCount: number;
   createdAt: string;
 }
@@ -91,6 +92,32 @@ export default function AdminCategoriesPage() {
     } finally {
       setDeleting(false);
       setDeleteConfirm({ open: false });
+    }
+  };
+
+  // 切换前台可见性
+  const handleToggleVisible = async (category: Category) => {
+    try {
+      const res = await fetch(`/api/admin/categories/${category.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visible: !category.visible }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || "更新失败");
+      }
+
+      // 更新本地状态
+      setCategories((prev) =>
+        prev.map((cat) =>
+          cat.id === category.id ? { ...cat, visible: !category.visible } : cat
+        )
+      );
+      success(category.visible ? "分类已隐藏" : "分类已显示");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "更新失败");
     }
   };
 
@@ -184,7 +211,8 @@ export default function AdminCategoriesPage() {
               <div className="col-span-1">图标</div>
               <div className="col-span-3">分类名称</div>
               <div className="col-span-2">URL 别名</div>
-              <div className="col-span-2">产品数量</div>
+              <div className="col-span-1">产品数量</div>
+              <div className="col-span-1">前台展示</div>
               <div className="col-span-3 text-right">操作</div>
             </div>
 
@@ -237,10 +265,30 @@ export default function AdminCategoriesPage() {
                 </div>
 
                 {/* 产品数量 */}
-                <div className="col-span-2 flex items-center">
+                <div className="col-span-1 flex items-center">
                   <Badge variant={category.productCount > 0 ? "secondary" : "default"}>
-                    {category.productCount} 个产品
+                    {category.productCount}
                   </Badge>
+                </div>
+
+                {/* 前台展示开关 */}
+                <div className="col-span-1 flex items-center">
+                  <button
+                    onClick={() => handleToggleVisible(category)}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
+                      category.visible
+                        ? "bg-green-100 text-green-700 hover:bg-green-200"
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                    )}
+                    title={category.visible ? "点击隐藏" : "点击显示"}
+                  >
+                    {category.visible ? (
+                      <><Eye className="h-3.5 w-3.5" /> 显示</>
+                    ) : (
+                      <><EyeOff className="h-3.5 w-3.5" /> 隐藏</>
+                    )}
+                  </button>
                 </div>
 
                 {/* 操作 */}
