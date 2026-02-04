@@ -396,7 +396,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                     {/* 购买链接 */}
                     <div className="py-4">
-                      <div className="mb-6 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
+                      <div className="mb-8 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
                       <div className="flex flex-wrap gap-4">
                         {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
                           product.purchaseLinks.map((link) => (
