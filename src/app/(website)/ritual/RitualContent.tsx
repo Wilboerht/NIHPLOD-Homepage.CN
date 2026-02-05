@@ -1735,9 +1735,9 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                           x = offset * 330;
                                           z = -100;
                                           scale = 0.9;
-                                          opacity = 0.8; // 稍微降低透明度
+                                          opacity = 1; // 保持完全不透明
                                           zIndex = 10;
-                                          filter = "blur(3px)"; // 添加高斯模糊
+                                          filter = "blur(0px)"; // 移除高斯模糊
                                         } else {
                                           // 其他卡片藏在后面 (不消失，而是物理遮挡)
                                           x = 0;
@@ -1752,7 +1752,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                           <m.article
                                             key={`${step.title}-${index}`}
                                             className={cn(
-                                              "absolute flex w-[300px] h-[480px] flex-col gap-5 bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-[0_20px_40px_-12px_rgba(0,0,0,0.06)] transition-all duration-500 border border-white/40",
+                                              "absolute flex w-[300px] h-[480px] flex-col gap-5 bg-white/90 backdrop-blur-md p-6 rounded-2xl transition-all duration-500 border border-brand-charcoal/20",
                                               isActive ? "z-20 cursor-default ring-1 ring-brand-gold/20" : "cursor-pointer hover:bg-white"
                                             )}
                                             initial={false}
@@ -1778,6 +1778,11 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                               if (!isActive) setCurrentStepIndex(index);
                                             }}
                                           >
+                                            {/* 步骤序号 - 顶部胶囊 (居中跨边线) */}
+                                            <div className="absolute left-1/2 top-0 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20">
+                                              STEP {String(index + 1).padStart(2, "0")}
+                                            </div>
+
                                             {/* Image Wrapper - 调整高度比例 */}
                                             <div className="relative w-full h-[250px] flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
                                               <Image
@@ -1790,9 +1795,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                                             {/* Step Info - 占据剩余空间 */}
                                             <div className="flex flex-1 flex-col justify-center gap-3 items-center text-center px-4">
-                                              <div className="text-xs tracking-widest text-brand-charcoal-light opacity-60">
-                                                STEP {String(index + 1).padStart(2, "0")}
-                                              </div>
+
                                               <h2 className="font-display text-xl font-medium text-brand-charcoal">
                                                 {step.title}
                                               </h2>

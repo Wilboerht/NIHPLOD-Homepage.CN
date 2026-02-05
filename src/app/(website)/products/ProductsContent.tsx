@@ -248,7 +248,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
                     transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
                     className="mb-6 flex-shrink-0 lg:mb-10"
                   >
-                    <span className="mb-1 block text-[12px] tracking-[0.3em] text-[#00263E]/60 lg:text-xs">
+                    <span className="mb-1 block text-[12px] tracking-[0.15em] text-[#00263E]/60 lg:text-xs">
                       COLLECTION 2026
                     </span>
                     <h1 className="text-[24px] font-light tracking-[0.2em] text-[#00263E] lg:text-3xl">
