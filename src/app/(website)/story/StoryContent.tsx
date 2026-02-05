@@ -106,50 +106,9 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
               <AnimatePresence>
                 {isExpanded && (
                   <>
-                    {/* 左侧竖线 - 渐变从中间向两端淡出 */}
-                    <m.div
-                      initial={{ scaleY: 0, opacity: 0 }}
-                      animate={{ scaleY: 1, opacity: 1 }}
-                      exit={{ scaleY: 0, opacity: 0 }}
-                      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                      className="pointer-events-none absolute top-0 bottom-0 hidden w-px origin-center animate-[breathe_4s_ease-in-out_infinite] sm:left-10 sm:block lg:left-20"
-                      style={{
-                        background: "linear-gradient(to bottom, transparent 0%, rgba(0,38,62,0.12) 30%, rgba(0,38,62,0.12) 70%, transparent 100%)"
-                      }}
-                    />
-                    {/* 右侧竖线 */}
-                    <m.div
-                      initial={{ scaleY: 0, opacity: 0 }}
-                      animate={{ scaleY: 1, opacity: 1 }}
-                      exit={{ scaleY: 0, opacity: 0 }}
-                      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-                      className="pointer-events-none absolute top-0 bottom-0 hidden w-px origin-center animate-[breathe_4s_ease-in-out_infinite_0.5s] sm:right-10 sm:block lg:right-20"
-                      style={{
-                        background: "linear-gradient(to bottom, transparent 0%, rgba(0,38,62,0.12) 30%, rgba(0,38,62,0.12) 70%, transparent 100%)"
-                      }}
-                    />
-                    {/* 顶部横线 - 渐变从中间向两端淡出 */}
-                    <m.div
-                      initial={{ scaleX: 0, opacity: 0 }}
-                      animate={{ scaleX: 1, opacity: 1 }}
-                      exit={{ scaleX: 0, opacity: 0 }}
-                      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-                      className="pointer-events-none absolute left-0 right-0 hidden h-px origin-center animate-[breathe_4s_ease-in-out_infinite_1s] sm:top-16 sm:block lg:top-20"
-                      style={{
-                        background: "linear-gradient(to right, transparent 0%, rgba(0,38,62,0.12) 20%, rgba(0,38,62,0.12) 80%, transparent 100%)"
-                      }}
-                    />
-                    {/* 底部横线 */}
-                    <m.div
-                      initial={{ scaleX: 0, opacity: 0 }}
-                      animate={{ scaleX: 1, opacity: 1 }}
-                      exit={{ scaleX: 0, opacity: 0 }}
-                      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
-                      className="pointer-events-none absolute left-0 right-0 hidden h-px origin-center animate-[breathe_4s_ease-in-out_infinite_1.5s] sm:bottom-16 sm:block lg:bottom-20"
-                      style={{
-                        background: "linear-gradient(to right, transparent 0%, rgba(0,38,62,0.12) 20%, rgba(0,38,62,0.12) 80%, transparent 100%)"
-                      }}
-                    />
+
+
+
                   </>
                 )}
               </AnimatePresence>
@@ -438,7 +397,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex h-[100px] flex-shrink-0 items-center justify-between px-[8%]"
+                        className="relative flex h-[100px] flex-shrink-0 items-center justify-between px-[8%]"
                       >
                         {/* 左侧：Logo */}
                         <Link href="/">
@@ -459,28 +418,37 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                               type="button"
                               onClick={() => setActiveSection(item.id)}
                               className={cn(
-                                "relative px-1 py-1 text-[15px] font-medium transition-opacity duration-300",
+                                "group relative px-1 py-1 text-[15px] font-medium transition-opacity duration-300",
                                 activeSection === item.id
                                   ? "opacity-100 text-[#1a1a1a]"
                                   : "opacity-60 text-[#1a1a1a] hover:opacity-80"
                               )}
                             >
                               {item.label}
-                              {/* 下划线指示器 */}
-                              {activeSection === item.id && (
-                                <m.div
-                                  layout
-                                  layoutId="activeTabIndicator"
-                                  className="absolute bottom-0 left-0 h-px w-full bg-brand-gold"
-                                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                />
-                              )}
+                              <span
+                                className={cn(
+                                  "absolute bottom-0 left-0 h-px bg-brand-gold transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                                  activeSection === item.id ? "w-full" : "w-0 group-hover:w-full"
+                                )}
+                              />
                             </button>
                           ))}
                         </div>
 
                         {/* 右侧：占位 */}
                         <div className="w-24" />
+
+                        {/* 底部边线 - 顶部横线移入此处 */}
+                        <m.div
+                          initial={{ scaleX: 0, opacity: 0 }}
+                          animate={{ scaleX: 1, opacity: 1 }}
+                          exit={{ scaleX: 0, opacity: 0 }}
+                          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+                          className="pointer-events-none absolute bottom-0 left-0 right-0 h-px origin-center"
+                          style={{
+                            background: "linear-gradient(to right, transparent 0%, rgba(0,38,62,0.12) 20%, rgba(0,38,62,0.12) 80%, transparent 100%)"
+                          }}
+                        />
                       </m.nav>
                     )}
                   </AnimatePresence>
@@ -632,26 +600,40 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                           {/* 3x2 网格卡片布局 - 铺满容器 */}
                           <div className="grid h-full grid-cols-3 grid-rows-2 gap-4 lg:gap-5">
                             {[
-                              { year: "2023", title: "VOGUE BEAUTY AWARDS - 年度突破奖" },
-                              { year: "2022", title: "ELLE 护肤科技金奖" },
-                              { year: "2022", title: "年度最具影响力可持续品牌" },
-                              { year: "2021", title: "BAZAAR 极致修护精华大奖" },
-                              { year: "2020", title: "Monaco Bio-Tech Innovation Lab Partner" },
-                              { year: "2019", title: "GLOBAL CHARITY PARTNER: UNF" },
+                              { year: "2023", title: "VOGUE BEAUTY AWARDS - 年度突破奖", image: "/images/story/award-1.png" },
+                              { year: "2022", title: "ELLE 护肤科技金奖", image: "/images/story/award-2.png" },
+                              { year: "2022", title: "年度最具影响力可持续品牌", image: "/images/story/award-3.png" },
+                              { year: "2021", title: "BAZAAR 极致修护精华大奖", image: "/images/story/award-1.png" },
+                              { year: "2020", title: "Monaco Bio-Tech Innovation Lab Partner", image: "/images/story/award-2.png" },
+                              { year: "2019", title: "GLOBAL CHARITY PARTNER: UNF", image: "/images/story/award-3.png" },
                             ].map((award, idx) => (
                               <m.div
                                 key={idx}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                                className="group flex flex-col justify-center border border-[#00263e]/15 bg-[#F0EDE1]/50 p-6 transition-all duration-500 hover:border-[#00263e]/40 hover:bg-white/30 lg:p-8"
+                                className="group relative flex flex-col justify-center overflow-hidden border border-[#00263e]/15 bg-[#F0EDE1]/50 p-6 transition-all duration-500 hover:border-[#00263e]/40 lg:p-8"
                               >
-                                <span className="mb-3 text-xs tracking-[2px] text-[#00263e]/50 lg:text-sm">
-                                  {award.year}
-                                </span>
-                                <span className="text-base font-normal leading-relaxed tracking-wide text-[#00263e] lg:text-lg">
-                                  {award.title}
-                                </span>
+                                {/* 悬浮显示的背景图 */}
+                                <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+                                  <Image
+                                    src={award.image}
+                                    alt={award.title}
+                                    fill
+                                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                  />
+
+                                </div>
+
+                                {/* 默认显示的文字内容 - 悬浮时淡出 */}
+                                <div className="relative z-10 flex flex-col transition-opacity duration-300 group-hover:opacity-0">
+                                  <span className="mb-3 text-xs tracking-[2px] text-[#00263e]/50 lg:text-sm">
+                                    {award.year}
+                                  </span>
+                                  <span className="text-base font-normal leading-relaxed tracking-wide text-[#00263e] lg:text-lg">
+                                    {award.title}
+                                  </span>
+                                </div>
                               </m.div>
                             ))}
                           </div>
