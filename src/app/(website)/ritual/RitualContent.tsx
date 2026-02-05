@@ -1708,7 +1708,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                         const isActive = offset === 0;
 
                                         // 只显示三张卡片
-                                        const isVisible = Math.abs(offset) <= 1;
+
 
                                         // 所有的卡片都不倾斜
                                         const rotateY = 0;
