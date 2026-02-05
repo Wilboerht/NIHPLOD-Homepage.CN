@@ -591,7 +591,7 @@
 
 /* Logo */
 .home-container .logo {
-  width: 280px;
+  width: 240px;
   height: auto;
   /* margin-bottom: 3.5rem; - Removed to match logo area height with logo */
   filter: grayscale(0.2) contrast(1.1);
@@ -709,7 +709,7 @@
 /* 响应式 */
 @media (max-width: 600px) {
   .home-container .logo {
-    width: 160px;
+    width: 140px;
     /* margin-bottom: 2.5rem; */
   }
 
