@@ -1689,160 +1689,89 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                   </m.section>
                                 ) : selectedModule === "spa" ? (
                                   <m.section
-                                    key="spa-carousel"
-                                    className="relative flex w-[75%] h-[530px] items-center justify-center perspective-[1000px]"
+                                    key="spa-accordion"
+                                    className="relative flex w-full h-[530px] items-center justify-center"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.5 }}
                                   >
-                                    {/* 旋转木马容器 */}
-                                    <div className="relative flex h-full w-full items-center justify-center transform-style-3d">
+                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch gap-3">
                                       {currentSteps.map((step, index) => {
-                                        const length = currentSteps.length;
-                                        // 计算循环偏移量
-                                        let offset = (index - currentStepIndex + length) % length;
-                                        // 将偏移量调整为 -length/2 到 length/2 之间
-                                        if (offset > length / 2) offset -= length;
-
-                                        const isActive = offset === 0;
-
-                                        // 只显示三张卡片
-
-
-                                        // 所有的卡片都不倾斜
-                                        const rotateY = 0;
-
-                                        // 位置计算
-                                        // 位置计算
-                                        let x = 0;
-                                        let z = 0;
-                                        let scale = 1;
-                                        let opacity = 0;
-                                        let zIndex = 0;
-                                        let filter = "blur(0px)";
-
-                                        if (offset === 0) {
-                                          // 中间
-                                          x = 0;
-                                          z = 0;
-                                          scale = 1;
-                                          opacity = 1;
-                                          zIndex = 20;
-                                          filter = "blur(0px)";
-                                        } else if (Math.abs(offset) === 1) {
-                                          // 左右两张 - 朦胧效果
-                                          x = offset * 330;
-                                          z = -100;
-                                          scale = 0.9;
-                                          opacity = 1; // 保持完全不透明
-                                          zIndex = 10;
-                                          filter = "blur(0px)"; // 移除高斯模糊
-                                        } else {
-                                          // 其他卡片藏在后面 (不消失，而是物理遮挡)
-                                          x = 0;
-                                          z = -200;
-                                          scale = 0.5; // 缩小以完全躲在中间卡片后面
-                                          opacity = 1; // 保持可见
-                                          zIndex = 0;
-                                          filter = "blur(0px)";
-                                        }
+                                        const isActive = index === currentStepIndex;
 
                                         return (
                                           <m.article
                                             key={`${step.title}-${index}`}
+                                            layout
+                                            onClick={() => setCurrentStepIndex(index)}
                                             className={cn(
-                                              "absolute flex w-[300px] h-[480px] flex-col gap-5 bg-white/90 backdrop-blur-md p-6 rounded-2xl transition-all duration-500 border border-brand-charcoal/20",
-                                              isActive ? "z-20 cursor-default ring-1 ring-brand-gold/20" : "cursor-pointer hover:bg-white"
+                                              "relative h-full transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
+                                              isActive
+                                                ? "w-[320px] flex-none cursor-default"
+                                                : "flex-1 min-w-0 cursor-pointer"
                                             )}
-                                            initial={false}
-                                            animate={{
-                                              x,
-                                              z,
-                                              rotateY,
-                                              scale,
-                                              opacity,
-                                              zIndex,
-                                              filter
-                                            }}
-                                            transition={{
-                                              default: {
-                                                duration: 0.5,
-                                                ease: [0.23, 1, 0.32, 1]
-                                              },
-                                              filter: isActive
-                                                ? { duration: 0.4 } // 变清晰：正常速度
-                                                : { duration: 0.6, delay: 0.1 } // 变模糊：慢一点，且稍微延迟，保持移动时的清晰度
-                                            }}
-                                            onClick={() => {
-                                              if (!isActive) setCurrentStepIndex(index);
-                                            }}
                                           >
-                                            {/* 步骤序号 - 顶部胶囊 (居中跨边线) */}
-                                            <div className="absolute left-1/2 top-0 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20">
+                                            {/* 步骤序号 - 顶部胶囊 (居中跨边线) - 始终显示 */}
+                                            <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap">
                                               STEP {String(index + 1).padStart(2, "0")}
                                             </div>
 
-                                            {/* Image Wrapper - 调整高度比例 */}
-                                            <div className="relative w-full h-[250px] flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
-                                              <Image
-                                                src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
-                                                alt={step.title}
-                                                fill
-                                                className="object-contain mix-blend-multiply"
-                                              />
-                                            </div>
+                                            {/* 内容容器 - 负责视觉样式及裁切 */}
+                                            <div className={cn(
+                                              "relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md transition-colors duration-300",
+                                              !isActive && "hover:bg-white/50"
+                                            )}>
+                                              {/* 激活状态下的内容布局 */}
+                                              <m.div
+                                                className={cn(
+                                                  "absolute inset-0 flex flex-col p-8 pt-10 transition-opacity duration-300",
+                                                  isActive ? "opacity-100 delay-200" : "opacity-0 pointer-events-none"
+                                                )}
+                                              >
+                                                {/* 图片区域 - 保持高度 */}
+                                                <div className="relative w-full h-[240px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 mb-6">
+                                                  <Image
+                                                    src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
+                                                    alt={step.title}
+                                                    fill
+                                                    className="object-contain mix-blend-multiply"
+                                                  />
+                                                </div>
 
-                                            {/* Step Info - 占据剩余空间 */}
-                                            <div className="flex flex-1 flex-col justify-center gap-3 items-center text-center px-4">
+                                                {/* 文字区域 */}
+                                                <div className="flex flex-1 flex-col items-center text-center">
+                                                  <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap">
+                                                    {step.title}
+                                                  </h2>
+                                                  <p className="line-clamp-4 text-sm leading-relaxed text-brand-charcoal/70 max-w-[80%]">
+                                                    {step.description}
+                                                  </p>
+                                                </div>
+                                              </m.div>
 
-                                              <h2 className="font-display text-xl font-medium text-brand-charcoal">
-                                                {step.title}
-                                              </h2>
-                                              <p className="line-clamp-5 text-sm leading-relaxed text-brand-charcoal/70">
-                                                {step.description}
-                                              </p>
+                                              {/* 非激活状态下的内容 - 仅显示垂直标题或简略信息 */}
+                                              <div
+                                                className={cn(
+                                                  "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+                                                  isActive ? "opacity-0 pointer-events-none" : "opacity-100"
+                                                )}
+                                              >
+                                                {/* 竖排文字标题 */}
+                                                <div className="writing-vertical-rl text-lg font-medium tracking-[0.2em] text-brand-charcoal/40 text-center">
+                                                  {step.title}
+                                                </div>
+                                              </div>
+
+                                              {/* 遮罩层 - 非激活状态变暗 - 移入内部以受圆角裁切 */}
+                                              {!isActive && (
+                                                <div className="absolute inset-0 bg-brand-charcoal/5 transition-colors hover:bg-transparent" />
+                                              )}
                                             </div>
                                           </m.article>
                                         );
                                       })}
                                     </div>
-
-                                    {/* 左侧导航按钮 */}
-                                    <button
-                                      type="button"
-                                      onClick={() => setCurrentStepIndex((currentStepIndex - 1 + currentSteps.length) % currentSteps.length)}
-                                      className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/50 backdrop-blur-sm transition-all hover:bg-white hover:border-brand-gold hover:scale-110 opacity-100 shadow-md"
-                                    >
-                                      <ChevronLeft className="h-6 w-6 text-brand-charcoal" />
-                                    </button>
-
-                                    {/* 右侧导航按钮 */}
-                                    <button
-                                      type="button"
-                                      onClick={() => setCurrentStepIndex((currentStepIndex + 1) % currentSteps.length)}
-                                      className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex h-12 w-12 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/50 backdrop-blur-sm transition-all hover:bg-white hover:border-brand-gold hover:scale-110 opacity-100 shadow-md"
-                                    >
-                                      <ChevronRight className="h-6 w-6 text-brand-charcoal" />
-                                    </button>
-
-                                    {/* 分页指示点 */}
-                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 z-30">
-                                      {currentSteps.map((_, index) => (
-                                        <button
-                                          key={`dot-${index}`}
-                                          type="button"
-                                          onClick={() => setCurrentStepIndex(index)}
-                                          className={cn(
-                                            "h-1.5 rounded-full transition-all duration-300",
-                                            index === currentStepIndex
-                                              ? "w-4 bg-brand-charcoal/30"
-                                              : "w-1.5 bg-brand-charcoal/10 hover:bg-brand-charcoal/20"
-                                          )}
-                                        />
-                                      ))}
-                                    </div>
-
                                   </m.section>
                                 ) : (
                                   <m.section
