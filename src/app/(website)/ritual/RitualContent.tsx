@@ -924,7 +924,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             {selectedModule && (
                               <>
                                 <span className="text-brand-charcoal/30">/</span>
-                                {currentLevel === 2 || selectedModule === "portable" || selectedModule === "professional" ? (
+                                {currentLevel === 2 || selectedModule === "portable" || selectedModule === "professional" || selectedModule === "spa" ? (
                                   <span className="text-brand-charcoal">
                                     {modules.find(m => m.id === selectedModule)?.label}
                                   </span>
@@ -943,7 +943,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               </>
                             )}
 
-                            {currentLevel === 3 && selectedScheme && selectedModule !== "portable" && selectedModule !== "professional" && (
+                            {currentLevel === 3 && selectedScheme && selectedModule !== "portable" && selectedModule !== "professional" && selectedModule !== "spa" && (
                               <>
                                 <span className="text-brand-charcoal/30">/</span>
                                 <span className="text-brand-charcoal">{selectedScheme.name}</span>
