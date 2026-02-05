@@ -1669,23 +1669,100 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 {(selectedModule === "portable" || selectedModule === "professional") ? (
                                   <m.section
                                     key={`${selectedModule}-content`}
-                                    className="flex w-[75%] items-center justify-end overflow-hidden"
+                                    className="flex w-full flex-col px-10 pb-8 pt-0"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.3, ease: "easeInOut" }}
                                   >
-                                    {/* 容器尺寸与晨间焕活步骤区域保持一致：940px宽 (3×260 + 2×80) */}
-                                    <div className="flex items-center justify-end" style={{ width: '940px', height: '450px' }}>
-                                      <Image
-                                        src={selectedModule === "professional" ? "/images/professional-spa.webp" : "/images/portable-ritual.webp"}
-                                        alt={selectedModule === "professional" ? "Professional Spa" : "Portable Ritual"}
-                                        width={940}
-                                        height={450}
-                                        className="h-full w-full object-cover object-center"
-                                        priority
-                                      />
+                                    {/* 顶部标题区 */}
+                                    <header className="mb-8">
+                                      <div className="flex items-center gap-3 mb-1">
+                                        <h2 className="text-3xl font-normal text-brand-charcoal tracking-wide">
+                                          面部方案
+                                        </h2>
+                                        <span className="px-1.5 py-0.5 bg-[#E6DCC3] text-brand-charcoal text-xs font-medium rounded-sm">
+                                          招牌
+                                        </span>
+                                      </div>
+                                      <h3 className="text-sm font-light tracking-[0.1em] text-brand-charcoal/60 font-sans">
+                                        SKIN CARE
+                                      </h3>
+                                    </header>
+
+                                    {/* 中间卡片区 - Grid Layout */}
+                                    <div className="grid grid-cols-3 gap-6 mb-8">
+                                      {[
+                                        {
+                                          title: "基础护理",
+                                          duration: "45 min",
+                                          tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
+                                          image: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" // Placeholder - Replace with actual spa image
+                                        },
+                                        {
+                                          title: "高级护理",
+                                          duration: "60 min",
+                                          tags: "基础护理 + 特色手法提拉",
+                                          image: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" // Placeholder
+                                        },
+                                        {
+                                          title: "奢华护理",
+                                          duration: "75 min",
+                                          tags: "高级护理 + 肩颈护理",
+                                          image: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" // Placeholder
+                                        }
+                                      ].map((item, idx) => (
+                                        <div
+                                          key={idx}
+                                          className="group relative aspect-[10/9] w-full overflow-hidden cursor-pointer"
+                                        >
+                                          {/* 背景图片 */}
+                                          <Image
+                                            src={item.image}
+                                            alt={item.title}
+                                            fill
+                                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                          />
+
+                                          {/* 渐变遮罩 - 底部加深以突出文字 */}
+                                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
+
+                                          {/* 内容信息 */}
+                                          <div className="absolute bottom-0 left-0 w-full p-6 text-white translate-y-2 transition-transform duration-300 group-hover:translate-y-0">
+                                            <div className="flex items-baseline gap-2 mb-2">
+                                              <h4 className="text-2xl font-light tracking-wide">
+                                                {item.title}
+                                              </h4>
+                                              <span className="text-sm font-light opacity-80">
+                                                / {item.duration}
+                                              </span>
+                                            </div>
+                                            {/* 标签胶囊 */}
+                                            <div className="inline-block px-3 py-1 border border-white/40 rounded-full text-xs tracking-wider backdrop-blur-sm">
+                                              {item.tags}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
                                     </div>
+
+                                    {/* 底部 Logo 栏 */}
+                                    <div className="pt-8 border-t border-brand-charcoal/10 flex justify-between items-center opacity-70 grayscale hover:grayscale-0 transition-all duration-500 mb-6">
+                                      {/* 模拟 Partner Logos - 实际项目中替换为真实 Logo 图片 */}
+                                      {["BELLAGIO", "Four Seasons", "Hilton", "Kempinski", "WALDORF ASTORIA", "SHANGRI-LA", "Fairmont"].map((brand) => (
+                                        <div key={brand} className="text-xs font-display font-medium text-brand-charcoal/60 tracking-widest uppercase">
+                                          {brand}
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    {/* 底部预约提示 */}
+                                    <div className="flex justify-center items-center">
+                                      <p className="text-xs text-brand-charcoal/40 tracking-wider font-light">
+                                        * 如需预订护理疗程或咨询合作酒店，请联系我们的客户服务团队
+                                      </p>
+                                    </div>
+
                                   </m.section>
                                 ) : (
                                   <m.section
