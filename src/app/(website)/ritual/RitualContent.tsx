@@ -1171,19 +1171,21 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                             {/* Level 3 Header: 标题与切换器 */}
                             <header className="mb-9 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                               {/* 左侧标题组 */}
-                              <div className="flex flex-col gap-3">
-                                <h1 className="font-sans text-[48px] font-light leading-none tracking-wider text-brand-charcoal">
+                              <div className="flex flex-row items-end gap-5">
+                                <h1 className="font-display text-[48px] font-light leading-none tracking-wider text-brand-charcoal">
                                   {selectedModule === "portable"
                                     ? modules.find(m => m.id === "portable")?.label
                                     : selectedScheme.name}
                                 </h1>
-                                <p className="font-sans text-[12px] tracking-widest text-brand-charcoal-light">
-                                  预计用时 {selectedScheme.totalDuration || "5-10分钟"}
-                                </p>
+                                <div className="flex items-center justify-center px-3 py-1 rounded-full border border-brand-charcoal/10 bg-white/50">
+                                  <span className="font-sans text-[11px] tracking-widest text-brand-charcoal/60 tabular-nums">
+                                    {selectedModule === "professional" ? "NIHPLOD 专业水疗" : (selectedScheme.totalDuration || "5-10分钟")}
+                                  </span>
+                                </div>
                               </div>
 
                               {/* 右侧切换器 - 显示子方案Tab（如有）或情景列表（单品好物不显示） */}
-                              {selectedModule !== "portable" && (
+                              {selectedModule !== "portable" && selectedModule !== "professional" && (
                                 <nav className="flex gap-10">
                                   <LayoutGroup id={`tab-${selectedModule}-${selectedScheme.id}`}>
                                     {/* 如果有子方案，显示子方案 Tab */}
@@ -1263,7 +1265,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                               >
                                 {/* Meta Item: Products */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-[0.2em] text-brand-charcoal-light">
+                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
                                     涉及产品
                                   </h3>
                                   <div className="flex flex-wrap gap-6">
@@ -1611,7 +1613,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                                 {/* Meta Item: Benefits (Tags) */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-[0.2em] text-brand-charcoal-light">
+                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
                                     针对功效
                                   </h3>
                                   <div className="flex flex-wrap gap-2">
@@ -1628,7 +1630,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                                 {/* Meta Item: Certifications */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-[0.2em] text-brand-charcoal-light">
+                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
                                     检测认证
                                   </h3>
                                   <div className="flex items-center gap-5">
@@ -1654,7 +1656,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 {/* Meta Item: Special Support */}
                                 {selectedScheme.specialSupport && (
                                   <div className="flex flex-col">
-                                    <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-[0.2em] text-brand-charcoal-light">
+                                    <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
                                       特殊人群支持
                                     </h3>
                                     <div className="border border-dashed border-brand-charcoal/30 p-5 text-sm leading-relaxed text-brand-charcoal/80">
@@ -1669,7 +1671,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                 {(selectedModule === "portable" || selectedModule === "professional") ? (
                                   <m.section
                                     key={`${selectedModule}-content`}
-                                    className="flex w-full flex-col px-10 pb-8 pt-0"
+                                    className="flex w-full flex-col pb-8 pt-0"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
@@ -1757,9 +1759,9 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                     </div>
 
                                     {/* 底部预约提示 */}
-                                    <div className="flex justify-center items-center">
-                                      <p className="text-xs text-brand-charcoal/40 tracking-wider font-light">
-                                        * 如需预订护理疗程或咨询合作酒店，请联系我们的客户服务团队
+                                    <div className="flex justify-start items-center">
+                                      <p className="text-xs text-brand-charcoal/80 tracking-widest font-light text-left leading-relaxed w-full">
+                                        NIHPLOD 旎柏专业水疗方案现已入驻全球多家奢华酒店及度假村。如需定制您的专属护理疗程、查询离您最近的合作机构或洽谈专业合作，敬请垂询我们的尊享服务团队。
                                       </p>
                                     </div>
 
