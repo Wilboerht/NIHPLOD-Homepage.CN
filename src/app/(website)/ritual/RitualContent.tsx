@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, ChevronLeft, ChevronRight, ArrowUpRight } from "lucide-react";
+import { ChevronDown, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { ProductDrawer } from "@/components/website";
@@ -362,11 +362,13 @@ function _calculateTotalDuration(steps: RitualStep[]): string {
  * 护肤仪式页面内容组件
  * 三层级交互式布局：Level 1 模块选择 -> Level 2 方案选择 -> Level 3 详细步骤
  */
+// 添加 products 到 props
 interface RitualContentProps {
   backgroundImage?: string;
+  products?: ProductData[];
 }
 
-export function RitualContent({ backgroundImage }: RitualContentProps) {
+export function RitualContent({ backgroundImage, products = [] }: RitualContentProps) {
   // 展开状态
   const [isExpanded, setIsExpanded] = useState(false);
   // 当前层级: 1=模块选择, 2=方案选择, 3=步骤详情
@@ -385,33 +387,33 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const stepsContainerRef = useRef<HTMLDivElement>(null);
 
-  // 轮播导航函数 - 滚动到指定步骤
-  const scrollToStep = useCallback((index: number) => {
-    if (!stepsContainerRef.current) return;
-    const container = stepsContainerRef.current;
-    const stepWidth = 260 + 52; // 卡片宽度 + 间距
-    const scrollPosition = index * stepWidth;
-    container.scrollTo({
-      left: scrollPosition,
-      behavior: "smooth"
-    });
-    setCurrentStepIndex(index);
-  }, []);
+  // 轮播导航函数 - 滚动到指定步骤 (暂未使用，保留逻辑)
+  // const scrollToStep = useCallback((index: number) => {
+  //   if (!stepsContainerRef.current) return;
+  //   const container = stepsContainerRef.current;
+  //   const stepWidth = 260 + 52; // 卡片宽度 + 间距
+  //   const scrollPosition = index * stepWidth;
+  //   container.scrollTo({
+  //     left: scrollPosition,
+  //     behavior: "smooth"
+  //   });
+  //   setCurrentStepIndex(index);
+  // }, []);
 
-  // 上一步
-  const goToPrevStep = useCallback(() => {
-    if (currentStepIndex > 0) {
-      scrollToStep(currentStepIndex - 1);
-    }
-  }, [currentStepIndex, scrollToStep]);
+  // 上一步 (暂未使用，保留逻辑)
+  // const goToPrevStep = useCallback(() => {
+  //   if (currentStepIndex > 0) {
+  //     scrollToStep(currentStepIndex - 1);
+  //   }
+  // }, [currentStepIndex, scrollToStep]);
 
-  // 下一步
-  const goToNextStep = useCallback((totalSteps: number) => {
-    // 当可见区域显示约3张卡片时，最大可滚动索引为 totalSteps - 3
-    if (currentStepIndex < totalSteps - 3) {
-      scrollToStep(currentStepIndex + 1);
-    }
-  }, [currentStepIndex, scrollToStep]);
+  // 下一步 (暂未使用，保留逻辑)
+  // const goToNextStep = useCallback((totalSteps: number) => {
+  //   // 当可见区域显示约3张卡片时，最大可滚动索引为 totalSteps - 3
+  //   if (currentStepIndex < totalSteps - 3) {
+  //     scrollToStep(currentStepIndex + 1);
+  //   }
+  // }, [currentStepIndex, scrollToStep]);
 
   // 监听 LayoutContext 中的 isDrawerOpen 变化，同步本地 isExpanded 状态
   // 解决：点击底部导航栏时，setDrawerOpen(true) 不会触发本地状态更新的问题
@@ -430,78 +432,29 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
 
-  // 产品名称到产品数据的映射
-  const productDataMap: Record<string, ProductData> = {
-    "洁面慕斯": {
-      id: "cleanser",
-      name: "氨基酸洁面慕斯",
-      nameEn: "AMINO ACID CLEANSING MOUSSE",
-      slug: "cleanser",
-      description: "温和洁面，深层清洁毛孔，保持肌肤水油平衡。采用氨基酸表活，亲肤温和不紧绷。",
-      price: 168,
-      capacity: "150ml",
-      images: [{ url: "/images/products/cleanser.png", alt: "洁面慕斯" }],
-      category: { name: "洁面" },
-      benefits: ["深层清洁", "温和不刺激", "保湿锁水"],
-    },
-    "面霜": {
-      id: "cream",
-      name: "多效修护面霜",
-      nameEn: "MULTI-REPAIR CREAM",
-      slug: "cream",
-      description: "深层滋养修护，增强肌肤屏障，提供持久保湿。",
-      price: 298,
-      capacity: "50ml",
-      images: [{ url: "/images/products/cream.png", alt: "面霜" }],
-      category: { name: "面霜" },
-      benefits: ["深层滋养", "屏障修护", "持久保湿"],
-    },
-    "防晒乳": {
-      id: "sunscreen",
-      name: "清透防晒乳",
-      nameEn: "LIGHT SUNSCREEN LOTION",
-      slug: "sunscreen",
-      description: "SPF50+ PA++++，轻薄透气，有效防护紫外线。",
-      price: 198,
-      capacity: "50ml",
-      images: [{ url: "/images/products/sunscreen.png", alt: "防晒乳" }],
-      category: { name: "防晒" },
-      benefits: ["高倍防护", "清爽不油腻", "自然提亮"],
-    },
-    "护手霜": {
-      id: "handcream",
-      name: "滋润护手霜",
-      nameEn: "NOURISHING HAND CREAM",
-      slug: "handcream",
-      description: "深层滋润双手肌肤，修护干燥粗糙，恢复柔嫩细滑。",
-      price: 88,
-      capacity: "50ml",
-      images: [{ url: "/images/products/handcream.png", alt: "护手霜" }],
-      category: { name: "身体护理" },
-      benefits: ["深层滋润", "修护干燥", "柔嫩双手"],
-    },
-    "面膜": {
-      id: "mask",
-      name: "补水修护面膜",
-      nameEn: "HYDRATING REPAIR MASK",
-      slug: "mask",
-      description: "密集补水，舒缓修护，让肌肤焕发健康光泽。",
-      price: 168,
-      capacity: "5片/盒",
-      images: [{ url: "/images/products/mask.png", alt: "面膜" }],
-      category: { name: "面膜" },
-      benefits: ["密集补水", "舒缓修护", "提亮肤色"],
-    },
+  // 查找产品逻辑
+  const findProduct = (searchTerm: string) => {
+    if (!products || products.length === 0) return null;
+
+    // 移除空白字符
+    const term = searchTerm.trim();
+
+    // 尝试在 products 中查找匹配项 (名称包含搜索词)
+    // 优先匹配名称更短的(可能更精确)，或者根据特定映射规则
+    return products.find(p => p.name.includes(term) || (p.category?.name && p.category.name.includes(term)));
   };
 
   // 打开产品详情弹窗
   const handleProductClick = (productName: string) => {
-    const product = productDataMap[productName];
+    const product = findProduct(productName);
     if (product) {
       setSelectedProduct(product);
       setProductDrawerOpen(true);
+    } else {
+      console.warn(`Product not found for: ${productName}`);
     }
   };
+
 
   // 关闭产品详情弹窗
   const handleCloseProductDrawer = () => {
@@ -1186,8 +1139,8 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                               {/* 右侧切换器 - 显示子方案Tab（如有）或情景列表（单品好物不显示） */}
                               {selectedModule !== "portable" && selectedModule !== "professional" && (
-                                <nav className="flex gap-10">
-                                  <LayoutGroup id={`tab-${selectedModule}-${selectedScheme.id}`}>
+                                <nav className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
+                                  <LayoutGroup id={`tab-${selectedModule}`}>
                                     {/* 如果有子方案，显示子方案 Tab */}
                                     {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
                                       selectedScheme.subPlans.map((subPlan) => {
@@ -1201,19 +1154,19 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                               setCurrentStepIndex(0); // 重置轮播索引
                                             }}
                                             className={cn(
-                                              "relative pb-2 text-[16px] tracking-widest transition-colors duration-300",
+                                              "relative px-6 py-1.5 text-[13px] tracking-widest transition-colors duration-300 rounded-full",
                                               isActive
-                                                ? "text-brand-charcoal"
-                                                : "text-brand-charcoal-light/60 hover:text-brand-charcoal"
+                                                ? "text-brand-charcoal font-medium"
+                                                : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
                                             )}
                                           >
-                                            {subPlan.name}
+                                            <span className="relative z-10">{subPlan.name}</span>
                                             {isActive && (
                                               <m.div
-                                                layoutId="activeSubPlanLine"
-                                                className="absolute bottom-0 left-0 h-[1.5px] w-full bg-brand-charcoal rounded-full"
+                                                layoutId={`activeTabBackground-${selectedModule}`}
+                                                className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
                                                 initial={false}
-                                                transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
                                               />
                                             )}
                                           </button>
@@ -1229,19 +1182,19 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                             type="button"
                                             onClick={() => selectScheme(scheme)}
                                             className={cn(
-                                              "relative pb-2 text-[16px] tracking-widest transition-colors duration-300",
+                                              "relative px-6 py-1.5 text-[13px] tracking-widest transition-colors duration-300 rounded-full",
                                               isActive
-                                                ? "text-brand-charcoal"
-                                                : "text-brand-charcoal-light/60 hover:text-brand-charcoal"
+                                                ? "text-brand-charcoal font-medium"
+                                                : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
                                             )}
                                           >
-                                            {scheme.name}
+                                            <span className="relative z-10">{scheme.name}</span>
                                             {isActive && (
                                               <m.div
-                                                layoutId="activeSchemeLine"
-                                                className="absolute bottom-0 left-0 h-[1.5px] w-full bg-brand-charcoal rounded-full"
+                                                layoutId={`activeTabBackground-${selectedModule}`}
+                                                className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
                                                 initial={false}
-                                                transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
                                               />
                                             )}
                                           </button>
@@ -1275,7 +1228,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                         // 产品图标占位符映射 - 根据产品名匹配或按索引循环
                                         const productIcons: Record<string, React.ReactNode> = {
                                           // 洁面类
-                                          "洁面慕斯": (
+                                          "洁面": (
                                             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                                               <rect x="17.9922" y="5" width="11.9999" height="37.9997" rx="1.99992" fill="url(#paint0_linear_2088_4549)" />
                                               <path d="M18.7941 5.99999C18.7941 5.99999 18.9941 5 23.9941 5C28.9941 5 29.1941 5.99999 29.1941 5.99999L29.4941 16.9999C29.994 16.9999 29.994 17.6666 29.994 17.9999V20.9999C30.494 21.0202 30.494 21.6665 30.494 21.9999V40.9997C30.494 42.1043 29.6006 42.9997 28.496 42.9997H23.9941H19.4922C18.3876 42.9997 17.4941 42.1051 17.4941 41.0005V21.9999C17.4941 21.1999 17.6608 20.9999 17.9941 20.9999V17.9999C17.9941 17.1999 18.1608 16.9999 18.4941 16.9999L18.7941 5.99999Z" stroke="#B795A7" stroke-width="1.59993" stroke-linecap="round" stroke-linejoin="round" />
@@ -1338,7 +1291,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                             </svg>
                                           ),
                                           // 精华类
-                                          "精华": (
+                                          "精华露": (
                                             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                                               <rect x="21.0004" y="4.00098" width="6" height="12" fill="url(#paint0_linear_2088_4438)" />
                                               <rect x="19.8009" y="15.999" width="8.4" height="28" fill="url(#paint1_radial_2088_4438)" />
@@ -1443,7 +1396,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
 
                                           ),
                                           // 防晒乳
-                                          "防晒乳": (
+                                          "防晒": (
                                             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                                               <rect x="9.78906" y="4.7998" width="28.3998" height="38.3997" rx="9.99984" fill="url(#paint0_radial_2121_4267)" />
                                               <path d="M11.9902 19C11.9902 19 15.1902 18 23.9901 18C32.7901 18 35.9901 19 35.9901 19" stroke="#DBBBA4" stroke-width="1.19998" stroke-linecap="round" />
@@ -1534,7 +1487,7 @@ export function RitualContent({ backgroundImage }: RitualContentProps) {
                                             </svg>
                                           ),
                                           // 身体油
-                                          "身体油": (
+                                          "护肤油": (
                                             <svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
                                               <path d="M224.841 51.218H175.082C171.534 51.218 168.658 54.0941 168.658 57.642V173.865C168.658 177.413 171.534 180.289 175.082 180.289H224.841C228.389 180.289 231.265 177.413 231.265 173.865V57.642C231.265 54.0941 228.389 51.218 224.841 51.218Z" fill="url(#paint0_linear_22_2)" />
                                               <path d="M262.405 186.466H137.594C133.539 186.466 130.252 189.753 130.252 193.808V345.634C130.252 349.689 133.539 352.976 137.594 352.976H262.405C266.46 352.976 269.747 349.689 269.747 345.634V193.808C269.747 189.753 266.46 186.466 262.405 186.466Z" fill="url(#paint1_radial_22_2)" />

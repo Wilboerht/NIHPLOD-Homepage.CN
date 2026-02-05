@@ -27,22 +27,62 @@ import prisma from "@/lib/prisma";
 
 // ...
 
+// 获取已发布的产品
+async function getProducts() {
+  try {
+    const products = await prisma.product.findMany({
+      where: { published: true },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      include: {
+        category: {
+          select: { id: true, name: true, nameEn: true, slug: true },
+        },
+        images: {
+          orderBy: { order: "asc" },
+          select: { url: true, alt: true },
+        },
+        purchaseLinks: {
+          orderBy: { order: "asc" },
+          select: { id: true, platform: true, url: true },
+        },
+      },
+    });
+
+    // 转换 Decimal 为 number，并将 null 转换为 undefined
+    return products.map((p) => ({
+      ...p,
+      price: Number(p.price),
+      capacity: p.capacity ?? undefined,
+      purchaseUrl: p.purchaseUrl ?? undefined,
+      ingredients: p.ingredients ?? undefined,
+      usage: p.usage ?? undefined,
+      images: p.images.map((img) => ({
+        ...img,
+        alt: img.alt ?? undefined,
+      })),
+    }));
+  } catch (error) {
+    console.error("获取产品列表失败:", error);
+    return [];
+  }
+}
+
 export default async function RitualPage() {
   let backgroundImage: string | undefined;
 
-  try {
-    const page = await prisma.page.findUnique({
+  // 并行获取数据
+  const [products, page] = await Promise.all([
+    getProducts(),
+    prisma.page.findUnique({
       where: { slug: "ritual" },
       select: { published: true, backgroundImage: true },
-    });
+    })
+  ]);
 
-    // 只有在页面已发布时才使用配置的背景图
-    if (page?.published && page.backgroundImage) {
-      backgroundImage = page.backgroundImage;
-    }
-  } catch (error) {
-    console.error("获取护肤仪式页面数据失败:", error);
+  // 只有在页面已发布时才使用配置的背景图
+  if (page?.published && page.backgroundImage) {
+    backgroundImage = page.backgroundImage;
   }
 
-  return <RitualContent backgroundImage={backgroundImage} />;
+  return <RitualContent backgroundImage={backgroundImage} products={products} />;
 }
