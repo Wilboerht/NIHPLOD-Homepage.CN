@@ -69,6 +69,7 @@ interface SubPlan {
   products?: string; // 该子方案涉及的产品
   benefits?: string[];
   specialSupport?: string;
+  duration?: string;
 }
 
 // 情景类型 (如 "晨间焕活", "晚间呵护")
@@ -118,7 +119,7 @@ const defaultModuleData: ModuleData = {
           </defs>
         </svg>
       ),
-      totalDuration: "5-10分钟",
+      totalDuration: "5-15分钟",
       products: "洁面、面霜",
       benefits: ["保湿锁水", "过敏修护", "抗初老", "维稳舒缓"],
       specialSupport: "孕期、月子期、轻医美术后",
@@ -145,6 +146,7 @@ const defaultModuleData: ModuleData = {
           id: "simple",
           name: "精简方案",
           products: "洁面、面霜",
+          duration: "5-10分钟",
           steps: [
             {
               title: "净肤",
@@ -165,7 +167,8 @@ const defaultModuleData: ModuleData = {
         {
           id: "outing",
           name: "外出方案",
-          products: "洁面、面霜、防晒",
+          products: "洁面、面霜 (可选)、防晒",
+          duration: "10-15分钟",
           steps: [
             {
               title: "净肤",
@@ -205,13 +208,13 @@ const defaultModuleData: ModuleData = {
         </svg>
       ),
       totalDuration: "15-20分钟",
-      products: "洁面、精华露、面膜、面霜、身体乳",
+      products: "洁面、精华露 (可选)、面膜、面霜、身体乳 (可选)",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "维稳舒缓", "紧致提拉", "润泽提亮"],
       specialSupport: "孕期、月子期、轻医美术后",
       steps: [
         {
           title: "净肤",
-          description: "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
+          description: "取适量洁面，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
           duration: "30秒",
           tips: "温水洗净，避免过冷或过热刺激。",
           imageUrl: "/images/ritual-step-1.png"
@@ -263,14 +266,39 @@ const defaultModuleData: ModuleData = {
       name: "面部方案",
       nameEn: "FACE RITUAL",
       desc: "仅需 4 个步骤",
-      totalDuration: "30分钟",
-      products: "洁面慕斯、磨砂膏、护理油、面霜、面膜",
-      benefits: ["深层清洁", "多重修护", "提亮肤质", "增强免疫"],
+      totalDuration: "20-30分钟",
+      products: "洁面、磨砂膏、护肤油、面霜、面膜",
+      benefits: ["保湿锁水", "屏障增强", "过敏修护", "抗初老", "维稳舒缓"],
+      specialSupport: "孕期、月子期、轻医美术后",
       steps: [
-        { title: "基础净肤", description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。", duration: "2分钟", tips: "温水洗净，避免过冷或过热刺激。", dosage: "2泵", imageUrl: "/images/ritual-step-1.png" },
-        { title: "深层清理", description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。", duration: "3-5分钟", tips: "避开眼唇周围，轻柔按摩。", dosage: "适量", imageUrl: "/images/ritual-step-1.png" },
-        { title: "混油养肤", description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。", duration: "3-5分钟", tips: "掌心温热混合后效果更佳。", dosage: "适量混合", imageUrl: "/images/ritual-step-2.png" },
-        { title: "膜法封存", description: "承接上个步骤，无需对面部做额外清理，将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养，有效提亮肤质、增强肌肤免疫力。", duration: "15分钟", tips: "无需清洗，剩余精华按摩至吸收。", imageUrl: "/images/ritual-step-2.png" },
+        {
+          title: "基础净肤",
+          description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
+          duration: "2分钟",
+          tips: "温水洗净，避免过冷或过热刺激。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+        {
+          title: "深层清理",
+          description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
+          duration: "3-5分钟",
+          tips: "避开眼唇周围，轻柔按摩。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+        {
+          title: "混油养肤",
+          description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。",
+          duration: "3-5分钟",
+          tips: "掌心温热混合后效果更佳。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "膜法封存",
+          description: "承接上个步骤，无需对面部做额外清理，将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养，有效提亮肤质、增强肌肤免疫力。",
+          duration: "10-15分钟",
+          tips: "无需清洗，剩余精华按摩至吸收。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
       ],
     },
     {
@@ -278,16 +306,53 @@ const defaultModuleData: ModuleData = {
       name: "全身方案",
       nameEn: "FULL BODY RITUAL",
       desc: "仅需 6 个步骤",
-      totalDuration: "45分钟",
-      products: "洁面慕斯、磨砂膏、护理油、面霜、面膜、身体乳",
-      benefits: ["全身放松", "柔嫩肌肤", "滋养修护", "延缓衰老"],
+      totalDuration: "30-45分钟",
+      products: "洁面、磨砂膏、护肤油、面霜、面膜、身体乳",
+      benefits: ["保湿锁水", "屏障增强", "抗初老", "维稳舒缓", "紧致提拉", "润泽提亮"],
+      specialSupport: "孕期、月子期、轻医美术后",
       steps: [
-        { title: "基础净肤", description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。", duration: "2分钟", tips: "温水洗净，避免过冷或过热刺激。", dosage: "2泵", imageUrl: "/images/ritual-step-1.png" },
-        { title: "深层清理", description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。", duration: "3-5分钟", tips: "打圈按摩，力度适中。", dosage: "适量", imageUrl: "/images/ritual-step-1.png" },
-        { title: "膜法守护", description: "取一片面膜完整贴合面部，静享 10-15 分钟后移除膜布 (可与泡澡环节同时进行)；确保珍贵成分能有效被面部吸收。", duration: "15分钟", tips: "可配合泡澡一同进行。", imageUrl: "/images/ritual-step-2.png" },
-        { title: "芳香浸愈 (可选)", description: "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。", duration: "15-20分钟", tips: "水温控制在38-40度为宜。", dosage: "几滴", imageUrl: "/images/ritual-step-2.png" },
-        { title: "全身滋养", description: "取适量身体乳，于掌心混合温热，从四肢向心脏方向进行长推式按摩，重点护理颈部、小腿、手臂及腹部；若所处的外部环境湿度/温度较低，建议额外按照 1:5 比例混合护理油加强滋润效果。", duration: "5分钟", tips: "趁身体微湿时涂抹效果更佳。", dosage: "充足", imageUrl: "/images/ritual-step-2.png" },
-        { title: "面部呵护", description: "取适量面霜，以由下至上、由内而外的手法进行全脸提拉按摩，重点按压眼周、法令纹及额头区域；确保全身及面部被完全呵护，实现更全面的修护及滋养，有效提亮肤质和弹性、延缓衰老、增强肌肤免疫力。", duration: "5分钟", tips: "配合按摩手法促进吸收。", dosage: "适量", imageUrl: "/images/ritual-step-2.png" },
+        {
+          title: "基础净肤",
+          description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
+          duration: "2分钟",
+          tips: "温水洗净，避免过冷或过热刺激。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+        {
+          title: "深层清理",
+          description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
+          duration: "3-5分钟",
+          tips: "避开眼唇周围，轻柔按摩。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+        {
+          title: "芳香浸愈 (可选)",
+          description: "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。",
+          duration: "15-20分钟",
+          tips: "水温控制在38-40度为宜。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "膜法守护",
+          description: "取一片面膜完整贴合面部，静享 10-15 分钟后移除膜布 (可与泡澡环节同时进行)；确保珍贵成分能有效被面部吸收。",
+          duration: "10-15分钟",
+          tips: "可配合泡澡一同进行。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "全身滋养",
+          description: "取适量身体乳，于掌心混合温热，从四肢向心脏方向进行长推式按摩，重点护理颈部、小腿、手臂及腹部；若所处的外部环境湿度/温度较低，建议额外按照 1:5 比例混合护理油加强滋润效果。",
+          duration: "5分钟",
+          tips: "趁身体微湿时涂抹效果更佳。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "面部呵护",
+          description: "取适量面霜，以由下至上、由内而外的手法进行全脸提拉按摩，重点按压眼周、法令纹及额头区域；确保全身及面部被完全呵护，实现更全面的修护及滋养，有效提亮肤质和弹性、延缓衰老、增强肌肤免疫力。",
+          duration: "5分钟",
+          tips: "配合按摩手法促进吸收。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
       ],
     },
   ],
@@ -1506,7 +1571,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                           ),
                                           // 身体油
                                           "护肤油": (
-                                            <svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <svg width="48" height="48" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
                                               <path d="M224.841 51.218H175.082C171.534 51.218 168.658 54.0941 168.658 57.642V173.865C168.658 177.413 171.534 180.289 175.082 180.289H224.841C228.389 180.289 231.265 177.413 231.265 173.865V57.642C231.265 54.0941 228.389 51.218 224.841 51.218Z" fill="url(#paint0_linear_22_2)" />
                                               <path d="M262.405 186.466H137.594C133.539 186.466 130.252 189.753 130.252 193.808V345.634C130.252 349.689 133.539 352.976 137.594 352.976H262.405C266.46 352.976 269.747 349.689 269.747 345.634V193.808C269.747 189.753 266.46 186.466 262.405 186.466Z" fill="url(#paint1_radial_22_2)" />
                                               <path d="M262.405 186.466H137.594C133.539 186.466 130.252 189.753 130.252 193.808V345.634C130.252 349.689 133.539 352.976 137.594 352.976H262.405C266.46 352.976 269.747 349.689 269.747 345.634V193.808C269.747 189.753 266.46 186.466 262.405 186.466Z" fill="url(#paint2_linear_22_2)" fill-opacity="0.6" />
@@ -1558,14 +1623,15 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                           </svg>,
                                         ];
 
-                                        const trimmedProduct = product.trim();
-                                        const icon = productIcons[trimmedProduct] || defaultIcons[index % defaultIcons.length];
+                                        const isOptional = product.includes("(可选)");
+                                        const cleanName = product.replace("(可选)", "").trim();
+                                        const icon = productIcons[cleanName] || defaultIcons[index % defaultIcons.length];
 
                                         return (
                                           <button
-                                            key={trimmedProduct}
+                                            key={product}
                                             type="button"
-                                            onClick={() => handleProductClick(trimmedProduct)}
+                                            onClick={() => handleProductClick(cleanName)}
                                             className="group flex flex-col items-center gap-3 transition-transform hover:-translate-y-1"
                                           >
                                             {/* SVG 图标 - 无背景，悬浮感 */}
@@ -1575,9 +1641,12 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                               </div>
                                             </div>
                                             {/* 产品名称 */}
-                                            <span className="text-sm font-light text-brand-charcoal/80 group-hover:text-brand-charcoal transition-colors">
-                                              {trimmedProduct}
-                                            </span>
+                                            <div className="flex flex-col items-center gap-0.5">
+                                              <span className="text-sm font-light text-brand-charcoal/80 group-hover:text-brand-charcoal transition-colors">
+                                                {cleanName}
+                                              </span>
+                                              {isOptional && <span className="text-[10px] text-brand-charcoal/50 font-light tracking-wide">(可选)</span>}
+                                            </div>
                                           </button>
                                         );
                                       })}
@@ -1827,7 +1896,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                                 )}
                                               >
                                                 {/* 竖排文字标题 */}
-                                                <div className="writing-vertical-rl font-display text-2xl font-medium tracking-[0.2em] text-brand-charcoal/40 text-center select-none">
+                                                <div className="writing-vertical-rl font-display text-lg font-medium tracking-[0.2em] text-brand-charcoal/40 text-center select-none">
                                                   {step.title}
                                                 </div>
 
