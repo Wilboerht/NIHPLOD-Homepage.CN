@@ -247,16 +247,44 @@ const defaultModuleData: ModuleData = {
   portable: [
     {
       id: "t1",
-      name: "高空补水",
-      nameEn: "IN-FLIGHT HYDRATION",
-      tag: "极速",
-      desc: "应对机舱干燥环境",
-      totalDuration: "5分钟",
-      products: "护手霜、防晒乳、洁面慕斯、面膜",
-      benefits: ["即时补水", "舒缓干燥", "抗氧化防护", "便携应急", "维稳修护"],
+      name: "日常外出（通勤）",
+      nameEn: "DAILY COMMUTE",
+      tag: "通勤",
+      desc: "富含多重功效的防晒，能有效抵御紫外线伤害，预防光老化；同时使用护手霜则能滋养双手，抵御干燥和外界刺激，让您的双手亦时刻保持健康与舒适。",
+      totalDuration: "3-5分钟",
+      products: "护手霜、防晒",
+      benefits: ["保湿锁水", "屏障增强", "SPF30", "PA+++"],
       steps: [
-        { title: "舒缓喷雾", description: "即刻缓解肌肤紧绷感。", duration: "10秒", tips: "距离面部20cm处呈Z字形喷洒。", imageUrl: "/images/ritual-step-1.png" },
-        { title: "维稳修护", description: "平复换季或地域带来的不适。", duration: "2分钟", tips: "选择舒缓成分，轻柔按压于敏感部位。", dosage: "2-3泵", imageUrl: "/images/ritual-step-2.png" },
+        { title: "防晒防护", description: "出门前快速涂抹防晒，抵御紫外线。", duration: "1分钟", tips: "均匀涂抹于面部及裸露肌肤。", imageUrl: "/images/ritual-step-1.png" },
+        { title: "随时补水", description: "感觉干燥时喷洒舒缓喷雾。", duration: "10秒", tips: "按需使用。", imageUrl: "/images/ritual-step-2.png" },
+      ],
+    },
+    {
+      id: "t2",
+      name: "轻悦旅行（中短途）",
+      nameEn: "LIGHT TRAVEL",
+      tag: "中短途",
+      desc: "你的便携式“旅行护肤急救箱”- 氨基酸洁面慕斯温和清洁，防晒霜抵御光损伤，护手霜随时滋润干燥双手，莱赛尔贴片面膜为肌肤快速“充电+修护+维稳”；按需携带，让你在紧凑行程中也能时刻容光焕发。",
+      totalDuration: "10分钟",
+      products: "洁面、面膜、防晒、护手霜",
+      benefits: ["轻便卸妆", "保湿锁水", "维稳舒缓", "SPF30", "PA+++"],
+      steps: [
+        { title: "深层清洁", description: "彻底清洁旅途中的尘埃与油脂。", duration: "2分钟", tips: "温水洗净。", imageUrl: "/images/ritual-step-1.png" },
+        { title: "密集修护", description: "敷一片面膜，舒缓旅途疲劳。", duration: "15分钟", tips: "静享放松时刻。", imageUrl: "/images/ritual-step-2.png" },
+      ],
+    },
+    {
+      id: "t3",
+      name: "多效芳疗（沐浴/滋润加强）",
+      nameEn: "MULTI-EFFECT AROMATHERAPY",
+      tag: "芳疗",
+      desc: "这款奢华护理油是您私人 SPA 的核心，在泡澡时滴入数滴，便可瞬间将浴室升华为芳香疗愈场，让卓越的润肤力包裹并环绕您的全身；而干燥时节，只需将其与任意面霜、精华或身体乳混合，即可定制出加倍润泽的顶级护理体验。",
+      totalDuration: "自由",
+      products: "护肤油",
+      benefits: ["滋润加强", "维稳舒缓", "疗愈焕颜"],
+      steps: [
+        { title: "沐浴体验", description: "泡澡时滴入数滴，享受芳香疗愈。", duration: "15分钟", tips: "水温适宜。", imageUrl: "/images/ritual-step-1.png" },
+        { title: "加倍滋润", description: "混合面霜或身体乳使用。", duration: "1分钟", tips: "按需调配。", imageUrl: "/images/ritual-step-2.png" },
       ],
     },
   ],
@@ -1187,7 +1215,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                           transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
                           className="absolute inset-0 flex flex-col overflow-hidden px-8 pt-10 lg:px-12 lg:pt-10 items-center"
                         >
-                          <div className="flex h-full w-full max-w-[1440px] flex-col justify-center">
+                          <div className="flex h-full w-full max-w-[1440px] flex-col justify-start pt-12">
                             {/* Level 3 Header: 标题与切换器 */}
                             <header className="mb-9 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                               {/* 左侧标题组 */}
@@ -1197,16 +1225,18 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     ? modules.find(m => m.id === "portable")?.label
                                     : selectedScheme.name}
                                 </h1>
-                                <div className="flex items-center justify-center px-3 py-1 rounded-full border border-brand-charcoal/10 bg-white/50 gap-1.5">
-                                  {selectedModule !== "professional" && <Clock className="w-3 h-3 text-brand-charcoal/60" />}
-                                  <span className="font-sans text-[11px] tracking-widest text-brand-charcoal/60 tabular-nums">
-                                    {selectedModule === "professional" ? "NIHPLOD 专业水疗" : (selectedScheme.totalDuration || "5-10分钟")}
-                                  </span>
-                                </div>
+                                {selectedModule !== "portable" && (
+                                  <div className="flex items-center justify-center px-3 py-1 rounded-full border border-brand-charcoal/10 bg-white/50 gap-1.5">
+                                    {selectedModule !== "professional" && <Clock className="w-3 h-3 text-brand-charcoal/60" />}
+                                    <span className="font-sans text-[11px] tracking-widest text-brand-charcoal/60 tabular-nums">
+                                      {selectedModule === "professional" ? "NIHPLOD 专业水疗" : (selectedScheme.totalDuration || "5-10分钟")}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
 
                               {/* 右侧切换器 - 显示子方案Tab（如有）或情景列表（单品好物不显示） */}
-                              {selectedModule !== "portable" && selectedModule !== "professional" && (
+                              {selectedModule !== "professional" && (
                                 <nav className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
                                   <LayoutGroup id={`tab-${selectedModule}`}>
                                     {/* 如果有子方案，显示子方案 Tab */}
@@ -1679,7 +1709,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                   </h3>
                                   <div className="flex items-center gap-5">
                                     <Image
-                                      src="/images/sgs.png"
+                                      src="/images/sgs.svg"
                                       alt="SGS"
                                       title="SGS 权威认证"
                                       width={28}
@@ -1687,12 +1717,12 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                       className="h-7 w-auto"
                                     />
                                     <Image
-                                      src="/images/intertek-logo.png"
+                                      src="/images/intertek-logo.svg"
                                       alt="Intertek"
                                       title="Intertek 质量认证"
                                       width={28}
                                       height={28}
-                                      className="h-7 w-auto"
+                                      className="h-6 w-auto"
                                     />
                                   </div>
                                 </div>
@@ -1727,7 +1757,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
 
                               {/* 右侧：步骤网格 (Steps Grid) - 使用 AnimatePresence 实现交叉淡入淡出 */}
                               <AnimatePresence mode="wait">
-                                {(selectedModule === "portable" || selectedModule === "professional") ? (
+                                {(selectedModule === "professional") ? (
                                   <m.section
                                     key={`${selectedModule}-content`}
                                     className="flex w-full flex-col pb-8 pt-0"
@@ -1752,56 +1782,54 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     </header>
 
                                     {/* 中间卡片区 - Grid Layout */}
-                                    <div className="grid grid-cols-3 gap-6 mb-8">
+                                    <div className="grid grid-cols-3 gap-x-6 gap-y-10 mb-8">
                                       {[
                                         {
                                           title: "基础护理",
                                           duration: "45 min",
                                           tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
-                                          image: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" // Placeholder - Replace with actual spa image
+                                          image: "/images/spa-1.jpg" // 建议替换为真实图片路径
                                         },
                                         {
                                           title: "高级护理",
                                           duration: "60 min",
                                           tags: "基础护理 + 特色手法提拉",
-                                          image: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" // Placeholder
+                                          image: "/images/spa-2.jpg"
                                         },
                                         {
                                           title: "奢华护理",
                                           duration: "75 min",
                                           tags: "高级护理 + 肩颈护理",
-                                          image: "https://wp-cdn.4ce.cn/v2/sSNhrfD.png" // Placeholder
+                                          image: "/images/spa-3.jpg"
                                         }
                                       ].map((item, idx) => (
                                         <div
                                           key={idx}
-                                          className="group relative aspect-[10/9] w-full overflow-hidden cursor-pointer"
+                                          className="group flex flex-col w-full cursor-pointer"
                                         >
-                                          {/* 背景图片 */}
-                                          <Image
-                                            src={item.image}
-                                            alt={item.title}
-                                            fill
-                                            className="object-cover transition-transform duration-700 group-hover:scale-110"
-                                          />
+                                          {/* 图片区域 - 上方 */}
+                                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md mb-4 bg-brand-charcoal/5">
+                                            <Image
+                                              src={item.image}
+                                              alt={item.title}
+                                              fill
+                                              className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                            />
+                                          </div>
 
-                                          {/* 渐变遮罩 - 底部加深以突出文字 */}
-                                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-
-                                          {/* 内容信息 */}
-                                          <div className="absolute bottom-0 left-0 w-full p-6 text-white translate-y-2 transition-transform duration-300 group-hover:translate-y-0">
-                                            <div className="flex items-baseline gap-2 mb-2">
-                                              <h4 className="text-2xl font-light tracking-wide">
+                                          {/* 文字区域 - 下方 */}
+                                          <div className="flex flex-col gap-1.5">
+                                            <div className="flex items-baseline justify-between">
+                                              <h4 className="text-xl font-medium text-brand-charcoal tracking-wide group-hover:text-brand-gold transition-colors duration-300">
                                                 {item.title}
                                               </h4>
-                                              <span className="text-sm font-light opacity-80">
-                                                / {item.duration}
+                                              <span className="text-xs font-light text-brand-charcoal/50 font-sans tracking-wide">
+                                                {item.duration}
                                               </span>
                                             </div>
-                                            {/* 标签胶囊 */}
-                                            <div className="inline-block px-3 py-1 border border-white/40 rounded-full text-xs tracking-wider backdrop-blur-sm">
+                                            <p className="text-xs text-brand-charcoal/60 font-light tracking-wider">
                                               {item.tags}
-                                            </div>
+                                            </p>
                                           </div>
                                         </div>
                                       ))}
@@ -1825,6 +1853,34 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     </div>
 
                                   </m.section>
+                                ) : selectedModule === "portable" ? (
+                                  <m.section
+                                    key={`${selectedModule}-content`}
+                                    className="flex w-full flex-col pb-8 pt-0 h-full overflow-y-auto pr-4 scrollbar-thin"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                  >
+                                    {/* Full width image container */}
+                                    <div className="relative w-full aspect-[21/9] flex-shrink-0 rounded-xl overflow-hidden bg-brand-charcoal/5 mb-8">
+                                      <Image
+                                        src="/images/portable-hero.jpg"
+                                        alt="Portable Ritual"
+                                        fill
+                                        className="object-cover"
+                                      />
+                                      {/* Fallback color/pattern if image missing */}
+                                      <div className="absolute inset-0 bg-gradient-to-br from-brand-beige/20 to-brand-charcoal/5 -z-10" />
+                                    </div>
+
+                                    {/* Text Content */}
+                                    <div className="flex w-full">
+                                      <p className="text-sm text-brand-charcoal/80 font-light tracking-wide">
+                                        {selectedScheme.desc}
+                                      </p>
+                                    </div>
+                                  </m.section>
                                 ) : (
                                   <m.section
                                     key={`${selectedModule}-accordion`}
@@ -1842,6 +1898,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                           <m.article
                                             key={`${step.title}-${index}`}
                                             layout
+                                            transition={{ layout: { duration: 0.5, ease: [0.25, 1, 0.5, 1] } }}
                                             onClick={() => setCurrentStepIndex(index)}
                                             className={cn(
                                               "relative h-full transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
