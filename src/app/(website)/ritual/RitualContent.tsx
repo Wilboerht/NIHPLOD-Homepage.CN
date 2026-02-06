@@ -67,6 +67,8 @@ interface SubPlan {
   name: string;  // 如 "精简方案", "外出方案"
   steps: RitualStep[];
   products?: string; // 该子方案涉及的产品
+  benefits?: string[];
+  specialSupport?: string;
 }
 
 // 情景类型 (如 "晨间焕活", "晚间呵护")
@@ -117,8 +119,8 @@ const defaultModuleData: ModuleData = {
         </svg>
       ),
       totalDuration: "5-10分钟",
-      products: "洁面慕斯、面霜",
-      benefits: ["保湿锁水", "屏障增强", "过敏修护", "抗初老", "维稳舒缓"],
+      products: "洁面、面霜",
+      benefits: ["保湿锁水", "过敏修护", "抗初老", "维稳舒缓"],
       specialSupport: "孕期、月子期、轻医美术后",
       // 原有 steps 作为默认显示
       steps: [
@@ -135,21 +137,14 @@ const defaultModuleData: ModuleData = {
           duration: "1-2分钟",
           tips: "掌心温热后按压效果更佳。",
           imageUrl: "/images/ritual-step-2.png"
-        },
-        {
-          title: "防护",
-          description: "在面部完全干爽后，取足量防晒霜，点涂于面部及颈部，顺着皮肤纹理均匀涂抹。防晒剂提供即时自然提亮效果。",
-          duration: "1分钟",
-          tips: "出门前15分钟涂抹。",
-          imageUrl: "/images/ritual-step-3.png"
-        },
+        }
       ],
       // 新增子方案 Tab
       subPlans: [
         {
           id: "simple",
           name: "精简方案",
-          products: "洁面慕斯、面霜",
+          products: "洁面、面霜",
           steps: [
             {
               title: "净肤",
@@ -170,7 +165,7 @@ const defaultModuleData: ModuleData = {
         {
           id: "outing",
           name: "外出方案",
-          products: "洁面慕斯、面霜、防晒乳",
+          products: "洁面、面霜、防晒",
           steps: [
             {
               title: "净肤",
@@ -193,7 +188,9 @@ const defaultModuleData: ModuleData = {
               tips: "出门前15分钟涂抹。",
               imageUrl: "/images/ritual-step-3.png"
             },
-          ]
+          ],
+          benefits: ["保湿锁水", "过敏修护", "抗初老", "维稳舒缓", "SPF30", "PA+++"],
+          specialSupport: "外出方案不支持特殊时期使用"
         }
       ]
     },
@@ -1589,7 +1586,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                   </h3>
                                   <div className="flex flex-wrap gap-2">
                                     <div className="flex flex-wrap gap-x-6 gap-y-3">
-                                      {(selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
+                                      {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
                                         <div key={tag} className="flex items-center gap-2 group">
                                           <span className="text-[10px] text-brand-gold/60 group-hover:text-brand-gold transition-colors">✦</span>
                                           <span className="text-[13px] tracking-widest text-brand-charcoal/70 font-light group-hover:text-brand-charcoal transition-colors">
@@ -1632,9 +1629,9 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
                                       特殊人群支持
                                     </h3>
-                                    <div className="border border-dashed border-brand-charcoal/30 p-5 text-sm leading-relaxed text-brand-charcoal/80">
-                                      {selectedScheme.specialSupport}
-                                    </div>
+                                    <p className="text-[13px] tracking-wider text-brand-charcoal/70 font-light">
+                                      {selectedSubPlan?.specialSupport || selectedScheme.specialSupport || "孕期、月子期、轻医美术后"}
+                                    </p>
                                   </div>
                                 )}
                               </m.aside>
