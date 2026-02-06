@@ -1865,61 +1865,98 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                           title: "基础护理",
                                           duration: "45 min",
                                           tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
-                                          image: "/images/spa-1.jpg" // 建议替换为真实图片路径
+                                          image: "/images/spa-basic.png"
                                         },
                                         {
                                           title: "高级护理",
                                           duration: "60 min",
                                           tags: "基础护理 + 特色手法提拉",
-                                          image: "/images/spa-2.jpg"
+                                          image: "/images/spa-advanced.png"
                                         },
                                         {
                                           title: "奢华护理",
                                           duration: "75 min",
                                           tags: "高级护理 + 肩颈护理",
-                                          image: "/images/spa-3.jpg"
+                                          image: "/images/spa-luxury.png"
                                         }
                                       ].map((item, idx) => (
                                         <div
                                           key={idx}
-                                          className="group flex flex-col w-full cursor-pointer"
+                                          className="group relative flex flex-col w-full cursor-pointer h-full"
                                         >
-                                          {/* 图片区域 - 上方 */}
-                                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md mb-4 bg-brand-charcoal/5">
+                                          {/* 图片区域 - 包含所有内容 */}
+                                          <div className="relative aspect-[1/1] w-full overflow-hidden rounded-md bg-brand-charcoal/5 isolation-auto">
                                             <Image
                                               src={item.image}
                                               alt={item.title}
                                               fill
-                                              className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                              className="object-cover transition-transform duration-700 group-hover:scale-105 z-0"
                                             />
-                                          </div>
 
-                                          {/* 文字区域 - 下方 */}
-                                          <div className="flex flex-col gap-1.5">
-                                            <div className="flex items-baseline justify-between">
-                                              <h4 className="text-xl font-medium text-brand-charcoal tracking-wide group-hover:text-brand-gold transition-colors duration-300">
-                                                {item.title}
-                                              </h4>
-                                              <span className="text-xs font-light text-brand-charcoal/50 font-sans tracking-wide">
-                                                {item.duration}
-                                              </span>
+                                            {/* 渐变遮罩 - 底部黑色渐变 - 加强 */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-100 z-10 pointer-events-none" />
+
+                                            {/* 文字内容 - 覆盖在图片上 */}
+                                            <div className="absolute bottom-0 left-0 w-full p-6 flex flex-col gap-3 z-20">
+                                              {/* 标题与时长 */}
+                                              <div className="flex items-baseline gap-2 text-white">
+                                                <h4 className="text-2xl font-normal tracking-wide text-white drop-shadow-md">
+                                                  {item.title}
+                                                </h4>
+                                                <span className="text-lg font-light mx-1 text-white">/</span>
+                                                <span className="text-xl font-light font-sans tracking-wide text-white drop-shadow-md">
+                                                  {item.duration}
+                                                </span>
+                                              </div>
+
+                                              {/* 标签 - 胶囊样式 */}
+                                              <div>
+                                                <span className="inline-block px-3 py-1 border border-white rounded-full text-[11px] text-white font-light tracking-wider backdrop-blur-sm shadow-sm bg-white/10">
+                                                  {item.tags}
+                                                </span>
+                                              </div>
                                             </div>
-                                            <p className="text-xs text-brand-charcoal/60 font-light tracking-wider">
-                                              {item.tags}
-                                            </p>
                                           </div>
                                         </div>
                                       ))}
                                     </div>
 
-                                    {/* 底部 Logo 栏 */}
-                                    <div className="pt-8 border-t border-brand-charcoal/10 flex justify-between items-center opacity-70 grayscale hover:grayscale-0 transition-all duration-500 mb-6">
-                                      {/* 模拟 Partner Logos - 实际项目中替换为真实 Logo 图片 */}
-                                      {["BELLAGIO", "Four Seasons", "Hilton", "Kempinski", "WALDORF ASTORIA", "SHANGRI-LA", "Fairmont"].map((brand) => (
-                                        <div key={brand} className="text-xs font-display font-medium text-brand-charcoal/60 tracking-widest uppercase">
-                                          {brand}
-                                        </div>
-                                      ))}
+                                    {/* 底部 Logo 栏 - 无限滚动 */}
+                                    <div className="pt-8 border-t border-brand-charcoal/10 mb-6 overflow-hidden relative">
+                                      {/* 左侧渐变遮罩 */}
+                                      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#F0EDE1] to-transparent z-10 pointer-events-none" />
+                                      {/* 右侧渐变遮罩 */}
+                                      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#F0EDE1] to-transparent z-10 pointer-events-none" />
+
+                                      {/* 滚动容器 */}
+                                      <div className="flex items-center animate-marquee hover:[animation-play-state:paused]">
+                                        {/* 第一组 Logo */}
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                          <div key={`logo-a-${num}`} className="flex-shrink-0 mx-6 flex items-center justify-center h-[36px]">
+                                            <Image
+                                              src={`/images/hotels/hotel${num}.svg`}
+                                              alt={`Hotel Partner ${num}`}
+                                              width={120}
+                                              height={24}
+                                              className="h-[36px] w-auto object-contain"
+                                              style={{ maxHeight: '36px' }}
+                                            />
+                                          </div>
+                                        ))}
+                                        {/* 第二组 Logo (用于无缝循环) */}
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                          <div key={`logo-b-${num}`} className="flex-shrink-0 mx-6 flex items-center justify-center h-[36px]">
+                                            <Image
+                                              src={`/images/hotels/hotel${num}.svg`}
+                                              alt={`Hotel Partner ${num}`}
+                                              width={120}
+                                              height={24}
+                                              className="h-[36px] w-auto object-contain"
+                                              style={{ maxHeight: '36px' }}
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
 
                                     {/* 底部预约提示 */}
@@ -1952,7 +1989,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     transition={{ duration: 0.3 }}
                                   >
                                     {/* Full width image container */}
-                                    <div className="relative w-full aspect-[21/9] flex-shrink-0 rounded-xl overflow-hidden bg-brand-charcoal/5 mb-8">
+                                    <div className="relative w-full aspect-[21/10] flex-shrink-0 rounded-xl overflow-hidden bg-brand-charcoal/5 mb-8">
                                       <Image
                                         src="/images/portable-hero.jpg"
                                         alt="Portable Ritual"
