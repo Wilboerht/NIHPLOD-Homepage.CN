@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, ArrowUpRight, Clock, MousePointerClick } from "lucide-react";
+import { ChevronDown, ArrowUpRight, Clock, MousePointerClick, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 
@@ -554,6 +555,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
   const [selectedSubPlan, setSelectedSubPlan] = useState<SubPlan | null>(null);
   // 悬停的模块索引
   const { isDrawerOpen, setDrawerOpen } = useLayout();
+  const { openContact } = useAuth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // 轮播导航状态
@@ -1303,7 +1305,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     ? modules.find(m => m.id === selectedModule)?.label
                                     : selectedScheme.name}
                                 </h1>
-                                {selectedModule !== "portable" && (
+                                {selectedModule !== "portable" && selectedModule !== "professional" && (
                                   <div className="flex items-center justify-center px-3 py-1 rounded-full border border-brand-charcoal/10 bg-white/50 gap-1.5">
                                     <Clock className="w-3 h-3 text-brand-charcoal/60" />
                                     <span className="font-sans text-[11px] tracking-widest text-brand-charcoal/60 tabular-nums">
@@ -1847,15 +1849,27 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     <header className="mb-8">
                                       <div className="flex items-center gap-3 mb-1">
                                         <h2 className="text-3xl font-normal text-brand-charcoal tracking-wide">
-                                          面部方案
+                                          {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
                                         </h2>
                                         <span className="px-1.5 py-0.5 bg-[#E6DCC3] text-brand-charcoal text-xs font-medium rounded-sm">
                                           招牌
                                         </span>
                                       </div>
-                                      <h3 className="text-sm font-light tracking-[0.1em] text-brand-charcoal/60 font-sans">
-                                        SKIN CARE
-                                      </h3>
+                                      <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-light tracking-[0.1em] text-brand-charcoal/60 font-sans">
+                                          {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
+                                        </h3>
+                                        <p className="text-[12px] text-brand-charcoal/60 tracking-wide font-light flex items-center">
+                                          <Info className="w-3.5 h-3.5 mr-1.5 text-brand-charcoal/40" />
+                                          找不到您所在城市的门店？银卡级别以上会员可
+                                          <span onClick={() => openContact("application")} className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5">
+                                            <span className="relative z-10 font-semibold transition-colors duration-500 group-hover:text-brand-charcoal">申请入驻</span>
+                                            <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
+                                            <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />
+                                          </span>
+                                          。
+                                        </p>
+                                      </div>
                                     </header>
 
                                     {/* 中间卡片区 - Grid Layout */}
@@ -1959,24 +1973,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                       </div>
                                     </div>
 
-                                    {/* 底部预约提示 */}
-                                    <div className="flex flex-col justify-start items-start gap-1">
-                                      <p className="text-[13px] text-brand-charcoal/80 tracking-wide font-light text-left leading-relaxed flex items-center flex-wrap">
-                                        上述一二线城市的 Hotel SPA 主要门店均可
-                                        <span className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5">
-                                          <span className="relative z-10 font-semibold transition-colors duration-500 group-hover:text-brand-charcoal">在线预约</span>
-                                          <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
-                                          <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />
-                                        </span>
-                                        。找不到您所在城市的门店？银卡级别以上会员可
-                                        <span className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5">
-                                          <span className="relative z-10 font-semibold transition-colors duration-500 group-hover:text-brand-charcoal">申请入驻</span>
-                                          <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
-                                          <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />
-                                        </span>
-                                        。
-                                      </p>
-                                    </div>
+
 
                                   </m.section>
                                 ) : selectedModule === "portable" ? (

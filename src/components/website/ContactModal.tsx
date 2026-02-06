@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 // 图标映射
 const iconMap: Record<string, typeof HelpCircle> = {
+    spa_reservation: MessageSquare,
+    application: Briefcase,
     consultation: MessageSquare,
     cooperation: Briefcase,
     feedback: MessageCircle,
@@ -19,6 +21,7 @@ const iconMap: Record<string, typeof HelpCircle> = {
 
 // 默认留言类型
 const messageTypesData = [
+    { value: "application", label: "申请入驻" },
     { value: "consultation", label: "产品咨询" },
     { value: "cooperation", label: "商务合作" },
     { value: "feedback", label: "使用反馈" },
@@ -31,13 +34,15 @@ interface FormData {
     email: string;
     type: string;
     content: string;
+    location?: string;
+    memberAccount?: string;
     website: string; // 蜜罐字段
 }
 
 type FormStatus = "idle" | "loading" | "success" | "error";
 
 export function ContactModal() {
-    const { contactOpen, closeContact } = useAuth();
+    const { contactOpen, contactDefaultType, closeContact } = useAuth();
     const [mounted, setMounted] = useState(false);
 
     // 表单状态
@@ -46,6 +51,8 @@ export function ContactModal() {
         email: "",
         type: "",
         content: "",
+        location: "",
+        memberAccount: "",
         website: "",
     });
     const [status, setStatus] = useState<FormStatus>("idle");
@@ -57,6 +64,13 @@ export function ContactModal() {
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    // 当打开弹窗时，如果有默认类型，设置它
+    useEffect(() => {
+        if (contactOpen && contactDefaultType) {
+            setFormData(prev => ({ ...prev, type: contactDefaultType }));
+        }
+    }, [contactOpen, contactDefaultType]);
 
     // 禁止背景滚动
     useEffect(() => {
@@ -93,7 +107,7 @@ export function ContactModal() {
     // 重置表单当关闭时
     useEffect(() => {
         if (!contactOpen) {
-            setFormData({ name: "", email: "", type: "", content: "", website: "" });
+            setFormData({ name: "", email: "", type: "", content: "", location: "", memberAccount: "", website: "" });
             setStatus("idle");
             setErrors({});
             setMessage("");
@@ -120,18 +134,29 @@ export function ContactModal() {
         } else if (formData.name.length < 2) {
             newErrors.name = "姓名至少2个字符";
         }
-        if (!formData.email.trim()) {
-            newErrors.email = "请输入您的邮箱";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = "请输入有效的邮箱地址";
+        if (formData.type !== "application") {
+            if (!formData.email.trim()) {
+                newErrors.email = "请输入您的邮箱";
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                newErrors.email = "请输入有效的邮箱地址";
+            }
         }
         if (!formData.type) {
             newErrors.type = "请选择留言类型";
         }
-        if (!formData.content.trim()) {
-            newErrors.content = "请输入留言内容";
-        } else if (formData.content.length < 10) {
-            newErrors.content = "留言内容至少10个字符";
+        if (formData.type === "application") {
+            if (!formData.location?.trim()) {
+                newErrors.location = "请输入您的所在地";
+            }
+            if (!formData.memberAccount?.trim()) {
+                newErrors.memberAccount = "请输入会员账号（手机号）";
+            }
+        } else {
+            if (!formData.content.trim()) {
+                newErrors.content = "请输入留言内容";
+            } else if (formData.content.length < 10) {
+                newErrors.content = "留言内容至少10个字符";
+            }
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -143,17 +168,23 @@ export function ContactModal() {
         if (!validateForm()) return;
         setStatus("loading");
         setMessage("");
+        // 构造提交数据
+        const submitData = { ...formData };
+        if (formData.type === "application") {
+            submitData.content = `申请入驻\n所在地: ${formData.location}\n会员账号: ${formData.memberAccount}`;
+        }
+
         try {
             const response = await fetch("/api/contact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(submitData),
             });
             const data = await response.json();
             if (response.ok) {
                 setStatus("success");
                 setMessage(data.message || "留言已提交");
-                setFormData({ name: "", email: "", type: "", content: "", website: "" });
+                setFormData({ name: "", email: "", type: "", content: "", location: "", memberAccount: "", website: "" });
                 // 延迟关闭
                 setTimeout(() => {
                     closeContact();
@@ -224,53 +255,12 @@ export function ContactModal() {
                                 {/* 蜜罐字段 */}
                                 <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
 
-                                <div className="grid gap-5 sm:grid-cols-2">
-                                    {/* 姓名 */}
-                                    <div>
-
-                                        <input
-                                            type="text"
-                                            id="modal-name"
-                                            name="name"
-                                            value={formData.name}
-                                            onChange={handleChange}
-                                            className={cn(
-                                                "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
-                                                errors.name
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
-                                                    : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
-                                            )}
-                                            placeholder="请输入您的姓名"
-                                        />
-                                        {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-                                    </div>
-
-                                    {/* 邮箱 */}
-                                    <div>
-
-                                        <input
-                                            type="email"
-                                            id="modal-email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            className={cn(
-                                                "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
-                                                errors.email
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
-                                                    : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
-                                            )}
-                                            placeholder="请输入您的邮箱"
-                                        />
-                                        {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-                                    </div>
-                                </div>
-
                                 {/* 留言类型 */}
                                 <div ref={typeDropdownRef} className="relative">
 
                                     <button
                                         type="button"
+                                        onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                                         className={cn(
                                             "flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4 text-left text-base outline-none transition-all",
                                             !formData.type && "text-gray-400",
@@ -347,25 +337,111 @@ export function ContactModal() {
                                     {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
                                 </div>
 
-                                {/* 留言内容 */}
-                                <div>
+                                <div className={cn("grid gap-5", formData.type === "application" ? "sm:grid-cols-1" : "sm:grid-cols-2")}>
+                                    {/* 姓名 */}
+                                    <div>
 
-                                    <textarea
-                                        id="modal-content"
-                                        name="content"
-                                        value={formData.content}
-                                        onChange={handleChange}
-                                        placeholder="请输入您的具体需求或建议..."
-                                        rows={6}
-                                        className={cn(
-                                            "w-full resize-none rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
-                                            errors.content
-                                                ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
-                                                : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
-                                        )}
-                                    />
-                                    {errors.content && <p className="mt-1 text-xs text-red-500">{errors.content}</p>}
+                                        <input
+                                            type="text"
+                                            id="modal-name"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            className={cn(
+                                                "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
+                                                errors.name
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                    : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
+                                            )}
+                                            placeholder="请输入您的姓名"
+                                        />
+                                        {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+                                    </div>
+
+                                    {/* 邮箱 - 申请入驻时不显示 */}
+                                    {formData.type !== "application" && (
+                                        <div>
+                                            <input
+                                                type="email"
+                                                id="modal-email"
+                                                name="email"
+                                                value={formData.email}
+                                                onChange={handleChange}
+                                                className={cn(
+                                                    "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
+                                                    errors.email
+                                                        ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                        : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
+                                                )}
+                                                placeholder="请输入您的邮箱"
+                                            />
+                                            {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+                                        </div>
+                                    )}
                                 </div>
+
+
+
+                                {/* 留言内容 或 申请入驻表单 */}
+                                {formData.type === "application" ? (
+                                    <div className="space-y-4">
+                                        {/* 会员账号 */}
+                                        <div>
+                                            <input
+                                                type="text"
+                                                id="modal-memberAccount"
+                                                name="memberAccount"
+                                                value={formData.memberAccount || ""}
+                                                onChange={handleChange}
+                                                className={cn(
+                                                    "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
+                                                    errors.memberAccount
+                                                        ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                        : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
+                                                )}
+                                                placeholder="会员账号（手机号）"
+                                            />
+                                            {errors.memberAccount && <p className="mt-1 text-xs text-red-500">{errors.memberAccount}</p>}
+                                        </div>
+
+                                        {/* 所在地 */}
+                                        <div>
+                                            <input
+                                                type="text"
+                                                id="modal-location"
+                                                name="location"
+                                                value={formData.location || ""}
+                                                onChange={handleChange}
+                                                className={cn(
+                                                    "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
+                                                    errors.location
+                                                        ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                        : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
+                                                )}
+                                                placeholder="您的所在城市（如：上海、北京）"
+                                            />
+                                            {errors.location && <p className="mt-1 text-xs text-red-500">{errors.location}</p>}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <textarea
+                                            id="modal-content"
+                                            name="content"
+                                            value={formData.content}
+                                            onChange={handleChange}
+                                            placeholder="请输入您的具体需求或建议..."
+                                            rows={6}
+                                            className={cn(
+                                                "w-full resize-none rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
+                                                errors.content
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                    : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
+                                            )}
+                                        />
+                                        {errors.content && <p className="mt-1 text-xs text-red-500">{errors.content}</p>}
+                                    </div>
+                                )}
 
                                 <div className="pt-2">
                                     <button
