@@ -1218,11 +1218,26 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                 transition={{ duration: 0.8, delay: 0.1, ease: [0.19, 1, 0.22, 1] }}
                               >
                                 {/* Meta Item: Products */}
-                                <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
+                                <div className="flex flex-col relative isolate">
+                                  <h3 className="mb-4 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light z-10">
                                     涉及产品
                                   </h3>
-                                  <div className="flex flex-wrap gap-6">
+
+                                  {/* 极简网格背景 */}
+                                  <div
+                                    className="absolute -left-4 -right-4 top-8 bottom-0 -z-10 pointer-events-none opacity-60"
+                                    style={{
+                                      backgroundImage: `
+                                          linear-gradient(to right, rgba(0,38,62,0.08) 1px, transparent 1px),
+                                          linear-gradient(to bottom, rgba(0,38,62,0.08) 1px, transparent 1px)
+                                        `,
+                                      backgroundSize: '24px 24px',
+                                      maskImage: 'radial-gradient(circle at center, black 40%, transparent 90%)',
+                                      WebkitMaskImage: 'radial-gradient(circle at center, black 40%, transparent 90%)'
+                                    }}
+                                  />
+
+                                  <div className="flex flex-wrap gap-x-6 gap-y-8 pl-2">
                                     {currentProducts
                                       .split("、")
                                       .map((product, index) => {
@@ -1549,14 +1564,16 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                             key={trimmedProduct}
                                             type="button"
                                             onClick={() => handleProductClick(trimmedProduct)}
-                                            className="group flex flex-col items-center gap-2 transition-transform hover:scale-105"
+                                            className="group flex flex-col items-center gap-3 transition-transform hover:-translate-y-1"
                                           >
-                                            {/* SVG 图标 - 白色圆形背景 */}
-                                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm border border-brand-charcoal/10 transition-all group-hover:shadow-md group-hover:border-brand-gold/30">
-                                              {icon}
+                                            {/* SVG 图标 - 无背景，悬浮感 */}
+                                            <div className="relative flex items-center justify-center transition-all drop-shadow-sm group-hover:drop-shadow-md">
+                                              <div className="scale-110 text-brand-charcoal/80 group-hover:text-brand-charcoal transition-colors">
+                                                {icon}
+                                              </div>
                                             </div>
                                             {/* 产品名称 */}
-                                            <span className="text-sm text-brand-charcoal group-hover:text-brand-gold transition-colors">
+                                            <span className="text-xs font-medium tracking-wider text-brand-charcoal/70 group-hover:text-brand-charcoal transition-colors">
                                               {trimmedProduct}
                                             </span>
                                           </button>
@@ -1571,14 +1588,16 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     针对功效
                                   </h3>
                                   <div className="flex flex-wrap gap-2">
-                                    {(selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
-                                      <span
-                                        key={tag}
-                                        className="rounded-full border border-brand-charcoal/20 px-4 py-1.5 text-sm text-brand-charcoal"
-                                      >
-                                        {tag}
-                                      </span>
-                                    ))}
+                                    <div className="flex flex-wrap gap-x-6 gap-y-3">
+                                      {(selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
+                                        <div key={tag} className="flex items-center gap-2 group">
+                                          <span className="text-[10px] text-brand-gold/60 group-hover:text-brand-gold transition-colors">✦</span>
+                                          <span className="text-[13px] tracking-widest text-brand-charcoal/70 font-light group-hover:text-brand-charcoal transition-colors">
+                                            {tag}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
 
