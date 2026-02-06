@@ -387,18 +387,96 @@ const defaultModuleData: ModuleData = {
   professional: [
     {
       id: "p1",
-      name: "专业水疗",
-      nameEn: "PROFESSIONAL SPA",
-      desc: "沉静式悦己体验",
-      totalDuration: "45分钟",
-      products: "洁面慕斯、磨砂膏、护理油、面霜、面膜",
-      benefits: ["深层放松", "焕活肌肤", "身心平衡", "专业护理"],
+      name: "面部护理套餐",
+      nameEn: "FACIAL CARE",
+      desc: "仅需 4 个步骤",
+      totalDuration: "20-30分钟",
+      products: "护手霜、防晒",
+      benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
+      specialSupport: "孕期、月子期、轻医美术后",
       steps: [
-        { title: "净化准备", description: "取适量洁面慕斯，温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。", duration: "2分钟", tips: "温水洗净，避免过冷或过热刺激。", dosage: "2泵", imageUrl: "/images/ritual-step-1.png" },
-        { title: "深层焕肤", description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。", duration: "5分钟", tips: "避开眼唇周围，轻柔按摩。", dosage: "适量", imageUrl: "/images/ritual-step-1.png" },
-        { title: "芳香浸愈", description: "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。", duration: "15-20分钟", tips: "水温控制在38-40度为宜。", dosage: "几滴", imageUrl: "/images/ritual-step-2.png" },
-        { title: "精华导入", description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。", duration: "5分钟", tips: "掌心温热混合后效果更佳。", dosage: "适量混合", imageUrl: "/images/ritual-step-2.png" },
-        { title: "膜法封存", description: "将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养。", duration: "15分钟", tips: "无需清洗，剩余精华按摩至吸收。", imageUrl: "/images/ritual-step-2.png" },
+        {
+          title: "基础净肤",
+          description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
+          duration: "2分钟",
+          tips: "温水洗净，避免过冷或过热刺激。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+        {
+          title: "深层清理",
+          description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
+          duration: "3-5分钟",
+          tips: "避开眼唇周围，轻柔按摩。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+        {
+          title: "混油养肤",
+          description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。",
+          duration: "3-5分钟",
+          tips: "掌心温热混合后效果更佳。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "膜法封存",
+          description: "承接上个步骤，无需对面部做额外清理，将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养，有效提亮肤质、增强肌肤免疫力。",
+          duration: "10-15分钟",
+          tips: "无需清洗，剩余精华按摩至吸收。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+      ],
+    },
+    {
+      id: "p2",
+      name: "全身护理套餐",
+      nameEn: "FULL BODY CARE",
+      desc: "仅需 6 个步骤",
+      totalDuration: "30-45分钟",
+      products: "洁面、面膜、防晒、护手霜",
+      benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
+      specialSupport: "孕期、月子期、轻医美术后",
+      steps: [
+        {
+          title: "基础净肤",
+          description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
+          duration: "2分钟",
+          tips: "温水洗净，避免过冷或过热刺激。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+        {
+          title: "深层清理",
+          description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
+          duration: "3-5分钟",
+          tips: "避开眼唇周围，轻柔按摩。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+        {
+          title: "芳香浸愈 (可选)",
+          description: "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。",
+          duration: "15-20分钟",
+          tips: "水温控制在38-40度为宜。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "膜法守护",
+          description: "取一片面膜完整贴合面部，静享 10-15 分钟后移除膜布 (可与泡澡环节同时进行)；确保珍贵成分能有效被面部吸收。",
+          duration: "10-15分钟",
+          tips: "可配合泡澡一同进行。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "全身滋养",
+          description: "取适量身体乳，于掌心混合温热，从四肢向心脏方向进行长推式按摩，重点护理颈部、小腿、手臂及腹部；若所处的外部环境湿度/温度较低，建议额外按照 1:5 比例混合护理油加强滋润效果。",
+          duration: "5分钟",
+          tips: "趁身体微湿时涂抹效果更佳。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "面部呵护",
+          description: "取适量面霜，以由下至上、由内而外的手法进行全脸提拉按摩，重点按压眼周、法令纹及额头区域；确保全身及面部被完全呵护，实现更全面的修护及滋养，有效提亮肤质和弹性、延缓衰老、增强肌肤免疫力。",
+          duration: "5分钟",
+          tips: "配合按摩手法促进吸收。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
       ],
     },
   ],
@@ -1213,95 +1291,94 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -30 }}
                           transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
-                          className="absolute inset-0 flex flex-col overflow-hidden px-8 pt-10 lg:px-12 lg:pt-10 items-center"
+                          className="absolute inset-0 flex flex-col overflow-hidden px-8 pt-6 lg:px-12 lg:pt-6 items-center"
                         >
-                          <div className="flex h-full w-full max-w-[1440px] flex-col justify-start pt-12">
+                          <div className="flex h-full w-full max-w-[1440px] flex-col justify-start pt-8">
                             {/* Level 3 Header: 标题与切换器 */}
                             <header className="mb-9 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                               {/* 左侧标题组 */}
                               <div className="flex flex-row items-end gap-5">
                                 <h1 className="font-display text-[48px] font-light leading-none tracking-wider text-brand-charcoal">
-                                  {selectedModule === "portable"
-                                    ? modules.find(m => m.id === "portable")?.label
+                                  {selectedModule === "portable" || selectedModule === "professional"
+                                    ? modules.find(m => m.id === selectedModule)?.label
                                     : selectedScheme.name}
                                 </h1>
                                 {selectedModule !== "portable" && (
                                   <div className="flex items-center justify-center px-3 py-1 rounded-full border border-brand-charcoal/10 bg-white/50 gap-1.5">
-                                    {selectedModule !== "professional" && <Clock className="w-3 h-3 text-brand-charcoal/60" />}
+                                    <Clock className="w-3 h-3 text-brand-charcoal/60" />
                                     <span className="font-sans text-[11px] tracking-widest text-brand-charcoal/60 tabular-nums">
-                                      {selectedModule === "professional" ? "NIHPLOD 专业水疗" : (selectedScheme.totalDuration || "5-10分钟")}
+                                      {selectedScheme.totalDuration || "5-10分钟"}
                                     </span>
                                   </div>
                                 )}
                               </div>
 
                               {/* 右侧切换器 - 显示子方案Tab（如有）或情景列表（单品好物不显示） */}
-                              {selectedModule !== "professional" && (
-                                <nav className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
-                                  <LayoutGroup id={`tab-${selectedModule}`}>
-                                    {/* 如果有子方案，显示子方案 Tab */}
-                                    {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
-                                      selectedScheme.subPlans.map((subPlan) => {
-                                        const isActive = selectedSubPlan?.id === subPlan.id;
-                                        return (
-                                          <button
-                                            key={subPlan.id}
-                                            type="button"
-                                            onClick={() => {
-                                              setSelectedSubPlan(subPlan);
-                                              setCurrentStepIndex(0); // 重置轮播索引
-                                            }}
-                                            className={cn(
-                                              "relative px-6 py-1.5 text-[13px] tracking-widest transition-colors duration-300 rounded-full",
-                                              isActive
-                                                ? "text-brand-charcoal font-medium"
-                                                : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                                            )}
-                                          >
-                                            <span className="relative z-10">{subPlan.name}</span>
-                                            {isActive && (
-                                              <m.div
-                                                layoutId={`activeTabBackground-${selectedModule}`}
-                                                className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
-                                                initial={false}
-                                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                              />
-                                            )}
-                                          </button>
-                                        );
-                                      })
-                                    ) : (
-                                      /* 如果没有子方案，显示情景列表（原逻辑） */
-                                      moduleData[selectedModule].map((scheme) => {
-                                        const isActive = scheme.id === selectedScheme.id;
-                                        return (
-                                          <button
-                                            key={scheme.id}
-                                            type="button"
-                                            onClick={() => selectScheme(scheme)}
-                                            className={cn(
-                                              "relative px-6 py-1.5 text-[13px] tracking-widest transition-colors duration-300 rounded-full",
-                                              isActive
-                                                ? "text-brand-charcoal font-medium"
-                                                : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                                            )}
-                                          >
-                                            <span className="relative z-10">{scheme.name}</span>
-                                            {isActive && (
-                                              <m.div
-                                                layoutId={`activeTabBackground-${selectedModule}`}
-                                                className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
-                                                initial={false}
-                                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                              />
-                                            )}
-                                          </button>
-                                        );
-                                      })
-                                    )}
-                                  </LayoutGroup>
-                                </nav>
-                              )}
+                              {/* Tab navigation for modules with multiple schemes */}
+                              <nav className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
+                                <LayoutGroup id={`tab-${selectedModule}`}>
+                                  {/* 如果有子方案，显示子方案 Tab */}
+                                  {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
+                                    selectedScheme.subPlans.map((subPlan) => {
+                                      const isActive = selectedSubPlan?.id === subPlan.id;
+                                      return (
+                                        <button
+                                          key={subPlan.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedSubPlan(subPlan);
+                                            setCurrentStepIndex(0); // 重置轮播索引
+                                          }}
+                                          className={cn(
+                                            "relative px-6 py-1.5 text-[13px] tracking-widest transition-colors duration-300 rounded-full",
+                                            isActive
+                                              ? "text-brand-charcoal font-medium"
+                                              : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                                          )}
+                                        >
+                                          <span className="relative z-10">{subPlan.name}</span>
+                                          {isActive && (
+                                            <m.div
+                                              layoutId={`activeTabBackground-${selectedModule}`}
+                                              className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
+                                              initial={false}
+                                              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                            />
+                                          )}
+                                        </button>
+                                      );
+                                    })
+                                  ) : (
+                                    /* 如果没有子方案，显示情景列表（原逻辑） */
+                                    moduleData[selectedModule].map((scheme) => {
+                                      const isActive = scheme.id === selectedScheme.id;
+                                      return (
+                                        <button
+                                          key={scheme.id}
+                                          type="button"
+                                          onClick={() => selectScheme(scheme)}
+                                          className={cn(
+                                            "relative px-6 py-1.5 text-[13px] tracking-widest transition-colors duration-300 rounded-full",
+                                            isActive
+                                              ? "text-brand-charcoal font-medium"
+                                              : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                                          )}
+                                        >
+                                          <span className="relative z-10">{scheme.name}</span>
+                                          {isActive && (
+                                            <m.div
+                                              layoutId={`activeTabBackground-${selectedModule}`}
+                                              className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
+                                              initial={false}
+                                              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                            />
+                                          )}
+                                        </button>
+                                      );
+                                    })
+                                  )}
+                                </LayoutGroup>
+                              </nav>
                             </header>
 
                             {/* 内容主体：左侧边栏 + 右侧网格 */}
@@ -1846,9 +1923,21 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     </div>
 
                                     {/* 底部预约提示 */}
-                                    <div className="flex justify-start items-center">
-                                      <p className="text-xs text-brand-charcoal/80 tracking-widest font-light text-left leading-relaxed w-full">
-                                        NIHPLOD 旎柏专业水疗方案现已入驻全球多家奢华酒店及度假村。如需定制您的专属护理疗程、查询离您最近的合作机构或洽谈专业合作，敬请垂询我们的尊享服务团队。
+                                    <div className="flex flex-col justify-start items-start gap-1">
+                                      <p className="text-[13px] text-brand-charcoal/80 tracking-wide font-light text-left leading-relaxed flex items-center flex-wrap">
+                                        上述一二线城市的 Hotel SPA 主要门店均可
+                                        <span className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5">
+                                          <span className="relative z-10 font-semibold transition-colors duration-500 group-hover:text-brand-charcoal">在线预约</span>
+                                          <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
+                                          <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />
+                                        </span>
+                                        。找不到您所在城市的门店？银卡级别以上会员可
+                                        <span className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5">
+                                          <span className="relative z-10 font-semibold transition-colors duration-500 group-hover:text-brand-charcoal">申请入驻</span>
+                                          <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
+                                          <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />
+                                        </span>
+                                        。
                                       </p>
                                     </div>
 
