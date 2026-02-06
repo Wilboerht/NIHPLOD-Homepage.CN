@@ -1216,7 +1216,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                               >
                                 {/* Meta Item: Products */}
                                 <div className="flex flex-col relative isolate">
-                                  <h3 className="mb-4 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light z-10">
+                                  <h3 className="mb-4 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light z-10">
                                     涉及产品
                                   </h3>
 
@@ -1570,7 +1570,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                               </div>
                                             </div>
                                             {/* 产品名称 */}
-                                            <span className="text-xs font-medium tracking-wider text-brand-charcoal/70 group-hover:text-brand-charcoal transition-colors">
+                                            <span className="text-sm font-light text-brand-charcoal/80 group-hover:text-brand-charcoal transition-colors">
                                               {trimmedProduct}
                                             </span>
                                           </button>
@@ -1581,15 +1581,15 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
 
                                 {/* Meta Item: Benefits (Tags) */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
-                                    针对功效
+                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
+                                    核心优势
                                   </h3>
                                   <div className="flex flex-wrap gap-2">
                                     <div className="flex flex-wrap gap-x-6 gap-y-3">
                                       {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
                                         <div key={tag} className="flex items-center gap-2 group">
                                           <span className="text-[10px] text-brand-gold/60 group-hover:text-brand-gold transition-colors">✦</span>
-                                          <span className="text-[13px] tracking-widest text-brand-charcoal/70 font-light group-hover:text-brand-charcoal transition-colors">
+                                          <span className="text-sm tracking-widest text-brand-charcoal/70 font-light group-hover:text-brand-charcoal transition-colors">
                                             {tag}
                                           </span>
                                         </div>
@@ -1600,7 +1600,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
 
                                 {/* Meta Item: Certifications */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
+                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
                                     检测认证
                                   </h3>
                                   <div className="flex items-center gap-5">
@@ -1626,12 +1626,27 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                 {/* Meta Item: Special Support */}
                                 {selectedScheme.specialSupport && (
                                   <div className="flex flex-col">
-                                    <h3 className="mb-3 font-display text-sm font-medium uppercase tracking-widest text-brand-charcoal-light">
+                                    <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
                                       特殊人群支持
                                     </h3>
-                                    <p className="text-[13px] tracking-wider text-brand-charcoal/70 font-light">
-                                      {selectedSubPlan?.specialSupport || selectedScheme.specialSupport || "孕期、月子期、轻医美术后"}
-                                    </p>
+                                    {(() => {
+                                      const supportText = selectedSubPlan?.specialSupport || selectedScheme.specialSupport || "孕期、月子期、轻医美术后";
+                                      const isRestricted = supportText.includes("不支持");
+
+                                      return (
+                                        <div className={cn(
+                                          "pl-3 border-l-2 transition-colors duration-300 py-0.5",
+                                          isRestricted ? "border-orange-900/30" : "border-brand-gold/30"
+                                        )}>
+                                          <p className={cn(
+                                            "text-sm tracking-wider font-light",
+                                            isRestricted ? "text-orange-900/70" : "text-brand-charcoal/70"
+                                          )}>
+                                            {supportText}
+                                          </p>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </m.aside>
