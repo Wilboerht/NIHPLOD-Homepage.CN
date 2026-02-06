@@ -320,7 +320,7 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
                           return (
                             <button
                               key={link.href}
-                              onClick={openContact}
+                              onClick={() => openContact()}
                               className="text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
                             >
                               {link.label}
@@ -340,7 +340,7 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
                     </div>
 
                     {/* 辅助链接 - 移动端 (可折叠菜单) */}
-                    <MobileFooterMenu links={FOOTER_LINKS} onContactClick={openContact} />
+                    <MobileFooterMenu links={FOOTER_LINKS} onContactClick={() => openContact()} />
 
                     {/* 版权文本 */}
                     <p className="text-xs font-light tracking-widest text-brand-charcoal/60 relative z-10">

@@ -299,9 +299,10 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                   {/* 描述 */}
                   <section className="mb-8">
-                    <p className="text-[15px] leading-[1.8] text-[#00263E]/70 text-justify">
-                      {product.description}
-                    </p>
+                    <div
+                      className="text-[15px] leading-[1.8] text-[#00263E]/70 text-justify"
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
                   </section>
 
                   {/* Icon */}
@@ -358,9 +359,10 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                               exit={{ height: 0, opacity: 0 }}
                               className="overflow-hidden"
                             >
-                              <div className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60">
-                                {product.ingredients}
-                              </div>
+                              <div
+                                className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
+                                dangerouslySetInnerHTML={{ __html: product.ingredients }}
+                              />
                             </m.div>
                           )}
                         </AnimatePresence>
@@ -385,9 +387,10 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                               exit={{ height: 0, opacity: 0 }}
                               className="overflow-hidden"
                             >
-                              <div className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60">
-                                {product.usage}
-                              </div>
+                              <div
+                                className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
+                                dangerouslySetInnerHTML={{ __html: product.usage }}
+                              />
                             </m.div>
                           )}
                         </AnimatePresence>

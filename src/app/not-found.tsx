@@ -91,7 +91,7 @@ export default function NotFound() {
             <Link href="/ritual" className="text-brand-gold hover:underline">
               官方指南
             </Link>
-            <button onClick={openContact} className="text-brand-gold hover:underline">
+            <button onClick={() => openContact()} className="text-brand-gold hover:underline">
               联系我们
             </button>
           </div>

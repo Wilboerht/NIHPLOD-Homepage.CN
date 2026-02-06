@@ -104,7 +104,7 @@ export default function Error({ error, reset }: ErrorProps) {
           <p>
             如果问题持续存在，请
             <button
-              onClick={openContact}
+              onClick={() => openContact()}
               className="ml-1 text-brand-gold hover:underline"
             >
               联系我们
