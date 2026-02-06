@@ -25,11 +25,11 @@ const poolConfig: pg.PoolConfig = {
   // 公式：CPU核心数 * 2 + 磁盘IO并发数
   max: process.env.DATABASE_MAX_CONNECTIONS
     ? parseInt(process.env.DATABASE_MAX_CONNECTIONS)
-    : (process.env.NODE_ENV === "production" ? 20 : 20),
+    : (process.env.NODE_ENV === "production" ? 20 : 10),
   // 连接空闲 30秒后释放，节省资源
   idleTimeoutMillis: 30000,
-  // 获取连接等待超时 5秒，避免请求长时间卡死
-  connectionTimeoutMillis: 5000,
+  // 获取连接等待超时 10秒，避免请求长时间卡死
+  connectionTimeoutMillis: 10000,
 };
 
 const pool =

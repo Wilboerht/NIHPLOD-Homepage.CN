@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, ArrowUpRight } from "lucide-react";
+import { ChevronDown, ArrowUpRight, Clock, MousePointerClick } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { ProductDrawer } from "@/components/website";
@@ -1130,7 +1130,8 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     ? modules.find(m => m.id === "portable")?.label
                                     : selectedScheme.name}
                                 </h1>
-                                <div className="flex items-center justify-center px-3 py-1 rounded-full border border-brand-charcoal/10 bg-white/50">
+                                <div className="flex items-center justify-center px-3 py-1 rounded-full border border-brand-charcoal/10 bg-white/50 gap-1.5">
+                                  {selectedModule !== "professional" && <Clock className="w-3 h-3 text-brand-charcoal/60" />}
                                   <span className="font-sans text-[11px] tracking-widest text-brand-charcoal/60 tabular-nums">
                                     {selectedModule === "professional" ? "NIHPLOD 专业水疗" : (selectedScheme.totalDuration || "5-10分钟")}
                                   </span>
@@ -1785,13 +1786,19 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                               {/* 非激活状态下的内容 - 仅显示垂直标题或简略信息 */}
                                               <div
                                                 className={cn(
-                                                  "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+                                                  "absolute inset-0 flex flex-col items-center justify-center gap-6 transition-opacity duration-300",
                                                   isActive ? "opacity-0 pointer-events-none" : "opacity-100"
                                                 )}
                                               >
                                                 {/* 竖排文字标题 */}
-                                                <div className="writing-vertical-rl text-lg font-medium tracking-[0.2em] text-brand-charcoal/40 text-center">
+                                                <div className="writing-vertical-rl font-display text-2xl font-medium tracking-[0.2em] text-brand-charcoal/40 text-center select-none">
                                                   {step.title}
+                                                </div>
+
+                                                {/* 点击提示图标组 */}
+                                                <div className="flex flex-col items-center gap-2 animate-pulse-slow">
+                                                  <MousePointerClick className="w-8 h-8 text-brand-charcoal/40" strokeWidth={1} />
+                                                  <span className="text-[10px] tracking-widest text-brand-charcoal/40 font-light">查看</span>
                                                 </div>
                                               </div>
 
