@@ -204,36 +204,41 @@ const defaultModuleData: ModuleData = {
           <path d="M13.8237 3.18488C11.3623 3.82663 9.54547 6.06477 9.54547 8.72728C9.54547 11.8904 12.1096 14.4545 15.2727 14.4545C17.9352 14.4545 20.1734 12.6377 20.8151 10.1763C20.9363 10.7652 21 11.3752 21 12C21 16.9706 16.9706 21 12 21C7.02943 21 3 16.9706 3 12C3 7.02943 7.02943 3 12 3C12.6248 3 13.2348 3.06367 13.8237 3.18488Z" fill="#C3BC9F" stroke="#C3BC9F" strokeWidth="1.44" strokeLinejoin="round" />
         </svg>
       ),
-      totalDuration: "10-15分钟",
-      products: "洁面慕斯、面霜",
-      benefits: ["深层清洁", "夜间修护", "滋养再生"],
+      totalDuration: "15-20分钟",
+      products: "洁面、精华露、面膜、面霜、身体乳",
+      benefits: ["保湿锁水", "屏障增强", "抗初老", "维稳舒缓", "紧致提拉", "润泽提亮"],
+      specialSupport: "孕期、月子期、轻医美术后",
       steps: [
-        { title: "深度卸妆", description: "彻底溶解彩妆与防晒残留。", duration: "2分钟", tips: "干手干脸按摩，充分乳化后洗净。", dosage: "3泵", imageUrl: "/images/ritual-step-1.png" },
-        { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
-        { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "/images/ritual-step-2.png" },
-      ],
-      subPlans: [
         {
-          id: "basic",
-          name: "基础方案",
-          products: "洁面慕斯、面霜",
-          steps: [
-            { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
-            { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "/images/ritual-step-2.png" },
-          ]
+          title: "净肤",
+          description: "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
+          duration: "30秒",
+          tips: "温水洗净，避免过冷或过热刺激。",
+          imageUrl: "/images/ritual-step-1.png"
         },
         {
-          id: "deep",
-          name: "深度方案",
-          products: "洁面慕斯、面霜、面膜",
-          steps: [
-            { title: "深度卸妆", description: "彻底溶解彩妆与防晒残留。", duration: "2分钟", tips: "干手干脸按摩，充分乳化后洗净。", dosage: "3泵", imageUrl: "/images/ritual-step-1.png" },
-            { title: "温和洁面", description: "洗去多余油脂，不伤皮脂膜。", duration: "1分钟", tips: "重点清洁T区，两颊轻柔带过。", dosage: "1泵", imageUrl: "/images/ritual-step-1.png" },
-            { title: "精华导入", description: "配合精华液进行轻柔按摩，促进吸收。", duration: "2分钟", tips: "从下往上提拉按摩，促进精华渗透。", dosage: "2-3滴", imageUrl: "/images/ritual-step-2.png" },
-            { title: "紧致晚霜", description: "包裹式滋养，锁住营养成分。", duration: "1-2分钟", tips: "用掌心温热后按压于面部，让肌肤充分吸收。", dosage: "蚕豆大小", imageUrl: "/images/ritual-step-2.png" },
-          ]
-        }
-      ]
+          title: "渗透肌底",
+          description: "取适量精华于指腹，请点脸颊、眼周或颈部区域后，以打圈的方式轻轻按摩；让多重营养和修复因子渗入肌肤。",
+          duration: "2分钟",
+          tips: "从下往上提拉按摩，促进精华渗透。",
+          imageUrl: "/images/ritual-step-2.png"
+        },
+        {
+          title: "膜法封存",
+          description: "通过面膜的贴合覆盖，达到有效锁水，强化肌肤天然屏障和免疫力，帮助面部肌肤更好地应对偶尔出现的失衡状态。",
+          duration: "10-15分钟",
+          tips: "若后续无涂抹身体乳的计划，本步骤建议用面霜代替。",
+          imageUrl: "/images/ritual-step-3.png"
+        },
+        {
+          title: "滋养全身",
+          description: "取适量身体乳涂抹于周身，增强全身肌肤的天然防御机制，有效滋养和保湿；修复轻微皮肤损伤，保持肌肤健康光泽。",
+          duration: "3-5分钟",
+          tips: "沐浴后3分钟内涂抹效果最佳。",
+          imageUrl: "/images/ritual-step-1.png"
+        },
+      ],
+      subPlans: []
     },
   ],
   portable: [
