@@ -1977,6 +1977,56 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                       </p>
                                     </div>
                                   </m.section>
+                                ) : currentSteps.length <= 3 ? (
+                                  /* <= 3 步骤：直接展示卡片 (无折叠逻辑) */
+                                  <m.section
+                                    key={`${selectedModule}-simple`}
+                                    className="relative flex w-full h-[530px] items-center justify-center"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.5 }}
+                                  >
+                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch justify-center gap-6 px-4">
+                                      {currentSteps.map((step, index) => (
+                                        <div
+                                          key={`${step.title}-${index}`}
+                                          className="relative w-[320px] flex-none group"
+                                        >
+                                          {/* 步骤序号 */}
+                                          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
+                                            STEP {String(index + 1).padStart(2, "0")}
+                                          </div>
+
+                                          {/* 内容卡片 */}
+                                          <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white/40 hover:bg-white/80 backdrop-blur-md transition-all duration-500 hover:shadow-lg hover:-translate-y-1">
+                                            <div className="absolute inset-0 flex flex-col p-6 pt-10">
+
+                                              {/* 图片区域 */}
+                                              <div className="relative w-full h-[200px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-xl bg-brand-charcoal/5 mb-6 group-hover:bg-brand-charcoal/10 transition-colors duration-500">
+                                                <Image
+                                                  src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
+                                                  alt={step.title}
+                                                  fill
+                                                  className="object-contain mix-blend-multiply p-4"
+                                                />
+                                              </div>
+
+                                              {/* 文字区域 */}
+                                              <div className="flex flex-1 flex-col items-center text-center">
+                                                <h2 className="font-display text-2xl font-light tracking-wide text-brand-charcoal mb-4 whitespace-nowrap">
+                                                  {step.title}
+                                                </h2>
+                                                <p className="line-clamp-5 text-sm leading-relaxed text-brand-charcoal/70 font-light">
+                                                  {step.description}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </m.section>
                                 ) : (
                                   <m.section
                                     key={`${selectedModule}-accordion`}
