@@ -1266,7 +1266,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -30 }}
                           transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
-                          className="absolute inset-0 flex flex-col overflow-hidden px-8 pt-8 lg:px-12 lg:pt-12 items-center"
+                          className="absolute inset-0 flex flex-col overflow-hidden p-8 pt-24 lg:p-12 lg:pt-36 items-center"
                         >
                           <div className="flex h-full w-full max-w-[1440px] flex-col justify-start">
                             {/* Level 3 Header: 标题与切换器 */}
