@@ -1869,7 +1869,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                             <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
                                             <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />
                                           </span>
-                                          。
+                                          您所在的城市。
                                         </p>
                                       </div>
                                     </header>
