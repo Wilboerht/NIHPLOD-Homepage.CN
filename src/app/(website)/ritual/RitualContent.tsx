@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, ArrowUpRight, Clock, MousePointerClick, Info } from "lucide-react";
+import { ChevronDown, ArrowUpRight, Clock, MousePointerClick, Info, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1044,8 +1044,9 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                 setSelectedModule(null);
                                 setSelectedScheme(null);
                               }}
-                              className="transition-colors duration-300 hover:text-brand-charcoal"
+                              className="group flex items-center gap-0.5 transition-colors duration-300 hover:text-brand-charcoal"
                             >
+                              <ChevronLeft className="h-3.5 w-3.5 text-brand-charcoal/50 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:text-brand-charcoal" />
                               护肤仪式
                             </button>
 
@@ -1063,8 +1064,9 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                       setCurrentLevel(2);
                                       setSelectedScheme(null);
                                     }}
-                                    className="transition-colors duration-300 hover:text-brand-charcoal"
+                                    className="group flex items-center gap-0.5 transition-colors duration-300 hover:text-brand-charcoal"
                                   >
+                                    <ChevronLeft className="h-3.5 w-3.5 text-brand-charcoal/50 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:text-brand-charcoal" />
                                     {modules.find(m => m.id === selectedModule)?.label}
                                   </button>
                                 )}
