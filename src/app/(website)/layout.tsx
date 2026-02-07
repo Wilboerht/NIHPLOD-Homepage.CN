@@ -16,9 +16,7 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
   return (
     <div className="min-h-screen">
       {/* Skip to main content 链接 - 可访问性 */}
-      <a href="#main-content" className="skip-link">
-        跳至主要内容
-      </a>
+
 
       {/* 全局共享背景 - 消除页面切换闪烁 */}
       <div className="fullscreen-bg-base" />
