@@ -1999,11 +1999,11 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                           </div>
 
                                           {/* 内容卡片 */}
-                                          <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white/40 hover:bg-white/80 backdrop-blur-md transition-all duration-500 hover:shadow-lg hover:-translate-y-1">
+                                          <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md">
                                             <div className="absolute inset-0 flex flex-col p-6 pt-10">
 
                                               {/* 图片区域 */}
-                                              <div className="relative w-full h-[200px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-xl bg-brand-charcoal/5 mb-6 group-hover:bg-brand-charcoal/10 transition-colors duration-500">
+                                              <div className="relative w-full h-[200px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-xl bg-brand-beige/20 mb-6">
                                                 <Image
                                                   src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
                                                   alt={step.title}
@@ -2014,10 +2014,10 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
 
                                               {/* 文字区域 */}
                                               <div className="flex flex-1 flex-col items-center text-center">
-                                                <h2 className="font-display text-2xl font-light tracking-wide text-brand-charcoal mb-4 whitespace-nowrap">
+                                                <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap">
                                                   {step.title}
                                                 </h2>
-                                                <p className="line-clamp-5 text-sm leading-relaxed text-brand-charcoal/70 font-light">
+                                                <p className="line-clamp-5 text-sm leading-relaxed text-brand-charcoal/70">
                                                   {step.description}
                                                 </p>
                                               </div>
