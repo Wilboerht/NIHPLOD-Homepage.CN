@@ -248,7 +248,7 @@ const defaultModuleData: ModuleData = {
   portable: [
     {
       id: "t1",
-      name: "日常外出（通勤）",
+      name: "日常外出",
       nameEn: "DAILY COMMUTE",
       tag: "通勤",
       desc: "富含多重功效的防晒，能有效抵御紫外线伤害，预防光老化；同时使用护手霜则能滋养双手，抵御干燥和外界刺激，让您的双手亦时刻保持健康与舒适。",
@@ -262,7 +262,7 @@ const defaultModuleData: ModuleData = {
     },
     {
       id: "t2",
-      name: "轻悦旅行（中短途）",
+      name: "轻悦旅行",
       nameEn: "LIGHT TRAVEL",
       tag: "中短途",
       desc: "你的便携式“旅行护肤急救箱”- 氨基酸洁面慕斯温和清洁，防晒霜抵御光损伤，护手霜随时滋润干燥双手，莱赛尔贴片面膜为肌肤快速“充电+修护+维稳”；按需携带，让你在紧凑行程中也能时刻容光焕发。",
@@ -276,7 +276,7 @@ const defaultModuleData: ModuleData = {
     },
     {
       id: "t3",
-      name: "多效芳疗（沐浴/滋润加强）",
+      name: "多效芳疗",
       nameEn: "MULTI-EFFECT AROMATHERAPY",
       tag: "芳疗",
       desc: "这款奢华护理油是您私人 SPA 的核心，在泡澡时滴入数滴，便可瞬间将浴室升华为芳香疗愈场，让卓越的润肤力包裹并环绕您的全身；而干燥时节，只需将其与任意面霜、精华或身体乳混合，即可定制出加倍润泽的顶级护理体验。",
@@ -1043,10 +1043,12 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                 setSelectedModule(null);
                                 setSelectedScheme(null);
                               }}
-                              className="group flex items-center gap-0.5 transition-colors duration-300 hover:text-brand-charcoal"
+                              className="group flex items-center gap-1.5 rounded-full border border-brand-charcoal/10 bg-white/40 px-4 py-1.5 backdrop-blur-md transition-all duration-300 hover:bg-white/80 hover:border-brand-charcoal/20 hover:shadow-sm"
                             >
-                              <ChevronLeft className="h-3.5 w-3.5 text-brand-charcoal/50 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:text-brand-charcoal" />
-                              返回
+                              <ChevronLeft className="h-3.5 w-3.5 text-brand-charcoal/60 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:text-brand-charcoal" />
+                              <span className="text-xs font-medium tracking-widest text-brand-charcoal/80 transition-colors duration-300 group-hover:text-brand-charcoal">
+                                返回
+                              </span>
                             </button>
                           </m.nav>
                         ) : null}
