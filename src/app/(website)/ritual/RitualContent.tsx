@@ -1036,7 +1036,6 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                             exit={{ opacity: 0, x: 10 }}
                             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                           >
-                            {/* 护肤仪式 - 点击返回 Level 1 */}
                             <button
                               type="button"
                               onClick={() => {
@@ -1047,38 +1046,8 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                               className="group flex items-center gap-0.5 transition-colors duration-300 hover:text-brand-charcoal"
                             >
                               <ChevronLeft className="h-3.5 w-3.5 text-brand-charcoal/50 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:text-brand-charcoal" />
-                              护肤仪式
+                              返回
                             </button>
-
-                            {selectedModule && (
-                              <>
-                                <span className="text-brand-charcoal/30">/</span>
-                                {currentLevel === 2 || selectedModule === "portable" || selectedModule === "professional" || selectedModule === "spa" ? (
-                                  <span className="text-brand-charcoal">
-                                    {modules.find(m => m.id === selectedModule)?.label}
-                                  </span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setCurrentLevel(2);
-                                      setSelectedScheme(null);
-                                    }}
-                                    className="group flex items-center gap-0.5 transition-colors duration-300 hover:text-brand-charcoal"
-                                  >
-                                    <ChevronLeft className="h-3.5 w-3.5 text-brand-charcoal/50 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:text-brand-charcoal" />
-                                    {modules.find(m => m.id === selectedModule)?.label}
-                                  </button>
-                                )}
-                              </>
-                            )}
-
-                            {currentLevel === 3 && selectedScheme && selectedModule !== "portable" && selectedModule !== "professional" && selectedModule !== "spa" && (
-                              <>
-                                <span className="text-brand-charcoal/30">/</span>
-                                <span className="text-brand-charcoal">{selectedScheme.name}</span>
-                              </>
-                            )}
                           </m.nav>
                         ) : null}
                       </AnimatePresence>
