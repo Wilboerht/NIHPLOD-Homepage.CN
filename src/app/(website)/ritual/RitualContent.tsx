@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, ArrowUpRight, Clock, MousePointerClick, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ArrowUpRight, Clock, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -608,8 +608,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   // 展开的步骤索引（用于显示技巧提示）
   const [_expandedStepIndex, _setExpandedStepIndex] = useState<number | null>(null);
 
-  // 自动播放控制
-  const [isPaused, setIsPaused] = useState(false);
+  // 自动播放控制 (已禁用)
+  // const [isPaused, setIsPaused] = useState(false);
 
   // 步骤自动轮播逻辑 (已禁用)
   // useEffect(() => {
