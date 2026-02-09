@@ -2051,10 +2051,10 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                           <m.article
                                             key={`${step.title}-${index}`}
                                             layout
-                                            transition={{ layout: { duration: 0.5, ease: [0.25, 1, 0.5, 1] } }}
+                                            transition={{ layout: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } }}
                                             onClick={() => setCurrentStepIndex(index)}
                                             className={cn(
-                                              "relative h-full transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
+                                              "relative h-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
                                               isActive
                                                 ? "w-[320px] flex-none cursor-default"
                                                 : "flex-1 min-w-0 cursor-pointer"
