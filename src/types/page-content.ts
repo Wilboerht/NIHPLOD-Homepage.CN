@@ -273,8 +273,6 @@ export interface ProductsPageContent {
     en: string; // PRODUCTS
     zh: string; // 探索产品
   };
-  // 背景图片
-  backgroundImage?: string;
 }
 
 // ============================================
@@ -286,8 +284,6 @@ export interface AdvisorPageContent {
     title: string; // AI 护肤顾问
     subtitle: string; // 描述文字
   };
-  // 背景图片
-  backgroundImage?: string;
 }
 
 // 页面类型映射
@@ -459,14 +455,12 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
     },
     products: {
       pageTitle: { en: "PRODUCTS", zh: "探索产品" },
-      backgroundImage: "/images/bg.png",
     },
     advisor: {
       welcome: {
         title: "AI 护肤顾问",
         subtitle: "通过 AI 智能分析，获取专属于您的个性化护肤方案",
       },
-      backgroundImage: "/images/bg.png",
     },
   };
 

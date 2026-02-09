@@ -3,16 +3,13 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState, useCallback } from "react";
 import { m, AnimatePresence } from "framer-motion";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, MapPin, X } from "lucide-react";
 import { useAdvisorAnalytics } from "@/hooks/useAdvisorAnalytics";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
-interface AdvisorWelcomeProps {
-  backgroundImage?: string;
-}
+
 
 /**
  * AI 护肤顾问欢迎页
@@ -22,7 +19,7 @@ interface AdvisorWelcomeProps {
  *
  * 设计风格：大气、精致、清爽、简约不简单
  */
-export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
+export function AdvisorWelcome() {
   const router = useRouter();
   const { initSession } = useAdvisorAnalytics();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -143,19 +140,7 @@ export function AdvisorWelcome({ backgroundImage }: AdvisorWelcomeProps) {
       `}</style>
 
       {/* Background */}
-      {backgroundImage && (
-        <div className="fullscreen-bg">
-          <Image
-            src={backgroundImage}
-            alt="Background"
-            fill
-            priority
-            quality={75}
-            className="object-cover"
-            sizes="100vw"
-          />
-        </div>
-      )}
+
 
       {/* Main Drawer Container */}
       <m.div

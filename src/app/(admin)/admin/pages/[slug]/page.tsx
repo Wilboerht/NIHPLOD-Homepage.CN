@@ -4,11 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Save, Eye, EyeOff, Settings, FileText, ImageIcon, X } from "lucide-react";
+import { ArrowLeft, Save, Eye, EyeOff, Settings, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { SeoEditor } from "@/components/admin/SeoEditor";
-import { BackgroundImagePicker } from "@/components/admin/BackgroundImagePicker";
+
 import {
   HomeContentEditor,
   StoryContentEditor,
@@ -28,12 +28,11 @@ interface PageData {
   slug: string;
   content: Record<string, unknown>;
   seo: SeoConfig | null;
-  backgroundImage: string | null;
   published: boolean;
   updatedAt: string;
 }
 
-type TabType = "content" | "seo" | "background";
+type TabType = "content" | "seo";
 
 export default function PageEditPage() {
   const router = useRouter();
@@ -46,7 +45,7 @@ export default function PageEditPage() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("content");
   const [hasChanges, setHasChanges] = useState(false);
-  const [showBackgroundPicker, setShowBackgroundPicker] = useState(false);
+
 
   // 获取页面数据
   const fetchPage = useCallback(async () => {
@@ -86,7 +85,6 @@ export default function PageEditPage() {
         body: JSON.stringify({
           content: page.content,
           seo: page.seo,
-          backgroundImage: page.backgroundImage,
         }),
       });
 
@@ -143,18 +141,7 @@ export default function PageEditPage() {
     setHasChanges(true);
   };
 
-  // 更新背景图片
-  const updateBackgroundImage = (url: string) => {
-    setPage((prev) => (prev ? { ...prev, backgroundImage: url } : null));
-    setHasChanges(true);
-    setShowBackgroundPicker(false);
-  };
 
-  // 删除背景图片
-  const removeBackgroundImage = () => {
-    setPage((prev) => (prev ? { ...prev, backgroundImage: null } : null));
-    setHasChanges(true);
-  };
 
   // 渲染内容编辑器
   const renderContentEditor = () => {
@@ -303,18 +290,7 @@ export default function PageEditPage() {
             <FileText className="h-4 w-4" />
             页面内容
           </button>
-          <button
-            onClick={() => setActiveTab("background")}
-            className={cn(
-              "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
-              activeTab === "background"
-                ? "border-brand-gold text-brand-gold"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            )}
-          >
-            <ImageIcon className="h-4 w-4" />
-            背景图片
-          </button>
+
           <button
             onClick={() => setActiveTab("seo")}
             className={cn(
@@ -333,74 +309,13 @@ export default function PageEditPage() {
       {/* 内容区域 */}
       <div className="rounded-xl bg-white p-6 shadow-sm">
         {activeTab === "content" && renderContentEditor()}
-        {activeTab === "background" && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="mb-2 text-lg font-medium text-gray-900">页面背景图片</h3>
-              <p className="text-sm text-gray-500">
-                设置页面的背景图片，将显示在页面顶部或作为页面背景
-              </p>
-            </div>
 
-            {page.backgroundImage ? (
-              <div className="space-y-4">
-                <div className="relative aspect-[21/9] w-full overflow-hidden rounded-lg border border-gray-200">
-                  <Image
-                    src={page.backgroundImage}
-                    alt="页面背景图片"
-                    fill
-                    className="object-cover"
-                  />
-                  <button
-                    onClick={removeBackgroundImage}
-                    className="absolute right-2 top-2 rounded-full bg-red-500 p-2 text-white shadow-lg transition-colors hover:bg-red-600"
-                    title="删除背景图片"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <Button
-                  variant="outline"
-                  leftIcon={<ImageIcon className="h-4 w-4" />}
-                  onClick={() => setShowBackgroundPicker(true)}
-                >
-                  更换背景图片
-                </Button>
-              </div>
-            ) : (
-              <div
-                onClick={() => setShowBackgroundPicker(true)}
-                className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-12 transition-colors hover:border-brand-gold hover:bg-brand-cream/30"
-              >
-                <div className="mb-3 rounded-full bg-gray-100 p-4">
-                  <ImageIcon className="h-8 w-8 text-gray-400" />
-                </div>
-                <p className="mb-1 text-sm font-medium text-gray-700">
-                  点击选择背景图片
-                </p>
-                <p className="text-xs text-gray-500">
-                  建议使用宽屏比例的图片，如 21:9 或 16:9
-                </p>
-                <p className="mt-2 text-xs text-gray-400">
-                  可以直接上传，或上传后裁剪调整图片区域
-                </p>
-              </div>
-            )}
-          </div>
-        )}
         {activeTab === "seo" && (
           <SeoEditor value={page.seo || {}} onChange={updateSeo} />
         )}
       </div>
 
-      {/* 背景图片选择器（带裁剪功能） */}
-      <BackgroundImagePicker
-        isOpen={showBackgroundPicker}
-        onClose={() => setShowBackgroundPicker(false)}
-        onSelect={updateBackgroundImage}
-        aspectRatio={21 / 9}
-        title="选择背景图片"
-      />
+
     </div>
   );
 }

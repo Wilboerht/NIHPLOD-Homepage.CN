@@ -134,14 +134,14 @@ function SectionEditor({
 
 // Hero 区块编辑器
 interface HeroEditorProps {
-  value: { title: string; subtitle?: string; backgroundImage?: string } | undefined;
-  onChange: (hero: { title: string; subtitle?: string; backgroundImage?: string }) => void;
+  value: { title: string; subtitle?: string } | undefined;
+  onChange: (hero: { title: string; subtitle?: string }) => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function HeroEditor({ value, onChange }: HeroEditorProps) {
   // 确保 value 存在
-  const hero = value || { title: "", subtitle: "", backgroundImage: "" };
+  const hero = value || { title: "", subtitle: "" };
 
   return (
     <div className="space-y-4">
@@ -154,12 +154,6 @@ function HeroEditor({ value, onChange }: HeroEditorProps) {
         label="副标题"
         value={hero.subtitle || ""}
         onChange={(e) => onChange({ ...hero, subtitle: e.target.value })}
-      />
-      <Input
-        label="背景图片 URL"
-        value={hero.backgroundImage || ""}
-        onChange={(e) => onChange({ ...hero, backgroundImage: e.target.value })}
-        placeholder="输入背景图片地址"
       />
     </div>
   );

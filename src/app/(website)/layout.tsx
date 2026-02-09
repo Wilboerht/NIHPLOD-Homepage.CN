@@ -20,17 +20,7 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
 
       {/* 全局共享背景 - 消除页面切换闪烁 */}
       <div className="fullscreen-bg-base" />
-      <div className="fullscreen-bg">
-        <Image
-          src="/images/bg.png"
-          alt="Background"
-          fill
-          priority
-          quality={75}
-          className="object-cover"
-          sizes="100vw"
-        />
-      </div>
+
 
       {/* 主内容区域，包含 NavBar 逻辑 */}
       <WebsiteLayoutClient>

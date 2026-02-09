@@ -25,22 +25,20 @@ export const revalidate = 60;
 /**
  * 获取页面背景图片
  */
-async function getPageData(): Promise<{ backgroundImage?: string }> {
+async function getPageData(): Promise<void> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "advisor" },
-      select: { published: true, backgroundImage: true },
+      select: { published: true },
     });
 
     if (page?.published) {
-      return {
-        backgroundImage: page.backgroundImage || undefined,
-      };
+      return;
     }
   } catch (error) {
     console.error("获取顾问页面数据失败:", error);
   }
-  return {};
+  return;
 }
 
 /**
@@ -48,7 +46,7 @@ async function getPageData(): Promise<{ backgroundImage?: string }> {
  * Server Component - 数据获取
  */
 export default async function AdvisorPage() {
-  const pageData = await getPageData();
+  await getPageData();
 
   return (
     <Suspense
@@ -58,7 +56,7 @@ export default async function AdvisorPage() {
         </div>
       }
     >
-      <AdvisorWelcome backgroundImage={pageData.backgroundImage} />
+      <AdvisorWelcome />
     </Suspense>
   );
 }

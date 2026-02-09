@@ -137,10 +137,9 @@ const FOOTER_LINKS = [
 
 interface HomeClientProps {
   content?: HomePageContent;
-  backgroundImage?: string | null;
 }
 
-export default function HomeClient({ content: _content, backgroundImage }: HomeClientProps) {
+export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
@@ -378,19 +377,7 @@ export default function HomeClient({ content: _content, backgroundImage }: HomeC
       </m.div >
 
       {/* 动态背景图片 - 移至最底层，位于 safe-area-content 之外或作为其第一层 */}
-      {backgroundImage && (
-        <div className="fixed inset-0 z-[-1]">
-          <Image
-            src={backgroundImage}
-            alt="Background"
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* 叠加层，确保文字可读性 */}
-          <div className="absolute inset-0 bg-black/10" />
-        </div>
-      )}
+
 
       {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
     </>

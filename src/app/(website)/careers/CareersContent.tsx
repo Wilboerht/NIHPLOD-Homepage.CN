@@ -54,14 +54,14 @@ const defaultContent: CareersPageContent = {
 interface CareersContentProps {
   jobs: Job[];
   content?: CareersPageContent;
-  backgroundImage?: string;
+
 }
 
 /**
  * 招聘页面内容组件
  * 直接显示开放职位
  */
-export function CareersContent({ jobs, content, backgroundImage }: CareersContentProps) {
+export function CareersContent({ jobs, content }: CareersContentProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   // 合并默认内容和传入内容
@@ -73,19 +73,7 @@ export function CareersContent({ jobs, content, backgroundImage }: CareersConten
   return (
     <>
       {/* 全屏背景容器 - 延伸到安全区域外，覆盖状态栏 */}
-      <div className="fullscreen-bg">
-        {/* 背景图片 */}
-        <div className="absolute inset-0">
-          <Image
-            src={backgroundImage || "/images/bg.png"}
-            alt="加入我们"
-            fill
-            priority
-            className="object-cover"
-            sizes="100vw"
-          />
-        </div>
-      </div>
+
 
       {/* 主内容区域 - 在安全区域内 */}
       <m.div
@@ -94,78 +82,78 @@ export function CareersContent({ jobs, content, backgroundImage }: CareersConten
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="safe-area-content"
       >
-          <div className="flex h-full flex-col items-center">
-            {/* 主内容区域 */}
-            <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl">
-              <div className="flex h-full flex-col overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-                {/* 页面标题 */}
-                <div className="mb-6 text-center sm:mb-8">
-                  <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                    {title.en}
-                  </p>
-                  <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                    {title.zh}
-                  </h1>
-                  <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
-                    {description}
-                  </p>
-                </div>
+        <div className="flex h-full flex-col items-center">
+          {/* 主内容区域 */}
+          <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl">
+            <div className="flex h-full flex-col overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+              {/* 页面标题 */}
+              <div className="mb-6 text-center sm:mb-8">
+                <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
+                  {title.en}
+                </p>
+                <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
+                  {title.zh}
+                </h1>
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
+                  {description}
+                </p>
+              </div>
 
-                {/* 开放职位内容 */}
-                <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
-                  <div className="space-y-4">
-                    {jobs.length === 0 ? (
-                      <div className="py-8 text-center">
-                        <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
-                        <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
-                      </div>
-                    ) : (
-                      jobs.map((job, index) => (
-                        <JobCard
-                          key={job.id}
-                          job={job}
-                          index={index}
-                          onClick={() => setSelectedJob(job)}
-                        />
-                      ))
-                    )}
+              {/* 开放职位内容 */}
+              <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
+                <div className="space-y-4">
+                  {jobs.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
+                      <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
+                    </div>
+                  ) : (
+                    jobs.map((job, index) => (
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        index={index}
+                        onClick={() => setSelectedJob(job)}
+                      />
+                    ))
+                  )}
 
-                    {/* 投递方式 */}
-                    {submitTip && (
-                      <m.div
-                        className="mt-6 rounded-xl bg-brand-gold/10 p-5"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.2 }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold">
-                            <Mail className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-serif text-base text-brand-charcoal">{submitTip.title}</h3>
-                            <p className="mt-1 whitespace-pre-line text-sm text-brand-charcoal/70">
-                              {submitTip.content}
-                            </p>
-                          </div>
+                  {/* 投递方式 */}
+                  {submitTip && (
+                    <m.div
+                      className="mt-6 rounded-xl bg-brand-gold/10 p-5"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold">
+                          <Mail className="h-5 w-5 text-white" />
                         </div>
-                      </m.div>
-                    )}
-                  </div>
+                        <div>
+                          <h3 className="font-serif text-base text-brand-charcoal">{submitTip.title}</h3>
+                          <p className="mt-1 whitespace-pre-line text-sm text-brand-charcoal/70">
+                            {submitTip.content}
+                          </p>
+                        </div>
+                      </div>
+                    </m.div>
+                  )}
                 </div>
               </div>
             </div>
-
-            {/* 回到首页按钮 */}
-            <Link
-              href="/"
-              className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
-            >
-              <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
-              <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回首页</span>
-            </Link>
           </div>
-        </m.div>
+
+          {/* 回到首页按钮 */}
+          <Link
+            href="/"
+            className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
+          >
+            <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
+            <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回首页</span>
+          </Link>
+        </div>
+      </m.div>
 
       {/* 职位详情弹窗 */}
       <AnimatePresence>

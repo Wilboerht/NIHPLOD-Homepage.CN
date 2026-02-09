@@ -46,14 +46,14 @@ interface FormData {
 
 interface ContactContentProps {
   content?: ContactPageContent;
-  backgroundImage?: string;
+
 }
 
 /**
  * 联系我们页面内容组件
  * 样式参考 ServicesContent - 始终全屏显示，无展开/收起功能
  */
-export function ContactContent({ content, backgroundImage }: ContactContentProps) {
+export function ContactContent({ content }: ContactContentProps) {
   // 合并默认内容和传入内容
   const title = content?.title || defaultContent.title;
   const description = content?.description || defaultContent.description;
@@ -167,27 +167,7 @@ export function ContactContent({ content, backgroundImage }: ContactContentProps
   return (
     <>
       {/* 全屏背景容器 - 延伸到安全区域外，覆盖状态栏 */}
-      <div className="fullscreen-bg">
-        {/* 背景图片 */}
-        <div className="absolute inset-0">
-          <Image
-            src={backgroundImage || "/images/bg.png"}
-            alt="联系我们"
-            fill
-            priority
-            quality={75}
-            className="object-cover"
-            sizes="100vw"
-          />
-          {/* 毛玻璃遮罩层 - 滚动时显示 */}
-          <div
-            className={cn(
-              "absolute inset-0 bg-white/30 backdrop-blur-md transition-opacity duration-300",
-              isScrolled ? "opacity-100" : "opacity-0"
-            )}
-          />
-        </div>
-      </div>
+
 
       {/* 主内容区域 - 在安全区域内 */}
       <m.div
@@ -196,223 +176,223 @@ export function ContactContent({ content, backgroundImage }: ContactContentProps
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="safe-area-content"
       >
-          <div className="flex h-full flex-col items-center">
-            {/* 主内容区域 */}
-            <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl">
-              <div className="flex h-full flex-col justify-center overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-                {/* 页面标题 */}
-                <div className="mb-6 text-center sm:mb-8">
-                  <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                    {title.en}
-                  </p>
-                  <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                    {title.zh}
-                  </h1>
-                  <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base">
-                    {description}
-                  </p>
-                </div>
+        <div className="flex h-full flex-col items-center">
+          {/* 主内容区域 */}
+          <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl">
+            <div className="flex h-full flex-col justify-center overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+              {/* 页面标题 */}
+              <div className="mb-6 text-center sm:mb-8">
+                <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
+                  {title.en}
+                </p>
+                <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
+                  {title.zh}
+                </h1>
+                <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base">
+                  {description}
+                </p>
+              </div>
 
-                {/* 联系表单 */}
-                <div className="mx-auto w-full max-w-xl">
-                  {status === "success" && (
-                    <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-green-50/80 p-4 text-green-700 backdrop-blur-sm">
-                      <CheckCircle className="h-5 w-5" />
-                      <span className="text-sm">{message}</span>
-                    </div>
-                  )}
-                  {status === "error" && (
-                    <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-red-50/80 p-4 text-red-700 backdrop-blur-sm">
-                      <AlertCircle className="h-5 w-5" />
-                      <span className="text-sm">{message}</span>
-                    </div>
-                  )}
+              {/* 联系表单 */}
+              <div className="mx-auto w-full max-w-xl">
+                {status === "success" && (
+                  <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-green-50/80 p-4 text-green-700 backdrop-blur-sm">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="text-sm">{message}</span>
+                  </div>
+                )}
+                {status === "error" && (
+                  <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-red-50/80 p-4 text-red-700 backdrop-blur-sm">
+                    <AlertCircle className="h-5 w-5" />
+                    <span className="text-sm">{message}</span>
+                  </div>
+                )}
 
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* 蜜罐字段 */}
-                    <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {/* 蜜罐字段 */}
+                  <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
 
-                    {/* 姓名和邮箱并排 */}
-                    <div className="grid gap-5 sm:grid-cols-2">
-                      <div>
-                        <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
-                          姓名 <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          id="name"
-                          name="name"
-                          value={formData.name}
-                          onChange={handleChange}
-                          placeholder="请输入您的姓名"
-                          autoComplete="name"
-                          className={cn(
-                            "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
-                            errors.name ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
-                          )}
-                        />
-                        {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
-                      </div>
-
-                      <div>
-                        <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
-                          邮箱 <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          placeholder="请输入您的邮箱"
-                          autoComplete="email"
-                          inputMode="email"
-                          className={cn(
-                            "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
-                            errors.email ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
-                          )}
-                        />
-                        {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
-                      </div>
-                    </div>
-
-                    {/* 留言类型 - 自定义下拉框 */}
-                    <div ref={typeDropdownRef} className="relative">
-                      <label htmlFor="type" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
-                        留言类型 <span className="text-red-500">*</span>
-                      </label>
-                      {/* 触发按钮 */}
-                      <button
-                        type="button"
-                        onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                        className={cn(
-                          "flex w-full items-center justify-between rounded-xl border bg-white/90 px-4 py-3 text-left text-sm outline-none transition-all backdrop-blur-sm",
-                          !formData.type && "text-brand-charcoal/50",
-                          errors.type
-                            ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                            : "border-brand-beige/50 hover:border-brand-gold/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10",
-                          isTypeDropdownOpen && !errors.type && "border-brand-gold ring-2 ring-brand-gold/10"
-                        )}
-                      >
-                        <span className="flex items-center gap-2.5">
-                          {formData.type && (() => {
-                            const selected = messageTypes.find(t => t.value === formData.type);
-                            if (selected) {
-                              const Icon = selected.icon;
-                              return <Icon className="h-4 w-4 text-brand-gold" />;
-                            }
-                            return null;
-                          })()}
-                          <span className={formData.type ? "text-brand-charcoal" : ""}>
-                            {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
-                          </span>
-                        </span>
-                        <ChevronDown className={cn(
-                          "h-4 w-4 text-brand-charcoal/40 transition-transform duration-200",
-                          isTypeDropdownOpen && "rotate-180"
-                        )} />
-                      </button>
-
-                      {/* 下拉选项 */}
-                      <AnimatePresence>
-                        {isTypeDropdownOpen && (
-                          <m.div
-                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                            transition={{ duration: 0.15, ease: "easeOut" }}
-                            className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-brand-beige/50 bg-white/95 shadow-lg shadow-brand-charcoal/5 backdrop-blur-sm"
-                          >
-                            {messageTypes.filter(t => t.value !== "").map((type, index) => {
-                              const Icon = type.icon;
-                              const isSelected = formData.type === type.value;
-                              return (
-                                <button
-                                  key={type.value}
-                                  type="button"
-                                  onClick={() => {
-                                    setFormData(prev => ({ ...prev, type: type.value }));
-                                    setIsTypeDropdownOpen(false);
-                                    if (errors.type) {
-                                      setErrors(prev => ({ ...prev, type: "" }));
-                                    }
-                                  }}
-                                  className={cn(
-                                    "flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all",
-                                    isSelected
-                                      ? "bg-brand-gold/10 text-brand-charcoal"
-                                      : "text-brand-charcoal/70 hover:bg-brand-beige/30 hover:text-brand-charcoal",
-                                    index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-brand-beige/30"
-                                  )}
-                                >
-                                  <Icon className={cn(
-                                    "h-4 w-4 transition-colors",
-                                    isSelected ? "text-brand-gold" : "text-brand-charcoal/40"
-                                  )} />
-                                  <span>{type.label}</span>
-                                  {isSelected && (
-                                    <CheckCircle className="ml-auto h-4 w-4 text-brand-gold" />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </m.div>
-                        )}
-                      </AnimatePresence>
-                      {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
-                    </div>
-
-                    {/* 留言内容 */}
+                  {/* 姓名和邮箱并排 */}
+                  <div className="grid gap-5 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="content" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
-                        留言内容 <span className="text-red-500">*</span>
+                      <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                        姓名 <span className="text-red-500">*</span>
                       </label>
-                      <textarea
-                        id="content"
-                        name="content"
-                        value={formData.content}
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name}
                         onChange={handleChange}
-                        placeholder="请输入您的留言内容..."
-                        rows={5}
+                        placeholder="请输入您的姓名"
+                        autoComplete="name"
                         className={cn(
-                          "w-full resize-none rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
-                          errors.content ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                          "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
+                          errors.name ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
                         )}
                       />
-                      {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
+                      {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={status === "loading"}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold py-3.5 text-sm font-medium text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold/90 hover:shadow-xl hover:shadow-brand-gold/30 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {status === "loading" ? (
-                        <><Loader2 className="h-4 w-4 animate-spin" /><span>提交中...</span></>
-                      ) : (
-                        <><Send className="h-4 w-4" /><span>提交留言</span></>
-                      )}
-                    </button>
-                  </form>
+                    <div>
+                      <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                        邮箱 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="请输入您的邮箱"
+                        autoComplete="email"
+                        inputMode="email"
+                        className={cn(
+                          "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
+                          errors.email ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                        )}
+                      />
+                      {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
+                    </div>
+                  </div>
 
-                  {/* 版权信息 */}
-                  <p className="mt-6 text-center text-xs text-brand-charcoal/40">
-                    © {new Date().getFullYear()} {copyright}
-                  </p>
-                </div>
+                  {/* 留言类型 - 自定义下拉框 */}
+                  <div ref={typeDropdownRef} className="relative">
+                    <label htmlFor="type" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                      留言类型 <span className="text-red-500">*</span>
+                    </label>
+                    {/* 触发按钮 */}
+                    <button
+                      type="button"
+                      onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-xl border bg-white/90 px-4 py-3 text-left text-sm outline-none transition-all backdrop-blur-sm",
+                        !formData.type && "text-brand-charcoal/50",
+                        errors.type
+                          ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          : "border-brand-beige/50 hover:border-brand-gold/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10",
+                        isTypeDropdownOpen && !errors.type && "border-brand-gold ring-2 ring-brand-gold/10"
+                      )}
+                    >
+                      <span className="flex items-center gap-2.5">
+                        {formData.type && (() => {
+                          const selected = messageTypes.find(t => t.value === formData.type);
+                          if (selected) {
+                            const Icon = selected.icon;
+                            return <Icon className="h-4 w-4 text-brand-gold" />;
+                          }
+                          return null;
+                        })()}
+                        <span className={formData.type ? "text-brand-charcoal" : ""}>
+                          {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
+                        </span>
+                      </span>
+                      <ChevronDown className={cn(
+                        "h-4 w-4 text-brand-charcoal/40 transition-transform duration-200",
+                        isTypeDropdownOpen && "rotate-180"
+                      )} />
+                    </button>
+
+                    {/* 下拉选项 */}
+                    <AnimatePresence>
+                      {isTypeDropdownOpen && (
+                        <m.div
+                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                          transition={{ duration: 0.15, ease: "easeOut" }}
+                          className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-brand-beige/50 bg-white/95 shadow-lg shadow-brand-charcoal/5 backdrop-blur-sm"
+                        >
+                          {messageTypes.filter(t => t.value !== "").map((type, index) => {
+                            const Icon = type.icon;
+                            const isSelected = formData.type === type.value;
+                            return (
+                              <button
+                                key={type.value}
+                                type="button"
+                                onClick={() => {
+                                  setFormData(prev => ({ ...prev, type: type.value }));
+                                  setIsTypeDropdownOpen(false);
+                                  if (errors.type) {
+                                    setErrors(prev => ({ ...prev, type: "" }));
+                                  }
+                                }}
+                                className={cn(
+                                  "flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all",
+                                  isSelected
+                                    ? "bg-brand-gold/10 text-brand-charcoal"
+                                    : "text-brand-charcoal/70 hover:bg-brand-beige/30 hover:text-brand-charcoal",
+                                  index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-brand-beige/30"
+                                )}
+                              >
+                                <Icon className={cn(
+                                  "h-4 w-4 transition-colors",
+                                  isSelected ? "text-brand-gold" : "text-brand-charcoal/40"
+                                )} />
+                                <span>{type.label}</span>
+                                {isSelected && (
+                                  <CheckCircle className="ml-auto h-4 w-4 text-brand-gold" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </m.div>
+                      )}
+                    </AnimatePresence>
+                    {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
+                  </div>
+
+                  {/* 留言内容 */}
+                  <div>
+                    <label htmlFor="content" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                      留言内容 <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      id="content"
+                      name="content"
+                      value={formData.content}
+                      onChange={handleChange}
+                      placeholder="请输入您的留言内容..."
+                      rows={5}
+                      className={cn(
+                        "w-full resize-none rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
+                        errors.content ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                      )}
+                    />
+                    {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={status === "loading"}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold py-3.5 text-sm font-medium text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold/90 hover:shadow-xl hover:shadow-brand-gold/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {status === "loading" ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /><span>提交中...</span></>
+                    ) : (
+                      <><Send className="h-4 w-4" /><span>提交留言</span></>
+                    )}
+                  </button>
+                </form>
+
+                {/* 版权信息 */}
+                <p className="mt-6 text-center text-xs text-brand-charcoal/40">
+                  © {new Date().getFullYear()} {copyright}
+                </p>
               </div>
             </div>
-
-            {/* 回到首页按钮 */}
-            <Link
-              href="/"
-              className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
-            >
-              <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
-              <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回首页</span>
-            </Link>
           </div>
-        </m.div>
+
+          {/* 回到首页按钮 */}
+          <Link
+            href="/"
+            className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3"
+          >
+            <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
+            <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回首页</span>
+          </Link>
+        </div>
+      </m.div>
     </>
   );
 }

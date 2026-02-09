@@ -12,26 +12,22 @@ export const revalidate = 3600;
 export default async function Home() {
   // 从数据库获取首页内容
   let content: HomePageContent | undefined;
-  let backgroundImage: string | undefined;
 
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "home" },
-      select: { content: true, published: true, backgroundImage: true },
+      select: { content: true, published: true },
     });
 
     if (page?.published) {
       if (page.content) {
         content = page.content as unknown as HomePageContent;
       }
-      if (page.backgroundImage) {
-        backgroundImage = page.backgroundImage;
-      }
     }
   } catch (error) {
     console.error("获取首页内容失败:", error);
   }
 
-  return <HomeClient content={content} backgroundImage={backgroundImage} />;
+  return <HomeClient content={content} />;
 }
 

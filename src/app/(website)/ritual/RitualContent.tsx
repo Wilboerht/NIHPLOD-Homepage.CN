@@ -538,11 +538,11 @@ function _calculateTotalDuration(steps: RitualStep[]): string {
  */
 // 添加 products 到 props
 interface RitualContentProps {
-  backgroundImage?: string;
+
   products?: ProductData[];
 }
 
-export function RitualContent({ backgroundImage, products = [] }: RitualContentProps) {
+export function RitualContent({ products = [] }: RitualContentProps) {
   // 展开状态
   const [isExpanded, setIsExpanded] = useState(false);
   // 当前层级: 1=模块选择, 2=方案选择, 3=步骤详情
@@ -2166,19 +2166,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
       </m.div>
 
       {/* 动态背景图片 - 移至最底层，位于 safe-area-content 之外 */}
-      {backgroundImage && (
-        <div className="fixed inset-0 z-[-1]">
-          <Image
-            src={backgroundImage}
-            alt="Background"
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* 叠加层，确保文字可读性 */}
-          <div className="absolute inset-0 bg-black/10" />
-        </div>
-      )}
+
 
       {/* 底部导航栏 - 全局 Layout 中已包含，此处移除 */}
 

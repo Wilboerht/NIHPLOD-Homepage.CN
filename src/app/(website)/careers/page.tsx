@@ -35,37 +35,41 @@ interface Job {
 }
 
 async function getJobs(): Promise<Job[]> {
-  const jobs = await prisma.job.findMany({
-    where: { published: true },
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      title: true,
-      titleEn: true,
-      location: true,
-      type: true,
-      description: true,
-      requirements: true,
-      salary: true,
-    },
-  });
-
-  return jobs;
+  try {
+    const jobs = await prisma.job.findMany({
+      where: { published: true },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        titleEn: true,
+        location: true,
+        type: true,
+        description: true,
+        requirements: true,
+        salary: true,
+      },
+    });
+    return jobs;
+  } catch (error) {
+    console.error("获取职位列表失败:", error);
+    return [];
+  }
 }
 
-async function getPageData(): Promise<{ content?: CareersPageContent; backgroundImage?: string }> {
+async function getPageData(): Promise<{ content?: CareersPageContent }> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "careers" },
-      select: { content: true, published: true, backgroundImage: true },
+      select: { content: true, published: true },
     });
 
     if (page?.published) {
       return {
-        content: page.content as unknown as CareersPageContent,
-        backgroundImage: page.backgroundImage || undefined,
+        content: page.content ? (page.content as unknown as CareersPageContent) : undefined,
       };
     }
+
   } catch (error) {
     console.error("获取加入我们页面内容失败:", error);
   }
@@ -74,5 +78,5 @@ async function getPageData(): Promise<{ content?: CareersPageContent; background
 
 export default async function CareersPage() {
   const [jobs, pageData] = await Promise.all([getJobs(), getPageData()]);
-  return <CareersContent jobs={jobs} content={pageData.content} backgroundImage={pageData.backgroundImage} />;
+  return <CareersContent jobs={jobs} content={pageData.content} />;
 }

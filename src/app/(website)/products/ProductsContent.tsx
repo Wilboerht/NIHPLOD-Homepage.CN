@@ -48,14 +48,14 @@ interface Product {
 interface ProductsContentProps {
   categories: Category[];
   products: Product[];
-  backgroundImage?: string;
+
 }
 
 /**
  * 产品列表内容组件
  * 基于 First Page.html 的三列错落网格布局设计，放在可展开/收起的抽屉中
  */
-export function ProductsContent({ categories, products, backgroundImage }: ProductsContentProps) {
+export function ProductsContent({ categories, products }: ProductsContentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { isDrawerOpen, setDrawerOpen } = useLayout();
 
@@ -438,19 +438,7 @@ export function ProductsContent({ categories, products, backgroundImage }: Produ
       />
 
       {/* 动态背景图片 - 移至最底层，位于抽屉之外 */}
-      {backgroundImage && (
-        <div className="fixed inset-0 z-[-1]">
-          <Image
-            src={backgroundImage}
-            alt="Background"
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* 叠加层，确保文字可读性 */}
-          <div className="absolute inset-0 bg-black/10" />
-        </div>
-      )}
+
     </>
   );
 }

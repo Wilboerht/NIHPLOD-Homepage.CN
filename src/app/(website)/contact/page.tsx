@@ -20,17 +20,16 @@ export const metadata: Metadata = {
   },
 };
 
-async function getPageData(): Promise<{ content?: ContactPageContent; backgroundImage?: string }> {
+async function getPageData(): Promise<{ content?: ContactPageContent }> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "contact" },
-      select: { content: true, published: true, backgroundImage: true },
+      select: { content: true, published: true },
     });
 
     if (page?.published) {
       return {
         content: page.content as unknown as ContactPageContent,
-        backgroundImage: page.backgroundImage || undefined,
       };
     }
   } catch (error) {
@@ -41,5 +40,5 @@ async function getPageData(): Promise<{ content?: ContactPageContent; background
 
 export default async function ContactPage() {
   const pageData = await getPageData();
-  return <ContactContent content={pageData.content} backgroundImage={pageData.backgroundImage} />;
+  return <ContactContent content={pageData.content} />;
 }

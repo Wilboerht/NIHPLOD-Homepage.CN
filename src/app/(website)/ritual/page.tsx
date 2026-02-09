@@ -68,21 +68,14 @@ async function getProducts() {
 }
 
 export default async function RitualPage() {
-  let backgroundImage: string | undefined;
+
 
   // 并行获取数据
-  const [products, page] = await Promise.all([
+  const [products] = await Promise.all([
     getProducts(),
-    prisma.page.findUnique({
-      where: { slug: "ritual" },
-      select: { published: true, backgroundImage: true },
-    })
   ]);
 
   // 只有在页面已发布时才使用配置的背景图
-  if (page?.published && page.backgroundImage) {
-    backgroundImage = page.backgroundImage;
-  }
 
-  return <RitualContent backgroundImage={backgroundImage} products={products} />;
+  return <RitualContent products={products} />;
 }

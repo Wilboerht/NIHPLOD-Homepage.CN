@@ -6,23 +6,21 @@ import { PrivacyContent } from "./PrivacyContent";
 export const revalidate = 86400; // 24小时
 
 // 获取页面数据
-async function getPageData(): Promise<{ backgroundImage?: string }> {
+async function getPageData(): Promise<void> {
   try {
     const page = await prisma.page.findUnique({
       where: { slug: "privacy" },
-      select: { backgroundImage: true, published: true },
+      select: { published: true },
     });
 
     if (page?.published) {
-      return {
-        backgroundImage: page.backgroundImage || undefined,
-      };
+      return;
     }
   } catch (error) {
     console.error("Failed to fetch privacy page data:", error);
   }
 
-  return {};
+  return;
 }
 
 export const metadata: Metadata = {
@@ -43,6 +41,6 @@ export const metadata: Metadata = {
 };
 
 export default async function PrivacyPage() {
-  const pageData = await getPageData();
-  return <PrivacyContent backgroundImage={pageData.backgroundImage} />;
+  await getPageData();
+  return <PrivacyContent />;
 }

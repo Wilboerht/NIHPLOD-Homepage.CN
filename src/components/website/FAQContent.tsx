@@ -8,9 +8,7 @@ import { ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
-interface FAQContentProps {
-    backgroundImage?: string;
-}
+
 
 const FAQS = [
     {
@@ -85,7 +83,7 @@ const FAQS = [
     }
 ];
 
-export function FAQContent({ backgroundImage }: FAQContentProps) {
+export function FAQContent() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [openIndex, setOpenIndex] = useState<number | null>(0);
     const { isDrawerOpen, setDrawerOpen } = useLayout();
@@ -272,18 +270,7 @@ export function FAQContent({ backgroundImage }: FAQContentProps) {
             </m.div>
 
             {/* Dynamic Background Image */}
-            {backgroundImage && (
-                <div className="fixed inset-0 z-[-1]">
-                    <Image
-                        src={backgroundImage}
-                        alt="Background"
-                        fill
-                        className="object-cover"
-                        priority
-                    />
-                    <div className="absolute inset-0 bg-black/10" />
-                </div>
-            )}
+
         </>
     );
 }
