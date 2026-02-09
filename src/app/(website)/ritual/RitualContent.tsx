@@ -1379,7 +1379,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             <div className="flex w-full flex-row gap-16 items-start pb-10 max-h-[75vh]">
                               {/* 左侧：信息侧边栏 (Info Sidebar) */}
                               <m.aside
-                                className="flex w-[25%] flex-shrink-0 flex-col gap-12 overflow-y-auto pr-4 scrollbar-thin"
+                                className="flex w-[25%] flex-shrink-0 flex-col gap-12 overflow-y-auto pr-4 scrollbar-thin pt-2"
                                 initial={{ opacity: 0, x: -30 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.8, delay: 0.1, ease: [0.19, 1, 0.22, 1] }}
@@ -2041,7 +2041,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.5 }}
                                   >
-                                    <div className="flex h-[520px] w-full max-w-[1000px] items-stretch justify-center gap-3 overflow-hidden pt-8">
+                                    <div className="flex h-[520px] w-full max-w-[1000px] items-stretch justify-center gap-3 overflow-hidden pt-5">
                                       <AnimatePresence mode="wait" initial={false}>
                                         <m.div
                                           key={currentStepIndex}
