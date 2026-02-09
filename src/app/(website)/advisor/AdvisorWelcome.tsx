@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, MapPin, X } from "lucide-react";
@@ -31,11 +32,16 @@ export function AdvisorWelcome() {
   // Location/Region states
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showRegionSelectModal, setShowRegionSelectModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const { isDrawerOpen, setDrawerOpen } = useLayout();
 
   // 监听 LayoutContext 中的 isDrawerOpen 变化，同步本地 isExpanded 状态
   // 解决：点击底部导航栏时，setDrawerOpen(true) 不会触发本地状态更新的问题
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (isDrawerOpen && !isExpanded) {
       setIsExpanded(true);
@@ -144,21 +150,21 @@ export function AdvisorWelcome() {
 
       {/* Main Drawer Container */}
       <m.div
-        className="safe-area-content !top-0"
+        className="safe-area-content !top-0 pointer-events-none"
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
         <m.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full font-sans"
+          className="h-full font-sans pointer-events-none"
           style={{ fontFamily: "'Inter', sans-serif" }}
         >
-          <div className="flex h-full flex-col items-center">
+          <div className="flex h-full flex-col items-center pointer-events-none">
 
             {/* Drawer Content */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl pointer-events-auto"
               style={{ willChange: "flex-grow, height" }}
               initial={{ height: 0, flexGrow: 0 }}
               animate={{
@@ -294,7 +300,7 @@ export function AdvisorWelcome() {
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-6 py-2 md:px-10 md:py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-6 py-2 md:px-10 md:py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
             >
               <div className="texture-overlay absolute inset-0 rounded-b-2xl opacity-[0.04]" />
               <m.div
@@ -316,151 +322,156 @@ export function AdvisorWelcome() {
       </m.div >
 
       {/* Modals */}
-      <AnimatePresence>
-        {showLocationModal && (
-          <m.div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 font-sans"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ fontFamily: "'Inter', sans-serif" }}
-          >
-            <m.div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowLocationModal(false)}
-            />
-
-            <m.div
-              className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-[#F8F6F0] shadow-2xl"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <button
-                onClick={() => setShowLocationModal(false)}
-                className="absolute right-3 top-3 rounded-full p-1.5 text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/5 hover:text-brand-charcoal/60"
+      {mounted && createPortal(
+        <>
+          <AnimatePresence>
+            {showLocationModal && (
+              <m.div
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-4 font-sans pointer-events-auto"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ fontFamily: "'Inter', sans-serif", pointerEvents: "auto", zIndex: 2147483647 }}
               >
-                <X className="h-5 w-5" />
-              </button>
+                <m.div
+                  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowLocationModal(false)}
+                />
 
-              <div className="px-6 pb-6 pt-8 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#3D4430]/10">
-                  <MapPin className="h-7 w-7 text-[#3D4430]" />
-                </div>
-
-                <h3 className="mb-2 text-xl font-light tracking-wide text-[#1A1A1A]">
-                  定位服务
-                </h3>
-
-                <p className="mb-6 text-sm font-light leading-relaxed text-[#5E5E5E]">
-                  为了给您提供更精准的护肤建议，我们希望获取您的位置信息，以便分析当地的气候、紫外线强度等环境因素。
-                </p>
-
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={handleLocationAccept}
-                    className="group relative w-full overflow-hidden rounded-full border border-[#3D4430] bg-[#3D4430] px-6 py-3 text-sm font-medium tracking-wider text-white transition-all duration-300 hover:bg-transparent hover:text-[#3D4430]"
-                  >
-                    <span className="relative">同意提供定位</span>
-                  </button>
-
-                  <button
-                    onClick={handleLocationDecline}
-                    className="w-full rounded-full border border-[#3D4430]/20 bg-transparent px-6 py-3 text-sm font-light tracking-wider text-[#3D4430]/60 transition-all duration-300 hover:border-[#3D4430]/40 hover:text-[#3D4430]/80"
-                  >
-                    暂不提供
-                  </button>
-                </div>
-
-                <p className="mt-4 text-[10px] font-light leading-relaxed text-[#1A1A1A]/40">
-                  您的位置信息仅用于本次分析，不会被存储或用于其他用途
-                </p>
-              </div>
-            </m.div>
-          </m.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showRegionSelectModal && (
-          <m.div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 font-sans"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ fontFamily: "'Inter', sans-serif" }}
-          >
-            <m.div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleSkipRegionSelect}
-            />
-
-            <m.div
-              className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-[#F8F6F0] shadow-2xl"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <button
-                onClick={handleSkipRegionSelect}
-                className="absolute right-3 top-3 rounded-full p-1.5 text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/5 hover:text-brand-charcoal/60"
-              >
-                <X className="h-5 w-5" />
-              </button>
-
-              <div className="px-6 pb-6 pt-8 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#3D4430]/10">
-                  <MapPin className="h-7 w-7 text-[#3D4430]" />
-                </div>
-
-                <h3 className="mb-2 text-xl font-light tracking-wide text-[#1A1A1A]">
-                  选择您的地区
-                </h3>
-
-                <p className="mb-4 text-sm font-light leading-relaxed text-[#5E5E5E]">
-                  自动定位失败，请手动选择您所在的地区，以便我们为您提供更精准的气候相关护肤建议
-                </p>
-
-                <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-[#3D4430]/10 bg-white/50">
-                  {regionOptions.map((group) => (
-                    <div key={group.group} className="border-b border-[#3D4430]/5 last:border-b-0">
-                      <div className="sticky top-0 bg-[#F0EDE1]/90 px-4 py-2 text-left text-xs font-medium tracking-wider text-[#3D4430]/50 backdrop-blur-sm">
-                        {group.group}
-                      </div>
-                      <div className="flex flex-wrap gap-2 px-4 py-2">
-                        {group.regions.map((region) => (
-                          <button
-                            key={region}
-                            onClick={() => handleRegionSelect(region)}
-                            className="rounded-full border border-[#3D4430]/30 bg-white px-3 py-1.5 text-sm text-[#3D4430] transition-all hover:border-[#3D4430] hover:bg-[#3D4430]/10"
-                          >
-                            {region}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleSkipRegionSelect}
-                  className="mt-4 w-full text-sm font-light text-[#3D4430]/50 transition-colors hover:text-[#3D4430]/70"
+                <m.div
+                  className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-[#F8F6F0] shadow-2xl"
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  跳过，使用简化分析
-                </button>
-              </div>
-            </m.div>
-          </m.div>
-        )}
-      </AnimatePresence>
+                  <button
+                    onClick={() => setShowLocationModal(false)}
+                    className="absolute right-3 top-3 rounded-full p-1.5 text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/5 hover:text-brand-charcoal/60"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+
+                  <div className="px-6 pb-6 pt-8 text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#3D4430]/10">
+                      <MapPin className="h-7 w-7 text-[#3D4430]" />
+                    </div>
+
+                    <h3 className="mb-2 text-xl font-light tracking-wide text-[#1A1A1A]">
+                      定位服务
+                    </h3>
+
+                    <p className="mb-6 text-sm font-light leading-relaxed text-[#5E5E5E]">
+                      为了给您提供更精准的护肤建议，我们希望获取您的位置信息，以便分析当地的气候、紫外线强度等环境因素。
+                    </p>
+
+                    <div className="flex flex-col gap-3">
+                      <button
+                        onClick={handleLocationAccept}
+                        className="group relative w-full overflow-hidden rounded-full border border-[#3D4430] bg-[#3D4430] px-6 py-3 text-sm font-medium tracking-wider text-white transition-all duration-300 hover:bg-transparent hover:text-[#3D4430]"
+                      >
+                        <span className="relative">同意提供定位</span>
+                      </button>
+
+                      <button
+                        onClick={handleLocationDecline}
+                        className="w-full rounded-full border border-[#3D4430]/20 bg-transparent px-6 py-3 text-sm font-light tracking-wider text-[#3D4430]/60 transition-all duration-300 hover:border-[#3D4430]/40 hover:text-[#3D4430]/80"
+                      >
+                        暂不提供
+                      </button>
+                    </div>
+
+                    <p className="mt-4 text-[10px] font-light leading-relaxed text-[#1A1A1A]/40">
+                      您的位置信息仅用于本次分析，不会被存储或用于其他用途
+                    </p>
+                  </div>
+                </m.div>
+              </m.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showRegionSelectModal && (
+              <m.div
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-4 font-sans pointer-events-auto"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ fontFamily: "'Inter', sans-serif", pointerEvents: "auto", zIndex: 2147483647 }}
+              >
+                <m.div
+                  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={handleSkipRegionSelect}
+                />
+
+                <m.div
+                  className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-[#F8F6F0] shadow-2xl"
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <button
+                    onClick={handleSkipRegionSelect}
+                    className="absolute right-3 top-3 rounded-full p-1.5 text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/5 hover:text-brand-charcoal/60"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+
+                  <div className="px-6 pb-6 pt-8 text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#3D4430]/10">
+                      <MapPin className="h-7 w-7 text-[#3D4430]" />
+                    </div>
+
+                    <h3 className="mb-2 text-xl font-light tracking-wide text-[#1A1A1A]">
+                      选择您的地区
+                    </h3>
+
+                    <p className="mb-4 text-sm font-light leading-relaxed text-[#5E5E5E]">
+                      自动定位失败，请手动选择您所在的地区，以便我们为您提供更精准的气候相关护肤建议
+                    </p>
+
+                    <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-[#3D4430]/10 bg-white/50">
+                      {regionOptions.map((group) => (
+                        <div key={group.group} className="border-b border-[#3D4430]/5 last:border-b-0">
+                          <div className="sticky top-0 bg-[#F0EDE1]/90 px-4 py-2 text-left text-xs font-medium tracking-wider text-[#3D4430]/50 backdrop-blur-sm">
+                            {group.group}
+                          </div>
+                          <div className="flex flex-wrap gap-2 px-4 py-2">
+                            {group.regions.map((region) => (
+                              <button
+                                key={region}
+                                onClick={() => handleRegionSelect(region)}
+                                className="rounded-full border border-[#3D4430]/30 bg-white px-3 py-1.5 text-sm text-[#3D4430] transition-all hover:border-[#3D4430] hover:bg-[#3D4430]/10"
+                              >
+                                {region}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handleSkipRegionSelect}
+                      className="mt-4 w-full text-sm font-light text-[#3D4430]/50 transition-colors hover:text-[#3D4430]/70"
+                    >
+                      跳过，使用简化分析
+                    </button>
+                  </div>
+                </m.div>
+              </m.div>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
     </>
   );
 }

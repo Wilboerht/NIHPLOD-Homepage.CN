@@ -199,12 +199,12 @@ export function BottomNavBar() {
                             duration: 0.6,
                             ease: [0.22, 1, 0.36, 1]
                         }}
-                        className="fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] sm:bottom-6 sm:max-w-[90%] lg:bottom-8 lg:max-w-[1200px]"
+                        className="fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pointer-events-none sm:bottom-6 sm:max-w-[90%] lg:bottom-8 lg:max-w-[1200px]"
                         role="banner"
                     >
                         <nav
                             className={cn(
-                                "flex items-center justify-between",
+                                "flex items-center justify-between pointer-events-auto",
                                 // Mobile: compact rounded design
                                 "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
                                 // Desktop: dock-style design from reference
