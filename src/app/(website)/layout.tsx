@@ -5,7 +5,7 @@ interface WebsiteLayoutProps {
   children: ReactNode;
 }
 
-import Image from "next/image";
+
 
 import { WebsiteLayoutClient } from "@/components/website/WebsiteLayoutClient";
 

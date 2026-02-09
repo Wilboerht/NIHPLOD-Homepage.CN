@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Image from "next/image";
+
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import {

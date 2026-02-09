@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowLeft, Save, Eye, EyeOff, Settings, FileText, X } from "lucide-react";
+import { ArrowLeft, Save, Eye, EyeOff, Settings, FileText } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { SeoEditor } from "@/components/admin/SeoEditor";

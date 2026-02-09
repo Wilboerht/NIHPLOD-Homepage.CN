@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
@@ -193,7 +193,6 @@ interface ServicesContentProps {
  */
 export function ServicesContent({ content }: ServicesContentProps) {
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
-  const [isScrolled, setIsScrolled] = useState(false);
 
   // 从 content 获取数据
   const pageTitle = content.pageTitle || { en: "SERVICES", zh: "服务入口" };
@@ -203,15 +202,6 @@ export function ServicesContent({ content }: ServicesContentProps) {
   const activeService = activeServiceId
     ? services.find((s) => s.id === activeServiceId)
     : null;
-
-  // 监听滚动，添加毛玻璃效果
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   return (
     <>

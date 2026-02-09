@@ -114,39 +114,25 @@ export function KineticBackground() {
                     <div className="kinetic-description">美丽不该复杂</div>
                 </div>
 
-                {/* Row 1, Col 3: 图片卡 */}
+                {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
                 <div
                     ref={(el) => addCellRef(el, 2)}
                     className="kinetic-cell kinetic-image-cell"
-                >
-                    <div className="kinetic-overlay" />
-                    <Image
-                        src="https://wp-cdn.4ce.cn/v2/L16QwSO.png"
-                        alt="Product Concept"
-                        fill
-                        className="kinetic-cell-image"
-                        sizes="(max-width: 600px) 100vw, 25vw"
-                    />
-                </div>
-
-                {/* Row 1, Col 4: 图片卡 */}
-                <div
-                    ref={(el) => addCellRef(el, 3)}
-                    className="kinetic-cell kinetic-image-cell"
+                    style={{ gridColumn: "span 2", aspectRatio: "auto" }}
                 >
                     <div className="kinetic-overlay" />
                     <Image
                         src="https://wp-cdn.4ce.cn/v2/SRRGoGQ.png"
-                        alt="User Portrait"
+                        alt="Less is More"
                         fill
                         className="kinetic-cell-image"
-                        sizes="(max-width: 600px) 100vw, 25vw"
+                        sizes="(max-width: 600px) 100vw, 50vw"
                     />
                 </div>
 
                 {/* Row 2, Col 2: 图片卡 */}
                 <div
-                    ref={(el) => addCellRef(el, 4)}
+                    ref={(el) => addCellRef(el, 3)}
                     className="kinetic-cell kinetic-image-cell"
                 >
                     <div className="kinetic-overlay" />
@@ -161,7 +147,7 @@ export function KineticBackground() {
 
                 {/* Row 2, Col 3: 文字卡 */}
                 <div
-                    ref={(el) => addCellRef(el, 5)}
+                    ref={(el) => addCellRef(el, 4)}
                     className="kinetic-cell kinetic-text-cell"
                 >
                     <div className="kinetic-text-glow" />
@@ -171,7 +157,7 @@ export function KineticBackground() {
 
                 {/* Row 2, Col 4: 登录/CTA卡 */}
                 <div
-                    ref={(el) => addCellRef(el, 6)}
+                    ref={(el) => addCellRef(el, 5)}
                     className="kinetic-cell kinetic-login-cell"
                 >
                     <div className="kinetic-login-bg" />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { Home, Send, CheckCircle, AlertCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown } from "lucide-react";
@@ -81,16 +80,6 @@ export function ContactContent({ content }: ContactContentProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  // 监听滚动，添加毛玻璃效果
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   // 点击外部关闭下拉框
   useEffect(() => {
