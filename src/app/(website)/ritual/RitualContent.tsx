@@ -2041,7 +2041,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.5 }}
                                   >
-                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch justify-center gap-3 overflow-hidden">
+                                    <div className="flex h-[520px] w-full max-w-[1000px] items-stretch justify-center gap-3 overflow-hidden pt-8">
                                       <AnimatePresence mode="wait" initial={false}>
                                         <m.div
                                           key={currentStepIndex}
