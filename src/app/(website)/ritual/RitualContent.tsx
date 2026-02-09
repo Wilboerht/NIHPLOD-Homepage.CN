@@ -562,6 +562,11 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const stepsContainerRef = useRef<HTMLDivElement>(null);
 
+  // 获取当前应该显示的步骤（优先使用子方案的步骤）
+  const currentSteps = selectedSubPlan?.steps || selectedScheme?.steps || [];
+  // 获取当前应该显示的产品（优先使用子方案的产品）
+  const currentProducts = selectedSubPlan?.products || selectedScheme?.products || "洁面慕斯、面霜";
+
   // 轮播导航函数 - 滚动到指定步骤 (暂未使用，保留逻辑)
   // const scrollToStep = useCallback((index: number) => {
   //   if (!stepsContainerRef.current) return;
@@ -602,6 +607,23 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
 
   // 展开的步骤索引（用于显示技巧提示）
   const [_expandedStepIndex, _setExpandedStepIndex] = useState<number | null>(null);
+
+  // 自动播放控制
+  const [isPaused, setIsPaused] = useState(false);
+
+  // 步骤自动轮播逻辑
+  useEffect(() => {
+    // 仅在 Level 3 的手风琴模式下运行
+    const isAccordionMode = currentLevel === 3 && currentSteps.length > 3 && selectedModule !== "professional" && selectedModule !== "portable";
+
+    if (!isAccordionMode || isPaused) return;
+
+    const timer = setInterval(() => {
+      setCurrentStepIndex((prev) => (prev + 1) % currentSteps.length);
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [currentLevel, currentSteps.length, currentStepIndex, isPaused, selectedModule]);
 
   // 产品详情弹窗状态
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
@@ -695,10 +717,6 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
     }
   };
 
-  // 获取当前应该显示的步骤（优先使用子方案的步骤）
-  const currentSteps = selectedSubPlan?.steps || selectedScheme?.steps || [];
-  // 获取当前应该显示的产品（优先使用子方案的产品）
-  const currentProducts = selectedSubPlan?.products || selectedScheme?.products || "洁面慕斯、面霜";
 
 
 
@@ -968,7 +986,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
 
                                 {/* 步骤编号 */}
                                 <div className="w-fit border-b border-[#00263e] pb-1 text-[10px] uppercase tracking-wide text-[#00263e]/50">
-                                  STEP 0{index + 1}
+                                  步骤 0{index + 1}
                                 </div>
 
                                 {/* 步骤信息 */}
@@ -1266,9 +1284,9 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -30 }}
                           transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
-                          className="absolute inset-0 flex flex-col overflow-hidden p-8 pt-24 lg:p-12 lg:pt-36 items-center"
+                          className="absolute inset-0 flex flex-col overflow-hidden p-8 pt-6 lg:p-12 lg:pt-10 items-center"
                         >
-                          <div className="flex h-full w-full max-w-[1440px] flex-col justify-start">
+                          <div className="flex h-full w-full max-w-[1440px] flex-col justify-center">
                             {/* Level 3 Header: 标题与切换器 */}
                             <header className="mb-9 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                               {/* 左侧标题组 */}
@@ -1372,19 +1390,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     涉及产品
                                   </h3>
 
-                                  {/* 极简网格背景 */}
-                                  <div
-                                    className="absolute -left-4 -right-4 top-8 bottom-0 -z-10 pointer-events-none opacity-60"
-                                    style={{
-                                      backgroundImage: `
-                                          linear-gradient(to right, rgba(0,38,62,0.08) 1px, transparent 1px),
-                                          linear-gradient(to bottom, rgba(0,38,62,0.08) 1px, transparent 1px)
-                                        `,
-                                      backgroundSize: '24px 24px',
-                                      maskImage: 'radial-gradient(circle at center, black 40%, transparent 90%)',
-                                      WebkitMaskImage: 'radial-gradient(circle at center, black 40%, transparent 90%)'
-                                    }}
-                                  />
+
 
                                   <div className="flex flex-wrap gap-x-6 gap-y-8 pl-2">
                                     {currentProducts
@@ -1783,7 +1789,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                 {selectedScheme.specialSupport && (
                                   <div className="flex flex-col">
                                     <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
-                                      特殊人群支持
+                                      特殊时期支持
                                     </h3>
                                     {(() => {
                                       const supportText = selectedSubPlan?.specialSupport || selectedScheme.specialSupport || "孕期、月子期、轻医美术后";
@@ -1987,7 +1993,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.5 }}
                                   >
-                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch justify-center gap-6 px-4">
+                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch justify-center gap-3">
                                       {currentSteps.map((step, index) => (
                                         <div
                                           key={`${step.title}-${index}`}
@@ -1995,20 +2001,19 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                         >
                                           {/* 步骤序号 */}
                                           <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
-                                            STEP {String(index + 1).padStart(2, "0")}
+                                            步骤 {String(index + 1).padStart(2, "0")}
                                           </div>
 
                                           {/* 内容卡片 */}
                                           <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md">
                                             <div className="absolute inset-0 flex flex-col p-6 pt-10">
-
                                               {/* 图片区域 */}
-                                              <div className="relative w-full h-[200px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-xl bg-brand-beige/20 mb-6">
+                                              <div className="relative w-full h-[240px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 mb-6">
                                                 <Image
                                                   src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
                                                   alt={step.title}
                                                   fill
-                                                  className="object-contain mix-blend-multiply p-4"
+                                                  className="object-contain mix-blend-multiply"
                                                 />
                                               </div>
 
@@ -2017,7 +2022,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                                 <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap">
                                                   {step.title}
                                                 </h2>
-                                                <p className="line-clamp-5 text-sm leading-relaxed text-brand-charcoal/70">
+                                                <p className="text-sm leading-relaxed text-brand-charcoal/70">
                                                   {step.description}
                                                 </p>
                                               </div>
@@ -2035,6 +2040,8 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.5 }}
+                                    onMouseEnter={() => setIsPaused(true)}
+                                    onMouseLeave={() => setIsPaused(false)}
                                   >
                                     <div className="flex h-[480px] w-full max-w-[1000px] items-stretch gap-3">
                                       {currentSteps.map((step, index) => {
@@ -2055,7 +2062,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                           >
                                             {/* 步骤序号 - 顶部胶囊 (居中跨边线) - 始终显示 */}
                                             <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap">
-                                              STEP {String(index + 1).padStart(2, "0")}
+                                              步骤 {String(index + 1).padStart(2, "0")}
                                             </div>
 
                                             {/* 内容容器 - 负责视觉样式及裁切 */}
@@ -2066,7 +2073,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                               {/* 激活状态下的内容布局 */}
                                               <m.div
                                                 className={cn(
-                                                  "absolute inset-0 flex flex-col p-8 pt-10 transition-opacity duration-300",
+                                                  "absolute inset-0 flex flex-col p-6 pt-10 transition-opacity duration-300",
                                                   isActive ? "opacity-100 delay-200" : "opacity-0 pointer-events-none"
                                                 )}
                                               >
@@ -2085,7 +2092,7 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                                   <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap">
                                                     {step.title}
                                                   </h2>
-                                                  <p className="line-clamp-4 text-sm leading-relaxed text-brand-charcoal/70 max-w-[80%]">
+                                                  <p className="text-sm leading-relaxed text-brand-charcoal/70">
                                                     {step.description}
                                                   </p>
                                                 </div>
@@ -2098,15 +2105,12 @@ export function RitualContent({ backgroundImage, products = [] }: RitualContentP
                                                   isActive ? "opacity-0 pointer-events-none" : "opacity-100"
                                                 )}
                                               >
-                                                {/* 竖排文字标题 */}
-                                                <div className="writing-vertical-rl font-display text-lg font-medium tracking-[0.2em] text-brand-charcoal/40 text-center select-none">
-                                                  {step.title}
-                                                </div>
+
 
                                                 {/* 点击提示图标组 */}
-                                                <div className="flex flex-col items-center gap-2 animate-pulse-slow">
-                                                  <MousePointerClick className="w-8 h-8 text-brand-charcoal/40" strokeWidth={1} />
-                                                  <span className="text-[10px] tracking-widest text-brand-charcoal/40 font-light">查看</span>
+                                                <div className="flex flex-col items-center gap-3">
+                                                  <MousePointerClick className="w-12 h-12 text-brand-charcoal/40" strokeWidth={1} />
+                                                  <span className="text-[12px] tracking-widest text-brand-charcoal/40 font-semibold">点击查看</span>
                                                 </div>
                                               </div>
 

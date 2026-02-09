@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
@@ -17,6 +17,17 @@ const navItems: { id: SectionId; label: string }[] = [
   { id: "mission", label: "公司使命" },
   { id: "philosophy", label: "品牌哲学" },
   { id: "awards", label: "媒体及获奖" },
+];
+
+const AWARDS_DATA = [
+  { year: "2026", org: "胡润百富", title: "国际高端护肤品牌最佳表现", image: "/images/story/award-1.png" },
+  { year: "2025", org: "亚洲女性友好品牌", title: "时空逆转成就奖", image: "/images/story/award-2.png" },
+  { year: "2024", org: "Timout Magazine", title: "年度影响力高奢品牌", image: "/images/story/award-3.png" },
+  { year: "2023", org: "罗博报告", title: "优中优选奖", image: "/images/story/award-1.png" },
+  { year: "2020", org: "LUX Magazine", title: "消费者满意奖", image: "/images/story/award-2.png" },
+  { year: "2019", org: "Prestige Magazine", title: "最佳创新化妆品奖", image: "/images/story/award-3.png" },
+  { year: "2018", org: "Wellness & SPA Innovation", title: "最佳治疗产品", image: "/images/story/award-1.png" },
+  { year: "2017", org: "Pure Beauty Global Awards", title: "最佳新晋抗衰老产品", image: "/images/story/award-2.png" },
 ];
 
 
@@ -34,6 +45,7 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
   // 展开状态: false=完全收起(只剩按钮), true=完全展开(底部导航隐藏)
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>("story");
+  const [currentAwardPage, setCurrentAwardPage] = useState(0);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const { isDrawerOpen, setDrawerOpen } = useLayout();
@@ -335,14 +347,9 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                             Recognition
                           </h2>
                           <div className="mb-12">
-                            {/* 奖项列表 */}
+                            {/* 奖项列表 - Mobile Show All */}
                             <ul className="list-none">
-                              {[
-                                { year: "2023", title: "VOGUE BEAUTY AWARDS", image: "/images/story/award-1.png" },
-                                { year: "2022", title: "ELLE SKINCARE INNOVATION", image: "/images/story/award-2.png" },
-                                { year: "2022", title: "BAZAAR BEST FORMULA", image: "/images/story/award-3.png" },
-                                { year: "2021", title: "GLOBAL COSMETIC DESIGN", image: "/images/story/award-1.png" },
-                              ].map((award, idx) => (
+                              {AWARDS_DATA.map((award, idx) => (
                                 <li
                                   key={idx}
                                   className="border-b border-[#00263e]/15 py-8"
@@ -358,18 +365,19 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                                   </div>
 
                                   <div className="flex flex-col items-center gap-2 text-center">
-                                    <span className="text-[16px] font-medium uppercase tracking-wide text-[#00263e]">
+                                    <span className="text-[14px] font-medium uppercase tracking-wide text-[#00263e]/60">
+                                      {award.org}
+                                    </span>
+                                    <span className="text-[18px] font-medium tracking-wide text-[#00263e]">
                                       {award.title}
                                     </span>
-                                    <span className="text-[12px] font-light tracking-wider text-[#00263e]/60">
+                                    <span className="text-[12px] font-light tracking-wider text-[#00263e]/60 mt-1">
                                       {award.year}
                                     </span>
                                   </div>
                                 </li>
                               ))}
                             </ul>
-
-
                           </div>
                         </m.section>
                       )}
@@ -595,20 +603,13 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="flex h-full flex-col pb-16 lg:pb-20"
+                          className="flex h-full flex-col pb-16 lg:pb-20 relative"
                         >
                           {/* 3x2 网格卡片布局 - 铺满容器 */}
-                          <div className="grid h-full grid-cols-3 grid-rows-2 gap-4 lg:gap-5">
-                            {[
-                              { year: "2023", title: "VOGUE BEAUTY AWARDS - 年度突破奖", image: "/images/story/award-1.png" },
-                              { year: "2022", title: "ELLE 护肤科技金奖", image: "/images/story/award-2.png" },
-                              { year: "2022", title: "年度最具影响力可持续品牌", image: "/images/story/award-3.png" },
-                              { year: "2021", title: "BAZAAR 极致修护精华大奖", image: "/images/story/award-1.png" },
-                              { year: "2020", title: "Monaco Bio-Tech Innovation Lab Partner", image: "/images/story/award-2.png" },
-                              { year: "2019", title: "GLOBAL CHARITY PARTNER: UNF", image: "/images/story/award-3.png" },
-                            ].map((award, idx) => (
+                          <div className="grid h-full grid-cols-3 grid-rows-2 gap-4 lg:gap-5 pb-12">
+                            {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map((award, idx) => (
                               <m.div
-                                key={idx}
+                                key={`${currentAwardPage}-${idx}`}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
@@ -622,13 +623,16 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                                     fill
                                     className="object-cover transition-transform duration-700 group-hover:scale-110"
                                   />
-
+                                  <div className="absolute inset-0 bg-[#F0EDE1]/80 mix-blend-multiply" />
                                 </div>
 
-                                {/* 默认显示的文字内容 - 悬浮时淡出 */}
-                                <div className="relative z-10 flex flex-col transition-opacity duration-300 group-hover:opacity-0">
+                                {/* 默认显示的文字内容 */}
+                                <div className="relative z-10 flex flex-col transition-transform duration-300 group-hover:-translate-y-1">
                                   <span className="mb-3 text-xs tracking-[2px] text-[#00263e]/50 lg:text-sm">
                                     {award.year}
+                                  </span>
+                                  <span className="text-sm font-medium uppercase tracking-wider text-[#00263e]/70 mb-1 block">
+                                    {award.org}
                                   </span>
                                   <span className="text-base font-normal leading-relaxed tracking-wide text-[#00263e] lg:text-lg">
                                     {award.title}
@@ -637,6 +641,29 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                               </m.div>
                             ))}
                           </div>
+
+                          {/* Pagination Controls */}
+                          {AWARDS_DATA.length > 6 && (
+                            <div className="absolute bottom-4 right-0 flex items-center gap-4 z-20">
+                              <button
+                                onClick={() => setCurrentAwardPage(p => Math.max(0, p - 1))}
+                                disabled={currentAwardPage === 0}
+                                className="p-2 rounded-full hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                              >
+                                <ChevronLeft className="w-6 h-6 text-[#00263e]" />
+                              </button>
+                              <span className="text-sm font-light tracking-widest text-[#00263e]/60">
+                                {currentAwardPage + 1} / {Math.ceil(AWARDS_DATA.length / 6)}
+                              </span>
+                              <button
+                                onClick={() => setCurrentAwardPage(p => Math.min(Math.ceil(AWARDS_DATA.length / 6) - 1, p + 1))}
+                                disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
+                                className="p-2 rounded-full hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                              >
+                                <ChevronRight className="w-6 h-6 text-[#00263e]" />
+                              </button>
+                            </div>
+                          )}
                         </m.div>
                       )}
                     </AnimatePresence>
