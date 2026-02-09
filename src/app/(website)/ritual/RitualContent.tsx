@@ -611,19 +611,19 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   // 自动播放控制
   const [isPaused, setIsPaused] = useState(false);
 
-  // 步骤自动轮播逻辑
-  useEffect(() => {
-    // 仅在 Level 3 的手风琴模式下运行
-    const isAccordionMode = currentLevel === 3 && currentSteps.length > 3 && selectedModule !== "professional" && selectedModule !== "portable";
+  // 步骤自动轮播逻辑 (已禁用)
+  // useEffect(() => {
+  //   // 仅在 Level 3 的手风琴模式下运行
+  //   const isAccordionMode = currentLevel === 3 && currentSteps.length > 3 && selectedModule !== "professional" && selectedModule !== "portable";
 
-    if (!isAccordionMode || isPaused) return;
+  //   if (!isAccordionMode || isPaused) return;
 
-    const timer = setInterval(() => {
-      setCurrentStepIndex((prev) => (prev + 1) % currentSteps.length);
-    }, 3000);
+  //   const timer = setInterval(() => {
+  //     setCurrentStepIndex((prev) => (prev + 1) % currentSteps.length);
+  //   }, 3000);
 
-    return () => clearInterval(timer);
-  }, [currentLevel, currentSteps.length, currentStepIndex, isPaused, selectedModule]);
+  //   return () => clearInterval(timer);
+  // }, [currentLevel, currentSteps.length, currentStepIndex, isPaused, selectedModule]);
 
   // 产品详情弹窗状态
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
@@ -2041,48 +2041,66 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.5 }}
                                   >
-                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch justify-center gap-3">
-                                      {currentSteps.slice(currentStepIndex * 3, (currentStepIndex + 1) * 3).map((step, index) => {
-                                        // Calculate actual index in the full array for the step number
-                                        const actualIndex = currentStepIndex * 3 + index;
+                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch justify-center gap-3 overflow-hidden">
+                                      <AnimatePresence mode="wait" initial={false}>
+                                        <m.div
+                                          key={currentStepIndex}
+                                          className="flex w-full gap-3 justify-center"
+                                          initial={{ opacity: 0, x: 20 }}
+                                          animate={{ opacity: 1, x: 0 }}
+                                          exit={{ opacity: 0, x: -20 }}
+                                          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                                        >
+                                          {currentSteps.slice(currentStepIndex * 3, (currentStepIndex + 1) * 3).map((step, index) => {
+                                            // Calculate actual index in the full array for the step number
+                                            const actualIndex = currentStepIndex * 3 + index;
 
-                                        return (
-                                          <div
-                                            key={`${step.title}-${actualIndex}`}
-                                            className="relative w-[320px] flex-none group"
-                                          >
-                                            {/* 步骤序号 */}
-                                            <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
-                                              步骤 {String(actualIndex + 1).padStart(2, "0")}
-                                            </div>
-
-                                            {/* 内容卡片 */}
-                                            <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md transition-all duration-300 hover:border-brand-charcoal/40 hover:shadow-lg">
-                                              <div className="absolute inset-0 flex flex-col p-6 pt-10">
-                                                {/* 图片区域 */}
-                                                <div className="relative w-full h-[240px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 mb-6 group-hover:bg-brand-beige/30 transition-colors">
-                                                  <Image
-                                                    src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
-                                                    alt={step.title}
-                                                    fill
-                                                    className="object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
-                                                  />
+                                            return (
+                                              <m.div
+                                                key={`${step.title}-${actualIndex}`}
+                                                className="relative w-[320px] flex-none group"
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{
+                                                  duration: 0.5,
+                                                  delay: index * 0.1,
+                                                  ease: [0.22, 1, 0.36, 1]
+                                                }}
+                                              >
+                                                {/* 步骤序号 */}
+                                                <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
+                                                  步骤 {String(actualIndex + 1).padStart(2, "0")}
                                                 </div>
 
-                                                {/* 文字区域 */}
-                                                <div className="flex flex-1 flex-col items-center text-center">
-                                                  <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap">
-                                                    {step.title}
-                                                  </h2>
-                                                  <p className="text-sm leading-relaxed text-brand-charcoal/70">
-                                                    {step.description}
-                                                  </p>
+                                                {/* 内容卡片 */}
+                                                <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md transition-all duration-300 hover:border-brand-charcoal/40 hover:shadow-lg">
+                                                  <div className="absolute inset-0 flex flex-col p-6 pt-10">
+                                                    {/* 图片区域 */}
+                                                    <div className="relative w-full h-[240px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 mb-6 group-hover:bg-brand-beige/30 transition-colors">
+                                                      <Image
+                                                        src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
+                                                        alt={step.title}
+                                                        fill
+                                                        className="object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+                                                      />
+                                                    </div>
+
+                                                    {/* 文字区域 */}
+                                                    <div className="flex flex-1 flex-col items-center text-center">
+                                                      <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap">
+                                                        {step.title}
+                                                      </h2>
+                                                      <p className="text-sm leading-relaxed text-brand-charcoal/70">
+                                                        {step.description}
+                                                      </p>
+                                                    </div>
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
+                                              </m.div>
+                                            );
+                                          })}
+                                        </m.div>
+                                      </AnimatePresence>
                                     </div>
 
                                     {/* Pagination Controls */}
