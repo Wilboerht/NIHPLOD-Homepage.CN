@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, ArrowUpRight, Clock, MousePointerClick, Info, ChevronLeft } from "lucide-react";
+import { ChevronDown, ArrowUpRight, Clock, MousePointerClick, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -2034,56 +2034,38 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   </m.section>
                                 ) : (
                                   <m.section
-                                    key={`${selectedModule}-accordion`}
-                                    className="relative flex w-full h-[530px] items-center justify-center"
+                                    key={`${selectedModule}-paginated`}
+                                    className="relative flex w-full h-[530px] flex-col items-center justify-center"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.5 }}
-                                    onMouseEnter={() => setIsPaused(true)}
-                                    onMouseLeave={() => setIsPaused(false)}
                                   >
-                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch gap-3">
-                                      {currentSteps.map((step, index) => {
-                                        const isActive = index === currentStepIndex;
+                                    <div className="flex h-[480px] w-full max-w-[1000px] items-stretch justify-center gap-3">
+                                      {currentSteps.slice(currentStepIndex * 3, (currentStepIndex + 1) * 3).map((step, index) => {
+                                        // Calculate actual index in the full array for the step number
+                                        const actualIndex = currentStepIndex * 3 + index;
 
                                         return (
-                                          <m.article
-                                            key={`${step.title}-${index}`}
-                                            layout
-                                            transition={{ layout: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } }}
-                                            onClick={() => setCurrentStepIndex(index)}
-                                            className={cn(
-                                              "relative h-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                                              isActive
-                                                ? "w-[320px] flex-none cursor-default"
-                                                : "flex-1 min-w-0 cursor-pointer"
-                                            )}
+                                          <div
+                                            key={`${step.title}-${actualIndex}`}
+                                            className="relative w-[320px] flex-none group"
                                           >
-                                            {/* 步骤序号 - 顶部胶囊 (居中跨边线) - 始终显示 */}
-                                            <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap">
-                                              步骤 {String(index + 1).padStart(2, "0")}
+                                            {/* 步骤序号 */}
+                                            <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
+                                              步骤 {String(actualIndex + 1).padStart(2, "0")}
                                             </div>
 
-                                            {/* 内容容器 - 负责视觉样式及裁切 */}
-                                            <div className={cn(
-                                              "relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md transition-colors duration-300",
-                                              !isActive && "hover:bg-white/50"
-                                            )}>
-                                              {/* 激活状态下的内容布局 */}
-                                              <m.div
-                                                className={cn(
-                                                  "absolute inset-0 flex flex-col p-6 pt-10 transition-opacity duration-300",
-                                                  isActive ? "opacity-100 delay-200" : "opacity-0 pointer-events-none"
-                                                )}
-                                              >
-                                                {/* 图片区域 - 保持高度 */}
-                                                <div className="relative w-full h-[240px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 mb-6">
+                                            {/* 内容卡片 */}
+                                            <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md transition-all duration-300 hover:border-brand-charcoal/40 hover:shadow-lg">
+                                              <div className="absolute inset-0 flex flex-col p-6 pt-10">
+                                                {/* 图片区域 */}
+                                                <div className="relative w-full h-[240px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 mb-6 group-hover:bg-brand-beige/30 transition-colors">
                                                   <Image
                                                     src={step.imageUrl || "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"}
                                                     alt={step.title}
                                                     fill
-                                                    className="object-contain mix-blend-multiply"
+                                                    className="object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
                                                   />
                                                 </div>
 
@@ -2096,33 +2078,35 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                     {step.description}
                                                   </p>
                                                 </div>
-                                              </m.div>
-
-                                              {/* 非激活状态下的内容 - 仅显示垂直标题或简略信息 */}
-                                              <div
-                                                className={cn(
-                                                  "absolute inset-0 flex flex-col items-center justify-center gap-6 transition-opacity duration-300",
-                                                  isActive ? "opacity-0 pointer-events-none" : "opacity-100"
-                                                )}
-                                              >
-
-
-                                                {/* 点击提示图标组 */}
-                                                <div className="flex flex-col items-center gap-3">
-                                                  <MousePointerClick className="w-12 h-12 text-brand-charcoal/40" strokeWidth={1} />
-                                                  <span className="text-[12px] tracking-widest text-brand-charcoal/40 font-semibold">点击查看</span>
-                                                </div>
                                               </div>
-
-                                              {/* 遮罩层 - 非激活状态变暗 - 移入内部以受圆角裁切 */}
-                                              {!isActive && (
-                                                <div className="absolute inset-0 bg-brand-charcoal/5 transition-colors hover:bg-transparent" />
-                                              )}
                                             </div>
-                                          </m.article>
+                                          </div>
                                         );
                                       })}
                                     </div>
+
+                                    {/* Pagination Controls */}
+                                    {currentSteps.length > 3 && (
+                                      <div className="absolute bottom-0 right-[calc(50%-500px)] flex items-center gap-4 z-20 translate-y-full pt-4">
+                                        <button
+                                          onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))}
+                                          disabled={currentStepIndex === 0}
+                                          className="p-2 rounded-full hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                        >
+                                          <ChevronLeft className="w-6 h-6 text-[#00263e]" />
+                                        </button>
+                                        <span className="text-sm font-light tracking-widest text-[#00263e]/60">
+                                          {currentStepIndex + 1} / {Math.ceil(currentSteps.length / 3)}
+                                        </span>
+                                        <button
+                                          onClick={() => setCurrentStepIndex(p => Math.min(Math.ceil(currentSteps.length / 3) - 1, p + 1))}
+                                          disabled={currentStepIndex >= Math.ceil(currentSteps.length / 3) - 1}
+                                          className="p-2 rounded-full hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                        >
+                                          <ChevronRight className="w-6 h-6 text-[#00263e]" />
+                                        </button>
+                                      </div>
+                                    )}
                                   </m.section>
                                 )}
                               </AnimatePresence>
