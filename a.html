@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphite Kinetic Grid</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --accent-color: #00263e;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1a1;
+            --border-radius: 28px;
+            --transition-speed: 0.6s;
+            --ease: cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+
+        .kinetic-container {
+            width: 90vw;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 20px;
+            perspective: 1000px;
+        }
+
+        .cell {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            background: #151515;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 40px;
+            transition: transform var(--transition-speed) var(--ease), 
+                        box-shadow var(--transition-speed) var(--ease);
+            border: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+        }
+
+        /* Kinetic Monolithic Shadows (Neo-Brutalism) */
+        .cell:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 15px 15px 0px var(--accent-color);
+            z-index: 10;
+        }
+
+        /* Image Cell Styles */
+        .image-cell {
+            padding: 0;
+        }
+
+        .image-cell img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: grayscale(100%) contrast(1.1) brightness(0.9);
+            transition: transform 1.2s var(--ease), filter 0.8s var(--ease);
+        }
+
+        .cell:hover img {
+            transform: scale(1.1) rotate(1deg);
+            filter: grayscale(0%) contrast(1);
+        }
+
+        /* Text Cell Styles */
+        .text-cell {
+            background: #111;
+            justify-content: center;
+            border: 2px solid transparent;
+        }
+
+        .text-cell:hover {
+            background: #1a1a1a;
+            border-color: var(--accent-color);
+        }
+
+        .name {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+            color: #fff;
+        }
+
+        .description {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Login Cell Special Case */
+        .login-cell {
+            background: var(--accent-color);
+            justify-content: center;
+            align-items: flex-start;
+            border: none;
+        }
+
+        .login-cell:hover {
+            background: #003a5e;
+            box-shadow: 15px 15px 0px #fff;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.3s;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #fff;
+            color: #000;
+        }
+
+        .btn-secondary {
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+        }
+
+        .btn:hover {
+            transform: translateX(5px);
+        }
+
+        /* Alternating Decorative Accents */
+        .cell::after {
+            content: "";
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 10px;
+            height: 10px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+
+        @media (max-width: 900px) {
+            .kinetic-container {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .kinetic-container {
+                grid-template-columns: 1fr;
+                height: auto;
+                overflow-y: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="kinetic-container">
+        <!-- Row 1, Col 1: Image -->
+        <div class="cell image-cell">
+            <img src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg" alt="User Portrait 1">
+        </div>
+
+        <!-- Row 1, Col 2: Text -->
+        <div class="cell text-cell">
+            <div class="name">更少步骤<br>更多呵护</div>
+            <div class="description">美丽不该复杂 专注美好生活</div>
+        </div>
+
+        <!-- Row 1, Col 3: Image -->
+        <div class="cell image-cell">
+            <img src="https://wp-cdn.4ce.cn/v2/L16QwSO.png" alt="Product Concept">
+        </div>
+
+        <!-- Row 2, Col 1: Text -->
+        <div class="cell text-cell">
+            <div class="name">予旎柏<br>一起逆转时光</div>
+            <div class="description">Reverse Time</div>
+        </div>
+
+        <!-- Row 2, Col 2: Image -->
+        <div class="cell image-cell">
+            <img src="https://wp-cdn.4ce.cn/v2/SRRGoGQ.png" alt="User Portrait 2">
+        </div>
+
+        <!-- Row 2, Col 3: Login/CTA -->
+        <div class="cell login-cell">
+            <div class="login-title"></div>
+            <div class="btn-group">
+                <a href="#" class="btn btn-primary">立即登录</a>
+                <a href="#" class="btn btn-secondary">注册</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Kinetic interaction - Tilt effect on mouse move
+        const container = document.querySelector('.kinetic-container');
+        const cells = document.querySelectorAll('.cell');
+
+        container.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth - 0.5;
+            const y = e.clientY / window.innerHeight - 0.5;
+            
+            cells.forEach((cell, index) => {
+                const factor = (index + 1) * 2;
+                cell.style.transform = `translate(${x * factor}px, ${y * factor}px) rotateX(${-y * 5}deg) rotateY(${x * 5}deg)`;
+            });
+        });
+
+        container.addEventListener('mouseleave', () => {
+            cells.forEach(cell => {
+                cell.style.transform = `translate(0, 0) rotateX(0) rotateY(0)`;
+            });
+        });
+    </script>
+</body>
+</html>

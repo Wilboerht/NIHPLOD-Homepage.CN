@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { GlobalModals } from "@/components/website";
+import { GlobalModals, KineticBackground } from "@/components/website";
 
 interface WebsiteLayoutProps {
   children: ReactNode;
@@ -18,13 +18,17 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
       {/* Skip to main content 链接 - 可访问性 */}
 
 
-      {/* 全局共享背景 - 消除页面切换闪烁 */}
-      <div className="fullscreen-bg-base" />
+      {/* Graphite Kinetic Grid 全局背景 */}
+      <KineticBackground />
 
 
       {/* 主内容区域，包含 NavBar 逻辑 */}
       <WebsiteLayoutClient>
-        <main id="main-content" tabIndex={-1} className="relative z-10">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="relative z-10 pointer-events-none [&>*]:pointer-events-auto"
+        >
           {children}
         </main>
       </WebsiteLayoutClient>

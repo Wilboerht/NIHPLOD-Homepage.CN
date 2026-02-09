@@ -762,3 +762,569 @@
 .animate-marquee {
   animation: marquee 30s linear infinite;
 }
+
+/* ========== Graphite Kinetic Grid 全局背景 ========== */
+
+:root {
+  --kinetic-bg: #0a0a0a;
+  --kinetic-accent: #00263e;
+  --kinetic-text-primary: #ffffff;
+  --kinetic-text-secondary: #a1a1a1;
+  --kinetic-border-radius: 28px;
+  --kinetic-transition: 0.6s;
+  --kinetic-ease: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* 背景包装器 - 覆盖全屏 */
+.kinetic-background-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+}
+
+/* 底层纯色背景 */
+.kinetic-bg-base {
+  position: absolute;
+  inset: 0;
+  background-color: var(--kinetic-bg);
+  pointer-events: none;
+}
+
+/* 点阵图案层 */
+.kinetic-dot-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 2px 2px,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 0);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* 3D 视差容器 */
+.kinetic-parallax-container {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+/* 渐变光晕效果 */
+.kinetic-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.kinetic-glow-1 {
+  width: 600px;
+  height: 600px;
+  background: var(--kinetic-accent);
+  top: -200px;
+  right: -200px;
+  animation: kinetic-float-1 20s ease-in-out infinite;
+}
+
+.kinetic-glow-2 {
+  width: 500px;
+  height: 500px;
+  background: linear-gradient(135deg, var(--kinetic-accent), #003a5e);
+  bottom: -150px;
+  left: -150px;
+  animation: kinetic-float-2 25s ease-in-out infinite;
+}
+
+.kinetic-glow-3 {
+  width: 400px;
+  height: 400px;
+  background: var(--kinetic-accent);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: kinetic-float-3 30s ease-in-out infinite;
+  opacity: 0.08;
+}
+
+/* 光晕漂浮动画 */
+@keyframes kinetic-float-1 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate(50px, 30px) scale(1.1);
+  }
+
+  50% {
+    transform: translate(20px, -20px) scale(0.95);
+  }
+
+  75% {
+    transform: translate(-30px, 40px) scale(1.05);
+  }
+}
+
+@keyframes kinetic-float-2 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(-40px, -30px) scale(1.08);
+  }
+
+  66% {
+    transform: translate(30px, 20px) scale(0.92);
+  }
+}
+
+@keyframes kinetic-float-3 {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.08;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0.12;
+  }
+}
+
+/* 微弱的扫描线效果 */
+.kinetic-background-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.01) 2px,
+      rgba(255, 255, 255, 0.01) 4px);
+  pointer-events: none;
+}
+
+/* 响应式调整 - 移动端减少光晕数量 */
+@media (max-width: 768px) {
+  .kinetic-glow-3 {
+    display: none;
+  }
+
+  .kinetic-glow-1,
+  .kinetic-glow-2 {
+    filter: blur(60px);
+    opacity: 0.1;
+  }
+}
+
+/* 尊重用户减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+
+  .kinetic-glow-1,
+  .kinetic-glow-2,
+  .kinetic-glow-3 {
+    animation: none !important;
+  }
+
+  .kinetic-parallax-container {
+    transition: none !important;
+  }
+
+  .kinetic-cell {
+    transition: none !important;
+  }
+
+  .kinetic-cell-image {
+    transition: none !important;
+  }
+}
+
+/* ========== Bento Grid 便当盒卡片布局 ========== */
+
+/* 网格容器 */
+.kinetic-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 85vw;
+  max-width: 1100px;
+  display: grid;
+  /* 4列布局：左侧大卡片 + 右侧3列小卡片 */
+  grid-template-columns: 1.2fr repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 16px;
+  perspective: 1000px;
+  pointer-events: auto;
+}
+
+
+/* 大卡片底部内容区 */
+.kinetic-large-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 40px;
+  background: linear-gradient(to top,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.4) 50%,
+      transparent 100%);
+  z-index: 5;
+}
+
+.kinetic-large-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--kinetic-text-primary);
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.kinetic-large-subtitle {
+  font-size: 1rem;
+  color: var(--kinetic-text-secondary);
+  letter-spacing: 0.2em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* 单个卡片基础样式 */
+.kinetic-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: #151515;
+  border-radius: var(--kinetic-border-radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 40px;
+  transition:
+    transform var(--kinetic-transition) var(--kinetic-ease),
+    box-shadow var(--kinetic-transition) var(--kinetic-ease),
+    border-color 0.4s ease,
+    background-color 0.4s ease;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* 左侧大卡片 - 跨两行 */
+.kinetic-cell-large {
+  grid-row: span 2;
+  aspect-ratio: auto !important;
+  height: 100%;
+}
+
+/* 卡片内发光边框效果 */
+.kinetic-cell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--kinetic-border-radius);
+  padding: 2px;
+  background: linear-gradient(135deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(0, 38, 62, 0) 40%,
+      rgba(0, 38, 62, 0) 100%);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+/* Neo-Brutalism 悬停阴影效果 */
+.kinetic-cell:hover {
+  transform: translateY(-12px) scale(1.03) !important;
+  box-shadow:
+    18px 18px 0px var(--kinetic-accent),
+    0 25px 50px -12px rgba(0, 38, 62, 0.4);
+  z-index: 10;
+  border-color: rgba(0, 58, 94, 0.5);
+}
+
+.kinetic-cell:hover::before {
+  opacity: 1;
+  background: linear-gradient(135deg,
+      rgba(0, 58, 94, 0.8) 0%,
+      rgba(0, 58, 94, 0.4) 30%,
+      transparent 60%,
+      transparent 100%);
+}
+
+/* 装饰小圆点 */
+.kinetic-cell::after {
+  content: "";
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 10px;
+  height: 10px;
+  background: var(--kinetic-accent);
+  border-radius: 50%;
+  opacity: 0.3;
+  transition:
+    transform 0.4s var(--kinetic-ease),
+    opacity 0.4s ease,
+    box-shadow 0.4s ease;
+  z-index: 5;
+}
+
+/* 悬停时装饰点发光 */
+.kinetic-cell:hover::after {
+  opacity: 1;
+  transform: scale(1.5);
+  box-shadow: 0 0 20px var(--kinetic-accent), 0 0 40px var(--kinetic-accent);
+}
+
+/* ========== 图片卡片样式 ========== */
+
+.kinetic-image-cell {
+  padding: 0;
+}
+
+/* 图片卡片悬停时的渐变遮罩 */
+.kinetic-image-cell .kinetic-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+      transparent 0%,
+      transparent 50%,
+      rgba(0, 38, 62, 0.8) 100%);
+  opacity: 0;
+  transition: opacity 0.5s var(--kinetic-ease);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.kinetic-image-cell:hover .kinetic-overlay {
+  opacity: 1;
+}
+
+.kinetic-cell-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(100%) contrast(1.1) brightness(0.9);
+  transition:
+    transform 1.2s var(--kinetic-ease),
+    filter 0.8s var(--kinetic-ease);
+}
+
+.kinetic-cell:hover .kinetic-cell-image {
+  transform: scale(1.15) rotate(2deg);
+  filter: grayscale(0%) contrast(1.05) brightness(1);
+}
+
+/* ========== 文字卡片样式 ========== */
+
+.kinetic-text-cell {
+  background: #111;
+  justify-content: center;
+  border: 2px solid transparent;
+  overflow: hidden;
+}
+
+/* 文字卡片背景光晕 */
+.kinetic-text-cell .kinetic-text-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center,
+      rgba(0, 58, 94, 0.3) 0%,
+      transparent 50%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.kinetic-text-cell:hover {
+  background: #1a1a1a;
+  border-color: var(--kinetic-accent);
+}
+
+.kinetic-text-cell:hover .kinetic-text-glow {
+  opacity: 1;
+}
+
+.kinetic-name {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 12px;
+  letter-spacing: -1px;
+  color: var(--kinetic-text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: text-shadow 0.4s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.kinetic-text-cell:hover .kinetic-name {
+  text-shadow: 0 0 30px rgba(0, 58, 94, 0.8), 0 0 60px rgba(0, 58, 94, 0.4);
+}
+
+.kinetic-description {
+  font-size: 0.95rem;
+  color: var(--kinetic-text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.4s ease, letter-spacing 0.4s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.kinetic-text-cell:hover .kinetic-description {
+  color: #c0c0c0;
+  letter-spacing: 2px;
+}
+
+/* ========== 登录卡片样式 ========== */
+
+.kinetic-login-cell {
+  background: var(--kinetic-accent);
+  justify-content: center;
+  align-items: flex-start;
+  border: none;
+  overflow: hidden;
+}
+
+/* 登录卡片背景动效 */
+.kinetic-login-cell .kinetic-login-bg {
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle at 30% 70%,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 50%);
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.8s var(--kinetic-ease);
+  pointer-events: none;
+}
+
+.kinetic-login-cell:hover {
+  background: #003a5e;
+  box-shadow:
+    18px 18px 0px #fff,
+    0 25px 50px -12px rgba(255, 255, 255, 0.2);
+}
+
+.kinetic-login-cell:hover .kinetic-login-bg {
+  opacity: 1;
+  transform: scale(1.2) rotate(10deg);
+}
+
+.kinetic-login-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 24px;
+  color: var(--kinetic-text-primary);
+}
+
+.kinetic-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+.kinetic-btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-align: center;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
+}
+
+.kinetic-btn-primary {
+  background: #fff;
+  color: #000;
+}
+
+.kinetic-btn-secondary {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  background: transparent;
+}
+
+.kinetic-btn:hover {
+  transform: translateX(5px);
+  color: inherit;
+}
+
+/* ========== 响应式布局 ========== */
+
+/* 平板端 - 2列布局 */
+@media (max-width: 900px) {
+  .kinetic-container {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .kinetic-cell {
+    padding: 30px;
+  }
+
+  .kinetic-name {
+    font-size: 1.8rem;
+  }
+}
+
+/* 移动端 - 单列布局 */
+@media (max-width: 600px) {
+  .kinetic-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    height: auto;
+    max-height: 90vh;
+    overflow-y: auto;
+    width: 95vw;
+    gap: 12px;
+  }
+
+  .kinetic-cell {
+    aspect-ratio: 4 / 3;
+    padding: 24px;
+    border-radius: 20px;
+  }
+
+  .kinetic-name {
+    font-size: 1.5rem;
+  }
+
+  .kinetic-description {
+    font-size: 0.85rem;
+  }
+
+  /* 移动端禁用 hover 阴影效果 */
+  .kinetic-cell:hover {
+    transform: none !important;
+    box-shadow: none;
+  }
+}
