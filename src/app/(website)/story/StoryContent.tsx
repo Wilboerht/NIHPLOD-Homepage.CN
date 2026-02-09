@@ -627,15 +627,15 @@ export function StoryContent({ backgroundImage }: StoryContentProps) {
                                 </div>
 
                                 {/* 默认显示的文字内容 */}
-                                <div className="relative z-10 flex flex-col transition-transform duration-300 group-hover:-translate-y-1">
-                                  <span className="mb-3 text-xs tracking-[2px] text-[#00263e]/50 lg:text-sm">
-                                    {award.year}
-                                  </span>
-                                  <span className="text-sm font-medium uppercase tracking-wider text-[#00263e]/70 mb-1 block">
+                                <div className="relative z-10 flex flex-col items-start gap-2 transition-opacity duration-300 group-hover:opacity-0">
+                                  <span className="text-sm font-medium uppercase tracking-wider text-[#00263e]/70 block">
                                     {award.org}
                                   </span>
-                                  <span className="text-base font-normal leading-relaxed tracking-wide text-[#00263e] lg:text-lg">
+                                  <span className="text-base font-normal leading-relaxed tracking-wide text-[#00263e] lg:text-lg text-left">
                                     {award.title}
+                                  </span>
+                                  <span className="text-xs font-medium tracking-[2px] text-[#00263e]/40 lg:text-sm">
+                                    {award.year}
                                   </span>
                                 </div>
                               </m.div>
