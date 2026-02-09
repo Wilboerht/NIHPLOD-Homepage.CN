@@ -176,7 +176,7 @@ export function FAQContent() {
 
                                     {/* Page Title - Fixed */}
                                     <div className="shrink-0 text-center mb-6 mt-6 sm:mb-8">
-                                        <h1 className="text-xl sm:text-2xl font-normal tracking-widest text-brand-charcoal/90">
+                                        <h1 className="text-[30px] font-normal tracking-widest text-brand-charcoal/90">
                                             常见问题
                                         </h1>
                                     </div>
