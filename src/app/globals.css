@@ -766,7 +766,7 @@
 /* ========== Graphite Kinetic Grid 全局背景 ========== */
 
 :root {
-  --kinetic-bg: #0a0a0a;
+  --kinetic-bg: #A68B5B;
   --kinetic-accent: #00263e;
   --kinetic-text-primary: #ffffff;
   --kinetic-text-secondary: #a1a1a1;
@@ -785,11 +785,12 @@
   /* 允许事件穿透到模态框层 */
 }
 
-/* 底层纯色背景 */
+/* 底层纯色背景 + 白色渐变遮罩 */
 .kinetic-bg-base {
   position: absolute;
   inset: 0;
   background-color: var(--kinetic-bg);
+  background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.6) 0%, transparent 100%);
   pointer-events: none;
 }
 
@@ -1052,13 +1053,14 @@
 }
 
 /* Neo-Brutalism 悬停阴影效果 */
+/* Neo-Brutalism 悬停阴影效果 - 极简微调版 */
 .kinetic-cell:hover {
-  transform: translateY(-8px) scale(1.02) !important;
+  transform: translateY(-4px) scale(1.005) !important;
   box-shadow:
-    10px 10px 0px var(--kinetic-accent),
-    0 20px 40px -10px rgba(0, 38, 62, 0.3);
+    6px 6px 0px var(--kinetic-accent),
+    0 15px 30px -8px rgba(0, 38, 62, 0.2);
   z-index: 10;
-  border-color: rgba(0, 58, 94, 0.5);
+  border-color: rgba(0, 58, 94, 0.3);
 }
 
 .kinetic-cell:hover::before {
@@ -1130,7 +1132,7 @@
 }
 
 .kinetic-cell:hover .kinetic-cell-image {
-  transform: scale(1.15) rotate(2deg);
+  transform: scale(1.05);
   filter: grayscale(0%) contrast(1.05) brightness(1);
 }
 
