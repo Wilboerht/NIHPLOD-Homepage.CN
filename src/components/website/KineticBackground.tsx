@@ -114,9 +114,8 @@ export function KineticBackground() {
                     ref={(el) => addCellRef(el, 1)}
                     className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect"
                 >
-                    <div className="kinetic-text-glow" />
-                    <div className="kinetic-name">更少步骤<br />更多呵护</div>
-                    <div className="kinetic-name" style={{ fontSize: '0.8rem', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400 }}>美丽不该复杂，<br />专注美好生活</div>
+                    <div className="kinetic-name" style={{ marginBottom: '12px', lineHeight: '1.3' }}>更少步骤<br />更多呵护</div>
+                    <div className="kinetic-name" style={{ fontSize: '0.8rem', lineHeight: '1.8', letterSpacing: '0.1em', textTransform: 'none', fontWeight: 400, opacity: 0.9 }}>美丽不该复杂，<br />专注美好生活</div>
                 </div>
 
                 {/* Row 1, Col 3-4: 合并后的宽图片卡 */}

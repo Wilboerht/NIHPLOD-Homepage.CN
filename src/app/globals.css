@@ -1038,7 +1038,7 @@
   box-shadow:
     6px 6px 0px rgba(200, 200, 200, 0.15),
     0 15px 30px -8px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(200, 200, 200, 0.2);
+  border: none;
 
   cursor: pointer;
   pointer-events: auto;
@@ -1167,7 +1167,7 @@
 .kinetic-text-cell {
   background: #111;
   justify-content: center;
-  border: 2px solid transparent;
+  border: none;
   overflow: hidden;
 }
 
@@ -1409,7 +1409,7 @@
   background: linear-gradient(135deg, rgba(250, 231, 171, 0.12) 0%, rgba(250, 231, 171, 0.05) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: none;
   box-shadow:
     0 8px 32px 0 rgba(0, 0, 0, 0.1),
     inset 0 0 0 1px rgba(255, 255, 255, 0.15),
@@ -1443,7 +1443,7 @@
   background: linear-gradient(135deg, rgba(225, 186, 161, 0.12) 0%, rgba(225, 186, 161, 0.05) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: none;
   box-shadow:
     0 8px 32px 0 rgba(0, 0, 0, 0.1),
     inset 0 0 0 1px rgba(255, 255, 255, 0.15),
