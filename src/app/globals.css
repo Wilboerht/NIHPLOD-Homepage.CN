@@ -1123,7 +1123,8 @@
 /* ========== 图片卡片样式 ========== */
 
 .kinetic-image-cell {
-  padding: 0;
+  padding: 0 !important;
+  background: transparent;
 }
 
 /* 图片卡片悬停时的渐变遮罩 */
@@ -1152,6 +1153,8 @@
   object-fit: cover;
   /* Apply "Hover" filter permanently */
   filter: grayscale(0%) contrast(1.05) brightness(1);
+  /* Slightly scale up to prevent sub-pixel gaps/borders */
+  transform: scale(1.01);
   transition:
     transform 1.2s var(--kinetic-ease),
     filter 0.8s var(--kinetic-ease);
