@@ -283,15 +283,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         )}
                       >
                         {/* 图片容器 - 桌面端使用 flex-1 填充可用空间 */}
-                        <div className="relative h-[40vh] w-full overflow-hidden bg-white p-4 transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)] lg:flex-1 lg:h-auto lg:p-6">
+                        <div className="relative h-[40vh] w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)] lg:flex-1 lg:h-auto">
                           {/* 内部装饰边框 */}
-                          <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08]" />
+                          <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08] z-10" />
                           {product.images[0] && (
                             <Image
                               src={product.images[0].url}
                               alt={product.images[0].alt || product.name}
                               fill
-                              className="object-contain p-4 transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05] lg:p-6"
+                              className="object-contain object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
                               sizes="(max-width: 1024px) 85vw, 33vw"
                             />
                           )}
