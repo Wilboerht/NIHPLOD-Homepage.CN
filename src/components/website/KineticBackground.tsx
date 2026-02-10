@@ -107,11 +107,11 @@ export function KineticBackground() {
                 {/* Row 1, Col 2: 文字卡 */}
                 <div
                     ref={(el) => addCellRef(el, 1)}
-                    className="kinetic-cell kinetic-text-cell"
+                    className="kinetic-cell kinetic-text-cell kinetic-cell-yellow no-hover-effect"
                 >
                     <div className="kinetic-text-glow" />
                     <div className="kinetic-name">更少步骤<br />更多呵护</div>
-                    <div className="kinetic-description">美丽不该复杂</div>
+                    <div className="kinetic-description">美丽不该复杂，专注美好生活</div>
                 </div>
 
                 {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
@@ -135,9 +135,8 @@ export function KineticBackground() {
                     ref={(el) => addCellRef(el, 3)}
                     className="kinetic-cell kinetic-image-cell"
                 >
-                    <div className="kinetic-overlay" />
                     <Image
-                        src="https://wp-cdn.4ce.cn/v2/L16QwSO.png"
+                        src="/images/kinetic-face-mask.jpg"
                         alt="Product"
                         fill
                         className="kinetic-cell-image"
@@ -148,10 +147,10 @@ export function KineticBackground() {
                 {/* Row 2, Col 3: 文字卡 */}
                 <div
                     ref={(el) => addCellRef(el, 4)}
-                    className="kinetic-cell kinetic-text-cell"
+                    className="kinetic-cell kinetic-text-cell kinetic-cell-orange no-hover-effect"
                 >
                     <div className="kinetic-text-glow" />
-                    <div className="kinetic-name">专注<br />美好生活</div>
+                    <div className="kinetic-name">逆转时光</div>
                     <div className="kinetic-description">Reverse Time</div>
                 </div>
 

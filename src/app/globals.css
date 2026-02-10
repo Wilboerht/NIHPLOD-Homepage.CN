@@ -766,8 +766,8 @@
 /* ========== Graphite Kinetic Grid 全局背景 ========== */
 
 :root {
-  --kinetic-bg: #A68B5B;
-  --kinetic-accent: #00263e;
+  --kinetic-bg: rgb(103, 90, 79);
+  --kinetic-accent: #333333;
   --kinetic-text-primary: #ffffff;
   --kinetic-text-secondary: #a1a1a1;
   --kinetic-border-radius: 28px;
@@ -833,7 +833,7 @@
 .kinetic-glow-2 {
   width: 500px;
   height: 500px;
-  background: linear-gradient(135deg, var(--kinetic-accent), #003a5e);
+  background: linear-gradient(135deg, var(--kinetic-accent), #555555);
   bottom: -150px;
   left: -150px;
   animation: kinetic-float-2 25s ease-in-out infinite;
@@ -1015,7 +1015,13 @@
     box-shadow var(--kinetic-transition) var(--kinetic-ease),
     border-color 0.4s ease,
     background-color 0.4s ease;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+
+  /* Apply "Hover" styles permanently */
+  box-shadow:
+    6px 6px 0px rgba(200, 200, 200, 0.15),
+    0 15px 30px -8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(200, 200, 200, 0.2);
+
   cursor: pointer;
   pointer-events: auto;
 }
@@ -1037,8 +1043,8 @@
   background: linear-gradient(135deg,
       transparent 0%,
       transparent 40%,
-      rgba(0, 38, 62, 0) 40%,
-      rgba(0, 38, 62, 0) 100%);
+      rgba(51, 51, 51, 0) 40%,
+      rgba(51, 51, 51, 0) 100%);
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -1054,20 +1060,18 @@
 
 /* Neo-Brutalism 悬停阴影效果 */
 /* Neo-Brutalism 悬停阴影效果 - 极简微调版 */
-.kinetic-cell:hover {
+/* Neo-Brutalism 悬停阴影效果 - 极简微调版 - 已合并至默认状态 */
+.kinetic-cell:not(.no-hover-effect):hover {
+  /* 仅保留位移效果 */
   transform: translateY(-4px) scale(1.005) !important;
-  box-shadow:
-    6px 6px 0px var(--kinetic-accent),
-    0 15px 30px -8px rgba(0, 38, 62, 0.2);
   z-index: 10;
-  border-color: rgba(0, 58, 94, 0.3);
 }
 
-.kinetic-cell:hover::before {
+.kinetic-cell:not(.no-hover-effect):hover::before {
   opacity: 1;
   background: linear-gradient(135deg,
-      rgba(0, 58, 94, 0.8) 0%,
-      rgba(0, 58, 94, 0.4) 30%,
+      rgba(85, 85, 85, 0.8) 0%,
+      rgba(85, 85, 85, 0.4) 30%,
       transparent 60%,
       transparent 100%);
 }
@@ -1075,7 +1079,8 @@
 /* 装饰小圆点 */
 .kinetic-cell::after {
   content: "";
-  position: absolute;
+  display: none;
+  /* position: absolute;
   top: 20px;
   right: 20px;
   width: 10px;
@@ -1087,11 +1092,11 @@
     transform 0.4s var(--kinetic-ease),
     opacity 0.4s ease,
     box-shadow 0.4s ease;
-  z-index: 5;
+  z-index: 5; */
 }
 
 /* 悬停时装饰点发光 */
-.kinetic-cell:hover::after {
+.kinetic-cell:not(.no-hover-effect):hover::after {
   opacity: 1;
   transform: scale(1.5);
   box-shadow: 0 0 20px var(--kinetic-accent), 0 0 40px var(--kinetic-accent);
@@ -1110,8 +1115,10 @@
   background: linear-gradient(180deg,
       transparent 0%,
       transparent 50%,
-      rgba(0, 38, 62, 0.8) 100%);
-  opacity: 0;
+      rgba(51, 51, 51, 0.8) 100%);
+  /* opacity: 0; */
+  opacity: 1;
+  /* Permanently visible */
   transition: opacity 0.5s var(--kinetic-ease);
   z-index: 2;
   pointer-events: none;
@@ -1125,7 +1132,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: grayscale(100%) contrast(1.1) brightness(0.9);
+  /* Apply "Hover" filter permanently */
+  filter: grayscale(0%) contrast(1.05) brightness(1);
   transition:
     transform 1.2s var(--kinetic-ease),
     filter 0.8s var(--kinetic-ease);
@@ -1153,19 +1161,19 @@
   width: 200%;
   height: 200%;
   background: radial-gradient(circle at center,
-      rgba(0, 58, 94, 0.3) 0%,
+      rgba(85, 85, 85, 0.3) 0%,
       transparent 50%);
   opacity: 0;
   transition: opacity 0.6s ease;
   pointer-events: none;
 }
 
-.kinetic-text-cell:hover {
+.kinetic-text-cell:not(.no-hover-effect):hover {
   background: #1a1a1a;
   border-color: var(--kinetic-accent);
 }
 
-.kinetic-text-cell:hover .kinetic-text-glow {
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-text-glow {
   opacity: 1;
 }
 
@@ -1182,8 +1190,8 @@
   z-index: 2;
 }
 
-.kinetic-text-cell:hover .kinetic-name {
-  text-shadow: 0 0 30px rgba(0, 58, 94, 0.8), 0 0 60px rgba(0, 58, 94, 0.4);
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-name {
+  text-shadow: 0 0 30px rgba(85, 85, 85, 0.8), 0 0 60px rgba(85, 85, 85, 0.4);
 }
 
 .kinetic-description {
@@ -1197,7 +1205,7 @@
   z-index: 2;
 }
 
-.kinetic-text-cell:hover .kinetic-description {
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-description {
   color: #c0c0c0;
   letter-spacing: 2px;
 }
@@ -1205,7 +1213,7 @@
 /* ========== 登录卡片样式 ========== */
 
 .kinetic-login-cell {
-  background: var(--kinetic-accent);
+  background: #efede6;
   justify-content: center;
   align-items: flex-start;
   border: none;
@@ -1225,7 +1233,7 @@
 }
 
 .kinetic-login-cell:hover {
-  background: #003a5e;
+  background: #e0ded6;
   box-shadow:
     18px 18px 0px #fff,
     0 25px 50px -12px rgba(255, 255, 255, 0.2);
@@ -1267,12 +1275,12 @@
 
 .kinetic-btn-primary {
   background: #fff;
-  color: #000;
+  color: #333333;
 }
 
 .kinetic-btn-secondary {
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
+  border: 1px solid #555555;
+  color: #555555;
   background: transparent;
 }
 
@@ -1331,4 +1339,66 @@
     transform: none !important;
     box-shadow: none;
   }
+}
+
+/* ========== 自定义彩色卡片样式 ========== */
+
+.kinetic-cell-yellow {
+  /* Apple Liquid Glass Effect */
+  background: linear-gradient(135deg, rgba(250, 231, 171, 0.25) 0%, rgba(250, 231, 171, 0.1) 100%);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+}
+
+.kinetic-cell-yellow:not(.no-hover-effect):hover {
+  background: #f0dd9b;
+}
+
+.kinetic-cell-yellow .kinetic-name {
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+.kinetic-cell-yellow .kinetic-description {
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  width: 100%;
+}
+
+.kinetic-cell-yellow:not(.no-hover-effect):hover .kinetic-name {
+  text-shadow: none !important;
+}
+
+.kinetic-cell-orange {
+  /* Apple Liquid Glass Effect */
+  background: linear-gradient(135deg, rgba(225, 186, 161, 0.25) 0%, rgba(225, 186, 161, 0.1) 100%);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+}
+
+.kinetic-cell-orange:not(.no-hover-effect):hover {
+  background: #d4a78c;
+}
+
+.kinetic-cell-orange .kinetic-name,
+.kinetic-cell-orange .kinetic-description {
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+.kinetic-cell-orange:not(.no-hover-effect):hover .kinetic-name {
+  text-shadow: none !important;
 }
