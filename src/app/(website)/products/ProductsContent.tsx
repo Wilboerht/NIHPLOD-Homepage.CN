@@ -119,7 +119,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
       {/* 内容区域容器 */}
       <m.div
-        className="safe-area-content !top-0"
+        className="safe-area-content !top-0 !pointer-events-none"
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
         {/* 主内容区域 + 展开按钮一体化 */}
@@ -127,13 +127,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full"
+          className="h-full pointer-events-none"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="flex h-full flex-col items-center">
+          <div className="flex h-full flex-col items-center pointer-events-none">
             {/* 主内容区域 - 抽屉 */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl pointer-events-auto"
               style={{ willChange: "flex-grow, height" }}
               initial={{ height: 0, flexGrow: 0 }}
               animate={{
@@ -348,7 +348,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
             >
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0 rounded-b-2xl" />

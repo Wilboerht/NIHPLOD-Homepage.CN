@@ -150,7 +150,7 @@ export function AdvisorWelcome() {
 
       {/* Main Drawer Container */}
       <m.div
-        className="safe-area-content !top-0 pointer-events-none"
+        className="safe-area-content !top-0 !pointer-events-none"
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
         <m.div

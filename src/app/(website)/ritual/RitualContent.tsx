@@ -760,7 +760,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
       {/* 内容区域容器 - 紧贴顶部，使用 framer-motion 统一控制动画 */}
       <m.div
-        className="safe-area-content !top-0"
+        className="safe-area-content !top-0 !pointer-events-none"
         transition={{
           duration: 0.8,
           ease: [0.22, 1, 0.36, 1]
@@ -774,13 +774,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
             scale: 1
           }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full"
+          className="h-full pointer-events-none"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="flex h-full flex-col items-center">
+          <div className="flex h-full flex-col items-center pointer-events-none">
             {/* 主内容区域 - 三层级布局 */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl pointer-events-auto"
               style={{ willChange: "flex-grow" }}
               initial={{ flexGrow: 0, flexBasis: 0 }}
               animate={{
@@ -2145,7 +2145,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
             >
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0 rounded-b-2xl" />

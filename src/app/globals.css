@@ -766,7 +766,7 @@
 /* ========== Graphite Kinetic Grid 全局背景 ========== */
 
 :root {
-  --kinetic-bg: rgb(103, 90, 79);
+  --kinetic-bg: rgb(142, 128, 114);
   --kinetic-accent: #333333;
   --kinetic-text-primary: #ffffff;
   --kinetic-text-secondary: #a1a1a1;
@@ -803,6 +803,23 @@
       transparent 0);
   background-size: 40px 40px;
   pointer-events: none;
+}
+
+/* 全局背景水印 */
+.kinetic-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 1;
+  /* 在背景基础层之上，但在网格容器之下 */
+  max-width: 2800px;
+  width: 150vw;
+  height: auto;
+  filter: grayscale(1) brightness(2);
+  mix-blend-mode: overlay;
 }
 
 /* 3D 视差容器 */
@@ -966,6 +983,7 @@
   gap: 16px;
   perspective: 1000px;
   pointer-events: auto;
+  z-index: 2;
 }
 
 
@@ -977,8 +995,8 @@
   right: 0;
   padding: 40px;
   background: linear-gradient(to top,
-      rgba(0, 0, 0, 0.8) 0%,
-      rgba(0, 0, 0, 0.4) 50%,
+      rgba(154, 155, 155, 0.8) 0%,
+      rgba(154, 155, 155, 0.4) 50%,
       transparent 100%);
   z-index: 5;
 }
@@ -1124,7 +1142,7 @@
   pointer-events: none;
 }
 
-.kinetic-image-cell:hover .kinetic-overlay {
+.kinetic-image-cell:not(.no-hover-effect):hover .kinetic-overlay {
   opacity: 1;
 }
 
@@ -1139,7 +1157,7 @@
     filter 0.8s var(--kinetic-ease);
 }
 
-.kinetic-cell:hover .kinetic-cell-image {
+.kinetic-cell:not(.no-hover-effect):hover .kinetic-cell-image {
   transform: scale(1.05);
   filter: grayscale(0%) contrast(1.05) brightness(1);
 }
@@ -1345,7 +1363,7 @@
 
 .kinetic-cell-yellow {
   /* Apple Liquid Glass Effect */
-  background: linear-gradient(135deg, rgba(250, 231, 171, 0.25) 0%, rgba(250, 231, 171, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(250, 231, 171, 0.12) 0%, rgba(250, 231, 171, 0.05) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1379,7 +1397,7 @@
 
 .kinetic-cell-orange {
   /* Apple Liquid Glass Effect */
-  background: linear-gradient(135deg, rgba(225, 186, 161, 0.25) 0%, rgba(225, 186, 161, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(225, 186, 161, 0.12) 0%, rgba(225, 186, 161, 0.05) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.2);

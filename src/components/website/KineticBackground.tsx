@@ -81,12 +81,21 @@ export function KineticBackground() {
         <div className="kinetic-background-wrapper">
             <div className="kinetic-bg-base" />
             <div className="kinetic-dot-pattern" />
+            <div className="kinetic-watermark">
+                <Image
+                    src="/images/watermark.png"
+                    alt="Watermark"
+                    width={2800}
+                    height={800}
+                    style={{ objectFit: 'contain' }}
+                />
+            </div>
 
             <div ref={containerRef} className="kinetic-container">
                 {/* 左侧大卡片 - 跨两行 */}
                 <div
                     ref={(el) => addCellRef(el, 0)}
-                    className="kinetic-cell kinetic-cell-large kinetic-image-cell"
+                    className="kinetic-cell kinetic-cell-large kinetic-image-cell no-hover-effect"
                 >
                     <div className="kinetic-overlay" />
                     <Image
@@ -97,11 +106,7 @@ export function KineticBackground() {
                         sizes="(max-width: 600px) 100vw, 30vw"
                         priority
                     />
-                    {/* 大卡片底部文字 */}
-                    <div className="kinetic-large-content">
-                        <div className="kinetic-large-title">予旎柏</div>
-                        <div className="kinetic-large-subtitle">逆转时光 · 焕发新生</div>
-                    </div>
+
                 </div>
 
                 {/* Row 1, Col 2: 文字卡 */}
@@ -111,19 +116,19 @@ export function KineticBackground() {
                 >
                     <div className="kinetic-text-glow" />
                     <div className="kinetic-name">更少步骤<br />更多呵护</div>
-                    <div className="kinetic-description">美丽不该复杂，专注美好生活</div>
+                    <div className="kinetic-name" style={{ fontSize: '0.8rem', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400 }}>美丽不该复杂，<br />专注美好生活</div>
                 </div>
 
                 {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
                 <div
                     ref={(el) => addCellRef(el, 2)}
-                    className="kinetic-cell kinetic-image-cell"
+                    className="kinetic-cell kinetic-image-cell no-hover-effect"
                     style={{ gridColumn: "span 2", aspectRatio: "auto" }}
                 >
                     <div className="kinetic-overlay" />
                     <Image
-                        src="https://wp-cdn.4ce.cn/v2/SRRGoGQ.png"
-                        alt="Less is More"
+                        src="/images/kinetic-cat.jpg"
+                        alt="Cat Aesthetic"
                         fill
                         className="kinetic-cell-image"
                         sizes="(max-width: 600px) 100vw, 50vw"
@@ -133,7 +138,7 @@ export function KineticBackground() {
                 {/* Row 2, Col 2: 图片卡 */}
                 <div
                     ref={(el) => addCellRef(el, 3)}
-                    className="kinetic-cell kinetic-image-cell"
+                    className="kinetic-cell kinetic-image-cell no-hover-effect"
                 >
                     <Image
                         src="/images/kinetic-face-mask.jpg"
@@ -151,7 +156,7 @@ export function KineticBackground() {
                 >
                     <div className="kinetic-text-glow" />
                     <div className="kinetic-name">逆转时光</div>
-                    <div className="kinetic-description">Reverse Time</div>
+                    <div className="kinetic-name" style={{ fontSize: '0.95rem', letterSpacing: 'normal', textTransform: 'none', fontWeight: 400 }}>Reverse Time</div>
                 </div>
 
                 {/* Row 2, Col 4: 登录/CTA卡 */}

@@ -115,7 +115,7 @@ export function FAQContent() {
         <>
             {/* Content wrapper - top aligned */}
             <m.div
-                className="safe-area-content !top-0"
+                className="safe-area-content !top-0 !pointer-events-none"
                 transition={{
                     duration: 0.8,
                     ease: [0.22, 1, 0.36, 1]
@@ -129,12 +129,12 @@ export function FAQContent() {
                         scale: 1
                     }}
                     transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                    className="h-full"
+                    className="h-full pointer-events-none"
                 >
                     <div className="flex h-full flex-col items-center">
                         {/* Drawer Content */}
                         <m.div
-                            className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl"
+                            className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl pointer-events-auto"
                             style={{ willChange: "flex-grow" }}
                             initial={{ flexGrow: 0, flexBasis: 0 }}
                             animate={{
@@ -248,7 +248,7 @@ export function FAQContent() {
                                 setIsExpanded(newState);
                                 setDrawerOpen(newState);
                             }}
-                            className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5"
+                            className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
                         >
                             <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
                             <m.div
