@@ -808,7 +808,7 @@
 /* 全局背景水印 */
 .kinetic-watermark {
   position: absolute;
-  top: 50%;
+  top: 46%;
   left: 50%;
   transform: translate(-50%, -50%);
   opacity: 0.3;
@@ -971,7 +971,7 @@
 /* 网格容器 */
 .kinetic-container {
   position: absolute;
-  top: 50%;
+  top: 46%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 85vw;
@@ -1329,27 +1329,70 @@
 /* 移动端 - 单列布局 */
 @media (max-width: 600px) {
   .kinetic-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     grid-template-rows: auto;
     height: auto;
-    max-height: 90vh;
-    overflow-y: auto;
-    width: 95vw;
-    gap: 12px;
+    /* 移除 max-height 限制，避免计算高度时出现裁剪问题，通过宽度控制整体高度 */
+    width: min(86vw, 42vh);
+    /* 增加最大宽度限制，防止在大屏手机上卡片过高导致溢出屏幕 */
+    max-width: 380px;
+    gap: 14px;
+    top: 50%;
+    /* 稍微下调一点，适配移动端顶部的抽屉拉手 */
   }
 
   .kinetic-cell {
-    aspect-ratio: 4 / 3;
-    padding: 24px;
-    border-radius: 20px;
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .kinetic-cell-skin {
+    order: 2;
+    grid-column: span 1;
+    aspect-ratio: 1 / 1;
+  }
+
+  .kinetic-cell-less {
+    order: 1;
+    grid-column: span 2 !important;
+    aspect-ratio: 2.1 / 1 !important;
+  }
+
+  .kinetic-cell-steps {
+    order: 3;
+    aspect-ratio: 1 / 1;
+  }
+
+  .kinetic-cell-reverse {
+    order: 4;
+    aspect-ratio: 1 / 1;
+  }
+
+  .kinetic-cell-boxes {
+    order: 5;
+    grid-row: span 2;
+    grid-column: span 1;
+    aspect-ratio: auto !important;
+  }
+
+  .kinetic-cell-login {
+    order: 6;
+    aspect-ratio: 1 / 1;
   }
 
   .kinetic-name {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
+    /* 稍微大一点，更接近参考图比例 */
+    text-shadow: none !important;
   }
 
-  .kinetic-description {
-    font-size: 0.85rem;
+  .kinetic-login-cell {
+    padding: 12px;
+  }
+
+  .kinetic-btn {
+    padding: 10px 16px;
+    font-size: 14px;
   }
 
   /* 移动端禁用 hover 阴影效果 */

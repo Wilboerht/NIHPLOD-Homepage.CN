@@ -95,7 +95,7 @@ export function KineticBackground() {
                 {/* 左侧大卡片 - 跨两行 */}
                 <div
                     ref={(el) => addCellRef(el, 0)}
-                    className="kinetic-cell kinetic-cell-large kinetic-image-cell no-hover-effect"
+                    className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes no-hover-effect"
                 >
                     <div className="kinetic-overlay" />
                     <Image
@@ -112,7 +112,7 @@ export function KineticBackground() {
                 {/* Row 1, Col 2: 文字卡 */}
                 <div
                     ref={(el) => addCellRef(el, 1)}
-                    className="kinetic-cell kinetic-text-cell kinetic-cell-yellow no-hover-effect"
+                    className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect"
                 >
                     <div className="kinetic-text-glow" />
                     <div className="kinetic-name">更少步骤<br />更多呵护</div>
@@ -122,7 +122,7 @@ export function KineticBackground() {
                 {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
                 <div
                     ref={(el) => addCellRef(el, 2)}
-                    className="kinetic-cell kinetic-image-cell no-hover-effect"
+                    className="kinetic-cell kinetic-image-cell kinetic-cell-less no-hover-effect"
                     style={{ gridColumn: "span 2", aspectRatio: "auto" }}
                 >
                     <div className="kinetic-overlay" />
@@ -138,7 +138,7 @@ export function KineticBackground() {
                 {/* Row 2, Col 2: 图片卡 */}
                 <div
                     ref={(el) => addCellRef(el, 3)}
-                    className="kinetic-cell kinetic-image-cell no-hover-effect"
+                    className="kinetic-cell kinetic-image-cell kinetic-cell-skin no-hover-effect"
                 >
                     <Image
                         src="/images/kinetic-face-mask.jpg"
@@ -152,17 +152,17 @@ export function KineticBackground() {
                 {/* Row 2, Col 3: 文字卡 */}
                 <div
                     ref={(el) => addCellRef(el, 4)}
-                    className="kinetic-cell kinetic-text-cell kinetic-cell-orange no-hover-effect"
+                    className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect"
                 >
                     <div className="kinetic-text-glow" />
                     <div className="kinetic-name">逆转时光</div>
-                    <div className="kinetic-name" style={{ fontSize: '0.95rem', letterSpacing: 'normal', textTransform: 'none', fontWeight: 400 }}>Reverse Time</div>
+                    <div className="kinetic-name" style={{ fontSize: '0.8rem', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400 }}>REVERSE TIME</div>
                 </div>
 
                 {/* Row 2, Col 4: 登录/CTA卡 */}
                 <div
                     ref={(el) => addCellRef(el, 5)}
-                    className="kinetic-cell kinetic-login-cell"
+                    className="kinetic-cell kinetic-login-cell kinetic-cell-login"
                 >
                     <div className="kinetic-login-bg" />
                     <div className="kinetic-btn-group">
