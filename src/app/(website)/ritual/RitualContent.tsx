@@ -92,6 +92,7 @@ interface Scheme {
   specialSupport?: string;
   nameEn?: string;
   icon?: React.ReactNode;
+  heroImage?: string;
 }
 
 // 模块数据类型
@@ -260,6 +261,7 @@ const defaultModuleData: ModuleData = {
       totalDuration: "3-5分钟",
       products: "护手霜、防晒",
       benefits: ["保湿锁水", "屏障增强", "SPF30", "PA+++"],
+      heroImage: "/images/portable-hero-update.png",
       steps: [
         { title: "防晒防护", description: "出门前快速涂抹防晒，抵御紫外线。", duration: "1分钟", tips: "均匀涂抹于面部及裸露肌肤。", imageUrl: "/images/ritual-step-1.png" },
         { title: "随时补水", description: "感觉干燥时喷洒舒缓喷雾。", duration: "10秒", tips: "按需使用。", imageUrl: "/images/ritual-step-2.png" },
@@ -274,6 +276,7 @@ const defaultModuleData: ModuleData = {
       totalDuration: "10分钟",
       products: "洁面、面膜、防晒、护手霜",
       benefits: ["轻便卸妆", "保湿锁水", "维稳舒缓", "SPF30", "PA+++"],
+      heroImage: "/images/portable-travel-hero.png",
       steps: [
         { title: "深层清洁", description: "彻底清洁旅途中的尘埃与油脂。", duration: "2分钟", tips: "温水洗净。", imageUrl: "/images/ritual-step-1.png" },
         { title: "密集修护", description: "敷一片面膜，舒缓旅途疲劳。", duration: "15分钟", tips: "静享放松时刻。", imageUrl: "/images/ritual-step-2.png" },
@@ -1942,7 +1945,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     {/* Full width image container */}
                                     <div className="relative w-full aspect-[21/10] flex-shrink-0 rounded-xl overflow-hidden bg-brand-charcoal/5 mb-8">
                                       <Image
-                                        src="/images/portable-hero.jpg"
+                                        src={selectedScheme.heroImage || "/images/portable-hero-update.png"}
                                         alt="Portable Ritual"
                                         fill
                                         className="object-cover"
