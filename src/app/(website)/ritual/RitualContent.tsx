@@ -19,6 +19,7 @@ interface ModuleConfig {
   label: string;
   subtitle: string;
   description: string;
+  image: string;
 }
 
 const modules: ModuleConfig[] = [
@@ -27,28 +28,32 @@ const modules: ModuleConfig[] = [
     number: "01",
     label: "优雅日常",
     subtitle: "告别繁琐, 轻松护理",
-    description: "每日专属的精简守护"
+    description: "每日专属的精简守护",
+    image: "/images/ritual-daily-cover.png"
   },
   {
     id: "spa",
     number: "02",
     label: "居家仪式",
     subtitle: "让生活充满仪式感",
-    description: "享受DIY的美好时光"
+    description: "享受DIY的美好时光",
+    image: "/images/ritual-spa-home-cover.png"
   },
   {
     id: "portable",
     number: "03",
     label: "单品好物",
     subtitle: "外出 / 通勤 / 旅行 / 多效芳疗",
-    description: "随时随地按需使用"
+    description: "随时随地按需使用",
+    image: "/images/ritual-portable-cover.png"
   },
   {
     id: "professional",
     number: "04",
     label: "专业水疗",
     subtitle: "让身心重拾活力与平衡",
-    description: "沉静式悦己体验"
+    description: "沉静式悦己体验",
+    image: "/images/ritual-professional-cover.png"
   },
 ];
 
@@ -1087,7 +1092,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                           className="absolute inset-0 flex items-center justify-center overflow-visible p-5 lg:p-6"
                         >
-                          <div className="flex h-full w-full max-w-[1440px] flex-row gap-5 lg:gap-6">
+                          <div className="flex h-full w-full max-w-[1440px] flex-row gap-8">
                             {modules.map((module, index) => (
                               <m.button
                                 key={module.id}
@@ -1095,95 +1100,40 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 onClick={() => selectModule(module.id)}
                                 onMouseEnter={() => setHoveredIndex(index)}
                                 onMouseLeave={() => setHoveredIndex(null)}
-                                className={cn(
-                                  // 桌面端：垂直面板布局，居中对齐
-                                  "group relative flex cursor-pointer flex-col items-center justify-end gap-0 overflow-hidden rounded-sm border-0 border-l p-8 lg:p-10",
-                                  // 桌面端 hover 效果
-                                  hoveredIndex === index
-                                    ? "flex-[1.6] border-brand-charcoal/15 bg-white/65 shadow-[0_30px_60px_-10px_rgba(0,38,62,0.08)]"
-                                    : hoveredIndex !== null
-                                      ? "flex-[0.9] border-brand-charcoal/5 bg-white/25"
-                                      : "flex-1 border-brand-charcoal/10 bg-white/30"
-                                )}
-                                style={{
-                                  transition: "flex 0.9s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.5s ease, box-shadow 0.7s cubic-bezier(0.16, 1, 0.3, 1)"
-                                }}
+                                className="group relative flex flex-1 cursor-pointer flex-col items-center justify-end overflow-hidden shadow-sm transition-all duration-500 hover:shadow-xl"
                                 initial={{ opacity: 0, y: 15 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.7, delay: 0.1 + index * 0.05, ease: [0.16, 1, 0.3, 1] }}
                               >
-                                {/* 序号 */}
-                                <span
-                                  className={cn(
-                                    "mb-auto text-[13px] font-normal tracking-wide",
-                                    hoveredIndex === index
-                                      ? "text-brand-charcoal/55"
-                                      : "text-brand-charcoal/30"
-                                  )}
-                                  style={{ transition: "color 0.5s cubic-bezier(0.16, 1, 0.3, 1)" }}
-                                >
-                                  {module.number}
-                                </span>
+                                {/* 背景图片 */}
+                                <div className="absolute inset-0 z-0">
+                                  <Image
+                                    src={module.image}
+                                    alt={module.label}
+                                    fill
+                                    className="object-cover transition-transform duration-1000 ease-out group-hover:scale-105"
+                                    sizes="(max-width: 768px) 100vw, 25vw"
+                                    priority={index < 2}
+                                  />
+                                  {/* 渐变遮罩 - 底部浅色渐变，由实到虚 */}
+                                  <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#efede6] via-[#efede6]/90 to-transparent opacity-100" />
+                                </div>
 
-                                {/* 标题 */}
-                                <h2
-                                  className={cn(
-                                    "mb-5 text-center font-light tracking-wide text-brand-charcoal",
-                                    hoveredIndex === index
-                                      ? "text-[28px] lg:text-[32px]"
-                                      : "text-2xl lg:text-[26px]"
-                                  )}
-                                  style={{ transition: "font-size 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}
-                                >
-                                  {module.label}
-                                </h2>
+                                {/* 内容区域 - 底部居中 */}
+                                <div className="relative z-10 flex w-full flex-col items-center justify-end p-8 pb-12 text-center text-[#00263e]">
+                                  {/* 标题 */}
+                                  <h2 className="mb-3 font-display text-2xl font-light tracking-widest text-[#00263e] lg:text-3xl">
+                                    {module.label}
+                                  </h2>
 
-                                {/* 副标题 */}
-                                <h3
-                                  className={cn(
-                                    "mb-4 max-w-[220px] text-center text-[11px] font-medium uppercase tracking-[0.1em] text-brand-charcoal",
-                                    hoveredIndex === index
-                                      ? "opacity-60"
-                                      : "opacity-40"
-                                  )}
-                                  style={{
-                                    transition: hoveredIndex === index
-                                      ? "opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)"
-                                      : "opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
-                                  }}
-                                >
-                                  {module.subtitle}
-                                </h3>
+                                  {/* 描述/副标题 */}
+                                  <p className="max-w-[200px] text-xs font-light tracking-wider text-[#00263e]/80 opacity-90 transition-opacity duration-300 group-hover:opacity-100">
+                                    {module.description}
+                                  </p>
 
-                                {/* 描述文字 - hover 时显示 */}
-                                <p
-                                  className={cn(
-                                    "max-w-[200px] text-center text-[13px] leading-relaxed text-brand-charcoal/50",
-                                    hoveredIndex === index
-                                      ? "translate-y-0 opacity-100"
-                                      : "pointer-events-none translate-y-3 opacity-0"
-                                  )}
-                                  style={{
-                                    transition: hoveredIndex === index
-                                      ? "opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s"
-                                      : "opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
-                                  }}
-                                >
-                                  {module.description}
-                                </p>
-
-                                {/* 底部指示线 - hover 时显示 */}
-                                <div
-                                  className={cn(
-                                    "absolute bottom-0 left-0 h-px bg-brand-charcoal/15",
-                                    hoveredIndex === index ? "w-full" : "w-0"
-                                  )}
-                                  style={{
-                                    transition: hoveredIndex === index
-                                      ? "width 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s"
-                                      : "width 0.6s cubic-bezier(0.16, 1, 0.3, 1)"
-                                  }}
-                                />
+                                  {/* 装饰线 - hover时展开 */}
+                                  <div className="mt-6 h-[1px] w-0 bg-[#00263e]/40 transition-all duration-700 ease-out group-hover:w-16" />
+                                </div>
                               </m.button>
                             ))}
                           </div>
