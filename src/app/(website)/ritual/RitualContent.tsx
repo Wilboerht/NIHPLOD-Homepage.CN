@@ -291,6 +291,7 @@ const defaultModuleData: ModuleData = {
       totalDuration: "自由",
       products: "护肤油",
       benefits: ["滋润加强", "维稳舒缓", "疗愈焕颜"],
+      heroImage: "/images/portable-aroma-hero.png",
       steps: [
         { title: "沐浴体验", description: "泡澡时滴入数滴，享受芳香疗愈。", duration: "15分钟", tips: "水温适宜。", imageUrl: "/images/ritual-step-1.png" },
         { title: "加倍滋润", description: "混合面霜或身体乳使用。", duration: "1分钟", tips: "按需调配。", imageUrl: "/images/ritual-step-2.png" },
