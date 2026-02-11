@@ -136,14 +136,14 @@ const defaultModuleData: ModuleData = {
           description: "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
           duration: "30秒",
           tips: "温水洗净，避免过冷或过热刺激。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-cleanse.png"
         },
         {
           title: "焕活",
           description: "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
           duration: "1-2分钟",
           tips: "掌心温热后按压效果更佳。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-revitalize.png"
         }
       ],
       // 新增子方案 Tab
@@ -159,14 +159,14 @@ const defaultModuleData: ModuleData = {
               description: "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
               duration: "30秒",
               tips: "温水洗净，避免过冷或过热刺激。",
-              imageUrl: "/images/ritual-step-1.png"
+              imageUrl: "/images/ritual-step-cleanse.png"
             },
             {
               title: "焕活",
               description: "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
               duration: "1-2分钟",
               tips: "掌心温热后按压效果更佳。",
-              imageUrl: "/images/ritual-step-2.png"
+              imageUrl: "/images/ritual-step-revitalize.png"
             },
           ]
         },
@@ -181,21 +181,21 @@ const defaultModuleData: ModuleData = {
               description: "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
               duration: "30秒",
               tips: "温水洗净，避免过冷或过热刺激。",
-              imageUrl: "/images/ritual-step-1.png"
+              imageUrl: "/images/ritual-step-cleanse.png"
             },
             {
               title: "焕活",
               description: "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
               duration: "1-2分钟",
               tips: "掌心温热后按压效果更佳。",
-              imageUrl: "/images/ritual-step-2.png"
+              imageUrl: "/images/ritual-step-revitalize.png"
             },
             {
               title: "防护",
               description: "在面部完全干爽后，取足量防晒霜，点涂于面部及颈部，顺着皮肤纹理均匀涂抹。防晒剂提供即时自然提亮效果。",
               duration: "1分钟",
               tips: "出门前15分钟涂抹。",
-              imageUrl: "/images/ritual-step-3.png"
+              imageUrl: "/images/ritual-step-protect.png"
             },
           ],
           benefits: ["保湿锁水", "过敏修护", "抗初老", "维稳舒缓", "SPF30", "PA+++"],
@@ -223,28 +223,28 @@ const defaultModuleData: ModuleData = {
           description: "取适量洁面，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
           duration: "30秒",
           tips: "温水洗净，避免过冷或过热刺激。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-cleanse.png"
         },
         {
           title: "渗透肌底",
           description: "取适量精华于指腹，请点脸颊、眼周或颈部区域后，以打圈的方式轻轻按摩；让多重营养和修复因子渗入肌肤。",
           duration: "2分钟",
           tips: "从下往上提拉按摩，促进精华渗透。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-penetrate.png"
         },
         {
           title: "膜法封存",
           description: "通过面膜的贴合覆盖，达到有效锁水，强化肌肤天然屏障和免疫力，帮助面部肌肤更好地应对偶尔出现的失衡状态。",
           duration: "10-15分钟",
           tips: "若后续无涂抹身体乳的计划，本步骤建议用面霜代替。",
-          imageUrl: "/images/ritual-step-3.png"
+          imageUrl: "/images/ritual-step-seal.png"
         },
         {
           title: "滋养全身",
           description: "取适量身体乳涂抹于周身，增强全身肌肤的天然防御机制，有效滋养和保湿；修复轻微皮肤损伤，保持肌肤健康光泽。",
           duration: "3-5分钟",
           tips: "沐浴后3分钟内涂抹效果最佳。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-nourish.png"
         },
       ],
       subPlans: []
@@ -310,28 +310,28 @@ const defaultModuleData: ModuleData = {
           description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
           duration: "2分钟",
           tips: "温水洗净，避免过冷或过热刺激。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-cleanse.png"
         },
         {
           title: "深层清理",
           description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
           duration: "3-5分钟",
           tips: "避开眼唇周围，轻柔按摩。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-deep-cleanse.png"
         },
         {
           title: "混油养肤",
           description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。",
           duration: "3-5分钟",
           tips: "掌心温热混合后效果更佳。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-oil-nourish.jpg"
         },
         {
           title: "膜法封存",
           description: "承接上个步骤，无需对面部做额外清理，将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养，有效提亮肤质、增强肌肤免疫力。",
           duration: "10-15分钟",
           tips: "无需清洗，剩余精华按摩至吸收。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-seal.png"
         },
       ],
     },
@@ -350,42 +350,42 @@ const defaultModuleData: ModuleData = {
           description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
           duration: "2分钟",
           tips: "温水洗净，避免过冷或过热刺激。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-cleanse.png"
         },
         {
           title: "深层清理",
           description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
           duration: "3-5分钟",
           tips: "避开眼唇周围，轻柔按摩。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-deep-cleanse.png"
         },
         {
           title: "芳香浸愈 (可选)",
           description: "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。",
           duration: "15-20分钟",
           tips: "水温控制在38-40度为宜。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-aroma.png"
         },
         {
           title: "膜法守护",
           description: "取一片面膜完整贴合面部，静享 10-15 分钟后移除膜布 (可与泡澡环节同时进行)；确保珍贵成分能有效被面部吸收。",
           duration: "10-15分钟",
           tips: "可配合泡澡一同进行。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-seal.png"
         },
         {
           title: "全身滋养",
           description: "取适量身体乳，于掌心混合温热，从四肢向心脏方向进行长推式按摩，重点护理颈部、小腿、手臂及腹部；若所处的外部环境湿度/温度较低，建议额外按照 1:5 比例混合护理油加强滋润效果。",
           duration: "5分钟",
           tips: "趁身体微湿时涂抹效果更佳。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-nourish.png"
         },
         {
           title: "面部呵护",
           description: "取适量面霜，以由下至上、由内而外的手法进行全脸提拉按摩，重点按压眼周、法令纹及额头区域；确保全身及面部被完全呵护，实现更全面的修护及滋养，有效提亮肤质和弹性、延缓衰老、增强肌肤免疫力。",
           duration: "5分钟",
           tips: "配合按摩手法促进吸收。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-revitalize.png"
         },
       ],
     },
@@ -406,28 +406,28 @@ const defaultModuleData: ModuleData = {
           description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
           duration: "2分钟",
           tips: "温水洗净，避免过冷或过热刺激。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-cleanse.png"
         },
         {
           title: "深层清理",
           description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
           duration: "3-5分钟",
           tips: "避开眼唇周围，轻柔按摩。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-deep-cleanse.png"
         },
         {
           title: "混油养肤",
           description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。",
           duration: "3-5分钟",
           tips: "掌心温热混合后效果更佳。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-oil-nourish.jpg"
         },
         {
           title: "膜法封存",
           description: "承接上个步骤，无需对面部做额外清理，将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养，有效提亮肤质、增强肌肤免疫力。",
           duration: "10-15分钟",
           tips: "无需清洗，剩余精华按摩至吸收。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-seal.png"
         },
       ],
     },
@@ -446,42 +446,42 @@ const defaultModuleData: ModuleData = {
           description: "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
           duration: "2分钟",
           tips: "温水洗净，避免过冷或过热刺激。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-cleanse.png"
         },
         {
           title: "深层清理",
           description: "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
           duration: "3-5分钟",
           tips: "避开眼唇周围，轻柔按摩。",
-          imageUrl: "/images/ritual-step-1.png"
+          imageUrl: "/images/ritual-step-deep-cleanse.png"
         },
         {
           title: "芳香浸愈 (可选)",
           description: "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。",
           duration: "15-20分钟",
           tips: "水温控制在38-40度为宜。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-aroma.png"
         },
         {
           title: "膜法守护",
           description: "取一片面膜完整贴合面部，静享 10-15 分钟后移除膜布 (可与泡澡环节同时进行)；确保珍贵成分能有效被面部吸收。",
           duration: "10-15分钟",
           tips: "可配合泡澡一同进行。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-seal.png"
         },
         {
           title: "全身滋养",
           description: "取适量身体乳，于掌心混合温热，从四肢向心脏方向进行长推式按摩，重点护理颈部、小腿、手臂及腹部；若所处的外部环境湿度/温度较低，建议额外按照 1:5 比例混合护理油加强滋润效果。",
           duration: "5分钟",
           tips: "趁身体微湿时涂抹效果更佳。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-nourish.png"
         },
         {
           title: "面部呵护",
           description: "取适量面霜，以由下至上、由内而外的手法进行全脸提拉按摩，重点按压眼周、法令纹及额头区域；确保全身及面部被完全呵护，实现更全面的修护及滋养，有效提亮肤质和弹性、延缓衰老、增强肌肤免疫力。",
           duration: "5分钟",
           tips: "配合按摩手法促进吸收。",
-          imageUrl: "/images/ritual-step-2.png"
+          imageUrl: "/images/ritual-step-revitalize.png"
         },
       ],
     },
