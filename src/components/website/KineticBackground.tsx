@@ -83,7 +83,7 @@ export function KineticBackground() {
             <div className="kinetic-dot-pattern" />
             <div className="kinetic-watermark">
                 <Image
-                    src="/images/watermark.png"
+                    src="/images/watermark.webp"
                     alt="Watermark"
                     width={2800}
                     height={800}

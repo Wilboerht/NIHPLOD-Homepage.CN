@@ -470,7 +470,7 @@ export function ContactModal() {
                             </button>
 
                             <Image
-                                src="/images/contact-modal-bg.png"
+                                src="/images/contact-modal-bg.webp"
                                 alt="Contact Illustration"
                                 fill
                                 className="object-cover object-center opacity-90"

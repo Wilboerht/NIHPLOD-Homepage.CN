@@ -219,7 +219,7 @@ export function PrivacyContent() {
                       transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
                     >
                       <div className="relative h-16 w-32 sm:h-20 sm:w-40 md:h-24 md:w-48">
-                        <Image src="/images/logo.png" alt="NIHPLOD Logo" fill className="object-contain" />
+                        <Image src="/images/logo.webp" alt="NIHPLOD Logo" fill className="object-contain" />
                       </div>
                     </m.div>
 

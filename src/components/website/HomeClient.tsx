@@ -260,7 +260,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     transition={{ duration: 1.2, delay: 0.4 }}
                   >
                     <Image
-                      src="/images/logo.png"
+                      src="/images/logo.webp"
                       alt="Dolphin Skin"
                       width={280}
                       height={100}

@@ -184,7 +184,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   {/* 中间：Logo */}
                   <Link href="/" className="justify-self-center">
                     <Image
-                      src="/images/logo.png"
+                      src="/images/logo.webp"
                       alt="Logo"
                       width={100}
                       height={28}
@@ -209,7 +209,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   {/* Logo */}
                   <Link href="/">
                     <Image
-                      src="/images/logo.png"
+                      src="/images/logo.webp"
                       alt="Logo"
                       width={120}
                       height={32}
@@ -332,7 +332,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               {/* 全屏水印 - 最底层 */}
               <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
                 <Image
-                  src="/images/watermark.png"
+                  src="/images/watermark.webp"
                   alt=""
                   width={2000}
                   height={2000}
@@ -384,7 +384,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               {/* 中间 Logo */}
               <div className="justify-self-center">
                 <img
-                  src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
+                  src="/images/logo.webp"
                   alt="Logo"
                   className="h-8 w-auto opacity-90"
                 />

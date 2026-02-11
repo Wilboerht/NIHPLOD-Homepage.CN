@@ -41,7 +41,7 @@ export default function Error({ error, reset }: ErrorProps) {
         <div className="mb-8">
           <Link href="/" className="inline-block">
             <Image
-              src="/images/logo.png"
+              src="/images/logo.webp"
               alt="NIHPLOD"
               width={120}
               height={40}

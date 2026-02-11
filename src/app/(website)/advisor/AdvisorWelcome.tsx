@@ -196,9 +196,9 @@ export function AdvisorWelcome() {
                   {/* Header */}
                   <header className="col-span-12 flex items-start justify-between border-b border-[#3D4430]/15 pb-4 md:pb-8">
                     <img
-                      src="https://wp-cdn.4ce.cn/v2/SItKqUC.png"
+                      src="/images/logo.webp"
                       alt="Logo"
-                      className="h-8 mix-blend-multiply"
+                      className="h-8 shadow-sm"
                     />
 
                   </header>

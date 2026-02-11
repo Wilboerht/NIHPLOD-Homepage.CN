@@ -32,7 +32,7 @@ export function OrganizationJsonLd() {
     url: baseUrl,
     logo: {
       "@type": "ImageObject",
-      url: `${baseUrl}/images/logo.png`,
+      url: `${baseUrl}/images/logo.webp`,
       width: 200,
       height: 60,
     },
@@ -107,7 +107,7 @@ interface ProductJsonLdProps {
 
 export function ProductJsonLd({ product }: ProductJsonLdProps) {
   const productUrl = `${baseUrl}/products/${product.slug}`;
-  
+
   const data = {
     "@context": "https://schema.org",
     "@type": "Product",

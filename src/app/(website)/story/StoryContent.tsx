@@ -20,14 +20,14 @@ const navItems: { id: SectionId; label: string }[] = [
 ];
 
 const AWARDS_DATA = [
-  { year: "2026", org: "胡润百富", title: "国际高端护肤品牌最佳表现", image: "/images/story/award-1.png" },
-  { year: "2025", org: "亚洲女性友好品牌", title: "时空逆转成就奖", image: "/images/story/award-2.png" },
-  { year: "2024", org: "Timout Magazine", title: "年度影响力高奢品牌", image: "/images/story/award-3.png" },
-  { year: "2023", org: "罗博报告", title: "优中优选奖", image: "/images/story/award-1.png" },
-  { year: "2020", org: "LUX Magazine", title: "消费者满意奖", image: "/images/story/award-2.png" },
-  { year: "2019", org: "Prestige Magazine", title: "最佳创新化妆品奖", image: "/images/story/award-3.png" },
-  { year: "2018", org: "Wellness & SPA Innovation", title: "最佳治疗产品", image: "/images/story/award-1.png" },
-  { year: "2017", org: "Pure Beauty Global Awards", title: "最佳新晋抗衰老产品", image: "/images/story/award-2.png" },
+  { year: "2026", org: "胡润百富", title: "国际高端护肤品牌最佳表现", image: "/images/story/award-1.webp" },
+  { year: "2025", org: "亚洲女性友好品牌", title: "时空逆转成就奖", image: "/images/story/award-2.webp" },
+  { year: "2024", org: "Timout Magazine", title: "年度影响力高奢品牌", image: "/images/story/award-3.webp" },
+  { year: "2023", org: "罗博报告", title: "优中优选奖", image: "/images/story/award-1.webp" },
+  { year: "2020", org: "LUX Magazine", title: "消费者满意奖", image: "/images/story/award-2.webp" },
+  { year: "2019", org: "Prestige Magazine", title: "最佳创新化妆品奖", image: "/images/story/award-3.webp" },
+  { year: "2018", org: "Wellness & SPA Innovation", title: "最佳治疗产品", image: "/images/story/award-1.webp" },
+  { year: "2017", org: "Pure Beauty Global Awards", title: "最佳新晋抗衰老产品", image: "/images/story/award-2.webp" },
 ];
 
 
@@ -145,7 +145,7 @@ export function StoryContent() {
                   {/* Header - Sticky Top */}
                   <header className="sticky top-0 z-50 flex h-[80px] shrink-0 items-center justify-center border-b border-[#00263e]/15 bg-[#F0EDE1] px-6">
                     <Image
-                      src="/images/logo.png"
+                      src="/images/logo.webp"
                       alt="NIHPLOD Logo"
                       width={100}
                       height={28}
@@ -202,7 +202,7 @@ export function StoryContent() {
                             </p>
                             <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/15">
                               <Image
-                                src="/images/story/dolphin-ocean.png"
+                                src="/images/story/dolphin-ocean.webp"
                                 alt="Dolphin Skin"
                                 width={600}
                                 height={400}
@@ -224,7 +224,7 @@ export function StoryContent() {
                             </p>
                             <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/15">
                               <Image
-                                src="/images/story/lab-research.png"
+                                src="/images/story/lab-research.webp"
                                 alt="Science"
                                 width={600}
                                 height={400}
@@ -251,7 +251,7 @@ export function StoryContent() {
                           <div className="mb-12 flex flex-col items-center">
                             <div className="relative my-6 h-[400px] w-[90%] overflow-hidden border border-[#00263e]/10 shadow-sm">
                               <Image
-                                src="/images/story/mission-image.png?v=2"
+                                src="/images/story/mission-image.webp?v=2"
                                 alt="Mission"
                                 fill
                                 className="object-cover object-top"
@@ -408,7 +408,7 @@ export function StoryContent() {
                         {/* 左侧：Logo */}
                         <Link href="/">
                           <Image
-                            src="/images/logo.png"
+                            src="/images/logo.webp"
                             alt="Logo"
                             width={120}
                             height={32}
@@ -476,7 +476,7 @@ export function StoryContent() {
                           <div className="relative flex h-full flex-col justify-center gap-4">
                             <div className="relative h-52 w-[70%] self-start overflow-hidden bg-[#e5e2d5] lg:h-64">
                               <Image
-                                src="/images/story/dolphin-ocean.png"
+                                src="/images/story/dolphin-ocean.webp"
                                 alt="大自然"
                                 fill
                                 className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
@@ -484,7 +484,7 @@ export function StoryContent() {
                             </div>
                             <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#F0EDE1] bg-[#e5e2d5] lg:-mt-14 lg:h-80">
                               <Image
-                                src="/images/story/lab-research.png"
+                                src="/images/story/lab-research.webp"
                                 alt="科技"
                                 fill
                                 className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
@@ -523,7 +523,7 @@ export function StoryContent() {
                             {/* 左侧大图 - 基准高度 580px */}
                             <div className="relative z-0 h-[580px] flex-[1.1] overflow-hidden shadow-2xl">
                               <Image
-                                src="/images/story/mission-image.png?v=2"
+                                src="/images/story/mission-image.webp?v=2"
                                 alt="护肤专家"
                                 fill
                                 className="object-cover object-top"

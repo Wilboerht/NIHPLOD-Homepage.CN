@@ -62,7 +62,7 @@ export function Sidebar({
             <span className="font-serif text-xl font-bold text-brand-gold">N</span>
           ) : (
             <Image
-              src="/images/logo.png"
+              src="/images/logo.webp"
               alt="NIHPLOD"
               width={120}
               height={40}

@@ -57,7 +57,7 @@ export interface AllSettings {
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
   name: "NIHPLOD 旎柏",
   description: "源自摩纳哥的高端护肤品牌",
-  logo: "/images/logo.png",
+  logo: "/images/logo.webp",
   favicon: "/favicon.ico",
 };
 

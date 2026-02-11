@@ -41,7 +41,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                         <div className="mb-8">
                             <a href="/" className="inline-block">
                                 <Image
-                                    src="/images/logo.png"
+                                    src="/images/logo.webp"
                                     alt="NIHPLOD"
                                     width={120}
                                     height={40}

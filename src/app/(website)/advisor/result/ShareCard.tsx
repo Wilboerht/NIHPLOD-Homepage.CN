@@ -51,8 +51,8 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
     const hydrationStatus = getHydrationStatus(hydrationPercent);
 
     // 预处理图片 URL
-    const logoUrl = useMemo(() => getAbsoluteUrl("/images/logo.png"), []);
-    const qrcodeUrl = useMemo(() => getAbsoluteUrl("/images/qrcode.png"), []);
+    const logoUrl = useMemo(() => getAbsoluteUrl("/images/logo.webp"), []);
+    const qrcodeUrl = useMemo(() => getAbsoluteUrl("/images/qrcode.webp"), []);
 
     return (
       <div
