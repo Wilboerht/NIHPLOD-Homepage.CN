@@ -1803,26 +1803,51 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                     {/* 中间卡片区 - Grid Layout */}
                                     <div className="grid grid-cols-3 gap-x-6 gap-y-10 mb-8">
-                                      {[
-                                        {
-                                          title: "基础护理",
-                                          duration: "45 min",
-                                          tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
-                                          image: "/images/spa-basic.png"
-                                        },
-                                        {
-                                          title: "高级护理",
-                                          duration: "60 min",
-                                          tags: "基础护理 + 特色手法提拉",
-                                          image: "/images/spa-advanced.png"
-                                        },
-                                        {
-                                          title: "奢华护理",
-                                          duration: "75 min",
-                                          tags: "高级护理 + 肩颈护理",
-                                          image: "/images/spa-luxury.png"
-                                        }
-                                      ].map((item, idx) => (
+                                      {(selectedScheme?.id === "p1" ? (
+                                        // 面部方案
+                                        [
+                                          {
+                                            title: "基础护理",
+                                            duration: "45 min",
+                                            tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
+                                            image: "/images/spa-basic.png"
+                                          },
+                                          {
+                                            title: "高级护理",
+                                            duration: "60 min",
+                                            tags: "基础护理 + 特色手法提拉",
+                                            image: "/images/spa-advanced.png"
+                                          },
+                                          {
+                                            title: "奢华护理",
+                                            duration: "75 min",
+                                            tags: "高级护理 + 肩颈护理",
+                                            image: "/images/spa-luxury.png"
+                                          }
+                                        ]
+                                      ) : (
+                                        // 全身方案
+                                        [
+                                          {
+                                            title: "基础护理",
+                                            duration: "45 min",
+                                            tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
+                                            image: "/images/body-spa-1.png"
+                                          },
+                                          {
+                                            title: "高级护理",
+                                            duration: "60 min",
+                                            tags: "基础护理 + 特色手法提拉",
+                                            image: "/images/body-spa-2.png"
+                                          },
+                                          {
+                                            title: "奢华护理",
+                                            duration: "75 min",
+                                            tags: "高级护理 + 肩颈护理",
+                                            image: "/images/body-spa-3.png"
+                                          }
+                                        ]
+                                      )).map((item, idx) => (
                                         <div
                                           key={idx}
                                           className="group relative flex flex-col w-full cursor-pointer h-full"
