@@ -291,7 +291,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                               src={product.images[0].url}
                               alt={product.images[0].alt || product.name}
                               fill
-                              className="object-contain object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
+                              className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
                               sizes="(max-width: 1024px) 85vw, 33vw"
                             />
                           )}
