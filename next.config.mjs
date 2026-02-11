@@ -32,6 +32,32 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // 优化: 将大型服务端依赖外部化，避免打包进每个 serverless function
+  experimental: {
+    serverComponentsExternalPackages: [
+      'sharp',
+      '@prisma/client',
+      'prisma',
+      'tencentcloud-sdk-nodejs',
+      'nodemailer',
+      'maxmind',
+      'pdfmake',
+      'jspdf',
+    ],
+    optimizePackageImports: [
+      'lucide-react',
+      'echarts',
+      'echarts-for-react',
+      'recharts',
+      'three',
+      '@react-three/fiber',
+      'framer-motion',
+      '@tiptap/react',
+      '@tiptap/starter-kit',
+      '@tiptap/pm',
+    ],
+  },
+
   // 图片优化配置
   images: {
     // 允许的图片域名

@@ -11,7 +11,7 @@
  */
 
 import crypto from "crypto";
-import * as tencentcloud from "tencentcloud-sdk-nodejs";
+import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 
 export type SMSTemplate = "LOTTERY_VERIFY" | "LOTTERY_WINNER" | "LOGIN_CODE";
 
@@ -175,9 +175,6 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
 }
 
 /**
-import * as tencentcloud from "tencentcloud-sdk-nodejs";
-
-/**
  * 腾讯云短信
  * 使用 SDK
  */
@@ -198,7 +195,7 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
   }
 
   try {
-    const SmsClient = tencentcloud.sms.v20210111.Client;
+    const SmsClient = tencentcloud.v20210111.Client;
     const client = new SmsClient({
       credential: { secretId, secretKey },
       region: "ap-guangzhou",
