@@ -1092,7 +1092,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                           className="absolute inset-0 flex items-center justify-center overflow-visible p-5 lg:p-6"
                         >
-                          <div className="flex h-full w-full max-w-[1440px] flex-row gap-8">
+                          <div className="flex h-full w-full max-w-[1440px] flex-row gap-8 py-10">
                             {modules.map((module, index) => (
                               <m.button
                                 key={module.id}
