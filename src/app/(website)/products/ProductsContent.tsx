@@ -205,7 +205,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </nav>
 
                 {/* 桌面端专用 Header - Flex 布局 */}
-                <nav className="relative hidden h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[8%] lg:flex">
+                <nav className="relative hidden h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[12%] lg:flex">
                   {/* Logo */}
                   <Link href="/">
                     <Image
@@ -240,7 +240,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </nav>
 
                 {/* 产品网格内容 - First Page.html 风格 - 一屏显示 */}
-                <div className="flex flex-1 flex-col overflow-hidden px-[5%] pb-4 lg:px-[8%]">
+                <div className="flex flex-1 flex-col justify-center overflow-hidden px-[5%] pb-4 lg:px-[12%]">
                   {/* Section Header - 紧凑样式 */}
                   <m.header
                     initial={{ opacity: 0, y: 20 }}
@@ -259,7 +259,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   {/* 产品网格/轮播 - 移动端轮播，桌面端网格 */}
                   <section className="
                     flex w-full snap-x snap-mandatory overflow-x-auto pb-6 scrollbar-hide px-[7.5vw]
-                    lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-3 lg:gap-10 lg:overflow-visible lg:pb-0 lg:px-0
+                    lg:grid lg:min-h-0 lg:grid-cols-3 lg:gap-10 lg:overflow-visible lg:pb-0 lg:px-0
                   ">
                     {products.slice(0, 3).map((product, index) => (
                       <m.div
@@ -273,17 +273,16 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           // 移动端：宽度占屏幕 75%，居中对齐，Snap对齐 (容器添加 px-[7.5vw] + 父级5% ≈ 12.5% 确保居中)
                           "w-[75vw] snap-center px-2 h-full justify-between",
                           // 桌面端：重置宽度和内边距，应用错落布局
-                          "lg:w-auto lg:px-0",
-                          // 第一列：正常高度
-                          index === 0 && "lg:h-[78%]",
-                          // 第二列：最高，延伸到底部
-                          index === 1 && "lg:mt-[5%] lg:h-[95%]",
-                          // 第三列：与第一列高度一致
-                          index === 2 && "lg:h-[78%]"
+                          "lg:w-auto lg:px-0 lg:h-auto lg:justify-start",
+                          // 第二列：下沉布局，从 5% 恢复到 10%
+                          index === 1 && "lg:mt-[10%]"
                         )}
                       >
-                        {/* 图片容器 - 桌面端使用 flex-1 填充可用空间 */}
-                        <div className="relative h-[40vh] w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)] lg:flex-1 lg:h-auto">
+                        {/* 图片容器 - 中间 4:5，两侧正方形 1:1 */}
+                        <div className={cn(
+                          "relative w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)]",
+                          index === 1 ? "aspect-[4/5]" : "aspect-square"
+                        )}>
                           {/* 内部装饰边框 */}
                           <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08] z-10" />
                           {product.images[0] && (
