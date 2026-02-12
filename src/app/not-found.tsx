@@ -85,10 +85,10 @@ export default function NotFound() {
             <Link href="/products" className="text-brand-gold hover:underline">
               产品系列
             </Link>
-            <Link href="/story" className="text-brand-gold hover:underline">
-              品牌故事
+            <Link href="/about" className="text-brand-gold hover:underline">
+              关于旎柏
             </Link>
-            <Link href="/ritual" className="text-brand-gold hover:underline">
+            <Link href="/guide" className="text-brand-gold hover:underline">
               官方指南
             </Link>
             <button onClick={() => openContact()} className="text-brand-gold hover:underline">

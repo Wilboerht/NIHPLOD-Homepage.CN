@@ -26,9 +26,9 @@ interface NavItem {
 const allNavItems: NavItem[] = [
     { href: "/advisor", label: "护肤顾问", labelEn: "Consultant", icon: ContactIcon },
     { href: "/products", label: "探索产品", labelEn: "Products", icon: ShopIcon },
-    { href: "/ritual", label: "官方指南", labelEn: "Ritual", icon: RitualIcon },
+    { href: "/guide", label: "官方指南", labelEn: "Guide", icon: RitualIcon },
     { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: FAQIcon },
-    { href: "/story", label: "关于旎柏", labelEn: "Story", icon: StoryIcon },
+    { href: "/about", label: "关于旎柏", labelEn: "About", icon: StoryIcon },
     { href: "/", label: "首页", labelEn: "Home", icon: HomeIcon },
 ];
 
@@ -237,7 +237,7 @@ export function BottomNavBar() {
 
                             {/* ================= 桌面端左侧固定导航 (Story - 关于旎柏 - 极简横向锁定) ================= */}
                             {(() => {
-                                const storyItem = allNavItems.find(item => item.href === "/story")!;
+                                const storyItem = allNavItems.find(item => item.href === "/about")!;
                                 const Icon = storyItem.icon;
 
                                 return (
@@ -301,7 +301,7 @@ export function BottomNavBar() {
                             {/* ================= 桌面端右侧固定导航列表 ================= */}
                             {/* 排除 Story (已在左侧) 和 Advisor (护肤顾问)，其余按顺序排列 */}
                             <div className="hidden items-center gap-3 sm:flex sm:gap-[35px]">
-                                {allNavItems.filter(item => item.href !== "/story" && item.href !== "/advisor").map((item) => {
+                                {allNavItems.filter(item => item.href !== "/about" && item.href !== "/advisor").map((item) => {
                                     const Icon = item.icon;
                                     const isHome = item.href === "/";
 

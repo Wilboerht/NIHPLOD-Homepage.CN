@@ -348,8 +348,8 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
         productsLink: "/products",
       },
       footerLinks: [
-        { text: "关于旎柏", href: "/story" },
-        { text: "护肤仪式", href: "/ritual" },
+        { text: "关于旎柏", href: "/about" },
+        { text: "官方指南", href: "/guide" },
         { text: "联系我们", href: "/contact" },
         { text: "加入我们", href: "/careers" },
         { text: "隐私政策", href: "/privacy" },
