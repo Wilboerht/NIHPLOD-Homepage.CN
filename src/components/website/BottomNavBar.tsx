@@ -6,7 +6,7 @@ import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, ContactIcon, FAQIcon } from "@/components/website";
+import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, FAQIcon } from "@/components/website";
 import { useLayout } from "@/contexts/LayoutContext";
 
 
@@ -24,7 +24,7 @@ interface NavItem {
  * 所有可用的导航项
  */
 const allNavItems: NavItem[] = [
-    { href: "/advisor", label: "护肤顾问", labelEn: "Consultant", icon: ContactIcon },
+
     { href: "/products", label: "探索产品", labelEn: "Products", icon: ShopIcon },
     { href: "/guide", label: "官方指南", labelEn: "Guide", icon: RitualIcon },
     { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: FAQIcon },
@@ -299,9 +299,9 @@ export function BottomNavBar() {
                             </button>
 
                             {/* ================= 桌面端右侧固定导航列表 ================= */}
-                            {/* 排除 Story (已在左侧) 和 Advisor (护肤顾问)，其余按顺序排列 */}
+                            {/* 排除 Story (已在左侧)，其余按顺序排列 */}
                             <div className="hidden items-center gap-3 sm:flex sm:gap-[35px]">
-                                {allNavItems.filter(item => item.href !== "/about" && item.href !== "/advisor").map((item) => {
+                                {allNavItems.filter(item => item.href !== "/about").map((item) => {
                                     const Icon = item.icon;
                                     const isHome = item.href === "/";
 

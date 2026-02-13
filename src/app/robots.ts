@@ -20,8 +20,6 @@ export default function robots(): MetadataRoute.Robots {
           "/api/",         // API 接口
           "/api/*",        // API 所有子路径
           "/_next/",       // Next.js 内部资源
-          "/advisor/analyzing", // 分析中页面（无需索引）
-          "/advisor/result",    // 结果页面（个性化内容）
         ],
       },
       {

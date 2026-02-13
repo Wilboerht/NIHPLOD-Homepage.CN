@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     // 验证用户 Token
     const payload = await verifyUserAuth(request);
-    
+
     if (!payload) {
       return NextResponse.json(
         {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
           select: {
             orders: true,
             addresses: true,
-            conversations: true,
+
           },
         },
       },
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
           stats: {
             orderCount: user._count.orders,
             addressCount: user._count.addresses,
-            conversationCount: user._count.conversations,
+
           },
         },
       },

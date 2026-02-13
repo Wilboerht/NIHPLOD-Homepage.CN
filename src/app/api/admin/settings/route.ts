@@ -4,7 +4,7 @@ import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 
 // 设置 keys
-const SETTING_KEYS = ["site", "social", "contact", "seo", "ai_advisor_settings", "home"] as const;
+const SETTING_KEYS = ["site", "social", "contact", "seo"] as const;
 
 // 各设置的默认值
 const DEFAULT_SETTINGS: Record<string, unknown> = {
@@ -31,27 +31,6 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
     title: "NIHPLOD 旎柏 | 高端护肤品牌",
     description: "源自摩纳哥的高端护肤品牌，为您带来奢华护肤体验。",
     keywords: "NIHPLOD,旎柏,护肤品,高端护肤,摩纳哥",
-  },
-  ai_advisor_settings: {
-    enabled: false,
-    provider: "openai",
-    apiKey: "",
-    model: "gpt-4o-mini",
-    maxTokens: 500,
-    temperature: 0.7,
-  },
-  home: {
-    galleryItems: [
-      { image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=600&fit=crop", text: "精华" },
-      { image: "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=800&h=600&fit=crop", text: "面霜" },
-      { image: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=800&h=600&fit=crop", text: "护理油" },
-      { image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&h=600&fit=crop", text: "洁面慕斯" },
-      { image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=600&fit=crop", text: "防晒霜" },
-      { image: "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=800&h=600&fit=crop", text: "面膜" },
-    ],
-    galleryBend: 3,
-    galleryOpacity: 60,
-    maskOpacity: 70,
   },
 };
 
@@ -89,27 +68,6 @@ const UpdateSettingsSchema = z.object({
       keywords: z.string().max(500).optional(),
     })
     .optional(),
-  ai_advisor_settings: z
-    .object({
-      enabled: z.boolean().optional(),
-      provider: z.enum(["openai", "anthropic", "deepseek"]).optional(),
-      apiKey: z.string().max(500).optional(),
-      model: z.string().max(100).optional(),
-      maxTokens: z.number().min(100).max(4000).optional(),
-      temperature: z.number().min(0).max(2).optional(),
-    })
-    .optional(),
-  home: z
-    .object({
-      galleryItems: z.array(z.object({
-        image: z.string().max(1000),
-        text: z.string().max(100),
-      })).optional(),
-      galleryBend: z.number().min(0).max(10).optional(),
-      galleryOpacity: z.number().min(0).max(100).optional(),
-      maskOpacity: z.number().min(0).max(100).optional(),
-    })
-    .optional(),
 });
 
 // GET /api/admin/settings - 获取所有设置
@@ -142,16 +100,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 隐藏 AI API Key
-    if (settingsMap.ai_advisor_settings) {
-      const aiSettings = settingsMap.ai_advisor_settings as Record<string, unknown>;
-      const apiKey = aiSettings.apiKey as string;
-      settingsMap.ai_advisor_settings = {
-        ...aiSettings,
-        apiKey: apiKey ? `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}` : "",
-        hasApiKey: !!apiKey,
-      };
-    }
+
 
     return NextResponse.json({
       success: true,
@@ -192,16 +141,7 @@ export async function PUT(request: NextRequest) {
       });
 
       const currentValue = (existing?.value as Record<string, unknown>) || DEFAULT_SETTINGS[key];
-
-      // 特殊处理 AI API Key - 空字符串不覆盖
       const newValue: Record<string, unknown> = { ...currentValue, ...value };
-      if (key === "ai_advisor_settings") {
-        const aiValue = value as Record<string, unknown>;
-        if (!aiValue.apiKey || aiValue.apiKey === "") {
-          // 保留原有的 apiKey
-          newValue.apiKey = (currentValue as Record<string, unknown>).apiKey;
-        }
-      }
 
       updates.push(
         prisma.setting.upsert({

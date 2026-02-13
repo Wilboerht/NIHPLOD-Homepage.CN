@@ -29,23 +29,6 @@ export async function GET() {
     };
   }
 
-  // 检查 AdvisorQuestion 表
-  const tableStart = Date.now();
-  try {
-    const count = await prisma.advisorQuestion.count();
-    checks.advisorQuestionTable = {
-      status: "ok",
-      latency: Date.now() - tableStart,
-    };
-    checks.advisorQuestionTable.status = `ok (${count} records)`;
-  } catch (error) {
-    checks.advisorQuestionTable = {
-      status: "error",
-      latency: Date.now() - tableStart,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-
   const allOk = Object.values(checks).every((c) => !c.error);
 
   return NextResponse.json(
@@ -57,4 +40,3 @@ export async function GET() {
     { status: allOk ? 200 : 503 }
   );
 }
-

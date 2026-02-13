@@ -62,8 +62,6 @@ const DEFAULT_OPTIONS: RateLimitOptions = {
 export const RATE_LIMIT_PRESETS = {
   /** 默认 API 限制 */
   default: { maxRequests: 100, windowMs: 60 * 1000 },
-  /** AI 顾问限制 - 较宽松 */
-  advisor: { maxRequests: 30, windowMs: 60 * 1000 },
   /** 面部分析限制 - 严格 */
   "face-analyze": { maxRequests: 5, windowMs: 60 * 60 * 1000 },
   /** 综合分析限制 - 严格，与面部分析一致 */

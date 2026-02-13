@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Coins, ShoppingBag, User, TrendingUp, TrendingDown, Gift, MessageSquare, Settings, Loader2 } from "lucide-react";
+import { ArrowLeft, Coins, ShoppingBag, User, TrendingUp, TrendingDown, Gift, Settings, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 
@@ -25,10 +25,8 @@ interface UserDetail {
 
 const POINTS_TYPE_MAP: Record<string, { label: string; icon: typeof Coins; color: string; bg: string }> = {
   REGISTER_BONUS: { label: "注册奖励", icon: Gift, color: "text-emerald-600", bg: "bg-emerald-100" },
-  QUESTIONNAIRE_BONUS: { label: "问卷奖励", icon: MessageSquare, color: "text-blue-600", bg: "bg-blue-100" },
   PURCHASE_REWARD: { label: "购买奖励", icon: ShoppingBag, color: "text-purple-600", bg: "bg-purple-100" },
   SHARE_REWARD: { label: "分享奖励", icon: TrendingUp, color: "text-cyan-600", bg: "bg-cyan-100" },
-  AI_CHAT_CONSUME: { label: "AI追问消耗", icon: MessageSquare, color: "text-orange-600", bg: "bg-orange-100" },
   ADMIN_ADJUST: { label: "管理员调整", icon: Settings, color: "text-gray-600", bg: "bg-gray-100" },
 };
 
@@ -187,9 +185,8 @@ export default function UserDetailPage() {
                     className="w-full rounded-lg border p-2"
                   />
                   {adjustForm.amount !== 0 && (
-                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${
-                      adjustForm.amount > 0 ? "text-green-500" : "text-red-500"
-                    }`}>
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${adjustForm.amount > 0 ? "text-green-500" : "text-red-500"
+                      }`}>
                       {adjustForm.amount > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     </span>
                   )}

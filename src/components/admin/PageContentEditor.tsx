@@ -180,8 +180,6 @@ export function HomeContentEditor({
   // 确保嵌套对象存在
   const brand = content.brand || { chineseName: "旎柏", slogan: "逆转时光" };
   const buttons = content.buttons || {
-    advisorText: "AI 护肤顾问",
-    advisorLink: "/advisor",
     productsText: "探索产品",
     productsLink: "/products",
   };
@@ -242,31 +240,9 @@ export function HomeContentEditor({
       <section>
         <h3 className="mb-4 font-medium text-gray-900">入口按钮</h3>
         <p className="mb-4 text-sm text-gray-500">
-          首页中央的两个主要入口按钮
+          首页中央的主要入口按钮
         </p>
         <div className="space-y-4">
-          {/* AI 顾问按钮 */}
-          <div className="rounded-lg border border-brand-gold/30 bg-brand-gold/5 p-4">
-            <h4 className="mb-3 text-sm font-medium text-brand-gold">AI 护肤顾问按钮（金色）</h4>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Input
-                label="按钮文字"
-                value={buttons.advisorText || ""}
-                onChange={(e) =>
-                  onChange({ ...content, buttons: { ...buttons, advisorText: e.target.value } })
-                }
-                placeholder="AI 护肤顾问"
-              />
-              <Input
-                label="链接地址"
-                value={buttons.advisorLink || ""}
-                onChange={(e) =>
-                  onChange({ ...content, buttons: { ...buttons, advisorLink: e.target.value } })
-                }
-                placeholder="/advisor"
-              />
-            </div>
-          </div>
           {/* 产品浏览按钮 */}
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
             <h4 className="mb-3 text-sm font-medium text-gray-700">探索产品按钮（白色）</h4>

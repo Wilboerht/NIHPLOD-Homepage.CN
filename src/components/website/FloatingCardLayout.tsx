@@ -16,7 +16,6 @@ const gradientBackgrounds: Record<string, string> = {
   "/images/privacy-bg.jpg": "from-brand-cream via-brand-beige to-brand-blush",
   "/images/story-bg.jpg": "from-brand-blush via-brand-beige to-brand-cream",
   "/images/careers-bg.jpg": "from-brand-beige via-brand-blush to-brand-cream",
-  "/images/advisor-bg.jpg": "from-brand-blush via-brand-cream to-brand-beige",
   default: "from-brand-cream via-brand-blush to-brand-beige",
 };
 

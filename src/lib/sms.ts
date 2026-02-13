@@ -13,7 +13,7 @@
 import crypto from "crypto";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 
-export type SMSTemplate = "LOTTERY_VERIFY" | "LOTTERY_WINNER" | "LOGIN_CODE";
+export type SMSTemplate = "LOGIN_CODE";
 
 export interface SMSParams {
   phone: string;
@@ -167,8 +167,6 @@ function percentEncode(str: string): string {
  */
 function getAliyunTemplateCode(template: SMSTemplate): string | null {
   const templates: Record<SMSTemplate, string | undefined> = {
-    LOTTERY_VERIFY: process.env.SMS_TEMPLATE_CODE_VERIFY,
-    LOTTERY_WINNER: process.env.SMS_TEMPLATE_CODE_WINNER,
     LOGIN_CODE: process.env.SMS_TEMPLATE_CODE_LOGIN,
   };
   return templates[template] || null;
@@ -243,8 +241,6 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
  */
 function getTencentTemplateId(template: SMSTemplate): string | null {
   const templates: Record<SMSTemplate, string | undefined> = {
-    LOTTERY_VERIFY: process.env.TENCENT_SMS_TEMPLATE_ID_VERIFY,
-    LOTTERY_WINNER: process.env.TENCENT_SMS_TEMPLATE_ID_WINNER,
     LOGIN_CODE: process.env.TENCENT_SMS_TEMPLATE_ID_LOGIN,
   };
   return templates[template] || null;

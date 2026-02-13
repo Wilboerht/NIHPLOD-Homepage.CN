@@ -19,8 +19,6 @@ async function updateHomeContent() {
   const newContent = {
     brand: { chineseName: "旎柏", slogan: "逆转时光" },
     buttons: {
-      advisorText: "AI 护肤顾问",
-      advisorLink: "/advisor",
       productsText: "探索产品",
       productsLink: "/products",
     },

@@ -38,8 +38,6 @@ export interface HomePageContent {
   };
   // 主要入口按钮
   buttons: {
-    advisorText: string; // AI 顾问按钮文字
-    advisorLink: string; // AI 顾问链接
     productsText: string; // 产品按钮文字
     productsLink: string; // 产品链接
   };
@@ -275,17 +273,6 @@ export interface ProductsPageContent {
   };
 }
 
-// ============================================
-// AI 护肤顾问页面 (advisor)
-// ============================================
-export interface AdvisorPageContent {
-  // 欢迎页标题
-  welcome: {
-    title: string; // AI 护肤顾问
-    subtitle: string; // 描述文字
-  };
-}
-
 // 页面类型映射
 export type PageContentMap = {
   home: HomePageContent;
@@ -297,7 +284,6 @@ export type PageContentMap = {
   terms: TermsPageContent;
   services: ServicesPageContent;
   products: ProductsPageContent;
-  advisor: AdvisorPageContent;
 };
 
 export type PageSlug = keyof PageContentMap;
@@ -333,7 +319,7 @@ export const PAGE_META: Record<string, { name: string; description: string }> = 
   terms: { name: "服务条款", description: "使用条款" },
   services: { name: "服务入口", description: "各系统服务入口导航" },
   products: { name: "产品列表", description: "产品展示页面配置" },
-  advisor: { name: "AI 护肤顾问", description: "AI 顾问欢迎页配置" },
+
 };
 
 // 获取空白页面内容模板
@@ -342,8 +328,6 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
     home: {
       brand: { chineseName: "旎柏", slogan: "逆转时光" },
       buttons: {
-        advisorText: "AI 护肤顾问",
-        advisorLink: "/advisor",
         productsText: "探索产品",
         productsLink: "/products",
       },
@@ -456,12 +440,7 @@ export function getEmptyContent(slug: PageSlug): PageContentMap[typeof slug] {
     products: {
       pageTitle: { en: "PRODUCTS", zh: "探索产品" },
     },
-    advisor: {
-      welcome: {
-        title: "AI 护肤顾问",
-        subtitle: "通过 AI 智能分析，获取专属于您的个性化护肤方案",
-      },
-    },
+
   };
 
   return templates[slug] as PageContentMap[typeof slug];

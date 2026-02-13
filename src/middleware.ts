@@ -37,7 +37,6 @@ const _HYBRID_API_PREFIXES = [
   "/api/media", // 注意：上传文件通常是 POST，查询文件是 GET
   "/api/jobs",
   "/api/application-folders",
-  "/api/lottery-activity",
 ];
 
 // 3. 完全公开 API: 任何方法都放行
@@ -45,7 +44,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/admin/login",  // 登录接口
   "/api/contact",      // 用户留言
   "/api/careers/apply",// 职位申请
-  "/api/advisor",      // AI 顾问全套接口
   "/api/oss/sign",     // OSS 签名 (已有 RateLimit 保护)
 ];
 

@@ -48,11 +48,11 @@ export async function generateUploadSignature(filename: string, type: string) {
         throw new Error("阿里云 OSS 未配置");
     }
 
-    // 生成随机文件路径: advisor/日期/随机ID.ext
+    // 生成随机文件路径: uploads/日期/随机ID.ext
     const date = new Date().toISOString().split("T")[0];
     const randomId = Math.random().toString(36).substring(2, 10);
     const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
-    const objectName = `advisor/${date}/${randomId}.${ext}`;
+    const objectName = `uploads/${date}/${randomId}.${ext}`;
 
     // 生成签名 URL，有效期 15 分钟 (900秒)
     // 允许 PUT 方法上传
@@ -84,8 +84,8 @@ export async function deleteOSSFiles(urls: string[]) {
 
     try {
         // 提取 objectName
-        // URL 格式: https://bucket.region.aliyuncs.com/advisor/xxx.jpg
-        // ObjectName: advisor/xxx.jpg
+        // URL 格式: https://bucket.region.aliyuncs.com/uploads/xxx.jpg
+        // ObjectName: uploads/xxx.jpg
         const names = urls.map(url => {
             try {
                 const urlObj = new URL(url);
