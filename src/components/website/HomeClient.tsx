@@ -298,6 +298,10 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     >
                       探索更多
                     </button>
+                    <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
+                      AI快速测肤
+                      <span className="badge-new">NEW</span>
+                    </Link>
                   </m.div>
 
                   {/* 底部辅助导航与版权 */}
