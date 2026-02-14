@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
+
 import { TermsContent } from "./TermsContent";
 import type { TermsPageContent } from "@/types/page-content";
 

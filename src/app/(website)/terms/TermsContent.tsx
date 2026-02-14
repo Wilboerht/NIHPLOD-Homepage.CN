@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
-import { m, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ChevronRight, Menu } from "lucide-react";
+import { m } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TermsPageContent, TermsTabId } from "@/types/page-content";
 
@@ -17,7 +17,7 @@ interface TermsContentProps {
  */
 export function TermsContent({ content }: TermsContentProps) {
   const [activeSection, setActiveSection] = useState<string>("general");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
 
   // 从 content 中获取数据
   const pageTitle = content.pageTitle || { en: "TERMS OF SERVICE", zh: "服务条款" };
