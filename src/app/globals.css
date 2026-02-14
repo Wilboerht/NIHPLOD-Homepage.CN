@@ -1253,14 +1253,14 @@
   pointer-events: none;
 }
 
-.kinetic-login-cell:hover {
+.kinetic-login-cell:not(.no-hover-effect):hover {
   background: #e0ded6;
   box-shadow:
     18px 18px 0px #fff,
     0 25px 50px -12px rgba(255, 255, 255, 0.2);
 }
 
-.kinetic-login-cell:hover .kinetic-login-bg {
+.kinetic-login-cell:not(.no-hover-effect):hover .kinetic-login-bg {
   opacity: 1;
   transform: scale(1.2) rotate(10deg);
 }

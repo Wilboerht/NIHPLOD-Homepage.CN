@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { User as UserIcon, ChevronRight } from "lucide-react";
 
 /**
  * Graphite Kinetic Grid 全局背景组件
@@ -17,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export function KineticBackground() {
     const containerRef = useRef<HTMLDivElement>(null);
     const cellsRef = useRef<HTMLDivElement[]>([]);
-    const { switchToLogin, switchToRegister } = useAuth();
+    const { user, switchToLogin, switchToRegister, openUserCenter } = useAuth();
 
     useEffect(() => {
         const container = containerRef.current;
@@ -115,7 +116,7 @@ export function KineticBackground() {
                     className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect"
                 >
                     <div className="kinetic-name" style={{ marginBottom: '12px', lineHeight: '1.3' }}>更少步骤<br />更多呵护</div>
-                    <div className="kinetic-name" style={{ fontSize: '0.8rem', lineHeight: '1.8', letterSpacing: '0.1em', textTransform: 'none', fontWeight: 400, opacity: 0.9 }}>美丽不该复杂，<br />专注美好生活</div>
+                    <div className="kinetic-name" style={{ fontSize: '14px', lineHeight: '1.5', letterSpacing: '0.1em', textTransform: 'none', fontWeight: 400, opacity: 0.9 }}>美丽不该复杂，<br />专注美好生活</div>
                 </div>
 
                 {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
@@ -155,30 +156,67 @@ export function KineticBackground() {
                 >
                     <div className="kinetic-text-glow" />
                     <div className="kinetic-name">逆转时光</div>
-                    <div className="kinetic-name" style={{ fontSize: '0.8rem', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400 }}>REVERSE TIME</div>
+                    <div className="kinetic-name" style={{ fontSize: '14px', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400 }}>REVERSE TIME</div>
                 </div>
 
                 {/* Row 2, Col 4: 登录/CTA卡 */}
                 <div
                     ref={(el) => addCellRef(el, 5)}
-                    className="kinetic-cell kinetic-login-cell kinetic-cell-login"
+                    className={`kinetic-cell kinetic-login-cell kinetic-cell-login ${user ? "no-hover-effect" : ""}`}
                 >
                     <div className="kinetic-login-bg" />
                     <div className="kinetic-btn-group">
-                        <button
-                            type="button"
-                            onClick={handleLoginClick}
-                            className="kinetic-btn kinetic-btn-primary"
-                        >
-                            立即登录
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleRegisterClick}
-                            className="kinetic-btn kinetic-btn-secondary"
-                        >
-                            注册
-                        </button>
+                        {user ? (
+                            <>
+                                <div className="mb-4 flex flex-col items-center justify-center w-full">
+                                    <div className="relative h-16 w-16 mb-3 rounded-full overflow-hidden bg-brand-gold/10 flex items-center justify-center border-2 border-white shadow-md">
+                                        {user.avatar ? (
+                                            <Image
+                                                src={user.avatar}
+                                                alt={user.nickname || "User"}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        ) : (
+                                            <UserIcon className="h-8 w-8 text-brand-gold" />
+                                        )}
+                                    </div>
+                                    <div className="text-brand-charcoal text-lg font-bold">欢迎回来 👋</div>
+                                    <div className="text-brand-charcoal/60 text-sm mt-1 truncate px-2 font-serif">
+                                        {user.nickname || "尊贵的会员"}
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        openUserCenter();
+                                    }}
+                                    className="group flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-3 text-sm font-medium text-white transition-all duration-300 hover:bg-brand-gold-dark hover:shadow-lg hover:shadow-brand-gold/20"
+                                >
+                                    <span>进入会员中心</span>
+                                    <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleLoginClick}
+                                    className="kinetic-btn kinetic-btn-primary"
+                                >
+                                    立即登录
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleRegisterClick}
+                                    className="kinetic-btn kinetic-btn-secondary"
+                                >
+                                    注册
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
