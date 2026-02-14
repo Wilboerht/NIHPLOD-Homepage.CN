@@ -8,11 +8,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
-import { X, User, Package, MapPin, Star, LogOut, ChevronRight } from "lucide-react";
+import { X, User, Package, MapPin, LogOut, ChevronRight } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { OrdersPanel } from "./user-center/OrdersPanel";
 import { AddressesPanel } from "./user-center/AddressesPanel";
-import { PointsPanel } from "./user-center/PointsPanel";
 import { ProfilePanel } from "./user-center/ProfilePanel";
 
 // 菜单项配置
@@ -20,7 +19,6 @@ const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
   { id: "orders", label: "我的订单", icon: Package },
   { id: "addresses", label: "收货地址", icon: MapPin },
-  { id: "points", label: "护肤点数", icon: Star },
 ];
 
 export function UserCenterModal() {
@@ -106,7 +104,7 @@ export function UserCenterModal() {
                     <p className="text-[#5C5347] font-medium truncate">
                       {user.nickname || `用户${user.phone?.slice(-4)}`}
                     </p>
-                    <p className="text-[#A69B8C] text-xs">{user.points} 点数</p>
+
                   </div>
                 </div>
               </div>
@@ -121,8 +119,8 @@ export function UserCenterModal() {
                       key={item.id}
                       onClick={() => setUserCenterView(item.id)}
                       className={`w-full flex items-center gap-3 px-6 py-3 text-sm transition-all ${isActive
-                          ? "bg-[#A69374]/10 text-[#A69374] border-r-2 border-[#A69374]"
-                          : "text-[#5C5347] hover:bg-[#F5F2ED]"
+                        ? "bg-[#A69374]/10 text-[#A69374] border-r-2 border-[#A69374]"
+                        : "text-[#5C5347] hover:bg-[#F5F2ED]"
                         }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -163,7 +161,6 @@ function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
     case "orders": return <OrdersPanel />;
     case "addresses": return <AddressesPanel />;
-    case "points": return <PointsPanel />;
     default: return <ProfilePanel />;
   }
 }

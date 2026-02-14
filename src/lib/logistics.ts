@@ -92,7 +92,7 @@ export async function queryLogistics(orderId: string): Promise<LogisticsInfo | n
 
   // 模拟物流轨迹
   const traces: LogisticsTrace[] = [];
-  
+
   if (order.shippedAt) {
     traces.push({
       time: order.shippedAt.toISOString(),
@@ -125,16 +125,13 @@ export async function queryLogistics(orderId: string): Promise<LogisticsInfo | n
   };
 }
 
-// 购买奖励比例：每消费 1 元获得 1 点
-const PURCHASE_REWARD_RATIO = 1;
-
 /**
  * 确认收货
  */
 export async function confirmReceipt(
   orderId: string,
   userId: string
-): Promise<{ success: boolean; error?: string; pointsEarned?: number }> {
+): Promise<{ success: boolean; error?: string }> {
   try {
     const order = await prisma.order.findFirst({
       where: { id: orderId, userId },
@@ -148,42 +145,17 @@ export async function confirmReceipt(
       return { success: false, error: "订单状态不正确" };
     }
 
-    // 计算购买奖励点数（每消费1元获得1点，向下取整）
-    const pointsEarned = Math.floor(Number(order.totalAmount) * PURCHASE_REWARD_RATIO);
-
-    // 使用事务确保数据一致性
-    await prisma.$transaction(async (tx) => {
-      // 更新订单状态
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          status: OrderStatus.COMPLETED,
-          receivedAt: new Date(),
-        },
-      });
-
-      // 更新用户点数
-      if (pointsEarned > 0) {
-        const user = await tx.user.update({
-          where: { id: userId },
-          data: { points: { increment: pointsEarned } },
-        });
-
-        // 记录点数变动
-        await tx.pointRecord.create({
-          data: {
-            userId,
-            type: "PURCHASE_REWARD",
-            amount: pointsEarned,
-            balance: user.points,
-            description: `订单完成奖励 (${order.orderNo})`,
-          },
-        });
-      }
+    // 更新订单状态
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.COMPLETED,
+        receivedAt: new Date(),
+      },
     });
 
-    console.log(`[Logistics] 确认收货: ${order.orderNo}, 奖励点数: ${pointsEarned}`);
-    return { success: true, pointsEarned };
+    console.log(`[Logistics] 确认收货: ${order.orderNo}`);
+    return { success: true };
   } catch (error) {
     console.error("[Logistics] 确认收货失败:", error);
     return { success: false, error: "操作失败" };

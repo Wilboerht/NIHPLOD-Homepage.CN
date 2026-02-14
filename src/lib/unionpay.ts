@@ -124,10 +124,6 @@ export async function handleUnionPayNotify(params: Record<string, string>): Prom
             const order = await tx.order.findUnique({ where: { orderNo } });
             if (!order || order.status === OrderStatus.PAID) return;
 
-            // ... (与微信/支付宝相同的积分发放逻辑)
-            const PURCHASE_REWARD_RATIO = 1;
-            const pointsEarned = Math.floor(Number(order.payAmount) * PURCHASE_REWARD_RATIO);
-
             await tx.order.update({
                 where: { orderNo },
                 data: {
@@ -135,18 +131,8 @@ export async function handleUnionPayNotify(params: Record<string, string>): Prom
                     paymentMethod: "unionpay",
                     paymentNo: queryId,
                     paymentTime: new Date(),
-                    pointsEarned,
                 },
             });
-
-            // 发放积分... (省略重复代码，真实环境建议封装 updateOrderPaid 统一函数)
-            if (pointsEarned > 0) {
-                await tx.user.update({
-                    where: { id: order.userId },
-                    data: { points: { increment: pointsEarned }, totalPoints: { increment: pointsEarned } }
-                });
-                // ... pointRecord
-            }
         });
 
         return { success: true };

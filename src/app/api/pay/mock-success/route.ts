@@ -7,8 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
 
-// 购买奖励比例：每消费 1 元获得 1 点
-const PURCHASE_REWARD_RATIO = 1;
+
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -61,46 +60,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 计算购买奖励点数（每消费1元获得1点，向下取整）
-    const pointsEarned = Math.floor(Number(order.payAmount) * PURCHASE_REWARD_RATIO);
-
-    // 使用事务更新订单状态和发放积分
-    await prisma.$transaction(async (tx) => {
-      // 更新订单状态
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          status: OrderStatus.PAID,
-          paymentNo: `MOCK_${Date.now()}`,
-          paymentTime: new Date(),
-          pointsEarned,
-        },
-      });
-
-      // 发放积分
-      if (pointsEarned > 0) {
-        const user = await tx.user.update({
-          where: { id: payload.id },
-          data: {
-            points: { increment: pointsEarned },
-            totalPoints: { increment: pointsEarned },
-          },
-        });
-
-        // 记录积分变动
-        await tx.pointRecord.create({
-          data: {
-            userId: payload.id,
-            type: "PURCHASE_REWARD",
-            amount: pointsEarned,
-            balance: user.points,
-            description: `订单支付奖励 (${order.orderNo})`,
-            relatedId: orderId,
-          },
-        });
-
-        console.log(`[MockPay] 发放积分: ${pointsEarned} 点`);
-      }
+    // 更新订单状态
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.PAID,
+        paymentNo: `MOCK_${Date.now()}`,
+        paymentTime: new Date(),
+      },
     });
 
     console.log(`[MockPay] 模拟支付成功: ${order.orderNo}`);
@@ -109,7 +76,6 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         message: "模拟支付成功",
-        pointsEarned,
       },
     });
   } catch (error) {

@@ -7,13 +7,12 @@ interface User {
   phone?: string;
   nickname?: string;
   avatar?: string;
-  points: number;
 }
 
 type ModalType = "login" | "register" | "forgot-password" | null;
 
 // 用户中心视图类型
-export type UserCenterView = "profile" | "orders" | "addresses" | "points" | null;
+export type UserCenterView = "profile" | "orders" | "addresses" | null;
 
 interface AuthContextType {
   user: User | null;

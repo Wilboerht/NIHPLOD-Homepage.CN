@@ -37,17 +37,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
             createdAt: true,
           },
         },
-        pointRecords: {
-          take: 10,
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            type: true,
-            amount: true,
-            description: true,
-            createdAt: true,
-          },
-        },
         _count: { select: { orders: true } },
       },
     });

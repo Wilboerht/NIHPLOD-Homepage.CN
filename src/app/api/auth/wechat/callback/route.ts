@@ -8,8 +8,7 @@ import { signUserToken, getTokenExpiresAt } from "@/lib/jwt";
 import { getWechatOAuthToken, getWechatUserInfo } from "@/lib/wechat";
 import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
 
-// 注册奖励点数
-const REGISTER_BONUS_POINTS = 10;
+
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -46,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     // 获取 Access Token
     const tokenData = await getWechatOAuthToken(code, "open");
-    
+
     // 获取用户信息
     const wechatUser = await getWechatUserInfo(tokenData.accessToken, tokenData.openid);
 
@@ -68,10 +67,10 @@ export async function GET(request: NextRequest) {
     if (!user) {
       // 新用户注册
       isNewUser = true;
-      
+
       // 生成临时手机号占位符（微信登录可能没有手机号）
       const tempPhone = `wx_${wechatUser.openid.slice(0, 11)}`;
-      
+
       user = await prisma.user.create({
         data: {
           phone: tempPhone,
@@ -80,19 +79,6 @@ export async function GET(request: NextRequest) {
           avatar: wechatUser.headimgurl || null,
           wechatOpenId: wechatUser.openid,
           wechatUnionId: wechatUser.unionid || null,
-          points: REGISTER_BONUS_POINTS,
-          totalPoints: REGISTER_BONUS_POINTS,
-        },
-      });
-
-      // 记录注册奖励点数
-      await prisma.pointRecord.create({
-        data: {
-          userId: user.id,
-          type: "REGISTER_BONUS",
-          amount: REGISTER_BONUS_POINTS,
-          balance: REGISTER_BONUS_POINTS,
-          description: "微信注册奖励",
         },
       });
 

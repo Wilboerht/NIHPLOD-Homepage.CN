@@ -20,8 +20,7 @@ const registerSchema = z.object({
   path: ["confirmPassword"],
 });
 
-// 注册奖励点数
-const REGISTER_BONUS_POINTS = 10;
+
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -29,7 +28,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // 参数验证
     const result = registerSchema.safeParse(body);
     if (!result.success) {
@@ -118,19 +117,6 @@ export async function POST(request: NextRequest) {
         phone,
         phoneVerified: true,
         password: hashedPassword,
-        points: REGISTER_BONUS_POINTS,
-        totalPoints: REGISTER_BONUS_POINTS,
-      },
-    });
-
-    // 记录注册奖励点数
-    await prisma.pointRecord.create({
-      data: {
-        userId: user.id,
-        type: "REGISTER_BONUS",
-        amount: REGISTER_BONUS_POINTS,
-        balance: REGISTER_BONUS_POINTS,
-        description: "新用户注册奖励点数",
       },
     });
 
@@ -153,7 +139,6 @@ export async function POST(request: NextRequest) {
           phone: user.phone,
           nickname: user.nickname,
           avatar: user.avatar,
-          points: user.points,
         },
         isNewUser: true,
         expiresAt,

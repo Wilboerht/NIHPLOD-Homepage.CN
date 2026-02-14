@@ -130,14 +130,6 @@ export function ProfilePanel() {
           </div>
         </div>
       </div>
-
-      {/* 点数卡片 */}
-      <div className="mt-4 bg-gradient-to-r from-[#A69374] to-[#C4B896] rounded-xl p-6 text-white">
-        <p className="text-white/80 text-sm">护肤点数</p>
-        <p className="text-3xl font-light mt-1">{user.points}</p>
-        <p className="text-white/60 text-xs mt-2">用于AI护肤顾问对话</p>
-      </div>
     </div>
   );
 }
-

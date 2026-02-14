@@ -149,10 +149,7 @@ export async function handleAlipayNotify(
     const orderNo = params.out_trade_no;
     const tradeNo = params.trade_no;
 
-    // 购买奖励比例：每消费 1 元获得 1 点
-    const PURCHASE_REWARD_RATIO = 1;
-
-    // 使用事务更新订单状态和发放积分
+    // 使用事务更新订单状态
     await prisma.$transaction(async (tx) => {
       // 获取订单信息
       const order = await tx.order.findUnique({
@@ -163,9 +160,6 @@ export async function handleAlipayNotify(
         throw new Error("订单不存在");
       }
 
-      // 计算购买奖励点数
-      const pointsEarned = Math.floor(Number(order.payAmount) * PURCHASE_REWARD_RATIO);
-
       // 更新订单状态
       await tx.order.update({
         where: { orderNo },
@@ -174,34 +168,8 @@ export async function handleAlipayNotify(
           paymentMethod: "alipay",
           paymentNo: tradeNo,
           paymentTime: new Date(),
-          pointsEarned,
         },
       });
-
-      // 发放积分
-      if (pointsEarned > 0) {
-        const user = await tx.user.update({
-          where: { id: order.userId },
-          data: {
-            points: { increment: pointsEarned },
-            totalPoints: { increment: pointsEarned },
-          },
-        });
-
-        // 记录积分变动
-        await tx.pointRecord.create({
-          data: {
-            userId: order.userId,
-            type: "PURCHASE_REWARD",
-            amount: pointsEarned,
-            balance: user.points,
-            description: `订单支付奖励 (${orderNo})`,
-            relatedId: order.id,
-          },
-        });
-
-        console.log(`[Alipay] 发放积分: ${pointsEarned} 点`);
-      }
     });
 
     console.log(`[Alipay] 订单支付成功: ${orderNo}`);

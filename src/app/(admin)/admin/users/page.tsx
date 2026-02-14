@@ -6,7 +6,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, RefreshCw, Eye, Coins } from "lucide-react";
+import { Search, RefreshCw, Eye } from "lucide-react";
 /* eslint-disable @next/next/no-img-element */
 import { Button } from "@/components/ui/Button";
 
@@ -15,7 +15,6 @@ interface UserItem {
   phone: string | null;
   nickname: string | null;
   avatar: string | null;
-  points: number;
   orderCount: number;
   createdAt: string;
 }
@@ -95,7 +94,6 @@ export default function AdminUsersPage() {
             <tr>
               <th className="px-4 py-3">用户</th>
               <th className="px-4 py-3">手机号</th>
-              <th className="px-4 py-3">积分</th>
               <th className="px-4 py-3">订单数</th>
               <th className="px-4 py-3">注册时间</th>
               <th className="px-4 py-3">操作</th>
@@ -103,9 +101,9 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">加载中...</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">加载中...</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">暂无用户</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">暂无用户</td></tr>
             ) : users.map((user) => (
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
@@ -121,11 +119,6 @@ export default function AdminUsersPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3">{user.phone || "-"}</td>
-                <td className="px-4 py-3">
-                  <span className="flex items-center gap-1 text-amber-500">
-                    <Coins className="h-4 w-4" /> {user.points}
-                  </span>
-                </td>
                 <td className="px-4 py-3">{user.orderCount}</td>
                 <td className="px-4 py-3 text-gray-400">{new Date(user.createdAt).toLocaleDateString("zh-CN")}</td>
                 <td className="px-4 py-3">

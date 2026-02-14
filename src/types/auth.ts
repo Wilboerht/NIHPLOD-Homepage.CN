@@ -83,7 +83,6 @@ export interface UserInfo {
   phone: string;
   nickname: string | null;
   avatar: string | null;
-  points: number;
 }
 
 /**

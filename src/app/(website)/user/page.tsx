@@ -9,7 +9,7 @@ import { getCurrentLoginUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "个人中心 - 你好朵朵",
-  description: "管理您的账户、订单和积分",
+  description: "管理您的账户和订单",
 };
 
 export default async function UserPage() {
@@ -55,14 +55,6 @@ export default async function UserPage() {
               编辑资料
             </Link>
           </div>
-
-          {/* 积分展示 */}
-          <div className="mt-6 flex items-center gap-8">
-            <div>
-              <p className="text-2xl font-bold">{user.points}</p>
-              <p className="text-white/80 text-sm">可用积分</p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -87,12 +79,7 @@ export default async function UserPage() {
             title="我的优惠券"
             desc="查看可用优惠券"
           />
-          <MenuItem
-            href="/user/points"
-            icon="🌟"
-            title="积分记录"
-            desc="查看积分明细"
-          />
+
           <MenuItem
             href="/user/conversations"
             icon="💬"

@@ -169,7 +169,6 @@ export async function getCurrentLoginUser(): Promise<UserInfo | null> {
       phone: true,
       nickname: true,
       avatar: true,
-      points: true,
     },
   });
 

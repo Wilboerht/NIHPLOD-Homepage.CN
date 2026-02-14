@@ -443,7 +443,7 @@ async function main() {
 
 
   // 9. 创建测试用户
-  await prisma.pointRecord.deleteMany({});
+
   await prisma.address.deleteMany({});
   await prisma.user.deleteMany({});
   const testUserPassword = await bcrypt.hash("123456", 10);
@@ -453,8 +453,6 @@ async function main() {
       phoneVerified: true,
       password: testUserPassword,
       nickname: "测试用户",
-      points: 500,
-      totalPoints: 500,
     },
   });
   console.log("✅ 测试用户已创建 (13800138000 / 123456)");
@@ -500,38 +498,6 @@ async function main() {
   }
   console.log("✅ 测试用户收货地址已创建 (3 个地址)");
 
-  // 9.2 创建测试用户点数记录
-  const pointRecords = [
-    {
-      userId: testUser.id,
-      type: "REGISTER_BONUS" as const,
-      amount: 100,
-      balance: 100,
-      description: "新用户注册奖励",
-    },
-
-    {
-      userId: testUser.id,
-      type: "SHARE_REWARD" as const,
-      amount: 20,
-      balance: 120, // 100 + 20
-      description: "分享产品奖励",
-    },
-    {
-      userId: testUser.id,
-      type: "PURCHASE_REWARD" as const,
-      amount: 350,
-      balance: 470, // 100 + 20 + 350
-      description: "购买修护紧致精华返点",
-      relatedId: "order_test_001",
-    },
-
-
-  ];
-  for (const record of pointRecords) {
-    await prisma.pointRecord.create({ data: record });
-  }
-  console.log("✅ 测试用户点数记录已创建 (6 条记录)");
 
   // 9.3 创建测试联系留言
   await prisma.contactMessage.deleteMany({});
@@ -582,16 +548,7 @@ async function main() {
         expressCompanies: ["顺丰速运", "京东物流", "圆通速递", "中通快递"],
       },
     },
-    {
-      key: "points",
-      value: {
-        registerBonus: 100,          // 注册奖励
-        questionnaireBonus: 50,      // 完成问卷奖励
-        purchaseRate: 0.01,          // 消费返点比例（1%）
-        shareReward: 20,             // 分享奖励
-        aiChatCost: 10,              // AI追问消耗
-      },
-    },
+
     {
       key: "order",
       value: {

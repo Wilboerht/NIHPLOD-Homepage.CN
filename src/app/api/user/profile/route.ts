@@ -44,8 +44,6 @@ export async function GET(request: NextRequest) {
         phone: true,
         nickname: true,
         avatar: true,
-        points: true,
-        totalPoints: true,
         createdAt: true,
       },
     });
@@ -87,7 +85,7 @@ export async function PUT(request: NextRequest) {
   try {
     // 验证用户身份
     const payload = await verifyUserAuth(request);
-    
+
     if (!payload) {
       return NextResponse.json(
         {
@@ -102,7 +100,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    
+
     // 参数验证
     const result = updateSchema.safeParse(body);
     if (!result.success) {
@@ -132,7 +130,6 @@ export async function PUT(request: NextRequest) {
         phone: true,
         nickname: true,
         avatar: true,
-        points: true,
       },
     });
 

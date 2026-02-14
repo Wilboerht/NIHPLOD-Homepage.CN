@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 手机号+密码登录 API
  * POST /api/auth/login-password
  */
@@ -103,7 +103,6 @@ export async function POST(request: NextRequest) {
           phone: user.phone,
           nickname: user.nickname,
           avatar: user.avatar,
-          points: user.points,
         },
         expiresAt,
       },

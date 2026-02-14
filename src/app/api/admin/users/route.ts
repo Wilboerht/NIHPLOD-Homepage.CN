@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 管理端用户列表 API
  * GET /api/admin/users
  */
@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
           phone: true,
           nickname: true,
           avatar: true,
-          points: true,
           createdAt: true,
           _count: { select: { orders: true } },
         },

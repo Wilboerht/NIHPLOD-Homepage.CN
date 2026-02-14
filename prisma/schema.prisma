@@ -212,15 +212,10 @@ model User {
   wechatOpenId  String?   @unique              // 微信 OpenID
   wechatUnionId String?                        // 微信 UnionID
 
-  // 点数
-  points        Int       @default(0)          // 当前点数
-  totalPoints   Int       @default(0)          // 累计获得
-
   // 关联
   addresses     Address[]
   orders        Order[]
   cartItems     CartItem[]
-  pointRecords  PointRecord[]
   userCoupons   UserCoupon[]
 
   createdAt     DateTime  @default(now())
@@ -263,33 +258,6 @@ model SmsCode {
   @@index([expiresAt])
 }
 
-// ============================================
-// 点数系统
-// ============================================
-
-model PointRecord {
-  id          String    @id @default(cuid())
-  userId      String
-  type        PointType
-  amount      Int                              // 正数增加，负数减少
-  balance     Int                              // 变动后余额
-  description String
-  relatedId   String?                          // 关联订单/对话ID
-
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt   DateTime  @default(now())
-
-  @@index([userId, createdAt(sort: Desc)])
-  @@index([type])
-}
-
-enum PointType {
-  REGISTER_BONUS        // 注册奖励
-  PURCHASE_REWARD       // 购买奖励
-  SHARE_REWARD          // 分享奖励
-  ADMIN_ADJUST          // 管理员调整
-}
 
 
 // ============================================
@@ -346,8 +314,6 @@ model Order {
   shippedAt       DateTime?
   receivedAt      DateTime?
 
-  // 点数
-  pointsEarned   Int         @default(0)
 
   // 备注
   remark         String?     @db.Text

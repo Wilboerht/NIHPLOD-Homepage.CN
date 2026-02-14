@@ -35,8 +35,6 @@ export async function GET(request: NextRequest) {
         phone: true,
         nickname: true,
         avatar: true,
-        points: true,
-        totalPoints: true,
         createdAt: true,
         _count: {
           select: {
@@ -69,8 +67,6 @@ export async function GET(request: NextRequest) {
           phone: user.phone,
           nickname: user.nickname,
           avatar: user.avatar,
-          points: user.points,
-          totalPoints: user.totalPoints,
           createdAt: user.createdAt,
           stats: {
             orderCount: user._count.orders,

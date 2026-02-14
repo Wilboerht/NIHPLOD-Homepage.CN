@@ -35,10 +35,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       success: true,
       data: {
-        message: result.pointsEarned
-          ? `已确认收货，获得 ${result.pointsEarned} 护肤点数`
-          : "已确认收货",
-        pointsEarned: result.pointsEarned || 0,
+        message: "已确认收货",
       },
     });
   } catch (error) {
