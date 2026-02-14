@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
@@ -72,79 +73,115 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
   return (
     <>
-      {/* 全屏背景容器 - 延伸到安全区域外，覆盖状态栏 */}
-
-
-      {/* 主内容区域 - 在安全区域内 */}
       <m.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
         className="safe-area-content !pointer-events-none"
       >
         <div className="flex h-full flex-col items-center pointer-events-none">
-          {/* 主内容区域 */}
-          <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto">
-            <div className="flex h-full flex-col overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-              {/* 页面标题 */}
-              <div className="mb-6 text-center sm:mb-8">
-                <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                  {title.en}
-                </p>
-                <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                  {title.zh}
-                </h1>
-                <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base md:text-lg">
-                  {description}
-                </p>
-              </div>
-
-              {/* 开放职位内容 */}
-              <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:p-6 md:p-8">
-                <div className="space-y-4">
-                  {jobs.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
-                      <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
-                    </div>
-                  ) : (
-                    jobs.map((job, index) => (
-                      <JobCard
-                        key={job.id}
-                        job={job}
-                        index={index}
-                        onClick={() => setSelectedJob(job)}
+          {/* 主内容卡片容器 */}
+          <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
+            <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
+              {/* 顶栏 / 标题区 */}
+              <header className="flex-shrink-0 px-4 pb-8 text-center sm:pb-10 lg:pb-12">
+                <div className="space-y-8">
+                  {/* Logo 保持在顶端 */}
+                  <m.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex justify-center"
+                  >
+                    <div className="relative h-8 w-32 sm:h-9 sm:w-40">
+                      <Image
+                        src="/images/logo.webp"
+                        alt="公司标志"
+                        fill
+                        className="object-contain"
+                        priority
                       />
-                    ))
-                  )}
+                    </div>
+                  </m.div>
 
-                  {/* 投递方式 */}
-                  {submitTip && (
-                    <m.div
-                      className="mt-6 rounded-xl bg-brand-gold/10 p-5"
+                  <div className="space-y-2">
+                    <m.h1
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
+                      transition={{ delay: 0.1 }}
+                      className="font-serif text-2xl text-brand-charcoal sm:text-3xl"
                     >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold">
-                          <Mail className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-serif text-base text-brand-charcoal">{submitTip.title}</h3>
-                          <p className="mt-1 whitespace-pre-line text-sm text-brand-charcoal/70">
-                            {submitTip.content}
-                          </p>
-                        </div>
-                      </div>
-                    </m.div>
-                  )}
+                      {title.zh}
+                    </m.h1>
+                    <m.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className="mx-auto text-sm text-brand-charcoal/60"
+                    >
+                      {description}
+                    </m.p>
+                  </div>
                 </div>
+              </header>
+
+              {/* 分割线 */}
+              <div className="mx-auto mb-8 w-full max-w-7xl border-b border-brand-charcoal/10" />
+
+              {/* 内容区域 */}
+              <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="mx-auto max-w-4xl">
+                  <div className="space-y-4">
+                    {jobs.length === 0 ? (
+                      <div className="py-8 text-center">
+                        <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
+                        <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
+                      </div>
+                    ) : (
+                      jobs.map((job, index) => (
+                        <JobCard
+                          key={job.id}
+                          job={job}
+                          index={index}
+                          onClick={() => setSelectedJob(job)}
+                        />
+                      ))
+                    )}
+
+                    {/* 投递方式 */}
+                    {submitTip && (
+                      <m.div
+                        className="mt-6 rounded-xl bg-brand-gold/10 p-5"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.2 }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold">
+                            <Mail className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-serif text-base text-brand-charcoal">{submitTip.title}</h3>
+                            <p className="mt-1 whitespace-pre-line text-sm text-brand-charcoal/70">
+                              {submitTip.content}
+                            </p>
+                          </div>
+                        </div>
+                      </m.div>
+                    )}
+                  </div>
+                </div>
+              </main>
+
+              {/* 底部版权信息 */}
+              <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12">
+                <p className="text-xs font-light tracking-widest text-brand-charcoal/60">
+                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                </p>
               </div>
             </div>
           </div>
 
-          {/* 回到首页按钮 */}
+          {/* 返回首页按钮 */}
           <Link
             href="/"
             className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3 pointer-events-auto"
