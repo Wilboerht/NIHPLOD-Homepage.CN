@@ -60,7 +60,7 @@ export function PrivacyContent() {
 
   const pageTitle = { en: "PRIVACY POLICY", zh: "隐私政策" };
   const description = "我们重视并尊重您的隐私，了解我们如何收集、使用和保护您的个人信息";
-  const lastUpdated = "2024年12月1日";
+  const lastUpdated = "2026年1月1日";
 
   const sectionOrder = ["collect", "use", "protect", "rights"];
   const sections = sectionOrder.map((id, index) => ({
@@ -137,7 +137,7 @@ export function PrivacyContent() {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex justify-center"
                 >
-                  <div className="relative h-8 w-32 sm:h-9 sm:w-40">
+                  <div className="relative h-9 w-36 sm:h-11 sm:w-44">
                     <Image
                       src="/images/logo.webp"
                       alt="公司标志"

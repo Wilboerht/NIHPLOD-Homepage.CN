@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { Home, Shield } from "lucide-react";
+import { Home, Shield, ScanFace } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ServicesPageContent, ServiceDetail as CMSServiceDetail } from "@/types/page-content";
 
@@ -67,11 +67,22 @@ const LockIcon = ({ className, isHovered }: { className?: string; isHovered?: bo
   );
 };
 
+// 测肤图标
+const AdvisorIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+  const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
+  return (
+    <div className={cn(className, "flex items-center justify-center transition-all duration-300")}>
+      <ScanFace stroke={color} strokeWidth="1.6" className="h-full w-full" />
+    </div>
+  );
+};
+
 // 图标映射
 const iconMap: Record<string, React.FC<{ className?: string; isHovered?: boolean }>> = {
   vip: VipIcon,
   website: WebsiteIcon,
   influencer: InfluencerIcon,
+  advisor: AdvisorIcon,
 };
 
 // 获取服务图标
@@ -79,47 +90,58 @@ const getServiceIcon = (serviceId: string) => {
   return iconMap[serviceId] || WebsiteIcon;
 };
 
-// Tab 按钮组件 - 支持 hover 状态
-const ServiceButton = ({
+// 卡片按钮组件 - 直接跳转链接
+const ServiceCard = ({
   service,
   index,
-  isLast,
-  onClick
 }: {
   service: CMSServiceDetail;
   index: number;
-  isLast: boolean;
-  onClick: () => void;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const Icon = getServiceIcon(service.id);
 
+  // 判断是否为暂未开放的服务 (vip: 会员系统, influencer: 达人平台)
+  const isDisabled = service.id === 'vip' || service.id === 'influencer';
+
+  // 查找用户端链接（非管理端）作为默认跳转目标
+  const targetLink = service.links.find(link => !link.isAdmin) || service.links[0];
+  const href = isDisabled ? undefined : (targetLink?.url || "#");
+
   return (
-    <m.button
-      type="button"
-      onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+    <m.a
+      href={href}
+      target={isDisabled ? undefined : "_blank"}
+      rel={isDisabled ? undefined : "noopener noreferrer"}
+      onClick={(e) => isDisabled && e.preventDefault()}
+      onMouseEnter={() => !isDisabled && setIsHovered(true)}
+      onMouseLeave={() => !isDisabled && setIsHovered(false)}
       className={cn(
-        "group relative flex flex-1 flex-col items-center justify-center gap-3 px-3 py-6 transition-all duration-300 sm:gap-4 sm:px-6 sm:py-8 md:py-10",
-        !isLast && "border-r border-brand-charcoal/20"
+        "group relative flex flex-col items-center justify-center gap-3 p-6 transition-colors duration-500 sm:gap-4 sm:p-8 md:p-10",
+        isDisabled ? "cursor-not-allowed opacity-40 mix-blend-luminosity" : "hover:bg-white/50"
       )}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.15 + index * 0.06, ease: "easeOut" }}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
+      whileTap={isDisabled ? undefined : { scale: 0.98 }}
     >
       <div className="flex h-12 w-12 items-center justify-center sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24">
         <Icon className="h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-20 lg:w-20" isHovered={isHovered} />
       </div>
-      <span className={cn(
-        "text-xs font-medium transition-colors duration-300 sm:text-sm md:text-base lg:text-lg",
-        isHovered ? "text-brand-charcoal" : "text-brand-charcoal/70"
-      )}>
-        {service.label}
-      </span>
-    </m.button>
+      <div className="flex flex-col items-center gap-1">
+        <span className={cn(
+          "text-xs font-medium transition-colors duration-300 sm:text-sm md:text-base lg:text-lg",
+          isHovered ? "text-brand-charcoal" : "text-brand-charcoal/70"
+        )}>
+          {service.label}
+        </span>
+        {isDisabled && (
+          <span className="rounded-full bg-brand-charcoal/5 px-2 py-0.5 text-[10px] text-brand-charcoal/40">
+            暂未开放
+          </span>
+        )}
+      </div>
+    </m.a>
   );
 };
 
@@ -127,11 +149,9 @@ const ServiceButton = ({
 const ServiceLinkButton = ({
   link,
   index,
-  isLast,
 }: {
   link: { label: string; url: string; isAdmin: boolean; description: string };
   index: number;
-  isLast: boolean;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -143,8 +163,7 @@ const ServiceLinkButton = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "group relative flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 transition-all duration-300 sm:gap-4 sm:px-8 sm:py-10 md:py-12",
-        !isLast && "border-r border-brand-charcoal/20"
+        "group relative flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/60 px-4 py-8 shadow-sm ring-1 ring-brand-charcoal/5 backdrop-blur-sm transition-all duration-300 hover:bg-white hover:shadow-md hover:ring-brand-gold/30 sm:gap-4 sm:px-8 sm:py-10 md:py-12"
       )}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
@@ -184,167 +203,125 @@ const ServiceLinkButton = ({
 // Props 接口
 interface ServicesContentProps {
   content: ServicesPageContent;
-
 }
 
 /**
  * 服务入口页面内容组件
  * 样式参考 PrivacyContent
  */
+// Main Content Component
 export function ServicesContent({ content }: ServicesContentProps) {
-  const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
-
   // 从 content 获取数据
   const pageTitle = content.pageTitle || { en: "SERVICES", zh: "服务入口" };
-  const services = content.services || [];
+  const cmsServices = content.services || [];
 
-  // 获取当前选中的服务
-  const activeService = activeServiceId
-    ? services.find((s) => s.id === activeServiceId)
-    : null;
+  // 添加 AI 测肤服务
+  const advisorService = {
+    id: "advisor",
+    label: "测肤平台",
+    nameEn: "Skin Advisor",
+    title: "测肤平台",
+    description: "AI 智能测肤，定制您的专属护肤方案",
+    links: [{ label: "立即体验", url: "https://advisor.nihplod.cn", isAdmin: false, description: "" }]
+  } as CMSServiceDetail;
+
+  const services = [...cmsServices, advisorService];
 
   return (
     <>
-      {/* 全屏背景容器 - 延伸到安全区域外，覆盖状态栏 */}
-
-
-      {/* 主内容区域 - 在安全区域内 */}
       <m.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
         className="safe-area-content !pointer-events-none"
       >
         <div className="flex h-full flex-col items-center pointer-events-none">
-          {/* 主内容区域 */}
-          <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto">
-            <div className="flex h-full flex-col justify-center overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-              {/* 页面标题 - 仅在未选中服务时显示 */}
-              {!activeService && (
-                <div className="mb-6 text-center sm:mb-8">
-                  <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                    {pageTitle.en}
-                  </p>
-                  <h1 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                    {pageTitle.zh}
-                  </h1>
-                  <p className="mx-auto mt-2 flex max-w-xl items-center justify-center gap-2 text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:gap-3 sm:text-base md:text-lg">
-                    <span>快速访问 NIHPLOD 旎柏各服务系统</span>
-                    <span className="text-brand-charcoal/30">·</span>
-                    <Link
-                      href="/terms"
-                      className="text-brand-charcoal/50 transition-colors hover:text-brand-gold"
-                    >
-                      服务条款
-                    </Link>
-                  </p>
-                </div>
-              )}
-
-              {/* 内容区域 */}
-              <AnimatePresence mode="wait">
-                {!activeService && (
+          {/* 主内容卡片容器 */}
+          <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
+            <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
+              {/* 顶栏 / 标题区 */}
+              <header className="flex-shrink-0 px-4 pb-8 text-center sm:pb-10 lg:pb-12">
+                <div className="space-y-8">
+                  {/* Logo 保持在顶端 */}
                   <m.div
-                    key="services"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="flex flex-col items-center"
+                    className="flex justify-center"
                   >
-                    {/* Logo */}
-                    <m.div
-                      className="mb-8 flex justify-center sm:mb-10"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-                    >
-                      <div className="relative h-16 w-32 sm:h-20 sm:w-40 md:h-24 md:w-48">
-                        <Image src="/images/logo.webp" alt="NIHPLOD Logo" fill className="object-contain" />
-                      </div>
-                    </m.div>
+                    <div className="relative h-9 w-36 sm:h-11 sm:w-44">
+                      <Image
+                        src="/images/logo.webp"
+                        alt="公司标志"
+                        fill
+                        className="object-contain"
+                        priority
+                      />
+                    </div>
+                  </m.div>
 
-                    {/* 服务按钮 */}
-                    <div className="flex w-full max-w-3xl items-stretch justify-center">
+                  <div className="space-y-2">
+                    <m.h1
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="font-serif text-2xl text-brand-charcoal sm:text-3xl"
+                    >
+                      {pageTitle.zh}
+                    </m.h1>
+                    <m.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className="mx-auto max-w-lg text-sm leading-relaxed text-brand-charcoal/60"
+                    >
+                      <span>NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验</span>
+                    </m.p>
+                  </div>
+                </div>
+              </header>
+
+              {/* 分割线 */}
+              <div className="mx-auto mb-8 w-full max-w-7xl border-b border-brand-charcoal/10" />
+
+              {/* 内容区域 */}
+              <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="mx-auto max-w-4xl h-full flex flex-col justify-center min-h-[300px]">
+
+                  <div className="flex flex-col items-center w-full">
+                    {/* 服务卡片列表 - 调整网格布局以适应4个卡片 */}
+                    <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl px-4">
                       {services.map((service, index) => (
-                        <ServiceButton
+                        <ServiceCard
                           key={service.id}
                           service={service}
                           index={index}
-                          isLast={index === services.length - 1}
-                          onClick={() => setActiveServiceId(service.id)}
-                        />
-                      ))}
-                    </div>
-                  </m.div>
-                )}
-
-                {/* 选中服务后显示的内容 */}
-                {activeService && (
-                  <m.div
-                    key={activeService.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="flex flex-col items-center"
-                  >
-                    {/* 返回按钮 - 居中显示 */}
-                    <m.button
-                      type="button"
-                      onClick={() => setActiveServiceId(null)}
-                      className="mb-6 flex items-center gap-1.5 rounded-full border border-brand-charcoal/20 px-4 py-1.5 text-brand-charcoal/60 transition-all duration-300 hover:border-brand-charcoal/40 hover:text-brand-charcoal sm:mb-8 sm:px-5 sm:py-2"
-                    >
-                      <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M15 18l-6-6 6-6" />
-                      </svg>
-                      <span className="text-xs sm:text-sm">返回服务列表</span>
-                    </m.button>
-
-                    {/* 标题区域 */}
-                    <div className="mb-6 text-center sm:mb-8">
-                      <p className="text-xs uppercase tracking-widest text-brand-gold sm:text-sm md:text-base">
-                        {activeService.nameEn.toUpperCase()}
-                      </p>
-                      <h2 className="mt-1 font-serif text-2xl text-brand-charcoal sm:text-3xl md:text-4xl">
-                        {activeService.title}
-                      </h2>
-                      <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-brand-charcoal/70 sm:mt-3 sm:text-base">
-                        {activeService.description}
-                      </p>
-                    </div>
-
-                    {/* 两个大按钮：用户端 / 管理端 */}
-                    <div className="flex w-full max-w-2xl items-stretch justify-center">
-                      {activeService.links.map((link, index) => (
-                        <ServiceLinkButton
-                          key={link.url}
-                          link={link}
-                          index={index}
-                          isLast={index === activeService.links.length - 1}
                         />
                       ))}
                     </div>
 
-                    {/* 提示信息 */}
-                    <m.div
-                      className="mt-6 sm:mt-8"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.3 }}
-                    >
-                      <p className="text-center text-xs text-brand-charcoal/50 sm:text-sm">
-                        <Shield className="mr-1 inline-block h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        管理端入口仅供授权人员访问，需要相应的账号权限
-                      </p>
-                    </m.div>
-                  </m.div>
-                )}
-              </AnimatePresence>
+
+                  </div>
+
+                </div>
+              </main>
+
+              {/* 底部版权信息 */}
+              <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 border-t border-brand-charcoal/5 mx-6 lg:mx-12 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+                <p className="text-xs font-light tracking-widest text-brand-charcoal/60">
+                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                </p>
+                <div className="hidden sm:block h-3 w-[1px] bg-brand-charcoal/20"></div>
+                <Link
+                  href="/terms"
+                  className="text-xs font-light tracking-widest text-brand-charcoal/60 hover:text-brand-gold transition-colors"
+                >
+                  服务条款
+                </Link>
+              </div>
             </div>
           </div>
 
-          {/* 回到首页按钮 */}
+          {/* 返回首页按钮 */}
           <Link
             href="/"
             className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3 pointer-events-auto"
@@ -357,4 +334,3 @@ export function ServicesContent({ content }: ServicesContentProps) {
     </>
   );
 }
-

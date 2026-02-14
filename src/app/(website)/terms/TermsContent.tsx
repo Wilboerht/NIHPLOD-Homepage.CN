@@ -22,7 +22,7 @@ export function TermsContent({ content }: TermsContentProps) {
   // 从 content 中获取数据
   const pageTitle = content.pageTitle || { en: "TERMS OF SERVICE", zh: "服务条款" };
   const description = content.description || "在使用我们的服务前，请仔细阅读以下条款";
-  const lastUpdated = content.lastUpdated || "2024年12月1日";
+  const lastUpdated = content.lastUpdated || "2026年1月1日";
   const tabsContent = content.tabs;
 
   // 确保章节按逻辑顺序排列
@@ -104,7 +104,7 @@ export function TermsContent({ content }: TermsContentProps) {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex justify-center"
                 >
-                  <div className="relative h-8 w-32 sm:h-9 sm:w-40">
+                  <div className="relative h-9 w-36 sm:h-11 sm:w-44">
                     <Image
                       src="/images/logo.webp"
                       alt="公司标志"

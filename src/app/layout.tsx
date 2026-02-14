@@ -64,6 +64,10 @@ export const metadata: Metadata = {
     creator: "@nihplod",
   },
 
+  icons: {
+    icon: '/favicon.ico',
+  },
+
   // 其他 SEO
   robots: {
     index: true,

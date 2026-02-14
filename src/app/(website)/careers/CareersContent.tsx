@@ -92,7 +92,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex justify-center"
                   >
-                    <div className="relative h-8 w-32 sm:h-9 sm:w-40">
+                    <div className="relative h-9 w-36 sm:h-11 sm:w-44">
                       <Image
                         src="/images/logo.webp"
                         alt="公司标志"
