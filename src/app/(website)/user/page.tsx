@@ -6,6 +6,7 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentLoginUser } from "@/lib/auth";
+import { LogoutButton } from "./LogoutButton";
 
 export const metadata: Metadata = {
   title: "个人中心 - 你好朵朵",
@@ -79,13 +80,6 @@ export default async function UserPage() {
             title="我的优惠券"
             desc="查看可用优惠券"
           />
-
-          <MenuItem
-            href="/user/conversations"
-            icon="💬"
-            title="咨询记录"
-            desc="查看咨询历史"
-          />
         </div>
 
         {/* 退出登录 */}
@@ -118,20 +112,6 @@ function MenuItem({ href, icon, title, desc }: {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
       </svg>
     </Link>
-  );
-}
-
-// 退出登录按钮（客户端组件）
-function LogoutButton() {
-  return (
-    <form action="/api/auth/logout" method="POST">
-      <button
-        type="submit"
-        className="w-full py-3 text-center text-red-500 bg-white rounded-xl shadow-sm hover:bg-red-50 transition-colors"
-      >
-        退出登录
-      </button>
-    </form>
   );
 }
 

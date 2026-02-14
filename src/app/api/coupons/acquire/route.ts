@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentLoginUser } from "@/lib/auth";
+import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
 
@@ -17,9 +17,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
     try {
-        const user = await getCurrentLoginUser();
+        const user = await verifyUserAuth(req);
         if (!user) {
-            return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
+            return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } }, { status: 401 });
         }
 
         const body = await req.json();

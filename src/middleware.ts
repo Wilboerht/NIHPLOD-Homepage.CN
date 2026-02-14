@@ -45,6 +45,9 @@ const PUBLIC_API_PREFIXES = [
   "/api/contact",      // 用户留言
   "/api/careers/apply",// 职位申请
   "/api/oss/sign",     // OSS 签名 (已有 RateLimit 保护)
+  // C端用户系统 — 自带 verifyUserAuth 鉴权，不走 admin_token
+  "/api/auth/",        // 用户认证（登录、注册、验证码、微信）
+  "/api/user/",        // 用户业务（资料、地址、优惠券）
 ];
 
 /**

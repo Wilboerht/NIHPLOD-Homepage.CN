@@ -1,5 +1,5 @@
 /**
- * 手机号登录/注册 API
+ * 手机号验证码登录 API（仅登录，不自动注册）
  * POST /api/auth/login
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -84,34 +84,33 @@ export async function POST(request: NextRequest) {
       data: { used: true },
     });
 
-    // 查找或创建用户
-    let user = await prisma.user.findUnique({
+    // 查找用户（验证码登录不再自动注册，用户必须先通过 /api/auth/register 注册）
+    const user = await prisma.user.findUnique({
       where: { phone },
     });
 
-    let isNewUser = false;
-
     if (!user) {
-      // 新用户注册
-      isNewUser = true;
-      user = await prisma.user.create({
-        data: {
-          phone,
-          phoneVerified: true,
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "USER_NOT_FOUND",
+            message: "该手机号未注册，请先注册账户",
+          },
         },
-      });
-
-      console.log(`[Login] 新用户注册: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
-    } else {
-      // 更新手机验证状态
-      if (!user.phoneVerified) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { phoneVerified: true },
-        });
-      }
-      console.log(`[Login] 用户登录: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+        { status: 400 }
+      );
     }
+
+    // 更新手机验证状态
+    if (!user.phoneVerified) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { phoneVerified: true },
+      });
+    }
+
+    console.log(`[Login] 用户登录: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
 
     // 签发 Token
     const token = await signUserToken({
@@ -131,7 +130,6 @@ export async function POST(request: NextRequest) {
           nickname: user.nickname,
           avatar: user.avatar,
         },
-        isNewUser,
         expiresAt,
       },
     });

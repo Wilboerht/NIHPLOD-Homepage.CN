@@ -1,14 +1,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentLoginUser } from "@/lib/auth";
+import { verifyUserAuth } from "@/lib/auth";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-    const user = await getCurrentLoginUser();
-    if (!user) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    const user = await verifyUserAuth(req);
+    if (!user) return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status"); // UNUSED, USED, EXPIRED
