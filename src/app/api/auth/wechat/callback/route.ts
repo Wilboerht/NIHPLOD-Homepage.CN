@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get("error");
 
     // 获取重定向地址（从 state 解析或默认）
-    let redirectUrl = "/user";
+    let redirectUrl = "/";
     if (state) {
       try {
         const stateData = JSON.parse(Buffer.from(state, "base64").toString());

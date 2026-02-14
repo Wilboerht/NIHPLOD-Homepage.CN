@@ -22,7 +22,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     const payload = await verifyUserToken(token);
     if (payload) {
       // 已登录，重定向到目标页面
-      redirect(params.redirect || "/user");
+      redirect(params.redirect || "/");
     }
   }
 

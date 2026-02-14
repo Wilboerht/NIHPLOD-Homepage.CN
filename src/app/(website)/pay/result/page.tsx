@@ -6,10 +6,12 @@ import { Link } from "next-view-transitions";
 import { Button } from "@/components/ui/Button";
 import { CheckCircle } from "lucide-react";
 import { Suspense } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 function PayResultClient() {
   const searchParams = useSearchParams();
   const orderNo = searchParams.get("orderNo");
+  const { openUserCenter } = useAuth();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] pb-20 pt-24 md:pt-32">
@@ -28,9 +30,13 @@ function PayResultClient() {
         </p>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-          <Link href="/user/orders">
-            <Button variant="outline" className="w-full sm:w-auto">查看订单</Button>
-          </Link>
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={() => openUserCenter("orders")}
+          >
+            查看订单
+          </Button>
           <Link href="/">
             <Button className="w-full sm:w-auto">返回首页</Button>
           </Link>
