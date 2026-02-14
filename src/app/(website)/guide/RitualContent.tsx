@@ -1914,7 +1914,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 ) : selectedModule === "portable" ? (
                                   <m.section
                                     key={`${selectedModule}-content`}
-                                    className="flex w-full flex-col pb-8 pt-0 h-full overflow-y-auto pr-4 scrollbar-thin"
+                                    className="flex w-full flex-col h-full overflow-y-auto pr-4 scrollbar-thin"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
@@ -1933,8 +1933,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     </div>
 
                                     {/* Text Content */}
-                                    <div className="flex w-full">
-                                      <p className="text-sm text-brand-charcoal/80 font-light tracking-wide">
+                                    {/* Text Content */}
+                                    <div className="relative w-full h-[48px] mt-2 overflow-y-auto pr-2">
+                                      <p className="text-sm text-brand-charcoal/80 font-light tracking-wide leading-relaxed">
                                         {selectedScheme.desc}
                                       </p>
                                     </div>
