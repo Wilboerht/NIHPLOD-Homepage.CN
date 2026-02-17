@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, MessageCircle, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 
@@ -87,6 +88,7 @@ export function FAQContent() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [openIndex, setOpenIndex] = useState<number | null>(null);
     const { isDrawerOpen, setDrawerOpen } = useLayout();
+    const { openContact } = useAuth();
 
     // Sync with LayoutContext
     useEffect(() => {
@@ -227,6 +229,28 @@ export function FAQContent() {
                                                     </AnimatePresence>
                                                 </div>
                                             ))}
+
+
+                                        </div>
+
+                                        {/* Contact Support Section - Standalone Footer */}
+                                        <div className="mt-12 mb-8 flex flex-col items-center justify-center text-center">
+                                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/60">
+                                                <MessageCircle size={24} strokeWidth={1.2} />
+                                            </div>
+                                            <h3 className="mb-2 text-[17px] font-normal tracking-wide text-brand-charcoal/90">
+                                                没有找到想要的答案？
+                                            </h3>
+                                            <p className="mb-6 text-sm font-light tracking-wide text-brand-charcoal/50">
+                                                我们的支持团队随时候命，为您解答任何疑问。
+                                            </p>
+                                            <button
+                                                onClick={() => openContact("support")}
+                                                className="group flex items-center gap-2 rounded-full border border-brand-charcoal/10 bg-white/60 px-6 py-2.5 text-sm font-medium tracking-widest text-brand-charcoal/80 transition-all hover:bg-brand-charcoal hover:text-[#F0EDE1] hover:border-brand-charcoal hover:shadow-lg active:scale-95"
+                                            >
+                                                <span>联系我们</span>
+                                                <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
+                                            </button>
                                         </div>
                                     </div>
 
