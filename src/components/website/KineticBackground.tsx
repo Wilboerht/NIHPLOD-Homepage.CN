@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "next-view-transitions";
 import { User as UserIcon, ChevronRight } from "lucide-react";
 
 /**
@@ -96,14 +97,14 @@ export function KineticBackground() {
                 {/* 左侧大卡片 - 跨两行 */}
                 <div
                     ref={(el) => addCellRef(el, 0)}
-                    className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes no-hover-effect"
+                    className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes group relative cursor-pointer"
                 >
-                    <div className="kinetic-overlay" />
+                    <Link href="/products" className="absolute inset-0 z-20" aria-label="了解产品" />
                     <Image
                         src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
                         alt="Brand Story"
                         fill
-                        className="kinetic-cell-image"
+                        className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
                         sizes="(max-width: 600px) 100vw, 30vw"
                         priority
                     />
@@ -122,29 +123,29 @@ export function KineticBackground() {
                 {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
                 <div
                     ref={(el) => addCellRef(el, 2)}
-                    className="kinetic-cell kinetic-image-cell kinetic-cell-less no-hover-effect"
+                    className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer"
                     style={{ gridColumn: "span 2", aspectRatio: "auto" }}
                 >
-                    <div className="kinetic-overlay" />
+                    <Link href="/guide" className="absolute inset-0 z-20" aria-label="官方指南" />
                     <Image
                         src="/images/kinetic-cat.jpg"
                         alt="Cat Aesthetic"
                         fill
-                        className="kinetic-cell-image"
+                        className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
                         sizes="(max-width: 600px) 100vw, 50vw"
                     />
                 </div>
 
-                {/* Row 2, Col 2: 图片卡 */}
                 <div
                     ref={(el) => addCellRef(el, 3)}
-                    className="kinetic-cell kinetic-image-cell kinetic-cell-skin no-hover-effect"
+                    className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer"
                 >
+                    <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
                     <Image
                         src="/images/kinetic-face-mask.jpg"
                         alt="Product"
                         fill
-                        className="kinetic-cell-image"
+                        className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
                         sizes="(max-width: 600px) 100vw, 25vw"
                     />
                 </div>

@@ -1152,7 +1152,7 @@
   height: 100%;
   object-fit: cover;
   /* Apply "Hover" filter permanently */
-  filter: grayscale(0%) contrast(1.05) brightness(1);
+  filter: grayscale(100%) sepia(25%) contrast(1.05) brightness(1);
   /* Slightly scale up to prevent sub-pixel gaps/borders */
   transform: scale(1.01);
   transition:
@@ -1162,7 +1162,7 @@
 
 .kinetic-cell:not(.no-hover-effect):hover .kinetic-cell-image {
   transform: scale(1.05);
-  filter: grayscale(0%) contrast(1.05) brightness(1);
+  filter: grayscale(0%) sepia(0%) contrast(1.05) brightness(1);
 }
 
 /* ========== 文字卡片样式 ========== */
