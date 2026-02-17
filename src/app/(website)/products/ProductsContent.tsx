@@ -689,54 +689,68 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               </button>
             </header>
 
-            {/* 菜单内容 - 垂直居中列表 */}
-            <div className="flex flex-1 flex-col items-center justify-center gap-8 pb-20">
-              {categories.map((cat, index) => (
-                <m.button
-                  key={cat.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + index * 0.1, duration: 0.5 }}
-                  onClick={() => {
-                    const product = products.find(p => p.categoryId === cat.id);
-                    if (product) {
-                      handleProductClick(product);
-                      setIsCategoryMenuOpen(false);
-                    }
-                  }}
-                  className={cn(
-                    "group flex w-full items-center justify-center gap-6 py-2 transition-transform active:scale-95",
-                    index % 2 === 1 ? "flex-row-reverse" : "flex-row"
-                  )}
-                >
-                  <span className="relative block h-14 w-14 shrink-0 overflow-hidden">
-                    {CATEGORY_ICONS[cat.name] ? (
-                      <div className="flex h-full w-full items-center justify-center opacity-80 transition-opacity group-hover:opacity-100 [&>svg]:h-full [&>svg]:w-full">
-                        {CATEGORY_ICONS[cat.name]}
-                      </div>
-                    ) : cat.icon && cat.icon.trim().startsWith("<svg") ? (
-                      <span
-                        className="flex h-full w-full items-center justify-center opacity-80 transition-opacity group-hover:opacity-100 [&>svg]:h-full [&>svg]:w-full"
-                        dangerouslySetInnerHTML={{ __html: cat.icon }}
-                      />
-                    ) : cat.icon ? (
-                      <Image
-                        src={cat.icon}
-                        alt=""
-                        fill
-                        className="object-contain opacity-80 transition-opacity group-hover:opacity-100"
-                        sizes="64px"
-                      />
-                    ) : null}
-                  </span>
-                  <span className="text-[15px] font-medium tracking-wide text-[#1a1a1a] transition-colors group-hover:text-brand-gold">
-                    {cat.name}
-                  </span>
-                  {/* <span className="text-[10px] uppercase tracking-wider text-[#1a1a1a]/40 transition-colors group-hover:text-brand-gold/70">
-                    {cat.nameEn}
-                  </span> */}
-                </m.button>
-              ))}
+            {/* 菜单内容 - 垂直排列列表 */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide py-10">
+              <div className="flex flex-col items-center justify-center gap-10 min-h-full px-6">
+                {categories.map((cat, index) => (
+                  <m.button
+                    key={cat.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + index * 0.05, duration: 0.5 }}
+                    onClick={() => {
+                      const product = products.find(p => p.categoryId === cat.id);
+                      if (product) {
+                        handleProductClick(product);
+                        setIsCategoryMenuOpen(false);
+                      }
+                    }}
+                    className={cn(
+                      "group flex w-full max-w-[280px] items-center gap-6 py-1 transition-transform active:scale-95",
+                      index % 2 === 1 ? "flex-row-reverse" : "flex-row"
+                    )}
+                  >
+                    {/* 图标区域 - 固定宽度 */}
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center">
+                      <span className="relative block h-14 w-14 overflow-hidden">
+                        {CATEGORY_ICONS[cat.name] ? (
+                          <div className="flex h-full w-full items-center justify-center opacity-90 transition-opacity group-hover:opacity-100 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-h-full">
+                            {CATEGORY_ICONS[cat.name]}
+                          </div>
+                        ) : cat.icon && cat.icon.trim().startsWith("<svg") ? (
+                          <span
+                            className="flex h-full w-full items-center justify-center opacity-90 transition-opacity group-hover:opacity-100 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-h-full"
+                            dangerouslySetInnerHTML={{ __html: cat.icon }}
+                          />
+                        ) : cat.icon ? (
+                          <Image
+                            src={cat.icon}
+                            alt=""
+                            fill
+                            className="object-contain opacity-90 transition-opacity group-hover:opacity-100"
+                            sizes="64px"
+                          />
+                        ) : null}
+                      </span>
+                    </div>
+
+                    {/* 文字区域 - 弹性宽度，根据错落方向对齐 */}
+                    <div className={cn(
+                      "flex flex-1 flex-col transition-colors group-hover:text-brand-gold",
+                      index % 2 === 1 ? "text-right" : "text-left"
+                    )}>
+                      <span className="text-[17px] font-medium tracking-[0.1em] text-[#1a1a1a] group-hover:text-inherit transition-colors">
+                        {cat.name}
+                      </span>
+                      {cat.nameEn && (
+                        <span className="text-[10px] uppercase tracking-widest text-[#1a1a1a]/40 group-hover:text-inherit/70 transition-colors">
+                          {cat.nameEn}
+                        </span>
+                      )}
+                    </div>
+                  </m.button>
+                ))}
+              </div>
             </div>
           </m.div>
         )}
