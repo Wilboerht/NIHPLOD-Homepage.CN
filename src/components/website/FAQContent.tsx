@@ -85,7 +85,7 @@ const FAQS = [
 
 export function FAQContent() {
     const [isExpanded, setIsExpanded] = useState(false);
-    const [openIndex, setOpenIndex] = useState<number | null>(0);
+    const [openIndex, setOpenIndex] = useState<number | null>(null);
     const { isDrawerOpen, setDrawerOpen } = useLayout();
 
     // Sync with LayoutContext

@@ -384,7 +384,7 @@ const defaultModuleData: ModuleData = {
       nameEn: "FACIAL CARE",
       desc: "仅需 4 个步骤",
       totalDuration: "20-30分钟",
-      products: "护手霜、防晒",
+      products: "洁面、磨砂膏、护肤油、精华露、面霜、面膜",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
       specialSupport: "孕期、月子期、轻医美术后",
       steps: [
@@ -420,7 +420,7 @@ const defaultModuleData: ModuleData = {
       nameEn: "FULL BODY CARE",
       desc: "仅需 6 个步骤",
       totalDuration: "30-45分钟",
-      products: "洁面、面膜、防晒、护手霜",
+      products: "洁面、磨砂膏、护肤油、精华露、面霜、面膜、身体乳",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
       specialSupport: "孕期、月子期、轻医美术后",
       steps: [
@@ -1992,7 +1992,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 ) : (
                                   <m.section
                                     key={`${selectedModule}-paginated`}
-                                    className="relative flex w-full h-[530px] flex-col items-center justify-center"
+                                    className="relative flex w-full flex-col items-center justify-center"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
@@ -2070,7 +2070,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                     {/* Pagination Controls */}
                                     {currentSteps.length > 3 && (
-                                      <div className="absolute bottom-0 right-[calc(50%-500px)] flex items-center gap-4 z-20 translate-y-full pt-4">
+                                      <div className="flex w-full max-w-[1000px] items-center justify-end gap-4 z-20 pt-4">
                                         <button
                                           onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))}
                                           disabled={currentStepIndex === 0}
