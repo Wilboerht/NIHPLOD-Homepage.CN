@@ -34,95 +34,131 @@ function ContactParamHandler() {
 }
 
 /**
- * 移动端底部菜单组件
- * 点击 "更多" 按钮展开/收起链接列表
- * 使用绝对定位，展开时向上浮动，不影响其他元素布局
+ * 移动端底部菜单组件 - 仪式感全屏抽屉版
+ * 点击 "更多" 开启沉浸式服务导航层
  */
-function MobileFooterMenu({ links, onContactClick }: { links: { href: string; label: string }[], onContactClick: () => void }) {
+function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { href: string; label: string }[], onContactClick: () => void, onExploreClick: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="flex sm:hidden flex-col items-center mb-2 relative z-30">
-      {/* 展开的链接列表 - 绝对定位，从按钮上方向上展开 */}
+    <div className="flex sm:hidden flex-col items-center mb-2 relative">
       <AnimatePresence>
         {isOpen && (
-          <>
-            {/* 背景遮罩 */}
-            <m.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-20"
-              onClick={() => setIsOpen(false)}
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#F0EDE1]/95 backdrop-blur-xl"
+          >
+            {/* 顶层背景纹理 */}
+            <div
+              className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+              }}
             />
-            {/* 菜单面板 */}
+
+            {/* 顶部 Logo 标识 */}
             <m.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.98 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute bottom-full mb-4 z-30 flex flex-col items-center overflow-hidden rounded-2xl border border-brand-beige/50 bg-[#F8F6F1]/95 shadow-xl backdrop-blur-md"
-              style={{ minWidth: "160px" }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.8 }}
+              className="absolute top-16 flex flex-col items-center gap-2 opacity-20"
             >
-              {links.map((link, index) => {
-                const isContact = link.href === "/contact";
-                return isContact ? (
+              <Image src="/images/logo.webp" alt="NIHPLOD" width={100} height={40} className="grayscale" />
+              <div className="h-px w-8 bg-brand-charcoal/20" />
+            </m.div>
+
+            {/* 链接列表 */}
+            <m.div
+              className="flex flex-col items-center gap-10 mt-10"
+              initial="hidden"
+              animate="visible"
+              variants={{
+                visible: {
+                  transition: { staggerChildren: 0.1 }
+                }
+              }}
+            >
+              {/* === 新增：主导航项 === */}
+              <m.div
+                variants={{
+                  hidden: { opacity: 0, y: 30 },
+                  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onExploreClick();
+                  }}
+                  className="group flex flex-col items-center gap-2 mb-4"
+                >
+                  <span className="text-2xl font-serif tracking-[0.3em] text-[#8B7355] transition-all group-hover:scale-105">
+                    探索更多
+                  </span>
+                  <div className="h-px w-12 bg-[#8B7355]/30 group-hover:w-20 transition-all duration-500" />
+                </button>
+              </m.div>
+
+              {/* 次要链接 */}
+              {links.map((link) => (
+                <m.div
+                  key={link.href}
+                  variants={{
+                    hidden: { opacity: 0, y: 30 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+                  }}
+                >
                   <button
-                    key={link.href}
                     onClick={() => {
                       setIsOpen(false);
-                      onContactClick();
+                      if (link.href === "/contact") {
+                        onContactClick();
+                      } else {
+                        window.location.href = link.href;
+                      }
                     }}
-                    className={cn(
-                      "w-full px-6 py-3 text-center text-sm tracking-wide text-brand-charcoal/80 transition-all hover:bg-brand-gold/10 hover:text-brand-charcoal",
-                      index !== links.length - 1 && "border-b border-brand-beige/30"
-                    )}
+                    className="group flex flex-col items-center gap-2"
                   >
-                    {link.label}
+                    <span className="text-lg font-light tracking-[0.2em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
+                      {link.label}
+                    </span>
+                    <div className="h-px w-0 bg-brand-gold/40 transition-all duration-500 group-hover:w-full" />
                   </button>
-                ) : (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsOpen(false)}
-                    className={cn(
-                      "w-full px-6 py-3 text-center text-sm tracking-wide text-brand-charcoal/80 transition-all hover:bg-brand-gold/10 hover:text-brand-charcoal",
-                      index !== links.length - 1 && "border-b border-brand-beige/30"
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
+                </m.div>
+              ))}
             </m.div>
-          </>
+
+            {/* 底部关闭按钮 - 下移以平衡视觉 */}
+            <m.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              onClick={() => setIsOpen(false)}
+              className="absolute bottom-16 flex flex-col items-center group"
+            >
+              <div className="relative h-14 w-14 flex items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/5 transition-all hover:bg-white/20">
+                <X className="h-7 w-7 text-brand-charcoal/30 group-hover:text-brand-charcoal" strokeWidth={1} />
+              </div>
+            </m.button>
+          </m.div>
         )}
       </AnimatePresence>
 
-      {/* 菜单切换按钮 */}
-      <button
+      <m.button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex items-center gap-1.5 rounded-full px-4 py-2 text-xs uppercase tracking-wider transition-all",
-          isOpen
-            ? "bg-brand-charcoal/10 text-brand-charcoal"
-            : "text-brand-charcoal/60 hover:text-brand-charcoal"
-        )}
+        onClick={() => setIsOpen(true)}
+        whileTap={{ scale: 0.95 }}
+        className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-brand-charcoal/60 hover:text-brand-charcoal transition-all"
       >
-        {isOpen ? (
-          <>
-            <X className="h-3.5 w-3.5" />
-            <span>收起</span>
-          </>
-        ) : (
-          <>
-            <Menu className="h-3.5 w-3.5" />
-            <span>更多</span>
-          </>
-        )}
-      </button>
+        <div className="flex flex-col gap-1">
+          <div className="h-px w-4 bg-current opacity-40" />
+          <div className="h-px w-2 bg-current opacity-40 ml-auto" />
+        </div>
+        <span>更多信息</span>
+      </m.button>
     </div>
   );
 }
@@ -373,7 +409,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     </div>
 
                     {/* 辅助链接 - 移动端 (可折叠菜单) */}
-                    <MobileFooterMenu links={FOOTER_LINKS} onContactClick={() => openContact()} />
+                    <MobileFooterMenu
+                      links={FOOTER_LINKS}
+                      onContactClick={() => openContact()}
+                      onExploreClick={handleCollapse}
+                    />
 
                     {/* 版权文本 */}
                     <p className="text-xs font-light tracking-widest text-brand-charcoal/60 relative z-10">
