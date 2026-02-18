@@ -142,6 +142,7 @@ interface HomeClientProps {
 export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
+  const textureRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
   const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
   const { openContact } = useAuth();
@@ -169,11 +170,16 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
       const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
       const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+
       if (wave1Ref.current) {
         wave1Ref.current.style.transform = `translate(${moveX}px, ${moveY}px)`;
       }
       if (wave2Ref.current) {
         wave2Ref.current.style.transform = `translate(${-moveX}px, ${-moveY}px)`;
+      }
+      if (textureRef.current) {
+        // 纹理视差更弱一点
+        textureRef.current.style.transform = `translate(${moveX * 0.5}px, ${moveY * 0.5}px)`;
       }
     };
 
@@ -224,9 +230,10 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               }}
             >
               <div className={cn("home-container relative h-full w-full transition-opacity duration-300", isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none")}>
-                {/* 矿物纹理覆盖层 - 使用 base64 SVG 噪点 */}
+                {/* 矿物纹理覆盖层 - 支持微弱视差 */}
                 <div
-                  className="mineral-texture absolute inset-0 z-0 opacity-50"
+                  ref={textureRef}
+                  className="mineral-texture absolute -inset-10 z-0 opacity-40 transition-transform duration-1000 ease-out"
                   style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
                   }}
@@ -269,39 +276,66 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     />
                   </m.div>
 
-                  {/* 品牌文案 */}
+                  {/* 品牌文案 - 逐行交错加载 */}
                   <m.div
                     className="content-wrapper mt-12 sm:mt-16"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1.2, delay: 0.6 }}
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                      visible: {
+                        transition: {
+                          staggerChildren: 0.3,
+                          delayChildren: 0.6
+                        }
+                      }
+                    }}
                   >
-                    <h1 className="title text-lg sm:text-xl lg:text-2xl font-light leading-relaxed tracking-widest text-brand-charcoal">
-                      <span>海豚的肌肤，拥有每两小时</span><br className="lg:hidden" />
-                      <span>自我更新的神奇能力</span><br />
-                      <span>这种「逆转时光」的动物本能，</span><br className="lg:hidden" />
-                      <span>是我们灵感的来源</span>
+                    <h1 className="title text-base sm:text-xl lg:text-2xl font-light leading-[2] tracking-[0.2em] text-brand-charcoal">
+                      {[
+                        "海豚的肌肤，拥有每两小时",
+                        "自我更新的神奇能力",
+                        "这种「逆转时光」的动物本能，",
+                        "是我们灵感的来源"
+                      ].map((line, i) => (
+                        <m.span
+                          key={i}
+                          className="block"
+                          variants={{
+                            hidden: { opacity: 0, y: 15 },
+                            visible: {
+                              opacity: 1,
+                              y: 0,
+                              transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] }
+                            }
+                          }}
+                        >
+                          {line}
+                        </m.span>
+                      ))}
                     </h1>
                   </m.div>
 
-                  {/* 按钮组 */}
+                  {/* 按钮组 - 增加触压反馈 */}
                   <m.div
                     className="button-group mt-12 sm:mt-16 flex gap-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1.2, delay: 0.8 }}
+                    transition={{ duration: 1.2, delay: 1.2 }}
                   >
-                    <button
+                    <m.button
                       type="button"
                       onClick={handleCollapse}
+                      whileTap={{ scale: 0.96 }}
                       className="btn btn-primary"
                     >
                       探索更多
-                    </button>
-                    <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
-                      AI快速测肤
-                      <span className="badge-new">NEW</span>
-                    </Link>
+                    </m.button>
+                    <m.div whileTap={{ scale: 0.96 }} className="flex">
+                      <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
+                        AI快速测肤
+                        <span className="badge-new">NEW</span>
+                      </Link>
+                    </m.div>
                   </m.div>
 
                   {/* 底部辅助导航与版权 */}
