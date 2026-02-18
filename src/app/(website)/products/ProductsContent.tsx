@@ -368,16 +368,20 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     return () => clearTimeout(timer);
   }, [setDrawerOpen]);
 
+  // 状态管理
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
 
-  // 打开产品抽屉
+  // 挑选主推的3个产品 (这里默认取前三个，实际可根据后台标记筛选)
+  const featuredProducts = products.slice(0, 3);
+
+  // 打开产品详情
   const handleProductClick = (product: Product) => {
     const productData: ProductData = {
       id: product.id,
       name: product.name,
-      nameEn: product.nameEn,
+      nameEn: "", // 强制移除英文
       slug: product.slug,
       description: product.description,
       price: product.price,
@@ -396,6 +400,86 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     setSelectedProduct(productData);
     setProductDrawerOpen(true);
   };
+
+  /**
+   * 移动端展示组件 - 三行错落橱窗
+   */
+  const MobileShowcase = () => (
+    <div className="flex h-full flex-col overflow-hidden bg-[#F0EDE1]">
+      {/* 顶部 Logo - 保持与首页一致的呼吸感 */}
+      <header className="flex h-16 shrink-0 items-center justify-center pt-2">
+        <Link href="/">
+          <Image src="/images/logo.webp" alt="Logo" width={80} height={24} className="opacity-80" />
+        </Link>
+      </header>
+
+      {/* 三个主推产品区域 - 极简平面布局 */}
+      <div className="flex flex-1 flex-col gap-4 px-5 py-4 overflow-y-auto">
+        {featuredProducts.map((product, idx) => (
+          <m.div
+            key={product.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
+            onClick={() => handleProductClick(product)}
+            className="group relative flex w-full flex-1 items-center justify-center rounded-[24px] bg-white/40 backdrop-blur-md p-6 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
+          >
+            {/* 矿物纹理 - 极淡 */}
+            <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none rounded-[24px]" />
+
+            <div className="flex w-full items-center justify-between gap-4 relative z-10">
+              {/* 左侧：产品信息 */}
+              <div className="flex flex-1 flex-col items-start pr-2">
+                {/* 分类标签 - 品牌精致样式 */}
+                <span className="mb-2.5 inline-flex items-center rounded-[4px] bg-[#8B7355]/5 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.2em] text-[#8B7355] border border-[#8B7355]/10 backdrop-blur-sm">
+                  {product.category.name}
+                </span>
+
+                {/* 产品名称 - 衬线体 */}
+                <h2 className="text-[1.125rem] font-serif font-medium tracking-[0.02em] text-[#00263E] leading-snug mb-4 line-clamp-2">
+                  {product.name}
+                </h2>
+
+                {/* 详情引导 */}
+                <div className="flex items-center gap-2 opacity-50 group-active:opacity-80 transition-opacity">
+                  <span className="text-[10px] tracking-[0.1em] text-[#00263E]">查看详情</span>
+                  <div className="h-px w-8 bg-[#00263E]/20" />
+                </div>
+              </div>
+
+              {/* 右侧：产品图片 */}
+              <div className="relative h-32 w-32 shrink-0">
+                {/* 背景装饰圆 */}
+                <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F8F6F1]" />
+                <Image
+                  src={product.images[0]?.url || ""}
+                  alt={product.name}
+                  fill
+                  className="object-contain drop-shadow-[0_12px_24px_rgba(56,51,46,0.08)] transition-transform duration-500 group-hover:scale-105"
+                  priority={idx === 0}
+                />
+              </div>
+            </div>
+          </m.div>
+        ))}
+      </div>
+
+      <footer className="flex h-16 shrink-0 flex-col items-center justify-center px-8 pb-2 relative">
+        <m.button
+          type="button"
+          onClick={() => setIsCategoryMenuOpen(true)}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-brand-charcoal/60 hover:text-brand-charcoal transition-all"
+        >
+          <div className="flex flex-col gap-1">
+            <div className="h-px w-4 bg-current opacity-40" />
+            <div className="h-px w-2 bg-current opacity-40 ml-auto" />
+          </div>
+          <span>产品导航</span>
+        </m.button>
+      </footer>
+    </div>
+  );
 
   // 关闭抽屉
   const handleCloseDrawer = () => {
@@ -465,154 +549,101 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
               {/* 内容区域 */}
               <div className={cn("relative z-10 flex h-full flex-col overflow-hidden", !isExpanded && "hidden")}>
-                {/* 移动端专用 Header - Grid 布局保证完美对齐 */}
-                <nav className="grid h-[80px] flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center px-6 lg:hidden">
-                  {/* 左侧：占位 */}
-                  <div className="h-10 w-10 justify-self-start" />
+                {/* 移动端展示层 - 仅在移动端显示，一屏式布局 */}
+                <div className="flex h-full flex-col lg:hidden overflow-hidden">
+                  <MobileShowcase />
+                </div>
 
-                  {/* 中间：Logo */}
-                  <Link href="/" className="justify-self-center">
-                    <Image
-                      src="/images/logo.webp"
-                      alt="Logo"
-                      width={100}
-                      height={28}
-                      className="h-8 w-auto opacity-90 transition-opacity hover:opacity-70"
-                    />
-                  </Link>
+                {/* 桌面端内容展示 - 保持原有响应式逻辑但对移动端隐藏 */}
+                <div className="hidden h-full flex-col overflow-hidden lg:flex">
+                  {/* 桌面端内容已有的逻辑... */}
+                  <nav className="relative flex h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[12%]">
+                    {/* Logo */}
+                    <Link href="/">
+                      <Image
+                        src="/images/logo.webp"
+                        alt="Logo"
+                        width={120}
+                        height={32}
+                        className="h-9 w-auto opacity-90 transition-opacity hover:opacity-70"
+                      />
+                    </Link>
 
-                  {/* 右侧：菜单按钮 */}
-                  <div className="flex items-center justify-self-end">
-                    <button
-                      type="button"
-                      onClick={() => setIsCategoryMenuOpen(true)}
-                      className="flex h-10 w-10 items-center justify-center text-[#00263E] opacity-80 transition-opacity hover:opacity-60"
+                    {/* 导航链接 */}
+                    <div className="flex items-center gap-6">
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            const product = products.find(p => p.categoryId === cat.id);
+                            if (product) handleProductClick(product);
+                          }}
+                          className="group relative py-1 text-[15px] font-medium text-[#1a1a1a] transition-all hover:opacity-80"
+                        >
+                          {cat.name}
+                          <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-gold transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="w-6" />
+                  </nav>
+
+                  <div className="flex flex-1 flex-col justify-center overflow-hidden px-[12%] pb-4">
+                    <m.header
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
+                      className="mb-10 flex-shrink-0"
                     >
-                      <Menu className="h-6 w-6" strokeWidth={1.2} />
-                    </button>
-                  </div>
-                </nav>
+                      <h1 className="text-3xl font-light tracking-[0.2em] text-[#00263E]">
+                        当季热卖
+                      </h1>
+                    </m.header>
 
-                {/* 桌面端专用 Header - Flex 布局 */}
-                <nav className="relative hidden h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[12%] lg:flex">
-                  {/* Logo */}
-                  <Link href="/">
-                    <Image
-                      src="/images/logo.webp"
-                      alt="Logo"
-                      width={120}
-                      height={32}
-                      className="h-9 w-auto opacity-90 transition-opacity hover:opacity-70"
-                    />
-                  </Link>
-
-                  {/* 导航链接 */}
-                  <div className="flex items-center gap-6">
-                    {categories.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => {
-                          const product = products.find(p => p.categoryId === cat.id);
-                          if (product) handleProductClick(product);
-                        }}
-                        className="group relative py-1 text-[15px] font-medium text-[#1a1a1a] transition-all hover:opacity-80"
-                      >
-                        {cat.name}
-                        <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-gold transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* 占位（用户和购物袋按钮暂时隐藏）*/}
-                  <div className="w-6" />
-                </nav>
-
-                {/* 产品网格内容 - First Page.html 风格 - 一屏显示 */}
-                <div className="flex flex-1 flex-col justify-center overflow-hidden px-[5%] pb-4 lg:px-[12%]">
-                  {/* Section Header - 紧凑样式 */}
-                  <m.header
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
-                    className="mb-6 flex-shrink-0 lg:mb-10"
-                  >
-                    <span className="mb-1 hidden text-[12px] tracking-[0.15em] text-[#00263E]/60 lg:block lg:text-xs">
-                      COLLECTION 2026
-                    </span>
-                    <h1 className="text-[24px] font-light tracking-[0.2em] text-[#00263E] lg:text-3xl">
-                      当季热卖
-                    </h1>
-                  </m.header>
-
-                  {/* 产品网格/轮播 - 移动端轮播，桌面端网格 */}
-                  <section className="
-                    flex w-full snap-x snap-mandatory overflow-x-auto pb-6 scrollbar-hide px-[7.5vw]
-                    lg:grid lg:min-h-0 lg:grid-cols-3 lg:gap-10 lg:overflow-visible lg:pb-0 lg:px-0
-                  ">
-                    {products.slice(0, 3).map((product, index) => (
-                      <m.div
-                        key={product.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1], delay: 0.1 + index * 0.1 }}
-                        onClick={() => handleProductClick(product)}
-                        className={cn(
-                          "group relative flex shrink-0 cursor-pointer flex-col",
-                          // 移动端：宽度占屏幕 75%，居中对齐，Snap对齐 (容器添加 px-[7.5vw] + 父级5% ≈ 12.5% 确保居中)
-                          "w-[75vw] snap-center px-2 h-full justify-between",
-                          // 桌面端：重置宽度和内边距，应用错落布局
-                          "lg:w-auto lg:px-0 lg:h-auto lg:justify-start",
-                          // 第二列：下沉布局，从 5% 恢复到 10%
-                          index === 1 && "lg:mt-[10%]"
-                        )}
-                      >
-                        {/* 图片容器 - 中间 4:5，两侧正方形 1:1 */}
-                        <div className={cn(
-                          "relative w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)]",
-                          index === 1 ? "aspect-[4/5]" : "aspect-square"
-                        )}>
-                          {/* 内部装饰边框 */}
-                          <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08] z-10" />
-                          {product.images[0] && (
-                            <Image
-                              src={product.images[0].url}
-                              alt={product.images[0].alt || product.name}
-                              fill
-                              className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
-                              sizes="(max-width: 1024px) 85vw, 33vw"
-                            />
+                    <section className="grid grid-cols-3 gap-10 min-h-0">
+                      {products.slice(0, 3).map((product, index) => (
+                        <m.div
+                          key={product.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1], delay: 0.1 + index * 0.1 }}
+                          onClick={() => handleProductClick(product)}
+                          className={cn(
+                            "group relative flex cursor-pointer flex-col",
+                            index === 1 && "mt-[10%]"
                           )}
-                        </div>
-                        <div className="mt-3 flex-shrink-0 px-1 text-center lg:mt-4 lg:text-left lg:min-h-[70px]">
-                          <h2 className="text-[18px] font-medium tracking-wide text-[#00263E] lg:text-base">
-                            {product.name}
-                          </h2>
-                          {product.capacity && (
-                            <span className="mt-1 block text-[12px] text-[#00263E]/60 lg:text-xs">
-                              {product.capacity}
-                            </span>
-                          )}
-                        </div>
-                      </m.div>
-                    ))}
-                  </section>
-
-                  {/* 查看全部产品按钮 - 仅移动端显示，点击效果同菜单按钮 */}
-                  <m.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5, duration: 0.8 }}
-                    className="flex justify-center px-[7.5vw] pb-8 lg:hidden"
-                  >
-                    <button
-                      onClick={() => setIsCategoryMenuOpen(true)}
-                      className="group flex w-full items-center justify-center gap-2 border border-[#00263E]/20 py-3 text-sm tracking-[0.2em] text-[#00263E] transition-all hover:border-[#00263E] hover:bg-[#00263E] hover:text-[#F0EDE1]"
-                    >
-                      查看全部产品
-                      <span className="text-xs transition-transform group-hover:translate-x-1">→</span>
-                    </button>
-                  </m.div>
+                        >
+                          <div className={cn(
+                            "relative w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_20px_40px_rgba(0,38,62,0.1)]",
+                            index === 1 ? "aspect-[4/5]" : "aspect-square"
+                          )}>
+                            <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08] z-10" />
+                            {product.images[0] && (
+                              <Image
+                                src={product.images[0].url}
+                                alt={product.name}
+                                fill
+                                className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
+                                sizes="33vw"
+                              />
+                            )}
+                          </div>
+                          <div className="mt-4 min-h-[70px]">
+                            <h2 className="text-base font-medium tracking-wide text-[#00263E]">
+                              {product.name}
+                            </h2>
+                            {product.capacity && (
+                              <span className="mt-1 block text-xs text-[#00263E]/60">
+                                {product.capacity}
+                              </span>
+                            )}
+                          </div>
+                        </m.div>
+                      ))}
+                    </section>
+                  </div>
                 </div>
 
               </div>
@@ -656,101 +687,85 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         </m.div>
       </m.div>
 
-      {/* 移动端产品分类菜单覆盖层 */}
+      {/* 移动端“产品导航”全屏覆盖层 */}
       <AnimatePresence>
         {isCategoryMenuOpen && (
           <m.div
-            initial={{ opacity: 0, y: "-100%" }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: "-100%" }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-50 flex flex-col bg-[#F0EDE1] lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6 }}
+            className="fixed inset-0 z-[60] flex flex-col bg-[#F0EDE1]/98 backdrop-blur-2xl lg:hidden"
           >
-            {/* 菜单头部 */}
-            <header className="grid h-[80px] w-full flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center px-4">
-              <div /> {/* 左侧占位 */}
+            {/* 顶层背景纹理 */}
+            <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
-              {/* 中间 Logo */}
-              <div className="justify-self-center">
-                <img
-                  src="/images/logo.webp"
-                  alt="Logo"
-                  className="h-8 w-auto opacity-90"
-                />
-              </div>
-
-              {/* 右侧关闭按钮 */}
+            {/* 顶部标题与关闭 */}
+            <header className="flex h-16 shrink-0 items-center justify-between px-8 relative z-10">
+              <span className="text-sm tracking-[0.4em] text-[#8B7355]">系列导航</span>
               <button
                 type="button"
                 onClick={() => setIsCategoryMenuOpen(false)}
-                className="flex h-10 w-10 items-center justify-center justify-self-end text-[#00263E] opacity-80"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#00263E]/5 bg-white/20"
               >
-                <X className="h-6 w-6" strokeWidth={1.2} />
+                <X className="h-5 w-5 text-[#00263E]/60" strokeWidth={1.5} />
               </button>
             </header>
 
-            {/* 菜单内容 - 垂直排列列表 */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide py-10">
-              <div className="flex flex-col items-center justify-center gap-10 min-h-full px-6">
+            {/* 菜单内容 */}
+            <div className="flex-1 overflow-y-auto px-8 py-10 relative z-10">
+              <m.div
+                className="flex flex-col gap-10"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  visible: { transition: { staggerChildren: 0.08 } }
+                }}
+              >
                 {categories.map((cat, index) => (
-                  <m.button
+                  <m.div
                     key={cat.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + index * 0.05, duration: 0.5 }}
-                    onClick={() => {
-                      const product = products.find(p => p.categoryId === cat.id);
-                      if (product) {
-                        handleProductClick(product);
-                        setIsCategoryMenuOpen(false);
-                      }
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
                     }}
-                    className={cn(
-                      "group flex w-full max-w-[280px] items-center gap-6 py-1 transition-transform active:scale-95",
-                      index % 2 === 1 ? "flex-row-reverse" : "flex-row"
-                    )}
                   >
-                    {/* 图标区域 - 固定宽度 */}
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center">
-                      <span className="relative block h-14 w-14 overflow-hidden">
-                        {CATEGORY_ICONS[cat.name] ? (
-                          <div className="flex h-full w-full items-center justify-center opacity-90 transition-opacity group-hover:opacity-100 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-h-full">
-                            {CATEGORY_ICONS[cat.name]}
-                          </div>
-                        ) : cat.icon && cat.icon.trim().startsWith("<svg") ? (
-                          <span
-                            className="flex h-full w-full items-center justify-center opacity-90 transition-opacity group-hover:opacity-100 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-h-full"
-                            dangerouslySetInnerHTML={{ __html: cat.icon }}
-                          />
-                        ) : cat.icon ? (
-                          <Image
-                            src={cat.icon}
-                            alt=""
-                            fill
-                            className="object-contain opacity-90 transition-opacity group-hover:opacity-100"
-                            sizes="64px"
-                          />
-                        ) : null}
-                      </span>
-                    </div>
-
-                    {/* 文字区域 - 弹性宽度，根据错落方向对齐 */}
-                    <div className={cn(
-                      "flex flex-1 flex-col transition-colors group-hover:text-brand-gold",
-                      index % 2 === 1 ? "text-right" : "text-left"
-                    )}>
-                      <span className="text-[17px] font-medium tracking-[0.1em] text-[#1a1a1a] group-hover:text-inherit transition-colors">
-                        {cat.name}
-                      </span>
-                      {cat.nameEn && (
-                        <span className="text-[10px] uppercase tracking-widest text-[#1a1a1a]/40 group-hover:text-inherit/70 transition-colors">
-                          {cat.nameEn}
+                    <button
+                      onClick={() => {
+                        const product = products.find(p => p.categoryId === cat.id);
+                        if (product) {
+                          handleProductClick(product);
+                          setIsCategoryMenuOpen(false);
+                        }
+                      }}
+                      className="group flex w-full items-end justify-between border-b border-[#8B7355]/10 pb-4"
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="text-2xl font-serif tracking-[0.1em] text-[#00263E] group-hover:text-[#8B7355] transition-colors">
+                          {cat.name}
                         </span>
-                      )}
-                    </div>
-                  </m.button>
+                        <div className="h-[2px] w-0 bg-[#8B7355] transition-all duration-500 group-hover:w-full mt-1" />
+                      </div>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center opacity-40 grayscale group-hover:opacity-100 group-hover:grayscale-0 transition-all">
+                        {CATEGORY_ICONS[cat.name]}
+                      </div>
+                    </button>
+                  </m.div>
                 ))}
-              </div>
+
+                {/* 关于品牌等额外项 */}
+                <m.div
+                  variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
+                  }}
+                  className="mt-10"
+                >
+                  <Link href="/about" className="text-sm tracking-[0.3em] text-[#8B7355]/60 hover:text-[#8B7355]">
+                    了解品牌故事
+                  </Link>
+                </m.div>
+              </m.div>
             </div>
           </m.div>
         )}
