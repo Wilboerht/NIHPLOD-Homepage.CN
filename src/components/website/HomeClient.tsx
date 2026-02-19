@@ -416,7 +416,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     />
 
                     {/* 版权文本 */}
-                    <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60 relative z-10">
+                    <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 relative z-10">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </m.div>

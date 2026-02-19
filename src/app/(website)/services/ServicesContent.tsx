@@ -232,13 +232,13 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
               {/* 底部版权信息 */}
               <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 border-t border-brand-charcoal/5 mx-6 lg:mx-12 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
-                <p className="text-xs font-light tracking-widest text-brand-charcoal/60">
+                <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
                 <div className="hidden sm:block h-3 w-[1px] bg-brand-charcoal/20"></div>
                 <Link
                   href="/terms"
-                  className="text-xs font-light tracking-widest text-brand-charcoal/60 hover:text-brand-gold transition-colors"
+                  className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 hover:text-brand-gold transition-colors"
                 >
                   服务条款
                 </Link>

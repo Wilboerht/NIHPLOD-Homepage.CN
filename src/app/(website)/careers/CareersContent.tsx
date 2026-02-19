@@ -174,7 +174,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
               {/* 底部版权信息 */}
               <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12">
-                <p className="text-xs font-light tracking-widest text-brand-charcoal/60">
+                <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
               </div>
