@@ -677,8 +677,8 @@ export function StoryContent() {
                   </div>
 
                   {/* Desktop Footer Copyright */}
-                  <div className="absolute bottom-0 left-0 right-0 z-10 flex justify-center pt-4 pb-1 pointer-events-none">
-                    <p className="text-[12px] font-light tracking-widest text-brand-charcoal/60">
+                  <div className="shrink-0 flex flex-col items-center justify-center gap-2 pt-4 pb-2">
+                    <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-center text-brand-charcoal/60">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>
