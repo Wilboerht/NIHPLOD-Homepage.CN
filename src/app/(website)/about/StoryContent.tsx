@@ -131,7 +131,7 @@ export function StoryContent() {
                 )}
               >
                 {/* ========== 移动端布局 - 参考 About us 移动端.html ========== */}
-                <div className="relative flex h-full flex-col overflow-y-auto sm:hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="relative flex h-full flex-col overflow-hidden sm:hidden">
                   {/* Background Texture Overlay */}
                   <div
                     className="pointer-events-none fixed inset-0 z-[1] opacity-[0.04]"
@@ -140,43 +140,49 @@ export function StoryContent() {
                     }}
                   />
 
-
-
-                  {/* Header - Sticky Top */}
-                  <header className="sticky top-0 z-50 flex h-[80px] shrink-0 items-center justify-center border-b border-[#00263e]/15 bg-[#F0EDE1] px-6">
-                    <Image
-                      src="/images/logo.webp"
-                      alt="NIHPLOD Logo"
-                      width={100}
-                      height={28}
-                      className="h-8 w-auto brightness-[0.2]"
-                    />
+                  {/* Header - Fixed Top - Matching Products Style */}
+                  <header className="flex h-16 shrink-0 items-center justify-center pt-4 px-6 relative z-50">
+                    <Link href="/">
+                      <Image
+                        src="/images/logo.webp"
+                        alt="NIHPLOD Logo"
+                        width={90}
+                        height={36}
+                        className="object-contain"
+                      />
+                    </Link>
                   </header>
 
-                  {/* Navigation - Sticky below Header */}
-                  <nav className="sticky top-[80px] z-40 flex h-[50px] shrink-0 items-center justify-around border-b border-[#00263e]/15 bg-[#F0EDE1] px-[5%]">
+                  {/* Navigation - Fixed below Header - Compact */}
+                  <nav className="flex h-9 shrink-0 items-center justify-center gap-6 border-b border-[#00263e]/5 bg-transparent px-2 relative z-40">
                     {navItems.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => setActiveSection(item.id)}
-                        className="relative"
+                        className="relative h-full flex items-center"
                       >
                         <span
                           className={cn(
-                            "text-[14px] font-medium transition-all duration-600",
-                            activeSection === item.id ? "text-[#1a1a1a] opacity-100" : "text-[#1a1a1a] opacity-50"
+                            "text-[12px] font-medium transition-all duration-300",
+                            activeSection === item.id ? "text-[#00263e]" : "text-[#00263e]/40"
                           )}
                         >
                           {item.label}
                         </span>
+                        {activeSection === item.id && (
+                          <m.div
+                            layoutId="activeTabMobile"
+                            className="absolute bottom-[3px] left-0 right-0 h-px bg-[#00263e]"
+                          />
+                        )}
                       </button>
                     ))}
                   </nav>
 
                   {/* 移动端内容区域 - 垂直滚动 */}
                   {/* Main Content Area */}
-                  <div className="relative z-20 px-[8%] pb-10 pt-[40px]">
+                  <div className="flex-1 overflow-y-auto flex flex-col relative z-20 px-[8%] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <AnimatePresence mode="wait">
                       {/* 移动端 Section 1: 品牌故事 */}
                       {activeSection === "story" && (
@@ -186,10 +192,13 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="pt-10 pb-10"
                         >
-                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[80%] after:bg-gradient-to-r after:from-[#00263e] after:to-transparent">
-                            Brand Story
-                          </h2>
+                          <div className="flex justify-center mb-10">
+                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
+                              品牌故事
+                            </h2>
+                          </div>
 
                           {/* 第一个内容块 */}
 
@@ -200,7 +209,7 @@ export function StoryContent() {
                             <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                               海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
                             </p>
-                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/15">
+                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
                               <Image
                                 src="/images/story/dolphin-ocean.webp"
                                 alt="Dolphin Skin"
@@ -222,7 +231,7 @@ export function StoryContent() {
                             <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                               创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
                             </p>
-                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/15">
+                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
                               <Image
                                 src="/images/story/lab-research.webp"
                                 alt="Science"
@@ -243,13 +252,16 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="pt-10 pb-10"
                         >
-                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[80%] after:bg-gradient-to-r after:from-[#00263e] after:to-transparent">
-                            Our Mission
-                          </h2>
+                          <div className="flex justify-center mb-10">
+                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
+                              公司使命
+                            </h2>
+                          </div>
 
                           <div className="mb-12 flex flex-col items-center">
-                            <div className="relative my-6 h-[400px] w-[90%] overflow-hidden border border-[#00263e]/10 shadow-sm">
+                            <div className="relative my-6 h-[400px] w-full overflow-hidden border border-[#00263e]/10 shadow-sm">
                               <Image
                                 src="/images/story/mission-image.webp?v=2"
                                 alt="Mission"
@@ -258,10 +270,10 @@ export function StoryContent() {
                               />
                             </div>
                             <div className="px-2">
-                              <p className="mt-8 text-[15px] font-light leading-[1.8] tracking-widest text-[#00263e]/90 text-justify">
+                              <p className="mt-8 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                                 旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                               </p>
-                              <span className="mt-6 block text-[15px] font-normal leading-[1.6] tracking-widest text-[#00263e]">
+                              <span className="mt-6 block text-[14px] font-normal leading-[1.6] tracking-wide text-[#00263e]">
                                 将逆转时光的不可能，<br />慢慢变得「有可能」。
                               </span>
                             </div>
@@ -269,7 +281,7 @@ export function StoryContent() {
                             {/* CEO 签名 */}
                             <div className="mt-12 w-full text-right">
                               <span className="mb-2 block text-[9px] uppercase tracking-[0.15em] opacity-40">
-                                CHIEF EXECUTIVE OFFICER
+                                首席执行官
                               </span>
                               <div className="flex justify-end mt-1">
                                 <Image
@@ -293,41 +305,36 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="flex-1 flex flex-col pt-10"
                         >
-                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[80%] after:bg-gradient-to-r after:from-[#00263e] after:to-transparent">
-                            Philosophy
-                          </h2>
+                          <div className="flex justify-center mb-10 shrink-0">
+                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
+                              品牌哲学
+                            </h2>
+                          </div>
 
-                          <div className="mb-12 flex flex-col">
-                            {[
-                              { num: "01", title: "更珍贵的产品", desc: "我们通过采集这个世上优质的原材料，结合前沿及有效的科技力量，不断更新和进步。" },
-                              { num: "02", title: "更优越的体验", desc: "通过严选的供应渠道，极致的专员服务，我们力求为你做到最满意、舒适及专业。" },
-                              { num: "03", title: "更积极的方式", desc: "我们提倡以健康的心态去面对每一天。通过适量的运动，合理的膳食及平衡的心理。" },
-                              { num: "04", title: "更艰巨的责任", desc: "我们将售出的每款产品的 2% 捐赠给全球的慈善组织和非营利组织，包括 UNF、SPF 等。" },
-                            ].map((item, index, arr) => (
-                              <div
-                                key={item.num}
-                                className={cn(
-                                  "group relative py-8",
-                                  index !== arr.length - 1 && "border-b border-[#00263e]/10"
-                                )}
-                              >
-                                {/* Watermark Number */}
-                                <span className="absolute top-6 right-0 z-0 font-serif text-[60px] italic leading-none text-[#00263e]/5 select-none">
-                                  {item.num}
-                                </span>
-
-                                {/* Content */}
-                                <div className="relative z-10 pl-2 pt-4">
-                                  <span className="mb-4 block text-[16px] font-semibold tracking-[0.1em] text-[#00263e]">
-                                    {item.title}
-                                  </span>
-                                  <p className="text-[14px] font-light leading-[1.8] text-[#00263e]/80 text-justify">
-                                    {item.desc}
-                                  </p>
+                          <div className="flex-1 flex flex-col justify-center pb-12">
+                            <div className="grid grid-cols-2 gap-3 px-1">
+                              {[
+                                { num: "01", title: "更珍贵的产品", desc: "通过采集优质原材料，结合前沿科技力量，不断更新与进步。" },
+                                { num: "02", title: "更优越的体验", desc: "严选供应渠道，极致专员服务，力求专业、舒适与满意。" },
+                                { num: "03", title: "更积极的方式", desc: "倡导健康心态，通过合理的膳食及平衡心理面对每一天。" },
+                                { num: "04", title: "更艰巨的责任", desc: "将产品销售额的 2% 捐赠给全球慈善及非营利组织。" },
+                              ].map((item) => (
+                                <div
+                                  key={item.num}
+                                  className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-white/40 p-5 transition-all duration-300 hover:bg-white/60"
+                                >
+                                  {/* Content */}
+                                  <div className="relative z-10 flex h-full flex-col">
+                                    <h3 className="mb-3 text-[15px] font-medium tracking-wide text-[#00263e]">{item.title}</h3>
+                                    <p className="text-[13px] font-light leading-[1.75] tracking-wide text-[#00263e]/70 text-justify">
+                                      {item.desc}
+                                    </p>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
                         </m.section>
                       )}
@@ -340,42 +347,45 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="pt-10 pb-10"
                         >
-                          <h2 className="relative mb-10 inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-0 after:h-px after:w-[80%] after:bg-gradient-to-r after:from-[#00263e] after:to-transparent">
-                            Recognition
-                          </h2>
+                          <div className="flex justify-center mb-10">
+                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
+                              媒体及获奖
+                            </h2>
+                          </div>
                           <div className="mb-12">
-                            {/* 奖项列表 - Mobile Show All */}
-                            <ul className="list-none">
+                            {/* 奖项列表 - Mobile List 1 col - Improved Readability */}
+                            <div className="flex flex-col gap-4">
                               {AWARDS_DATA.map((award, idx) => (
-                                <li
+                                <div
                                   key={idx}
-                                  className="border-b border-[#00263e]/15 py-8"
+                                  className="flex flex-col bg-[#F0EDE1] border border-[#00263e]/10 p-6 rounded-sm shadow-[0_4px_20px_-10px_rgba(0,38,62,0.1)]"
                                 >
                                   {/* Award Image */}
-                                  <div className="relative mb-6 h-[200px] w-full overflow-hidden bg-[#F0EDE1]">
+                                  <div className="relative aspect-[16/9] w-full overflow-hidden mb-6 bg-white/30 rounded-sm">
                                     <Image
                                       src={award.image}
                                       alt={award.title}
                                       fill
-                                      className="object-contain object-center"
+                                      className="object-contain p-4"
                                     />
                                   </div>
 
                                   <div className="flex flex-col items-center gap-2 text-center">
-                                    <span className="text-[14px] font-medium uppercase tracking-wide text-[#00263e]/60">
+                                    <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#00263e]/50">
                                       {award.org}
                                     </span>
-                                    <span className="text-[18px] font-medium tracking-wide text-[#00263e]">
+                                    <h3 className="text-[16px] font-normal leading-snug tracking-wide text-[#00263e] px-4">
                                       {award.title}
-                                    </span>
-                                    <span className="text-[12px] font-light tracking-wider text-[#00263e]/60 mt-1">
+                                    </h3>
+                                    <span className="text-[10px] font-light tracking-[0.2em] text-[#00263e]/40">
                                       {award.year}
                                     </span>
                                   </div>
-                                </li>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
                           </div>
                         </m.section>
                       )}
@@ -385,9 +395,8 @@ export function StoryContent() {
                   </div>
 
                   {/* Mobile Footer Copyright */}
-                  <div className="flex flex-col items-center justify-center gap-2 pb-10">
-                    <div className="h-px w-20 bg-[#00263e]/10 mb-2"></div>
-                    <p className="text-xs font-light tracking-widest text-center text-[#00263e]/60">
+                  <div className="flex flex-col items-center justify-center pt-4 pb-1">
+                    <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>
@@ -534,12 +543,12 @@ export function StoryContent() {
                             <div className="relative z-10 -ml-24 flex h-[500px] flex-1 flex-col justify-between bg-[#DDD9C9] p-10 shadow-[20px_20px_60px_rgba(0,0,0,0.1)] lg:p-14">
                               <div>
                                 <span className="mb-3 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
-                                  OUR MISSION
+                                  公司使命
                                 </span>
                                 <h2 className="mb-6 text-[36px] font-light leading-tight tracking-[6px] text-[#00263e]">
                                   化繁为简<br />逆转时光
                                 </h2>
-                                <p className="max-w-[420px] text-[15px] font-light leading-[2] tracking-widest text-[#00263e]/75">
+                                <p className="max-w-[420px] text-[15px] font-light leading-[2] tracking-wide text-[#00263e]/75">
                                   旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                                   <br /><br />
                                   将逆转时光的不可能，慢慢变得「有可能」。
@@ -668,8 +677,8 @@ export function StoryContent() {
                   </div>
 
                   {/* Desktop Footer Copyright */}
-                  <div className="absolute bottom-4 left-0 right-0 z-10 flex justify-center pb-2 pointer-events-none">
-                    <p className="text-xs font-light tracking-widest text-[#00263e]/60">
+                  <div className="absolute bottom-0 left-0 right-0 z-10 flex justify-center pt-4 pb-1 pointer-events-none">
+                    <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>

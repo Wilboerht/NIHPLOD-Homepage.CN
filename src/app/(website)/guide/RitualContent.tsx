@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, ArrowUpRight, Clock, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, Clock, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -783,211 +784,239 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
 
               <div className={cn(
-                "flex h-full flex-col overflow-hidden pb-3",
+                "flex h-full flex-col overflow-hidden",
                 !isExpanded && "hidden"
               )}>
                 {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
-                <div className="flex h-full flex-col sm:hidden">
-                  {/* 移动端顶部 Header */}
-                  <header className="flex h-[80px] shrink-0 items-center justify-between px-6">
-                    {/* 返回按钮 - 仅在 Level 2/3 显示 */}
-                    <m.button
-                      type="button"
-                      onClick={() => {
-                        if (currentLevel === 3) {
-                          // 如果是单品好物、专业水疗或居家仪式，直接返回 Level 1
-                          if (selectedModule === "portable" || selectedModule === "professional" || selectedModule === "spa") {
-                            setSelectedScheme(null);
-                            setSelectedSubPlan(null);
-                            setSelectedModule(null);
-                            setCurrentLevel(1);
-                          } else {
-                            setSelectedScheme(null);
-                            setCurrentLevel(2);
-                          }
-                        } else if (currentLevel === 2) {
-                          setSelectedModule(null);
-                          setCurrentLevel(1);
-                        }
-                      }}
-                      className={cn(
-                        "flex items-center text-sm tracking-wide transition-all duration-400",
-                        currentLevel > 1 ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-2.5 opacity-0"
+                <div className="flex h-full flex-col sm:hidden bg-[#F0EDE1]">
+                  {/* 移动端 Header */}
+                  <header className="relative flex h-20 shrink-0 items-center justify-center px-6 z-30">
+                    <AnimatePresence>
+                      {currentLevel > 1 && (
+                        <m.button
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          type="button"
+                          onClick={() => {
+                            if (currentLevel === 3) {
+                              if (selectedModule === "portable" || selectedModule === "professional" || selectedModule === "spa") {
+                                setSelectedScheme(null);
+                                setSelectedSubPlan(null);
+                                setSelectedModule(null);
+                                setCurrentLevel(1);
+                              } else {
+                                setSelectedScheme(null);
+                                setCurrentLevel(2);
+                              }
+                            } else if (currentLevel === 2) {
+                              setSelectedModule(null);
+                              setCurrentLevel(1);
+                            }
+                          }}
+                          className="absolute left-6 h-full flex items-center text-[#00263E]/60 active:text-[#00263E]"
+                        >
+                          <ChevronLeft className="h-6 w-6" />
+                        </m.button>
                       )}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M19 12H5M5 12L12 19M5 12L12 5" />
-                      </svg>
-                      <span className="ml-2">返回</span>
-                    </m.button>
-                    {/* Logo */}
-                    <Image
-                      src="/images/logo.webp"
-                      alt="NIHPLOD"
-                      width={100}
-                      height={28}
-                      className="h-7 w-auto brightness-[0.15]"
-                      priority
-                    />
+                    </AnimatePresence>
+                    <Link href="/" className="flex items-center justify-center">
+                      <Image
+                        src="/images/logo.webp"
+                        alt="NIHPLOD"
+                        width={90}
+                        height={36}
+                        className="object-contain"
+                        priority
+                      />
+                    </Link>
                   </header>
 
-                  {/* 移动端内容区域 */}
-                  <div className="flex-1 overflow-y-auto px-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* 移动端内容区域 - 隐藏滚动条并移除多余 padding */}
+                  <div className={cn(
+                    "flex-1 px-6 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+                    currentLevel === 1 ? "overflow-hidden flex flex-col justify-center" : "overflow-y-auto pb-10"
+                  )}>
                     <AnimatePresence mode="wait">
-                      {/* 移动端 Level 1: 主菜单 */}
+                      {/* Level 1: 模块选择 - 2x2 精致网格 */}
                       {currentLevel === 1 && (
                         <m.div
-                          key="mobile-level1"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}
-                          className="flex h-full flex-col"
+                          key="mobile-l1"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 1.05 }}
+                          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                          className="flex flex-col py-4"
                         >
-                          {/* 标题区 */}
-                          <div className="mb-4 shrink-0 pt-2">
-                            <p className="mb-2 text-xs uppercase tracking-[3px] text-[#00263e]/60">OFFICIAL GUIDE</p>
-                            <h1 className="text-4xl font-normal leading-none text-[#00263e]">官方指南</h1>
+                          <div className="mb-8 text-center">
+                            <h1 className="text-3xl font-medium text-[#00263E] tracking-widest">护肤仪式指南</h1>
                           </div>
 
-                          {/* 菜单列表 */}
-                          <div className="flex flex-1 flex-col">
+                          <div className="grid grid-cols-2 gap-4">
                             {modules.map((module, index) => (
-                              <button
+                              <m.button
                                 key={module.id}
-                                type="button"
+                                whileTap={{ scale: 0.96 }}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
                                 onClick={() => selectModule(module.id)}
-                                className={cn(
-                                  "group flex flex-1 items-center justify-between py-4 text-left transition-transform duration-300 active:scale-[0.98]",
-                                  index !== modules.length - 1 && "border-b border-[#00263e]/10"
-                                )}
+                                className="relative aspect-[3/5.5] overflow-hidden rounded-2xl shadow-sm"
                               >
-                                <div className="flex items-center gap-6">
-                                  <span className="font-serif text-3xl italic text-[#00263e]/20 group-hover:text-[#00263e]/30 transition-colors">
-                                    {module.number}
-                                  </span>
-                                  <span className="text-[24px] font-light tracking-wide text-[#00263e]">
-                                    {module.label}
-                                  </span>
-                                  <div className="mt-1 flex flex-col items-start gap-1">
-                                    <span className="text-[10px] font-normal uppercase tracking-wider text-[#00263e]/60">
-                                      {module.subtitle}
-                                    </span>
-                                  </div>
+                                <Image
+                                  src={module.image}
+                                  alt={module.label}
+                                  fill
+                                  className="object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#00263E]/60 via-transparent to-transparent" />
+                                <div className="absolute inset-0 flex flex-col justify-end p-4 text-left">
+                                  <span className="text-[10px] font-serif text-white/70 mb-1">{module.number}</span>
+                                  <span className="text-lg font-medium text-white tracking-wide">{module.label}</span>
                                 </div>
-                                <ArrowUpRight className="h-5 w-5 text-[#00263e]/20" />
-                              </button>
+                              </m.button>
                             ))}
                           </div>
                         </m.div>
                       )}
 
-                      {/* 移动端 Level 2: 方案选择 */}
+                      {/* Level 2: 方案选择 - 紧凑型精选列表 */}
                       {currentLevel === 2 && selectedModule && (
                         <m.div
-                          key="mobile-level2"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}
+                          key="mobile-l2"
+                          initial={{ opacity: 0, scale: 0.98 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 1.02 }}
+                          className="flex flex-col h-full overflow-hidden py-2"
                         >
-                          {/* 分类标题 */}
-                          <h2 className="mb-6 text-2xl font-normal text-[#00263e]">
-                            {modules.find(m => m.id === selectedModule)?.label}
-                          </h2>
+                          <div className="flex-1 flex flex-col justify-center">
+                            {/* 标题部分 - 与卡片组统一居中，避免大屏幕下方空洞 */}
+                            <div className="mb-10 text-center shrink-0">
+                              <h2 className="text-2xl font-medium text-[#00263E] tracking-widest">
+                                {modules.find(m => m.id === selectedModule)?.label}
+                              </h2>
+                              <div className="mt-2 flex justify-center">
+                                <div className="h-0.5 w-8 bg-[#8B7355]/20 rounded-full" />
+                              </div>
+                            </div>
 
-                          {/* 方案卡片网格 */}
-                          <div className="flex flex-col gap-5 pt-5">
-                            {moduleData[selectedModule].map((scheme, index) => (
-                              <button
-                                key={scheme.id}
-                                type="button"
-                                onClick={() => selectScheme(scheme)}
-                                className="relative overflow-hidden border border-[#00263e] bg-[#F0EDE1] p-6 text-left shadow-[0_4px_0_#00263e] transition-all duration-300 active:translate-y-1 active:shadow-none"
-                              >
-                                {/* 右上角标签 */}
-                                <span className="absolute right-0 top-0 bg-[#00263e] px-2.5 py-1 text-[10px] uppercase text-[#F0EDE1]">
-                                  Protocol {index + 1}
-                                </span>
-                                <h3 className="mb-2 text-[18px] font-medium text-[#00263e]">{scheme.name}</h3>
-                                <p className="text-[14px] text-[#00263e]/70">{scheme.desc}</p>
-                              </button>
-                            ))}
+                            <div className="flex flex-col gap-4">
+                              {moduleData[selectedModule].map((scheme, index) => (
+                                <button
+                                  key={scheme.id}
+                                  onClick={() => selectScheme(scheme)}
+                                  className="group relative flex flex-col bg-white overflow-hidden rounded-2xl p-5 shadow-[0_4px_20px_-4px_rgba(0,38,62,0.03)] border border-[#00263E]/5 active:scale-[0.98] transition-all duration-300"
+                                >
+                                  {/* 顶部信息平衡布局 */}
+                                  <div className="flex justify-between items-center mb-3">
+                                    <span className="text-[9px] font-serif text-[#8B7355]/60 tracking-widest">NUM.0{index + 1}</span>
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#8B7355]/5 rounded-full">
+                                      <Clock className="w-3 h-3 text-[#8B7355]/60" />
+                                      <span className="text-[10px] text-[#8B7355]/80 font-medium">{scheme.totalDuration?.replace("min", "分钟") || "15分钟"}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* 方案内容 */}
+                                  <div className="text-left">
+                                    <h3 className="text-lg font-medium text-[#00263E] mb-1.5 flex items-center justify-between">
+                                      {scheme.name}
+                                      <ChevronRight className="w-4 h-4 text-[#8B7355]/30 group-active:text-[#8B7355] transition-colors" />
+                                    </h3>
+                                    <p className="text-xs text-[#00263E]/40 font-light leading-relaxed line-clamp-2">
+                                      {scheme.desc || "根据全天候环境变化，为您定制的专业护理流程。"}
+                                    </p>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
                           </div>
+
+                          {/* 底部微调留白，确保不贴底 */}
+                          <div className="h-6 shrink-0" />
                         </m.div>
                       )}
 
-                      {/* 移动端 Level 3: 详细步骤 */}
+                      {/* Level 3: 步骤详情 - 垂直精修指南 */}
                       {currentLevel === 3 && selectedScheme && (
                         <m.div
-                          key="mobile-level3"
-                          initial={{ opacity: 0, y: 20 }}
+                          key="mobile-l3"
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.6, ease: [0.19, 1, 0.22, 1] }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className="flex flex-col py-2"
                         >
-                          {/* 详情头部 */}
-                          <div className="mb-8">
-                            <p className="mb-2 text-xs uppercase tracking-wide text-[#00263e]/50">
-                              {modules.find(m => m.id === selectedModule)?.label}
-                            </p>
-                            <h2 className="text-[24px] font-normal leading-tight text-[#00263e]">
-                              {selectedScheme.name}
-                            </h2>
+                          {/* 顶部概览信息 */}
+                          <div className="mb-8 text-center">
+                            <h2 className="text-3xl font-medium text-[#00263E] tracking-widest">{selectedScheme.name}</h2>
+                            <div className="mt-5 flex items-center justify-center gap-6">
+                              <div className="flex flex-col items-center">
+                                <span className="text-[9px] uppercase tracking-widest text-[#8B7355]/60 mb-1">预计时长</span>
+                                <span className="text-[13px] font-medium text-[#00263E]">{selectedScheme.totalDuration?.replace("min", "分钟") || "15-20 分钟"}</span>
+                              </div>
+                              <div className="w-px h-6 bg-[#00263E]/5" />
+                              <div className="flex flex-col items-center">
+                                <span className="text-[9px] uppercase tracking-widest text-[#8B7355]/60 mb-1">护理阶段</span>
+                                <span className="text-[13px] font-medium text-[#00263E]">{currentSteps.length} 个核心步骤</span>
+                              </div>
+                            </div>
                           </div>
 
-                          {/* 步骤列表 */}
-                          <div className="flex flex-col gap-10">
+                          {/* 步骤瀑布流 */}
+                          <div className="space-y-12">
                             {currentSteps.map((step, index) => (
-                              <div key={step.title} className="flex flex-col gap-4">
-                                {/* 步骤图片区域 - 墨水效果 */}
-                                <div className="relative flex h-60 w-full items-center justify-center overflow-hidden bg-[#00263e]">
-                                  {/* 墨水浮动效果 */}
-                                  <m.div
-                                    className="absolute h-[150px] w-[150px] rounded-full bg-[#F0EDE1]/30 blur-[40px]"
-                                    animate={{
-                                      x: ["-20%", "20%"],
-                                      y: ["-20%", "20%"],
-                                      scale: [1, 1.2, 1]
-                                    }}
-                                    transition={{ duration: 8, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                              <div key={index} className="flex flex-col group">
+                                {/* 图片展示区 - 极简白背景 */}
+                                <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-white shadow-[0_4px_25px_-5px_rgba(0,38,62,0.04)] mb-7 transition-transform duration-500 group-active:scale-[0.99]">
+                                  <Image
+                                    src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
+                                    alt={step.title}
+                                    fill
+                                    className="object-contain mix-blend-multiply p-8"
                                   />
-                                  <m.div
-                                    className="absolute h-[100px] w-[100px] rounded-full bg-[#F0EDE1]/20 blur-[40px]"
-                                    animate={{
-                                      x: ["20%", "-20%"],
-                                      y: ["20%", "-20%"],
-                                      scale: [1.2, 1, 1.2]
-                                    }}
-                                    transition={{ duration: 8, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 2 }}
-                                  />
-                                  <span className="z-10 text-xs uppercase tracking-wide text-white/60">
-                                    VISUAL CONCEPT
-                                  </span>
+                                  <div className="absolute top-6 left-6 bg-[#00263E] text-white text-[9px] px-3 py-1 rounded-full tracking-[0.2em] font-medium">
+                                    步骤 0{index + 1}
+                                  </div>
                                 </div>
 
-                                {/* 步骤编号 */}
-                                <div className="w-fit border-b border-[#00263e] pb-1 text-[10px] uppercase tracking-wide text-[#00263e]/50">
-                                  步骤 0{index + 1}
-                                </div>
-
-                                {/* 步骤信息 */}
-                                <div>
-                                  <h4 className="mb-2 text-[18px] font-medium text-[#00263e]">{step.title}</h4>
-                                  <p className="text-[14px] leading-relaxed text-[#00263e]/80">{step.description}</p>
+                                {/* 文本描述区 */}
+                                <div className="px-3 text-center">
+                                  <h4 className="text-xl font-medium text-[#00263E] mb-3 tracking-wide">{step.title}</h4>
+                                  <p className="text-[14px] font-light text-[#00263E]/60 leading-[1.8]">
+                                    {step.description}
+                                  </p>
                                 </div>
                               </div>
                             ))}
                           </div>
 
-                          {/* 底部结束标记 */}
-                          <div className="mt-16 pb-10 text-center text-[10px] uppercase tracking-[4px] text-[#00263e]/30">
-                            END OF RITUAL
+                          {/* 底部仪式感收尾 */}
+                          <div className="mt-12 pb-10 flex flex-col items-center text-center">
+                            <div className="h-px w-12 bg-[#8B7355]/20 mb-10" />
+                            <p className="text-sm text-[#8B7355] font-light mb-10 opacity-70">
+                              “ 每一次护理，都是对身心的温柔洗礼。”
+                            </p>
+                            <button
+                              onClick={() => {
+                                setProductDrawerOpen(true);
+                                setSelectedModule(null);
+                                setCurrentLevel(1);
+                              }}
+                              className="px-12 py-3 border border-[#00263E]/20 text-[#00263E] rounded-full text-xs font-medium tracking-[0.2em] active:bg-[#00263E] active:text-white active:border-[#00263E] transition-all duration-500"
+                            >
+                              结束仪式
+                            </button>
                           </div>
                         </m.div>
                       )}
                     </AnimatePresence>
                   </div>
+
+                  {/* 移动端版权信息 - 紧凑型固定底栏 */}
+                  <footer className="shrink-0 py-4 relative z-20 flex flex-col items-center">
+                    <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
+                  </footer>
                 </div>
 
                 {/* ========== 桌面端布局 - 保持原有样式 ========== */}

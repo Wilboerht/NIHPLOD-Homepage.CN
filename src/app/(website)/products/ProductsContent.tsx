@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn } from "@/lib/utils";
@@ -407,9 +407,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const MobileShowcase = () => (
     <div className="flex h-full flex-col overflow-hidden bg-[#F0EDE1]">
       {/* 顶部 Logo - 保持与首页一致的呼吸感 */}
-      <header className="flex h-16 shrink-0 items-center justify-center pt-2">
+      <header className="flex h-16 shrink-0 items-center justify-center pt-4">
         <Link href="/">
-          <Image src="/images/logo.webp" alt="Logo" width={80} height={24} className="opacity-80" />
+          <Image src="/images/logo.webp" alt="Logo" width={90} height={36} className="object-contain" />
         </Link>
       </header>
 
@@ -563,9 +563,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       <Image
                         src="/images/logo.webp"
                         alt="Logo"
-                        width={120}
-                        height={32}
-                        className="h-9 w-auto opacity-90 transition-opacity hover:opacity-70"
+                        width={90}
+                        height={36}
+                        className="object-contain"
                       />
                     </Link>
 
@@ -694,41 +694,53 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            className="fixed inset-0 z-[60] flex flex-col bg-[#F0EDE1]/98 backdrop-blur-2xl lg:hidden"
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 z-[100] flex flex-col bg-[#F0EDE1]/95 backdrop-blur-xl lg:hidden"
           >
-            {/* 顶层背景纹理 */}
-            <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
+            {/* 顶层背景纹理 - 同首页 */}
+            <div
+              className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+              }}
+            />
 
             {/* 顶部标题与关闭 */}
-            <header className="flex h-16 shrink-0 items-center justify-between px-8 relative z-10">
-              <span className="text-sm tracking-[0.4em] text-[#8B7355]">系列导航</span>
+            <header className="flex h-20 shrink-0 items-center justify-between px-8 relative z-20">
+              <Image
+                src="/images/logo.webp"
+                alt="NIHPLOD"
+                width={90}
+                height={36}
+                className="object-contain"
+              />
               <button
                 type="button"
                 onClick={() => setIsCategoryMenuOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#00263E]/5 bg-white/20"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#00263E]/5 bg-white/40"
               >
                 <X className="h-5 w-5 text-[#00263E]/60" strokeWidth={1.5} />
               </button>
             </header>
 
-            {/* 菜单内容 */}
-            <div className="flex-1 overflow-y-auto px-8 py-10 relative z-10">
+            {/* 菜单内容 - 居中网格布局 */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 relative z-10 flex flex-col items-center">
               <m.div
-                className="flex flex-col gap-10"
+                className="grid w-full max-w-[340px] grid-cols-2 gap-5"
                 initial="hidden"
                 animate="visible"
                 variants={{
-                  visible: { transition: { staggerChildren: 0.08 } }
+                  visible: { transition: { staggerChildren: 0.05 } }
                 }}
               >
-                {categories.map((cat, index) => (
+                {categories.map((cat) => (
                   <m.div
                     key={cat.id}
                     variants={{
-                      hidden: { opacity: 0, y: 20 },
-                      visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
+                      hidden: { opacity: 0, scale: 0.95 },
+                      visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }
                     }}
+                    className="w-full"
                   >
                     <button
                       onClick={() => {
@@ -738,35 +750,35 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           setIsCategoryMenuOpen(false);
                         }
                       }}
-                      className="group flex w-full items-end justify-between border-b border-[#8B7355]/10 pb-4"
+                      className="group flex w-full flex-row items-center justify-center gap-4 rounded-2xl bg-[#EAE7DC]/60 py-6 px-4 transition-all active:scale-95 active:bg-[#EAE7DC]"
                     >
-                      <div className="flex flex-col items-start">
-                        <span className="text-2xl font-serif tracking-[0.1em] text-[#00263E] group-hover:text-[#8B7355] transition-colors">
-                          {cat.name}
-                        </span>
-                        <div className="h-[2px] w-0 bg-[#8B7355] transition-all duration-500 group-hover:w-full mt-1" />
-                      </div>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center opacity-40 grayscale group-hover:opacity-100 group-hover:grayscale-0 transition-all">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center text-[#00263E] opacity-90 transition-transform group-active:scale-110">
                         {CATEGORY_ICONS[cat.name]}
                       </div>
+                      <span className="text-base font-medium tracking-[0.1em] text-[#00263E]/90 whitespace-nowrap text-center">
+                        {cat.name}
+                      </span>
                     </button>
                   </m.div>
                 ))}
-
-                {/* 关于品牌等额外项 */}
-                <m.div
-                  variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
-                  }}
-                  className="mt-10"
-                >
-                  <Link href="/about" className="text-sm tracking-[0.3em] text-[#8B7355]/60 hover:text-[#8B7355]">
-                    了解品牌故事
-                  </Link>
-                </m.div>
               </m.div>
+              {/* 为底栏留出空间 */}
+              <div className="h-24 shrink-0" />
             </div>
+
+            {/* 固定底栏品牌标语 */}
+            <footer className="shrink-0 pb-12 pt-6 relative z-20 flex flex-col items-center bg-[#F0EDE1]/80 backdrop-blur-sm">
+              <div className="h-px w-10 bg-[#8B7355]/15 mb-6" />
+              <Link
+                href="/about"
+                className="group flex flex-col items-center gap-2"
+              >
+                <span className="text-xs tracking-[0.25em] text-[#8B7355] font-light">
+                  探索 · 逆转时光的奥秘
+                </span>
+                <div className="h-px w-0 bg-[#8B7355]/40 transition-all duration-500 group-active:w-full" />
+              </Link>
+            </footer>
           </m.div>
         )}
       </AnimatePresence>

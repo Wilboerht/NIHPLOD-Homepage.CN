@@ -159,15 +159,16 @@ export function FAQContent() {
                                     !isExpanded && "hidden"
                                 )}
                             >
-                                {/* Fixed Header */}
-                                <div className="sticky top-0 z-50 flex h-[60px] sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-brand-charcoal/5 bg-[#F0EDE1]/95 backdrop-blur-sm px-6 sm:px-[8%]">
-                                    <Link href="/">
+                                {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
+                                <div className="sticky top-0 z-50 flex h-20 sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F0EDE1]/95 sm:bg-[#F0EDE1]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
+                                    <Link href="/" className="flex items-center justify-center">
                                         <Image
                                             src="/images/logo.webp"
                                             alt="NIHPLOD"
                                             width={180}
                                             height={55}
-                                            className="h-8 sm:h-9 w-auto opacity-90"
+                                            className="h-[28px] sm:h-[36px] w-auto opacity-90"
+                                            priority
                                         />
                                     </Link>
                                     {/* Texture Overlay for Header to match body */}
@@ -177,8 +178,8 @@ export function FAQContent() {
                                 <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4 sm:px-10 lg:px-[15%] xl:px-[20%]">
 
                                     {/* Page Title - Fixed */}
-                                    <div className="shrink-0 text-center mb-6 mt-6 sm:mb-8">
-                                        <h1 className="text-[30px] font-normal tracking-widest text-brand-charcoal/90">
+                                    <div className="shrink-0 text-center mb-4 mt-6 sm:mb-8">
+                                        <h1 className="text-2xl sm:text-[30px] font-normal tracking-widest text-brand-charcoal/90">
                                             常见问题
                                         </h1>
                                     </div>
@@ -190,26 +191,33 @@ export function FAQContent() {
                                                 <div
                                                     key={index}
                                                     className={cn(
-                                                        "group border-b border-brand-charcoal/10 transition-colors duration-500",
-                                                        openIndex === index ? "bg-white/40" : "hover:bg-white/20"
+                                                        "group transition-all duration-500 ease-out",
+                                                        // Mobile: Card Style with Glassmorphism
+                                                        "rounded-xl bg-white/50 backdrop-blur-md border border-white/40 mb-4 overflow-hidden",
+                                                        // Desktop: List Style (Reset/Override)
+                                                        "sm:rounded-none sm:bg-transparent sm:backdrop-blur-none sm:border-0 sm:border-b sm:border-brand-charcoal/10 sm:mb-0 sm:shadow-none sm:overflow-visible",
+                                                        // Interactive States
+                                                        openIndex === index
+                                                            ? "bg-white/95 border-white/80 sm:bg-white/40 sm:shadow-none sm:border-brand-charcoal/10"
+                                                            : "hover:bg-white/70 sm:hover:bg-white/20"
                                                     )}
                                                 >
 
                                                     <button
                                                         onClick={() => toggleFAQ(index)}
-                                                        className="w-full flex items-center justify-between py-6 px-4 sm:px-6 text-left"
+                                                        className="w-full flex items-center justify-between py-4 px-5 sm:py-6 sm:px-6 text-left relative z-10"
                                                     >
                                                         <span className={cn(
-                                                            "text-[15px] sm:text-[16px] font-normal tracking-wide text-brand-charcoal/80 transition-colors duration-300",
+                                                            "text-[14px] sm:text-[16px] font-normal tracking-wide text-brand-charcoal/80 transition-colors duration-300",
                                                             openIndex === index ? "text-brand-charcoal font-medium" : "group-hover:text-brand-charcoal"
                                                         )}>
                                                             {faq.question}
                                                         </span>
                                                         <span className={cn(
-                                                            "shrink-0 ml-6 text-brand-charcoal/30 transition-transform duration-500",
+                                                            "shrink-0 ml-4 sm:ml-6 text-brand-charcoal/30 transition-transform duration-500",
                                                             openIndex === index ? "rotate-45 text-brand-charcoal/60" : "group-hover:text-brand-charcoal/50"
                                                         )}>
-                                                            <Plus size={20} className="stroke-1" />
+                                                            <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-1" />
                                                         </span>
                                                     </button>
                                                     <AnimatePresence>
@@ -221,7 +229,7 @@ export function FAQContent() {
                                                                 transition={{ duration: 0.3, ease: "easeInOut" }}
                                                                 className="overflow-hidden"
                                                             >
-                                                                <div className="pb-8 pl-4 pr-4 sm:pl-6 sm:pr-12 text-brand-charcoal/60 leading-[1.8] font-light text-[14px] sm:text-[15px] text-justify tracking-wide">
+                                                                <div className="pb-6 pl-5 pr-5 sm:pb-8 sm:pl-6 sm:pr-12 text-brand-charcoal/60 leading-[1.6] sm:leading-[1.8] font-light text-[14px] sm:text-[15px] text-justify tracking-wide">
                                                                     {faq.answer}
                                                                 </div>
                                                             </m.div>
@@ -234,14 +242,14 @@ export function FAQContent() {
                                         </div>
 
                                         {/* Contact Support Section - Standalone Footer */}
-                                        <div className="mt-12 mb-8 flex flex-col items-center justify-center text-center">
-                                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/60">
-                                                <MessageCircle size={24} strokeWidth={1.2} />
+                                        <div className="mt-8 sm:mt-12 mb-8 flex flex-col items-center justify-center text-center">
+                                            <div className="mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/60">
+                                                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.2} />
                                             </div>
-                                            <h3 className="mb-2 text-[17px] font-normal tracking-wide text-brand-charcoal/90">
+                                            <h3 className="mb-2 text-[15px] sm:text-[17px] font-normal tracking-wide text-brand-charcoal/90">
                                                 没有找到想要的答案？
                                             </h3>
-                                            <p className="mb-6 text-sm font-light tracking-wide text-brand-charcoal/50">
+                                            <p className="mb-6 text-[13px] sm:text-sm font-light tracking-wide text-brand-charcoal/50">
                                                 我们的支持团队随时候命，为您解答任何疑问。
                                             </p>
                                             <button
@@ -256,7 +264,7 @@ export function FAQContent() {
 
                                     {/* Footer Info - Fixed */}
                                     <div className="shrink-0 flex flex-col items-center justify-center gap-2 pt-4 pb-2">
-                                        <p className="text-xs font-light tracking-widest text-center text-brand-charcoal/50">
+                                        <p className="text-[10px] font-light tracking-widest text-center text-brand-charcoal/60">
                                             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                                         </p>
                                     </div>

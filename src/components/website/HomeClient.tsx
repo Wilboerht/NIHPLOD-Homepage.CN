@@ -6,7 +6,7 @@ import { Link } from "next-view-transitions";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 // import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
@@ -416,7 +416,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     />
 
                     {/* 版权文本 */}
-                    <p className="text-xs font-light tracking-widest text-brand-charcoal/60 relative z-10">
+                    <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60 relative z-10">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </m.div>
