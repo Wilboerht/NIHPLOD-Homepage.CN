@@ -945,65 +945,200 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           exit={{ opacity: 0, y: 10 }}
                           className="flex flex-col py-2"
                         >
-                          {/* 顶部概览信息 */}
-                          <div className="mb-8 text-center">
-                            <h2 className="text-3xl font-medium text-[#00263E] tracking-widest">{selectedScheme.name}</h2>
-                            <div className="mt-5 flex items-center justify-center gap-6">
-                              <div className="flex flex-col items-center">
-                                <span className="text-[9px] uppercase tracking-widest text-[#8B7355]/60 mb-1">预计时长</span>
-                                <span className="text-[13px] font-medium text-[#00263E]">{selectedScheme.totalDuration?.replace("min", "分钟") || "15-20 分钟"}</span>
-                              </div>
-                              <div className="w-px h-6 bg-[#00263E]/5" />
-                              <div className="flex flex-col items-center">
-                                <span className="text-[9px] uppercase tracking-widest text-[#8B7355]/60 mb-1">护理阶段</span>
-                                <span className="text-[13px] font-medium text-[#00263E]">{currentSteps.length} 个核心步骤</span>
-                              </div>
+                          {/* Tabs for portable and others if subplans exist */}
+                          <div className="w-full flex justify-center mb-8">
+                            <div className="relative flex items-center p-1 bg-[#00263E]/5 rounded-full">
+                              <LayoutGroup id={`mobile-tab-${selectedModule}`}>
+                                {/* 1. subPlans existing condition (such as daily) */}
+                                {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
+                                  selectedScheme.subPlans.map((subPlan) => {
+                                    const isActive = selectedSubPlan?.id === subPlan.id;
+                                    return (
+                                      <button
+                                        key={subPlan.id}
+                                        onClick={() => {
+                                          setSelectedSubPlan(subPlan);
+                                          setCurrentStepIndex(0);
+                                        }}
+                                        className={cn(
+                                          "relative px-4 py-1.5 text-[11px] font-medium tracking-widest whitespace-nowrap transition-colors duration-300 rounded-full",
+                                          isActive
+                                            ? "text-[#00263E]"
+                                            : "text-[#00263E]/50 hover:text-[#00263E]/80"
+                                        )}
+                                      >
+                                        <span className="relative z-10">{subPlan.name}</span>
+                                        {isActive && (
+                                          <m.div
+                                            layoutId={`active-mobile-tab-${selectedModule}`}
+                                            className="absolute inset-0 bg-white rounded-full shadow-[0_2px_8px_-2px_rgba(0,38,62,0.1)]"
+                                            initial={false}
+                                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                          />
+                                        )}
+                                      </button>
+                                    );
+                                  })
+                                ) : (
+                                  /* 2. Scheme level switching (for portable, professional, spa in level 3) */
+                                  selectedModule && ['portable', 'professional', 'spa'].includes(selectedModule) && (
+                                    moduleData[selectedModule].map((scheme) => {
+                                      const isActive = scheme.id === selectedScheme.id;
+                                      return (
+                                        <button
+                                          key={scheme.id}
+                                          onClick={() => selectScheme(scheme)}
+                                          className={cn(
+                                            "relative px-4 py-1.5 text-[11px] font-medium tracking-widest whitespace-nowrap transition-colors duration-300 rounded-full",
+                                            isActive
+                                              ? "text-[#00263E]"
+                                              : "text-[#00263E]/50 hover:text-[#00263E]/80"
+                                          )}
+                                        >
+                                          <span className="relative z-10">{scheme.name}</span>
+                                          {isActive && (
+                                            <m.div
+                                              layoutId={`active-mobile-tab-${selectedModule}`}
+                                              className="absolute inset-0 bg-white rounded-full shadow-[0_2px_8px_-2px_rgba(0,38,62,0.1)]"
+                                              initial={false}
+                                              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                            />
+                                          )}
+                                        </button>
+                                      );
+                                    })
+                                  )
+                                )}
+                              </LayoutGroup>
                             </div>
                           </div>
-
-                          {/* 步骤瀑布流 */}
-                          <div className="space-y-12">
-                            {currentSteps.map((step, index) => (
-                              <div key={index} className="flex flex-col group">
-                                {/* 图片展示区 - 极简白背景 */}
-                                <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-white shadow-[0_4px_25px_-5px_rgba(0,38,62,0.04)] mb-7 transition-transform duration-500 group-active:scale-[0.99]">
-                                  <Image
-                                    src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
-                                    alt={step.title}
-                                    fill
-                                    className="object-contain mix-blend-multiply p-8"
-                                  />
-                                  <div className="absolute top-6 left-6 bg-[#00263E] text-white text-[9px] px-3 py-1 rounded-full tracking-[0.2em] font-medium">
-                                    步骤 0{index + 1}
-                                  </div>
+                          {/* 顶部概览信息 (隐藏于 portable) */}
+                          {selectedModule !== 'portable' ? (
+                            <div className="mb-8 text-center">
+                              <h2 className="text-3xl font-medium text-[#00263E] tracking-widest">{selectedScheme.name}</h2>
+                              <div className="mt-5 flex items-center justify-center gap-6">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[9px] uppercase tracking-widest text-[#8B7355]/60 mb-1">预计时长</span>
+                                  <span className="text-[13px] font-medium text-[#00263E]">{selectedScheme.totalDuration?.replace("min", "分钟") || "15-20 分钟"}</span>
                                 </div>
-
-                                {/* 文本描述区 */}
-                                <div className="px-3 text-center">
-                                  <h4 className="text-xl font-medium text-[#00263E] mb-3 tracking-wide">{step.title}</h4>
-                                  <p className="text-[14px] font-light text-[#00263E]/60 leading-[1.8]">
-                                    {step.description}
-                                  </p>
+                                <div className="w-px h-6 bg-[#00263E]/5" />
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[9px] uppercase tracking-widest text-[#8B7355]/60 mb-1">护理阶段</span>
+                                  <span className="text-[13px] font-medium text-[#00263E]">{currentSteps.length} 个核心步骤</span>
                                 </div>
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ) : (
+                            <div className="mb-4">
+                              <h2 className="text-3xl font-medium text-[#00263E] tracking-widest">{selectedScheme.name}</h2>
+                              <span className="inline-block mt-2 text-[10px] uppercase font-serif tracking-[0.2em] text-[#8B7355]">{selectedScheme.nameEn}</span>
+                            </div>
+                          )}
+
+                          {/* Content Rendering based on Module */}
+                          {selectedModule === 'portable' ? (
+                            // Portable Module Layout
+                            <div className="flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
+                              {/* Hero Image */}
+                              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 shadow-sm">
+                                <Image
+                                  src={selectedScheme.heroImage || "/images/portable-hero-update.webp"}
+                                  alt={selectedScheme.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#00263E]/80 via-transparent to-transparent opacity-80" />
+                                <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-1.5">
+                                  <div className="flex gap-2 items-center">
+                                    {selectedScheme.benefits?.slice(0, 3).map((benefit, i) => (
+                                      <span key={i} className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-[10px] text-white font-light tracking-widest">
+                                        {benefit}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Description Content */}
+                              <div className="px-2">
+                                <p className="text-sm font-light text-[#00263E]/80 leading-[1.8] mb-8 relative">
+                                  <span className="absolute -left-3 -top-2 text-3xl font-serif text-[#8B7355]/20">"</span>
+                                  {selectedScheme.desc}
+                                  <span className="absolute -right-1 bottom-0 translate-y-1 text-3xl font-serif text-[#8B7355]/20">"</span>
+                                </p>
+
+                                {/* Products Meta */}
+                                <div className="flex flex-col gap-3 py-4 border-t border-[#00263E]/10">
+                                  <span className="text-[10px] uppercase tracking-widest text-[#8B7355]/80 font-medium">核心单品搭配</span>
+                                  <div className="flex flex-wrap gap-2">
+                                    {selectedScheme.products?.split('、').map((prod, i) => (
+                                      <div key={i} className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-md border border-[#00263E]/5 shadow-sm">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B7355]/40" />
+                                        <span className="text-xs text-[#00263E]/90">{prod}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Regular Steps Waterfall Layout (daily, spa, professional) */
+                            <div className="space-y-12">
+                              {currentSteps.map((step, index) => (
+                                <div key={index} className="flex flex-col group">
+                                  {/* 图片展示区 - 极简白背景 */}
+                                  <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-white shadow-[0_4px_25px_-5px_rgba(0,38,62,0.04)] mb-7 transition-transform duration-500 group-active:scale-[0.99]">
+                                    <Image
+                                      src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
+                                      alt={step.title}
+                                      fill
+                                      className="object-contain mix-blend-multiply p-8"
+                                    />
+                                    <div className="absolute top-6 left-6 bg-[#00263E] text-white text-[9px] px-3 py-1 rounded-full tracking-[0.2em] font-medium">
+                                      步骤 0{index + 1}
+                                    </div>
+                                  </div>
+
+                                  {/* 文本描述区 */}
+                                  <div className="px-3 text-center">
+                                    <h4 className="text-xl font-medium text-[#00263E] mb-3 tracking-wide">{step.title}</h4>
+                                    <p className="text-[14px] font-light text-[#00263E]/60 leading-[1.8]">
+                                      {step.description}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
                           {/* 底部仪式感收尾 */}
                           <div className="mt-12 pb-10 flex flex-col items-center text-center">
                             <div className="h-px w-12 bg-[#8B7355]/20 mb-10" />
-                            <p className="text-sm text-[#8B7355] font-light mb-10 opacity-70">
-                              “ 每一次护理，都是对身心的温柔洗礼。”
-                            </p>
+                            {selectedModule !== 'portable' && (
+                              <p className="text-sm text-[#8B7355] font-light mb-10 opacity-70">
+                                “ 每一次护理，都是对身心的温柔洗礼。”
+                              </p>
+                            )}
                             <button
                               onClick={() => {
-                                setProductDrawerOpen(true);
-                                setSelectedModule(null);
-                                setCurrentLevel(1);
+                                if (selectedModule === 'portable') {
+                                  setSelectedScheme(null);
+                                  setSelectedModule(null);
+                                  setCurrentLevel(1);
+                                } else {
+                                  setProductDrawerOpen(true);
+                                  setSelectedModule(null);
+                                  setCurrentLevel(1);
+                                }
                               }}
-                              className="px-12 py-3 border border-[#00263E]/20 text-[#00263E] rounded-full text-xs font-medium tracking-[0.2em] active:bg-[#00263E] active:text-white active:border-[#00263E] transition-all duration-500"
+                              className={cn(
+                                "px-12 py-3 rounded-full text-xs font-medium tracking-[0.2em] transition-all duration-500",
+                                selectedModule === 'portable'
+                                  ? "bg-transparent text-[#00263E] border border-[#00263E]/20 active:bg-[#00263E]/5"
+                                  : "border border-[#00263E]/20 text-[#00263E] active:bg-[#00263E] active:text-white active:border-[#00263E]"
+                              )}
                             >
-                              结束仪式
+                              {selectedModule === 'portable' ? '返回首页' : '结束仪式'}
                             </button>
                           </div>
                         </m.div>
