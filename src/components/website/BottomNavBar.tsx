@@ -4,11 +4,14 @@ import React from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Home, ShoppingBag, BookOpen, HelpCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, FAQIcon } from "@/components/website";
 import { useLayout } from "@/contexts/LayoutContext";
 
+/* 
+ * 备选图标导入 (随时可以换回原有的自定义 SVG 图标)
+ * import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, FAQIcon } from "@/components/website";
+ */
 
 /**
  * 导航项配置
@@ -22,14 +25,23 @@ interface NavItem {
 
 /**
  * 所有可用的导航项
+ * 
+ * 备选原有自定义图标配置:
+ * [
+ *   { href: "/products", label: "探索产品", labelEn: "Products", icon: ShopIcon },
+ *   { href: "/guide", label: "官方指南", labelEn: "Guide", icon: RitualIcon },
+ *   { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: FAQIcon },
+ *   { href: "/about", label: "关于旎柏", labelEn: "About", icon: StoryIcon },
+ *   { href: "/", label: "首页", labelEn: "Home", icon: HomeIcon },
+ * ]
  */
 const allNavItems: NavItem[] = [
 
-    { href: "/products", label: "探索产品", labelEn: "Products", icon: ShopIcon },
-    { href: "/guide", label: "官方指南", labelEn: "Guide", icon: RitualIcon },
-    { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: FAQIcon },
-    { href: "/about", label: "关于旎柏", labelEn: "About", icon: StoryIcon },
-    { href: "/", label: "首页", labelEn: "Home", icon: HomeIcon },
+    { href: "/products", label: "探索产品", labelEn: "Products", icon: ShoppingBag },
+    { href: "/guide", label: "官方指南", labelEn: "Guide", icon: BookOpen },
+    { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: HelpCircle },
+    { href: "/about", label: "关于旎柏", labelEn: "About", icon: Info },
+    { href: "/", label: "首页", labelEn: "Home", icon: Home },
 ];
 
 /**
@@ -111,7 +123,7 @@ export function BottomNavBar() {
                                         className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
                                     >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                                            <Icon className="h-5 w-5" />
+                                            <Icon className="h-5 w-5 text-brand-gold" />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
@@ -159,7 +171,7 @@ export function BottomNavBar() {
                             >
                                 {/* 图标容器 */}
                                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10">
-                                    <PrimaryIcon className="h-6 w-6" />
+                                    <PrimaryIcon className="h-6 w-6 text-brand-gold" />
                                 </div>
                                 {/* 文字 */}
                                 <div className="flex flex-col">
@@ -185,7 +197,7 @@ export function BottomNavBar() {
                                             className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
                                         >
                                             {/* 图标 (放大作为视觉重心) */}
-                                            <Icon className="h-9 w-9 text-brand-charcoal transition-transform duration-500 group-hover:scale-105" />
+                                            <Icon className="h-9 w-9 text-brand-gold transition-transform duration-500 group-hover:scale-105" />
 
                                             {/* 主标题 - 衬线体 大号 */}
                                             <span className="font-serif text-[18px] font-medium tracking-wide text-brand-charcoal">
@@ -257,7 +269,7 @@ export function BottomNavBar() {
                                                     "hover:opacity-70"
                                                 )}
                                             >
-                                                <Icon className="h-8 w-8 opacity-70 transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:opacity-100" />
+                                                <Icon className="h-8 w-8 text-brand-gold opacity-70 transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:opacity-100" />
                                                 <span>
                                                     {item.label}
                                                 </span>
