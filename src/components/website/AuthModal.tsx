@@ -397,11 +397,11 @@ function LoginModal({
                           <div className="h-4 w-4 rounded border border-white/40 bg-white/10 backdrop-blur-sm transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
                           <Check className="absolute inset-0 h-4 w-4 scale-0 text-white transition-transform peer-checked:scale-75" strokeWidth={4} />
                         </div>
-                        <span className="text-[11px] leading-relaxed text-brand-charcoal/60 select-none">
+                        <span className="text-[12px] leading-relaxed text-brand-charcoal/60 select-none">
                           登录即表示同意
-                          <button type="button" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《用户协议》</button>
+                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《用户协议》</a>
                           和
-                          <button type="button" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《隐私政策》</button>
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《隐私政策》</a>
                         </span>
                       </label>
 
@@ -736,11 +736,11 @@ function RegisterModal({
                           <div className="h-4 w-4 rounded border border-white/40 bg-white/10 backdrop-blur-sm transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
                           <Check className="absolute inset-0 h-4 w-4 scale-0 text-white transition-transform peer-checked:scale-75" strokeWidth={4} />
                         </div>
-                        <span className="text-[11px] leading-relaxed text-brand-charcoal/60 select-none">
+                        <span className="text-[12px] leading-relaxed text-brand-charcoal/60 select-none">
                           我已阅读并同意
-                          <button type="button" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《用户协议》</button>
+                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《用户协议》</a>
                           和
-                          <button type="button" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《隐私政策》</button>
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《隐私政策》</a>
                         </span>
                       </label>
 
@@ -794,6 +794,7 @@ function ForgotPasswordModal({
   onClose: () => void;
   onSwitchToLogin: () => void;
 }) {
+  const { openContact } = useAuth();
   const [step, setStep] = useState<ForgotPasswordStep>("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -1013,7 +1014,7 @@ function ForgotPasswordModal({
                         <div className="pt-4 text-center">
                           <button
                             type="button"
-                            onClick={() => {/* 这里后续可以添加联系客服的逻辑，比如打开客服弹窗 */ }}
+                            onClick={() => openContact("other")}
                             className="inline-flex items-center gap-1.5 text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors"
                           >
                             <Headset className="h-3.5 w-3.5" />
