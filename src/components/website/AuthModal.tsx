@@ -5,7 +5,7 @@
  */
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Smartphone, Shield, Sparkles, UserPlus, Lock, KeyRound, CheckCircle2, Check } from "lucide-react";
+import { X, Smartphone, Shield, Sparkles, UserPlus, Lock, KeyRound, CheckCircle2, Check, Headset } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -65,6 +65,7 @@ function LoginModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("code");
+  const [agreed, setAgreed] = useState(false);
 
   // 关闭时重置表单
   useEffect(() => {
@@ -75,6 +76,7 @@ function LoginModal({
       setErrorMsg("");
       setLoading(false);
       setLoginMethod("code");
+      setAgreed(false);
     }
   }, [isOpen]);
 
@@ -189,6 +191,10 @@ function LoginModal({
   // 登录
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreed) {
+      setErrorMsg("请先同意用户协议和隐私政策");
+      return;
+    }
     if (loginMethod === "code") {
       await handleCodeLogin();
     } else {
@@ -244,15 +250,19 @@ function LoginModal({
                 <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner">
-                      <Sparkles className="h-6 w-6 text-brand-gold/90" />
+                    <div className="mx-auto mb-4 flex justify-center">
+                      <Image
+                        src="/images/logo.webp"
+                        alt="NIHPLOD Logo"
+                        width={120}
+                        className="object-contain"
+                        height={48}
+                        priority
+                      />
                     </div>
                     <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
                       欢迎回来
                     </h2>
-                    <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/60 font-medium">
-                      NIHPLOD 会员中心
-                    </p>
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
@@ -375,10 +385,30 @@ function LoginModal({
                         </div>
                       )}
 
+                      {/* 协议勾选 */}
+                      <label className="flex cursor-pointer items-start gap-3 group/agreement pt-2 pb-1">
+                        <div className="relative mt-0.5">
+                          <input
+                            type="checkbox"
+                            checked={agreed}
+                            onChange={(e) => setAgreed(e.target.checked)}
+                            className="peer sr-only"
+                          />
+                          <div className="h-4 w-4 rounded border border-white/40 bg-white/10 backdrop-blur-sm transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
+                          <Check className="absolute inset-0 h-4 w-4 scale-0 text-white transition-transform peer-checked:scale-75" strokeWidth={4} />
+                        </div>
+                        <span className="text-[11px] leading-relaxed text-brand-charcoal/60 select-none">
+                          登录即表示同意
+                          <button type="button" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《用户协议》</button>
+                          和
+                          <button type="button" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《隐私政策》</button>
+                        </span>
+                      </label>
+
                       {/* 登录按钮 */}
                       <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !agreed}
                         className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-4 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                       >
                         <span className="relative z-10 flex items-center justify-center gap-2">
@@ -586,15 +616,19 @@ function RegisterModal({
                 <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner">
-                      <UserPlus className="h-6 w-6 text-brand-gold/70" />
+                    <div className="mx-auto mb-4 flex justify-center">
+                      <Image
+                        src="/images/logo.webp"
+                        alt="NIHPLOD Logo"
+                        width={120}
+                        className="object-contain"
+                        height={48}
+                        priority
+                      />
                     </div>
                     <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
                       注册会员
                     </h2>
-                    <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/60 font-medium">
-                      NIHPLOD 会员中心
-                    </p>
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
@@ -921,15 +955,19 @@ function ForgotPasswordModal({
                 <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner">
-                      <KeyRound className="h-6 w-6 text-brand-gold/70" />
+                    <div className="mx-auto mb-4 flex justify-center">
+                      <Image
+                        src="/images/logo.webp"
+                        alt="NIHPLOD Logo"
+                        width={120}
+                        className="object-contain"
+                        height={48}
+                        priority
+                      />
                     </div>
                     <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
                       找回密码
                     </h2>
-                    <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/60 font-medium">
-                      NIHPLOD 会员中心
-                    </p>
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
@@ -971,6 +1009,17 @@ function ForgotPasswordModal({
                         >
                           {loading ? "发送中..." : "找回密码"}
                         </button>
+
+                        <div className="pt-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {/* 这里后续可以添加联系客服的逻辑，比如打开客服弹窗 */ }}
+                            className="inline-flex items-center gap-1.5 text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors"
+                          >
+                            <Headset className="h-3.5 w-3.5" />
+                            <span>遇到问题？请联系我们</span>
+                          </button>
+                        </div>
                       </div>
                     )}
 
