@@ -269,7 +269,7 @@ export function BottomNavBar() {
                                                     "hover:opacity-70"
                                                 )}
                                             >
-                                                <Icon className="h-8 w-8 text-brand-gold opacity-70 transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:opacity-100" />
+                                                <Icon className="h-8 w-8 text-[#C3BC9F] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:text-brand-gold" />
                                                 <span>
                                                     {item.label}
                                                 </span>

@@ -1768,8 +1768,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               >
                                 {/* 内容区域 - 居中展示 */}
                                 <div className="relative z-10 flex w-full flex-col items-center justify-center p-8 text-center text-[#00263e]">
-                                  {/* 背景水印图标 */}
-                                  <module.icon className="absolute -right-8 -bottom-8 h-48 w-48 text-[#8B7355]/5 transition-all duration-700 ease-out group-hover:-translate-x-4 group-hover:-translate-y-4 group-hover:scale-110 group-hover:text-[#8B7355]/10 group-hover:rotate-[-5deg] pointer-events-none" strokeWidth={1} />
+                                  {/* 模块图标 */}
+                                  <div className="mb-8 transition-transform duration-500 group-hover:scale-110">
+                                    <module.icon className="w-12 h-12 text-[#D2C8BA] group-hover:text-[#B5A48F]" strokeWidth={1} />
+                                  </div>
 
                                   {/* 模块编号 */}
                                   <span className="mb-4 font-serif text-xs tracking-[0.2em] text-[#8B7355]/60">
@@ -1832,9 +1834,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   </span>
                                 )}
 
-                                {/* 背景水印图标 - 仅存在时显示 */}
+                                {/* 图标 - 仅存在时显示 */}
                                 {scheme.icon && (
-                                  <div className="absolute -right-6 -bottom-6 text-brand-charcoal/5 transition-all duration-700 group-hover:scale-125 group-hover:text-brand-charcoal/10 [&>svg]:h-40 [&>svg]:w-40 [&>svg]:stroke-[0.8] pointer-events-none">
+                                  <div className="mb-6 text-brand-charcoal/80 [&>svg]:h-14 [&>svg]:w-14 [&>svg]:stroke-[1.2]">
                                     {scheme.icon}
                                   </div>
                                 )}

@@ -216,19 +216,24 @@ export function KineticBackground() {
                             </>
                         ) : (
                             <>
+                                <div className="mb-5 flex flex-col items-center justify-center w-full group/avatar">
+                                    <div className="relative h-24 w-24 flex items-center justify-center">
+                                        {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
+                                        <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-125 group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
+                                        <div className="absolute inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-90" />
+
+                                        {/* 主图标容器 - 极简白润质感 */}
+                                        <div className="relative h-20 w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500">
+                                            <UserIcon size={36} strokeWidth={1.2} className="text-brand-charcoal/50" />
+                                        </div>
+                                    </div>
+                                </div>
                                 <button
                                     type="button"
                                     onClick={handleLoginClick}
-                                    className="kinetic-btn kinetic-btn-primary"
+                                    className="w-full py-3 rounded-xl bg-white/30 backdrop-blur-sm border border-white/50 text-brand-charcoal/90 text-sm tracking-[0.3em] font-medium transition-all duration-500 hover:bg-white/50 hover:border-white/80 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98]"
                                 >
                                     立即登录
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleRegisterClick}
-                                    className="kinetic-btn kinetic-btn-secondary"
-                                >
-                                    注册
                                 </button>
                             </>
                         )}
