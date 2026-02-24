@@ -5,7 +5,7 @@
  */
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Smartphone, Shield, Sparkles, UserPlus, Lock, KeyRound, CheckCircle2, Check, Headset } from "lucide-react";
+import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 
