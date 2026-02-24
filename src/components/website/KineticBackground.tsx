@@ -108,7 +108,9 @@ export function KineticBackground() {
                         sizes="(max-width: 600px) 100vw, 30vw"
                         priority
                     />
-
+                    <div className="absolute inset-0 z-10 hidden sm:flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/20 pointer-events-none">
+                        <span className="text-white text-2xl font-bold tracking-[0.25em] border-b-2 border-white/60 pb-1.5">探索产品</span>
+                    </div>
                 </div>
 
                 {/* Row 1, Col 2: 文字卡 */}
@@ -134,6 +136,9 @@ export function KineticBackground() {
                         className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
                         sizes="(max-width: 600px) 100vw, 50vw"
                     />
+                    <div className="absolute inset-0 z-10 hidden sm:flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/20 pointer-events-none">
+                        <span className="text-white text-2xl font-bold tracking-[0.25em] border-b-2 border-white/60 pb-1.5">官方指南</span>
+                    </div>
                 </div>
 
                 <div
@@ -141,12 +146,21 @@ export function KineticBackground() {
                     className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer"
                 >
                     <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
+                    {/* Desktop Image */}
                     <Image
-                        src="/images/kinetic-face-mask.jpg"
-                        alt="Product"
+                        src="/images/kinetic-desktop.jpg"
+                        alt="Product Desktop"
                         fill
-                        className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
+                        className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0 hidden sm:block"
                         sizes="(max-width: 600px) 100vw, 25vw"
+                    />
+                    {/* Mobile Image */}
+                    <Image
+                        src="/images/kinetic-mobile.jpg"
+                        alt="Product Mobile"
+                        fill
+                        className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0 block sm:hidden"
+                        sizes="100vw"
                     />
                 </div>
 
@@ -221,7 +235,7 @@ export function KineticBackground() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

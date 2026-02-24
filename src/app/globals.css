@@ -1354,8 +1354,8 @@
 
   .kinetic-cell-skin {
     order: 2;
-    grid-column: span 1;
-    aspect-ratio: 1 / 1;
+    grid-column: span 2;
+    aspect-ratio: 2.1 / 1 !important;
   }
 
   .kinetic-cell-less {
@@ -1365,24 +1365,23 @@
   }
 
   .kinetic-cell-steps {
-    order: 3;
-    aspect-ratio: 1 / 1;
+    display: none;
   }
 
   .kinetic-cell-reverse {
-    order: 4;
-    aspect-ratio: 1 / 1;
+    display: none;
   }
 
   .kinetic-cell-boxes {
-    order: 5;
-    grid-row: span 2;
+    order: 3;
+    grid-row: span 1;
     grid-column: span 1;
-    aspect-ratio: auto !important;
+    aspect-ratio: 1 / 1 !important;
   }
 
   .kinetic-cell-login {
-    order: 6;
+    order: 4;
+    grid-column: span 1;
     aspect-ratio: 1 / 1;
   }
 
