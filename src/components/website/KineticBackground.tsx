@@ -19,7 +19,7 @@ import { User as UserIcon, ChevronRight } from "lucide-react";
 export function KineticBackground() {
     const containerRef = useRef<HTMLDivElement>(null);
     const cellsRef = useRef<HTMLDivElement[]>([]);
-    const { user, switchToLogin, switchToRegister, openUserCenter } = useAuth();
+    const { user, switchToLogin, openUserCenter } = useAuth();
 
     useEffect(() => {
         const container = containerRef.current;
@@ -71,12 +71,6 @@ export function KineticBackground() {
         e.preventDefault();
         e.stopPropagation();
         switchToLogin();
-    };
-
-    const handleRegisterClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        switchToRegister();
     };
 
     return (
