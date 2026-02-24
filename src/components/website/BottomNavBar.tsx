@@ -1,6 +1,6 @@
 "use client";
+import React from "react";
 
-import { useState, useEffect, useCallback, useRef } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
@@ -37,72 +37,11 @@ const allNavItems: NavItem[] = [
  * 自动根据 pathname 高亮，并根据 LayoutContext 控制显示/隐藏
  */
 
-// 聊天气泡消息配置
-const chatMessages = [
-    { text: "Hi 🖐️ 我是护肤顾问 ", highlight: "小旎老师", suffix: ",\n很高兴见到你!" },
-    { text: "为获得更好的护肤效果,\n建议先用2分钟检测下自己当前的皮肤状况哦! ", highlight: "", suffix: "♥️" },
-];
+
 
 export function BottomNavBar() {
     const pathname = usePathname();
     const { isDrawerOpen, setDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
-
-
-    // 鼠标跟随视差效果 (Reference: Dock区域 IP 样式动效)
-    const avatarRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!avatarRef.current) return;
-            // 计算相对屏幕中心的偏移
-            const x = (window.innerWidth / 2 - e.pageX) / 50;
-            const y = (window.innerHeight / 2 - e.pageY) / 50;
-            avatarRef.current.style.transform = `translate(${x}px, ${y}px) rotate(${x / 2}deg)`;
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, []);
-
-    // 聊天气泡状态
-    const [_bubbleVisible, setBubbleVisible] = useState(false);
-    const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
-    const [_displayedText, setDisplayedText] = useState("");
-    const [_isTyping, setIsTyping] = useState(false);
-
-    // 打字机效果
-    const typeMessage = useCallback(async (messageIndex: number) => {
-        const message = chatMessages[messageIndex];
-        const fullText = message.text + message.highlight + message.suffix;
-
-        setIsTyping(true);
-        setBubbleVisible(true);
-        setDisplayedText("");
-
-        // 逐字显示
-        for (let i = 0; i <= fullText.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 50));
-            setDisplayedText(fullText.slice(0, i));
-        }
-
-        setIsTyping(false);
-
-        // 显示8秒后隐藏
-        await new Promise(resolve => setTimeout(resolve, 8000));
-        setBubbleVisible(false);
-
-        // 等待淡出动画完成后切换到下一条消息
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setCurrentMessageIndex((prev) => (prev + 1) % chatMessages.length);
-    }, []);
-
-    // 自动循环显示消息
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            typeMessage(currentMessageIndex);
-        }, 15000); // 15秒间隔
-
-        return () => clearTimeout(timer);
-    }, [currentMessageIndex, typeMessage]);
 
     // 简单映射 pathname 到 currentPage，仅用于高亮和主导航判定
     // 如果路径是嵌套的（如 /products/123），可能需要 startsWith 逻辑
@@ -110,7 +49,8 @@ export function BottomNavBar() {
     const currentPage = allNavItems.find(item => item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href)))?.href || "/";
 
     // 根据当前页面获取主导航项和其他导航项
-    const primaryNav = allNavItems.find(item => item.href === currentPage) || allNavItems[5]; // 默认为Home
+    // allNavItems 长度为 5，索引 0-4，首页为索引 4
+    const primaryNav = allNavItems.find(item => item.href === currentPage) || allNavItems[4];
     const otherNavItems = allNavItems.filter(item => item.href !== currentPage);
 
     /**
@@ -133,9 +73,6 @@ export function BottomNavBar() {
     // 当抽屉展开时 (isDrawerOpen === true)，隐藏导航栏
     // 也就是 !isDrawerOpen 时显示
     const isVisible = !isDrawerOpen;
-
-    // 获取当前消息的高亮部分
-    const _currentMessage = chatMessages[currentMessageIndex];
 
     return (
         <>
