@@ -3,7 +3,7 @@
 
 /**
  * 个人信息面板
- * 支持头像上传和昵称编辑
+ * 支持头像上传和昵称编辑 - 品牌风格版
  */
 import { useState, useRef } from "react";
 import { User, Phone, Edit3, Check, X, Camera, Loader2 } from "lucide-react";
@@ -94,23 +94,25 @@ export function ProfilePanel() {
   if (!user) return null;
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <div className="h-full overflow-y-auto p-6 md:p-10 scrollbar-hide">
       {/* 标题 */}
-      <div className="mb-6">
-        <h2 className="text-xl text-[#5C5347] font-light">个人信息</h2>
-        <p className="text-[#A69B8C] text-sm mt-1">管理您的账户信息</p>
+      <div className="mb-8">
+        <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
+          个人信息
+        </h2>
+        <p className="text-brand-charcoal/50 text-sm mt-1.5 tracking-wide">管理您的账户信息与资料</p>
       </div>
 
       {/* 头像区域 */}
-      <div className="bg-white/80 rounded-xl p-6 mb-4 border border-[#E8E3DC]">
-        <div className="flex items-center gap-4">
+      <div className="bg-black/[0.02] md:bg-white/20 rounded-2xl p-6 mb-6 border border-black/5 md:border-white/30 backdrop-blur-md transition-all">
+        <div className="flex items-center gap-5">
           {/* 可点击上传头像 */}
           <div className="relative group">
-            <div className="w-20 h-20 rounded-full bg-[#A69374]/10 flex items-center justify-center overflow-hidden border-2 border-[#E8E3DC] transition-all group-hover:border-[#A69374]/40">
+            <div className="w-20 h-20 rounded-full bg-brand-gold/10 flex items-center justify-center overflow-hidden border border-brand-gold/30 shadow-inner transition-all group-hover:border-brand-gold/60">
               {user.avatar ? (
-                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <User className="w-10 h-10 text-[#A69374]" />
+                <User className="w-10 h-10 text-brand-gold" />
               )}
             </div>
 
@@ -124,7 +126,7 @@ export function ProfilePanel() {
               {uploadingAvatar ? (
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
               ) : (
-                <Camera className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               )}
             </button>
 
@@ -139,10 +141,10 @@ export function ProfilePanel() {
           </div>
 
           <div>
-            <p className="text-[#5C5347] font-medium text-lg">
+            <p className="text-brand-charcoal font-semibold text-lg tracking-wide">
               {user.nickname || `用户${user.phone?.slice(-4)}`}
             </p>
-            <p className="text-[#A69B8C] text-sm">
+            <p className="text-brand-charcoal/50 text-[13px] font-medium mt-1">
               {uploadingAvatar ? "上传中..." : "点击头像更换"}
             </p>
           </div>
@@ -150,32 +152,35 @@ export function ProfilePanel() {
 
         {/* 头像上传错误提示 */}
         {avatarError && (
-          <p className="mt-3 text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
+          <p className="mt-4 text-xs text-red-600 bg-red-50/80 rounded-xl px-4 py-3 border border-red-100/50">
             {avatarError}
           </p>
         )}
       </div>
 
       {/* 信息卡片 */}
-      <div className="bg-white/80 rounded-xl border border-[#E8E3DC] divide-y divide-[#F0EBE4]">
+      <div className="bg-black/[0.02] md:bg-white/20 rounded-2xl border border-black/5 md:border-white/30 backdrop-blur-md overflow-hidden flex flex-col divide-y divide-black/5 md:divide-white/20">
+
         {/* 昵称 */}
-        <div className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#F5F2ED] flex items-center justify-center">
-              <User className="w-5 h-5 text-[#A69374]" />
+        <div className="p-5 flex items-center justify-between group transition-colors hover:bg-black/[0.01] md:hover:bg-white/40">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-full bg-white/50 md:bg-white/20 flex items-center justify-center border border-black/5 md:border-white/20 text-brand-charcoal/60">
+              <User className="w-[18px] h-[18px]" />
             </div>
             <div>
-              <p className="text-[#A69B8C] text-xs">昵称</p>
+              <p className="text-brand-charcoal/50 text-xs font-medium tracking-wide">昵称</p>
               {editing ? (
                 <input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  className="text-[#5C5347] bg-transparent border-b border-[#A69374] outline-none py-1 w-40"
+                  className="mt-0.5 text-brand-charcoal text-[15px] font-medium bg-transparent border-b border-brand-gold/50 focus:border-brand-gold outline-none py-0.5 w-48 transition-colors placeholder:text-brand-charcoal/30"
                   autoFocus
                 />
               ) : (
-                <p className="text-[#5C5347]">{user.nickname || "未设置"}</p>
+                <p className="text-brand-charcoal text-[15px] font-medium mt-0.5 tracking-wide">
+                  {user.nickname || "未设置"}
+                </p>
               )}
             </div>
           </div>
@@ -184,39 +189,39 @@ export function ProfilePanel() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="p-2 rounded-full bg-[#A69374] text-white hover:bg-[#917F62] transition-colors disabled:opacity-50"
+                className="p-2.5 rounded-full bg-brand-gold text-white hover:bg-brand-gold-dark transition-colors shadow-md shadow-brand-gold/30 disabled:opacity-50"
               >
-                <Check className="w-4 h-4" />
+                <Check className="w-[18px] h-[18px]" />
               </button>
               <button
                 onClick={() => {
                   setEditing(false);
                   setNickname(user.nickname || "");
                 }}
-                className="p-2 rounded-full text-[#8B8579] hover:bg-[#F5F2ED] transition-colors"
+                className="p-2.5 rounded-full bg-black/5 md:bg-white/20 text-brand-charcoal/60 hover:text-brand-charcoal hover:bg-black/10 md:hover:bg-white/40 border border-black/5 md:border-white/20 transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-[18px] h-[18px]" />
               </button>
             </div>
           ) : (
             <button
               onClick={() => setEditing(true)}
-              className="p-2 rounded-full text-[#A69374] hover:bg-[#F5F2ED] transition-colors"
+              className="p-2.5 rounded-full text-brand-charcoal/40 hover:text-brand-gold hover:bg-black/5 md:hover:bg-white/40 transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
             >
-              <Edit3 className="w-4 h-4" />
+              <Edit3 className="w-[18px] h-[18px]" />
             </button>
           )}
         </div>
 
         {/* 手机号 */}
-        <div className="p-4 flex items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#F5F2ED] flex items-center justify-center">
-              <Phone className="w-5 h-5 text-[#A69374]" />
+        <div className="p-5 flex items-center justify-between group transition-colors hover:bg-black/[0.01] md:hover:bg-white/40">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-full bg-white/50 md:bg-white/20 flex items-center justify-center border border-black/5 md:border-white/20 text-brand-charcoal/60">
+              <Phone className="w-[18px] h-[18px]" />
             </div>
             <div>
-              <p className="text-[#A69B8C] text-xs">手机号</p>
-              <p className="text-[#5C5347]">
+              <p className="text-brand-charcoal/50 text-xs font-medium tracking-wide">绑定手机号</p>
+              <p className="text-brand-charcoal text-[15px] font-medium mt-0.5 tracking-wide">
                 {user.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : "未绑定"}
               </p>
             </div>

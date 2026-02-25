@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Package, ChevronRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { m, AnimatePresence } from "framer-motion";
 
 interface OrderItem {
   id: string;
@@ -23,11 +24,11 @@ interface Order {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  PENDING: { label: "待付款", color: "text-amber-600 bg-amber-50" },
-  PAID: { label: "已付款", color: "text-blue-600 bg-blue-50" },
-  SHIPPED: { label: "已发货", color: "text-emerald-600 bg-emerald-50" },
-  COMPLETED: { label: "已完成", color: "text-[#A69374] bg-[#F5F2ED]" },
-  CANCELLED: { label: "已取消", color: "text-gray-500 bg-gray-100" },
+  PENDING: { label: "待付款", color: "text-amber-600 bg-amber-500/10 border-amber-500/20" },
+  PAID: { label: "已付款", color: "text-blue-600 bg-blue-500/10 border-blue-500/20" },
+  SHIPPED: { label: "已发货", color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" },
+  COMPLETED: { label: "已完成", color: "text-brand-charcoal/80 bg-black/5 border-black/10" },
+  CANCELLED: { label: "已取消", color: "text-brand-charcoal/50 bg-black/5 border-black/5" },
 };
 
 const TABS = [
@@ -78,27 +79,58 @@ export function OrdersPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-shrink-0 p-6 pb-0">
-        <h2 className="text-xl text-[#5C5347] font-light mb-4">我的订单</h2>
-        <div className="flex gap-1 p-1 bg-[#F5F2ED] rounded-lg">
+    <div className="h-full flex flex-col pt-6 md:pt-10">
+      <div className="flex-shrink-0 px-6 md:px-10 pb-2">
+        <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal mb-6">
+          我的订单
+        </h2>
+
+        {/* 导航标签 */}
+        <div className="flex gap-2 p-1.5 bg-black/5 md:bg-white/30 rounded-2xl backdrop-blur-md border border-black/5 md:border-white/40">
           {TABS.map((tab) => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`flex-1 py-2 text-sm rounded-md transition-all ${activeTab === tab.key ? "bg-white text-[#5C5347] shadow-sm" : "text-[#8B8579] hover:text-[#5C5347]"}`}>
-              {tab.label}
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`relative flex-1 py-2.5 text-[15px] font-medium rounded-xl transition-all ${activeTab === tab.key
+                  ? "text-brand-charcoal"
+                  : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                }`}
+            >
+              {activeTab === tab.key && (
+                <m.div
+                  layoutId="ordersTabActive"
+                  className="absolute inset-0 bg-white/90 md:bg-white shadow-sm md:shadow-md shadow-black/5 rounded-xl border border-black/[0.02]"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <span className="relative z-10 tracking-wide">{tab.label}</span>
             </button>
           ))}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 pt-4">
+
+      <div className="flex-1 overflow-y-auto px-6 md:px-10 py-4 scrollbar-hide">
         {loading ? (
-          <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-[#A69374] animate-spin" /></div>
-        ) : orders.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto rounded-full bg-[#F5F2ED] flex items-center justify-center mb-4"><Package className="w-8 h-8 text-[#C4BDB2]" /></div>
-            <p className="text-[#8B8579]">暂无订单</p>
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-8 h-8 text-brand-gold animate-spin" />
           </div>
+        ) : orders.length === 0 ? (
+          <m.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-24 text-center"
+          >
+            <div className="w-20 h-20 rounded-full bg-black/5 md:bg-white/30 backdrop-blur-md flex items-center justify-center mb-5 border border-black/5 md:border-white/40 shadow-inner">
+              <Package className="w-9 h-9 text-brand-charcoal/30" />
+            </div>
+            <p className="text-brand-charcoal/50 font-medium tracking-wide">暂无相关订单</p>
+          </m.div>
         ) : (
-          <div className="space-y-3">{orders.map((order) => <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />)}</div>
+          <div className="space-y-4 pb-10">
+            {orders.map((order) => (
+              <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -106,24 +138,54 @@ export function OrdersPanel() {
 }
 
 function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
-  const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-gray-500 bg-gray-100" };
+  const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-brand-charcoal/50 bg-black/5 border-black/5" };
   const firstItem = order.items[0];
+
   return (
-    <button onClick={onClick} className="w-full bg-white/80 rounded-xl p-4 border border-[#E8E3DC] hover:border-[#C4BDB2] transition-all text-left group">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[#A69B8C] text-xs font-mono">{order.orderNo}</span>
-        <span className={`px-2 py-0.5 rounded text-xs ${status.color}`}>{status.label}</span>
+    <button
+      onClick={onClick}
+      className="w-full bg-black/[0.02] md:bg-white/40 rounded-[1.25rem] p-5 border border-black/5 md:border-white/50 hover:bg-black/[0.04] md:hover:bg-white/60 transition-all text-left group backdrop-blur-md shadow-sm hover:shadow-md shadow-black/5"
+    >
+      <div className="flex items-center justify-between mb-4 border-b border-black/5 md:border-white/30 pb-3">
+        <span className="text-brand-charcoal/40 text-[13px] font-mono tracking-wider">
+          {order.orderNo}
+        </span>
+        <span className={`px-2.5 py-1 rounded-md text-[12px] font-medium border ${status.color}`}>
+          {status.label}
+        </span>
       </div>
-      <div className="flex gap-3">
-        <div className="w-16 h-16 rounded-lg overflow-hidden bg-[#F5F2ED] flex-shrink-0">
-          {firstItem?.productImage ? <Image src={firstItem.productImage} alt="" width={64} height={64} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-[#C4BDB2]" /></div>}
+      <div className="flex gap-4 items-center">
+        <div className="w-20 h-20 rounded-xl overflow-hidden bg-black/5 md:bg-white/50 flex-shrink-0 border border-black/5 md:border-white/50 shadow-inner">
+          {firstItem?.productImage ? (
+            <Image
+              src={firstItem.productImage}
+              alt={firstItem.productName}
+              width={80}
+              height={80}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Package className="w-7 h-7 text-brand-charcoal/20" />
+            </div>
+          )}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[#5C5347] text-sm truncate">{firstItem?.productName || "商品"}</p>
-          {order.items.length > 1 && <p className="text-[#A69B8C] text-xs mt-1">共 {order.items.length} 件商品</p>}
-          <p className="text-[#A69374] text-sm mt-2">¥{Number(order.payAmount).toFixed(2)}</p>
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+          <p className="text-brand-charcoal text-[15px] font-semibold truncate tracking-wide group-hover:text-brand-gold transition-colors">
+            {firstItem?.productName || "未知商品"}
+          </p>
+          {order.items.length > 1 && (
+            <p className="text-brand-charcoal/50 text-[13px]">
+              等 共 <span className="text-brand-charcoal font-medium">{order.items.length}</span> 件商品
+            </p>
+          )}
+          <p className="text-brand-gold text-[16px] font-medium mt-0.5 tracking-wider">
+            ¥{Number(order.payAmount).toFixed(2)}
+          </p>
         </div>
-        <ChevronRight className="w-5 h-5 text-[#C4BDB2] group-hover:text-[#A69374] transition-colors self-center" />
+        <div className="w-8 h-8 rounded-full bg-black/5 md:bg-white/50 flex items-center justify-center group-hover:bg-brand-gold shrink-0 transition-colors">
+          <ChevronRight className="w-4 h-4 text-brand-charcoal/30 group-hover:text-white transition-colors" />
+        </div>
       </div>
     </button>
   );
@@ -131,7 +193,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
 
 function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
   const { openPay, closeUserCenter } = useAuth();
-  const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-gray-500 bg-gray-100" };
+  const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-brand-charcoal/50 bg-black/5 border-black/5" };
 
   const handlePay = () => {
     // 先打开支付模态框，再关闭用户中心（避免组件卸载导致的闭包问题）
@@ -140,39 +202,85 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-shrink-0 p-6 pb-4 border-b border-[#E8E3DC]">
-        <button onClick={onBack} className="flex items-center gap-2 text-[#8B8579] hover:text-[#5C5347] transition-colors mb-4">
-          <ChevronRight className="w-4 h-4 rotate-180" /><span className="text-sm">返回订单列表</span>
+    <div className="h-full flex flex-col pt-6 md:pt-10">
+      <div className="flex-shrink-0 px-6 md:px-10 pb-5 border-b border-black/5 md:border-white/30">
+        <button
+          onClick={onBack}
+          className="group flex items-center gap-2 text-brand-charcoal/50 hover:text-brand-charcoal transition-colors mb-6"
+        >
+          <div className="w-7 h-7 rounded-full bg-black/5 md:bg-white/40 flex items-center justify-center group-hover:bg-black/10 transition-colors">
+            <ChevronRight className="w-4 h-4 rotate-180" />
+          </div>
+          <span className="text-[14px] font-medium tracking-wide">返回订单列表</span>
         </button>
         <div className="flex items-center justify-between">
-          <div><p className="text-[#A69B8C] text-xs">订单号</p><p className="text-[#5C5347] font-mono">{order.orderNo}</p></div>
-          <span className={`px-3 py-1 rounded-full text-sm ${status.color}`}>{status.label}</span>
+          <div>
+            <p className="text-brand-charcoal/40 text-[12px] font-medium tracking-wide uppercase mb-0.5">订单号</p>
+            <p className="text-brand-charcoal text-[16px] font-mono font-medium">{order.orderNo}</p>
+          </div>
+          <span className={`px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border ${status.color}`}>
+            {status.label}
+          </span>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <p className="text-[#8B8579] text-sm mb-3">商品信息</p>
-        <div className="space-y-3">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex gap-3 bg-white/80 rounded-xl p-3 border border-[#E8E3DC]">
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-[#F5F2ED] flex-shrink-0">
-                {item.productImage ? <Image src={item.productImage} alt="" width={64} height={64} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-[#C4BDB2]" /></div>}
+      <div className="flex-1 overflow-y-auto px-6 md:px-10 py-6 scrollbar-hide">
+        <div className="mb-6">
+          <p className="text-brand-charcoal/50 text-[13px] font-bold tracking-[0.1em] uppercase mb-4">商品信息</p>
+          <div className="space-y-4">
+            {order.items.map((item) => (
+              <div
+                key={item.id}
+                className="flex gap-4 bg-black/[0.02] md:bg-white/30 rounded-2xl p-4 border border-black/5 md:border-white/40 backdrop-blur-sm"
+              >
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-black/5 md:bg-white/50 flex-shrink-0 border border-black/5 md:border-white/50 shadow-inner">
+                  {item.productImage ? (
+                    <Image
+                      src={item.productImage}
+                      alt={item.productName}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package className="w-7 h-7 text-brand-charcoal/20" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
+                  <p className="text-brand-charcoal text-[15px] font-semibold leading-snug tracking-wide line-clamp-2">
+                    {item.productName}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-brand-gold font-medium tracking-wider text-[16px]">
+                      ¥{Number(item.price).toFixed(2)}
+                    </span>
+                    <span className="text-brand-charcoal/40 text-[14px] font-medium bg-black/5 md:bg-white/50 px-2 py-0.5 rounded-md">
+                      ×{item.quantity}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[#5C5347] text-sm truncate">{item.productName}</p>
-                <div className="flex items-center justify-between mt-2"><span className="text-[#A69374]">¥{Number(item.price).toFixed(2)}</span><span className="text-[#A69B8C] text-sm">×{item.quantity}</span></div>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        <div className="mt-6 bg-white/80 rounded-xl p-4 border border-[#E8E3DC]">
-          <div className="flex items-center justify-between"><span className="text-[#8B8579]">实付金额</span><span className="text-[#A69374] text-xl">¥{Number(order.payAmount).toFixed(2)}</span></div>
+
+        <div className="mt-8 bg-brand-charcoal/5 md:bg-white/40 rounded-2xl p-5 border border-brand-charcoal/5 md:border-brand-gold/20 backdrop-blur-md relative overflow-hidden">
+          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-brand-gold/10 to-transparent pointer-events-none" />
+          <div className="flex items-center justify-between relative z-10">
+            <span className="text-brand-charcoal/60 text-[14px] font-medium tracking-wide">实付总额</span>
+            <span className="text-brand-gold text-2xl font-bold tracking-wider relative">
+              <span className="text-[16px] mr-1">¥</span>
+              {Number(order.payAmount).toFixed(2)}
+            </span>
+          </div>
         </div>
+
         {/* 待付款订单显示付款按钮 */}
         {order.status === "PENDING" && (
           <button
             onClick={handlePay}
-            className="w-full mt-6 py-3 bg-[#A69374] hover:bg-[#8B7A5E] text-white rounded-xl font-medium transition-colors"
+            className="w-full mt-8 py-4 bg-brand-gold text-white rounded-xl text-[15px] font-bold tracking-[0.2em] shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] uppercase"
           >
             立即付款
           </button>
@@ -181,4 +289,3 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
     </div>
   );
 }
-
