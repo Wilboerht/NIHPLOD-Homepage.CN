@@ -255,13 +255,12 @@ export function BottomNavBar() {
                                     const isHome = item.href === "/";
 
                                     return (
-                                        <>
+                                        <React.Fragment key={item.href}>
                                             {/* 在首页前添加分割线 */}
                                             {isHome && (
-                                                <div key="divider" className="h-10 w-px bg-black/20" />
+                                                <div className="h-10 w-px bg-black/20" />
                                             )}
                                             <Link
-                                                key={item.href}
                                                 href={item.href}
                                                 onClick={(e) => handleNavClick(item.href, e)}
                                                 className={cn(
@@ -274,7 +273,7 @@ export function BottomNavBar() {
                                                     {item.label}
                                                 </span>
                                             </Link>
-                                        </>
+                                        </React.Fragment>
                                     );
                                 })}
 
