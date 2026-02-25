@@ -555,7 +555,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </div>
 
                 {/* 桌面端内容展示 - 保持原有响应式逻辑但对移动端隐藏 */}
-                <div className="hidden h-full flex-col overflow-hidden lg:flex">
+                <div className="hidden h-full flex-col overflow-hidden lg:flex w-full max-w-[1920px] mx-auto">
                   {/* 桌面端内容已有的逻辑... */}
                   <nav className="relative flex h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[12%]">
                     {/* Logo */}
