@@ -247,7 +247,7 @@ function LoginModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-[#fcfcfc] md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
@@ -323,67 +323,70 @@ function LoginModal({
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                             placeholder="手机号"
-                            className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                       </div>
 
-                      {/* 验证码输入 - 仅验证码登录时显示 */}
-                      {loginMethod === "code" && (
-                        <div className="group">
-                          <div className="relative flex gap-2">
-                            <div className="relative flex-1">
+                      {/* 输入区容器 - 设置固定/最小高度避免切换时抖动 */}
+                      <div className="min-h-[96px] flex flex-col justify-start space-y-3">
+                        {/* 验证码输入 - 仅验证码登录时显示 */}
+                        {loginMethod === "code" && (
+                          <div className="group animate-fade-scale-in">
+                            <div className="relative flex gap-2">
+                              <div className="relative flex-1">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                  <KeyRound className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
+                                </div>
+                                <input
+                                  type="text"
+                                  value={code}
+                                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                  placeholder="验证码"
+                                  className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={sendCode}
+                                disabled={countdown > 0 || phone.length !== 11}
+                                className="shrink-0 px-4 rounded-xl bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 text-xs font-semibold text-brand-gold transition-all hover:bg-black/10 md:hover:bg-white/40 disabled:opacity-30"
+                              >
+                                {countdown > 0 ? `${countdown}s` : "获取验证码"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 密码输入 - 仅密码登录时显示 */}
+                        {loginMethod === "password" && (
+                          <div className="group space-y-2 animate-fade-scale-in">
+                            <div className="relative">
                               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                                <KeyRound className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
+                                <Lock className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
                               </div>
                               <input
-                                type="text"
-                                value={code}
-                                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                                placeholder="验证码"
-                                className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="密码"
+                                maxLength={32}
+                                className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                               />
                             </div>
-                            <button
-                              type="button"
-                              onClick={sendCode}
-                              disabled={countdown > 0 || phone.length !== 11}
-                              className="shrink-0 px-4 rounded-xl bg-white/20 border border-white/30 text-xs font-semibold text-brand-gold transition-all hover:bg-white/40 disabled:opacity-30"
-                            >
-                              {countdown > 0 ? `${countdown}s` : "获取验证码"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 密码输入 - 仅密码登录时显示 */}
-                      {loginMethod === "password" && (
-                        <div className="group space-y-2">
-                          <div className="relative">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                              <Lock className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
+                            {/* 忘记密码链接 */}
+                            <div className="text-right h-4">
+                              <button
+                                type="button"
+                                onClick={onSwitchToForgotPassword}
+                                className="text-xs font-medium text-brand-charcoal/50 hover:text-brand-gold transition-colors"
+                              >
+                                找回密码
+                              </button>
                             </div>
-                            <input
-                              type="password"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="密码"
-                              maxLength={32}
-                              className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
-                            />
                           </div>
-                          {/* 忘记密码链接 */}
-                          <div className="text-right">
-                            <button
-                              type="button"
-                              onClick={onSwitchToForgotPassword}
-                              className="text-xs font-medium text-brand-charcoal/50 hover:text-brand-gold transition-colors"
-                            >
-                              找回密码
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       {/* 协议勾选 */}
                       <label className="flex cursor-pointer items-start gap-3 group/agreement pt-2 pb-1">
@@ -394,11 +397,11 @@ function LoginModal({
                             onChange={(e) => setAgreed(e.target.checked)}
                             className="peer sr-only"
                           />
-                          <div className="h-4 w-4 rounded border border-white/40 bg-white/10 backdrop-blur-sm transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
+                          <div className="h-4 w-4 rounded border border-black/20 md:border-white/40 bg-black/5 md:bg-white/10 backdrop-blur-sm transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
                           <Check className="absolute inset-0 h-4 w-4 scale-0 text-white transition-transform peer-checked:scale-75" strokeWidth={4} />
                         </div>
                         <span className="text-[12px] leading-relaxed text-brand-charcoal/60 select-none">
-                          登录即表示同意
+                          同意
                           <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《用户协议》</a>
                           和
                           <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《隐私政策》</a>
@@ -421,7 +424,7 @@ function LoginModal({
                   </div>
 
                   {/* 底部导航 - 固定 */}
-                  <div className="shrink-0 border-t border-white/20 bg-white/10 px-10 py-6 text-center">
+                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
                     <p className="text-xs text-brand-charcoal/60">
                       还没有账户？
                       <button
@@ -613,7 +616,7 @@ function RegisterModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-[#fcfcfc] md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
@@ -659,7 +662,7 @@ function RegisterModal({
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                             placeholder="手机号"
-                            className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                       </div>
@@ -676,14 +679,14 @@ function RegisterModal({
                               value={code}
                               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                               placeholder="验证码"
-                              className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                              className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                             />
                           </div>
                           <button
                             type="button"
                             onClick={sendCode}
                             disabled={countdown > 0 || phone.length !== 11}
-                            className="shrink-0 px-4 rounded-xl bg-white/20 border border-white/30 text-xs font-semibold text-brand-gold transition-all hover:bg-white/40 disabled:opacity-30"
+                            className="shrink-0 px-4 rounded-xl bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 text-xs font-semibold text-brand-gold transition-all hover:bg-black/10 md:hover:bg-white/40 disabled:opacity-30"
                           >
                             {countdown > 0 ? `${countdown}s` : "获取验证码"}
                           </button>
@@ -702,7 +705,7 @@ function RegisterModal({
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="密码（至少6位）"
                             maxLength={32}
-                            className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                       </div>
@@ -719,7 +722,7 @@ function RegisterModal({
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder="确认密码"
                             maxLength={32}
-                            className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                       </div>
@@ -733,7 +736,7 @@ function RegisterModal({
                             onChange={(e) => setAgreed(e.target.checked)}
                             className="peer sr-only"
                           />
-                          <div className="h-4 w-4 rounded border border-white/40 bg-white/10 backdrop-blur-sm transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
+                          <div className="h-4 w-4 rounded border border-black/20 md:border-white/40 bg-black/5 md:bg-white/10 backdrop-blur-sm transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
                           <Check className="absolute inset-0 h-4 w-4 scale-0 text-white transition-transform peer-checked:scale-75" strokeWidth={4} />
                         </div>
                         <span className="text-[12px] leading-relaxed text-brand-charcoal/60 select-none">
@@ -760,7 +763,7 @@ function RegisterModal({
                   </div>
 
                   {/* 底部导航 - 固定 */}
-                  <div className="shrink-0 border-t border-white/20 bg-white/10 px-10 py-6 text-center">
+                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
                     <p className="text-xs text-brand-charcoal/60">
                       已有账户？
                       <button
@@ -953,7 +956,7 @@ function ForgotPasswordModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-[#fcfcfc] md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
@@ -999,7 +1002,7 @@ function ForgotPasswordModal({
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                             placeholder="手机号"
-                            className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                         <button
@@ -1039,14 +1042,14 @@ function ForgotPasswordModal({
                             value={code}
                             onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                             placeholder="6位验证码"
-                            className="w-full bg-white/20 border border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                         <div className="flex gap-3">
                           <button
                             type="button"
                             onClick={() => setStep("phone")}
-                            className="flex-1 rounded-xl bg-white/10 border border-white/20 py-3 text-xs font-bold uppercase tracking-widest text-brand-charcoal/60 hover:bg-white/20 transition-all"
+                            className="flex-1 rounded-xl bg-black/5 md:bg-white/10 border border-black/10 md:border-white/20 py-3 text-xs font-bold uppercase tracking-widest text-brand-charcoal/60 hover:bg-black/10 md:hover:bg-white/20 transition-all"
                           >
                             返回
                           </button>
@@ -1133,7 +1136,7 @@ function ForgotPasswordModal({
 
                   {/* 底部导航 - 固定 */}
                   {step !== "success" && (
-                    <div className="shrink-0 border-t border-white/20 bg-white/10 px-10 py-6 text-center">
+                    <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
                       <p className="text-xs text-brand-charcoal/60">
                         想起密码了？
                         <button
