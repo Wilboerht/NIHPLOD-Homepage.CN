@@ -45,10 +45,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
+    const status = searchParams.get("status") as import("@/generated/prisma/client").OrderStatus | null | 'all';
 
     // 定义订单状态过滤条件
-    const whereClause: any = { userId: payload.id };
+    const whereClause: import("@/generated/prisma/client").Prisma.OrderWhereInput = { userId: payload.id };
     if (status && status !== "all") {
       whereClause.status = status;
     }

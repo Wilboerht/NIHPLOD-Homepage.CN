@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Package, ChevronRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { m, AnimatePresence } from "framer-motion";
+import { m } from "framer-motion";
 
 interface OrderItem {
   id: string;
