@@ -240,14 +240,14 @@ function LoginModal({
               {/* 关闭按钮 */}
               <button
                 onClick={onClose}
-                className="absolute right-6 top-6 z-50 rounded-full bg-white/40 p-2 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-white/80 hover:text-brand-charcoal/70"
+                className="absolute right-6 top-6 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 md:bg-white/40 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-black/10 md:hover:bg-white/80 hover:text-brand-charcoal/70"
               >
                 <X className="h-5 w-5" />
               </button>
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-[#fcfcfc] md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
@@ -609,14 +609,14 @@ function RegisterModal({
               {/* 关闭按钮 */}
               <button
                 onClick={onClose}
-                className="absolute right-6 top-6 z-50 rounded-full bg-white/40 p-2 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-white/80 hover:text-brand-charcoal/70"
+                className="absolute right-6 top-6 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 md:bg-white/40 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-black/10 md:hover:bg-white/80 hover:text-brand-charcoal/70"
               >
                 <X className="h-5 w-5" />
               </button>
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-[#fcfcfc] md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
@@ -949,14 +949,14 @@ function ForgotPasswordModal({
               {/* 关闭按钮 */}
               <button
                 onClick={onClose}
-                className="absolute right-6 top-6 z-50 rounded-full bg-white/40 p-2 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-white/80 hover:text-brand-charcoal/70"
+                className="absolute right-6 top-6 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 md:bg-white/40 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-black/10 md:hover:bg-white/80 hover:text-brand-charcoal/70"
               >
                 <X className="h-5 w-5" />
               </button>
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-[#fcfcfc] md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
