@@ -224,7 +224,7 @@ function LoginModal({
             transition={{ duration: 0.25, ease: "easeOut" }}
             className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-black/10 shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block group">
                 <Image
@@ -246,7 +246,7 @@ function LoginModal({
               </button>
 
               {/* 浮动表单区域 */}
-              <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
+              <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
                 <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
@@ -593,7 +593,7 @@ function RegisterModal({
             transition={{ duration: 0.25, ease: "easeOut" }}
             className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-black/10 shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block group">
                 <Image
@@ -615,7 +615,7 @@ function RegisterModal({
               </button>
 
               {/* 浮动表单区域 */}
-              <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
+              <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
                 <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
@@ -933,7 +933,7 @@ function ForgotPasswordModal({
             transition={{ duration: 0.25, ease: "easeOut" }}
             className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-black/10 shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block group">
                 <Image
@@ -955,7 +955,7 @@ function ForgotPasswordModal({
               </button>
 
               {/* 浮动表单区域 */}
-              <div className="relative z-10 w-full md:w-[440px] p-4 md:p-0 flex flex-col items-stretch">
+              <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
                 <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
