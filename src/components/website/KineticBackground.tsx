@@ -177,8 +177,8 @@ export function KineticBackground() {
                     <div className="kinetic-btn-group">
                         {user ? (
                             <>
-                                <div className="mb-4 flex flex-col items-center justify-center w-full">
-                                    <div className="relative h-16 w-16 mb-3 rounded-full overflow-hidden bg-brand-gold/10 flex items-center justify-center border-2 border-white shadow-md">
+                                <div className="mb-2 sm:mb-4 flex flex-col items-center justify-center w-full">
+                                    <div className="relative h-14 w-14 sm:h-16 sm:w-16 mb-2 sm:mb-3 rounded-full overflow-hidden bg-brand-gold/10 flex items-center justify-center border sm:border-2 border-white shadow-sm sm:shadow-md">
                                         {user.avatar ? (
                                             <Image
                                                 src={user.avatar}
@@ -187,11 +187,11 @@ export function KineticBackground() {
                                                 className="object-cover"
                                             />
                                         ) : (
-                                            <UserIcon className="h-8 w-8 text-brand-gold" />
+                                            <UserIcon className="h-7 w-7 sm:h-8 sm:w-8 text-brand-gold" />
                                         )}
                                     </div>
-                                    <div className="text-brand-charcoal text-lg font-bold">欢迎回来 👋</div>
-                                    <div className="text-brand-charcoal/60 text-sm mt-1 truncate px-2 font-serif">
+                                    <div className="text-brand-charcoal text-[13px] sm:text-lg font-bold leading-tight">欢迎回来 👋</div>
+                                    <div className="text-brand-charcoal/60 text-[10px] sm:text-sm mt-0.5 sm:mt-1 truncate px-2 font-serif">
                                         {user.nickname || "尊贵的会员"}
                                     </div>
                                 </div>
@@ -202,30 +202,30 @@ export function KineticBackground() {
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
-                                    className="group flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-3 text-sm font-medium text-white transition-all duration-300 hover:bg-brand-gold-dark hover:shadow-lg hover:shadow-brand-gold/20"
+                                    className="group flex w-full items-center justify-center gap-1 sm:gap-2 rounded-xl bg-brand-gold px-3 py-2 sm:px-6 sm:py-3 text-[11px] sm:text-sm font-medium text-white transition-all duration-300 hover:bg-brand-gold-dark hover:shadow-lg hover:shadow-brand-gold/20"
                                 >
                                     <span>进入会员中心</span>
-                                    <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                                    <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-1" />
                                 </button>
                             </>
                         ) : (
                             <>
-                                <div className="mb-5 flex flex-col items-center justify-center w-full group/avatar">
-                                    <div className="relative h-24 w-24 flex items-center justify-center">
+                                <div className="mb-3 sm:mb-5 flex flex-col items-center justify-center w-full group/avatar mt-2 sm:mt-0">
+                                    <div className="relative h-16 w-16 sm:h-24 sm:w-24 flex items-center justify-center">
                                         {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
-                                        <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-125 group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
-                                        <div className="absolute inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-90" />
+                                        <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
+                                        <div className="absolute inset-[2px] sm:inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:group-hover/avatar:scale-90" />
 
                                         {/* 主图标容器 - 极简白润质感 */}
-                                        <div className="relative h-20 w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500">
-                                            <UserIcon size={36} strokeWidth={1.2} className="text-brand-charcoal/50" />
+                                        <div className="relative h-12 w-12 sm:h-20 sm:w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500">
+                                            <UserIcon className="h-6 w-6 sm:h-9 sm:w-9 text-brand-charcoal/50" strokeWidth={1.2} />
                                         </div>
                                     </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={handleLoginClick}
-                                    className="w-full py-3 rounded-xl bg-white/30 backdrop-blur-sm border border-white/50 text-brand-charcoal/90 text-sm tracking-[0.3em] font-medium transition-all duration-500 hover:bg-white/50 hover:border-white/80 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98]"
+                                    className="w-full py-2 sm:py-3 rounded-xl bg-white/30 backdrop-blur-sm border border-white/50 text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] font-medium transition-all duration-500 hover:bg-white/50 hover:border-white/80 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98]"
                                 >
                                     立即登录
                                 </button>

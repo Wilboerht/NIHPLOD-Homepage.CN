@@ -1245,16 +1245,80 @@
   overflow: hidden;
 }
 
-/* 登录卡片背景动效 */
+/* 登录卡片背景动效 - 流体发光网格 */
+@keyframes loginBlob1 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -20px) scale(1.15);
+  }
+
+  66% {
+    transform: translate(-15px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes loginBlob2 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(-30px, 20px) scale(1.2);
+  }
+
+  66% {
+    transform: translate(25px, -15px) scale(0.85);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
 .kinetic-login-cell .kinetic-login-bg {
   position: absolute;
-  inset: -50%;
-  background: radial-gradient(circle at 30% 70%,
-      rgba(255, 255, 255, 0.1) 0%,
-      transparent 50%);
-  opacity: 0;
-  transition: opacity 0.5s ease, transform 0.8s var(--kinetic-ease);
+  inset: 0;
   pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.kinetic-login-cell .kinetic-login-bg::before,
+.kinetic-login-cell .kinetic-login-bg::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(28px);
+  z-index: 0;
+  opacity: 0.8;
+  transition: opacity 0.5s ease;
+}
+
+.kinetic-login-cell .kinetic-login-bg::before {
+  width: 140px;
+  height: 140px;
+  background: rgba(255, 255, 255, 0.7);
+  top: -20px;
+  left: -20px;
+  animation: loginBlob1 8s ease-in-out infinite alternate;
+}
+
+.kinetic-login-cell .kinetic-login-bg::after {
+  width: 120px;
+  height: 120px;
+  background: rgba(201, 168, 108, 0.25);
+  /* 淡淡的金色光晕 */
+  bottom: -20px;
+  right: -20px;
+  animation: loginBlob2 10s ease-in-out infinite alternate-reverse;
 }
 
 .kinetic-login-cell:not(.no-hover-effect):hover {
@@ -1264,9 +1328,14 @@
     0 25px 50px -12px rgba(255, 255, 255, 0.2);
 }
 
-.kinetic-login-cell:not(.no-hover-effect):hover .kinetic-login-bg {
-  opacity: 1;
-  transform: scale(1.2) rotate(10deg);
+.kinetic-login-cell:not(.no-hover-effect):hover .kinetic-login-bg::before {
+  animation-duration: 4s;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.kinetic-login-cell:not(.no-hover-effect):hover .kinetic-login-bg::after {
+  animation-duration: 5s;
+  background: rgba(201, 168, 108, 0.4);
 }
 
 .kinetic-login-title {
