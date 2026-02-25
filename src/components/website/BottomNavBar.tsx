@@ -62,47 +62,13 @@ const CustomProductsIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
-/**
- * 自定义 "官方指南" SVG 图标占位符
- * TODO: 请在此替换为您自己的 SVG <path> 等内容
- */
-const CustomGuideIcon = ({ className }: { className?: string }) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        {/* 请在这里粘贴您的自定义 SVG 内容 */}
-        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-    </svg>
-);
-
-/**
- * 自定义 "常见问题" SVG 图标占位符
- * TODO: 请在此替换为您自己的 SVG <path> 等内容
- */
-const CustomFAQIcon = ({ className }: { className?: string }) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        {/* 请在这里粘贴您的自定义 SVG 内容 */}
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-    </svg>
-);
-
-/**
- * 自定义 "首页" SVG 图标占位符
- * TODO: 请在此替换为您自己的 SVG <path> 等内容
- */
-const CustomHomeIcon = ({ className }: { className?: string }) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        {/* 请在这里粘贴您的自定义 SVG 内容 */}
-        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-    </svg>
-);
-
 const allNavItems: NavItem[] = [
 
     { href: "/products", label: "探索产品", labelEn: "Products", icon: CustomProductsIcon },
-    { href: "/guide", label: "官方指南", labelEn: "Guide", icon: CustomGuideIcon },
-    { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: CustomFAQIcon },
+    { href: "/guide", label: "官方指南", labelEn: "Guide", icon: BookOpen },
+    { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: HelpCircle },
     { href: "/about", label: "关于旎柏", labelEn: "About", icon: CustomAboutIcon },
-    { href: "/", label: "首页", labelEn: "Home", icon: CustomHomeIcon },
+    { href: "/", label: "首页", labelEn: "Home", icon: Home },
 ];
 
 /**
