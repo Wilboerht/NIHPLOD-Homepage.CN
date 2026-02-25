@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui";
 import { Input } from "@/components/ui";
 
+import Image from "next/image";
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -50,9 +52,15 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-brand-cream px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="mb-8 text-center">
-          <h1 className="font-serif text-4xl tracking-wider text-brand-charcoal">NIHPLOD</h1>
-          <p className="mt-2 text-sm text-brand-charcoal/60">内容管理系统</p>
+        <div className="mb-8 flex flex-col items-center justify-center">
+          <Image
+            src="/images/logo.webp"
+            alt="NIHPLOD Logo"
+            width={240}
+            height={60}
+            className="h-auto w-48 object-contain"
+            priority
+          />
         </div>
 
         {/* 登录卡片 */}
