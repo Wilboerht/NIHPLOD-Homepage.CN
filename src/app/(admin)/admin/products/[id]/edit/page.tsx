@@ -18,6 +18,7 @@ interface ImageItem {
 }
 
 interface PurchaseLinkItem {
+  id: string;
   platform: string;
   url: string;
   order: number;
@@ -82,6 +83,7 @@ export default function EditProductPage() {
           capacity: data.capacity || "",
           purchaseUrl: data.purchaseUrl || "",
           purchaseLinks: (data.purchaseLinks || []).map((link: PurchaseLinkItem, index: number) => ({
+            id: link.id,
             platform: link.platform,
             url: link.url,
             order: link.order ?? index,
