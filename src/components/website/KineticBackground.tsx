@@ -145,7 +145,7 @@ export function KineticBackground() {
                         src="/images/kinetic-desktop.jpg"
                         alt="Product Desktop"
                         fill
-                        className="kinetic-cell-image grayscale brightness-[0.75] transition-all duration-500 group-hover:grayscale-0 group-hover:brightness-100 hidden sm:block"
+                        className="kinetic-cell-image !filter-none transition-all duration-500 hidden sm:block"
                         sizes="(max-width: 600px) 100vw, 25vw"
                     />
                     {/* Mobile Image */}
@@ -153,7 +153,7 @@ export function KineticBackground() {
                         src="/images/kinetic-mobile.jpg"
                         alt="Product Mobile"
                         fill
-                        className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0 block sm:hidden"
+                        className="kinetic-cell-image !filter-none transition-all duration-500 block sm:hidden"
                         sizes="100vw"
                     />
                 </div>
