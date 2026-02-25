@@ -192,14 +192,18 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
             onClick={onClose}
           />
 
-          {/* 模态框容器 */}
-          <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+          {/* 遮罩层以及模态框容器合并点击事件 */}
+          <div
+            className="fixed inset-0 z-[210] flex items-center justify-center p-4 sm:p-6"
+            onClick={onClose}
+          >
             <m.div
-              className="pointer-events-auto relative flex w-full max-w-6xl h-[85vh] flex-col overflow-hidden rounded-3xl bg-[#F0EDE1] shadow-2xl lg:h-[700px] lg:flex-row"
+              className="relative flex w-full max-w-6xl h-[85vh] flex-col overflow-hidden rounded-3xl bg-[#F0EDE1] shadow-2xl lg:h-[700px] lg:flex-row"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
             >
               {/* 关闭按钮 */}
               <button
