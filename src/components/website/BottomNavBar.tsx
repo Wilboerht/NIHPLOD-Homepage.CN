@@ -4,7 +4,7 @@ import React from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
-import { Menu, X, Home, ShoppingBag, BookOpen, HelpCircle, Info } from "lucide-react";
+import { Menu, X, Home, BookOpen, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
