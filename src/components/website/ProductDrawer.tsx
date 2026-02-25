@@ -329,7 +329,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   {/* 小红书链接 */}
                   <section className="mb-8">
                     <a
-                      href={`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(product.name)}`}
+                      href={`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(`NIHPLOD ${product.name}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group inline-flex items-center gap-2 text-[14px] text-[#00263E] transition-opacity hover:opacity-70"
