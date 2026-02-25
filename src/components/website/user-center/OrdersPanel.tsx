@@ -92,8 +92,8 @@ export function OrdersPanel() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`relative flex-1 py-2.5 text-[15px] font-medium rounded-xl transition-all ${activeTab === tab.key
-                  ? "text-brand-charcoal"
-                  : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                ? "text-brand-charcoal"
+                : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
                 }`}
             >
               {activeTab === tab.key && (
@@ -150,7 +150,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
         <span className="text-brand-charcoal/40 text-[13px] font-mono tracking-wider">
           {order.orderNo}
         </span>
-        <span className={`px-2.5 py-1 rounded-md text-[12px] font-medium border ${status.color}`}>
+        <span className={`px-2.5 py-1 rounded-md text-[13px] font-medium border ${status.color}`}>
           {status.label}
         </span>
       </div>
@@ -171,7 +171,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
           )}
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          <p className="text-brand-charcoal text-[15px] font-semibold truncate tracking-wide group-hover:text-brand-gold transition-colors">
+          <p className="text-brand-charcoal text-base font-semibold truncate tracking-wide group-hover:text-brand-gold transition-colors">
             {firstItem?.productName || "未知商品"}
           </p>
           {order.items.length > 1 && (
@@ -179,7 +179,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
               等 共 <span className="text-brand-charcoal font-medium">{order.items.length}</span> 件商品
             </p>
           )}
-          <p className="text-brand-gold text-[16px] font-medium mt-0.5 tracking-wider">
+          <p className="text-brand-gold text-[17px] font-semibold mt-0.5 tracking-wider">
             ¥{Number(order.payAmount).toFixed(2)}
           </p>
         </div>

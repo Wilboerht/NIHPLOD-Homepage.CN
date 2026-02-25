@@ -144,7 +144,7 @@ export function ProfilePanel() {
             <p className="text-brand-charcoal font-semibold text-lg tracking-wide">
               {user.nickname || `用户${user.phone?.slice(-4)}`}
             </p>
-            <p className="text-brand-charcoal/50 text-[13px] font-medium mt-1">
+            <p className="text-brand-charcoal/50 text-sm font-medium mt-1">
               {uploadingAvatar ? "上传中..." : "点击头像更换"}
             </p>
           </div>
@@ -168,17 +168,17 @@ export function ProfilePanel() {
               <User className="w-[18px] h-[18px]" />
             </div>
             <div>
-              <p className="text-brand-charcoal/50 text-xs font-medium tracking-wide">昵称</p>
+              <p className="text-brand-charcoal/50 text-[13px] font-medium tracking-wide">昵称</p>
               {editing ? (
                 <input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  className="mt-0.5 text-brand-charcoal text-[15px] font-medium bg-transparent border-b border-brand-gold/50 focus:border-brand-gold outline-none py-0.5 w-48 transition-colors placeholder:text-brand-charcoal/30"
+                  className="mt-0.5 text-brand-charcoal text-base font-medium bg-transparent border-b border-brand-gold/50 focus:border-brand-gold outline-none py-0.5 w-48 transition-colors placeholder:text-brand-charcoal/30"
                   autoFocus
                 />
               ) : (
-                <p className="text-brand-charcoal text-[15px] font-medium mt-0.5 tracking-wide">
+                <p className="text-brand-charcoal text-base font-medium mt-0.5 tracking-wide">
                   {user.nickname || "未设置"}
                 </p>
               )}
@@ -220,8 +220,8 @@ export function ProfilePanel() {
               <Phone className="w-[18px] h-[18px]" />
             </div>
             <div>
-              <p className="text-brand-charcoal/50 text-xs font-medium tracking-wide">绑定手机号</p>
-              <p className="text-brand-charcoal text-[15px] font-medium mt-0.5 tracking-wide">
+              <p className="text-brand-charcoal/50 text-[13px] font-medium tracking-wide">绑定手机号</p>
+              <p className="text-brand-charcoal text-base font-medium mt-0.5 tracking-wide">
                 {user.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : "未绑定"}
               </p>
             </div>

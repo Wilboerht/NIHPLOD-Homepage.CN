@@ -116,8 +116,8 @@ export function AddressesPanel() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`group relative bg-black/[0.02] md:bg-white/30 rounded-[1.5rem] p-6 border transition-all backdrop-blur-md shadow-sm hover:shadow-md ${addr.isDefault
-                    ? "border-brand-gold/40 shadow-brand-gold/5"
-                    : "border-black/5 md:border-white/50 hover:border-brand-gold/20"
+                  ? "border-brand-gold/40 shadow-brand-gold/5"
+                  : "border-black/5 md:border-white/50 hover:border-brand-gold/20"
                   }`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -126,12 +126,12 @@ export function AddressesPanel() {
                       <span className="text-brand-charcoal font-bold text-lg tracking-wide">{addr.name}</span>
                       <span className="text-brand-charcoal/60 font-mono font-medium">{addr.phone}</span>
                       {addr.isDefault && (
-                        <span className="px-2.5 py-0.5 bg-brand-gold text-white text-[11px] font-bold rounded-lg tracking-widest uppercase shadow-sm">
+                        <span className="px-2.5 py-0.5 bg-brand-gold text-white text-[12px] font-bold rounded-lg tracking-widest uppercase shadow-sm">
                           默认
                         </span>
                       )}
                     </div>
-                    <div className="flex items-start gap-2 text-brand-charcoal/70 leading-relaxed text-[15px]">
+                    <div className="flex items-start gap-2 text-brand-charcoal/70 leading-relaxed text-base">
                       <MapPin className="w-4 h-4 mt-1 shrink-0 opacity-40 text-brand-gold" />
                       <p className="tracking-wide">
                         <span className="font-semibold text-brand-charcoal/40 mr-1">{addr.province} {addr.city} {addr.district}</span>
@@ -193,16 +193,16 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
 
   return (
     <div className="flex-1">
-      <label className="block text-brand-charcoal/50 text-[12px] font-bold tracking-wider uppercase mb-2 ml-1">{label}</label>
+      <label className="block text-brand-charcoal/50 text-[13px] font-bold tracking-wider uppercase mb-2 ml-1">{label}</label>
       <div className="relative">
         <button
           type="button"
           onClick={() => !disabled && setOpen(!open)}
-          className={`w-full px-4 py-3 border rounded-xl text-left flex items-center justify-between transition-all backdrop-blur-md shadow-sm text-[15px] ${disabled
-              ? "bg-black/5 border-transparent text-brand-charcoal/20 cursor-not-allowed"
-              : open
-                ? "border-brand-gold/60 ring-4 ring-brand-gold/5 bg-white text-brand-charcoal"
-                : "border-black/5 md:border-white/50 hover:border-brand-gold/40 bg-black/[0.02] md:bg-white/20 text-brand-charcoal"
+          className={`w-full px-4 py-3 border rounded-xl text-left flex items-center justify-between transition-all backdrop-blur-md shadow-sm text-base ${disabled
+            ? "bg-black/5 border-transparent text-brand-charcoal/20 cursor-not-allowed"
+            : open
+              ? "border-brand-gold/60 ring-4 ring-brand-gold/5 bg-white text-brand-charcoal"
+              : "border-black/5 md:border-white/50 hover:border-brand-gold/40 bg-black/[0.02] md:bg-white/20 text-brand-charcoal"
             }`}
         >
           <span className={hasValue ? "font-medium" : "text-brand-charcoal/30"}>
@@ -238,8 +238,8 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
                         type="button"
                         onClick={() => { onChange(opt.label); setOpen(false); }}
                         className={`w-full px-3.5 py-2.5 text-left text-[14px] rounded-xl transition-all font-medium ${opt.label === value
-                            ? "bg-brand-gold text-white shadow-md shadow-brand-gold/20"
-                            : "text-brand-charcoal hover:bg-black/5"
+                          ? "bg-brand-gold text-white shadow-md shadow-brand-gold/20"
+                          : "text-brand-charcoal hover:bg-black/5"
                           }`}
                       >
                         {opt.label}

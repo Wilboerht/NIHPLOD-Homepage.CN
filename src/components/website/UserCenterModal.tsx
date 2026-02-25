@@ -110,10 +110,10 @@ export function UserCenterModal() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <p className="text-brand-charcoal text-[16px] font-semibold truncate tracking-wide">
+                        <p className="text-brand-charcoal text-base font-semibold truncate tracking-wide">
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
-                        <p className="text-brand-charcoal/50 text-[11px] font-medium mt-1 tracking-wider uppercase">
+                        <p className="text-brand-charcoal/50 text-[13px] font-medium mt-1 tracking-wider uppercase">
                           普通会员
                         </p>
                       </div>
@@ -129,7 +129,7 @@ export function UserCenterModal() {
                         <button
                           key={item.id}
                           onClick={() => setUserCenterView(item.id)}
-                          className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all group ${isActive
+                          className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[15px] font-medium transition-all group ${isActive
                             ? "bg-brand-gold text-white shadow-md shadow-brand-gold/20"
                             : "text-brand-charcoal md:text-brand-charcoal/80 hover:bg-black/5 md:hover:bg-white/40 hover:text-brand-charcoal"
                             }`}
@@ -147,7 +147,7 @@ export function UserCenterModal() {
                   <div className="p-5 border-t border-black/5 md:border-white/20 mt-auto">
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 text-sm font-medium text-red-500 hover:text-red-500 md:text-red-500/80 md:hover:text-red-600 bg-red-50/50 hover:bg-red-50/80 md:bg-white/20 md:hover:bg-white/40 rounded-xl transition-all border border-red-100/50 md:border-transparent group"
+                      className="w-full flex items-center justify-center gap-2 py-3.5 text-[15px] font-medium text-red-500 hover:text-red-500 md:text-red-500/80 md:hover:text-red-600 bg-red-50/50 hover:bg-red-50/80 md:bg-white/20 md:hover:bg-white/40 rounded-xl transition-all border border-red-100/50 md:border-transparent group"
                     >
                       <LogOut className="w-[18px] h-[18px] md:opacity-80 md:group-hover:opacity-100" />
                       <span className="tracking-wide">退出登录</span>
