@@ -150,7 +150,10 @@ export function BottomNavBar() {
                                         className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
                                     >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                                            <Icon className="h-5 w-5 text-brand-gold" />
+                                            <Icon className={cn(
+                                                "h-5 w-5 text-brand-gold",
+                                                (item.href === "/about" || item.href === "/products") && "scale-[0.85]"
+                                            )} />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
@@ -198,7 +201,10 @@ export function BottomNavBar() {
                             >
                                 {/* 图标容器 */}
                                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10">
-                                    <PrimaryIcon className="h-6 w-6 text-brand-gold" />
+                                    <PrimaryIcon className={cn(
+                                        "h-6 w-6 text-brand-gold",
+                                        (primaryNav.href === "/about" || primaryNav.href === "/products") && "scale-[0.85]"
+                                    )} />
                                 </div>
                                 {/* 文字 */}
                                 <div className="flex flex-col">
@@ -224,7 +230,10 @@ export function BottomNavBar() {
                                             className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
                                         >
                                             {/* 图标 (放大作为视觉重心) */}
-                                            <Icon className="h-9 w-9 text-brand-gold transition-transform duration-500 group-hover:scale-105" />
+                                            <Icon className={cn(
+                                                "h-9 w-9 text-brand-gold transition-transform duration-500 group-hover:scale-105",
+                                                "scale-[0.85]" // CustomAboutIcon
+                                            )} />
 
                                             {/* 主标题 - 衬线体 大号 */}
                                             <span className="font-serif text-[18px] font-medium tracking-wide text-brand-charcoal">
@@ -295,7 +304,11 @@ export function BottomNavBar() {
                                                     "hover:opacity-70"
                                                 )}
                                             >
-                                                <Icon className="h-8 w-8 text-[#C3BC9F] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:text-brand-gold" />
+                                                <Icon className={cn(
+                                                    "h-8 w-8 text-[#C3BC9F] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:text-brand-gold",
+                                                    // 自定义图标通常占位更满，稍微缩小一点点以在高视觉重量下保持平衡
+                                                    (item.href === "/about" || item.href === "/products") && "scale-[0.85]"
+                                                )} />
                                                 <span>
                                                     {item.label}
                                                 </span>
