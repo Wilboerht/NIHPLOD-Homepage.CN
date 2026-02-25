@@ -8,6 +8,7 @@ import { verifyUserAuth } from "@/lib/auth";
 import { createOrder } from "@/lib/order";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
 
 // 创建订单参数验证
 const createOrderSchema = z.object({
@@ -28,12 +29,56 @@ const createOrderSchema = z.object({
   path: ["addressId"], // Error path
 });
 
-// ... (GET logic unchanged)
-
-// 创建订单
-// 强制动态渲染，禁止静态预渲染
+// 强制动态渲染
 export const dynamic = 'force-dynamic';
 
+// 获取订单列表
+export async function GET(request: NextRequest) {
+  try {
+    const payload = await verifyUserAuth(request);
+
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+
+    // 定义订单状态过滤条件
+    const whereClause: any = { userId: payload.id };
+    if (status && status !== "all") {
+      whereClause.status = status;
+    }
+
+    const orders = await prisma.order.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    console.log(`[GetOrders] Found ${orders.length} orders for user ${payload.id}`);
+
+    return NextResponse.json({
+      success: true,
+      data: { orders },
+    });
+  } catch (error) {
+    console.error("[GetOrders] Error Details:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取订单失败" } },
+      { status: 500 }
+    );
+  }
+}
+
+// 创建订单
 export async function POST(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);
@@ -88,4 +133,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
