@@ -350,7 +350,7 @@ function LoginModal({
                                 type="button"
                                 onClick={sendCode}
                                 disabled={countdown > 0 || phone.length !== 11}
-                                className="shrink-0 px-4 rounded-xl bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 text-xs font-semibold text-brand-gold transition-all hover:bg-black/10 md:hover:bg-white/40 disabled:opacity-30"
+                                className="shrink-0 px-4 rounded-xl bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 text-[14px] font-semibold text-brand-gold transition-all hover:bg-black/10 md:hover:bg-white/40 disabled:opacity-30"
                               >
                                 {countdown > 0 ? `${countdown}s` : "获取验证码"}
                               </button>
@@ -401,7 +401,7 @@ function LoginModal({
                           <Check className="absolute inset-0 h-4 w-4 scale-0 text-white transition-transform peer-checked:scale-75" strokeWidth={4} />
                         </div>
                         <span className="text-[12px] leading-relaxed text-brand-charcoal/60 select-none">
-                          同意
+                          我已阅读并同意
                           <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《用户协议》</a>
                           和
                           <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《隐私政策》</a>
@@ -686,7 +686,7 @@ function RegisterModal({
                             type="button"
                             onClick={sendCode}
                             disabled={countdown > 0 || phone.length !== 11}
-                            className="shrink-0 px-4 rounded-xl bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 text-xs font-semibold text-brand-gold transition-all hover:bg-black/10 md:hover:bg-white/40 disabled:opacity-30"
+                            className="shrink-0 px-4 rounded-xl bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 text-[14px] font-semibold text-brand-gold transition-all hover:bg-black/10 md:hover:bg-white/40 disabled:opacity-30"
                           >
                             {countdown > 0 ? `${countdown}s` : "获取验证码"}
                           </button>
