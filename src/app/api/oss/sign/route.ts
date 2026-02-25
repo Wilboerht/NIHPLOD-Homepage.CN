@@ -34,6 +34,15 @@ export async function POST(request: NextRequest) {
 
     } catch (error) {
         console.error("OSS Sign Error:", error);
+
+        // 如果是未配置 OSS，返回特定错误以便前端降级
+        if (error instanceof Error && error.message === "阿里云 OSS 未配置") {
+            return NextResponse.json(
+                { success: false, error: "NO_OSS" },
+                { status: 501 } // Not Implemented
+            );
+        }
+
         return NextResponse.json(
             { error: "获取上传签名失败" },
             { status: 500 }

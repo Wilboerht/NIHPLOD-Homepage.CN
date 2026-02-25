@@ -8,7 +8,7 @@
 import { useState, useRef } from "react";
 import { User, Phone, Edit3, Check, X, Camera, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { uploadImageToOSS } from "@/lib/oss-upload-client";
+import imageCompression from "browser-image-compression";
 
 export function ProfilePanel() {
   const { user, refreshUser } = useAuth();
@@ -40,7 +40,12 @@ export function ProfilePanel() {
     }
   };
 
-  // 处理头像文件选择
+  /**
+   * 头像上传 - 智能降级方案：
+   * 1. 首选请求服务端 /api/upload/avatar 获取 OSS 签名并直传。
+   * 2. 如果服务端返回 "NO_OSS" 标志，则触发前端降级：
+   *    将图片压缩至 200x200 以内的 Base64，直接存入数据库。
+   */
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -48,15 +53,13 @@ export function ProfilePanel() {
     // 重置 input 值，允许重复选同一文件
     e.target.value = "";
 
-    // 校验文件类型
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setAvatarError("仅支持 JPG、PNG、WebP 格式");
       return;
     }
 
-    // 校验文件大小 (最大 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setAvatarError("图片大小不能超过 2MB");
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("图片大小不能超过 5MB");
       return;
     }
 
@@ -64,14 +67,55 @@ export function ProfilePanel() {
     setUploadingAvatar(true);
 
     try {
-      // 生成唯一文件名
-      const ext = file.name.split(".").pop() || "jpg";
-      const filename = `avatar_${Date.now()}.${ext}`;
+      // 1. 尝试获取 OSS 签名
+      const signRes = await fetch("/api/oss/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, type: file.type }),
+      });
 
-      // 上传到 OSS
-      const avatarUrl = await uploadImageToOSS(file, filename);
+      let avatarUrl = "";
 
-      // 更新用户资料
+      if (signRes.ok) {
+        // --- 方案 A: OSS 存在，走 OSS 直传 ---
+        const signData = await signRes.json();
+        if (signData.success) {
+          const { uploadUrl, publicUrl } = signData.data;
+
+          const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+
+          if (!uploadRes.ok) throw new Error("OSS 上传失败");
+          avatarUrl = publicUrl;
+        } else {
+          throw new Error("OSS 签名失败");
+        }
+      } else {
+        // --- 方案 B: OSS 不存在或报错，走本地压缩降级 (Base64) ---
+        console.warn("OSS 签名失败，启用端侧压缩降级方案 (Base64)");
+
+        const options = {
+          maxSizeMB: 0.05, // 目标大小 50KB
+          maxWidthOrHeight: 200, // 头像不需要太大，200x200 足够
+          useWebWorker: true,
+          fileType: "image/webp" as string, // 强转 WebP，体积更小
+        };
+
+        const compressedFile = await imageCompression(file, options);
+
+        // 转换为 Base64
+        avatarUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(compressedFile);
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+        });
+      }
+
+      // 3. 更新用户资料 (提交 URL 或 Base64)
       const res = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -84,8 +128,8 @@ export function ProfilePanel() {
         setAvatarError("更新头像失败");
       }
     } catch (err) {
-      console.error("头像上传失败:", err);
-      setAvatarError("上传失败，请稍后重试");
+      console.error("头像上传彻底失败:", err);
+      setAvatarError(err instanceof Error ? err.message : "上传失败，请稍后重试");
     } finally {
       setUploadingAvatar(false);
     }
@@ -94,25 +138,25 @@ export function ProfilePanel() {
   if (!user) return null;
 
   return (
-    <div className="h-full overflow-y-auto p-6 md:p-10 scrollbar-hide">
+    <div className="scrollbar-hide h-full overflow-y-auto p-6 md:p-10">
       {/* 标题 */}
       <div className="mb-8">
-        <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
-          个人信息
-        </h2>
-        <p className="text-brand-charcoal/50 text-sm mt-1.5 tracking-wide">管理您的账户信息与资料</p>
+        <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">个人信息</h2>
+        <p className="mt-1.5 text-sm tracking-wide text-brand-charcoal/50">
+          管理您的账户信息与资料
+        </p>
       </div>
 
       {/* 头像区域 */}
-      <div className="bg-black/[0.02] md:bg-white/20 rounded-2xl p-6 mb-6 border border-black/5 md:border-white/30 backdrop-blur-md transition-all">
+      <div className="mb-6 rounded-2xl border border-black/5 bg-black/[0.02] p-6 backdrop-blur-md transition-all md:border-white/30 md:bg-white/20">
         <div className="flex items-center gap-5">
           {/* 可点击上传头像 */}
-          <div className="relative group">
-            <div className="w-20 h-20 rounded-full bg-brand-gold/10 flex items-center justify-center overflow-hidden border border-brand-gold/30 shadow-inner transition-all group-hover:border-brand-gold/60">
+          <div className="group relative">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-brand-gold/30 bg-brand-gold/10 shadow-inner transition-all group-hover:border-brand-gold/60">
               {user.avatar ? (
-                <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover" />
               ) : (
-                <User className="w-10 h-10 text-brand-gold" />
+                <User className="h-10 w-10 text-brand-gold" />
               )}
             </div>
 
@@ -121,12 +165,12 @@ export function ProfilePanel() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-all cursor-pointer disabled:cursor-wait"
+              className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/0 transition-all disabled:cursor-wait group-hover:bg-black/30"
             >
               {uploadingAvatar ? (
-                <Loader2 className="w-6 h-6 text-white animate-spin" />
+                <Loader2 className="h-6 w-6 animate-spin text-white" />
               ) : (
-                <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Camera className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
               )}
             </button>
 
@@ -141,10 +185,10 @@ export function ProfilePanel() {
           </div>
 
           <div>
-            <p className="text-brand-charcoal font-semibold text-lg tracking-wide">
+            <p className="text-lg font-semibold tracking-wide text-brand-charcoal">
               {user.nickname || `用户${user.phone?.slice(-4)}`}
             </p>
-            <p className="text-brand-charcoal/50 text-sm font-medium mt-1">
+            <p className="mt-1 text-sm font-medium text-brand-charcoal/50">
               {uploadingAvatar ? "上传中..." : "点击头像更换"}
             </p>
           </div>
@@ -152,33 +196,32 @@ export function ProfilePanel() {
 
         {/* 头像上传错误提示 */}
         {avatarError && (
-          <p className="mt-4 text-xs text-red-600 bg-red-50/80 rounded-xl px-4 py-3 border border-red-100/50">
+          <p className="mt-4 rounded-xl border border-red-100/50 bg-red-50/80 px-4 py-3 text-xs text-red-600">
             {avatarError}
           </p>
         )}
       </div>
 
       {/* 信息卡片 */}
-      <div className="bg-black/[0.02] md:bg-white/20 rounded-2xl border border-black/5 md:border-white/30 backdrop-blur-md overflow-hidden flex flex-col divide-y divide-black/5 md:divide-white/20">
-
+      <div className="flex flex-col divide-y divide-black/5 overflow-hidden rounded-2xl border border-black/5 bg-black/[0.02] backdrop-blur-md md:divide-white/20 md:border-white/30 md:bg-white/20">
         {/* 昵称 */}
-        <div className="p-5 flex items-center justify-between group transition-colors hover:bg-black/[0.01] md:hover:bg-white/40">
+        <div className="group flex items-center justify-between p-5 transition-colors hover:bg-black/[0.01] md:hover:bg-white/40">
           <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-full bg-white/50 md:bg-white/20 flex items-center justify-center border border-black/5 md:border-white/20 text-brand-charcoal/60">
-              <User className="w-[18px] h-[18px]" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-black/5 bg-white/50 text-brand-charcoal/60 md:border-white/20 md:bg-white/20">
+              <User className="h-[18px] w-[18px]" />
             </div>
             <div>
-              <p className="text-brand-charcoal/50 text-[13px] font-medium tracking-wide">昵称</p>
+              <p className="text-[13px] font-medium tracking-wide text-brand-charcoal/50">昵称</p>
               {editing ? (
                 <input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  className="mt-0.5 text-brand-charcoal text-base font-medium bg-transparent border-b border-brand-gold/50 focus:border-brand-gold outline-none py-0.5 w-48 transition-colors placeholder:text-brand-charcoal/30"
+                  className="mt-0.5 w-48 border-b border-brand-gold/50 bg-transparent py-0.5 text-base font-medium text-brand-charcoal outline-none transition-colors placeholder:text-brand-charcoal/30 focus:border-brand-gold"
                   autoFocus
                 />
               ) : (
-                <p className="text-brand-charcoal text-base font-medium mt-0.5 tracking-wide">
+                <p className="mt-0.5 text-base font-medium tracking-wide text-brand-charcoal">
                   {user.nickname || "未设置"}
                 </p>
               )}
@@ -189,39 +232,41 @@ export function ProfilePanel() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="p-2.5 rounded-full bg-brand-gold text-white hover:bg-brand-gold-dark transition-colors shadow-md shadow-brand-gold/30 disabled:opacity-50"
+                className="rounded-full bg-brand-gold p-2.5 text-white shadow-md shadow-brand-gold/30 transition-colors hover:bg-brand-gold-dark disabled:opacity-50"
               >
-                <Check className="w-[18px] h-[18px]" />
+                <Check className="h-[18px] w-[18px]" />
               </button>
               <button
                 onClick={() => {
                   setEditing(false);
                   setNickname(user.nickname || "");
                 }}
-                className="p-2.5 rounded-full bg-black/5 md:bg-white/20 text-brand-charcoal/60 hover:text-brand-charcoal hover:bg-black/10 md:hover:bg-white/40 border border-black/5 md:border-white/20 transition-colors"
+                className="rounded-full border border-black/5 bg-black/5 p-2.5 text-brand-charcoal/60 transition-colors hover:bg-black/10 hover:text-brand-charcoal md:border-white/20 md:bg-white/20 md:hover:bg-white/40"
               >
-                <X className="w-[18px] h-[18px]" />
+                <X className="h-[18px] w-[18px]" />
               </button>
             </div>
           ) : (
             <button
               onClick={() => setEditing(true)}
-              className="p-2.5 rounded-full text-brand-charcoal/40 hover:text-brand-gold hover:bg-black/5 md:hover:bg-white/40 transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
+              className="rounded-full p-2.5 text-brand-charcoal/40 opacity-100 transition-all hover:bg-black/5 hover:text-brand-gold group-hover:opacity-100 md:opacity-0 md:hover:bg-white/40"
             >
-              <Edit3 className="w-[18px] h-[18px]" />
+              <Edit3 className="h-[18px] w-[18px]" />
             </button>
           )}
         </div>
 
         {/* 手机号 */}
-        <div className="p-5 flex items-center justify-between group transition-colors hover:bg-black/[0.01] md:hover:bg-white/40">
+        <div className="group flex items-center justify-between p-5 transition-colors hover:bg-black/[0.01] md:hover:bg-white/40">
           <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-full bg-white/50 md:bg-white/20 flex items-center justify-center border border-black/5 md:border-white/20 text-brand-charcoal/60">
-              <Phone className="w-[18px] h-[18px]" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-black/5 bg-white/50 text-brand-charcoal/60 md:border-white/20 md:bg-white/20">
+              <Phone className="h-[18px] w-[18px]" />
             </div>
             <div>
-              <p className="text-brand-charcoal/50 text-[13px] font-medium tracking-wide">绑定手机号</p>
-              <p className="text-brand-charcoal text-base font-medium mt-0.5 tracking-wide">
+              <p className="text-[13px] font-medium tracking-wide text-brand-charcoal/50">
+                绑定手机号
+              </p>
+              <p className="mt-0.5 text-base font-medium tracking-wide text-brand-charcoal">
                 {user.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : "未绑定"}
               </p>
             </div>
