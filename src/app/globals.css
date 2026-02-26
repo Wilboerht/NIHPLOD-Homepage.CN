@@ -1354,7 +1354,13 @@
     inset 0 0 0 1px rgba(255, 255, 255, 1),
     inset 0 1px 2px 0 rgba(201, 168, 108, 0.15) !important;
   border: none !important;
-  padding: 24px 20px !important;
+  padding: 24px 20px 30px !important;
+}
+
+@media (max-width: 600px) {
+  .kinetic-cell-user-premium {
+    padding: 20px 16px 28px !important;
+  }
 }
 
 /* 简约头像光圈 - 灵动感 */

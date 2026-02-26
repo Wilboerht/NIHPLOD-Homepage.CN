@@ -214,7 +214,7 @@ export function KineticBackground() {
                                     <div className="text-brand-charcoal/40 text-[10px] sm:text-[11px] font-medium tracking-[0.2em] uppercase mb-0.5 hidden sm:block">
                                         欢迎回来
                                     </div>
-                                    <div className="text-brand-charcoal text-[16px] sm:text-lg font-bold tracking-tight">
+                                    <div className="text-brand-charcoal text-[16px] sm:text-lg font-bold tracking-tight hidden sm:block">
                                         {user.nickname || "尊贵会员"}
                                     </div>
                                 </div>
@@ -226,9 +226,9 @@ export function KineticBackground() {
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
-                                    className="w-full py-2 sm:py-3 rounded-xl btn-glassy-premium text-[11px] sm:text-xs tracking-[0.2em] font-bold transition-all duration-500 active:scale-[0.98] group flex items-center justify-center gap-2"
+                                    className="w-full py-2.5 sm:py-3 rounded-full sm:rounded-xl btn-glassy-premium btn-glimmer text-[13px] sm:text-sm tracking-[0.15em] font-bold transition-all duration-500 active:scale-[0.98] group flex items-center justify-center gap-2"
                                 >
-                                    <span>进入会员中心</span>
+                                    <span><span className="hidden sm:inline">进入</span>会员中心</span>
                                     <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
                                 </button>
                             </>
