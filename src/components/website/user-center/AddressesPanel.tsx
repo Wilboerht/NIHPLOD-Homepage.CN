@@ -71,7 +71,7 @@ export function AddressesPanel() {
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
       <div className="flex-shrink-0 px-6 md:px-10 pb-6">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-start gap-4 mb-2">
           <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">收货地址</h2>
           <button
             onClick={() => setShowForm(true)}
