@@ -92,14 +92,14 @@ export function OrdersPanel() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`relative flex-1 py-2.5 text-[15px] font-medium rounded-xl transition-all ${activeTab === tab.key
-                ? "text-brand-charcoal"
+                ? "text-[#8B7355]"
                 : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
                 }`}
             >
               {activeTab === tab.key && (
                 <m.div
                   layoutId="ordersTabActive"
-                  className="absolute inset-0 bg-white/90 md:bg-white shadow-sm md:shadow-md shadow-black/5 rounded-xl border border-black/[0.02]"
+                  className="absolute inset-0 bg-brand-gold/15 shadow-sm rounded-xl border border-brand-gold/30 backdrop-blur-md"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}

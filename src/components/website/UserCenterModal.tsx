@@ -129,14 +129,13 @@ export function UserCenterModal() {
                         <button
                           key={item.id}
                           onClick={() => setUserCenterView(item.id)}
-                          className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[15px] font-medium transition-all group ${isActive
-                            ? "bg-brand-gold text-white shadow-md shadow-brand-gold/20"
+                          className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[15px] font-medium transition-all group border border-transparent ${isActive
+                            ? "bg-brand-gold/15 text-[#8B7355] !border-brand-gold/30 backdrop-blur-md shadow-sm"
                             : "text-brand-charcoal md:text-brand-charcoal/80 hover:bg-black/5 md:hover:bg-white/40 hover:text-brand-charcoal"
                             }`}
                         >
-                          <Icon className={`w-[18px] h-[18px] ${isActive ? "text-white" : "transition-colors"}`} style={!isActive ? { color: "#666666" } : {}} />
+                          <Icon className={`w-[18px] h-[18px] ${isActive ? "text-[#8B7355]" : "transition-colors"}`} style={!isActive ? { color: "#666666" } : {}} />
                           <span className="tracking-wide">{item.label}</span>
-                          {isActive && <m.div layoutId="activeMenu" className="absolute left-0 w-1 h-8 rounded-r-md bg-white hidden md:block shadow-sm" />}
                           {isActive && <ChevronRight className="w-4 h-4 ml-auto opacity-70" />}
                         </button>
                       );
