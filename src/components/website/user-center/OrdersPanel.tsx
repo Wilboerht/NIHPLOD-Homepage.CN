@@ -121,7 +121,7 @@ export function OrdersPanel() {
             className="flex flex-col items-center justify-center py-24 text-center"
           >
             <div className="w-20 h-20 rounded-full bg-black/5 md:bg-white/30 backdrop-blur-md flex items-center justify-center mb-5 border border-black/5 md:border-white/40 shadow-inner">
-              <Package className="w-9 h-9 text-brand-charcoal/30" />
+              <Package className="w-9 h-9" style={{ color: "#B0B0B0" }} />
             </div>
             <p className="text-brand-charcoal/50 font-medium tracking-wide">暂无相关订单</p>
           </m.div>
@@ -166,7 +166,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package className="w-7 h-7 text-brand-charcoal/20" />
+              <Package className="w-7 h-7" style={{ color: "#BDBDBD" }} />
             </div>
           )}
         </div>
@@ -243,7 +243,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-7 h-7 text-brand-charcoal/20" />
+                      <Package className="w-7 h-7" style={{ color: "#BDBDBD" }} />
                     </div>
                   )}
                 </div>

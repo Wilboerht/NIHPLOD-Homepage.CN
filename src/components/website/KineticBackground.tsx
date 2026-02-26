@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
-import { User as UserIcon, ChevronRight } from "lucide-react";
+import { User as UserIcon, ChevronRight, LogOut } from "lucide-react";
 
 /**
  * Graphite Kinetic Grid 全局背景组件
@@ -19,7 +19,7 @@ import { User as UserIcon, ChevronRight } from "lucide-react";
 export function KineticBackground() {
     const containerRef = useRef<HTMLDivElement>(null);
     const cellsRef = useRef<HTMLDivElement[]>([]);
-    const { user, switchToLogin, openUserCenter } = useAuth();
+    const { user, logout, switchToLogin, openUserCenter } = useAuth();
 
     useEffect(() => {
         const container = containerRef.current;
@@ -169,32 +169,56 @@ export function KineticBackground() {
                 </div>
 
                 {/* Row 2, Col 4: 登录/CTA卡 */}
+                {/* Row 2, Col 4: 登录/CTA卡 */}
                 <div
                     ref={(el) => addCellRef(el, 5)}
-                    className={`kinetic-cell kinetic-login-cell kinetic-cell-login ${user ? "no-hover-effect" : ""}`}
+                    className={`kinetic-cell kinetic-login-cell kinetic-cell-login ${user ? "kinetic-cell-user-premium no-hover-effect" : ""}`}
                 >
                     <div className="kinetic-login-bg" />
                     <div className="kinetic-btn-group">
                         {user ? (
                             <>
-                                <div className="mb-2 sm:mb-4 flex flex-col items-center justify-center w-full">
-                                    <div className="relative h-14 w-14 sm:h-16 sm:w-16 mb-2 sm:mb-3 rounded-full overflow-hidden bg-brand-gold/10 flex items-center justify-center border sm:border-2 border-white shadow-sm sm:shadow-md">
-                                        {user.avatar ? (
-                                            <Image
-                                                src={user.avatar}
-                                                alt={user.nickname || "User"}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        ) : (
-                                            <UserIcon className="h-7 w-7 sm:h-8 sm:w-8 text-brand-gold" />
-                                        )}
+                                {/* 极简退出按钮 */}
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        logout();
+                                    }}
+                                    className="absolute -top-6 -right-2 btn-logout-minimal z-30"
+                                    title="退出登录"
+                                >
+                                    <LogOut className="h-4 w-4" strokeWidth={1.5} />
+                                </button>
+
+                                <div className="flex flex-col items-center justify-center w-full relative z-20 mb-3 sm:mb-4">
+                                    <div className="premium-avatar-ring mb-2 sm:mb-3">
+                                        <div className="relative h-14 w-14 sm:h-18 sm:w-18 rounded-full overflow-hidden bg-white premium-avatar-box border border-white/50">
+                                            {user.avatar ? (
+                                                <Image
+                                                    src={user.avatar}
+                                                    alt={user.nickname || "User"}
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                            ) : (
+                                                <div className="h-full w-full bg-brand-gold/5 flex items-center justify-center">
+                                                    <UserIcon className="h-7 w-7 sm:h-8 sm:w-8 text-brand-gold/20" strokeWidth={1.2} />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="text-brand-charcoal text-[13px] sm:text-lg font-bold leading-tight">欢迎回来 👋</div>
-                                    <div className="text-brand-charcoal/60 text-[10px] sm:text-sm mt-0.5 sm:mt-1 truncate px-2 font-serif">
-                                        {user.nickname || "尊贵的会员"}
+
+                                    <div className="user-premium-line" />
+
+                                    <div className="text-brand-charcoal/40 text-[10px] sm:text-[11px] font-medium tracking-[0.2em] uppercase mb-0.5">
+                                        欢迎回来
+                                    </div>
+                                    <div className="text-brand-charcoal text-[16px] sm:text-lg font-bold tracking-tight">
+                                        {user.nickname || "尊贵会员"}
                                     </div>
                                 </div>
+
                                 <button
                                     type="button"
                                     onClick={(e) => {
@@ -202,10 +226,10 @@ export function KineticBackground() {
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
-                                    className="group flex w-full items-center justify-center gap-1 sm:gap-2 rounded-xl bg-brand-gold px-3 py-2 sm:px-6 sm:py-3 text-[11px] sm:text-sm font-medium text-white transition-all duration-300 hover:bg-brand-gold-dark hover:shadow-lg hover:shadow-brand-gold/20"
+                                    className="w-full py-2 sm:py-3 rounded-xl btn-glassy-premium text-[11px] sm:text-xs tracking-[0.2em] font-bold transition-all duration-500 active:scale-[0.98] group flex items-center justify-center gap-2"
                                 >
                                     <span>进入会员中心</span>
-                                    <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                                    <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
                                 </button>
                             </>
                         ) : (

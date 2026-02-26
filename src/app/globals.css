@@ -1338,11 +1338,135 @@
   background: rgba(201, 168, 108, 0.4);
 }
 
+/* 登录卡片标题 */
 .kinetic-login-title {
   font-size: 1.8rem;
   font-weight: 800;
   margin-bottom: 24px;
   color: var(--kinetic-text-primary);
+}
+
+/* 尊贵会员卡片增强样式 - 更加细腻的质感 */
+.kinetic-cell-user-premium {
+  background: linear-gradient(145deg, #ffffff 0%, #fcfaf2 100%) !important;
+  box-shadow:
+    0 20px 50px -12px rgba(44, 44, 44, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 1),
+    inset 0 1px 2px 0 rgba(201, 168, 108, 0.15) !important;
+  border: none !important;
+  padding: 24px 20px !important;
+}
+
+/* 简约头像光圈 - 灵动感 */
+.premium-avatar-ring {
+  position: relative;
+  padding: 5px;
+  z-index: 1;
+}
+
+.premium-avatar-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px dashed rgba(201, 168, 108, 0.3);
+  animation: rotate-slow 15s linear infinite;
+}
+
+/* 到位：更深邃的头像投影 */
+.premium-avatar-box {
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.15),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 会员标识线 */
+.user-premium-line {
+  width: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #c9a86c, transparent);
+  margin: 6px 0;
+  opacity: 0.6;
+}
+
+/* 极简退出按钮增强 */
+.btn-logout-minimal {
+  color: rgba(44, 44, 44, 0.1);
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.4s ease;
+}
+
+.btn-logout-minimal:hover {
+  color: #c9a86c;
+  background: rgba(201, 168, 108, 0.05);
+  transform: rotate(90deg);
+}
+
+/* 按钮微动效 */
+.btn-glimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+/* 玻璃感按钮 - 延续首页 NEW 角标的奢侈品极简风格 */
+.btn-glassy-premium {
+  background-color: rgba(201, 168, 108, 0.1) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border: 0.5px solid rgba(139, 115, 85, 0.3) !important;
+  color: #8B7355 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-glassy-premium:hover {
+  background-color: rgba(201, 168, 108, 0.2) !important;
+  border-color: rgba(139, 115, 85, 0.5) !important;
+  color: #6d5a42 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* 按钮微动效 */
+.btn-glimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-glimmer::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent);
+  transform: rotate(45deg);
+  animation: glimmer-move 4s infinite linear;
+}
+
+@keyframes glimmer-move {
+  0% {
+    transform: translate(-100%, -100%) rotate(45deg);
+  }
+
+  100% {
+    transform: translate(100%, 100%) rotate(45deg);
+  }
 }
 
 .kinetic-btn-group {
@@ -1461,7 +1585,8 @@
   }
 
   .kinetic-login-cell {
-    padding: 12px;
+    padding: 18px 14px;
+    /* 移动端也增加一些呼吸感 */
   }
 
   .kinetic-btn {

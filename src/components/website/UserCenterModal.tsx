@@ -134,7 +134,7 @@ export function UserCenterModal() {
                             : "text-brand-charcoal md:text-brand-charcoal/80 hover:bg-black/5 md:hover:bg-white/40 hover:text-brand-charcoal"
                             }`}
                         >
-                          <Icon className={`w-[18px] h-[18px] ${isActive ? "text-white" : "text-brand-charcoal/60 group-hover:text-brand-charcoal/80 transition-colors"}`} />
+                          <Icon className={`w-[18px] h-[18px] ${isActive ? "text-white" : "transition-colors"}`} style={!isActive ? { color: "#666666" } : {}} />
                           <span className="tracking-wide">{item.label}</span>
                           {isActive && <m.div layoutId="activeMenu" className="absolute left-0 w-1 h-8 rounded-r-md bg-white hidden md:block shadow-sm" />}
                           {isActive && <ChevronRight className="w-4 h-4 ml-auto opacity-70" />}
