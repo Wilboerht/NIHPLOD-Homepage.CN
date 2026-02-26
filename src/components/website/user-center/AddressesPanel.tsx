@@ -75,7 +75,7 @@ export function AddressesPanel() {
           <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">收货地址</h2>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-brand-gold text-white rounded-xl text-sm font-bold tracking-wide shadow-lg shadow-brand-gold/20 hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="flex items-center gap-1.5 px-4 py-2 bg-brand-gold/15 text-[#8B7355] border border-brand-gold/30 backdrop-blur-md rounded-xl text-sm font-bold tracking-wide shadow-sm hover:bg-brand-gold/25 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Plus className="w-4 h-4" strokeWidth={3} />
             <span>新增地址</span>
@@ -126,7 +126,7 @@ export function AddressesPanel() {
                       <span className="text-brand-charcoal font-bold text-lg tracking-wide">{addr.name}</span>
                       <span className="text-brand-charcoal/60 font-mono font-medium">{addr.phone}</span>
                       {addr.isDefault && (
-                        <span className="px-2.5 py-0.5 bg-brand-gold text-white text-[12px] font-bold rounded-lg tracking-widest uppercase shadow-sm">
+                        <span className="px-2.5 py-0.5 bg-brand-gold/15 text-[#8B7355] text-[11px] font-bold rounded-lg tracking-widest uppercase border border-brand-gold/30 backdrop-blur-sm shadow-sm">
                           默认
                         </span>
                       )}

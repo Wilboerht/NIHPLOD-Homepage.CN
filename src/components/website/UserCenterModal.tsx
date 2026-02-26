@@ -129,14 +129,21 @@ export function UserCenterModal() {
                         <button
                           key={item.id}
                           onClick={() => setUserCenterView(item.id)}
-                          className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[15px] font-medium transition-all group border border-transparent ${isActive
-                            ? "bg-brand-gold/15 text-[#8B7355] !border-brand-gold/30 backdrop-blur-md shadow-sm"
+                          className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[15px] font-medium transition-all group ${isActive
+                            ? "text-[#8B7355]"
                             : "text-brand-charcoal md:text-brand-charcoal/80 hover:bg-black/5 md:hover:bg-white/40 hover:text-brand-charcoal"
                             }`}
                         >
-                          <Icon className={`w-[18px] h-[18px] ${isActive ? "text-[#8B7355]" : "transition-colors"}`} style={!isActive ? { color: "#666666" } : {}} />
-                          <span className="tracking-wide">{item.label}</span>
-                          {isActive && <ChevronRight className="w-4 h-4 ml-auto opacity-70" />}
+                          {isActive && (
+                            <m.div
+                              layoutId="activeSideMenu"
+                              className="absolute inset-0 bg-brand-gold/15 border border-brand-gold/30 backdrop-blur-md rounded-xl shadow-sm"
+                              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            />
+                          )}
+                          <Icon className={`relative z-10 w-[18px] h-[18px] ${isActive ? "text-[#8B7355]" : "transition-colors"}`} style={!isActive ? { color: "#666666" } : {}} />
+                          <span className="relative z-10 tracking-wide">{item.label}</span>
+                          {isActive && <ChevronRight className="relative z-10 w-4 h-4 ml-auto opacity-70" />}
                         </button>
                       );
                     })}
