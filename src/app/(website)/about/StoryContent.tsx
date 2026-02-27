@@ -180,32 +180,36 @@ export function StoryContent() {
                     </Link>
                   </header>
 
-                  {/* Navigation - Fixed below Header - Compact */}
-                  <nav className="flex h-9 shrink-0 items-center justify-center gap-6 border-b border-[#00263e]/5 bg-transparent px-2 relative z-40">
-                    {navItems.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setActiveSection(item.id)}
-                        className="relative h-full flex items-center"
-                      >
-                        <span
-                          className={cn(
-                            "text-[12px] font-medium transition-all duration-300",
-                            activeSection === item.id ? "text-[#00263e]" : "text-[#00263e]/40"
-                          )}
-                        >
-                          {item.label}
-                        </span>
-                        {activeSection === item.id && (
-                          <m.div
-                            layoutId="activeTabMobile"
-                            className="absolute bottom-[3px] left-0 right-0 h-px bg-[#00263e]"
-                          />
-                        )}
-                      </button>
-                    ))}
-                  </nav>
+                  {/* Navigation - Fixed below Header - Optimized Pill Style */}
+                  <div className="px-6 py-2 relative z-40 shrink-0">
+                    <nav className="flex h-10 items-center justify-between p-1 bg-[#00263e]/[0.03] rounded-full border border-[#00263e]/5 backdrop-blur-sm">
+                      {navItems.map((item) => {
+                        const isActive = activeSection === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setActiveSection(item.id)}
+                            className={cn(
+                              "relative flex-1 h-full flex items-center justify-center transition-colors duration-500",
+                              isActive ? "text-[#8B7355]" : "text-[#00263e]/40"
+                            )}
+                          >
+                            <span className="relative z-10 text-[11px] font-medium tracking-widest whitespace-nowrap">
+                              {item.label}
+                            </span>
+                            {isActive && (
+                              <m.div
+                                layoutId="activeTabMobilePill"
+                                className="absolute inset-0 bg-brand-gold/15 border border-[#8b7355]/30 backdrop-blur-[4px] rounded-full shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)]"
+                                transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </nav>
+                  </div>
 
                   {/* 移动端内容区域 - 垂直滚动 */}
                   {/* Main Content Area */}
