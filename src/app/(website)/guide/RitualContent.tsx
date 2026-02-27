@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ChevronDown, Clock, Info, ChevronLeft, ChevronRight, Sun, Home, ShoppingBag, MapPin, type LucideIcon } from "lucide-react";
+import { ChevronDown, Clock, Info, ChevronLeft, ChevronRight, Sun, Home, ShoppingBag, MapPin, SoapDispenserDroplet, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -377,7 +377,7 @@ const modules: ModuleConfig[] = [
     subtitle: "让身心重拾活力与平衡",
     description: "沉静式悦己体验",
     image: "/images/ritual-professional-cover.webp",
-    icon: MapPin
+    icon: SoapDispenserDroplet
   },
 ];
 
