@@ -195,7 +195,7 @@ export function StoryContent() {
                               isActive ? "text-[#8B7355]" : "text-[#00263e]/40"
                             )}
                           >
-                            <span className="relative z-10 text-[11px] font-medium tracking-widest whitespace-nowrap">
+                            <span className="relative z-10 text-[12px] font-medium tracking-widest whitespace-nowrap">
                               {item.label}
                             </span>
                             {isActive && (
