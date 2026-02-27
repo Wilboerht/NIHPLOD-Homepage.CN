@@ -710,7 +710,7 @@ const defaultModuleData: ModuleData = {
       totalDuration: "20-30分钟",
       products: "洁面、磨砂膏、护肤油、精华露、面霜、面膜",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
-      specialSupport: "孕期、月子期、轻医美术后",
+
       steps: [
         {
           title: "基础净肤",
@@ -746,7 +746,7 @@ const defaultModuleData: ModuleData = {
       totalDuration: "30-45分钟",
       products: "洁面、磨砂膏、护肤油、精华露、面霜、面膜、身体乳",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
-      specialSupport: "孕期、月子期、轻医美术后",
+
       steps: [
         {
           title: "基础净肤",
@@ -1530,7 +1530,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       className="object-cover z-0"
                                     />
                                     {/* 渐变遮罩 */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10 pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10 pointer-events-none" />
                                     {/* 文字内容 */}
                                     <div className="absolute bottom-0 left-0 w-full p-5 flex flex-col gap-3 z-20 pointer-events-none">
                                       <div className="flex items-baseline gap-2 text-white">
@@ -2211,7 +2211,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                             />
 
                                             {/* 渐变遮罩 - 底部黑色渐变 - 加强 */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-100 z-10 pointer-events-none" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-100 z-10 pointer-events-none" />
 
                                             {/* 文字内容 - 覆盖在图片上 */}
                                             <div className="absolute bottom-0 left-0 w-full p-6 flex flex-col gap-3 z-20">
