@@ -1190,7 +1190,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   <div className="mb-4">
                                     <module.icon className="w-8 h-8 text-[#8B7355]/40" strokeWidth={1.2} />
                                   </div>
-                                  <span className="text-[10px] font-serif text-[#8B7355]/60 mb-1">{module.number}</span>
                                   <span className="text-lg font-medium text-[#00263E] tracking-widest">{module.label}</span>
                                   <div className="mt-3 h-[1px] w-8 bg-[#8B7355]/20" />
                                 </div>
@@ -1784,11 +1783,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   <div className="mb-8 transition-transform duration-500 group-hover:scale-110">
                                     <module.icon className="w-12 h-12 text-[#D2C8BA] group-hover:text-[#B5A48F]" strokeWidth={1} />
                                   </div>
-
-                                  {/* 模块编号 */}
-                                  <span className="mb-4 font-serif text-xs tracking-[0.2em] text-[#8B7355]/60">
-                                    {module.number}
-                                  </span>
 
                                   {/* 标题 */}
                                   <h2 className="mb-4 font-display text-2xl font-light tracking-widest text-[#00263e] lg:text-3xl">
