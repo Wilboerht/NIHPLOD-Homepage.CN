@@ -4,7 +4,7 @@ import React from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
-import { Menu, X, Home, BookOpen, HelpCircle } from "lucide-react";
+import { Menu, X, Home, BookOpen, HelpCircle, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
@@ -53,18 +53,11 @@ const CustomAboutIcon = ({ className }: { className?: string }) => (
  * 自定义 "探索产品" SVG 图标占位符
  * TODO: 请在此替换为您自己的 SVG <path> 等内容
  */
-const CustomProductsIcon = ({ className }: { className?: string }) => (
-    <svg className={className} fill="currentColor" id="_图层_2" data-name="图层 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 333.13 342.92">
-        <g id="_图层_1-2" data-name="图层 1">
-            <path d="M280.57,127.22c30.23,4.59,26.53,32.71,26.23,56.16,13.42,1.69,23.68,11.82,25.33,25.24-1.98,30.41,3.01,64.95,0,94.88-2,19.88-18.51,37.13-38.51,39.42H39.33c-20.65-2.45-37.08-20.21-38.63-40.79-2.24-29.7,1.75-62.14,0-92.13,1.12-14.15,11.39-24.74,25.45-26.62-.11-22.05-4.22-51.55,24.82-55.32-.06-24.81,4.82-60.19,29.72-72.51,20.42-10.1,61.24,2.03,71.9-25.55,3.5-9.05-.82-21.2,5.71-27.24,6.13-5.67,18.71-1.18,25.82,1.04,55.84,17.43,93.96,64.47,96.45,123.43ZM256.48,127.32c-3-46.51-32.83-84.85-76.91-99.56-2.25,0-1.82,3.38-2.37,5.1-9.81,30.77-35.24,39.34-65.1,42.06-11.45,1.05-19.07-2.22-27.24,8.74-3.97,5.33-9.13,20.34-9.13,26.82v16.84h180.75ZM282.73,183.46v-27.32c0-.42-1.35-2.98-1.83-3.41-3.41-3.01-8.63-.56-12.04-.65-70.05-1.7-140.81-.55-210.75-.88-3.04-.01-7.88,1.23-7.88,4.93v27.32h232.5ZM28.27,207.57c-2.33.53-3.47,2.36-3.55,4.69,1.87,28.03-2.46,59.18.03,86.83.95,10.64,7.31,18.78,18.33,19.88l247.54-.03c11.11-1.67,16.8-9.77,17.65-20.56,2.16-27.45-1.7-57.65,0-85.39.08-2.21-.71-4.51-2.99-5.25l-277.01-.17Z" />
-            <path d="M131.03,251.74l70.28-.12c13.34,3.99,11.91,21.33-1.52,23.84-20.65-1.87-46.59,2.75-66.62,0-13.02-1.79-14.96-19.59-2.14-23.72Z" />
-        </g>
-    </svg>
-);
+
 
 const allNavItems: NavItem[] = [
 
-    { href: "/products", label: "探索产品", labelEn: "Products", icon: CustomProductsIcon },
+    { href: "/products", label: "探索产品", labelEn: "Products", icon: ShoppingBag },
     { href: "/guide", label: "官方指南", labelEn: "Guide", icon: BookOpen },
     { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: HelpCircle },
     { href: "/about", label: "关于旎柏", labelEn: "About", icon: CustomAboutIcon },
@@ -152,7 +145,7 @@ export function BottomNavBar() {
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
                                             <Icon className={cn(
                                                 "h-5 w-5 text-brand-gold",
-                                                (item.href === "/about" || item.href === "/products") && "scale-[0.85]"
+                                                item.href === "/about" && "scale-[0.85]"
                                             )} />
                                         </div>
                                         <div className="flex flex-col">
@@ -203,7 +196,7 @@ export function BottomNavBar() {
                                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10">
                                     <PrimaryIcon className={cn(
                                         "h-6 w-6 text-brand-gold",
-                                        (primaryNav.href === "/about" || primaryNav.href === "/products") && "scale-[0.85]"
+                                        primaryNav.href === "/about" && "scale-[0.85]"
                                     )} />
                                 </div>
                                 {/* 文字 */}
@@ -307,7 +300,7 @@ export function BottomNavBar() {
                                                 <Icon className={cn(
                                                     "h-8 w-8 text-[#C3BC9F] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:text-brand-gold",
                                                     // 自定义图标通常占位更满，稍微缩小一点点以在高视觉重量下保持平衡
-                                                    (item.href === "/about" || item.href === "/products") && "scale-[0.85]"
+                                                    item.href === "/about" && "scale-[0.85]"
                                                 )} />
                                                 <span>
                                                     {item.label}
