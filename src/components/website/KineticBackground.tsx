@@ -191,9 +191,9 @@ export function KineticBackground() {
                                     <LogOut className="h-4 w-4" strokeWidth={1.5} />
                                 </button>
 
-                                <div className="flex flex-col items-center justify-center w-full relative z-20 mb-2 sm:mb-4">
-                                    <div className="premium-avatar-ring mb-1 sm:mb-3">
-                                        <div className="relative h-14 w-14 sm:h-18 sm:w-18 rounded-full overflow-hidden bg-white premium-avatar-box border border-white/50">
+                                <div className="flex flex-col items-center justify-center w-full relative z-20 mb-0 sm:mb-4">
+                                    <div className="premium-avatar-ring mb-0 sm:mb-3">
+                                        <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-full overflow-hidden bg-white premium-avatar-box border border-white/50">
                                             {user.avatar ? (
                                                 <Image
                                                     src={user.avatar}
@@ -226,7 +226,7 @@ export function KineticBackground() {
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
-                                    className="w-full py-2.5 sm:py-3 rounded-full sm:rounded-xl btn-glassy-premium btn-glimmer text-[13px] sm:text-sm tracking-[0.15em] font-bold transition-all duration-500 active:scale-[0.98] group flex items-center justify-center gap-2"
+                                    className="w-full py-1.5 sm:py-3 rounded-full sm:rounded-xl btn-glassy-premium btn-glimmer text-[11px] sm:text-sm tracking-[0.15em] font-bold transition-all duration-500 active:scale-[0.98] group flex items-center justify-center gap-1.5 sm:gap-2"
                                 >
                                     <span><span className="hidden sm:inline">进入</span>会员中心</span>
                                     <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
@@ -234,7 +234,7 @@ export function KineticBackground() {
                             </>
                         ) : (
                             <>
-                                <div className="mb-3 sm:mb-5 flex flex-col items-center justify-center w-full group/avatar mt-2 sm:mt-0">
+                                <div className="mb-0 sm:mb-5 flex flex-col items-center justify-center w-full group/avatar mt-2 sm:mt-0">
                                     <div className="relative h-16 w-16 sm:h-24 sm:w-24 flex items-center justify-center">
                                         {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
                                         <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />

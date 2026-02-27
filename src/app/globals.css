@@ -1549,6 +1549,7 @@
   .kinetic-cell {
     padding: 16px;
     border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
   }
 
   .kinetic-cell-skin {
@@ -1591,13 +1592,17 @@
   }
 
   .kinetic-login-cell {
-    padding: 18px 14px;
+    padding: 12px 14px;
     /* 移动端也增加一些呼吸感 */
   }
 
   .kinetic-btn {
     padding: 10px 16px;
     font-size: 14px;
+  }
+
+  .kinetic-btn-group {
+    gap: 8px;
   }
 
   /* 移动端禁用 hover 阴影效果 */
