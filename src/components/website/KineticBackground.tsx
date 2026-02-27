@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
-import { User as UserIcon, ChevronRight, LogOut } from "lucide-react";
+import { BookUser, ChevronRight, LogOut } from "lucide-react";
 
 /**
  * Graphite Kinetic Grid 全局背景组件
@@ -203,7 +203,7 @@ export function KineticBackground() {
                                                 />
                                             ) : (
                                                 <div className="h-full w-full bg-brand-gold/5 flex items-center justify-center">
-                                                    <UserIcon className="h-7 w-7 sm:h-8 sm:w-8 text-brand-gold/20" strokeWidth={1.2} />
+                                                    <BookUser className="h-7 w-7 sm:h-8 sm:w-8 text-brand-gold/20" strokeWidth={1.2} />
                                                 </div>
                                             )}
                                         </div>
@@ -242,7 +242,7 @@ export function KineticBackground() {
 
                                         {/* 主图标容器 - 极简白润质感 */}
                                         <div className="relative h-12 w-12 sm:h-20 sm:w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500">
-                                            <UserIcon className="h-6 w-6 sm:h-9 sm:w-9 text-brand-charcoal/50" strokeWidth={1.2} />
+                                            <BookUser className="h-6 w-6 sm:h-9 sm:w-9 text-brand-charcoal/50" strokeWidth={1.2} />
                                         </div>
                                     </div>
                                 </div>

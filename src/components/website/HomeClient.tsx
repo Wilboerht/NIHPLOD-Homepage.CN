@@ -329,9 +329,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     <h1 className="title text-base sm:text-xl lg:text-2xl font-light leading-[2] tracking-[0.2em] text-brand-charcoal">
                       {[
                         "海豚的肌肤，拥有每两小时",
-                        "自我更新的神奇能力",
+                        "自我更新的神奇能力，",
                         "这种「逆转时光」的动物本能，",
-                        "是我们灵感的来源"
+                        "是我们灵感的来源。"
                       ].map((line, i) => (
                         <m.span
                           key={i}
