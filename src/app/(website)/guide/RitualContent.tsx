@@ -1350,41 +1350,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 </div>
                               </div>
 
-                              {/* 核心优势标签 */}
-                              <div className="flex flex-wrap justify-center gap-2.5 mb-5 px-4 w-full">
-                                {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
-                                  <div key={tag} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#8B7355]/5 rounded-full border border-[#8B7355]/10">
-                                    <span className="text-[9px] text-[#8B7355]/60">✦</span>
-                                    <span className="text-[12px] tracking-widest text-[#00263E]/70 font-light">
-                                      {tag}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
 
-                              {/* 特殊时期支持 */}
-                              {selectedScheme.specialSupport && (
-                                <div className="mb-8 w-full px-6 flex justify-center">
-                                  {(() => {
-                                    const supportText = selectedSubPlan?.specialSupport || selectedScheme.specialSupport || "孕期、月子期、轻医美术后";
-                                    const isRestricted = supportText.includes("不支持");
-                                    return (
-                                      <div className={cn(
-                                        "px-5 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm shadow-sm inline-flex items-center gap-2",
-                                        isRestricted ? "border-orange-900/10" : "border-[#8B7355]/10"
-                                      )}>
-                                        <Info className={cn("w-3.5 h-3.5", isRestricted ? "text-orange-900/40" : "text-[#8B7355]/40")} />
-                                        <span className={cn(
-                                          "text-[11px] tracking-widest font-light",
-                                          isRestricted ? "text-orange-900/70" : "text-[#00263E]/60"
-                                        )}>
-                                          {supportText}
-                                        </span>
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              )}
 
                               {/* 涉及产品 - 横向滑动卡片 */}
                               <div className="w-full mb-2">
@@ -1624,12 +1590,49 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           <div className="mt-12 pb-10 flex flex-col items-center text-center">
                             <div className="h-px w-12 bg-[#8B7355]/20 mb-10" />
                             {selectedModule !== 'portable' && (
-                              <div className="flex flex-col items-center gap-8 mb-12">
+                              <div className="flex flex-col items-center gap-8 mb-4">
+                                {/* 核心优势标签 (Moved from above) */}
+                                <div className="flex flex-wrap justify-center gap-2.5 px-4 w-full">
+                                  {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
+                                    <div key={tag} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#8B7355]/5 rounded-full border border-[#8B7355]/10">
+                                      <span className="text-[9px] text-[#8B7355]/60">✦</span>
+                                      <span className="text-[12px] tracking-widest text-[#00263E]/70 font-light">
+                                        {tag}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* 特殊时期支持 (Moved from above) */}
+                                {selectedScheme.specialSupport && (
+                                  <div className="w-full px-6 flex justify-center">
+                                    {(() => {
+                                      const supportText = selectedSubPlan?.specialSupport || selectedScheme.specialSupport || "孕期、月子期、轻医美术后";
+                                      const isRestricted = supportText.includes("不支持");
+                                      return (
+                                        <div className={cn(
+                                          "px-5 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm shadow-sm inline-flex items-center gap-2",
+                                          isRestricted ? "border-orange-900/10" : "border-[#8B7355]/10"
+                                        )}>
+                                          <Info className={cn("w-3.5 h-3.5", isRestricted ? "text-orange-900/40" : "text-[#8B7355]/40")} />
+                                          <span className={cn(
+                                            "text-[11px] tracking-widest font-light",
+                                            isRestricted ? "text-orange-900/70" : "text-[#00263E]/60"
+                                          )}>
+                                            {supportText}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+
                                 {/* Quote */}
                                 <p className="text-sm text-[#8B7355] font-light opacity-70">
                                   “ 每一次护理，都是对身心的温柔洗礼。”
                                 </p>
-                                {/* Certifications (moved from sidebar) */}
+
+                                {/* Certifications (Quality Endorsement) */}
                                 <div className="flex flex-col items-center gap-3">
                                   <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">品质背书</span>
                                   <div className="flex items-center gap-6 opacity-60 mix-blend-multiply">
@@ -1648,11 +1651,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 } else {
                                   setProductDrawerOpen(true);
                                   setSelectedModule(null);
+                                  setSelectedScheme(null);
                                   setCurrentLevel(1);
                                 }
                               }}
                               className={cn(
-                                "px-12 py-3 rounded-full text-xs font-medium tracking-[0.2em] transition-all duration-500",
+                                "mt-4 w-full max-w-[280px] rounded-full py-4 text-xs font-medium tracking-[0.2em] transition-all",
                                 selectedModule === 'portable'
                                   ? "bg-transparent text-[#00263E] border border-[#00263E]/20 active:bg-[#00263E]/5"
                                   : "border border-[#00263E]/20 text-[#00263E] active:bg-[#00263E] active:text-white active:border-[#00263E]"
