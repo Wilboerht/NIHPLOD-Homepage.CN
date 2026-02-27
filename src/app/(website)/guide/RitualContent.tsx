@@ -1609,9 +1609,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   </div>
 
                                   {/* 文本描述区 */}
-                                  <div className="px-3 text-center">
-                                    <h4 className="text-xl font-medium text-[#00263E] mb-3 tracking-wide">{step.title}</h4>
-                                    <p className="text-[14px] font-light text-[#00263E]/60 leading-[1.8]">
+                                  <div className="px-3">
+                                    <h4 className="text-xl font-medium text-[#00263E] mb-3 tracking-wide text-center">{step.title}</h4>
+                                    <p className="text-[14px] font-light text-[#00263E]/60 leading-[1.8] text-left">
                                       {step.description}
                                     </p>
                                   </div>
@@ -2343,11 +2343,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                               </div>
 
                                               {/* 文字区域 */}
-                                              <div className="flex flex-1 flex-col items-center text-center">
-                                                <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap">
+                                              <div className="flex flex-1 flex-col items-center">
+                                                <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap text-center">
                                                   {step.title}
                                                 </h2>
-                                                <p className="text-sm leading-relaxed text-brand-charcoal/70">
+                                                <p className="text-sm leading-relaxed text-brand-charcoal/70 text-left">
                                                   {step.description}
                                                 </p>
                                               </div>
@@ -2411,11 +2411,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                     </div>
 
                                                     {/* 文字区域 */}
-                                                    <div className="flex flex-1 flex-col items-center text-center">
-                                                      <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap">
+                                                    <div className="flex flex-1 flex-col items-center">
+                                                      <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap text-center">
                                                         {step.title}
                                                       </h2>
-                                                      <p className="text-sm leading-relaxed text-brand-charcoal/70">
+                                                      <p className="text-sm leading-relaxed text-brand-charcoal/70 text-left">
                                                         {step.description}
                                                       </p>
 

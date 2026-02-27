@@ -308,28 +308,11 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     />
                   </section>
 
-                  {/* Icon */}
-                  <section className="mb-8">
-                    <div className="flex gap-6">
-                      <div className="flex flex-col items-center gap-2 text-[#00263E]">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                          <path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 19.07-1.41-1.41" /><path d="M12 20v2" /><path d="m6.34 17.66-1.41 1.41" /><path d="M2 12h2" /><path d="m7.76 7.76-1.41-1.41" /><circle cx="12" cy="12" r="4" />
-                        </svg>
-                        <span className="text-[12px] tracking-wide">日间</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-2 text-[#00263E]">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                        </svg>
-                        <span className="text-[12px] tracking-wide">夜间</span>
-                      </div>
-                    </div>
-                  </section>
 
                   {/* 小红书链接 */}
                   <section className="mb-8">
                     <a
-                      href={`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(`NIHPLOD ${product.name}`)}`}
+                      href={`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(`nihplod ${product.category.name}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group inline-flex items-center gap-2 text-[14px] text-[#00263E] transition-opacity hover:opacity-70"
