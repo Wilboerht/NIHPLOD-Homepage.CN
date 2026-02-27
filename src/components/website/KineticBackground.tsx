@@ -172,7 +172,8 @@ export function KineticBackground() {
                 {/* Row 2, Col 4: 登录/CTA卡 */}
                 <div
                     ref={(el) => addCellRef(el, 5)}
-                    className={`kinetic-cell kinetic-login-cell kinetic-cell-login ${user ? "kinetic-cell-user-premium no-hover-effect" : ""}`}
+                    onClick={!user ? handleLoginClick : undefined}
+                    className={`kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect ${user ? "kinetic-cell-user-premium" : "cursor-pointer"}`}
                 >
                     <div className="kinetic-login-bg" />
                     <div className="kinetic-btn-group">

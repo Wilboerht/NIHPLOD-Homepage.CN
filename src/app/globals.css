@@ -1605,10 +1605,13 @@
     gap: 8px;
   }
 
-  /* 移动端禁用 hover 阴影效果 */
-  .kinetic-cell:hover {
+  /* 移动端彻底禁用所有卡片的悬浮/点击位移和偏移白边 */
+  .kinetic-cell:hover,
+  .kinetic-cell:active,
+  .kinetic-login-cell:not(.no-hover-effect):hover,
+  .kinetic-login-cell:not(.no-hover-effect):active {
     transform: none !important;
-    box-shadow: none;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
   }
 }
 
