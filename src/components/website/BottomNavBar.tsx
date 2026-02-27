@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, Home, BookOpen, HelpCircle, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 /* 
  * 备选图标导入 (随时可以换回原有的自定义 SVG 图标)
@@ -74,6 +75,7 @@ const allNavItems: NavItem[] = [
 export function BottomNavBar() {
     const pathname = usePathname();
     const { isDrawerOpen, setDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
+    const { activeModal, userCenterOpen } = useAuth();
 
     // 简单映射 pathname 到 currentPage，仅用于高亮和主导航判定
     // 如果路径是嵌套的（如 /products/123），可能需要 startsWith 逻辑
@@ -102,9 +104,8 @@ export function BottomNavBar() {
 
     const PrimaryIcon = primaryNav.icon;
 
-    // 当抽屉展开时 (isDrawerOpen === true)，隐藏导航栏
-    // 也就是 !isDrawerOpen 时显示
-    const isVisible = !isDrawerOpen;
+    // 当抽屉展开、登录弹窗或用户中心面板激活时，隐藏导航栏
+    const isVisible = !isDrawerOpen && !activeModal && !userCenterOpen;
 
     return (
         <>
