@@ -1265,9 +1265,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           exit={{ opacity: 0, y: 10 }}
                           className="flex flex-col py-2"
                         >
-                          {/* Tabs for portable and others if subplans exist */}
-                          <div className="w-full flex justify-center mb-8">
-                            <div className="relative flex items-center p-1 bg-[#00263E]/5 rounded-full">
+                          {/* Level 3: Mobile Scheme Switcher Tabs (Only for Professional/Spa/Portable) */}
+                          <div className="relative mb-10 flex flex-col items-center px-6 w-full max-w-[400px]">
+                            <div className="flex w-full h-10 items-center justify-between p-1 bg-[#00263e]/[0.03] rounded-full border border-[#00263e]/5 backdrop-blur-sm">
                               <LayoutGroup id={`mobile-tab-${selectedModule}`}>
                                 {/* 1. subPlans existing condition (such as daily) */}
                                 {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
@@ -1281,19 +1281,19 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           setCurrentStepIndex(0);
                                         }}
                                         className={cn(
-                                          "relative px-4 py-1.5 text-[13px] font-medium tracking-widest whitespace-nowrap transition-colors duration-300 rounded-full",
+                                          "relative flex-1 h-full flex items-center justify-center transition-colors duration-500 rounded-full",
                                           isActive
-                                            ? "text-[#00263E]"
-                                            : "text-[#00263E]/50 hover:text-[#00263E]/80"
+                                            ? "text-[#8B7355]"
+                                            : "text-[#00263E]/40"
                                         )}
                                       >
-                                        <span className="relative z-10">{subPlan.name}</span>
+                                        <span className="relative z-10 text-[12px] font-medium tracking-widest whitespace-nowrap">{subPlan.name}</span>
                                         {isActive && (
                                           <m.div
                                             layoutId={`active-mobile-tab-${selectedModule}`}
-                                            className="absolute inset-0 bg-white rounded-full shadow-[0_2px_8px_-2px_rgba(0,38,62,0.1)]"
+                                            className="absolute inset-0 bg-brand-gold/15 border border-[#8b7355]/30 backdrop-blur-[4px] rounded-full shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)]"
                                             initial={false}
-                                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                            transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
                                           />
                                         )}
                                       </button>
@@ -1309,19 +1309,19 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           key={scheme.id}
                                           onClick={() => selectScheme(scheme)}
                                           className={cn(
-                                            "relative px-4 py-1.5 text-[13px] font-medium tracking-widest whitespace-nowrap transition-colors duration-300 rounded-full",
+                                            "relative flex-1 h-full flex items-center justify-center transition-colors duration-500 rounded-full",
                                             isActive
-                                              ? "text-[#00263E]"
-                                              : "text-[#00263E]/50 hover:text-[#00263E]/80"
+                                              ? "text-[#8B7355]"
+                                              : "text-[#00263E]/40"
                                           )}
                                         >
-                                          <span className="relative z-10">{scheme.name}</span>
+                                          <span className="relative z-10 text-[12px] font-medium tracking-widest whitespace-nowrap">{scheme.name}</span>
                                           {isActive && (
                                             <m.div
                                               layoutId={`active-mobile-tab-${selectedModule}`}
-                                              className="absolute inset-0 bg-white rounded-full shadow-[0_2px_8px_-2px_rgba(0,38,62,0.1)]"
+                                              className="absolute inset-0 bg-brand-gold/15 border border-[#8b7355]/30 backdrop-blur-[4px] rounded-full shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)]"
                                               initial={false}
-                                              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                              transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
                                             />
                                           )}
                                         </button>
@@ -1337,7 +1337,48 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             <div className="mb-10 flex flex-col items-center">
                               <div className="text-center mb-6">
                                 <h2 className="text-3xl font-medium text-[#00263E] tracking-widest">{selectedScheme.name}</h2>
-                                <div className="mt-5 flex items-center justify-center gap-6">
+
+                                {/* 涉及产品 - 横向滑动卡片 (Moved here) */}
+                                <div className="w-full mt-6 mb-2">
+                                  <div className="flex items-center justify-center gap-3 mb-4">
+                                    <div className="h-px w-8 bg-[#00263E]/10" />
+                                    <span className="text-[11px] uppercase font-medium tracking-[0.2em] text-[#00263E]/40">涉及产品</span>
+                                    <div className="h-px w-8 bg-[#00263E]/10" />
+                                  </div>
+                                  <div className="w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-6">
+                                    <div className="flex gap-4 min-w-max pb-2">
+                                      {currentProducts.split("、").map((product, index) => {
+                                        const isOptional = product.includes("(可选)");
+                                        const cleanName = product.replace("(可选)", "").trim();
+
+                                        return (
+                                          <button
+                                            key={product}
+                                            type="button"
+                                            onClick={() => handleProductClick(cleanName)}
+                                            className="flex flex-col items-center gap-2"
+                                          >
+                                            <div className="w-14 h-14 rounded-xl bg-white shadow-[0_2px_8px_-2px_rgba(0,38,62,0.06)] flex items-center justify-center border border-[#00263E]/5 transition-transform active:scale-95">
+                                              <div className="w-10 h-10 flex items-center justify-center">
+                                                {getProductIcon(cleanName, "mobile") || DEFAULT_ICONS[index % DEFAULT_ICONS.length]}
+                                              </div>
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                              <span className="text-[11px] font-medium tracking-widest text-[#00263E]/70 whitespace-nowrap">
+                                                {cleanName}
+                                              </span>
+                                              {isOptional && (
+                                                <span className="text-[9px] text-[#00263E]/40 tracking-wider">可选</span>
+                                              )}
+                                            </div>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-8 flex items-center justify-center gap-6">
                                   <div className="flex flex-col items-center">
                                     <span className="text-[10px] uppercase tracking-widest text-[#8B7355]/60 mb-1">预计时长</span>
                                     <span className="text-[14px] font-medium text-[#00263E]">{selectedScheme.totalDuration?.replace("min", "分钟") || "15-20 分钟"}</span>
@@ -1352,45 +1393,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
 
 
-                              {/* 涉及产品 - 横向滑动卡片 */}
-                              <div className="w-full mb-2">
-                                <div className="flex items-center justify-center gap-3 mb-4">
-                                  <div className="h-px w-8 bg-[#00263E]/10" />
-                                  <span className="text-[11px] uppercase font-medium tracking-[0.2em] text-[#00263E]/40">涉及产品</span>
-                                  <div className="h-px w-8 bg-[#00263E]/10" />
-                                </div>
-                                <div className="w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-6">
-                                  <div className="flex gap-4 min-w-max pb-2">
-                                    {currentProducts.split("、").map((product, index) => {
-                                      const isOptional = product.includes("(可选)");
-                                      const cleanName = product.replace("(可选)", "").trim();
 
-                                      return (
-                                        <button
-                                          key={product}
-                                          type="button"
-                                          onClick={() => handleProductClick(cleanName)}
-                                          className="flex flex-col items-center gap-2"
-                                        >
-                                          <div className="w-14 h-14 rounded-xl bg-white shadow-[0_2px_8px_-2px_rgba(0,38,62,0.06)] flex items-center justify-center border border-[#00263E]/5 transition-transform active:scale-95">
-                                            <div className="w-10 h-10 flex items-center justify-center">
-                                              {getProductIcon(cleanName, "mobile") || DEFAULT_ICONS[index % DEFAULT_ICONS.length]}
-                                            </div>
-                                          </div>
-                                          <div className="flex flex-col items-center">
-                                            <span className="text-[11px] font-medium tracking-widest text-[#00263E]/70 whitespace-nowrap">
-                                              {cleanName}
-                                            </span>
-                                            {isOptional && (
-                                              <span className="text-[9px] text-[#00263E]/40 tracking-wider">可选</span>
-                                            )}
-                                          </div>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              </div>
                             </div>
                           ) : (
                             <div className="mb-4">
@@ -1656,13 +1659,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 }
                               }}
                               className={cn(
-                                "mt-4 w-full max-w-[280px] rounded-full py-4 text-xs font-medium tracking-[0.2em] transition-all",
-                                selectedModule === 'portable'
-                                  ? "bg-transparent text-[#00263E] border border-[#00263E]/20 active:bg-[#00263E]/5"
-                                  : "border border-[#00263E]/20 text-[#00263E] active:bg-[#00263E] active:text-white active:border-[#00263E]"
+                                "mt-8 w-full max-w-[280px] rounded-full py-4 text-[13px] font-medium tracking-[0.2em] transition-all duration-300",
+                                "bg-brand-gold/15 border border-[#8b7355]/30 text-[#8B7355] backdrop-blur-[4px] shadow-[0_4px_15px_-3px_rgba(139,115,85,0.1)]",
+                                "active:scale-[0.97] active:bg-brand-gold/25"
                               )}
                             >
-                              {selectedModule === 'portable' ? '返回首页' : '结束仪式'}
+                              <div className="flex items-center justify-center gap-1.5 -ml-1">
+                                <ChevronLeft className="w-4 h-4" strokeWidth={2.5} />
+                                <span>返回</span>
+                              </div>
                             </button>
                           </div>
                         </m.div>
