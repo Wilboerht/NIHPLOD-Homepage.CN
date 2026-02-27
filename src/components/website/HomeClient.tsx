@@ -420,12 +420,12 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       <p className="text-[10px] sm:text-[11px] font-light tracking-widest text-brand-charcoal relative z-10">
                         &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                       </p>
-                      <div className="flex flex-col sm:flex-row justify-center items-center gap-x-4 gap-y-2 sm:gap-y-1 text-[9px] sm:text-[10px] font-light tracking-widest text-brand-charcoal">
+                      <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 text-[9px] sm:text-[10px] font-light tracking-widest text-brand-charcoal">
                         <Link href="https://beian.miit.gov.cn/" target="_blank" className="hover:text-brand-gold transition-colors">
                           沪ICP备2024043916号-1
                         </Link>
-                        <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="hover:text-brand-gold transition-colors">
-                          沪公网安备 31011502019404号
+                        <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="hover:text-brand-gold transition-colors flex items-center gap-1">
+                          <span>沪公网安备 31011502019404号</span>
                         </Link>
                       </div>
                     </div>
