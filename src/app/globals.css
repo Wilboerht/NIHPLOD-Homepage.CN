@@ -1552,13 +1552,13 @@
   }
 
   .kinetic-cell-skin {
-    order: 2;
+    order: 3;
     grid-column: span 2;
     aspect-ratio: 2.1 / 1 !important;
   }
 
   .kinetic-cell-less {
-    order: 1;
+    order: 4;
     grid-column: span 2 !important;
     aspect-ratio: 2.1 / 1 !important;
   }
@@ -1572,14 +1572,14 @@
   }
 
   .kinetic-cell-boxes {
-    order: 3;
+    order: 1;
     grid-row: span 1;
     grid-column: span 1;
     aspect-ratio: 1 / 1 !important;
   }
 
   .kinetic-cell-login {
-    order: 4;
+    order: 2;
     grid-column: span 1;
     aspect-ratio: 1 / 1;
   }
