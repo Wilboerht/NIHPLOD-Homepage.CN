@@ -157,7 +157,7 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
           <div className="h-px w-4 bg-current opacity-40" />
           <div className="h-px w-2 bg-current opacity-40 ml-auto" />
         </div>
-        <span>查看咨询</span>
+        <span>查看资讯</span>
       </m.button>
     </div>
   );
