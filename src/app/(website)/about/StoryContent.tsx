@@ -19,6 +19,18 @@ const navItems: { id: SectionId; label: string }[] = [
   { id: "awards", label: "媒体及获奖" },
 ];
 
+const Watermark = () => (
+  <div
+    className="absolute inset-0 z-0 pointer-events-none opacity-[0.035] select-none"
+    style={{
+      backgroundImage: 'url(/images/watermark.webp)',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '160% auto', // 为了更好地匹配内容，轻微调小尺寸
+    }}
+  />
+);
+
 const AWARDS_DATA = [
   { year: "2026", org: "胡润百富", title: "国际高端护肤品牌最佳表现", image: "/images/story/award-1.webp" },
   { year: "2025", org: "亚洲女性友好品牌", title: "时空逆转成就奖", image: "/images/story/award-2.webp" },
@@ -112,6 +124,21 @@ export function StoryContent() {
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0" />
 
+              {/* 品牌故事和公司使命的水印背景 - 放置在此处可贯穿整个面板，不被上下导航遮挡 */}
+              <AnimatePresence>
+                {(activeSection === "story" || activeSection === "mission") && (
+                  <m.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
+                  >
+                    <Watermark />
+                  </m.div>
+                )}
+              </AnimatePresence>
+
               {/* 建筑风格装饰线条 - 渐变淡出 + 绘制动画 + 呼吸脉动 - 仅桌面端显示 */}
               <AnimatePresence>
                 {isExpanded && (
@@ -192,7 +219,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="pt-10 pb-10"
+                          className="relative pt-10 pb-10"
                         >
                           <div className="flex justify-center mb-10">
                             <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
@@ -252,7 +279,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="pt-10 pb-10"
+                          className="relative pt-10 pb-10"
                         >
                           <div className="flex justify-center mb-10">
                             <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
@@ -479,7 +506,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="grid h-full grid-cols-1 items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12 xl:gap-16"
+                          className="relative grid h-full grid-cols-1 items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12 xl:gap-16"
                         >
                           {/* 左侧图片区域 */}
                           <div className="relative flex h-full flex-col justify-center gap-4">
@@ -526,7 +553,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="flex h-full items-center justify-center -mt-4 lg:-mt-8"
+                          className="relative flex h-full items-center justify-center -mt-4 lg:-mt-8"
                         >
                           <div className="relative flex w-full max-w-[1000px] items-center">
                             {/* 左侧大图 - 基准高度 580px */}
