@@ -126,7 +126,7 @@ export function StoryContent() {
 
               {/* 品牌故事和公司使命的水印背景 - 放置在此处可贯穿整个面板，不被上下导航遮挡 */}
               <AnimatePresence>
-                {(activeSection === "story" || activeSection === "mission") && (
+                {(activeSection === "story" || activeSection === "mission" || activeSection === "philosophy") && (
                   <m.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -226,7 +226,7 @@ export function StoryContent() {
                           className="relative pt-10 pb-10"
                         >
                           <div className="flex justify-center mb-10">
-                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
+                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
                               品牌故事
                             </h2>
                           </div>
@@ -286,7 +286,7 @@ export function StoryContent() {
                           className="relative pt-10 pb-10"
                         >
                           <div className="flex justify-center mb-10">
-                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
+                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
                               公司使命
                             </h2>
                           </div>
@@ -339,7 +339,7 @@ export function StoryContent() {
                           className="flex-1 flex flex-col pt-10"
                         >
                           <div className="flex justify-center mb-10 shrink-0">
-                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
+                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
                               品牌哲学
                             </h2>
                           </div>
@@ -381,7 +381,7 @@ export function StoryContent() {
                           className="pt-10 pb-10"
                         >
                           <div className="flex justify-center mb-10">
-                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-gradient-to-r after:from-transparent after:via-[#00263e] after:to-transparent">
+                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
                               媒体及获奖
                             </h2>
                           </div>

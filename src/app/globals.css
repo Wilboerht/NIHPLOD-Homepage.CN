@@ -550,7 +550,7 @@
 .home-container .wave path {
   fill: none;
   stroke: #DED9C7;
-  stroke-width: 3px;
+  stroke-width: 1px;
 }
 
 /* 波浪动画 */

@@ -413,6 +413,25 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         </Link>
       </header>
 
+      {/* 移动端标题与导航 - 左右布局 */}
+      <div className="flex shrink-0 items-start justify-between px-6 pt-6 pb-3 relative z-10">
+        <h2 className="text-[22px] font-normal tracking-[0.2em] text-[#00263e] leading-none">
+          当季热卖
+        </h2>
+        <m.button
+          type="button"
+          onClick={() => setIsCategoryMenuOpen(true)}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40 hover:text-brand-charcoal transition-all pt-[3px]"
+        >
+          <div className="flex flex-col gap-1">
+            <div className="h-px w-4 bg-current opacity-40" />
+            <div className="h-px w-2 bg-current opacity-40 ml-auto" />
+          </div>
+          <span className="leading-none">更多产品</span>
+        </m.button>
+      </div>
+
       {/* 三个主推产品区域 - 极简平面布局 */}
       <div className="flex flex-1 flex-col gap-4 px-5 py-4 overflow-y-auto">
         {featuredProducts.map((product, idx) => (
@@ -463,21 +482,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           </m.div>
         ))}
       </div>
-
-      <footer className="flex h-16 shrink-0 flex-col items-center justify-center px-8 pb-2 relative">
-        <m.button
-          type="button"
-          onClick={() => setIsCategoryMenuOpen(true)}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-brand-charcoal/60 hover:text-brand-charcoal transition-all"
-        >
-          <div className="flex flex-col gap-1">
-            <div className="h-px w-4 bg-current opacity-40" />
-            <div className="h-px w-2 bg-current opacity-40 ml-auto" />
-          </div>
-          <span>产品导航</span>
-        </m.button>
-      </footer>
     </div>
   );
 
