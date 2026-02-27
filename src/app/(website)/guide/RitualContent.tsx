@@ -1266,72 +1266,75 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           className="flex flex-col py-2"
                         >
                           {/* Level 3: Mobile Scheme Switcher Tabs (Only for Professional/Spa/Portable) */}
-                          <div className="relative mb-10 flex flex-col items-center px-6 w-full max-w-[400px]">
-                            <div className="flex w-full h-10 items-center justify-between p-1 bg-[#00263e]/[0.03] rounded-full border border-[#00263e]/5 backdrop-blur-sm">
-                              <LayoutGroup id={`mobile-tab-${selectedModule}`}>
-                                {/* 1. subPlans existing condition (such as daily) */}
-                                {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
-                                  selectedScheme.subPlans.map((subPlan) => {
-                                    const isActive = selectedSubPlan?.id === subPlan.id;
-                                    return (
-                                      <button
-                                        key={subPlan.id}
-                                        onClick={() => {
-                                          setSelectedSubPlan(subPlan);
-                                          setCurrentStepIndex(0);
-                                        }}
-                                        className={cn(
-                                          "relative flex-1 h-full flex items-center justify-center transition-colors duration-500 rounded-full",
-                                          isActive
-                                            ? "text-[#8B7355]"
-                                            : "text-[#00263E]/40"
-                                        )}
-                                      >
-                                        <span className="relative z-10 text-[12px] font-medium tracking-widest whitespace-nowrap">{subPlan.name}</span>
-                                        {isActive && (
-                                          <m.div
-                                            layoutId={`active-mobile-tab-${selectedModule}`}
-                                            className="absolute inset-0 bg-brand-gold/15 border border-[#8b7355]/30 backdrop-blur-[4px] rounded-full shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)]"
-                                            initial={false}
-                                            transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
-                                          />
-                                        )}
-                                      </button>
-                                    );
-                                  })
-                                ) : (
-                                  /* 2. Scheme level switching (for portable, professional, spa in level 3) */
-                                  selectedModule && ['portable', 'professional', 'spa'].includes(selectedModule) && (
-                                    moduleData[selectedModule].map((scheme) => {
-                                      const isActive = scheme.id === selectedScheme.id;
-                                      return (
-                                        <button
-                                          key={scheme.id}
-                                          onClick={() => selectScheme(scheme)}
-                                          className={cn(
-                                            "relative flex-1 h-full flex items-center justify-center transition-colors duration-500 rounded-full",
-                                            isActive
-                                              ? "text-[#8B7355]"
-                                              : "text-[#00263E]/40"
-                                          )}
-                                        >
-                                          <span className="relative z-10 text-[12px] font-medium tracking-widest whitespace-nowrap">{scheme.name}</span>
-                                          {isActive && (
-                                            <m.div
-                                              layoutId={`active-mobile-tab-${selectedModule}`}
-                                              className="absolute inset-0 bg-brand-gold/15 border border-[#8b7355]/30 backdrop-blur-[4px] rounded-full shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)]"
-                                              initial={false}
-                                              transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
-                                            />
-                                          )}
-                                        </button>
-                                      );
-                                    })
-                                  )
-                                )}
-                              </LayoutGroup>
-                            </div>
-                          </div>
+                          {((selectedScheme.subPlans && selectedScheme.subPlans.length > 1) ||
+                            (selectedModule && ['portable', 'professional', 'spa'].includes(selectedModule) && moduleData[selectedModule].length > 1)) && (
+                              <div className="relative mb-10 flex flex-col items-center px-6 w-full max-w-[400px]">
+                                <div className="flex w-full h-10 items-center justify-between p-1 bg-[#00263e]/[0.03] rounded-full border border-[#00263e]/5 backdrop-blur-sm">
+                                  <LayoutGroup id={`mobile-tab-${selectedModule}`}>
+                                    {/* 1. subPlans existing condition (such as daily) */}
+                                    {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
+                                      selectedScheme.subPlans.map((subPlan) => {
+                                        const isActive = selectedSubPlan?.id === subPlan.id;
+                                        return (
+                                          <button
+                                            key={subPlan.id}
+                                            onClick={() => {
+                                              setSelectedSubPlan(subPlan);
+                                              setCurrentStepIndex(0);
+                                            }}
+                                            className={cn(
+                                              "relative flex-1 h-full flex items-center justify-center transition-colors duration-500 rounded-full",
+                                              isActive
+                                                ? "text-[#8B7355]"
+                                                : "text-[#00263E]/40"
+                                            )}
+                                          >
+                                            <span className="relative z-10 text-[12px] font-medium tracking-widest whitespace-nowrap">{subPlan.name}</span>
+                                            {isActive && (
+                                              <m.div
+                                                layoutId={`active-mobile-tab-${selectedModule}`}
+                                                className="absolute inset-0 bg-brand-gold/15 border border-[#8b7355]/30 backdrop-blur-[4px] rounded-full shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)]"
+                                                initial={false}
+                                                transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
+                                              />
+                                            )}
+                                          </button>
+                                        );
+                                      })
+                                    ) : (
+                                      /* 2. Scheme level switching (for portable, professional, spa in level 3) */
+                                      selectedModule && ['portable', 'professional', 'spa'].includes(selectedModule) && (
+                                        moduleData[selectedModule].map((scheme) => {
+                                          const isActive = scheme.id === selectedScheme.id;
+                                          return (
+                                            <button
+                                              key={scheme.id}
+                                              onClick={() => selectScheme(scheme)}
+                                              className={cn(
+                                                "relative flex-1 h-full flex items-center justify-center transition-colors duration-500 rounded-full",
+                                                isActive
+                                                  ? "text-[#8B7355]"
+                                                  : "text-[#00263E]/40"
+                                              )}
+                                            >
+                                              <span className="relative z-10 text-[12px] font-medium tracking-widest whitespace-nowrap">{scheme.name}</span>
+                                              {isActive && (
+                                                <m.div
+                                                  layoutId={`active-mobile-tab-${selectedModule}`}
+                                                  className="absolute inset-0 bg-brand-gold/15 border border-[#8b7355]/30 backdrop-blur-[4px] rounded-full shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)]"
+                                                  initial={false}
+                                                  transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
+                                                />
+                                              )}
+                                            </button>
+                                          );
+                                        })
+                                      )
+                                    )}
+                                  </LayoutGroup>
+                                </div>
+                              </div>
+                            )}
                           {/* 顶部概览信息 (隐藏于 portable) */}
                           {selectedModule !== 'portable' ? (
                             <div className="mb-10 flex flex-col items-center">
