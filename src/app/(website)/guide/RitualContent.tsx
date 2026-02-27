@@ -1464,16 +1464,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 <h3 className="text-xs font-light tracking-[0.1em] text-[#00263E]/60 font-sans mb-3">
                                   {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
                                 </h3>
-                                <div className="flex items-start bg-[#8B7355]/5 p-3 rounded-lg border border-[#8B7355]/10">
-                                  <Info className="w-4 h-4 mt-0.5 mr-2 shrink-0 text-[#8B7355]/60" />
-                                  <p className="text-[12px] text-[#00263E]/70 tracking-wide font-light leading-[1.6]">
-                                    找不到您所在城市的门店？银卡级别以上会员可
-                                    <span onClick={() => openContact("application")} className="mx-1 font-medium underline underline-offset-2 decoration-[#8B7355]/40 text-[#8B7355] cursor-pointer active:opacity-70">
-                                      申请入驻
-                                    </span>
-                                    您所在的城市。
-                                  </p>
-                                </div>
                               </div>
 
                               {/* 中间卡片区 - 纵向列表 */}
@@ -1565,7 +1555,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             /* Regular Steps Waterfall Layout (daily, spa) */
                             <div className="space-y-12">
                               {currentSteps.map((step, index) => (
-                                <div key={index} className="flex flex-col group">
+                                <div key={index} className="flex flex-col group relative">
+                                  {/* 步骤胶囊 - 挂在卡片顶部正中间 */}
+                                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 bg-[#00263E] text-white text-[9px] px-5 py-1.5 rounded-full tracking-[0.2em] font-medium shadow-[0_2px_10px_rgba(0,0,0,0.1)] whitespace-nowrap">
+                                    步骤 0{index + 1}
+                                  </div>
+
                                   {/* 图片展示区 - 极简白背景 */}
                                   <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-white shadow-[0_4px_25px_-5px_rgba(0,38,62,0.04)] mb-7 transition-transform duration-500 group-active:scale-[0.99]">
                                     <Image
@@ -1574,9 +1569,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       fill
                                       className="object-contain mix-blend-multiply p-8"
                                     />
-                                    <div className="absolute top-6 left-6 bg-[#00263E] text-white text-[9px] px-3 py-1 rounded-full tracking-[0.2em] font-medium">
-                                      步骤 0{index + 1}
-                                    </div>
                                   </div>
 
                                   {/* 文本描述区 */}
@@ -1592,10 +1584,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           )}
 
                           {/* 底部仪式感收尾 & 认证 */}
-                          <div className="mt-12 pb-10 flex flex-col items-center text-center">
-                            <div className="h-px w-12 bg-[#8B7355]/20 mb-10" />
+                          <div className="mt-4 sm:mt-12 pb-10 flex flex-col items-center text-center">
+                            <div className="h-px w-12 bg-[#8B7355]/20 mb-6 sm:mb-10" />
                             {selectedModule !== 'portable' && (
-                              <div className="flex flex-col items-center gap-8 mb-4">
+                              <div className="flex flex-col items-center gap-4 sm:gap-8 mb-4">
                                 {/* 核心优势标签 (Moved from above) */}
                                 <div className="flex flex-wrap justify-center gap-2.5 px-4 w-full">
                                   {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
@@ -1645,6 +1637,20 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     <Image src="/images/intertek-logo.svg" alt="Intertek" width={22} height={22} className="h-[20px] w-auto" />
                                   </div>
                                 </div>
+
+                                {/* 专业门店入驻提醒 - 特殊移动端位置 */}
+                                {selectedModule === "professional" && (
+                                  <div className="mt-6 flex items-start bg-[#8B7355]/5 p-4 rounded-xl border border-[#8B7355]/10 text-left">
+                                    <Info className="w-4 h-4 mt-0.5 mr-2 shrink-0 text-[#8B7355]/60" />
+                                    <p className="text-[12px] text-[#00263E]/70 tracking-wide font-light leading-[1.6]">
+                                      找不到您所在城市的门店？银卡级别以上会员可
+                                      <span onClick={() => openContact("application")} className="mx-1 font-medium underline underline-offset-2 decoration-[#8B7355]/40 text-[#8B7355] cursor-pointer active:opacity-70">
+                                        申请入驻
+                                      </span>
+                                      您所在的城市。
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             )}
                             <button
@@ -2503,8 +2509,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
               </m.div>
             </button>
           </div>
-        </m.div>
-      </m.div>
+        </m.div >
+      </m.div >
 
       {/* 动态背景图片 - 移至最底层，位于 safe-area-content 之外 */}
 
