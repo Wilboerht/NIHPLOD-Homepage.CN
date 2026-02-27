@@ -1345,8 +1345,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     <span className="text-[11px] uppercase font-medium tracking-[0.2em] text-[#00263E]/40">涉及产品</span>
                                     <div className="h-px w-8 bg-[#00263E]/10" />
                                   </div>
-                                  <div className="w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-6">
-                                    <div className="flex gap-4 min-w-max pb-2">
+                                  <div className="w-full px-6 text-center">
+                                    <div className="flex flex-wrap justify-center gap-x-8 gap-y-6 pb-4">
                                       {currentProducts.split("、").map((product, index) => {
                                         const isOptional = product.includes("(可选)");
                                         const cleanName = product.replace("(可选)", "").trim();
