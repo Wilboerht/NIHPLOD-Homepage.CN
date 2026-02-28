@@ -192,8 +192,8 @@ export function KineticBackground() {
                                     <LogOut className="h-4 w-4" strokeWidth={1.5} />
                                 </button>
 
-                                <div className="flex flex-col items-center justify-center w-full relative z-20 mb-0 sm:mb-4">
-                                    <div className="premium-avatar-ring mb-0 sm:mb-3">
+                                <div className="flex flex-col items-center justify-center w-full relative z-20 mb-0 sm:mb-2">
+                                    <div className="premium-avatar-ring mb-0 sm:mb-1">
                                         <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-full overflow-hidden bg-white premium-avatar-box border border-white/50">
                                             {user.avatar ? (
                                                 <Image
@@ -235,7 +235,7 @@ export function KineticBackground() {
                             </>
                         ) : (
                             <>
-                                <div className="mb-0 sm:mb-5 flex flex-col items-center justify-center w-full group/avatar mt-2 sm:mt-0">
+                                <div className="mb-0 sm:mb-2 flex flex-col items-center justify-center w-full group/avatar mt-0">
                                     <div className="relative h-16 w-16 sm:h-24 sm:w-24 flex items-center justify-center">
                                         {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
                                         <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
