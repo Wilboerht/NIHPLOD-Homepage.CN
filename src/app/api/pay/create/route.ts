@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 银联支付 (银行卡)
+    // 银联支付 (聚合支付)
     if (payMethod === "unionpay") {
       const uResult = await createUnionPayPayment(orderId);
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           payType: "unionpay",
-          payHtml: uResult.html,
+          payUrl: uResult.payUrl,
         }
       });
     }

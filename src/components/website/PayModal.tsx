@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 // 纹理背景 - 与 CheckoutModal 保持一致的透明度
 const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`;
 
-type PayMethod = "wechat" | "alipay";
+type PayMethod = "wechat" | "alipay" | "unionpay";
 
 interface OrderData {
   id: string;
@@ -128,7 +128,7 @@ export default function PayModal() {
         return;
       }
 
-      if (data.data.payType === "alipay") {
+      if (data.data.payType === "alipay" || data.data.payType === "unionpay") {
         window.location.href = data.data.payUrl;
         return;
       }
@@ -228,7 +228,7 @@ export default function PayModal() {
                       className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${payMethod === "wechat" ? "border-green-500 bg-green-50" : "border-[#E8E3DC] bg-white/60"}`}
                     >
                       <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348z"/></svg>
+                        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348z" /></svg>
                       </div>
                       <span className="font-medium text-[#5C5347]">微信支付</span>
                       {payMethod === "wechat" && <Check className="w-5 h-5 text-green-500 ml-auto" />}
@@ -238,17 +238,32 @@ export default function PayModal() {
                       className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${payMethod === "alipay" ? "border-blue-500 bg-blue-50" : "border-[#E8E3DC] bg-white/60"}`}
                     >
                       <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M21.422 15.358c-.538-.186-3.071-1.071-4.857-1.714.257-.514.457-1.043.614-1.586h-3.464v-1.072h4.286v-.714h-4.286V9.2h4.286c.078 0 .143-.043.143-.129V8.2c0-.086-.065-.129-.143-.129h-4.286v-.857c0-.086-.057-.143-.143-.143h-1.143c-.086 0-.143.057-.143.143v.857H8.002c-.086 0-.143.043-.143.129v.871c0 .086.057.129.143.129h4.284v1.072H8.002c-.086 0-.143.043-.143.129v.857c0 .086.057.129.143.129h4.284v1.072h-3.25l-.036.107c-.321.929-.75 1.786-1.286 2.536-1.036-.393-2.143-.75-3.143-1.036-.786-.214-1.607.214-1.857.929-.25.75.179 1.571.929 1.821 1.643.536 3.357 1.143 4.929 1.786-.857.643-1.857 1.143-2.929 1.5-.75.25-1.143 1.071-.893 1.821.25.75 1.071 1.143 1.821.893 2.179-.714 4.071-1.929 5.536-3.536 2.25.964 4.179 1.857 4.393 1.929.75.25 1.571-.179 1.821-.929.25-.75-.179-1.571-.929-1.821z"/></svg>
+                        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M21.422 15.358c-.538-.186-3.071-1.071-4.857-1.714.257-.514.457-1.043.614-1.586h-3.464v-1.072h4.286v-.714h-4.286V9.2h4.286c.078 0 .143-.043.143-.129V8.2c0-.086-.065-.129-.143-.129h-4.286v-.857c0-.086-.057-.143-.143-.143h-1.143c-.086 0-.143.057-.143.143v.857H8.002c-.086 0-.143.043-.143.129v.871c0 .086.057.129.143.129h4.284v1.072H8.002c-.086 0-.143.043-.143.129v.857c0 .086.057.129.143.129h4.284v1.072h-3.25l-.036.107c-.321.929-.75 1.786-1.286 2.536-1.036-.393-2.143-.75-3.143-1.036-.786-.214-1.607.214-1.857.929-.25.75.179 1.571.929 1.821 1.643.536 3.357 1.143 4.929 1.786-.857.643-1.857 1.143-2.929 1.5-.75.25-1.143 1.071-.893 1.821.25.75 1.071 1.143 1.821.893 2.179-.714 4.071-1.929 5.536-3.536 2.25.964 4.179 1.857 4.393 1.929.75.25 1.571-.179 1.821-.929.25-.75-.179-1.571-.929-1.821z" /></svg>
                       </div>
                       <span className="font-medium text-[#5C5347]">支付宝</span>
                       {payMethod === "alipay" && <Check className="w-5 h-5 text-blue-500 ml-auto" />}
+                    </button>
+                    <button
+                      onClick={() => setPayMethod("unionpay")}
+                      className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${payMethod === "unionpay" ? "border-[#004A94] bg-blue-50/50" : "border-[#E8E3DC] bg-white/60"}`}
+                    >
+                      <div className="w-8 h-8 bg-[#004A94] rounded-lg flex items-center justify-center p-1.5 text-white">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <span className="font-medium text-[#5C5347]">银联扫码/云闪付</span>
+                      {payMethod === "unionpay" && <Check className="w-5 h-5 text-[#004A94] ml-auto" />}
                     </button>
                   </div>
                   {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100 mb-4">{error}</div>}
                   <button
                     onClick={handlePay}
                     disabled={submitting || countdown === 0}
-                    className={`w-full py-3.5 text-white rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 ${payMethod === "wechat" ? "bg-green-500 hover:bg-green-600" : "bg-blue-500 hover:bg-blue-600"}`}
+                    className={`w-full py-3.5 text-white rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 transition-colors ${payMethod === "wechat"
+                        ? "bg-green-500 hover:bg-green-600"
+                        : payMethod === "alipay"
+                          ? "bg-blue-500 hover:bg-blue-600"
+                          : "bg-[#004A94] hover:bg-[#003d7a]"
+                      }`}
                   >
                     {submitting ? <><Loader2 className="w-4 h-4 animate-spin" />处理中...</> : "立即支付"}
                   </button>
