@@ -242,8 +242,15 @@ export function KineticBackground() {
                                         <div className="absolute inset-[2px] sm:inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:group-hover/avatar:scale-90" />
 
                                         {/* 主图标容器 - 极简白润质感 */}
-                                        <div className="relative h-12 w-12 sm:h-20 sm:w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500">
-                                            <BookUser className="h-6 w-6 sm:h-9 sm:w-9 text-brand-charcoal/50" strokeWidth={1.2} />
+                                        <div className="relative h-12 w-12 sm:h-20 sm:w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden">
+                                            <div className="relative h-6 w-6 sm:h-9 sm:w-9 opacity-50">
+                                                <Image
+                                                    src="/images/profile-icon.svg"
+                                                    alt="User Profile"
+                                                    fill
+                                                    className="object-contain"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
