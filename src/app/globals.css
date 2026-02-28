@@ -1044,7 +1044,7 @@
     0 15px 30px -8px rgba(0, 0, 0, 0.1);
   border: none;
 
-  cursor: pointer;
+  cursor: default;
   pointer-events: auto;
 }
 
