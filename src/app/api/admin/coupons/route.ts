@@ -6,16 +6,33 @@ import { z } from "zod";
 import { logError } from "@/lib/logger";
 
 const createSchema = z.object({
-    name: z.string().min(1),
+    name: z.string().min(1, "优惠券名称不能为空"),
     type: z.enum(["DISCOUNT_AMOUNT", "DISCOUNT_PERCENT"]),
-    value: z.number().positive(),
-    minAmount: z.number().default(0),
-    daysValid: z.number().optional(), // 相对有效期
-    startDate: z.string().optional(), // 绝对有效期 (ISO string)
+    value: z.number().positive("优惠值必须为正数"),
+    minAmount: z.number().min(0).default(0),
+    daysValid: z.number().int().positive().optional(),
+    startDate: z.string().optional(),
     endDate: z.string().optional(),
-    totalLimit: z.number().optional().nullable(),
-    userLimit: z.number().default(1),
+    totalLimit: z.number().int().positive().nullable().optional(),
+    userLimit: z.number().int().positive().default(1),
     code: z.string().optional().nullable(),
+}).superRefine((data, ctx) => {
+    // ✅ 规则1：折扣比例强制在 (0, 1) 区间——例如 0.8 = 八折，0.9 = 九折
+    if (data.type === "DISCOUNT_PERCENT" && (data.value <= 0 || data.value >= 1)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["value"],
+            message: "折扣比例必须在 0 到 1 之间（例如 0.8 = 八折，0.9 = 九折）",
+        });
+    }
+    // ✅ 规则2：有效期必须配置至少一种，防止创建永久有效的无限制券
+    if (!data.endDate && !data.daysValid) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["daysValid"],
+            message: "必须设置 endDate（截止日期）或 daysValid（领取后有效天数）中的至少一项",
+        });
+    }
 });
 
 // 强制动态渲染，禁止静态预渲染

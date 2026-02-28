@@ -141,17 +141,20 @@ export async function createOrder(
 
         // 计算优惠
         if (coupon.type === 'DISCOUNT_AMOUNT') {
+          // 满减券：直接减去固定金额
           discountAmount = Number(coupon.value);
         } else if (coupon.type === 'DISCOUNT_PERCENT') {
-          // 比如 0.9 折， value 0.9? 还是 9? 通常 value存 9折(0.9) 或者 90%
-          // 假设 value 0.9 (9折)
-          // 优惠金额 = 总价 * (1 - value)
-          // 如果 value > 1，可能是 90折？还是 value 是减去的比例？
-          // 统一：Value <= 1 (如0.8)，优惠 = total * (1-0.8)
-          // 如果 Value > 1 (不合理，除非是减免金额)
-          if (Number(coupon.value) < 1) {
-            discountAmount = totalAmount * (1 - Number(coupon.value));
+          // 折扣券：value 存储的是折扣比例（保留价格的比例）
+          // 规范：value 必须在 (0, 1) 之间，例如：
+          //   0.9  → 九折 → 优惠 10%
+          //   0.8  → 八折 → 优惠 20%
+          //   0.5  → 五折 → 优惠 50%
+          const discountRate = Number(coupon.value);
+          if (discountRate <= 0 || discountRate >= 1) {
+            // value 不合法（后台应强制约束 0 < value < 1），此处防御性抛出错误
+            throw new Error(`优惠券折扣比例无效 (value=${discountRate})，应为 0 到 1 之间的小数，例如 0.8 表示八折`);
           }
+          discountAmount = totalAmount * (1 - discountRate);
         }
 
         // 防止负数

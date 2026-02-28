@@ -32,7 +32,7 @@ const createOrderSchema = z.object({
 // 强制动态渲染
 export const dynamic = 'force-dynamic';
 
-// 获取订单列表
+// 获取订单列表（支持分页）
 export async function GET(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);
@@ -47,27 +47,46 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") as import("@/generated/prisma/client").OrderStatus | null | 'all';
 
+    // 分页参数（默认第1页，每页10条）
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get("pageSize") || "10", 10)));
+    const skip = (page - 1) * pageSize;
+
     // 定义订单状态过滤条件
     const whereClause: import("@/generated/prisma/client").Prisma.OrderWhereInput = { userId: payload.id };
     if (status && status !== "all") {
       whereClause.status = status;
     }
 
-    const orders = await prisma.order.findMany({
-      where: whereClause,
-      include: {
-        items: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    // 并行查询数据和总数
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where: whereClause,
+        include: {
+          items: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: pageSize,
+      }),
+      prisma.order.count({ where: whereClause }),
+    ]);
 
-    console.log(`[GetOrders] Found ${orders.length} orders for user ${payload.id}`);
+    console.log(`[GetOrders] User ${payload.id}: page=${page} total=${total}`);
 
     return NextResponse.json({
       success: true,
-      data: { orders },
+      data: {
+        orders,
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      },
     });
   } catch (error) {
     console.error("[GetOrders] Error Details:", error);

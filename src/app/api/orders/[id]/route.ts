@@ -41,17 +41,44 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // 检查是否超时未付款，自动取消
+    // 检查是否超时未付款，自动取消（含库存恢复 + 优惠券释放）
     if (order.status === "PENDING") {
       const timeoutDate = new Date(Date.now() - ORDER_TIMEOUT_MINUTES * 60 * 1000);
       if (order.createdAt < timeoutDate) {
-        // 更新订单状态为已取消
-        order = await prisma.order.update({
-          where: { id: order.id },
-          data: { status: "CANCELLED" },
+        // ✅ 在事务内完整执行：恢复库存 + 释放优惠券 + 更新订单状态
+        await prisma.$transaction(async (tx) => {
+          // 恢复每个商品的库存
+          for (const item of order!.items) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
+
+          // 释放被锁定的优惠券（如果有）
+          const lockedCoupon = await tx.userCoupon.findFirst({
+            where: { orderId: order!.id, status: "LOCKED" },
+          });
+          if (lockedCoupon) {
+            await tx.userCoupon.update({
+              where: { id: lockedCoupon.id },
+              data: { status: "UNUSED" },
+            });
+          }
+
+          // 更新订单状态为已取消
+          await tx.order.update({
+            where: { id: order!.id },
+            data: { status: "CANCELLED" },
+          });
+        });
+
+        // 重新查询已更新的订单返回给前端
+        order = await prisma.order.findFirst({
+          where: { id, userId: payload.id },
           include: { items: true },
         });
-        console.log(`[Order] 订单 ${order.orderNo} 超时自动取消`);
+        console.log(`[Order] 订单 ${order?.orderNo} 超时自动取消（库存已恢复）`);
       }
     }
 
