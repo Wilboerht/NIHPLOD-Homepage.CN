@@ -60,7 +60,7 @@ export async function createPayment(
   success: boolean;
   codeUrl?: string;
   mwebUrl?: string;
-  payParams?: any;
+  payParams?: Record<string, string>;
   error?: string;
 }> {
   try {
@@ -77,7 +77,7 @@ export async function createPayment(
     const amount = Math.round(Number(order.payAmount) * 100);
     const description = `${config.siteName}-${order.items[0]?.productName || "订单"}`;
 
-    let response: any;
+    let response: { data: { code_url?: string; prepay_id?: string; h5_url?: string } };
 
     if (tradeType === "NATIVE") {
       response = await wxpay.v3.pay.transactions.native.post({
@@ -146,9 +146,10 @@ export async function createPayment(
     }
 
     return { success: false, error: "不支持的支付类型" };
-  } catch (error: any) {
-    const errorMsg = error.response?.data?.message || error.message;
-    console.error(`[WechatPay] 下单失败 (${orderId}):`, error.response?.data || error.message);
+  } catch (error) {
+    const err = error as { response?: { data?: { message?: string } }; message?: string };
+    const errorMsg = err.response?.data?.message || err.message || "未知错误";
+    console.error(`[WechatPay] 下单失败 (${orderId}):`, err.response?.data || err.message);
     return { success: false, error: errorMsg };
   }
 }
@@ -176,12 +177,12 @@ async function verifyAndDecrypt(headers: Record<string, string>, rawBody: string
   const body = JSON.parse(rawBody);
   const { resource } = body;
 
-  const result: any = Aes.AesGcm.decrypt(
+  const result = Aes.AesGcm.decrypt(
     resource.nonce,
     config.apiV3Key,
     resource.ciphertext,
     resource.associated_data
-  );
+  ) as string;
 
   return JSON.parse(result);
 }
@@ -221,9 +222,10 @@ export async function handlePaymentNotify(
     });
 
     return { success: true };
-  } catch (error: any) {
-    console.error("[WechatPay] 处理支付通知失败:", error.message);
-    return { success: false, message: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "未知错误";
+    console.error("[WechatPay] 处理支付通知失败:", message);
+    return { success: false, message: message };
   }
 }
 
@@ -239,7 +241,7 @@ export async function applyWechatRefund(
 ): Promise<{ success: boolean; refundId?: string; error?: string }> {
   try {
     const wxpay = getWxPay();
-    const response: any = await wxpay.v3.refund.domestic.refunds.post({
+    const response = (await wxpay.v3.refund.domestic.refunds.post({
       out_trade_no: orderNo,
       out_refund_no: refundNo,
       reason: reason || "客户申请退款",
@@ -249,12 +251,13 @@ export async function applyWechatRefund(
         total: Math.round(totalFee * 100),
         currency: "CNY",
       },
-    });
+    })) as { data: { refund_id: string } };
 
     return { success: true, refundId: response.data.refund_id };
-  } catch (error: any) {
-    const detail = error.response?.data;
-    console.error("[WechatPay] 申请退款失败:", detail || error.message);
+  } catch (error) {
+    const err = error as { response?: { data?: { message?: string } }; message?: string };
+    const detail = err.response?.data;
+    console.error("[WechatPay] 申请退款失败:", detail || err.message);
     return { success: false, error: detail?.message || "退款申请失败" };
   }
 }
@@ -281,9 +284,10 @@ export async function handleRefundNotify(
     }
 
     return { success: true };
-  } catch (error: any) {
-    console.error("[WechatPay] 处理退款通知失败:", error.message);
-    return { success: false, message: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "未知错误";
+    console.error("[WechatPay] 处理退款通知失败:", message);
+    return { success: false, message: message };
   }
 }
 

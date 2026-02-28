@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       // 获取真实 IP
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
 
-      const payResult = await createPayment(orderId, v3TradeType as any, openId, clientIp);
+      const payResult = await createPayment(orderId, v3TradeType as "H5" | "JSAPI" | "NATIVE", openId, clientIp);
 
       if (!payResult.success) {
         return NextResponse.json(

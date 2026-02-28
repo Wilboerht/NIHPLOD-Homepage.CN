@@ -22,7 +22,7 @@ const UMS_CONFIG = {
  * UMS 签名算法 (SHA256)
  * 提取所有非空参数，按字典序排序，拼接为 key=value&key=value，最后加上 appKey
  */
-function sign(params: Record<string, any>, appKey: string): string {
+function sign(params: Record<string, string | number | boolean | null | undefined>, appKey: string): string {
     const keys = Object.keys(params).sort();
     const stringData = keys
         .filter(k => k !== "sign" && params[k] !== "" && params[k] !== null && params[k] !== undefined)
@@ -73,7 +73,7 @@ export async function createUnionPayPayment(orderId: string): Promise<{
 
         const amount = Math.round(Number(order.payAmount) * 100);
 
-        const params: Record<string, any> = {
+        const params: Record<string, string | number | boolean | null | undefined> = {
             msgId: generateMsgId(),
             msgSrc: UMS_CONFIG.msgSrc,
             msgType: "bills.getQRCode", // 关键：获取聚合支付码接口
@@ -107,8 +107,9 @@ export async function createUnionPayPayment(orderId: string): Promise<{
             console.error("[UnionPay] 请求聚合码失败:", data);
             return { success: false, error: data.errMsg || "获取聚合支付码失败" };
         }
-    } catch (error: any) {
-        console.error("[UnionPay] API 请求异常:", error.message);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "未知错误";
+        console.error("[UnionPay] API 请求异常:", message);
         return { success: false, error: "银联聚合支付请求异常" };
     }
 }
@@ -116,7 +117,7 @@ export async function createUnionPayPayment(orderId: string): Promise<{
 /**
  * 处理银联聚合支付异步通知
  */
-export async function handleUnionPayNotify(body: any): Promise<{ success: boolean; message?: string }> {
+export async function handleUnionPayNotify(body: Record<string, string>): Promise<{ success: boolean; message?: string }> {
     try {
         const { sign: reqSign, ...params } = body;
 
@@ -143,7 +144,7 @@ export async function handleUnionPayNotify(body: any): Promise<{ success: boolea
             if (!order || order.status === OrderStatus.PAID) return;
 
             // UMS 通知中的 totalAmount 单位也是分
-            if (Math.round(Number(order.payAmount) * 100) !== parseInt(params.totalAmount)) {
+            if (Math.round(Number(order.payAmount) * 100) !== parseInt(params.totalAmount || "0")) {
                 throw new Error("AMOUNT_MISMATCH");
             }
 
@@ -159,7 +160,7 @@ export async function handleUnionPayNotify(body: any): Promise<{ success: boolea
         });
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error("[UnionPay] 异步通知处理异常:", error);
         return { success: false, message: "系统错误" };
     }
@@ -178,7 +179,7 @@ export async function refundUnionPayOrder(
         const refundOrderId = "R" + Date.now() + Math.floor(Math.random() * 1000);
         const amount = Math.round(refundAmount * 100);
 
-        const params: Record<string, any> = {
+        const params: Record<string, string | number | boolean | null | undefined> = {
             msgId: generateMsgId(),
             msgSrc: UMS_CONFIG.msgSrc,
             msgType: "bills.refund",
@@ -208,8 +209,9 @@ export async function refundUnionPayOrder(
             console.error("[UnionPay] 退款被拒绝:", data);
             return { success: false, error: data.errMsg || "退款被拒绝" };
         }
-    } catch (error: any) {
-        console.error("[UnionPay] 退款接口异常:", error.message);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "未知错误";
+        console.error("[UnionPay] 退款接口异常:", message);
         return { success: false, error: "退款系统异常" };
     }
 }
