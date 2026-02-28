@@ -245,12 +245,14 @@ export async function handlePaymentNotify(xmlBody: string): Promise<{
         throw new Error("订单不存在");
       }
 
-      // 3. 验证金额 (防止金额篡改)
+      // 3. ✅ 严格验证金额（防止金额篡改攻击）
       const expectedFee = Math.round(Number(order.payAmount) * 100);
-      // 允许 1 分钱误差? 不，微信支付是精确的。
-      if (Math.abs(expectedFee - totalFee) > 1) { // 稍微宽松一点以防浮点数问题，但通常应该相等
-        console.warn(`[WechatPay] 金额不匹配警报: 订单=${expectedFee}, 实付=${totalFee}`);
-        // 注意：在某些情况下可能需要人工干预，这里暂不抛出错误中断流程，或者标记异常
+      if (expectedFee !== totalFee) {
+        // 金额不一致：记录告警日志并抛出错误中断事务，禁止放行订单
+        console.error(
+          `[WechatPay] ⚠️ 金额篡改警报！订单=${order.orderNo} 期望=${expectedFee}分, 实付=${totalFee}分. 已拒绝该回调。`
+        );
+        throw new Error(`支付金额不匹配: 期望 ${expectedFee} 分，实付 ${totalFee} 分`);
       }
 
       // 如果订单已经是 PAID，幂等处理

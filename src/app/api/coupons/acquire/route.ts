@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { couponId, code } = schema.parse(body);
 
-        // 1. 查找优惠券
+        // 1. 查找优惠券（事务外的只读预检，减少事务持有时间）
         const coupon = await prisma.coupon.findFirst({
             where: code ? { code, isActive: true } : { id: couponId, isActive: true },
         });
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: "优惠券不存在或已下架" }, { status: 404 });
         }
 
-        // 2. 校验有效期
+        // 2. 校验固定有效期（不涉及并发，可在事务外校验）
         const now = new Date();
         if (coupon.startDate && now < coupon.startDate) {
             return NextResponse.json({ success: false, error: "活动未开始" }, { status: 400 });
@@ -43,27 +43,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: "活动已结束" }, { status: 400 });
         }
 
-        // 3. 校验总库存
-        if (coupon.totalLimit !== null) {
-            const issuedCount = await prisma.userCoupon.count({ where: { couponId: coupon.id } });
-            if (issuedCount >= coupon.totalLimit) {
-                return NextResponse.json({ success: false, error: "已领完" }, { status: 400 });
-            }
-        }
-
-        // 4. 校验个人限领
-        const userCount = await prisma.userCoupon.count({
-            where: { couponId: coupon.id, userId: user.id },
-        });
-        if (userCount >= coupon.userLimit) {
-            return NextResponse.json({ success: false, error: `每人限领 ${coupon.userLimit} 张` }, { status: 400 });
-        }
-
-        // 5. 计算过期时间
+        // 3. 计算过期时间
         let expiresAt: Date;
         if (coupon.endDate) {
-            // 如果有固定截止日期，取其与相对有效期的较早者 (或者逻辑是优先相对？这里假设固定日期是大限)
-            // 通常：如果有 daysValid，则是领取后 N 天；如果没有，则跟随 endDate。
             if (coupon.daysValid) {
                 const relativeExp = new Date(now.getTime() + coupon.daysValid * 24 * 60 * 60 * 1000);
                 expiresAt = relativeExp > coupon.endDate ? coupon.endDate : relativeExp;
@@ -71,29 +53,53 @@ export async function POST(req: NextRequest) {
                 expiresAt = coupon.endDate;
             }
         } else {
-            // 如果没有固定截止日期，必须有 daysValid
             if (!coupon.daysValid) {
-                // Default 30 days if not configured?
                 expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             } else {
                 expiresAt = new Date(now.getTime() + coupon.daysValid * 24 * 60 * 60 * 1000);
             }
         }
 
-        // 6. 发放
-        const userCoupon = await prisma.userCoupon.create({
-            data: {
-                userId: user.id,
-                couponId: coupon.id,
-                status: "UNUSED",
-                expiresAt,
-            },
+        // ✅ 核心修复：将库存校验和发放写入同一个数据库事务
+        // 事务内的所有操作是原子性的，并发请求无法同时通过校验，彻底杜绝超发。
+        const userCoupon = await prisma.$transaction(async (tx) => {
+            // 4. 事务内重新校验总库存（防止并发超发）
+            if (coupon.totalLimit !== null) {
+                const issuedCount = await tx.userCoupon.count({
+                    where: { couponId: coupon.id },
+                });
+                if (issuedCount >= coupon.totalLimit) {
+                    throw new Error("已领完");
+                }
+            }
+
+            // 5. 事务内重新校验个人限领（防止并发重复领取）
+            const userCount = await tx.userCoupon.count({
+                where: { couponId: coupon.id, userId: user.id },
+            });
+            if (userCount >= coupon.userLimit) {
+                throw new Error(`每人限领 ${coupon.userLimit} 张`);
+            }
+
+            // 6. 原子写入，不存在时间窗口
+            return tx.userCoupon.create({
+                data: {
+                    userId: user.id,
+                    couponId: coupon.id,
+                    status: "UNUSED",
+                    expiresAt,
+                },
+            });
         });
 
         return NextResponse.json({ success: true, data: userCoupon });
     } catch (e: unknown) {
-        logError("AcquireCoupon", e);
+        // 从事务内 throw 的业务错误（如"已领完"）直接作为 400 返回
         const message = e instanceof Error ? e.message : String(e);
+        if (message === "已领完" || message.startsWith("每人限领")) {
+            return NextResponse.json({ success: false, error: message }, { status: 400 });
+        }
+        logError("AcquireCoupon", e);
         return NextResponse.json({ success: false, error: message || "领取失败" }, { status: 500 });
     }
 }
