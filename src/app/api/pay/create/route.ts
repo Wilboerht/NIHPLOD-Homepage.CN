@@ -115,7 +115,13 @@ export async function POST(request: NextRequest) {
         openId = user.wechatOpenId;
       }
 
-      const payResult = await createPayment(orderId, tradeType, openId);
+      // 将 v2 的 MWEB 转换为 v3 的 H5
+      const v3TradeType = tradeType === "MWEB" ? "H5" : tradeType;
+
+      // 获取真实 IP
+      const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+
+      const payResult = await createPayment(orderId, v3TradeType as any, openId, clientIp);
 
       if (!payResult.success) {
         return NextResponse.json(
@@ -130,7 +136,7 @@ export async function POST(request: NextRequest) {
           payType: "wechat",
           tradeType,
           codeUrl: payResult.codeUrl,   // NATIVE
-          mwebUrl: payResult.mwebUrl,   // MWEB
+          mwebUrl: payResult.mwebUrl,   // H5 (MWEB)
           payParams: payResult.payParams, // JSAPI
         },
       });

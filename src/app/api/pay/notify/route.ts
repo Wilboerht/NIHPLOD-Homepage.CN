@@ -1,5 +1,5 @@
 /**
- * 微信支付回调 API
+ * 微信支付回调 API (v3)
  * POST /api/pay/notify
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -10,48 +10,28 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const xmlBody = await request.text();
-    
-    console.log("[PayNotify] 收到回调:", xmlBody.slice(0, 200));
+    // API v3 验签必须使用原始报文，不能解析后再 JSON.stringify
+    const rawBody = await request.text();
 
-    const result = await handlePaymentNotify(xmlBody);
+    // 提取签名相关的头部
+    const headers = {
+      "wechatpay-signature": request.headers.get("wechatpay-signature") || "",
+      "wechatpay-timestamp": request.headers.get("wechatpay-timestamp") || "",
+      "wechatpay-nonce": request.headers.get("wechatpay-nonce") || "",
+      "wechatpay-serial": request.headers.get("wechatpay-serial") || "",
+    };
+
+    const result = await handlePaymentNotify(headers, rawBody);
 
     if (result.success) {
-      // 返回成功响应
-      return new NextResponse(
-        `<xml>
-          <return_code><![CDATA[SUCCESS]]></return_code>
-          <return_msg><![CDATA[OK]]></return_msg>
-        </xml>`,
-        {
-          status: 200,
-          headers: { "Content-Type": "text/xml" },
-        }
-      );
+      // v3 成功应答：HTTP 200, JSON 格式
+      return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
     } else {
-      return new NextResponse(
-        `<xml>
-          <return_code><![CDATA[FAIL]]></return_code>
-          <return_msg><![CDATA[${result.message}]]></return_msg>
-        </xml>`,
-        {
-          status: 200,
-          headers: { "Content-Type": "text/xml" },
-        }
-      );
+      console.error("[PayNotify] 处理失败:", result.message);
+      return NextResponse.json({ code: "FAIL", message: result.message }, { status: 400 });
     }
   } catch (error) {
     console.error("[PayNotify] 异常:", error);
-    return new NextResponse(
-      `<xml>
-        <return_code><![CDATA[FAIL]]></return_code>
-        <return_msg><![CDATA[系统错误]]></return_msg>
-      </xml>`,
-      {
-        status: 200,
-        headers: { "Content-Type": "text/xml" },
-      }
-    );
+    return NextResponse.json({ code: "FAIL", message: "系统错误" }, { status: 500 });
   }
 }
-
