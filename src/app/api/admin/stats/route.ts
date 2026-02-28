@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
@@ -38,6 +39,79 @@ interface StatsResponse {
   };
 }
 
+const getCachedStats = unstable_cache(
+  async (dateStr: string) => {
+    const todayStart = new Date(dateStr);
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [
+      productsCount,
+      categoriesCount,
+      unreadMessagesCount,
+      jobsCount,
+      totalUsers,
+      pendingOrders,
+      refundingOrders,
+      todayRevenueData,
+      recentMessages,
+      recentOrders,
+    ] = await Promise.all([
+      prisma.product.count(),
+      prisma.category.count(),
+      prisma.contactMessage.count({ where: { read: false } }),
+      prisma.job.count({ where: { published: true } }),
+      prisma.user.count(),
+      prisma.order.count({ where: { status: OrderStatus.PAID } }),
+      prisma.order.count({ where: { status: OrderStatus.REFUNDING } }),
+      prisma.order.aggregate({
+        where: {
+          paymentTime: { gte: todayStart },
+          status: { in: [OrderStatus.PAID, OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
+        },
+        _sum: { payAmount: true },
+      }),
+      prisma.contactMessage.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          content: true,
+          read: true,
+          createdAt: true,
+        },
+      }),
+      prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          orderNo: true,
+          status: true,
+          payAmount: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    return {
+      productsCount,
+      categoriesCount,
+      unreadMessagesCount,
+      jobsCount,
+      totalUsers,
+      pendingOrders,
+      refundingOrders,
+      todayRevenueData,
+      recentMessages,
+      recentOrders,
+    };
+  },
+  ["admin-dashboard-stats"],
+  { revalidate: 300, tags: ["admin-stats"] }
+);
+
 // GET /api/admin/stats - 获取仪表盘统计数据
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -59,12 +133,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 今日开始时间
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // 生成当天日期字符串（自然切分每天的缓存边界）
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
 
-    // 并行获取统计数据
-    const [
+    // 通过具有 5分钟 revalidate 特性的封装函数并获取统计数据
+    const {
       productsCount,
       categoriesCount,
       unreadMessagesCount,
@@ -75,63 +149,7 @@ export async function GET(request: NextRequest) {
       todayRevenueData,
       recentMessages,
       recentOrders,
-    ] = await Promise.all([
-      // 产品总数
-      prisma.product.count(),
-      // 分类总数
-      prisma.category.count(),
-      // 未读留言数
-      prisma.contactMessage.count({
-        where: { read: false },
-      }),
-      // 职位总数（已发布）
-      prisma.job.count({
-        where: { published: true },
-      }),
-      // 用户总数
-      prisma.user.count(),
-      // 待发货订单 (已支付待处理)
-      prisma.order.count({
-        where: { status: OrderStatus.PAID },
-      }),
-      // 退款中订单
-      prisma.order.count({
-        where: { status: OrderStatus.REFUNDING },
-      }),
-      // 今日销售额
-      prisma.order.aggregate({
-        where: {
-          paymentTime: { gte: todayStart },
-          status: { in: [OrderStatus.PAID, OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
-        },
-        _sum: { payAmount: true },
-      }),
-      // 最近5条留言
-      prisma.contactMessage.findMany({
-        take: 5,
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          content: true,
-          read: true,
-          createdAt: true,
-        },
-      }),
-      // 最近5个订单
-      prisma.order.findMany({
-        take: 5,
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          orderNo: true,
-          status: true,
-          payAmount: true,
-          createdAt: true,
-        },
-      }),
-    ]);
+    } = await getCachedStats(dateStr);
 
     return NextResponse.json<StatsResponse>({
       success: true,
