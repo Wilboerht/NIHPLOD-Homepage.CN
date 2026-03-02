@@ -441,7 +441,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
             onClick={() => handleProductClick(product)}
-            className="group relative flex w-full flex-1 items-center justify-center rounded-[24px] bg-white/40 backdrop-blur-md p-6 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
+            className="group relative flex w-full items-center justify-center rounded-[24px] bg-white/40 backdrop-blur-md p-6 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
           >
             {/* 矿物纹理 - 极淡 */}
             <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none rounded-[24px]" />
