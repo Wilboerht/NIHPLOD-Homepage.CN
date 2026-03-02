@@ -124,7 +124,7 @@ export function KineticBackground() {
                 >
                     <Link href="/guide" className="absolute inset-0 z-20" aria-label="官方指南" />
                     <Image
-                        src="/images/kinetic-cat.jpg"
+                        src="/images/kinetic-cat.webp"
                         alt="Cat Aesthetic"
                         fill
                         className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
@@ -142,7 +142,7 @@ export function KineticBackground() {
                     <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
                     {/* Desktop Image */}
                     <Image
-                        src="/images/kinetic-desktop.jpg"
+                        src="/images/kinetic-desktop.webp"
                         alt="Product Desktop"
                         fill
                         className="kinetic-cell-image !filter-none transition-all duration-500 hidden sm:block"
@@ -150,7 +150,7 @@ export function KineticBackground() {
                     />
                     {/* Mobile Image */}
                     <Image
-                        src="/images/kinetic-mobile.jpg"
+                        src="/images/kinetic-mobile.webp"
                         alt="Product Mobile"
                         fill
                         className="kinetic-cell-image !filter-none transition-all duration-500 block sm:hidden"
