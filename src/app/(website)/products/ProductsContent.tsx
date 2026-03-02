@@ -727,21 +727,23 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             />
 
             {/* 顶部标题与关闭 */}
-            <header className="flex h-20 shrink-0 items-center justify-between px-8 relative z-20">
-              <Image
-                src="/images/logo.webp"
-                alt="NIHPLOD"
-                width={90}
-                height={36}
-                className="object-contain"
-              />
-              <button
-                type="button"
-                onClick={() => setIsCategoryMenuOpen(false)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#00263E]/5 bg-white/40"
-              >
-                <X className="h-5 w-5 text-[#00263E]/60" strokeWidth={1.5} />
-              </button>
+            <header className="flex h-24 shrink-0 items-center justify-center px-6 pt-6 relative z-20">
+              <div className="flex w-full max-w-[340px] items-center justify-between">
+                <Image
+                  src="/images/logo.webp"
+                  alt="NIHPLOD"
+                  width={90}
+                  height={36}
+                  className="object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryMenuOpen(false)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[0.5px] border-[#8B7355]/10 bg-[#FFD700]/5 backdrop-blur-[4px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all active:scale-95"
+                >
+                  <X className="h-5 w-5 text-[#8B7355]" strokeWidth={1.5} />
+                </button>
+              </div>
             </header>
 
             {/* 菜单内容 - 居中网格布局 */}
@@ -788,7 +790,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             </div>
 
             {/* 固定底栏品牌标语 */}
-            <footer className="shrink-0 pb-6 pt-4 relative z-20 flex flex-col items-center bg-[#F0EDE1]/80 backdrop-blur-sm">
+            <footer className="shrink-0 pb-6 pt-4 relative z-20 flex flex-col items-center">
               <div className="h-px w-10 bg-[#8B7355]/15 mb-4" />
               <Link
                 href="/about"
