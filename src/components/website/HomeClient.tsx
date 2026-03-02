@@ -2,6 +2,7 @@
 
 
 import { useEffect, useRef, useState, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "next-view-transitions";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -39,119 +40,133 @@ function ContactParamHandler() {
  */
 function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { href: string; label: string }[], onContactClick: () => void, onExploreClick: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
-    <div className="flex sm:hidden flex-col items-center mb-2 relative">
-      <AnimatePresence>
-        {isOpen && (
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#F0EDE1]/95 backdrop-blur-xl"
-          >
-            {/* 顶层背景纹理 */}
-            <div
-              className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-              }}
-            />
-
-            {/* 顶部 Logo 标识 */}
+    <div className="flex sm:hidden flex-col items-center mb-2 relative pointer-events-auto">
+      {mounted && createPortal(
+        <AnimatePresence>
+          {isOpen && (
             <m.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-              className="absolute top-16 flex flex-col items-center gap-2 opacity-20"
+              key="mobile-full-menu"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#F0EDE1]/95 backdrop-blur-xl pointer-events-auto"
             >
-              <Image src="/images/logo.webp" alt="NIHPLOD" width={100} height={40} className="grayscale" />
-              <div className="h-px w-8 bg-brand-charcoal/20" />
-            </m.div>
-
-            {/* 链接列表 */}
-            <m.div
-              className="flex flex-col items-center gap-10 mt-10"
-              initial="hidden"
-              animate="visible"
-              variants={{
-                visible: {
-                  transition: { staggerChildren: 0.1 }
-                }
-              }}
-            >
-              {/* === 新增：主导航项 === */}
-              <m.div
-                variants={{
-                  hidden: { opacity: 0, y: 30 },
-                  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+              {/* 顶层背景纹理 */}
+              <div
+                className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
                 }}
+              />
+
+              {/* 顶部 Logo 标识 */}
+              <m.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="absolute top-16 flex flex-col items-center gap-2 opacity-20"
               >
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    onExploreClick();
-                  }}
-                  className="group flex flex-col items-center gap-2 mb-4"
-                >
-                  <span className="text-2xl font-serif tracking-[0.3em] text-[#8B7355] transition-all group-hover:scale-105">
-                    探索更多
-                  </span>
-                  <div className="h-px w-12 bg-[#8B7355]/30 group-hover:w-20 transition-all duration-500" />
-                </button>
+                <Image src="/images/logo.webp" alt="NIHPLOD" width={100} height={40} className="grayscale" />
+                <div className="h-px w-8 bg-brand-charcoal/20" />
               </m.div>
 
-              {/* 次要链接 */}
-              {links.map((link) => (
+              {/* 链接列表 */}
+              <m.div
+                className="flex flex-col items-center gap-10 mt-10"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  visible: {
+                    transition: { staggerChildren: 0.1 }
+                  }
+                }}
+              >
+                {/* === 新增：主导航项 === */}
                 <m.div
-                  key={link.href}
                   variants={{
                     hidden: { opacity: 0, y: 30 },
                     visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
                   }}
                 >
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setIsOpen(false);
-                      if (link.href === "/contact") {
-                        onContactClick();
-                      } else {
-                        window.location.href = link.href;
-                      }
+                      onExploreClick();
                     }}
-                    className="group flex flex-col items-center gap-2"
+                    className="group flex flex-col items-center gap-2 mb-4"
                   >
-                    <span className="text-lg font-light tracking-[0.2em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
-                      {link.label}
+                    <span className="text-2xl font-serif tracking-[0.3em] text-[#8B7355] transition-all group-hover:scale-105">
+                      探索更多
                     </span>
-                    <div className="h-px w-0 bg-brand-gold/40 transition-all duration-500 group-hover:w-full" />
+                    <div className="h-px w-12 bg-[#8B7355]/30 group-hover:w-20 transition-all duration-500" />
                   </button>
                 </m.div>
-              ))}
-            </m.div>
 
-            {/* 底部关闭按钮 - 下移以平衡视觉 */}
-            <m.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              onClick={() => setIsOpen(false)}
-              className="absolute bottom-16 flex flex-col items-center group"
-            >
-              <div className="relative h-14 w-14 flex items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/5 transition-all hover:bg-white/20">
-                <X className="h-7 w-7 text-brand-charcoal/30 group-hover:text-brand-charcoal" strokeWidth={1} />
-              </div>
-            </m.button>
-          </m.div>
-        )}
-      </AnimatePresence>
+                {/* 次要链接 */}
+                {links.map((link) => (
+                  <m.div
+                    key={link.href}
+                    variants={{
+                      hidden: { opacity: 0, y: 30 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+                    }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                        if (link.href === "/contact") {
+                          onContactClick();
+                        } else {
+                          window.location.href = link.href;
+                        }
+                      }}
+                      className="group flex flex-col items-center gap-2"
+                    >
+                      <span className="text-lg font-light tracking-[0.2em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
+                        {link.label}
+                      </span>
+                      <div className="h-px w-0 bg-brand-gold/40 transition-all duration-500 group-hover:w-full" />
+                    </button>
+                  </m.div>
+                ))}
+              </m.div>
+
+              {/* 底部关闭按钮 - 下移以平衡视觉 */}
+              <m.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen(false);
+                }}
+                className="absolute bottom-16 flex flex-col items-center group pointer-events-auto"
+              >
+                <div className="relative h-14 w-14 flex items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/5 transition-all hover:bg-white/20">
+                  <X className="h-7 w-7 text-brand-charcoal/30 group-hover:text-brand-charcoal" strokeWidth={1} />
+                </div>
+              </m.button>
+            </m.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <m.button
         type="button"
         onClick={() => setIsOpen(true)}
         whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-brand-charcoal/60 hover:text-brand-charcoal transition-all"
+        className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-brand-charcoal/60 hover:text-brand-charcoal transition-all pointer-events-auto cursor-pointer relative z-[30]"
       >
         <div className="flex flex-col gap-1">
           <div className="h-px w-4 bg-current opacity-40" />
@@ -416,17 +431,17 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     />
 
                     {/* 版权文本 & 备案信息 */}
-                    <div className="flex flex-col items-center gap-2 opacity-40">
-                      <p className="text-[10px] sm:text-[11px] font-light tracking-widest text-brand-charcoal relative z-10">
+                    <div className="flex flex-col items-center gap-1 opacity-40">
+                      <p className="text-[10px] sm:text-[11px] font-light tracking-widest text-brand-charcoal relative z-10 leading-tight">
                         &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                       </p>
-                      <div className="flex items-center justify-center gap-2 sm:gap-4 text-[8px] sm:text-[10px] font-light tracking-wider sm:tracking-widest text-brand-charcoal whitespace-nowrap">
-                        <Link href="https://beian.miit.gov.cn/" target="_blank" className="hover:text-brand-gold transition-colors">
+                      <div className="flex items-center justify-center gap-2 sm:gap-4 text-[9px] sm:text-[10px] font-light tracking-normal sm:tracking-widest text-brand-charcoal whitespace-nowrap flex-nowrap leading-tight">
+                        <Link href="https://beian.miit.gov.cn/" target="_blank" className="hover:text-brand-gold transition-colors flex items-center">
                           沪ICP备2024043916号-1
                         </Link>
                         <span className="text-brand-charcoal/30">|</span>
                         <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="hover:text-brand-gold transition-colors flex items-center gap-1">
-                          <Image src="/images/beian.webp" alt="备案图标" width={14} height={14} className="shrink-0" />
+                          <Image src="/images/beian.webp" alt="备案图标" width={12} height={12} className="shrink-0 opacity-80" />
                           <span>沪公网安备 31011502019404号</span>
                         </Link>
                       </div>
