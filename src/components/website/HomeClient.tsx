@@ -426,7 +426,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                         </Link>
                         <span className="text-brand-charcoal/30">|</span>
                         <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="hover:text-brand-gold transition-colors flex items-center gap-1">
-                          <Image src="/images/beian.png" alt="备案图标" width={14} height={14} className="shrink-0" />
+                          <Image src="/images/beian.webp" alt="备案图标" width={14} height={14} className="shrink-0" />
                           <span>沪公网安备 31011502019404号</span>
                         </Link>
                       </div>
