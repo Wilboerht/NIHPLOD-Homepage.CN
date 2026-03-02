@@ -366,12 +366,12 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     >
                       探索更多
                     </m.button>
-                    <m.div whileTap={{ scale: 0.96 }} className="flex">
+                    {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
                       <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
                         AI快速测肤
                         <span className="badge-new">NEW</span>
                       </Link>
-                    </m.div>
+                    </m.div> */}
                   </m.div>
 
                   {/* 底部辅助导航与版权 */}

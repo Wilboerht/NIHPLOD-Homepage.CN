@@ -254,7 +254,7 @@ export function FAQContent() {
                                             </p>
                                             <button
                                                 onClick={() => openContact("support")}
-                                                className="group flex items-center gap-2 rounded-full border border-brand-charcoal/10 bg-white/60 px-6 py-2.5 text-sm font-medium tracking-widest text-brand-charcoal/80 transition-all hover:bg-brand-charcoal hover:text-[#F0EDE1] hover:border-brand-charcoal hover:shadow-lg active:scale-95"
+                                                className="group flex items-center gap-2 rounded-full border border-brand-charcoal/10 bg-white/60 px-6 py-2.5 text-sm font-medium tracking-widest text-brand-charcoal/80 transition-all hover:bg-brand-gold/15 hover:text-[#8B7355] hover:border-[#8B7355]/30 hover:backdrop-blur-md hover:shadow-lg active:scale-95"
                                             >
                                                 <span>联系我们</span>
                                                 <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
