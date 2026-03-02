@@ -482,6 +482,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           </m.div>
         ))}
       </div>
+      {/* 移动端版权信息 - 与指南页保持一致 */}
+      <footer className="shrink-0 py-6 relative z-20 flex flex-col items-center">
+        <p className="text-[10px] font-light tracking-widest text-brand-charcoal/40 uppercase">
+          &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+        </p>
+      </footer>
     </div>
   );
 
@@ -647,6 +653,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         </m.div>
                       ))}
                     </section>
+                    {/* 桌面端版权信息 - 与指南页保持一致 */}
+                    <footer className="mt-auto py-8 flex flex-col items-center opacity-40">
+                      <p className="text-[11px] font-light tracking-widest text-[#00263E] uppercase">
+                        &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                      </p>
+                    </footer>
                   </div>
                 </div>
 
