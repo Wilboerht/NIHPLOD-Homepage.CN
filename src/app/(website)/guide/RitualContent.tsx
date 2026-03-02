@@ -642,7 +642,7 @@ const defaultModuleData: ModuleData = {
           title: "混油养肤",
           description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。",
           duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-oil-nourish.jpg"
+          imageUrl: "/images/ritual-step-oil-nourish.webp"
         },
         {
           title: "膜法封存",
@@ -728,7 +728,7 @@ const defaultModuleData: ModuleData = {
           title: "混油养肤",
           description: "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。",
           duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-oil-nourish.jpg"
+          imageUrl: "/images/ritual-step-oil-nourish.webp"
         },
         {
           title: "膜法封存",
