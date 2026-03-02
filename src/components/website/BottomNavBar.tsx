@@ -41,13 +41,7 @@ interface NavItem {
  * TODO: 请在此替换为您自己的 SVG <path> 等内容
  */
 const CustomAboutIcon = ({ className }: { className?: string }) => (
-    <svg className={className} fill="currentColor" id="_图层_2" data-name="图层 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 188.38 178.1">
-        <g id="_图层_1-2" data-name="图层 1">
-            <path d="M92.74.02c28.72-.35,53.86,4.29,73.99,26.14,18.54,20.12,22.79,43.55,21.41,70.33-1.78,34.45-25.64,64.79-59,73.71-15.98,4.27-51.56,4.94-67.17-.08-1.92-.62-3.73-1.62-5.66-2.23-5.02,3.08-9.55,6.32-15.28,8.07-7.26,2.22-23.31,3.9-29.32-1.25-9.71-8.33,1.62-19.44,3.89-28.14,2.28-8.73-1.49-10.8-5.2-17.66C-7.07,96.6-2.47,50.59,23.77,24.19,43.37,4.45,65.78.35,92.74.02ZM25.56,162.47h5.21c10.91,0,17.31-11.99,27.17-10.27,5.74,1,10.62,4.48,17.43,5.23,14.45,1.59,40.42,1.23,54.11-3.43,35.76-12.17,47.89-48.68,42.35-83.68S138.34,16.94,104.88,15.72c-31.43-1.14-59.75,1-78.39,29.54-12.77,19.57-14.54,51.49-4.59,72.5,2.98,6.29,8.93,12.88,9.74,19.75,1.06,9.05-2.22,17.06-6.07,24.96Z" />
-            <polygon points="105.76 97.73 105.76 48.1 120.15 48.1 120.15 123.63 109.54 123.63 70.52 72.2 70.52 122.19 56.13 122.19 56.13 46.3 66.74 46.3 105.76 97.73" />
-            <path d="M137.68,106.82c3.48-.52,6.67.34,8.86,3.17,5.32,6.88-1.69,16.85-10.14,13.74s-7.19-15.65,1.28-16.91Z" />
-        </g>
-    </svg>
+    <svg className={className} viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg"><path stroke="currentColor" stroke-width="1.82" d="M2.889 12.422c0 5.584 4.527 10.11 10.11 10.11q1.039-.001 2.017-.2c1.034-.228.587 1.232 1.31 1.353.883.147 6.785-5.082 6.785-11.263C23.111 6.837 18.584 2.31 13 2.31S2.889 6.837 2.889 12.42Z" /><path fill="currentColor" d="M8.602 17.29a.29.29 0 0 1-.29-.288V9.734a.29.29 0 0 1 .48-.218l1.415 1.238a.3.3 0 0 1 .099.218v6.03c0 .16-.13.288-.29.288zm-.192-6.825a.3.3 0 0 1-.097-.216V8.545c0-.31.367-.476.6-.27l5.575 4.928V8.33c0-.16.13-.289.289-.289h1.415c.16 0 .289.13.289.29v8.456a.361.361 0 0 1-.6.271z" /><circle cx="18.628" cy="16.209" r=".934" fill="currentColor" /></svg>
 );
 
 /**
@@ -144,10 +138,7 @@ export function BottomNavBar() {
                                         className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-brand-beige/50"
                                     >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-gold/10">
-                                            <Icon className={cn(
-                                                "h-5 w-5 text-brand-gold",
-                                                item.href === "/about" && "scale-[0.85]"
-                                            )} />
+                                            <Icon className="h-5 w-5 text-brand-gold" />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-sm font-medium text-brand-charcoal">{item.label}</span>
@@ -195,10 +186,7 @@ export function BottomNavBar() {
                             >
                                 {/* 图标容器 */}
                                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10">
-                                    <PrimaryIcon className={cn(
-                                        "h-6 w-6 text-brand-gold",
-                                        primaryNav.href === "/about" && "scale-[0.85]"
-                                    )} />
+                                    <PrimaryIcon className="h-6 w-6 text-brand-gold" />
                                 </div>
                                 {/* 文字 */}
                                 <div className="flex flex-col">
@@ -224,10 +212,7 @@ export function BottomNavBar() {
                                             className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
                                         >
                                             {/* 图标 (放大作为视觉重心) */}
-                                            <Icon className={cn(
-                                                "h-9 w-9 text-brand-gold transition-transform duration-500 group-hover:scale-105",
-                                                "scale-[0.85]" // CustomAboutIcon
-                                            )} />
+                                            <Icon className="h-9 w-9 text-brand-gold transition-transform duration-500 group-hover:scale-105" />
 
                                             {/* 主标题 - 衬线体 大号 */}
                                             <span className="font-serif text-[18px] font-medium tracking-wide text-brand-charcoal">
@@ -298,11 +283,7 @@ export function BottomNavBar() {
                                                     "hover:opacity-70"
                                                 )}
                                             >
-                                                <Icon className={cn(
-                                                    "h-8 w-8 text-[#C3BC9F] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:text-brand-gold",
-                                                    // 自定义图标通常占位更满，稍微缩小一点点以在高视觉重量下保持平衡
-                                                    item.href === "/about" && "scale-[0.85]"
-                                                )} />
+                                                <Icon className="h-8 w-8 text-[#C3BC9F] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:text-brand-gold" />
                                                 <span>
                                                     {item.label}
                                                 </span>
