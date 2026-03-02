@@ -771,8 +771,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             </div>
 
             {/* 固定底栏品牌标语 */}
-            <footer className="shrink-0 pb-12 pt-6 relative z-20 flex flex-col items-center bg-[#F0EDE1]/80 backdrop-blur-sm">
-              <div className="h-px w-10 bg-[#8B7355]/15 mb-6" />
+            <footer className="shrink-0 pb-6 pt-4 relative z-20 flex flex-col items-center bg-[#F0EDE1]/80 backdrop-blur-sm">
+              <div className="h-px w-10 bg-[#8B7355]/15 mb-4" />
               <Link
                 href="/about"
                 className="group flex flex-col items-center gap-2"
