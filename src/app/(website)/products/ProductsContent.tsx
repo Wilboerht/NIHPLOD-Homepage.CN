@@ -407,14 +407,14 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const MobileShowcase = () => (
     <div className="flex h-full flex-col overflow-hidden bg-[#F0EDE1]">
       {/* 顶部 Logo - 保持与首页一致的呼吸感 */}
-      <header className="flex h-16 shrink-0 items-center justify-center pt-4">
+      <header className="flex h-20 shrink-0 items-center justify-center pt-8">
         <Link href="/">
           <Image src="/images/logo.webp" alt="Logo" width={90} height={36} className="object-contain" />
         </Link>
       </header>
 
       {/* 移动端标题与导航 - 左右布局 */}
-      <div className="flex shrink-0 items-start justify-between px-6 pt-6 pb-3 relative z-10">
+      <div className="flex shrink-0 items-center justify-between px-6 pt-6 pb-3 relative z-10">
         <h2 className="text-[22px] font-normal tracking-[0.2em] text-[#00263e] leading-none">
           当季热卖
         </h2>
@@ -422,7 +422,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           type="button"
           onClick={() => setIsCategoryMenuOpen(true)}
           whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40 hover:text-brand-charcoal transition-all pt-[3px]"
+          className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40 hover:text-brand-charcoal transition-all"
         >
           <div className="flex flex-col gap-1">
             <div className="h-px w-4 bg-current opacity-40" />
