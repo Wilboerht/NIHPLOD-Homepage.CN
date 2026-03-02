@@ -168,7 +168,7 @@ export function StoryContent() {
                   />
 
                   {/* Header - Fixed Top - Matching Products Style */}
-                  <header className="flex h-16 shrink-0 items-center justify-center pt-4 px-6 relative z-50">
+                  <header className="flex h-20 shrink-0 items-center justify-center pt-8 px-6 relative z-50">
                     <Link href="/">
                       <Image
                         src="/images/logo.webp"

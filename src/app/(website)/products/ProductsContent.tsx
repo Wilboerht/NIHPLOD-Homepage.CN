@@ -739,7 +739,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 <button
                   type="button"
                   onClick={() => setIsCategoryMenuOpen(false)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[0.5px] border-[#8B7355]/10 bg-[#FFD700]/5 backdrop-blur-[4px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all active:scale-95"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[0.5px] border-[#8B7355]/10 bg-white/40 backdrop-blur-[4px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all active:scale-95"
                 >
                   <X className="h-5 w-5 text-[#8B7355]" strokeWidth={1.5} />
                 </button>
