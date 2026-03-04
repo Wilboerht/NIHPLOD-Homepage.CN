@@ -1553,13 +1553,13 @@
   }
 
   .kinetic-cell-skin {
-    order: 3;
+    order: 4;
     grid-column: span 2;
     aspect-ratio: 2.1 / 1 !important;
   }
 
   .kinetic-cell-less {
-    order: 4;
+    order: 3;
     grid-column: span 2 !important;
     aspect-ratio: 2.1 / 1 !important;
   }
