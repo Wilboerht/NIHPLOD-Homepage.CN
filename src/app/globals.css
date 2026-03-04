@@ -600,6 +600,7 @@
 /* 品牌文案 */
 .home-container .title {
   font-size: 1.5rem;
+  /* 桌面端保持原始字号，不影响 PC */
   font-weight: 300;
   line-height: 1.6;
   letter-spacing: 0.1em;
@@ -718,13 +719,10 @@
   }
 
   .home-container .title {
-    font-size: 1.125rem;
-    line-height: 1.6;
-    padding: 0 16px;
-  }
-
-  .home-container .button-group {
-    /* margin-top: 3rem; */
+    font-size: 1rem;
+    /* 小屏保持 16px 基准 */
+    line-height: 1.7;
+    padding: 0 12px;
   }
 
   .home-container .btn-primary {
@@ -733,6 +731,27 @@
 
   .home-container .btn-secondary {
     width: 160px;
+  }
+}
+
+/* 极窄屏（三星 Galaxy S9+ 等 320px 设备）专项修复 */
+@media (max-width: 360px) {
+  .home-container .logo {
+    width: 120px;
+  }
+
+  .home-container .title {
+    font-size: 0.875rem;
+    /* 14px，极窄屏进一步缩小 */
+    line-height: 1.7;
+    letter-spacing: 0.05em;
+    /* 减小字距避免换行太碎 */
+    padding: 0 8px;
+  }
+
+  .home-container .btn-primary {
+    width: 160px;
+    font-size: 14px;
   }
 }
 
