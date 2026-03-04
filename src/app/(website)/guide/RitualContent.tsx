@@ -1629,7 +1629,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* Certifications (Quality Endorsement) */}
                                 <div className="flex flex-col items-center gap-3">
-                                  <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">品质背书</span>
+                                  <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">检测认证</span>
                                   <div className="flex items-center gap-6 opacity-60 mix-blend-multiply">
                                     <Image src="/images/sgs.svg" alt="SGS" width={22} height={22} className="h-[22px] w-auto" />
                                     <Image src="/images/intertek-logo.svg" alt="Intertek" width={22} height={22} className="h-[20px] w-auto" />
