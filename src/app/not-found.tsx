@@ -25,13 +25,15 @@ export default function NotFound() {
         {/* Logo */}
         <div className="mb-8">
           <Link href="/" className="inline-block">
-            <Image
-              src="/images/NIHPLOD-logo.svg"
-              alt="NIHPLOD"
-              width={120}
-              height={40}
-              className="mx-auto object-contain"
-            />
+            <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+              <Image
+                src="/images/NIHPLOD-logo.svg"
+                alt="NIHPLOD"
+                fill
+                className="mx-auto object-contain"
+                priority
+              />
+            </div>
           </Link>
         </div>
 

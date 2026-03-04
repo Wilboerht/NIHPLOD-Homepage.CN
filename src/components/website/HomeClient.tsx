@@ -47,7 +47,7 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
   }, []);
 
   return (
-    <div className="flex sm:hidden flex-col items-center mb-2 relative pointer-events-auto">
+    <div className="flex md:hidden flex-col items-center mb-2 relative pointer-events-auto">
       {mounted && createPortal(
         <AnimatePresence>
           {isOpen && (
@@ -74,7 +74,9 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                 transition={{ delay: 0.2, duration: 0.8 }}
                 className="absolute top-16 flex flex-col items-center gap-2 opacity-20"
               >
-                <Image src="/images/NIHPLOD-logo.svg" alt="NIHPLOD" width={100} height={40} className="grayscale" />
+                <div className="relative h-[26px] w-[124px]">
+                  <Image src="/images/NIHPLOD-logo.svg" alt="NIHPLOD" fill className="grayscale object-contain" />
+                </div>
                 <div className="h-px w-8 bg-brand-charcoal/20" />
               </m.div>
 
@@ -320,16 +322,16 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     <Image
                       src="/images/NIHPLOD-logo.svg"
                       alt="Dolphin Skin"
-                      width={280}
-                      height={100}
+                      width={200}
+                      height={72}
                       className="logo"
                       priority
                     />
                   </m.div>
 
-                  {/* 品牌文案 - 逐行交错加载 */}
+                  {/* 品牌文案 - 针对不同设备切换 2行/4行 */}
                   <m.div
-                    className="content-wrapper mt-12 sm:mt-16"
+                    className="content-wrapper mt-12 md:mt-16"
                     initial="hidden"
                     animate="visible"
                     variants={{
@@ -341,7 +343,31 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       }
                     }}
                   >
-                    <h1 className="title text-base sm:text-xl lg:text-2xl font-light leading-[2] tracking-[0.2em] text-brand-charcoal">
+                    {/* 桌面端 & iPad Air/Pro (2行) - 字号提升至 22px */}
+                    <h1 className="title hidden min-[820px]:block text-[22px] lg:text-2xl font-light leading-[2.2] tracking-[0.25em] text-brand-charcoal">
+                      {[
+                        "海豚的肌肤，拥有每两小时自我更新的神奇能力，",
+                        "这种「逆转时光」的动物本能，是我们灵感的来源。"
+                      ].map((line, i) => (
+                        <m.span
+                          key={i}
+                          className="block"
+                          variants={{
+                            hidden: { opacity: 0, y: 15 },
+                            visible: {
+                              opacity: 1,
+                              y: 0,
+                              transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] }
+                            }
+                          }}
+                        >
+                          {line}
+                        </m.span>
+                      ))}
+                    </h1>
+
+                    {/* 移动端 & iPad mini (4行) - 字号从 base 提升至 lg */}
+                    <h1 className="title block min-[820px]:hidden text-lg font-light leading-[2.1] tracking-[0.2em] text-brand-charcoal">
                       {[
                         "海豚的肌肤，拥有每两小时",
                         "自我更新的神奇能力，",
@@ -368,7 +394,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
                   {/* 按钮组 - 增加触压反馈 */}
                   <m.div
-                    className="button-group mt-12 sm:mt-16 flex gap-6"
+                    className="button-group mt-12 md:mt-16 flex gap-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, delay: 1.2 }}
@@ -398,14 +424,14 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   >
                     {/* 辅助链接 */}
                     {/* 辅助链接 - 桌面端 (静态列表) */}
-                    <div className="hidden sm:flex items-center gap-3 sm:gap-6">
+                    <div className="hidden md:flex items-center gap-3 sm:gap-6">
                       {FOOTER_LINKS.map((link) => {
                         if (link.href === "/contact") {
                           return (
                             <button
                               key={link.href}
                               onClick={() => openContact()}
-                              className="text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                              className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
                             >
                               {link.label}
                             </button>
@@ -415,7 +441,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                           <Link
                             key={link.href}
                             href={link.href}
-                            className="text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                            className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
                           >
                             {link.label}
                           </Link>
@@ -436,11 +462,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                         &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                       </p>
                       <div className="flex items-center justify-center gap-2 sm:gap-4 text-[9px] sm:text-[10px] font-light tracking-normal sm:tracking-widest text-brand-charcoal whitespace-nowrap flex-nowrap leading-tight">
-                        <Link href="https://beian.miit.gov.cn/" target="_blank" className="hover:text-brand-gold transition-colors flex items-center">
+                        <Link href="https://beian.miit.gov.cn/" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center">
                           沪ICP备2024043916号-1
                         </Link>
                         <span className="text-brand-charcoal/30">|</span>
-                        <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="hover:text-brand-gold transition-colors flex items-center gap-1">
+                        <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center gap-1">
                           <Image src="/images/beian.webp" alt="备案图标" width={12} height={12} className="shrink-0 opacity-80" />
                           <span>沪公网安备 31011502019404号</span>
                         </Link>

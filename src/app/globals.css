@@ -208,6 +208,8 @@
       /* 确保触摸目标足够大 */
       min-height: 44px;
       min-width: 44px;
+      /* 防止被撑高后内容垂直偏移（iPad 等触屏设备） */
+      align-items: center;
     }
 
     /* 禁用移动端的 hover 效果延迟 */
@@ -608,7 +610,7 @@
 }
 
 .home-container .title span {
-  display: inline-block;
+  /* 移除强制的 inline-block，尊重组件内部定义的布局 (block) */
   word-break: keep-all;
 }
 
@@ -711,8 +713,8 @@
   z-index: 30;
 }
 
-/* 响应式 */
-@media (max-width: 600px) {
+/* 响应式 - 将断点提升至包含 iPad mini (820px) */
+@media (max-width: 820px) {
   .home-container .logo {
     width: 140px;
     /* margin-bottom: 2.5rem; */
@@ -1551,68 +1553,164 @@
   }
 }
 
-/* 移动端 - 单列布局 */
-@media (max-width: 600px) {
+/* 移动端与平板端 (iPad) - 采用精简布局 */
+@media (max-width: 1024px) {
   .kinetic-container {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: auto;
     height: auto;
-    /* 移除 max-height 限制，避免计算高度时出现裁剪问题，通过宽度控制整体高度 */
-    width: min(86vw, 42vh);
-    /* 增加最大宽度限制，防止在大屏手机上卡片过高导致溢出屏幕 */
-    max-width: 380px;
-    gap: 14px;
-    top: 49%;
+    /* 移除 max-height 限制，通过宽度控制整体高度 */
+    /* 治本方案：由于平板端是 2列x4行 结构，总高度约为宽度的 2 倍 */
+    /* 我们将宽度限制在视口高度的 32% (32vh)，则总高度约为 64vh， */
+    /* 这能完美避开顶部 15vh 和底部 15vh 的 UI 遮挡区域，实现全设备自适应。 */
+    width: min(86vw, 32vh);
+    max-width: 480px;
+    gap: min(12px, 1.5vw);
+    top: 48%;
   }
 
+  /* iPad Air (820px), Pro (834px+) 恢复展示 PC 的全量卡片 */
+  @media (min-width: 820px) {
+    .kinetic-container {
+      top: 48%;
+    }
+
+    .kinetic-cell-steps,
+    .kinetic-cell-reverse {
+      display: flex !important;
+      /* 恢复显示 */
+      order: 3;
+      /* 放在第三行 */
+    }
+
+    .kinetic-cell-boxes {
+      order: 1;
+    }
+
+    .kinetic-cell-reverse {
+      order: 1;
+    }
+
+    .kinetic-cell-less {
+      order: 2;
+    }
+
+    .kinetic-cell-steps {
+      order: 3;
+    }
+
+    .kinetic-cell-login {
+      order: 3;
+    }
+
+    .kinetic-cell-skin {
+      order: 4;
+    }
+  }
+
+  /* 只有 iPad mini (768px) 及手机保持极简 4 卡片 */
+  @media (max-width: 819px) {
+    .kinetic-container {
+      /* 针对精简 4 卡片布局，宽度可以放宽到 40vh，总高度约为 60vh */
+      width: min(86vw, 40vh);
+      max-width: 450px;
+      gap: 14px;
+      top: 49%;
+    }
+
+    .kinetic-cell-steps,
+    .kinetic-cell-reverse {
+      display: none !important;
+    }
+
+    .kinetic-cell-boxes {
+      order: 1;
+      grid-column: span 1;
+    }
+
+    .kinetic-cell-login {
+      order: 2;
+      grid-column: span 1;
+    }
+
+    .kinetic-cell-less {
+      order: 3;
+      grid-column: span 2;
+    }
+
+    .kinetic-cell-skin {
+      order: 4;
+      grid-column: span 2;
+    }
+  }
+
+  /* 移动端精简布局细节及覆盖样式 */
   .kinetic-cell {
     padding: 16px;
     border-radius: 16px;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
   }
 
+  /* 适配 iPad 的大文字与圆角 */
+  @media (min-width: 601px) {
+    .kinetic-cell {
+      padding: 24px;
+      border-radius: 20px;
+    }
+
+    .kinetic-name {
+      font-size: 1.8rem !important;
+    }
+
+    /* 针对文字卡片的字号微调 */
+    .kinetic-text-cell .kinetic-name {
+      font-size: 1.45rem;
+      line-height: 1.25;
+    }
+
+    .kinetic-desc {
+      font-size: 0.85rem !important;
+      color: #ffffff !important;
+      opacity: 0.8;
+      letter-spacing: 0.05em;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+  }
+
   .kinetic-cell-skin {
-    order: 4;
     grid-column: span 2;
     aspect-ratio: 2.1 / 1 !important;
   }
 
   .kinetic-cell-less {
-    order: 3;
     grid-column: span 2 !important;
     aspect-ratio: 2.1 / 1 !important;
   }
 
-  .kinetic-cell-steps {
-    display: none;
-  }
-
-  .kinetic-cell-reverse {
-    display: none;
-  }
-
   .kinetic-cell-boxes {
-    order: 1;
     grid-row: span 1;
     grid-column: span 1;
     aspect-ratio: 1 / 1 !important;
   }
 
   .kinetic-cell-login {
-    order: 2;
     grid-column: span 1;
     aspect-ratio: 1 / 1;
   }
 
   .kinetic-name {
     font-size: 1.35rem;
-    /* 稍微大一点，更接近参考图比例 */
     text-shadow: none !important;
   }
 
   .kinetic-login-cell {
     padding: 12px 14px;
-    /* 移动端也增加一些呼吸感 */
+  }
+
+  @media (min-width: 601px) {
+    .kinetic-login-cell {
+      padding: 24px;
+    }
   }
 
   .kinetic-btn {
@@ -1652,7 +1750,8 @@
   background: #f0dd9b;
 }
 
-.kinetic-cell-yellow .kinetic-name {
+.kinetic-cell-yellow .kinetic-name,
+.kinetic-cell-yellow .kinetic-desc {
   color: #ffffff;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
 }
@@ -1687,6 +1786,7 @@
 }
 
 .kinetic-cell-orange .kinetic-name,
+.kinetic-cell-orange .kinetic-desc,
 .kinetic-cell-orange .kinetic-description {
   color: #ffffff;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;

@@ -170,13 +170,15 @@ export function StoryContent() {
                   {/* Header - Fixed Top - Matching Products Style */}
                   <header className="flex h-20 shrink-0 items-center justify-center pt-8 px-6 relative z-50">
                     <Link href="/">
-                      <Image
-                        src="/images/NIHPLOD-logo.svg"
-                        alt="NIHPLOD Logo"
-                        width={90}
-                        height={36}
-                        className="object-contain"
-                      />
+                      <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
                     </Link>
                   </header>
 
@@ -447,13 +449,15 @@ export function StoryContent() {
                       >
                         {/* 左侧：Logo */}
                         <Link href="/">
-                          <Image
-                            src="/images/NIHPLOD-logo.svg"
-                            alt="Logo"
-                            width={120}
-                            height={32}
-                            className="h-9 w-auto opacity-90 transition-opacity hover:opacity-70"
-                          />
+                          <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                            <Image
+                              src="/images/NIHPLOD-logo.svg"
+                              alt="Logo"
+                              fill
+                              className="object-contain opacity-90 transition-opacity hover:opacity-70"
+                              priority
+                            />
+                          </div>
                         </Link>
 
                         {/* 中间：导航链接 */}

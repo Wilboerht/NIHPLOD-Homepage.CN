@@ -40,15 +40,16 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                         {/* Logo - 使用 img 标签因为 Next Image 可能加载失败 */}
                         <div className="mb-8">
                             <a href="/" className="inline-block">
-                                <Image
-                                    src="/images/NIHPLOD-logo.svg"
-                                    alt="NIHPLOD"
-                                    width={120}
-                                    height={40}
-                                    className="mx-auto object-contain"
-                                    style={{ width: '120px', height: 'auto' }}
-                                    unoptimized
-                                />
+                                <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                                    <Image
+                                        src="/images/NIHPLOD-logo.svg"
+                                        alt="NIHPLOD"
+                                        fill
+                                        className="mx-auto object-contain"
+                                        priority
+                                        unoptimized
+                                    />
+                                </div>
                             </a>
                         </div>
 

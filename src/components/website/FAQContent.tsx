@@ -162,14 +162,15 @@ export function FAQContent() {
                                 {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
                                 <div className="sticky top-0 z-50 flex h-20 sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F0EDE1]/95 sm:bg-[#F0EDE1]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
                                     <Link href="/" className="flex items-center justify-center">
-                                        <Image
-                                            src="/images/NIHPLOD-logo.svg"
-                                            alt="NIHPLOD"
-                                            width={180}
-                                            height={55}
-                                            className="h-[28px] sm:h-[36px] w-auto opacity-90"
-                                            priority
-                                        />
+                                        <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                                            <Image
+                                                src="/images/NIHPLOD-logo.svg"
+                                                alt="NIHPLOD"
+                                                fill
+                                                className="object-contain"
+                                                priority
+                                            />
+                                        </div>
                                     </Link>
                                     {/* Texture Overlay for Header to match body */}
                                     <div className="texture-overlay absolute inset-0 z-[-1]" />

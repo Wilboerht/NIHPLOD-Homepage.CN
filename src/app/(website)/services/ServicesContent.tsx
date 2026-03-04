@@ -173,7 +173,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex justify-center"
                   >
-                    <div className="relative h-9 w-36 sm:h-11 sm:w-44">
+                    <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
                         alt="公司标志"

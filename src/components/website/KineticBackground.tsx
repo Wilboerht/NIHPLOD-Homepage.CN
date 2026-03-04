@@ -113,7 +113,7 @@ export function KineticBackground() {
                     className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect"
                 >
                     <div className="kinetic-name" style={{ marginBottom: '12px', lineHeight: '1.3' }}>更少步骤<br />更多呵护</div>
-                    <div className="kinetic-name" style={{ fontSize: '14px', lineHeight: '1.5', letterSpacing: '0.1em', textTransform: 'none', fontWeight: 400, opacity: 0.9 }}>美丽不该复杂，<br />专注美好生活</div>
+                    <div className="kinetic-desc" style={{ fontSize: '13px', lineHeight: '1.5', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400, opacity: 0.8 }}>美丽不该复杂，<br />专注美好生活</div>
                 </div>
 
                 {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
@@ -165,7 +165,7 @@ export function KineticBackground() {
                 >
                     <div className="kinetic-text-glow" />
                     <div className="kinetic-name">逆转时光</div>
-                    <div className="kinetic-name" style={{ fontSize: '14px', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400 }}>REVERSE TIME</div>
+                    <div className="kinetic-desc" style={{ fontSize: '13px', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400, opacity: 0.8 }}>REVERSE TIME</div>
                 </div>
 
                 {/* Row 2, Col 4: 登录/CTA卡 */}

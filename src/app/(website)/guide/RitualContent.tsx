@@ -1157,14 +1157,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       )}
                     </AnimatePresence>
                     <Link href="/" className="flex items-center justify-center">
-                      <Image
-                        src="/images/NIHPLOD-logo.svg"
-                        alt="NIHPLOD"
-                        width={90}
-                        height={36}
-                        className="object-contain"
-                        priority
-                      />
+                      <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
                     </Link>
                   </header>
 
@@ -1714,14 +1715,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         }}
                         className="block transition-opacity hover:opacity-70"
                       >
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD"
-                          width={100}
-                          height={32}
-                          className="h-6 w-auto lg:h-7"
-                          priority
-                        />
+                        <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                          <Image
+                            src="/images/NIHPLOD-logo.svg"
+                            alt="NIHPLOD"
+                            fill
+                            className="object-contain"
+                            priority
+                          />
+                        </div>
                       </button>
 
                       {/* 右侧：Level 1 显示用户按钮，Level 2/3 显示面包屑 */}

@@ -409,7 +409,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       {/* 顶部 Logo - 保持与首页一致的呼吸感 */}
       <header className="flex h-20 shrink-0 items-center justify-center pt-8">
         <Link href="/">
-          <Image src="/images/NIHPLOD-logo.svg" alt="Logo" width={90} height={36} className="object-contain" />
+          <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+            <Image
+              src="/images/NIHPLOD-logo.svg"
+              alt="Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
         </Link>
       </header>
 
@@ -570,13 +578,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   <nav className="relative flex h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[12%]">
                     {/* Logo */}
                     <Link href="/">
-                      <Image
-                        src="/images/NIHPLOD-logo.svg"
-                        alt="Logo"
-                        width={90}
-                        height={36}
-                        className="object-contain"
-                      />
+                      <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
                     </Link>
 
                     {/* 导航链接 */}
@@ -729,13 +739,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             {/* 顶部标题与关闭 */}
             <header className="flex h-24 shrink-0 items-center justify-center px-6 pt-6 relative z-20">
               <div className="flex w-full max-w-[340px] items-center justify-between">
-                <Image
-                  src="/images/NIHPLOD-logo.svg"
-                  alt="NIHPLOD"
-                  width={90}
-                  height={36}
-                  className="object-contain"
-                />
+                <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                  <Image
+                    src="/images/NIHPLOD-logo.svg"
+                    alt="NIHPLOD"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => setIsCategoryMenuOpen(false)}
