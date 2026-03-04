@@ -294,12 +294,12 @@ export function StoryContent() {
                           </div>
 
                           <div className="mb-12 flex flex-col items-center">
-                            <div className="relative my-6 h-[400px] w-full overflow-hidden border border-[#00263e]/10 shadow-sm">
+                            <div className="relative my-6 h-[400px] md:h-[600px] w-full md:max-w-[600px] overflow-hidden border border-[#00263e]/10 shadow-sm bg-white/20">
                               <Image
                                 src="/images/story/mission-image.webp?v=2"
                                 alt="Mission"
                                 fill
-                                className="object-cover object-top"
+                                className="object-contain"
                               />
                             </div>
                             <div className="px-2">
