@@ -937,14 +937,21 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
   // 查找产品逻辑
   const findProduct = (searchTerm: string) => {
-    if (!products || products.length === 0) return null;
+    if (!products || products.length === 0) {
+      console.warn("Product list is empty.");
+      return null;
+    }
 
-    // 移除空白字符
-    const term = searchTerm.trim();
+    // 移除空白字符并转为小写
+    const term = searchTerm.trim().toLowerCase();
 
-    // 尝试在 products 中查找匹配项 (名称包含搜索词)
-    // 优先匹配名称更短的(可能更精确)，或者根据特定映射规则
-    return products.find(p => p.name.includes(term) || (p.category?.name && p.category.name.includes(term)));
+    // 尝试在 products 中查找匹配项
+    return products.find(p => {
+      const nameMatch = p.name.toLowerCase().includes(term);
+      const enNameMatch = p.nameEn?.toLowerCase().includes(term);
+      const categoryMatch = p.category?.name.toLowerCase().includes(term);
+      return nameMatch || enNameMatch || categoryMatch;
+    });
   };
 
   // 打开产品详情弹窗
@@ -955,6 +962,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
       setProductDrawerOpen(true);
     } else {
       console.warn(`Product not found for: ${productName}`);
+      // 如果没有找到具体产品，尝试打开一个默认的分层或提示，
+      // 这里我们可以暂时设为第一个产品作为兜底（仅限开发环境调试，正式环境建议提示“暂无详情”）
+      if (products && products.length > 0) {
+        setSelectedProduct(products[0]);
+        setProductDrawerOpen(true);
+      }
     }
   };
 
@@ -1657,16 +1670,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             )}
                             <button
                               onClick={() => {
-                                if (selectedModule === 'portable') {
-                                  setSelectedScheme(null);
-                                  setSelectedModule(null);
-                                  setCurrentLevel(1);
-                                } else {
-                                  setProductDrawerOpen(true);
-                                  setSelectedModule(null);
-                                  setSelectedScheme(null);
-                                  setCurrentLevel(1);
-                                }
+                                setSelectedScheme(null);
+                                setSelectedModule(null);
+                                setCurrentLevel(1);
                               }}
                               className={cn(
                                 "mt-8 w-full max-w-[280px] rounded-full py-4 text-[13px] font-medium tracking-[0.2em] transition-all duration-300",
