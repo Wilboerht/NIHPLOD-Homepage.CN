@@ -141,7 +141,7 @@ export function BottomNavBar() {
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                                    className="absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-[20px] bg-white/20 p-2 shadow-2xl backdrop-blur-xl pointer-events-auto lg:hidden border border-white/20"
+                                    className="absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-[20px] bg-[#F0EDE1]/95 p-2 shadow-2xl backdrop-blur-xl pointer-events-auto lg:hidden border border-brand-gold/10"
                                 >
                                     <div className="flex flex-col gap-1.5">
                                         {otherNavItems.map((item) => {
