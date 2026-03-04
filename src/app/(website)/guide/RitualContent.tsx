@@ -1587,17 +1587,20 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           <div className="mt-4 sm:mt-12 pb-10 flex flex-col items-center text-center">
                             <div className="h-px w-12 bg-[#8B7355]/20 mb-6 sm:mb-10" />
                             {selectedModule !== 'portable' && (
-                              <div className="flex flex-col items-center gap-4 sm:gap-8 mb-4">
-                                {/* 核心优势标签 (Moved from above) */}
-                                <div className="flex flex-wrap justify-center gap-2.5 px-4 w-full">
-                                  {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
-                                    <div key={tag} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#8B7355]/5 rounded-full border border-[#8B7355]/10">
-                                      <span className="text-[9px] text-[#8B7355]/60">✦</span>
-                                      <span className="text-[12px] tracking-widest text-[#00263E]/70 font-light">
-                                        {tag}
-                                      </span>
-                                    </div>
-                                  ))}
+                              <div className="flex flex-col items-center gap-10 sm:gap-14 mb-4">
+                                {/* 核心优势 */}
+                                <div className="flex flex-col items-center gap-4 w-full">
+                                  <span className="text-[10px] uppercase tracking-[0.3em] text-[#00263E]/30 font-medium">核心优势</span>
+                                  <div className="flex flex-wrap justify-center gap-2.5 px-4 w-full">
+                                    {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
+                                      <div key={tag} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#8B7355]/5 rounded-full border border-[#8B7355]/10">
+                                        <span className="text-[9px] text-[#8B7355]/60">✦</span>
+                                        <span className="text-[12px] tracking-widest text-[#00263E]/70 font-light">
+                                          {tag}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
 
                                 {(() => {
@@ -1605,7 +1608,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   if (!supportText) return null;
                                   const isRestricted = supportText.includes("不支持");
                                   return (
-                                    <div className="w-full px-6 flex justify-center">
+                                    <div className="w-full px-6 flex flex-col items-center gap-4">
+                                      <span className="text-[10px] uppercase tracking-[0.3em] text-[#00263E]/30 font-medium">特殊时期支持</span>
                                       <div className={cn(
                                         "px-5 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm shadow-sm inline-flex items-center gap-2",
                                         isRestricted ? "border-orange-900/10" : "border-[#8B7355]/10"
@@ -1628,8 +1632,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 </p>
 
                                 {/* Certifications (Quality Endorsement) */}
-                                <div className="flex flex-col items-center gap-3">
-                                  <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">检测认证</span>
+                                <div className="flex flex-col items-center gap-4">
+                                  <span className="text-[10px] uppercase tracking-[0.3em] text-[#00263E]/30 font-medium">检测认证</span>
                                   <div className="flex items-center gap-6 opacity-60 mix-blend-multiply">
                                     <Image src="/images/sgs.svg" alt="SGS" width={22} height={22} className="h-[22px] w-auto" />
                                     <Image src="/images/intertek-logo.svg" alt="Intertek" width={22} height={22} className="h-[20px] w-auto" />
