@@ -521,7 +521,7 @@ const defaultModuleData: ModuleData = {
             },
           ],
           benefits: ["保湿锁水", "过敏修护", "抗初老", "维稳舒缓", "SPF30", "PA+++"],
-          specialSupport: "外出方案不支持特殊时期使用"
+          specialSupport: ""
         }
       ]
     },
@@ -1600,29 +1600,27 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   ))}
                                 </div>
 
-                                {/* 特殊时期支持 (Moved from above) */}
-                                {selectedScheme.specialSupport && (
-                                  <div className="w-full px-6 flex justify-center">
-                                    {(() => {
-                                      const supportText = selectedSubPlan?.specialSupport || selectedScheme.specialSupport || "孕期、月子期、轻医美术后";
-                                      const isRestricted = supportText.includes("不支持");
-                                      return (
-                                        <div className={cn(
-                                          "px-5 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm shadow-sm inline-flex items-center gap-2",
-                                          isRestricted ? "border-orange-900/10" : "border-[#8B7355]/10"
+                                {(() => {
+                                  const supportText = selectedSubPlan?.specialSupport !== undefined ? selectedSubPlan.specialSupport : (selectedScheme.specialSupport || "孕期、月子期、轻医美术后");
+                                  if (!supportText) return null;
+                                  const isRestricted = supportText.includes("不支持");
+                                  return (
+                                    <div className="w-full px-6 flex justify-center">
+                                      <div className={cn(
+                                        "px-5 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm shadow-sm inline-flex items-center gap-2",
+                                        isRestricted ? "border-orange-900/10" : "border-[#8B7355]/10"
+                                      )}>
+                                        <Info className={cn("w-3.5 h-3.5", isRestricted ? "text-orange-900/40" : "text-[#8B7355]/40")} />
+                                        <span className={cn(
+                                          "text-[11px] tracking-widest font-light",
+                                          isRestricted ? "text-orange-900/70" : "text-[#00263E]/60"
                                         )}>
-                                          <Info className={cn("w-3.5 h-3.5", isRestricted ? "text-orange-900/40" : "text-[#8B7355]/40")} />
-                                          <span className={cn(
-                                            "text-[11px] tracking-widest font-light",
-                                            isRestricted ? "text-orange-900/70" : "text-[#00263E]/60"
-                                          )}>
-                                            {supportText}
-                                          </span>
-                                        </div>
-                                      );
-                                    })()}
-                                  </div>
-                                )}
+                                          {supportText}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
 
                                 {/* Quote */}
                                 <p className="text-sm text-[#8B7355] font-light opacity-70">
@@ -2097,31 +2095,30 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 </div>
 
                                 {/* Meta Item: Special Support */}
-                                {selectedScheme.specialSupport && (
-                                  <div className="flex flex-col">
-                                    <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
-                                      特殊时期支持
-                                    </h3>
-                                    {(() => {
-                                      const supportText = selectedSubPlan?.specialSupport || selectedScheme.specialSupport || "孕期、月子期、轻医美术后";
-                                      const isRestricted = supportText.includes("不支持");
+                                {(() => {
+                                  const supportText = selectedSubPlan?.specialSupport !== undefined ? selectedSubPlan.specialSupport : (selectedScheme.specialSupport || "孕期、月子期、轻医美术后");
+                                  if (!supportText) return null;
+                                  const isRestricted = supportText.includes("不支持");
 
-                                      return (
-                                        <div className={cn(
-                                          "pl-3 border-l-2 transition-colors duration-300 py-0.5",
-                                          isRestricted ? "border-orange-900/30" : "border-brand-gold/30"
+                                  return (
+                                    <div className="flex flex-col">
+                                      <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
+                                        特殊时期支持
+                                      </h3>
+                                      <div className={cn(
+                                        "pl-3 border-l-2 transition-colors duration-300 py-0.5",
+                                        isRestricted ? "border-orange-900/30" : "border-brand-gold/30"
+                                      )}>
+                                        <p className={cn(
+                                          "text-sm tracking-wider font-light",
+                                          isRestricted ? "text-orange-900/70" : "text-brand-charcoal/70"
                                         )}>
-                                          <p className={cn(
-                                            "text-sm tracking-wider font-light",
-                                            isRestricted ? "text-orange-900/70" : "text-brand-charcoal/70"
-                                          )}>
-                                            {supportText}
-                                          </p>
-                                        </div>
-                                      );
-                                    })()}
-                                  </div>
-                                )}
+                                          {supportText}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </m.aside>
 
                               {/* 右侧：步骤网格 (Steps Grid) - 使用 AnimatePresence 实现交叉淡入淡出 */}
