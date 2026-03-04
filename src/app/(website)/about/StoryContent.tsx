@@ -171,7 +171,7 @@ export function StoryContent() {
                   <header className="flex h-20 shrink-0 items-center justify-center pt-8 px-6 relative z-50">
                     <Link href="/">
                       <Image
-                        src="/images/logo.webp"
+                        src="/images/NIHPLOD-logo.svg"
                         alt="NIHPLOD Logo"
                         width={90}
                         height={36}
@@ -448,7 +448,7 @@ export function StoryContent() {
                         {/* 左侧：Logo */}
                         <Link href="/">
                           <Image
-                            src="/images/logo.webp"
+                            src="/images/NIHPLOD-logo.svg"
                             alt="Logo"
                             width={120}
                             height={32}

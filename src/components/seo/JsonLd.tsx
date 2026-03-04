@@ -32,7 +32,7 @@ export function OrganizationJsonLd() {
     url: baseUrl,
     logo: {
       "@type": "ImageObject",
-      url: `${baseUrl}/images/logo.webp`,
+      url: `${baseUrl}/images/NIHPLOD-logo.svg`,
       width: 200,
       height: 60,
     },

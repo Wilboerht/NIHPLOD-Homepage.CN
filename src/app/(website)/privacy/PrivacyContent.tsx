@@ -139,7 +139,7 @@ export function PrivacyContent() {
                 >
                   <div className="relative h-9 w-36 sm:h-11 sm:w-44">
                     <Image
-                      src="/images/logo.webp"
+                      src="/images/NIHPLOD-logo.svg"
                       alt="公司标志"
                       fill
                       className="object-contain"

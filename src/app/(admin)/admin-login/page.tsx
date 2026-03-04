@@ -54,7 +54,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center justify-center">
           <Image
-            src="/images/logo.webp"
+            src="/images/NIHPLOD-logo.svg"
             alt="NIHPLOD Logo"
             width={240}
             height={60}

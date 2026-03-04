@@ -26,7 +26,7 @@ export default function NotFound() {
         <div className="mb-8">
           <Link href="/" className="inline-block">
             <Image
-              src="/images/logo.webp"
+              src="/images/NIHPLOD-logo.svg"
               alt="NIHPLOD"
               width={120}
               height={40}

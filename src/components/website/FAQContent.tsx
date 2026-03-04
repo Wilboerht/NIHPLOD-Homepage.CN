@@ -163,7 +163,7 @@ export function FAQContent() {
                                 <div className="sticky top-0 z-50 flex h-20 sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F0EDE1]/95 sm:bg-[#F0EDE1]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
                                     <Link href="/" className="flex items-center justify-center">
                                         <Image
-                                            src="/images/logo.webp"
+                                            src="/images/NIHPLOD-logo.svg"
                                             alt="NIHPLOD"
                                             width={180}
                                             height={55}

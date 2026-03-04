@@ -1145,7 +1145,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     </AnimatePresence>
                     <Link href="/" className="flex items-center justify-center">
                       <Image
-                        src="/images/logo.webp"
+                        src="/images/NIHPLOD-logo.svg"
                         alt="NIHPLOD"
                         width={90}
                         height={36}
@@ -1705,7 +1705,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         className="block transition-opacity hover:opacity-70"
                       >
                         <Image
-                          src="/images/logo.webp"
+                          src="/images/NIHPLOD-logo.svg"
                           alt="NIHPLOD"
                           width={100}
                           height={32}

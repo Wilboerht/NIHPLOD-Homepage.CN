@@ -252,7 +252,7 @@ function LoginModal({
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
                       <Image
-                        src="/images/logo.webp"
+                        src="/images/NIHPLOD-logo.svg"
                         alt="NIHPLOD Logo"
                         width={120}
                         className="object-contain"
@@ -621,7 +621,7 @@ function RegisterModal({
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
                       <Image
-                        src="/images/logo.webp"
+                        src="/images/NIHPLOD-logo.svg"
                         alt="NIHPLOD Logo"
                         width={120}
                         className="object-contain"
@@ -961,7 +961,7 @@ function ForgotPasswordModal({
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
                       <Image
-                        src="/images/logo.webp"
+                        src="/images/NIHPLOD-logo.svg"
                         alt="NIHPLOD Logo"
                         width={120}
                         className="object-contain"

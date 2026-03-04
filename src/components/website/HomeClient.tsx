@@ -74,7 +74,7 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                 transition={{ delay: 0.2, duration: 0.8 }}
                 className="absolute top-16 flex flex-col items-center gap-2 opacity-20"
               >
-                <Image src="/images/logo.webp" alt="NIHPLOD" width={100} height={40} className="grayscale" />
+                <Image src="/images/NIHPLOD-logo.svg" alt="NIHPLOD" width={100} height={40} className="grayscale" />
                 <div className="h-px w-8 bg-brand-charcoal/20" />
               </m.div>
 
@@ -318,7 +318,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     transition={{ duration: 1.2, delay: 0.4 }}
                   >
                     <Image
-                      src="/images/logo.webp"
+                      src="/images/NIHPLOD-logo.svg"
                       alt="Dolphin Skin"
                       width={280}
                       height={100}

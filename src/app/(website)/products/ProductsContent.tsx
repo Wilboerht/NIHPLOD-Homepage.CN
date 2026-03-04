@@ -409,7 +409,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       {/* 顶部 Logo - 保持与首页一致的呼吸感 */}
       <header className="flex h-20 shrink-0 items-center justify-center pt-8">
         <Link href="/">
-          <Image src="/images/logo.webp" alt="Logo" width={90} height={36} className="object-contain" />
+          <Image src="/images/NIHPLOD-logo.svg" alt="Logo" width={90} height={36} className="object-contain" />
         </Link>
       </header>
 
@@ -571,7 +571,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     {/* Logo */}
                     <Link href="/">
                       <Image
-                        src="/images/logo.webp"
+                        src="/images/NIHPLOD-logo.svg"
                         alt="Logo"
                         width={90}
                         height={36}
@@ -730,7 +730,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             <header className="flex h-24 shrink-0 items-center justify-center px-6 pt-6 relative z-20">
               <div className="flex w-full max-w-[340px] items-center justify-between">
                 <Image
-                  src="/images/logo.webp"
+                  src="/images/NIHPLOD-logo.svg"
                   alt="NIHPLOD"
                   width={90}
                   height={36}
