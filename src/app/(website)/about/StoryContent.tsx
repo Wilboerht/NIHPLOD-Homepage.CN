@@ -158,7 +158,7 @@ export function StoryContent() {
                 )}
               >
                 {/* ========== 移动端布局 - 参考 About us 移动端.html ========== */}
-                <div className="relative flex h-full flex-col overflow-hidden sm:hidden">
+                <div className="relative flex h-full flex-col overflow-hidden lg:hidden">
                   {/* Background Texture Overlay */}
                   <div
                     className="pointer-events-none fixed inset-0 z-[1] opacity-[0.04]"
@@ -436,7 +436,7 @@ export function StoryContent() {
                 </div>
 
                 {/* ========== 桌面端布局 - 保持原有样式 ========== */}
-                <div className="hidden h-full flex-col sm:flex">
+                <div className="hidden h-full flex-col lg:flex">
                   {/* 顶部导航栏 */}
                   <AnimatePresence mode="wait">
                     {isExpanded && (
@@ -449,7 +449,7 @@ export function StoryContent() {
                       >
                         {/* 左侧：Logo */}
                         <Link href="/">
-                          <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                          <div className="relative h-8 w-[160px]">
                             <Image
                               src="/images/NIHPLOD-logo.svg"
                               alt="Logo"
@@ -514,11 +514,11 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="relative grid h-full grid-cols-1 items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12 xl:gap-16"
+                          className="relative grid h-full grid-cols-1 items-center gap-8 md:grid-cols-[1.1fr_1fr] md:gap-10 lg:grid-cols-[1.2fr_1fr] lg:gap-12 xl:gap-16"
                         >
                           {/* 左侧图片区域 */}
                           <div className="relative flex h-full flex-col justify-center gap-4">
-                            <div className="relative h-52 w-[70%] self-start overflow-hidden bg-[#e5e2d5] lg:h-64">
+                            <div className="relative h-44 w-[70%] self-start overflow-hidden bg-[#e5e2d5] md:h-56 lg:h-64">
                               <Image
                                 src="/images/story/dolphin-ocean.webp"
                                 alt="大自然"
@@ -541,7 +541,7 @@ export function StoryContent() {
                             <span className="mb-3 block text-sm uppercase tracking-[5px] text-[#00263e]/60">
                               Since 2008 | Monaco
                             </span>
-                            <h2 className="mb-8 text-4xl font-light leading-tight tracking-[8px] text-[#00263e] lg:text-[42px]">
+                            <h2 className="mb-6 text-3xl font-light leading-tight tracking-[6px] text-[#00263e] md:mb-8 md:text-4xl md:tracking-[8px] lg:text-[42px]">
                               来自大自然的<br />神奇修复力
                             </h2>
                             <p className="max-w-md text-[15px] leading-[2] tracking-wide text-[#00263e]/75">
@@ -565,7 +565,7 @@ export function StoryContent() {
                         >
                           <div className="relative flex w-full max-w-[1000px] items-center">
                             {/* 左侧大图 - 基准高度 580px */}
-                            <div className="relative z-0 h-[580px] flex-[1.1] overflow-hidden shadow-2xl">
+                            <div className="relative z-0 h-[450px] md:h-[520px] lg:h-[580px] flex-[1.1] overflow-hidden shadow-2xl">
                               <Image
                                 src="/images/story/mission-image.webp?v=2"
                                 alt="护肤专家"
@@ -575,12 +575,12 @@ export function StoryContent() {
                             </div>
 
                             {/* 右侧悬浮卡片 - 减小高度并叠层 */}
-                            <div className="relative z-10 -ml-24 flex h-[500px] flex-1 flex-col justify-between bg-[#DDD9C9] p-10 shadow-[20px_20px_60px_rgba(0,0,0,0.1)] lg:p-14">
+                            <div className="relative z-10 -ml-12 md:-ml-16 lg:-ml-24 flex h-[460px] md:h-[500px] flex-1 flex-col justify-between bg-[#DDD9C9] p-8 md:p-10 lg:p-14 shadow-[20px_20px_60px_rgba(0,0,0,0.1)]">
                               <div>
                                 <span className="mb-3 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
                                   公司使命
                                 </span>
-                                <h2 className="mb-6 text-[36px] font-light leading-tight tracking-[6px] text-[#00263e]">
+                                <h2 className="mb-4 text-[28px] md:text-[32px] lg:text-[36px] font-light leading-tight tracking-[4px] md:tracking-[6px] text-[#00263e]">
                                   化繁为简<br />逆转时光
                                 </h2>
                                 <p className="max-w-[420px] text-[15px] font-light leading-[2] tracking-wide text-[#00263e]/75">
@@ -615,7 +615,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="grid h-[calc(100%-3rem)] grid-cols-2 gap-px self-center bg-[#00263e]/10 lg:h-[calc(100%-4rem)] lg:grid-cols-4"
+                          className="grid h-[calc(100%-3rem)] grid-cols-1 gap-px self-center bg-[#00263e]/10 md:grid-cols-2 lg:h-[calc(100%-4rem)] lg:grid-cols-4"
                         >
                           {[
                             { num: "01", title: "更珍贵的产品", desc: "我们通过采集这个世上优质的原材料，结合前沿及有效的科技力量，不断更新和进步。" },
@@ -648,7 +648,7 @@ export function StoryContent() {
                           className="flex h-full flex-col pb-16 lg:pb-20 relative"
                         >
                           {/* 3x2 网格卡片布局 - 铺满容器 */}
-                          <div className="grid h-full grid-cols-3 grid-rows-2 gap-4 lg:gap-5 pb-12">
+                          <div className="grid h-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 grid-rows-none md:grid-rows-2 gap-4 lg:gap-5 pb-12">
                             {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map((award, idx) => (
                               <m.div
                                 key={`${currentAwardPage}-${idx}`}
