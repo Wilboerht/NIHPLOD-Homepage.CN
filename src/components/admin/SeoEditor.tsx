@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/utils";
 import type { SeoConfig } from "@/types/page-content";
 
+import imageCompression from "browser-image-compression";
+
 interface SeoEditorProps {
   value: SeoConfig;
   onChange: (seo: SeoConfig) => void;
@@ -15,6 +17,7 @@ interface SeoEditorProps {
 
 export function SeoEditor({ value, onChange }: SeoEditorProps) {
   const [uploading, setUploading] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,16 +34,29 @@ export function SeoEditor({ value, onChange }: SeoEditorProps) {
       return;
     }
 
-    // 验证文件大小 (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError("文件大小不能超过 10MB");
-      return;
-    }
-
-    setUploading(true);
     setUploadError(null);
+    setIsCompressing(true);
 
     try {
+      // 自动压缩
+      const options = {
+        maxSizeMB: 1,           // OG 图片建议 1MB 以内
+        maxWidthOrHeight: 1200, // 推荐尺寸 1200
+        useWebWorker: true,
+      };
+
+      if (file.size > 0.5 * 1024 * 1024) {
+        file = await imageCompression(file, options);
+      }
+      setIsCompressing(false);
+
+      // 验证最终大小 (10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError("文件大小超过 10MB");
+        return;
+      }
+
+      setUploading(true);
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "seo");
@@ -58,6 +74,7 @@ export function SeoEditor({ value, onChange }: SeoEditorProps) {
 
       updateField("ogImage", data.data.url);
     } catch (error) {
+      setIsCompressing(false);
       setUploadError(error instanceof Error ? error.message : "上传失败");
     } finally {
       setUploading(false);
@@ -173,7 +190,7 @@ export function SeoEditor({ value, onChange }: SeoEditorProps) {
               className="hidden"
             />
             <div className="mb-2 rounded-full bg-gray-100 p-2">
-              {uploading ? (
+              {uploading || isCompressing ? (
                 <Loader2 className="h-5 w-5 animate-spin text-brand-gold" />
               ) : dragActive ? (
                 <Upload className="h-5 w-5 text-brand-gold" />
@@ -182,7 +199,13 @@ export function SeoEditor({ value, onChange }: SeoEditorProps) {
               )}
             </div>
             <p className="text-sm text-gray-600">
-              {uploading ? "上传中..." : dragActive ? "释放以上传" : "点击或拖拽上传图片"}
+              {isCompressing
+                ? "正在处理图片..."
+                : uploading
+                  ? "正在上传..."
+                  : dragActive
+                    ? "释放以上传"
+                    : "点击或拖拽上传图片"}
             </p>
             <p className="mt-1 text-xs text-gray-400">
               支持 JPG、PNG、WebP，最大 10MB

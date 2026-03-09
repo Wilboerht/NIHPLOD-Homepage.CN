@@ -2,8 +2,9 @@
 
 import { useState, useRef, useCallback } from "react";
 import Image from "next/image";
-import { Upload, X, GripVertical, ImageIcon, AlertCircle } from "lucide-react";
+import { Upload, X, GripVertical, ImageIcon, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import imageCompression from "browser-image-compression";
 
 interface ImageItem {
   id?: string;
@@ -36,6 +37,7 @@ export function ImageUploader({
   className,
 }: ImageUploaderProps) {
   const [dragActive, setDragActive] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false); // 新增压缩状态
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,31 +56,51 @@ export function ImageUploader({
 
   // 处理文件选择
   const handleFiles = useCallback(
-    (files: FileList | null) => {
+    async (files: FileList | null) => {
       if (!files) return;
 
+      setIsCompressing(true);
       const errors: string[] = [];
       const newImages: ImageItem[] = [];
       const remainingSlots = maxImages - value.length;
+      const fileArray = Array.from(files).slice(0, remainingSlots);
 
-      Array.from(files)
-        .slice(0, remainingSlots)
-        .forEach((file, index) => {
-          const error = validateFile(file);
-          if (error) {
-            errors.push(error);
-            return;
+      for (let i = 0; i < fileArray.length; i++) {
+        let file = fileArray[i];
+
+        // 自动压缩逻辑
+        if (file.type.startsWith("image/") && file.type !== "image/gif") {
+          try {
+            const options = {
+              maxSizeMB: 2,           // 目标大小 2MB
+              maxWidthOrHeight: 2000, // 最大宽高 2000px
+              useWebWorker: true,
+              initialQuality: 0.8     // 初始质量
+            };
+
+            // 只有当文件确实很大或者尺寸很大时才执行压缩
+            if (file.size > 1 * 1024 * 1024) {
+              file = await imageCompression(file, options);
+            }
+          } catch (e) {
+            console.error("图片压缩失败:", e);
           }
+        }
 
-          // 创建预览 URL
-          const url = URL.createObjectURL(file);
-          newImages.push({
-            url,
-            alt: null,
-            order: value.length + index,
-            file,
-          });
+        const error = validateFile(file);
+        if (error) {
+          errors.push(error);
+          continue;
+        }
+
+        const url = URL.createObjectURL(file);
+        newImages.push({
+          url,
+          alt: null,
+          order: value.length + i,
+          file,
         });
+      }
 
       if (errors.length > 0) {
         setUploadErrors(errors);
@@ -88,8 +110,8 @@ export function ImageUploader({
       if (newImages.length > 0) {
         onChange([...value, ...newImages]);
       }
+      setIsCompressing(false);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [value, maxImages, maxSize, accept, onChange]
   );
 
@@ -245,14 +267,16 @@ export function ImageUploader({
             className="hidden"
           />
           <div className="mb-3 rounded-full bg-gray-100 p-3">
-            {dragActive ? (
+            {isCompressing ? (
+              <Loader2 className="h-6 w-6 animate-spin text-brand-gold" />
+            ) : dragActive ? (
               <Upload className="h-6 w-6 text-brand-gold" />
             ) : (
               <ImageIcon className="h-6 w-6 text-gray-400" />
             )}
           </div>
           <p className="mb-1 text-sm font-medium text-gray-700">
-            {dragActive ? "释放以上传" : "点击或拖拽上传图片"}
+            {isCompressing ? "正在处理图片..." : dragActive ? "释放以上传" : "点击或拖拽上传图片"}
           </p>
           <p className="text-xs text-gray-500">
             支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB
