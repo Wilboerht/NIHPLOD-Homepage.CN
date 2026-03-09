@@ -8,6 +8,7 @@ import Image from "next/image";
 import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
 
 // 登录方式类型
 type LoginMethod = "code" | "password";
@@ -71,6 +72,7 @@ function LoginModal({
   const [errorMsg, setErrorMsg] = useState("");
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("code");
   const [agreed, setAgreed] = useState(false);
+  const toast = useToast();
 
   // 关闭时重置表单
   useEffect(() => {
@@ -196,7 +198,7 @@ function LoginModal({
   // 微信登录
   const handleWechatLogin = async () => {
     if (!agreed) {
-      setErrorMsg("请先同意用户协议和隐私政策");
+      toast.warning("请先同意用户协议和隐私政策");
       return;
     }
     setLoading(true);
@@ -220,7 +222,7 @@ function LoginModal({
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreed) {
-      setErrorMsg("请先同意用户协议和隐私政策");
+      toast.warning("请先同意用户协议和隐私政策");
       return;
     }
     if (loginMethod === "code") {
@@ -296,7 +298,7 @@ function LoginModal({
                   {/* 表单内容 - 可滚动 */}
                   <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
                     {/* 登录方式切换 */}
-                    <div className="mb-8 flex justify-center gap-10 pb-2">
+                    <div className="mb-6 flex justify-center gap-10 pb-2">
                       <button
                         type="button"
                         onClick={() => { setLoginMethod("code"); setErrorMsg(""); }}
@@ -325,19 +327,6 @@ function LoginModal({
                       </button>
                     </div>
 
-                    {/* 错误提示 */}
-                    <AnimatePresence>
-                      {errorMsg && (
-                        <m.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mb-4 overflow-hidden rounded-xl bg-red-50 p-3 text-center text-sm text-red-600"
-                        >
-                          {errorMsg}
-                        </m.div>
-                      )}
-                    </AnimatePresence>
 
                     <form onSubmit={handleLogin} className="space-y-3">
                       {/* 手机号 */}
@@ -357,7 +346,7 @@ function LoginModal({
                       </div>
 
                       {/* 输入区容器 - 设置固定/最小高度避免切换时抖动 */}
-                      <div className="min-h-[96px] flex flex-col justify-start space-y-3">
+                      <div className="min-h-[72px] flex flex-col justify-start space-y-3">
                         {/* 验证码输入 - 仅验证码登录时显示 */}
                         {loginMethod === "code" && (
                           <div className="group animate-fade-scale-in">
@@ -417,7 +406,7 @@ function LoginModal({
                       </div>
 
                       {/* 协议勾选 */}
-                      <label className="flex cursor-pointer items-start gap-3 group/agreement pt-2 pb-1">
+                      <label className="flex cursor-pointer items-start gap-3 group/agreement pb-1">
                         <div className="relative mt-0.5">
                           <input
                             type="checkbox"
@@ -449,14 +438,11 @@ function LoginModal({
                         </span>
                       </button>
 
-                      {/* 分割线 */}
-                      <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-black/5 md:border-white/20"></div>
-                        </div>
-                        <div className="relative flex justify-center text-xs">
-                          <span className="px-4 bg-transparent text-brand-charcoal/30">其他登录方式</span>
-                        </div>
+                      {/* 分割线 - 使用 flex 布局避免线条穿透文字 */}
+                      <div className="my-6 flex items-center gap-4">
+                        <div className="h-px flex-1 bg-black/5 md:bg-white/20"></div>
+                        <span className="text-xs text-brand-charcoal/30 whitespace-nowrap">其他登录方式</span>
+                        <div className="h-px flex-1 bg-black/5 md:bg-white/20"></div>
                       </div>
 
                       {/* 微信登录按钮 */}
@@ -519,6 +505,7 @@ function RegisterModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const toast = useToast();
 
   // 关闭时重置表单
   useEffect(() => {
@@ -581,7 +568,7 @@ function RegisterModal({
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreed) {
-      setErrorMsg("请先同意用户协议和隐私政策");
+      toast.warning("请先同意用户协议和隐私政策");
       return;
     }
     if (!/^1[3-9]\d{9}$/.test(phone)) {
@@ -687,19 +674,7 @@ function RegisterModal({
 
                   {/* 表单内容 - 可滚动 */}
                   <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
-                    {/* 错误提示 */}
-                    <AnimatePresence>
-                      {errorMsg && (
-                        <m.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mb-4 overflow-hidden rounded-xl bg-red-50 p-3 text-center text-sm text-red-600"
-                        >
-                          {errorMsg}
-                        </m.div>
-                      )}
-                    </AnimatePresence>
+
 
                     <form onSubmit={handleRegister} className="space-y-3">
                       {/* 手机号 */}

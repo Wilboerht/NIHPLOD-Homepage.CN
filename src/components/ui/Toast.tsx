@@ -166,8 +166,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {/* Toast 容器 - 底部居中显示 */}
-      <div className="fixed bottom-20 left-1/2 z-[100] flex -translate-x-1/2 flex-col gap-2 lg:bottom-24">
+      {/* Toast 容器 - 顶部居中显示 - 极高层级确保不被遮挡 */}
+      <div className="fixed top-10 left-1/2 z-[100000] flex -translate-x-1/2 flex-col gap-2 md:top-16">
         {toasts.map((toast, index) => {
           const Icon = iconMap[toast.type];
           return (
@@ -175,7 +175,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={toast.id}
               className={cn(
                 "flex min-w-[280px] max-w-[400px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg",
-                "animate-in slide-in-from-bottom-4 fade-in duration-300",
+                "animate-in slide-in-from-top-4 fade-in duration-300",
                 typeStyles[toast.type]
               )}
               style={{ zIndex: 100 + index }}
