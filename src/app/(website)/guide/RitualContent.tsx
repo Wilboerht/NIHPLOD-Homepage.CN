@@ -1171,8 +1171,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                   {/* 移动端内容区域 - 隐藏滚动条并移除多余 padding */}
                   <div className={cn(
-                    "flex-1 px-6 relative z-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
-                    currentLevel === 1 ? "overflow-hidden flex flex-col justify-center" : "overflow-y-auto pb-10"
+                    "flex-1 px-6 relative z-10 overflow-y-auto pb-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+                    currentLevel === 1 && "flex flex-col"
                   )}>
                     <AnimatePresence mode="wait">
                       {/* Level 1: 模块选择 - 2x2 精致网格 */}
@@ -1183,7 +1183,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 1.05 }}
                           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                          className="flex flex-col py-4"
+                          className="flex flex-col min-h-full justify-center py-6"
                         >
                           <div className="mb-8 text-center">
                             <h1 className="text-3xl font-medium text-[#00263E] tracking-widest">护肤仪式指南</h1>

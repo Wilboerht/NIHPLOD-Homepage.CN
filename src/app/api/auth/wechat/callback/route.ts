@@ -4,9 +4,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { signUserToken, getTokenExpiresAt } from "@/lib/jwt";
+import { signUserToken } from "@/lib/jwt";
 import { getWechatOAuthToken, getWechatUserInfo } from "@/lib/wechat";
 import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import { SignJWT } from "jose";
+
+const secret = new TextEncoder().encode(
+  process.env.JWT_SECRET || "dev-secret-key-change-in-production-32chars"
+);
 
 
 
@@ -14,6 +19,7 @@ import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  let redirectUrl = "/";
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
@@ -21,7 +27,6 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get("error");
 
     // 获取重定向地址（从 state 解析或默认）
-    let redirectUrl = "/";
     if (state) {
       try {
         const stateData = JSON.parse(Buffer.from(state, "base64").toString());
@@ -36,11 +41,15 @@ export async function GET(request: NextRequest) {
     // 用户拒绝授权
     if (error) {
       console.log("[WechatCallback] 用户拒绝授权:", error);
-      return NextResponse.redirect(new URL(`/login?error=wechat_denied`, request.url));
+      const fallbackUrl = new URL(redirectUrl, request.url);
+      fallbackUrl.searchParams.set("error", "wechat_denied");
+      return NextResponse.redirect(fallbackUrl);
     }
 
     if (!code) {
-      return NextResponse.redirect(new URL(`/login?error=missing_code`, request.url));
+      const fallbackUrl = new URL(redirectUrl, request.url);
+      fallbackUrl.searchParams.set("error", "missing_code");
+      return NextResponse.redirect(fallbackUrl);
     }
 
     // 获取 Access Token
@@ -56,41 +65,26 @@ export async function GET(request: NextRequest) {
     });
 
     // 查找现有用户（优先通过 unionid，其次通过 openid）
-    let user = await prisma.user.findFirst({
+    const user = await prisma.user.findFirst({
       where: wechatUser.unionid
         ? { OR: [{ wechatUnionId: wechatUser.unionid }, { wechatOpenId: wechatUser.openid }] }
         : { wechatOpenId: wechatUser.openid },
     });
 
     let isNewUser = false;
+    let needsBind = false;
 
-    if (!user) {
-      // 新用户注册
-      isNewUser = true;
-
-      // 生成临时手机号占位符（微信登录可能没有手机号）
-      const tempPhone = `wx_${wechatUser.openid.slice(0, 11)}`;
-
-      user = await prisma.user.create({
-        data: {
-          phone: tempPhone,
-          phoneVerified: false, // 微信登录默认手机未验证
-          nickname: wechatUser.nickname || null,
-          avatar: wechatUser.headimgurl || null,
-          wechatOpenId: wechatUser.openid,
-          wechatUnionId: wechatUser.unionid || null,
-        },
-      });
-
-      console.log(`[WechatCallback] 新用户注册: ${wechatUser.nickname}`);
+    if (!user || user.phone.startsWith("wx_")) {
+      // Need to bind phone and set password
+      needsBind = true;
+      isNewUser = !user;
     } else {
-      // 更新用户信息
+      // Update existing real user
       await prisma.user.update({
         where: { id: user.id },
         data: {
           wechatOpenId: wechatUser.openid,
           wechatUnionId: wechatUser.unionid || user.wechatUnionId,
-          // 如果用户没有设置昵称和头像，使用微信的
           nickname: user.nickname || wechatUser.nickname || null,
           avatar: user.avatar || wechatUser.headimgurl || null,
         },
@@ -99,17 +93,37 @@ export async function GET(request: NextRequest) {
       console.log(`[WechatCallback] 用户登录: ${user.nickname || wechatUser.nickname}`);
     }
 
-    // 签发 Token
+    if (needsBind) {
+      // Create a temporary bind token
+      const bindToken = await new SignJWT({
+        type: "wechat_bind",
+        openid: wechatUser.openid,
+        unionid: wechatUser.unionid,
+        nickname: wechatUser.nickname,
+        avatar: wechatUser.headimgurl
+      })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime("1h")
+        .sign(secret);
+
+      const response = NextResponse.redirect(
+        new URL(`${redirectUrl}?login=wechat_bind&new=${isNewUser}`, request.url)
+      );
+
+      // Set temporary cookie for binding
+      response.cookies.set("wechat_bind_token", bindToken, { ...USER_COOKIE_OPTIONS, maxAge: 60 * 60 });
+      return response;
+    }
+
+    // Regular login
     const token = await signUserToken({
-      id: user.id,
-      phone: user.phone,
+      id: user!.id,
+      phone: user!.phone,
     });
 
-    const _expiresAt = getTokenExpiresAt(30);
-
-    // 构建重定向响应
     const response = NextResponse.redirect(
-      new URL(`${redirectUrl}?login=success&new=${isNewUser}`, request.url)
+      new URL(`${redirectUrl}?login=success&new=false`, request.url)
     );
 
     // 设置 Cookie
@@ -118,7 +132,13 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("[WechatCallback] 异常:", error);
-    return NextResponse.redirect(new URL(`/login?error=wechat_failed`, request.url));
+    try {
+      const fallbackUrl = new URL(redirectUrl, request.url);
+      fallbackUrl.searchParams.set("error", "wechat_failed");
+      return NextResponse.redirect(fallbackUrl);
+    } catch {
+      return NextResponse.redirect(new URL(`/login?error=wechat_failed`, request.url));
+    }
   }
 }
 

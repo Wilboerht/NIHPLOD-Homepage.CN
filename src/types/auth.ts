@@ -101,7 +101,7 @@ export interface UserJWTPayload {
  */
 export interface SendCodeRequest {
   phone: string;
-  type?: "login" | "bind" | "reset";
+  type?: "login" | "register" | "bind" | "reset";
 }
 
 /**
@@ -137,6 +137,7 @@ export const USER_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const, // 允许跨站请求携带（微信登录回调）
+  domain: process.env.NODE_ENV === "production" ? ".nihplod.cn" : undefined, // 允许跨子域名共享
   path: "/",
   maxAge: 30 * 24 * 60 * 60, // 30 天（秒）
 };

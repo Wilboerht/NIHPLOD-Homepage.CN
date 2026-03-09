@@ -9,7 +9,7 @@ interface User {
   avatar?: string;
 }
 
-type ModalType = "login" | "register" | "forgot-password" | null;
+type ModalType = "login" | "register" | "forgot-password" | "wechat-bind" | null;
 
 // 用户中心视图类型
 export type UserCenterView = "profile" | "orders" | "addresses" | null;
@@ -44,10 +44,12 @@ interface AuthContextType {
   openLoginModal: () => void;
   openRegisterModal: () => void;
   openForgotPasswordModal: () => void;
+  openWechatBindModal: () => void;
   closeModal: () => void;
   switchToLogin: () => void;
   switchToRegister: () => void;
   switchToForgotPassword: () => void;
+  switchToWechatBind: () => void;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -74,10 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const openLoginModal = useCallback(() => setActiveModal("login"), []);
   const openRegisterModal = useCallback(() => setActiveModal("register"), []);
   const openForgotPasswordModal = useCallback(() => setActiveModal("forgot-password"), []);
+  const openWechatBindModal = useCallback(() => setActiveModal("wechat-bind"), []);
   const closeModal = useCallback(() => setActiveModal(null), []);
   const switchToLogin = useCallback(() => setActiveModal("login"), []);
   const switchToRegister = useCallback(() => setActiveModal("register"), []);
   const switchToForgotPassword = useCallback(() => setActiveModal("forgot-password"), []);
+  const switchToWechatBind = useCallback(() => setActiveModal("wechat-bind"), []);
 
   // 用户中心弹窗操作
   const openUserCenter = useCallback((view: UserCenterView = "profile", orderId?: string) => {
@@ -193,10 +197,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         openLoginModal,
         openRegisterModal,
         openForgotPasswordModal,
+        openWechatBindModal,
         closeModal,
         switchToLogin,
         switchToRegister,
         switchToForgotPassword,
+        switchToWechatBind,
         refreshUser,
         logout,
       }}

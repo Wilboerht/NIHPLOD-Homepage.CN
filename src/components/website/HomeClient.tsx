@@ -18,18 +18,29 @@ import { useAuth } from "@/contexts/AuthContext";
  * 独立的 URL 参数处理器组件
  * 需要被包裹在 Suspense 中
  */
-function ContactParamHandler() {
+function UrlParamHandler() {
   const searchParams = useSearchParams();
-  const { openContact } = useAuth();
+  const { openContact, openWechatBindModal } = useAuth();
 
   useEffect(() => {
+    let shouldClearUrl = false;
+
     if (searchParams.get("contact") === "true") {
       openContact();
+      shouldClearUrl = true;
+    }
+
+    if (searchParams.get("login") === "wechat_bind") {
+      openWechatBindModal();
+      shouldClearUrl = true;
+    }
+
+    if (shouldClearUrl) {
       // 清除 URL 参数
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
-  }, [searchParams, openContact]);
+  }, [searchParams, openContact, openWechatBindModal]);
 
   return null;
 }
@@ -250,7 +261,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   return (
     <>
       <Suspense fallback={null}>
-        <ContactParamHandler />
+        <UrlParamHandler />
       </Suspense>
 
       {/* 内容区域容器 */}

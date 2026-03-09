@@ -38,6 +38,11 @@ export function AuthModal() {
         onClose={closeModal}
         onSwitchToLogin={switchToLogin}
       />
+      <WechatBindModal
+        isOpen={activeModal === "wechat-bind"}
+        onClose={closeModal}
+        onSuccess={refreshUser}
+      />
     </>
   );
 }
@@ -181,6 +186,29 @@ function LoginModal({
       }
       await onSuccess();
       onClose();
+    } catch {
+      setErrorMsg("网络错误，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 微信登录
+  const handleWechatLogin = async () => {
+    if (!agreed) {
+      setErrorMsg("请先同意用户协议和隐私政策");
+      return;
+    }
+    setLoading(true);
+    try {
+      const currentUrl = window.location.pathname + window.location.search;
+      const res = await fetch(`/api/auth/wechat?redirect=${encodeURIComponent(currentUrl)}`);
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = data.data.authUrl;
+      } else {
+        setErrorMsg(data.error?.message || "获取微信授权失败");
+      }
     } catch {
       setErrorMsg("网络错误，请重试");
     } finally {
@@ -419,6 +447,29 @@ function LoginModal({
                             <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           ) : "立即登录"}
                         </span>
+                      </button>
+
+                      {/* 分割线 */}
+                      <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-black/5 md:border-white/20"></div>
+                        </div>
+                        <div className="relative flex justify-center text-xs">
+                          <span className="px-4 bg-transparent text-brand-charcoal/30">其他登录方式</span>
+                        </div>
+                      </div>
+
+                      {/* 微信登录按钮 */}
+                      <button
+                        type="button"
+                        onClick={handleWechatLogin}
+                        disabled={loading}
+                        className="w-full py-3.5 border border-black/5 md:border-white/30 rounded-xl font-semibold flex items-center justify-center gap-2.5 transition-all hover:bg-black/[0.02] md:hover:bg-white/10 active:scale-[0.98] disabled:opacity-50"
+                      >
+                        <svg className="w-5 h-5 text-[#07C160]" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.045c.134 0 .24-.11.24-.245 0-.06-.024-.12-.04-.178l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088-.182-.013-.373-.027-.545-.035h-.06zm-2.89 3.217c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z" />
+                        </svg>
+                        <span className="text-brand-charcoal/70 tracking-wide text-sm">微信账号登录</span>
                       </button>
                     </form>
                   </div>
@@ -1149,6 +1200,301 @@ function ForgotPasswordModal({
                       </p>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          </m.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/**
+ * 微信绑定模态框
+ */
+function WechatBindModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+}) {
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [countdown, setCountdown] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [agreed, setAgreed] = useState(false);
+
+  // 关闭时重置表单
+  useEffect(() => {
+    if (!isOpen) {
+      setPhone("");
+      setCode("");
+      setPassword("");
+      setErrorMsg("");
+      setLoading(false);
+      setAgreed(false);
+    }
+  }, [isOpen]);
+
+  // 倒计时
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  // 禁止背景滚动
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  // 发送验证码
+  const sendCode = async () => {
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      setErrorMsg("请输入正确的手机号");
+      return;
+    }
+    try {
+      const res = await fetch("/api/auth/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, type: "register" }), // use register type for bind verification
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setErrorMsg(data.error?.message || "发送失败");
+        return;
+      }
+      setCountdown(60);
+      setErrorMsg("");
+    } catch {
+      setErrorMsg("网络错误，请重试");
+    }
+  };
+
+  // 绑定
+  const handleBind = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agreed) {
+      setErrorMsg("请先同意用户协议和隐私政策");
+      return;
+    }
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      setErrorMsg("请输入正确的手机号");
+      return;
+    }
+    if (!/^\d{6}$/.test(code)) {
+      setErrorMsg("请输入6位验证码");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMsg("密码至少6位");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/auth/wechat/bind", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, code, password }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setErrorMsg(data.error?.message || "绑定失败");
+        return;
+      }
+      await onSuccess();
+      // clean window location to remove ?login=wechat_bind
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+      onClose();
+    } catch {
+      setErrorMsg("网络错误，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <m.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
+          >
+            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
+              <div className="absolute inset-0 z-0 hidden md:block group">
+                <Image
+                  src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
+                  alt="Auth Background"
+                  fill
+                  className="object-cover grayscale brightness-[0.9] transition-all duration-1000 group-hover:scale-105 group-hover:grayscale-0"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent" />
+              </div>
+              <button
+                onClick={onClose}
+                className="absolute right-6 top-6 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 md:bg-white/40 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-black/10 md:hover:bg-white/80 hover:text-brand-charcoal/70"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
+                  <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
+                    <div className="mx-auto mb-4 flex justify-center">
+                      <Image
+                        src="/images/NIHPLOD-logo.svg"
+                        alt="NIHPLOD Logo"
+                        width={120}
+                        className="object-contain"
+                        height={48}
+                        priority
+                      />
+                    </div>
+                    <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
+                      绑定手机号
+                    </h2>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
+                    {/* 错误提示 */}
+                    <AnimatePresence>
+                      {errorMsg && (
+                        <m.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mb-4 overflow-hidden rounded-xl bg-red-50 p-3 text-center text-sm text-red-600"
+                        >
+                          {errorMsg}
+                        </m.div>
+                      )}
+                    </AnimatePresence>
+
+                    <form onSubmit={handleBind} className="space-y-3">
+                      <p className="text-center text-brand-charcoal/60 text-xs mb-4">
+                        为了保障您的账户安全与多端同步体验，请绑定并在日后使用此手机号登录。
+                      </p>
+                      {/* 手机号 */}
+                      <div className="group">
+                        <div className="relative">
+                          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                            <Smartphone className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
+                          </div>
+                          <input
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                            placeholder="请输入绑定的真实手机号"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 验证码 */}
+                      <div className="group">
+                        <div className="relative flex gap-2">
+                          <div className="relative flex-1">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                              <Shield className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
+                            </div>
+                            <input
+                              type="text"
+                              value={code}
+                              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                              placeholder="6位验证码"
+                              className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={sendCode}
+                            disabled={countdown > 0 || phone.length !== 11}
+                            className="shrink-0 px-4 rounded-xl bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 text-[14px] font-semibold text-brand-gold transition-all hover:bg-black/10 md:hover:bg-white/40 disabled:opacity-30"
+                          >
+                            {countdown > 0 ? `${countdown}s` : "获取验证码"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 密码 */}
+                      <div className="group">
+                        <div className="relative">
+                          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                            <Lock className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
+                          </div>
+                          <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="设置密码（至少6位）"
+                            maxLength={32}
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 协议勾选 */}
+                      <label className="flex cursor-pointer items-start gap-3 group/agreement">
+                        <div className="relative mt-0.5">
+                          <input
+                            type="checkbox"
+                            checked={agreed}
+                            onChange={(e) => setAgreed(e.target.checked)}
+                            className="peer sr-only"
+                          />
+                          <div className="h-4 w-4 rounded border border-black/20 md:border-white/40 bg-black/5 md:bg-white/10 backdrop-blur-sm transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
+                          <Check className="absolute inset-0 h-4 w-4 scale-0 text-white transition-transform peer-checked:scale-75" strokeWidth={4} />
+                        </div>
+                        <span className="text-[12px] leading-relaxed text-brand-charcoal/60 select-none">
+                          我已阅读并同意
+                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《用户协议》</a>
+                          和
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-charcoal/80 hover:text-brand-charcoal mx-0.5 underline decoration-brand-charcoal/20 underline-offset-4">《隐私政策》</a>
+                        </span>
+                      </label>
+
+                      {/* 绑定按钮 */}
+                      <button
+                        type="submit"
+                        disabled={loading || !agreed}
+                        className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-4 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                      >
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                          {loading ? (
+                            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : "绑定手机号并使用"}
+                        </span>
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>

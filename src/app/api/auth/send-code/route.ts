@@ -10,7 +10,7 @@ import { z } from "zod";
 // 请求参数验证
 const sendCodeSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  type: z.enum(["login", "bind", "reset"]).default("login"),
+  type: z.enum(["login", "register", "bind", "reset"]).default("login"),
 });
 
 // 验证码有效期（分钟）
@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // 参数验证
     const result = sendCodeSchema.safeParse(body);
     if (!result.success) {
