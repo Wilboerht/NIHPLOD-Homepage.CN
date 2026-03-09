@@ -44,7 +44,7 @@ export function ImageUploader({
   const dragItem = useRef<number | null>(null);
 
   // 验证文件
-  const validateFile = (file: File): string | null => {
+  const validateFile = useCallback((file: File): string | null => {
     if (!accept.includes(file.type)) {
       return `不支持的文件格式: ${file.name}`;
     }
@@ -52,7 +52,7 @@ export function ImageUploader({
       return `文件过大: ${file.name} (最大 ${maxSize}MB)`;
     }
     return null;
-  };
+  }, [accept, maxSize]);
 
   // 处理文件选择
   const handleFiles = useCallback(
@@ -112,7 +112,7 @@ export function ImageUploader({
       }
       setIsCompressing(false);
     },
-    [value, maxImages, maxSize, accept, onChange]
+    [value, maxImages, onChange, validateFile]
   );
 
   // 拖拽事件

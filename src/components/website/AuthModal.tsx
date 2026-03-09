@@ -69,7 +69,6 @@ function LoginModal({
   const [password, setPassword] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("code");
   const [agreed, setAgreed] = useState(false);
   const toast = useToast();
@@ -80,7 +79,6 @@ function LoginModal({
       setPhone("");
       setCode("");
       setPassword("");
-      setErrorMsg("");
       setLoading(false);
       setLoginMethod("code");
       setAgreed(false);
@@ -110,7 +108,7 @@ function LoginModal({
   // 发送验证码
   const sendCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
-      setErrorMsg("请输入正确的手机号");
+      toast.error("请输入正确的手机号");
       return;
     }
     try {
@@ -121,28 +119,26 @@ function LoginModal({
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorMsg(data.error?.message || "发送失败");
+        toast.error(data.error?.message || "发送失败");
         return;
       }
       setCountdown(60);
-      setErrorMsg("");
     } catch {
-      setErrorMsg("网络错误，请重试");
+      toast.error("网络错误，请重试");
     }
   };
 
   // 验证码登录
   const handleCodeLogin = async () => {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
-      setErrorMsg("请输入正确的手机号");
+      toast.error("请输入正确的手机号");
       return;
     }
     if (!/^\d{6}$/.test(code)) {
-      setErrorMsg("请输入6位验证码");
+      toast.error("请输入6位验证码");
       return;
     }
     setLoading(true);
-    setErrorMsg("");
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -151,13 +147,13 @@ function LoginModal({
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorMsg(data.error?.message || "登录失败");
+        toast.error(data.error?.message || "登录失败");
         return;
       }
       await onSuccess();
       onClose();
     } catch {
-      setErrorMsg("网络错误，请重试");
+      toast.error("网络错误，请重试");
     } finally {
       setLoading(false);
     }
@@ -166,15 +162,14 @@ function LoginModal({
   // 密码登录
   const handlePasswordLogin = async () => {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
-      setErrorMsg("请输入正确的手机号");
+      toast.error("请输入正确的手机号");
       return;
     }
     if (password.length < 6) {
-      setErrorMsg("密码至少6位");
+      toast.error("密码至少6位");
       return;
     }
     setLoading(true);
-    setErrorMsg("");
     try {
       const res = await fetch("/api/auth/login-password", {
         method: "POST",
@@ -183,13 +178,13 @@ function LoginModal({
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorMsg(data.error?.message || "登录失败");
+        toast.error(data.error?.message || "登录失败");
         return;
       }
       await onSuccess();
       onClose();
     } catch {
-      setErrorMsg("网络错误，请重试");
+      toast.error("网络错误，请重试");
     } finally {
       setLoading(false);
     }
@@ -209,10 +204,10 @@ function LoginModal({
       if (data.success) {
         window.location.href = data.data.authUrl;
       } else {
-        setErrorMsg(data.error?.message || "获取微信授权失败");
+        toast.error(data.error?.message || "获取微信授权失败");
       }
     } catch {
-      setErrorMsg("网络错误，请重试");
+      toast.error("网络错误，请重试");
     } finally {
       setLoading(false);
     }
@@ -301,7 +296,7 @@ function LoginModal({
                     <div className="mb-6 flex justify-center gap-10 pb-2">
                       <button
                         type="button"
-                        onClick={() => { setLoginMethod("code"); setErrorMsg(""); }}
+                        onClick={() => { setLoginMethod("code"); }}
                         className={`relative py-1 text-sm font-semibold tracking-wide transition-all ${loginMethod === "code"
                           ? "text-brand-charcoal"
                           : "text-brand-charcoal/40 hover:text-brand-charcoal/60"
@@ -314,7 +309,7 @@ function LoginModal({
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setLoginMethod("password"); setErrorMsg(""); }}
+                        onClick={() => { setLoginMethod("password"); }}
                         className={`relative py-1 text-sm font-semibold tracking-wide transition-all ${loginMethod === "password"
                           ? "text-brand-charcoal"
                           : "text-brand-charcoal/40 hover:text-brand-charcoal/60"
@@ -503,7 +498,6 @@ function RegisterModal({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
   const [agreed, setAgreed] = useState(false);
   const toast = useToast();
 
@@ -514,7 +508,6 @@ function RegisterModal({
       setCode("");
       setPassword("");
       setConfirmPassword("");
-      setErrorMsg("");
       setLoading(false);
       setAgreed(false);
     }
@@ -543,7 +536,7 @@ function RegisterModal({
   // 发送验证码
   const sendCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
-      setErrorMsg("请输入正确的手机号");
+      toast.error("请输入正确的手机号");
       return;
     }
     try {
@@ -554,13 +547,12 @@ function RegisterModal({
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorMsg(data.error?.message || "发送失败");
+        toast.error(data.error?.message || "发送失败");
         return;
       }
       setCountdown(60);
-      setErrorMsg("");
     } catch {
-      setErrorMsg("网络错误，请重试");
+      toast.error("网络错误，请重试");
     }
   };
 
@@ -572,23 +564,22 @@ function RegisterModal({
       return;
     }
     if (!/^1[3-9]\d{9}$/.test(phone)) {
-      setErrorMsg("请输入正确的手机号");
+      toast.error("请输入正确的手机号");
       return;
     }
     if (!/^\d{6}$/.test(code)) {
-      setErrorMsg("请输入6位验证码");
+      toast.error("请输入6位验证码");
       return;
     }
     if (password.length < 6) {
-      setErrorMsg("密码至少6位");
+      toast.error("密码至少6位");
       return;
     }
     if (password !== confirmPassword) {
-      setErrorMsg("两次密码不一致");
+      toast.error("两次密码不一致");
       return;
     }
     setLoading(true);
-    setErrorMsg("");
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -597,13 +588,13 @@ function RegisterModal({
       });
       const data = await res.json();
       if (!data.success) {
-        setErrorMsg(data.error?.message || "注册失败");
+        toast.error(data.error?.message || "注册失败");
         return;
       }
       await onSuccess();
       onClose();
     } catch {
-      setErrorMsg("网络错误，请重试");
+      toast.error("网络错误，请重试");
     } finally {
       setLoading(false);
     }
