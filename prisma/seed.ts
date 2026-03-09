@@ -335,13 +335,27 @@ async function main() {
   await prisma.product.deleteMany({});
   console.log("🗑️ 已清理旧产品数据");
 
+  // 产品图片映射 (使用已有资源作为占位)
+  const productImages: Record<string, string> = {
+    "foam-cleanser": "/images/ritual-step-cleanse.webp",
+    "face-scrub": "/images/ritual-step-deep-cleanse.webp",
+    "face-mask": "/images/ritual-step-seal.webp",
+    "serum": "/images/ritual-step-penetrate.webp",
+    "face-cream": "/images/ritual-step-revitalize.webp",
+    "hand-cream": "/images/ritual-step-nourish.webp",
+    "body-lotion": "/images/ritual-step-nourish.webp",
+    "sunscreen": "/images/ritual-step-protect.webp",
+    "treatment-oil": "/images/ritual-step-oil-nourish.webp",
+    "gift-box": "/images/portable-travel-hero.webp",
+  };
+
   for (const product of products) {
     await prisma.product.create({
       data: {
         ...product,
         images: {
           create: {
-            url: `/images/products/${product.slug}.jpg`,
+            url: productImages[product.slug] || "/images/logo.webp",
             alt: product.name,
             order: 0,
           },
