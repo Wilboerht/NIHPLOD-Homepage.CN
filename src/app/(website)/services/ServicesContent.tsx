@@ -95,16 +95,16 @@ const ServiceCard = ({
       onMouseEnter={() => !isDisabled && setIsHovered(true)}
       onMouseLeave={() => !isDisabled && setIsHovered(false)}
       className={cn(
-        "group relative flex flex-col items-center justify-center gap-2 p-4 transition-colors duration-500 sm:gap-4 sm:p-8 md:p-10",
-        isDisabled ? "cursor-not-allowed opacity-40 mix-blend-luminosity" : "hover:bg-white/50"
+        "group relative flex flex-col items-center justify-center gap-2 p-4 transition-all duration-500 sm:gap-4 sm:p-8 md:p-10",
+        isDisabled ? "cursor-not-allowed opacity-30 grayscale" : "hover:bg-white/50"
       )}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.15 + index * 0.06, ease: "easeOut" }}
       whileTap={isDisabled ? undefined : { scale: 0.98 }}
     >
-      <div className="flex h-10 w-10 items-center justify-center sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24">
-        <Icon className="h-8 w-8 sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-20 lg:w-20" isHovered={isHovered} />
+      <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28">
+        <Icon className="h-10 w-10 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22" isHovered={isHovered} />
       </div>
       <div className="flex flex-col items-center gap-1">
         <span className={cn(
@@ -113,11 +113,6 @@ const ServiceCard = ({
         )}>
           {service.label}
         </span>
-        {isDisabled && (
-          <span className="rounded-full bg-brand-charcoal/5 px-2 py-0.5 text-[10px] text-brand-charcoal/40">
-            暂未开放
-          </span>
-        )}
       </div>
     </m.a>
   );
@@ -214,7 +209,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
                   <div className="flex flex-col items-center w-full">
                     {/* 服务卡片列表 - 调整网格布局以适应4个卡片 */}
-                    <div className="grid w-full grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl px-4">
+                    <div className="grid w-full grid-cols-2 gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl px-4 pb-12">
                       {services.map((service, index) => (
                         <ServiceCard
                           key={service.id}

@@ -82,7 +82,14 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         <div className="flex h-full flex-col items-center pointer-events-none">
           {/* 主内容卡片容器 */}
           <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
-            <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
+            {/* 矿物纹理叠加层 */}
+            <div
+              className="pointer-events-none absolute inset-0 z-0 opacity-[0.04]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+              }}
+            />
+            <div className="relative z-10 flex h-full flex-col p-4 sm:p-6 lg:p-8">
               {/* 顶栏 / 标题区 */}
               <header className="flex-shrink-0 px-4 pb-8 text-center sm:pb-10 lg:pb-12">
                 <div className="space-y-8">
@@ -223,29 +230,36 @@ function JobCard({
     <m.button
       type="button"
       onClick={onClick}
-      className="group w-full overflow-hidden rounded-2xl bg-white/80 text-left shadow-sm ring-1 ring-brand-charcoal/5 backdrop-blur-sm transition-all hover:bg-white hover:shadow-md hover:ring-brand-gold/30"
+      className="group relative w-full overflow-hidden rounded-2xl border border-white/60 bg-white/40 text-left shadow-sm backdrop-blur-md transition-all hover:bg-white/60 hover:shadow-xl hover:border-brand-gold/30 hover:-translate-y-1"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
+      whileTap={{ scale: 0.98 }}
     >
-      <div className="flex w-full items-center justify-between p-4 sm:p-5">
+      {/* 矿物纹理叠加层 - 增加质感 */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+        }}
+      />
+
+      <div className="relative z-10 flex w-full items-center justify-between p-4 sm:p-5 lg:p-6">
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-serif text-base font-medium text-brand-charcoal sm:text-lg">
+            <h3 className="font-serif text-base font-medium text-brand-charcoal sm:text-lg lg:text-xl">
               {job.title}
             </h3>
             <span className="text-xs text-brand-charcoal/40 sm:text-sm">{job.titleEn}</span>
             <span
-              className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", typeInfo.color)}
+              className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium sm:text-xs", typeInfo.color)}
             >
               {typeInfo.label}
             </span>
           </div>
           <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-brand-charcoal/60 sm:gap-4 sm:text-sm">
             <span className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5" />
+              <MapPin className="h-3.5 w-3.5 text-brand-gold/70" />
               {job.location}
             </span>
             {job.salary && (
@@ -256,8 +270,8 @@ function JobCard({
             )}
           </div>
         </div>
-        <div className="ml-3 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gold/10 transition-all group-hover:bg-brand-gold group-hover:shadow-md sm:h-11 sm:w-11">
-          <FileText className="h-5 w-5 text-brand-gold transition-colors group-hover:text-white" />
+        <div className="ml-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gold/10 transition-all group-hover:bg-brand-gold group-hover:shadow-lg sm:h-12 sm:w-12">
+          <FileText className="h-5 w-5 text-brand-gold transition-colors group-hover:text-white sm:h-6 sm:w-6" />
         </div>
       </div>
     </m.button>
