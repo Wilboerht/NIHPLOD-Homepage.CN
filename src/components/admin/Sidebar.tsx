@@ -54,7 +54,7 @@ export function Sidebar({
       <div
         className={cn(
           "flex h-16 items-center border-b border-gray-200",
-          isCollapsed && !isMobile ? "justify-center px-2" : "justify-between px-4"
+          isCollapsed && !isMobile ? "justify-center px-2" : "justify-between pl-6 pr-4"
         )}
       >
         <Link href="/admin" className="flex items-center gap-2" onClick={onClose}>
