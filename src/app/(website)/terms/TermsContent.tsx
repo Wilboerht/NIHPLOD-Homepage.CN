@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
+import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -95,16 +96,30 @@ export function TermsContent({ content }: TermsContentProps) {
         <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
 
           <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
-            {/* 顶栏 / 标题区 */}
-            <header className="flex-shrink-0 px-4 pb-8 text-center sm:pb-10 lg:pb-12">
+            {/* Mobile Sticky Header (FAQ Style) */}
+            <div className="sticky top-0 z-50 flex h-20 shrink-0 items-center justify-center border-b border-transparent bg-[#EBE8DB]/94 backdrop-blur-md px-6 transition-all sm:hidden">
+              <Link href="/" className="flex items-center justify-center">
+                <div className="relative h-[26px] w-[124px]">
+                  <Image
+                    src="/images/NIHPLOD-logo.svg"
+                    alt="NIHPLOD"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+              </Link>
+            </div>
+
+            <header className="flex-shrink-0 px-4 pb-8 text-center sm:pb-10 lg:pb-12 pt-8 sm:pt-0">
               <div className="space-y-8">
-                {/* Logo 保持在顶端 */}
+                {/* Desktop Logo - Restore original style */}
                 <m.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex justify-center"
+                  className="hidden sm:flex justify-center"
                 >
-                  <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                  <div className="relative h-8 w-[160px]">
                     <Image
                       src="/images/NIHPLOD-logo.svg"
                       alt="公司标志"
