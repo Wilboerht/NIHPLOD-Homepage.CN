@@ -69,7 +69,7 @@ function LoginModal({
   const [password, setPassword] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>("code");
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password");
   const [agreed, setAgreed] = useState(false);
   const toast = useToast();
 
@@ -80,7 +80,7 @@ function LoginModal({
       setCode("");
       setPassword("");
       setLoading(false);
-      setLoginMethod("code");
+      setLoginMethod("password");
       setAgreed(false);
     }
   }, [isOpen]);
@@ -292,7 +292,8 @@ function LoginModal({
 
                   {/* 表单内容 - 可滚动 */}
                   <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
-                    {/* 登录方式切换 */}
+                    {/* 登录方式切换 (已隐藏验证码登录) */}
+                    {/*
                     <div className="mb-6 flex justify-center gap-10 pb-2">
                       <button
                         type="button"
@@ -321,7 +322,7 @@ function LoginModal({
                         )}
                       </button>
                     </div>
-
+                    */}
 
                     <form onSubmit={handleLogin} className="space-y-3">
                       {/* 手机号 */}
@@ -342,7 +343,8 @@ function LoginModal({
 
                       {/* 输入区容器 - 设置固定/最小高度避免切换时抖动 */}
                       <div className="min-h-[72px] flex flex-col justify-start space-y-3">
-                        {/* 验证码输入 - 仅验证码登录时显示 */}
+                        {/* 验证码输入 - 仅验证码登录时显示 (已隐藏) */}
+                        {/*
                         {loginMethod === "code" && (
                           <div className="group animate-fade-scale-in">
                             <div className="relative flex gap-2">
@@ -369,6 +371,7 @@ function LoginModal({
                             </div>
                           </div>
                         )}
+                        */}
 
                         {/* 密码输入 - 仅密码登录时显示 */}
                         {loginMethod === "password" && (
@@ -433,14 +436,15 @@ function LoginModal({
                         </span>
                       </button>
 
-                      {/* 分割线 - 使用 flex 布局避免线条穿透文字 */}
+                      {/* 分割线 - 使用 flex 布局避免线条穿透文字 (已隐藏第三方登录) */}
+                      {/*
                       <div className="my-6 flex items-center gap-4">
                         <div className="h-px flex-1 bg-black/5 md:bg-white/20"></div>
                         <span className="text-xs text-brand-charcoal/30 whitespace-nowrap">其他登录方式</span>
                         <div className="h-px flex-1 bg-black/5 md:bg-white/20"></div>
                       </div>
 
-                      {/* 微信登录按钮 */}
+                      // 微信登录按钮
                       <button
                         type="button"
                         onClick={handleWechatLogin}
@@ -452,6 +456,7 @@ function LoginModal({
                         </svg>
                         <span className="text-brand-charcoal/70 tracking-wide text-sm">微信账号登录</span>
                       </button>
+                      */}
                     </form>
                   </div>
 
