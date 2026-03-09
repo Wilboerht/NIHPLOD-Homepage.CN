@@ -405,7 +405,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
                   {/* 按钮组 - 增加触压反馈 */}
                   <m.div
-                    className="button-group mt-12 md:mt-16 flex gap-6"
+                    className="button-group mt-14 md:mt-20 flex gap-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, delay: 1.2 }}
