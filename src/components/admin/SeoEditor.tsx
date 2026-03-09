@@ -31,9 +31,9 @@ export function SeoEditor({ value, onChange }: SeoEditorProps) {
       return;
     }
 
-    // 验证文件大小 (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError("文件大小不能超过 5MB");
+    // 验证文件大小 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("文件大小不能超过 10MB");
       return;
     }
 
@@ -185,7 +185,7 @@ export function SeoEditor({ value, onChange }: SeoEditorProps) {
               {uploading ? "上传中..." : dragActive ? "释放以上传" : "点击或拖拽上传图片"}
             </p>
             <p className="mt-1 text-xs text-gray-400">
-              支持 JPG、PNG、WebP，最大 5MB
+              支持 JPG、PNG、WebP，最大 10MB
             </p>
           </div>
         )}

@@ -29,7 +29,7 @@ export function ImageUploader({
   value = [],
   onChange,
   maxImages = 10,
-  maxSize = 5,
+  maxSize = 10,
   accept = "image/jpeg,image/png,image/webp",
   label,
   error,
@@ -232,8 +232,8 @@ export function ImageUploader({
             dragActive
               ? "border-brand-gold bg-brand-gold/5"
               : error
-              ? "border-red-300 bg-red-50"
-              : "border-gray-300 hover:border-brand-gold hover:bg-brand-cream/30"
+                ? "border-red-300 bg-red-50"
+                : "border-gray-300 hover:border-brand-gold hover:bg-brand-cream/30"
           )}
         >
           <input
