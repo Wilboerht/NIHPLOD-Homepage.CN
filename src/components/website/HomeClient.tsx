@@ -474,12 +474,12 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       </p>
                       <div className="flex items-center justify-center gap-2 sm:gap-4 text-[9px] sm:text-[10px] font-light tracking-normal sm:tracking-widest text-brand-charcoal whitespace-nowrap flex-nowrap leading-tight">
                         <Link href="https://beian.miit.gov.cn/" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center">
-                          沪ICP备2024043916号-1
+                          沪ICP备xxxxxx号-1
                         </Link>
                         <span className="text-brand-charcoal/30">|</span>
                         <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center gap-1">
                           <Image src="/images/beian.webp" alt="备案图标" width={12} height={12} className="shrink-0 opacity-80" />
-                          <span>沪公网安备 31011502019404号</span>
+                          <span>公网安备xxxxxx号</span>
                         </Link>
                       </div>
                     </div>
