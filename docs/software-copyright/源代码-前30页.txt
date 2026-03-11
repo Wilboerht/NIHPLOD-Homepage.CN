@@ -1,0 +1,1503 @@
+源程序代码（前30页）
+============================================================
+
+   1  // ===== FILE: app\(admin)\admin-login\page.tsx =====
+   2  "use client";
+   3  import { useState, FormEvent } from "react";
+   4  import { useRouter, useSearchParams } from "next/navigation";
+   5  import { Button } from "@/components/ui";
+   6  import { Input } from "@/components/ui";
+   7  import Image from "next/image";
+   8  export default function LoginPage() {
+   9    const router = useRouter();
+  10    const searchParams = useSearchParams();
+  11    const redirectTo = searchParams.get("redirect") || "/admin";
+  12    const [email, setEmail] = useState("");
+  13    const [password, setPassword] = useState("");
+  14    const [error, setError] = useState("");
+  15    const [isLoading, setIsLoading] = useState(false);
+  16    const handleSubmit = async (e: FormEvent) => {
+  17      e.preventDefault();
+  18      setError("");
+  19      setIsLoading(true);
+  20      try {
+  21        const response = await fetch("/api/admin/login", {
+  22          method: "POST",
+  23          headers: {
+  24            "Content-Type": "application/json",
+  25          },
+  26          body: JSON.stringify({ email, password }),
+  27        });
+  28        const data = await response.json();
+  29        if (!response.ok || !data.success) {
+  30          setError(data.error?.message || "登录失败，请稍后重试");
+  31          return;
+  32        }
+  33        router.push(redirectTo);
+  34        router.refresh();
+  35      } catch {
+  36        setError("网络错误，请检查网络连接");
+  37      } finally {
+  38        setIsLoading(false);
+  39      }
+  40    };
+  41    return (
+  42      <div className="flex min-h-screen items-center justify-center bg-brand-cream px-4">
+  43        <div className="w-full max-w-md">
+  44          {}
+  45          <div className="mb-8 flex flex-col items-center justify-center">
+  46            <Image
+  47              src="/images/NIHPLOD-logo.svg"
+  48              alt="NIHPLOD Logo"
+  49              width={240}
+  50              height={60}
+  51              className="h-auto w-48 object-contain"
+  52              priority
+  53            />
+  54          </div>
+  55          {}
+  56          <div className="rounded-2xl bg-white p-8 shadow-lg">
+  57            <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal">管理员登录</h2>
+  58            <form onSubmit={handleSubmit} className="space-y-5">
+  59              {}
+  60              {error && (
+  61                <div className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
+  62                  {error}
+  63                </div>
+  64              )}
+  65              {}
+  66              <Input
+  67                id="email"
+  68                type="email"
+  69                label="邮箱地址"
+  70                placeholder="admin@nihplod.cn"
+  71                value={email}
+  72                onChange={(e) => setEmail(e.target.value)}
+  73                required
+  74                autoComplete="email"
+  75                disabled={isLoading}
+  76              />
+  77              {}
+  78              <Input
+  79                id="password"
+  80                type="password"
+  81                label="密码"
+  82                placeholder="请输入密码"
+  83                value={password}
+  84                onChange={(e) => setPassword(e.target.value)}
+  85                required
+  86                autoComplete="current-password"
+  87                disabled={isLoading}
+  88                minLength={6}
+  89              />
+  90              {}
+  91              <Button
+  92                type="submit"
+  93                className="w-full rounded-lg py-3"
+  94                disabled={isLoading}
+  95              >
+  96                {isLoading ? (
+  97                  <span className="flex items-center justify-center gap-2">
+  98                    <svg
+  99                      className="h-4 w-4 animate-spin"
+ 100                      viewBox="0 0 24 24"
+ 101                      fill="none"
+ 102                    >
+ 103                      <circle
+ 104                        className="opacity-25"
+ 105                        cx="12"
+ 106                        cy="12"
+ 107                        r="10"
+ 108                        stroke="currentColor"
+ 109                        strokeWidth="4"
+ 110                      />
+ 111                      <path
+ 112                        className="opacity-75"
+ 113                        fill="currentColor"
+ 114                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+ 115                      />
+ 116                    </svg>
+ 117                    登录中...
+ 118                  </span>
+ 119                ) : (
+ 120                  "登录"
+ 121                )}
+ 122              </Button>
+ 123            </form>
+ 124            {}
+ 125            <p className="mt-6 text-center text-xs text-brand-charcoal/40">
+ 126              默认账号: admin@nihplod.cn / admin123456
+ 127            </p>
+ 128          </div>
+ 129          {}
+ 130          <p className="mt-6 text-center text-sm text-brand-charcoal/60">
+ 131            <a href="/" className="hover:text-brand-gold transition-colors">
+ 132              ← 返回网站首页
+ 133            </a>
+ 134          </p>
+ 135        </div>
+ 136      </div>
+ 137    );
+ 138  }
+ 139  // ===== FILE: app\(admin)\admin\applications\page.tsx =====
+ 140  "use client";
+ 141  import { useEffect, useState, useCallback } from "react";
+ 142  import {
+ 143    Search,
+ 144    Download,
+ 145    Eye,
+ 146    Trash2,
+ 147    Clock,
+ 148    FileText,
+ 149    User,
+ 150    Briefcase,
+ 151    Filter,
+ 152    FolderPlus,
+ 153    Folder,
+ 154    Edit2,
+ 155    X,
+ 156    Tag,
+ 157  } from "lucide-react";
+ 158  import { Input } from "@/components/ui/Input";
+ 159  import { Button } from "@/components/ui/Button";
+ 160  import { Select } from "@/components/ui/Select";
+ 161  import { Badge } from "@/components/ui/Badge";
+ 162  import { Pagination } from "@/components/ui/Pagination";
+ 163  import { Modal } from "@/components/ui/Modal";
+ 164  import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+ 165  import { useToast } from "@/components/ui/Toast";
+ 166  import { cn } from "@/lib/utils";
+ 167  interface Job {
+ 168    id: string;
+ 169    title: string;
+ 170    titleEn: string;
+ 171    location?: string;
+ 172    type?: string;
+ 173  }
+ 174  interface ApplicationFolder {
+ 175    id: string;
+ 176    name: string;
+ 177    description?: string | null;
+ 178    applicationCount: number;
+ 179  }
+ 180  interface Application {
+ 181    id: string;
+ 182    jobId: string;
+ 183    name: string;
+ 184    phone: string;
+ 185    email: string;
+ 186    resumePath: string;
+ 187    status: string;
+ 188    notes: string | null;
+ 189    folderId: string | null;
+ 190    createdAt: string;
+ 191    updatedAt: string;
+ 192    job: Job;
+ 193    folder?: { id: string; name: string } | null;
+ 194  }
+ 195  const statusConfig: Record<string, { label: string; color: "default" | "warning" | "primary" | "success" | "danger" }> = {
+ 196    pending: { label: "待处理", color: "warning" },
+ 197    reviewed: { label: "已查看", color: "primary" },
+ 198    interviewed: { label: "已面试", color: "default" },
+ 199    rejected: { label: "已拒绝", color: "danger" },
+ 200    hired: { label: "已录用", color: "success" },
+ 201  };
+ 202  export default function AdminApplicationsPage() {
+ 203    const { success, error: showError } = useToast();
+ 204    const [applications, setApplications] = useState<Application[]>([]);
+ 205    const [loading, setLoading] = useState(true);
+ 206    const [page, setPage] = useState(1);
+ 207    const [total, setTotal] = useState(0);
+ 208    const [pendingCount, setPendingCount] = useState(0);
+ 209    const [search, setSearch] = useState("");
+ 210    const [statusFilter, setStatusFilter] = useState("all");
+ 211    const [jobFilter, setJobFilter] = useState("all");
+ 212    const [folderFilter, setFolderFilter] = useState("all");
+ 213    const [jobs, setJobs] = useState<Job[]>([]);
+ 214    const [folders, setFolders] = useState<ApplicationFolder[]>([]);
+ 215    const [showFolderModal, setShowFolderModal] = useState(false);
+ 216    const [editingFolder, setEditingFolder] = useState<ApplicationFolder | null>(null);
+ 217    const [folderForm, setFolderForm] = useState({ name: "", description: "" });
+ 218    const [savingFolder, setSavingFolder] = useState(false);
+ 219    const [deleteFolderTarget, setDeleteFolderTarget] = useState<ApplicationFolder | null>(null);
+ 220    const [deletingFolder, setDeletingFolder] = useState(false);
+ 221    const [detailApplication, setDetailApplication] = useState<Application | null>(null);
+ 222    const [editingNotes, setEditingNotes] = useState("");
+ 223    const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
+ 224    const [deleting, setDeleting] = useState(false);
+ 225    const fetchFolders = useCallback(async () => {
+ 226      try {
+ 227        const res = await fetch("/api/admin/application-folders");
+ 228        const data = await res.json();
+ 229        if (data.success) {
+ 230          setFolders(data.data);
+ 231        }
+ 232      } catch (error) {
+ 233        console.error("获取分类夹列表失败:", error);
+ 234      }
+ 235    }, []);
+ 236    useEffect(() => {
+ 237      const fetchJobs = async () => {
+ 238        try {
+ 239          const res = await fetch("/api/admin/jobs?pageSize=100");
+ 240          const data = await res.json();
+ 241          if (data.success) {
+ 242            setJobs(data.data.items);
+ 243          }
+ 244        } catch (error) {
+ 245          console.error("获取职位列表失败:", error);
+ 246        }
+ 247      };
+ 248      fetchJobs();
+ 249      fetchFolders();
+ 250    }, [fetchFolders]);
+ 251    const fetchApplications = useCallback(async () => {
+ 252      setLoading(true);
+ 253      try {
+ 254        const params = new URLSearchParams({
+ 255          page: page.toString(),
+ 256          pageSize: "20",
+ 257        });
+ 258        if (search) params.set("search", search);
+ 259        if (statusFilter !== "all") params.set("status", statusFilter);
+ 260        if (jobFilter !== "all") params.set("jobId", jobFilter);
+ 261        if (folderFilter !== "all") params.set("folderId", folderFilter);
+ 262        const res = await fetch(`/api/admin/applications?${params}`);
+ 263        const data = await res.json();
+ 264        if (data.success) {
+ 265          setApplications(data.data.items);
+ 266          setTotal(data.data.pagination.total);
+ 267          setPendingCount(data.data.pendingCount);
+ 268        }
+ 269      } catch (error) {
+ 270        console.error("获取申请列表失败:", error);
+ 271      } finally {
+ 272        setLoading(false);
+ 273      }
+ 274    }, [page, search, statusFilter, jobFilter, folderFilter]);
+ 275    useEffect(() => {
+ 276      fetchApplications();
+ 277    }, [fetchApplications]);
+ 278    useEffect(() => {
+ 279      const timer = setTimeout(() => {
+ 280        setPage(1);
+ 281      }, 300);
+ 282      return () => clearTimeout(timer);
+ 283    }, [search]);
+ 284    const updateStatus = async (application: Application, newStatus: string) => {
+ 285      try {
+ 286        const res = await fetch(`/api/admin/applications/${application.id}`, {
+ 287          method: "PATCH",
+ 288          headers: { "Content-Type": "application/json" },
+ 289          body: JSON.stringify({ status: newStatus }),
+ 290        });
+ 291        if (!res.ok) throw new Error("操作失败");
+ 292        success("状态已更新");
+ 293        fetchApplications();
+ 294        if (detailApplication?.id === application.id) {
+ 295          setDetailApplication({ ...application, status: newStatus });
+ 296        }
+ 297      } catch {
+ 298        showError("更新失败");
+ 299      }
+ 300    };
+ 301    const saveNotes = async () => {
+ 302      if (!detailApplication) return;
+ 303      try {
+ 304        const res = await fetch(`/api/admin/applications/${detailApplication.id}`, {
+ 305          method: "PATCH",
+ 306          headers: { "Content-Type": "application/json" },
+ 307          body: JSON.stringify({ notes: editingNotes }),
+ 308        });
+ 309        if (!res.ok) throw new Error("操作失败");
+ 310        success("备注已保存");
+ 311        setDetailApplication({ ...detailApplication, notes: editingNotes });
+ 312        fetchApplications();
+ 313      } catch {
+ 314        showError("保存失败");
+ 315      }
+ 316    };
+ 317    const handleDelete = async () => {
+ 318      if (!deleteTarget) return;
+ 319      setDeleting(true);
+ 320      try {
+ 321        const res = await fetch(`/api/admin/applications/${deleteTarget.id}`, {
+ 322          method: "DELETE",
+ 323        });
+ 324        if (!res.ok) throw new Error("删除失败");
+ 325        success("申请已删除");
+ 326        setDeleteTarget(null);
+ 327        fetchApplications();
+ 328      } catch {
+ 329        showError("删除失败");
+ 330      } finally {
+ 331        setDeleting(false);
+ 332      }
+ 333    };
+ 334    const viewDetail = (application: Application) => {
+ 335      setDetailApplication(application);
+ 336      setEditingNotes(application.notes || "");
+ 337      if (application.status === "pending") {
+ 338        updateStatus(application, "reviewed");
+ 339      }
+ 340    };
+ 341    const formatDate = (dateStr: string) => {
+ 342      const date = new Date(dateStr);
+ 343      return date.toLocaleDateString("zh-CN", {
+ 344        year: "numeric",
+ 345        month: "2-digit",
+ 346        day: "2-digit",
+ 347        hour: "2-digit",
+ 348        minute: "2-digit",
+ 349      });
+ 350    };
+ 351    const downloadResume = (application: Application) => {
+ 352      window.open(application.resumePath, "_blank");
+ 353    };
+ 354    const openFolderModal = (folder?: ApplicationFolder) => {
+ 355      if (folder) {
+ 356        setEditingFolder(folder);
+ 357        setFolderForm({ name: folder.name, description: folder.description || "" });
+ 358      } else {
+ 359        setEditingFolder(null);
+ 360        setFolderForm({ name: "", description: "" });
+ 361      }
+ 362      setShowFolderModal(true);
+ 363    };
+ 364    const saveFolder = async () => {
+ 365      if (!folderForm.name.trim()) {
+ 366        showError("请输入分类名称");
+ 367        return;
+ 368      }
+ 369      setSavingFolder(true);
+ 370      try {
+ 371        const url = editingFolder
+ 372          ? `/api/admin/application-folders/${editingFolder.id}`
+ 373          : "/api/admin/application-folders";
+ 374        const method = editingFolder ? "PATCH" : "POST";
+ 375        const res = await fetch(url, {
+ 376          method,
+ 377          headers: { "Content-Type": "application/json" },
+ 378          body: JSON.stringify(folderForm),
+ 379        });
+ 380        if (!res.ok) throw new Error("操作失败");
+ 381        success(editingFolder ? "分类已更新" : "分类已创建");
+ 382        setShowFolderModal(false);
+ 383        fetchFolders();
+ 384      } catch {
+ 385        showError("保存失败");
+ 386      } finally {
+ 387        setSavingFolder(false);
+ 388      }
+ 389    };
+ 390    const handleDeleteFolder = async () => {
+ 391      if (!deleteFolderTarget) return;
+ 392      setDeletingFolder(true);
+ 393      try {
+ 394        const res = await fetch(`/api/admin/application-folders/${deleteFolderTarget.id}`, {
+ 395          method: "DELETE",
+ 396        });
+ 397        if (!res.ok) throw new Error("删除失败");
+ 398        success("分类已删除");
+ 399        setDeleteFolderTarget(null);
+ 400        fetchFolders();
+ 401        if (folderFilter === deleteFolderTarget.id) {
+ 402          setFolderFilter("all");
+ 403        }
+ 404      } catch {
+ 405        showError("删除失败");
+ 406      } finally {
+ 407        setDeletingFolder(false);
+ 408      }
+ 409    };
+ 410    const updateApplicationFolder = async (application: Application, folderId: string | null) => {
+ 411      try {
+ 412        const res = await fetch(`/api/admin/applications/${application.id}`, {
+ 413          method: "PATCH",
+ 414          headers: { "Content-Type": "application/json" },
+ 415          body: JSON.stringify({ folderId }),
+ 416        });
+ 417        if (!res.ok) throw new Error("操作失败");
+ 418        success("分类已更新");
+ 419        fetchApplications();
+ 420        fetchFolders();
+ 421        if (detailApplication?.id === application.id) {
+ 422          const updatedFolder = folderId ? folders.find((f) => f.id === folderId) : null;
+ 423          setDetailApplication({
+ 424            ...application,
+ 425            folderId,
+ 426            folder: updatedFolder ? { id: updatedFolder.id, name: updatedFolder.name } : null,
+ 427          });
+ 428        }
+ 429      } catch {
+ 430        showError("更新失败");
+ 431      }
+ 432    };
+ 433    return (
+ 434      <div className="space-y-6">
+ 435        {}
+ 436        <div className="flex flex-wrap items-center justify-between gap-4">
+ 437          <div>
+ 438            <h1 className="text-2xl font-semibold text-gray-900">简历管理</h1>
+ 439            <p className="mt-1 text-sm text-gray-500">
+ 440              共 {total} 份简历
+ 441              {pendingCount > 0 && (
+ 442                <span className="ml-2 text-brand-gold">
+ 443                  ({pendingCount} 份待处理)
+ 444                </span>
+ 445              )}
+ 446            </p>
+ 447          </div>
+ 448          <Button
+ 449            leftIcon={<FolderPlus className="h-4 w-4" />}
+ 450            onClick={() => openFolderModal()}
+ 451          >
+ 452            新建分类
+ 453          </Button>
+ 454        </div>
+ 455        {}
+ 456        {folders.length > 0 && (
+ 457          <div className="flex flex-wrap items-center gap-2">
+ 458            <button
+ 459              onClick={() => {
+ 460                setFolderFilter("all");
+ 461                setPage(1);
+ 462              }}
+ 463              className={cn(
+ 464                "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+ 465                folderFilter === "all"
+ 466                  ? "bg-brand-gold text-white"
+ 467                  : "bg-white text-gray-600 hover:bg-gray-100"
+ 468              )}
+ 469            >
+ 470              <Folder className="h-4 w-4" />
+ 471              全部
+ 472            </button>
+ 473            <button
+ 474              onClick={() => {
+ 475                setFolderFilter("uncategorized");
+ 476                setPage(1);
+ 477              }}
+ 478              className={cn(
+ 479                "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+ 480                folderFilter === "uncategorized"
+ 481                  ? "bg-gray-600 text-white"
+ 482                  : "bg-white text-gray-600 hover:bg-gray-100"
+ 483              )}
+ 484            >
+ 485              <FileText className="h-4 w-4" />
+ 486              未分类
+ 487            </button>
+ 488            {folders.map((folder) => (
+ 489              <div key={folder.id} className="group relative">
+ 490                <button
+ 491                  onClick={() => {
+ 492                    setFolderFilter(folder.id);
+ 493                    setPage(1);
+ 494                  }}
+ 495                  className={cn(
+ 496                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+ 497                    folderFilter === folder.id
+ 498                      ? "bg-brand-gold text-white"
+ 499                      : "bg-white text-gray-600 hover:bg-gray-100"
+ 500                  )}
+ 501                >
+ 502                  {folder.name}
+ 503                  <span className={cn(
+ 504                    "rounded-full px-1.5 py-0.5 text-xs",
+ 505                    folderFilter === folder.id
+ 506                      ? "bg-white/20 text-white"
+ 507                      : "bg-gray-100 text-gray-500"
+ 508                  )}>
+ 509                    {folder.applicationCount}
+ 510                  </span>
+ 511                </button>
+ 512                <div className="absolute right-0 top-0 hidden -translate-y-1 translate-x-1 group-hover:flex gap-0.5">
+ 513                  <button
+ 514                    onClick={(e) => {
+ 515                      e.stopPropagation();
+ 516                      openFolderModal(folder);
+ 517                    }}
+ 518                    className="rounded bg-white p-1 text-gray-400 shadow hover:text-gray-600"
+ 519                    title="编辑"
+ 520                  >
+ 521                    <Edit2 className="h-3 w-3" />
+ 522                  </button>
+ 523                  <button
+ 524                    onClick={(e) => {
+ 525                      e.stopPropagation();
+ 526                      setDeleteFolderTarget(folder);
+ 527                    }}
+ 528                    className="rounded bg-white p-1 text-gray-400 shadow hover:text-red-500"
+ 529                    title="删除"
+ 530                  >
+ 531                    <X className="h-3 w-3" />
+ 532                  </button>
+ 533                </div>
+ 534              </div>
+ 535            ))}
+ 536          </div>
+ 537        )}
+ 538        {}
+ 539        <div className="flex flex-wrap items-center gap-4 rounded-xl bg-white p-4 shadow-sm">
+ 540          <div className="relative flex-1 min-w-[200px]">
+ 541            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+ 542            <input
+ 543              type="text"
+ 544              placeholder="搜索姓名、邮箱、手机号..."
+ 545              value={search}
+ 546              onChange={(e) => setSearch(e.target.value)}
+ 547              className="h-9 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+ 548            />
+ 549          </div>
+ 550          <div className="flex items-center gap-2">
+ 551            <Filter className="h-4 w-4 text-gray-400" />
+ 552            <Select
+ 553              options={[
+ 554                { value: "all", label: "全部状态" },
+ 555                { value: "pending", label: "待处理" },
+ 556                { value: "reviewed", label: "已查看" },
+ 557                { value: "interviewed", label: "已面试" },
+ 558                { value: "rejected", label: "已拒绝" },
+ 559                { value: "hired", label: "已录用" },
+ 560              ]}
+ 561              value={statusFilter}
+ 562              onChange={(e) => {
+ 563                setStatusFilter(e.target.value);
+ 564                setPage(1);
+ 565              }}
+ 566              className="w-32"
+ 567            />
+ 568          </div>
+ 569          <div className="flex items-center gap-2">
+ 570            <Briefcase className="h-4 w-4 text-gray-400" />
+ 571            <Select
+ 572              options={[
+ 573                { value: "all", label: "全部职位" },
+ 574                ...jobs.map((job) => ({ value: job.id, label: job.title })),
+ 575              ]}
+ 576              value={jobFilter}
+ 577              onChange={(e) => {
+ 578                setJobFilter(e.target.value);
+ 579                setPage(1);
+ 580              }}
+ 581              className="w-40"
+ 582            />
+ 583          </div>
+ 584        </div>
+ 585        {}
+ 586        <div className="rounded-xl bg-white shadow-sm">
+ 587          {loading ? (
+ 588            <div className="flex h-64 items-center justify-center">
+ 589              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+ 590            </div>
+ 591          ) : applications.length === 0 ? (
+ 592            <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+ 593              <FileText className="mb-2 h-12 w-12" />
+ 594              <p className="text-lg">暂无简历申请</p>
+ 595            </div>
+ 596          ) : (
+ 597            <>
+ 598              {}
+ 599              <div className="grid grid-cols-12 gap-4 border-b border-gray-100 px-6 py-3 text-sm font-medium text-gray-500">
+ 600                <span className="col-span-3">申请人</span>
+ 601                <span className="col-span-3">应聘职位</span>
+ 602                <span className="col-span-2">状态</span>
+ 603                <span className="col-span-2">申请时间</span>
+ 604                <span className="col-span-2 text-right">操作</span>
+ 605              </div>
+ 606              {}
+ 607              <div className="divide-y divide-gray-100">
+ 608                {applications.map((application) => {
+ 609                  const statusInfo = statusConfig[application.status] || statusConfig.pending;
+ 610                  return (
+ 611                    <div
+ 612                      key={application.id}
+ 613                      className={cn(
+ 614                        "grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-gray-50",
+ 615                        application.status === "pending" && "bg-brand-gold/5"
+ 616                      )}
+ 617                    >
+ 618                      {}
+ 619                      <div className="col-span-3 flex items-center gap-3">
+ 620                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gold/10 text-sm font-medium text-brand-gold">
+ 621                          {application.name.charAt(0)}
+ 622                        </div>
+ 623                        <div className="min-w-0">
+ 624                          <p className="font-medium text-gray-900 truncate">{application.name}</p>
+ 625                          <p className="text-xs text-gray-500 truncate">{application.phone}</p>
+ 626                        </div>
+ 627                      </div>
+ 628                      {}
+ 629                      <div className="col-span-3 flex items-center">
+ 630                        <div className="min-w-0">
+ 631                          <p className="font-medium text-gray-700 truncate">{application.job.title}</p>
+ 632                          <p className="text-xs text-gray-400 truncate">{application.job.titleEn}</p>
+ 633                        </div>
+ 634                      </div>
+ 635                      {}
+ 636                      <div className="col-span-2 flex flex-col gap-1 justify-center">
+ 637                        <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
+ 638                        {application.folder && (
+ 639                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+ 640                            <Tag className="h-3 w-3" />
+ 641                            {application.folder.name}
+ 642                          </span>
+ 643                        )}
+ 644                      </div>
+ 645                      {}
+ 646                      <div className="col-span-2 flex items-center text-sm text-gray-500">
+ 647                        <Clock className="mr-1.5 h-3.5 w-3.5" />
+ 648                        {formatDate(application.createdAt)}
+ 649                      </div>
+ 650                      {}
+ 651                      <div className="col-span-2 flex items-center justify-end gap-1">
+ 652                        <button
+ 653                          onClick={() => viewDetail(application)}
+ 654                          className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+ 655                          title="查看详情"
+ 656                        >
+ 657                          <Eye className="h-4 w-4" />
+ 658                        </button>
+ 659                        <button
+ 660                          onClick={() => downloadResume(application)}
+ 661                          className="rounded p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
+ 662                          title="下载简历"
+ 663                        >
+ 664                          <Download className="h-4 w-4" />
+ 665                        </button>
+ 666                        <button
+ 667                          onClick={() => setDeleteTarget(application)}
+ 668                          className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+ 669                          title="删除"
+ 670                        >
+ 671                          <Trash2 className="h-4 w-4" />
+ 672                        </button>
+ 673                      </div>
+ 674                    </div>
+ 675                  );
+ 676                })}
+ 677              </div>
+ 678            </>
+ 679          )}
+ 680        </div>
+ 681        {}
+ 682        {total > 20 && (
+ 683          <div className="flex justify-center">
+ 684            <Pagination
+ 685              page={page}
+ 686              pageSize={20}
+ 687              total={total}
+ 688              onChange={setPage}
+ 689            />
+ 690          </div>
+ 691        )}
+ 692        {}
+ 693        <Modal
+ 694          open={!!detailApplication}
+ 695          onClose={() => setDetailApplication(null)}
+ 696          title="简历详情"
+ 697          size="lg"
+ 698        >
+ 699          {detailApplication && (
+ 700            <div className="space-y-6">
+ 701              {}
+ 702              <div className="flex items-start gap-4">
+ 703                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10 text-xl font-medium text-brand-gold">
+ 704                  {detailApplication.name.charAt(0)}
+ 705                </div>
+ 706                <div className="flex-1">
+ 707                  <div className="flex items-center gap-3">
+ 708                    <span className="text-lg font-medium text-gray-900">
+ 709                      {detailApplication.name}
+ 710                    </span>
+ 711                    <Badge variant={statusConfig[detailApplication.status]?.color || "default"}>
+ 712                      {statusConfig[detailApplication.status]?.label || "未知"}
+ 713                    </Badge>
+ 714                  </div>
+ 715                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
+ 716                    <span className="flex items-center gap-1">
+ 717                      <User className="h-4 w-4" />
+ 718                      {detailApplication.phone}
+ 719                    </span>
+ 720                    <a
+ 721                      href={`mailto:${detailApplication.email}`}
+ 722                      className="text-brand-gold hover:underline"
+ 723                    >
+ 724                      {detailApplication.email}
+ 725                    </a>
+ 726                  </div>
+ 727                </div>
+ 728              </div>
+ 729              {}
+ 730              <div className="rounded-lg bg-gray-50 p-4">
+ 731                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+ 732                  <Briefcase className="h-4 w-4" />
+ 733                  应聘职位
+ 734                </div>
+ 735                <p className="font-medium text-gray-900">{detailApplication.job.title}</p>
+ 736                <p className="text-sm text-gray-500">{detailApplication.job.titleEn}</p>
+ 737              </div>
+ 738              {}
+ 739              <div className="flex items-center gap-2 text-sm text-gray-500">
+ 740                <Clock className="h-4 w-4" />
+ 741                申请时间：{formatDate(detailApplication.createdAt)}
+ 742              </div>
+ 743              {}
+ 744              <div>
+ 745                <Button
+ 746                  variant="outline"
+ 747                  leftIcon={<Download className="h-4 w-4" />}
+ 748                  onClick={() => downloadResume(detailApplication)}
+ 749                >
+ 750                  下载简历
+ 751                </Button>
+ 752              </div>
+ 753              {}
+ 754              <div>
+ 755                <label className="block text-sm font-medium text-gray-700 mb-2">
+ 756                  更新状态
+ 757                </label>
+ 758                <div className="flex flex-wrap gap-2">
+ 759                  {Object.entries(statusConfig).map(([key, config]) => (
+ 760                    <button
+ 761                      key={key}
+ 762                      onClick={() => updateStatus(detailApplication, key)}
+ 763                      className={cn(
+ 764                        "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+ 765                        detailApplication.status === key
+ 766                          ? "bg-brand-gold text-white"
+ 767                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+ 768                      )}
+ 769                    >
+ 770                      {config.label}
+ 771                    </button>
+ 772                  ))}
+ 773                </div>
+ 774              </div>
+ 775              {}
+ 776              <div>
+ 777                <label className="block text-sm font-medium text-gray-700 mb-2">
+ 778                  分类
+ 779                </label>
+ 780                <div className="flex flex-wrap gap-2">
+ 781                  <button
+ 782                    onClick={() => updateApplicationFolder(detailApplication, null)}
+ 783                    className={cn(
+ 784                      "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+ 785                      !detailApplication.folderId
+ 786                        ? "bg-gray-600 text-white"
+ 787                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+ 788                    )}
+ 789                  >
+ 790                    未分类
+ 791                  </button>
+ 792                  {folders.map((folder) => (
+ 793                    <button
+ 794                      key={folder.id}
+ 795                      onClick={() => updateApplicationFolder(detailApplication, folder.id)}
+ 796                      className={cn(
+ 797                        "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+ 798                        detailApplication.folderId === folder.id
+ 799                          ? "bg-brand-gold text-white"
+ 800                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+ 801                      )}
+ 802                    >
+ 803                      {folder.name}
+ 804                    </button>
+ 805                  ))}
+ 806                </div>
+ 807              </div>
+ 808              {}
+ 809              <div>
+ 810                <label className="block text-sm font-medium text-gray-700 mb-2">
+ 811                  备注
+ 812                </label>
+ 813                <textarea
+ 814                  value={editingNotes}
+ 815                  onChange={(e) => setEditingNotes(e.target.value)}
+ 816                  placeholder="添加备注信息..."
+ 817                  rows={3}
+ 818                  className="w-full rounded-lg border border-gray-200 p-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+ 819                />
+ 820                <div className="mt-2 flex justify-end">
+ 821                  <Button size="sm" onClick={saveNotes}>
+ 822                    保存备注
+ 823                  </Button>
+ 824                </div>
+ 825              </div>
+ 826            </div>
+ 827          )}
+ 828        </Modal>
+ 829        {}
+ 830        <ConfirmDialog
+ 831          open={!!deleteTarget}
+ 832          onClose={() => setDeleteTarget(null)}
+ 833          onConfirm={handleDelete}
+ 834          title="确认删除"
+ 835          description={`确定要删除「${deleteTarget?.name}」的简历申请吗？此操作无法撤销。`}
+ 836          confirmText="删除"
+ 837          loading={deleting}
+ 838          type="danger"
+ 839        />
+ 840        {}
+ 841        <Modal
+ 842          open={showFolderModal}
+ 843          onClose={() => setShowFolderModal(false)}
+ 844          title={editingFolder ? "编辑分类" : "新建分类"}
+ 845        >
+ 846          <div className="space-y-4">
+ 847            <Input
+ 848              label="分类名称"
+ 849              value={folderForm.name}
+ 850              onChange={(e) => setFolderForm({ ...folderForm, name: e.target.value })}
+ 851              placeholder="如：优秀候选人、待面试等"
+ 852              required
+ 853            />
+ 854            <div>
+ 855              <label className="block text-sm font-medium text-gray-700 mb-2">
+ 856                描述（可选）
+ 857              </label>
+ 858              <textarea
+ 859                value={folderForm.description}
+ 860                onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
+ 861                placeholder="添加分类说明..."
+ 862                rows={2}
+ 863                className="w-full rounded-lg border border-gray-200 p-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+ 864              />
+ 865            </div>
+ 866            <div className="flex justify-end gap-3 pt-4">
+ 867              <Button variant="outline" onClick={() => setShowFolderModal(false)}>
+ 868                取消
+ 869              </Button>
+ 870              <Button onClick={saveFolder} loading={savingFolder}>
+ 871                {editingFolder ? "保存" : "创建"}
+ 872              </Button>
+ 873            </div>
+ 874          </div>
+ 875        </Modal>
+ 876        {}
+ 877        <ConfirmDialog
+ 878          open={!!deleteFolderTarget}
+ 879          onClose={() => setDeleteFolderTarget(null)}
+ 880          onConfirm={handleDeleteFolder}
+ 881          title="确认删除分类"
+ 882          description={`确定要删除分类「${deleteFolderTarget?.name}」吗？分类下的申请不会被删除，会变为未分类状态。`}
+ 883          confirmText="删除"
+ 884          loading={deletingFolder}
+ 885          type="danger"
+ 886        />
+ 887      </div>
+ 888    );
+ 889  }
+ 890  // ===== FILE: app\(admin)\admin\categories\page.tsx =====
+ 891  "use client";
+ 892  import { useEffect, useState, useCallback } from "react";
+ 893  import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff } from "lucide-react";
+ 894  import { Button } from "@/components/ui/Button";
+ 895  import { Badge } from "@/components/ui/Badge";
+ 896  import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+ 897  import { CategoryForm } from "@/components/admin/CategoryForm";
+ 898  import { useToast } from "@/components/ui/Toast";
+ 899  import { cn } from "@/lib/utils";
+ 900  interface Category {
+ 901    id: string;
+ 902    name: string;
+ 903    nameEn: string;
+ 904    slug: string;
+ 905    icon?: string | null;
+ 906    order: number;
+ 907    visible: boolean;
+ 908    productCount: number;
+ 909    createdAt: string;
+ 910  }
+ 911  export default function AdminCategoriesPage() {
+ 912    const { success, error: showError } = useToast();
+ 913    const [categories, setCategories] = useState<Category[]>([]);
+ 914    const [loading, setLoading] = useState(true);
+ 915    const [formOpen, setFormOpen] = useState(false);
+ 916    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+ 917    const [deleteConfirm, setDeleteConfirm] = useState<{
+ 918      open: boolean;
+ 919      category?: Category;
+ 920    }>({ open: false });
+ 921    const [deleting, setDeleting] = useState(false);
+ 922    const [dragItem, setDragItem] = useState<number | null>(null);
+ 923    const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+ 924    const fetchCategories = useCallback(async () => {
+ 925      try {
+ 926        const res = await fetch("/api/admin/categories");
+ 927        const data = await res.json();
+ 928        if (data.success) {
+ 929          setCategories(data.data);
+ 930        }
+ 931      } catch (error) {
+ 932        console.error("获取分类失败:", error);
+ 933      } finally {
+ 934        setLoading(false);
+ 935      }
+ 936    }, []);
+ 937    useEffect(() => {
+ 938      fetchCategories();
+ 939    }, [fetchCategories]);
+ 940    const handleAdd = () => {
+ 941      setEditingCategory(null);
+ 942      setFormOpen(true);
+ 943    };
+ 944    const handleEdit = (category: Category) => {
+ 945      setEditingCategory(category);
+ 946      setFormOpen(true);
+ 947    };
+ 948    const handleDelete = async () => {
+ 949      const { category } = deleteConfirm;
+ 950      if (!category) return;
+ 951      setDeleting(true);
+ 952      try {
+ 953        const res = await fetch(`/api/admin/categories/${category.id}`, {
+ 954          method: "DELETE",
+ 955        });
+ 956        const data = await res.json();
+ 957        if (!res.ok) {
+ 958          throw new Error(data.error?.message || "删除失败");
+ 959        }
+ 960        success("分类已删除");
+ 961        fetchCategories();
+ 962      } catch (err) {
+ 963        showError(err instanceof Error ? err.message : "删除失败");
+ 964      } finally {
+ 965        setDeleting(false);
+ 966        setDeleteConfirm({ open: false });
+ 967      }
+ 968    };
+ 969    const handleToggleVisible = async (category: Category) => {
+ 970      try {
+ 971        const res = await fetch(`/api/admin/categories/${category.id}`, {
+ 972          method: "PUT",
+ 973          headers: { "Content-Type": "application/json" },
+ 974          body: JSON.stringify({ visible: !category.visible }),
+ 975        });
+ 976        const data = await res.json();
+ 977        if (!res.ok) {
+ 978          throw new Error(data.error?.message || "更新失败");
+ 979        }
+ 980        setCategories((prev) =>
+ 981          prev.map((cat) =>
+ 982            cat.id === category.id ? { ...cat, visible: !category.visible } : cat
+ 983          )
+ 984        );
+ 985        success(category.visible ? "分类已隐藏" : "分类已显示");
+ 986      } catch (err) {
+ 987        showError(err instanceof Error ? err.message : "更新失败");
+ 988      }
+ 989    };
+ 990    const handleDragStart = (index: number) => {
+ 991      setDragItem(index);
+ 992    };
+ 993    const handleDragOver = (e: React.DragEvent, index: number) => {
+ 994      e.preventDefault();
+ 995      setDragOverItem(index);
+ 996    };
+ 997    const handleDragEnd = async () => {
+ 998      if (dragItem === null || dragOverItem === null || dragItem === dragOverItem) {
+ 999        setDragItem(null);
+1000        setDragOverItem(null);
+1001        return;
+1002      }
+1003      const newCategories = [...categories];
+1004      const draggedItem = newCategories[dragItem];
+1005      newCategories.splice(dragItem, 1);
+1006      newCategories.splice(dragOverItem, 0, draggedItem);
+1007      const updated = newCategories.map((cat, i) => ({ ...cat, order: i }));
+1008      setCategories(updated);
+1009      setDragItem(null);
+1010      setDragOverItem(null);
+1011      try {
+1012        const res = await fetch("/api/admin/categories/order", {
+1013          method: "PUT",
+1014          headers: { "Content-Type": "application/json" },
+1015          body: JSON.stringify({
+1016            items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
+1017          }),
+1018        });
+1019        if (!res.ok) {
+1020          throw new Error("保存排序失败");
+1021        }
+1022        success("排序已保存");
+1023      } catch {
+1024        showError("保存排序失败");
+1025        fetchCategories();
+1026      }
+1027    };
+1028    if (loading) {
+1029      return (
+1030        <div className="flex h-64 items-center justify-center">
+1031          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+1032        </div>
+1033      );
+1034    }
+1035    return (
+1036      <div className="space-y-6">
+1037        {}
+1038        <div className="flex items-center justify-between">
+1039          <div>
+1040            <h1 className="text-2xl font-semibold text-gray-900">分类管理</h1>
+1041            <p className="mt-1 text-sm text-gray-500">
+1042              管理产品分类，拖拽调整排序，共 {categories.length} 个分类
+1043            </p>
+1044          </div>
+1045          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleAdd}>
+1046            新增分类
+1047          </Button>
+1048        </div>
+1049        {}
+1050        <div className="rounded-xl bg-white shadow-sm">
+1051          {categories.length === 0 ? (
+1052            <div className="flex h-48 flex-col items-center justify-center text-gray-400">
+1053              <p className="text-lg">暂无分类</p>
+1054              <p className="mt-1 text-sm">点击上方按钮创建第一个分类</p>
+1055            </div>
+1056          ) : (
+1057            <div className="divide-y divide-gray-100">
+1058              {}
+1059              <div className="grid grid-cols-12 gap-4 px-6 py-3 text-sm font-medium text-gray-500">
+1060                <div className="col-span-1"></div>
+1061                <div className="col-span-1">图标</div>
+1062                <div className="col-span-3">分类名称</div>
+1063                <div className="col-span-2">URL 别名</div>
+1064                <div className="col-span-1">产品数量</div>
+1065                <div className="col-span-1">前台展示</div>
+1066                <div className="col-span-3 text-right">操作</div>
+1067              </div>
+1068              {}
+1069              {categories.map((category, index) => (
+1070                <div
+1071                  key={category.id}
+1072                  draggable
+1073                  onDragStart={() => handleDragStart(index)}
+1074                  onDragOver={(e) => handleDragOver(e, index)}
+1075                  onDragEnd={handleDragEnd}
+1076                  className={cn(
+1077                    "grid grid-cols-12 gap-4 px-6 py-4 transition-colors",
+1078                    dragOverItem === index && "bg-brand-gold/5",
+1079                    "hover:bg-gray-50"
+1080                  )}
+1081                >
+1082                  {}
+1083                  <div className="col-span-1 flex items-center">
+1084                    <button className="cursor-grab text-gray-400 hover:text-gray-600">
+1085                      <GripVertical className="h-5 w-5" />
+1086                    </button>
+1087                  </div>
+1088                  {}
+1089                  <div className="col-span-1 flex items-center">
+1090                    {category.icon ? (
+1091                      <div
+1092                        className="h-8 w-8 text-brand-gold"
+1093                        dangerouslySetInnerHTML={{ __html: category.icon }}
+1094                      />
+1095                    ) : (
+1096                      <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100 text-xs text-gray-400">
+1097                        无
+1098                      </div>
+1099                    )}
+1100                  </div>
+1101                  {}
+1102                  <div className="col-span-3 flex flex-col justify-center">
+1103                    <span className="font-medium text-gray-900">{category.name}</span>
+1104                    <span className="text-sm text-gray-500">{category.nameEn}</span>
+1105                  </div>
+1106                  {}
+1107                  <div className="col-span-2 flex items-center">
+1108                    <code className="rounded bg-gray-100 px-2 py-1 text-sm text-gray-600">
+1109                      {category.slug}
+1110                    </code>
+1111                  </div>
+1112                  {}
+1113                  <div className="col-span-1 flex items-center">
+1114                    <Badge variant={category.productCount > 0 ? "secondary" : "default"}>
+1115                      {category.productCount}
+1116                    </Badge>
+1117                  </div>
+1118                  {}
+1119                  <div className="col-span-1 flex items-center">
+1120                    <button
+1121                      onClick={() => handleToggleVisible(category)}
+1122                      className={cn(
+1123                        "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
+1124                        category.visible
+1125                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+1126                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+1127                      )}
+1128                      title={category.visible ? "点击隐藏" : "点击显示"}
+1129                    >
+1130                      {category.visible ? (
+1131                        <><Eye className="h-3.5 w-3.5" /> 显示</>
+1132                      ) : (
+1133                        <><EyeOff className="h-3.5 w-3.5" /> 隐藏</>
+1134                      )}
+1135                    </button>
+1136                  </div>
+1137                  {}
+1138                  <div className="col-span-3 flex items-center justify-end gap-2">
+1139                    <button
+1140                      onClick={() => handleEdit(category)}
+1141                      className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+1142                      title="编辑"
+1143                    >
+1144                      <Pencil className="h-4 w-4" />
+1145                    </button>
+1146                    <button
+1147                      onClick={() => setDeleteConfirm({ open: true, category })}
+1148                      className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
+1149                      title="删除"
+1150                    >
+1151                      <Trash2 className="h-4 w-4" />
+1152                    </button>
+1153                  </div>
+1154                </div>
+1155              ))}
+1156            </div>
+1157          )}
+1158        </div>
+1159        {}
+1160        <CategoryForm
+1161          open={formOpen}
+1162          onClose={() => setFormOpen(false)}
+1163          onSuccess={fetchCategories}
+1164          category={editingCategory}
+1165        />
+1166        {}
+1167        <ConfirmDialog
+1168          open={deleteConfirm.open}
+1169          onClose={() => setDeleteConfirm({ open: false })}
+1170          onConfirm={handleDelete}
+1171          title="删除分类"
+1172          description={
+1173            deleteConfirm.category?.productCount
+1174              ? `该分类下有 ${deleteConfirm.category.productCount} 个产品，无法删除。请先将产品移至其他分类。`
+1175              : `确定要删除分类"${deleteConfirm.category?.name}"吗？此操作不可恢复。`
+1176          }
+1177          type="danger"
+1178          confirmText="删除"
+1179          loading={deleting}
+1180          confirmDisabled={!!deleteConfirm.category?.productCount}
+1181        />
+1182      </div>
+1183    );
+1184  }
+1185  // ===== FILE: app\(admin)\admin\coupons\create\page.tsx =====
+1186  "use client";
+1187  import { useState } from "react";
+1188  import { useRouter } from "next/navigation";
+1189  import { ArrowLeft } from "lucide-react";
+1190  import Link from "next/link";
+1191  export default function CreateCouponPage() {
+1192      const router = useRouter();
+1193      const [loading, setLoading] = useState(false);
+1194      const [formData, setFormData] = useState({
+1195          name: "",
+1196          code: "",
+1197          type: "DISCOUNT_AMOUNT",
+1198          value: "",
+1199          minAmount: "0",
+1200          validityType: "fixed",
+1201          startDate: "",
+1202          endDate: "",
+1203          daysValid: "",
+1204          totalLimit: "",
+1205          userLimit: "1",
+1206      });
+1207      const handleSubmit = async (e: React.FormEvent) => {
+1208          e.preventDefault();
+1209          setLoading(true);
+1210          try {
+1211              const payload: Record<string, unknown> = {
+1212                  name: formData.name,
+1213                  type: formData.type,
+1214                  value: Number(formData.value),
+1215                  minAmount: Number(formData.minAmount),
+1216                  userLimit: Number(formData.userLimit),
+1217                  code: formData.code || undefined,
+1218                  totalLimit: formData.totalLimit ? Number(formData.totalLimit) : null,
+1219              };
+1220              if (formData.validityType === 'fixed') {
+1221                  if (formData.startDate) payload.startDate = new Date(formData.startDate).toISOString();
+1222                  if (formData.endDate) payload.endDate = new Date(formData.endDate).toISOString();
+1223              } else {
+1224                  payload.daysValid = Number(formData.daysValid);
+1225              }
+1226              const res = await fetch("/api/admin/coupons", {
+1227                  method: "POST",
+1228                  headers: { "Content-Type": "application/json" },
+1229                  body: JSON.stringify(payload),
+1230              });
+1231              const data = await res.json();
+1232              if (data.success) {
+1233                  router.push("/admin/coupons");
+1234              } else {
+1235                  alert(data.error);
+1236              }
+1237          } catch (err: unknown) {
+1238              const message = err instanceof Error ? err.message : String(err);
+1239              alert("创建失败: " + message);
+1240          } finally {
+1241              setLoading(false);
+1242          }
+1243      };
+1244      return (
+1245          <div className="max-w-2xl mx-auto space-y-6">
+1246              <div className="flex items-center gap-4">
+1247                  <Link href="/admin/coupons" className="p-2 hover:bg-gray-100 rounded-full">
+1248                      <ArrowLeft className="w-5 h-5" />
+1249                  </Link>
+1250                  <h1 className="text-2xl font-bold">创建优惠券</h1>
+1251              </div>
+1252              <div className="bg-white p-6 rounded-lg border shadow-sm">
+1253                  <form onSubmit={handleSubmit} className="space-y-6">
+1254                      {}
+1255                      <div className="grid grid-cols-2 gap-4">
+1256                          <div className="space-y-2">
+1257                              <label className="text-sm font-medium">名称</label>
+1258                              <input
+1259                                  required
+1260                                  className="w-full p-2 border rounded"
+1261                                  placeholder="例如：新人立减券"
+1262                                  value={formData.name}
+1263                                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+1264                              />
+1265                          </div>
+1266                          <div className="space-y-2">
+1267                              <label className="text-sm font-medium">兑换码 (选填)</label>
+1268                              <input
+1269                                  className="w-full p-2 border rounded"
+1270                                  placeholder="为空则需主动领取"
+1271                                  value={formData.code}
+1272                                  onChange={e => setFormData({ ...formData, code: e.target.value })}
+1273                              />
+1274                          </div>
+1275                      </div>
+1276                      <div className="grid grid-cols-2 gap-4">
+1277                          <div className="space-y-2">
+1278                              <label className="text-sm font-medium">类型</label>
+1279                              <select
+1280                                  className="w-full p-2 border rounded"
+1281                                  value={formData.type}
+1282                                  onChange={e => setFormData({ ...formData, type: e.target.value })}
+1283                              >
+1284                                  <option value="DISCOUNT_AMOUNT">金额立减</option>
+1285                                  <option value="DISCOUNT_PERCENT">百分比折扣</option>
+1286                              </select>
+1287                          </div>
+1288                          <div className="space-y-2">
+1289                              <label className="text-sm font-medium">
+1290                                  {formData.type === 'DISCOUNT_AMOUNT' ? '面值 (元)' : '折扣率 (0.9=9折)'}
+1291                              </label>
+1292                              <input
+1293                                  required
+1294                                  type="number"
+1295                                  step="0.01"
+1296                                  className="w-full p-2 border rounded"
+1297                                  value={formData.value}
+1298                                  onChange={e => setFormData({ ...formData, value: e.target.value })}
+1299                              />
+1300                          </div>
+1301                      </div>
+1302                      <div className="space-y-2">
+1303                          <label className="text-sm font-medium">最低消费 (元)</label>
+1304                          <input
+1305                              required
+1306                              type="number"
+1307                              className="w-full p-2 border rounded"
+1308                              value={formData.minAmount}
+1309                              onChange={e => setFormData({ ...formData, minAmount: e.target.value })}
+1310                          />
+1311                      </div>
+1312                      {}
+1313                      <div className="space-y-4 border-t pt-4">
+1314                          <label className="text-sm font-medium">有效期设置</label>
+1315                          <div className="flex gap-4">
+1316                              <label className="flex items-center gap-2">
+1317                                  <input type="radio" checked={formData.validityType === 'fixed'} onChange={() => setFormData({ ...formData, validityType: 'fixed' })} />
+1318                                  固定日期范围
+1319                              </label>
+1320                              <label className="flex items-center gap-2">
+1321                                  <input type="radio" checked={formData.validityType === 'dynamic'} onChange={() => setFormData({ ...formData, validityType: 'dynamic' })} />
+1322                                  动态有效期 (领取后N天)
+1323                              </label>
+1324                          </div>
+1325                          {formData.validityType === 'fixed' ? (
+1326                              <div className="grid grid-cols-2 gap-4">
+1327                                  <div className="space-y-2">
+1328                                      <label className="text-xs text-gray-500">开始时间</label>
+1329                                      <input type="datetime-local" className="w-full p-2 border rounded"
+1330                                          value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} />
+1331                                  </div>
+1332                                  <div className="space-y-2">
+1333                                      <label className="text-xs text-gray-500">结束时间</label>
+1334                                      <input type="datetime-local" className="w-full p-2 border rounded"
+1335                                          value={formData.endDate} onChange={e => setFormData({ ...formData, endDate: e.target.value })} />
+1336                                  </div>
+1337                              </div>
+1338                          ) : (
+1339                              <div className="space-y-2">
+1340                                  <label className="text-xs text-gray-500">有效天数</label>
+1341                                  <input type="number" className="w-full p-2 border rounded" placeholder="30"
+1342                                      value={formData.daysValid} onChange={e => setFormData({ ...formData, daysValid: e.target.value })} />
+1343                              </div>
+1344                          )}
+1345                      </div>
+1346                      {}
+1347                      <div className="grid grid-cols-2 gap-4 border-t pt-4">
+1348                          <div className="space-y-2">
+1349                              <label className="text-sm font-medium">总发行量</label>
+1350                              <input
+1351                                  type="number"
+1352                                  className="w-full p-2 border rounded"
+1353                                  placeholder="留空为无限"
+1354                                  value={formData.totalLimit}
+1355                                  onChange={e => setFormData({ ...formData, totalLimit: e.target.value })}
+1356                              />
+1357                          </div>
+1358                          <div className="space-y-2">
+1359                              <label className="text-sm font-medium">每人限领</label>
+1360                              <input
+1361                                  required
+1362                                  type="number"
+1363                                  className="w-full p-2 border rounded"
+1364                                  value={formData.userLimit}
+1365                                  onChange={e => setFormData({ ...formData, userLimit: e.target.value })}
+1366                              />
+1367                          </div>
+1368                      </div>
+1369                      <div className="pt-4">
+1370                          <button
+1371                              type="submit"
+1372                              disabled={loading}
+1373                              className="w-full bg-black text-white py-2 rounded hover:bg-black/90 disabled:opacity-50"
+1374                          >
+1375                              {loading ? "创建中..." : "创建优惠券"}
+1376                          </button>
+1377                      </div>
+1378                  </form>
+1379              </div>
+1380          </div>
+1381      );
+1382  }
+1383  // ===== FILE: app\(admin)\admin\coupons\page.tsx =====
+1384  "use client";
+1385  import { useEffect, useState } from "react";
+1386  import Link from "next/link";
+1387  import { Plus, Users } from "lucide-react";
+1388  const formatDate = (dateStr: string) => {
+1389      if (!dateStr) return "";
+1390      const d = new Date(dateStr);
+1391      return d.toISOString().split('T')[0];
+1392  };
+1393  interface Coupon {
+1394      id: string;
+1395      name: string;
+1396      code: string | null;
+1397      type: string;
+1398      value: number;
+1399      minAmount: number;
+1400      startDate: string | null;
+1401      endDate: string | null;
+1402      daysValid: number | null;
+1403      totalLimit: number | null;
+1404      isActive: boolean;
+1405      _count: {
+1406          userCoupons: number;
+1407      };
+1408  }
+1409  export default function AdminCouponsPage() {
+1410      const [coupons, setCoupons] = useState<Coupon[]>([]);
+1411      const [loading, setLoading] = useState(true);
+1412      useEffect(() => {
+1413          fetch("/api/admin/coupons")
+1414              .then((res) => res.json())
+1415              .then((data) => {
+1416                  if (data.success) {
+1417                      setCoupons(data.data);
+1418                  }
+1419              })
+1420              .finally(() => setLoading(false));
+1421      }, []);
+1422      return (
+1423          <div className="space-y-6">
+1424              <div className="flex items-center justify-between">
+1425                  <h1 className="text-2xl font-bold tracking-tight">优惠券管理</h1>
+1426                  <Link
+1427                      href="/admin/coupons/create"
+1428                      className="flex items-center gap-2 rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90"
+1429                  >
+1430                      <Plus className="h-4 w-4" />
+1431                      创建优惠券
+1432                  </Link>
+1433              </div>
+1434              <div className="rounded-md border bg-white">
+1435                  <div className="relative w-full overflow-auto">
+1436                      <table className="w-full caption-bottom text-sm text-left">
+1437                          <thead className="[&_tr]:border-b">
+1438                              <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+1439                                  <th className="h-12 px-4 align-middle font-medium text-muted-foreground">名称/代码</th>
+1440                                  <th className="h-12 px-4 align-middle font-medium text-muted-foreground">类型/面值</th>
+1441                                  <th className="h-12 px-4 align-middle font-medium text-muted-foreground">门槛</th>
+1442                                  <th className="h-12 px-4 align-middle font-medium text-muted-foreground">有效期</th>
+1443                                  <th className="h-12 px-4 align-middle font-medium text-muted-foreground">发放/总限</th>
+1444                                  <th className="h-12 px-4 align-middle font-medium text-muted-foreground">状态</th>
+1445                              </tr>
+1446                          </thead>
+1447                          <tbody className="[&_tr:last-child]:border-0">
+1448                              {loading ? (
+1449                                  <tr>
+1450                                      <td colSpan={6} className="p-4 text-center">加载中...</td>
+1451                                  </tr>
+1452                              ) : coupons.length === 0 ? (
+1453                                  <tr>
+1454                                      <td colSpan={6} className="p-4 text-center text-muted-foreground">暂无优惠券</td>
+1455                                  </tr>
+1456                              ) : (
+1457                                  coupons.map((coupon) => (
+1458                                      <tr key={coupon.id} className="border-b transition-colors hover:bg-muted/50">
+1459                                          <td className="p-4 align-middle">
+1460                                              <div className="font-medium">{coupon.name}</div>
+1461                                              {coupon.code && (
+1462                                                  <div className="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 mt-1">
+1463                                                      {coupon.code}
+1464                                                  </div>
+1465                                              )}
+1466                                          </td>
+1467                                          <td className="p-4 align-middle">
+1468                                              <div>{coupon.type === "DISCOUNT_AMOUNT" ? "满减" : "折扣"}</div>
+1469                                              <div className="font-bold text-lg">
+1470                                                  {coupon.type === "DISCOUNT_AMOUNT" ? `¥${coupon.value}` : `${Number(coupon.value) * 10}折`}
+1471                                              </div>
+1472                                          </td>
+1473                                          <td className="p-4 align-middle">
+1474                                              {Number(coupon.minAmount) > 0 ? `满 ¥${coupon.minAmount}` : "无门槛"}
+1475                                          </td>
+1476                                          <td className="p-4 align-middle">
+1477                                              {coupon.daysValid ? (
+1478                                                  <span>领取后 {coupon.daysValid} 天有效</span>
+1479                                              ) : (
+1480                                                  <span>
+1481                                                      {coupon.startDate ? formatDate(coupon.startDate) : "即日起"}
+1482                                                      至
+1483                                                      {coupon.endDate ? formatDate(coupon.endDate) : "永久"}
+1484                                                  </span>
+1485                                              )}
+1486                                          </td>
+1487                                          <td className="p-4 align-middle">
+1488                                              <div className="flex items-center gap-1">
+1489                                                  <Users className="w-4 h-4 text-gray-400" />
+1490                                                  {coupon._count.userCoupons} / {coupon.totalLimit === null ? "∞" : coupon.totalLimit}
+1491                                              </div>
+1492                                          </td>
+1493                                          <td className="p-4 align-middle">
+1494                                              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${coupon.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+1495                                                  {coupon.isActive ? "进行中" : "下架"}
+1496                                              </span>
+1497                                          </td>
+1498                                      </tr>
+1499                                  ))
+1500                              )}
