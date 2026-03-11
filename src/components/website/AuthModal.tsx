@@ -5,7 +5,7 @@
  */
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Smartphone, Shield, Lock, CheckCircle2, Check, Headset } from "lucide-react";
+import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -105,8 +105,8 @@ function LoginModal({
     };
   }, [isOpen]);
 
-  // 发送验证码 (暂时未使用，相关UI已注释)
-  const _sendCode = async () => {
+  // 发送验证码
+  const sendCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
       toast.error("请输入正确的手机号");
       return;
@@ -292,22 +292,8 @@ function LoginModal({
 
                   {/* 表单内容 - 可滚动 */}
                   <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
-                    {/* 登录方式切换 (已隐藏验证码登录) */}
-                    {/*
+                    {/* 登录方式切换 */}
                     <div className="mb-6 flex justify-center gap-10 pb-2">
-                      <button
-                        type="button"
-                        onClick={() => { setLoginMethod("code"); }}
-                        className={`relative py-1 text-sm font-semibold tracking-wide transition-all ${loginMethod === "code"
-                          ? "text-brand-charcoal"
-                          : "text-brand-charcoal/40 hover:text-brand-charcoal/60"
-                          }`}
-                      >
-                        验证码登录
-                        {loginMethod === "code" && (
-                          <m.div layoutId="activeTab" className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-brand-gold" />
-                        )}
-                      </button>
                       <button
                         type="button"
                         onClick={() => { setLoginMethod("password"); }}
@@ -321,8 +307,23 @@ function LoginModal({
                           <m.div layoutId="activeTab" className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-brand-gold" />
                         )}
                       </button>
+                      {/* 验证码登录按钮暂时隐藏 */}
+                      {/*
+                      <button
+                        type="button"
+                        onClick={() => { setLoginMethod("code"); }}
+                        className={`relative py-1 text-sm font-semibold tracking-wide transition-all ${loginMethod === "code"
+                          ? "text-brand-charcoal"
+                          : "text-brand-charcoal/40 hover:text-brand-charcoal/60"
+                          }`}
+                      >
+                        验证码登录
+                        {loginMethod === "code" && (
+                          <m.div layoutId="activeTab" className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-brand-gold" />
+                        )}
+                      </button>
+                      */}
                     </div>
-                    */}
 
                     <form onSubmit={handleLogin} className="space-y-3">
                       {/* 手机号 */}
@@ -343,8 +344,7 @@ function LoginModal({
 
                       {/* 输入区容器 - 设置固定/最小高度避免切换时抖动 */}
                       <div className="min-h-[72px] flex flex-col justify-start space-y-3">
-                        {/* 验证码输入 - 仅验证码登录时显示 (已隐藏) */}
-                        {/*
+                        {/* 验证码输入 - 仅验证码登录时显示 */}
                         {loginMethod === "code" && (
                           <div className="group animate-fade-scale-in">
                             <div className="relative flex gap-2">
@@ -371,7 +371,6 @@ function LoginModal({
                             </div>
                           </div>
                         )}
-                        */}
 
                         {/* 密码输入 - 仅密码登录时显示 */}
                         {loginMethod === "password" && (
@@ -464,13 +463,12 @@ function LoginModal({
                   <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
                     <p className="text-xs text-brand-charcoal/60">
                       还没有账户？
-                      <button
-                        type="button"
-                        onClick={onSwitchToRegister}
+                      <a
+                        href="/contact"
                         className="ml-1 font-bold text-brand-gold hover:text-brand-gold-dark transition-all"
                       >
-                        立即注册
-                      </button>
+                        联系我们
+                      </a>
                     </p>
                   </div>
                 </div>
