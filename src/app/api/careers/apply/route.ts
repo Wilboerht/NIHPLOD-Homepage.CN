@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/upload";
+import { sendAutoReply, sendJobApplicationNotification } from "@/lib/email";
 
 // 表单验证 schema
 const ApplyFormSchema = z.object({
@@ -127,6 +128,30 @@ export async function POST(request: NextRequest) {
       },
     });
     console.log("✅ [Apply API] DB record created");
+
+    // 发送邮件通知
+    console.log("📧 [Apply API] Sending emails");
+    try {
+      // 1. 发送自动回复给用户
+      await sendAutoReply({
+        to: email,
+        name,
+        type: "job",
+      });
+      console.log("✅ [Apply API] Auto-reply sent to user");
+
+      // 2. 发送通知给管理员
+      await sendJobApplicationNotification({
+        name,
+        email,
+        phone,
+        position: jobTitle,
+      });
+      console.log("✅ [Apply API] Notification sent to admin");
+    } catch (emailError) {
+      console.error("❌ [Apply API] Email sending failed:", emailError);
+      // 邮件发送失败不影响主流程，只记录日志
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { sendContactNotification, sendAutoReply } from "@/lib/email";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
@@ -44,6 +45,30 @@ export async function POST(request: NextRequest) {
         content,
       },
     });
+    console.log("✅ [Contact API] DB record created");
+
+    // 发送邮件通知
+    console.log("📧 [Contact API] Sending emails");
+    try {
+      // 1. 发送通知给管理员
+      await sendContactNotification({
+        name,
+        email,
+        content,
+      });
+      console.log("✅ [Contact API] Notification sent to admin");
+
+      // 2. 发送自动回复给用户
+      await sendAutoReply({
+        to: email,
+        name,
+        type: "contact",
+      });
+      console.log("✅ [Contact API] Auto-reply sent to user");
+    } catch (emailError) {
+      console.error("❌ [Contact API] Email sending failed:", emailError);
+      // 邮件发送失败不影响主流程，只记录日志
+    }
 
     return NextResponse.json({ success: true, message: "感谢您的留言，我们会尽快回复！" });
   } catch (error) {
