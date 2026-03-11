@@ -54,7 +54,7 @@ export function AuthModal() {
 function LoginModal({
   isOpen,
   onClose,
-  onSwitchToRegister,
+  onSwitchToRegister: _onSwitchToRegister,
   onSwitchToForgotPassword,
   onSuccess,
 }: {
