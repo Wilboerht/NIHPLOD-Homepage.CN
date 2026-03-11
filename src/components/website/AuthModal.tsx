@@ -5,7 +5,7 @@
  */
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset } from "lucide-react";
+import { X, Smartphone, Shield, Lock, CheckCircle2, Check, Headset } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -105,8 +105,8 @@ function LoginModal({
     };
   }, [isOpen]);
 
-  // 发送验证码
-  const sendCode = async () => {
+  // 发送验证码 (暂时未使用，相关UI已注释)
+  const _sendCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
       toast.error("请输入正确的手机号");
       return;
@@ -190,8 +190,8 @@ function LoginModal({
     }
   };
 
-  // 微信登录
-  const handleWechatLogin = async () => {
+  // 微信登录 (暂时未使用，相关UI已注释)
+  const _handleWechatLogin = async () => {
     if (!agreed) {
       toast.warning("请先同意用户协议和隐私政策");
       return;
