@@ -251,12 +251,12 @@ function LoginModal({
           >
             <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
-              <div className="absolute inset-0 z-0 hidden md:block group">
+              <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
-                  src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
+                  src="/images/login-background.webp"
                   alt="Auth Background"
                   fill
-                  className="object-cover grayscale brightness-[0.9] transition-all duration-1000 group-hover:scale-105 group-hover:grayscale-0"
+                  className="object-cover"
                   priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent" />
@@ -627,12 +627,12 @@ function RegisterModal({
           >
             <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
-              <div className="absolute inset-0 z-0 hidden md:block group">
+              <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
-                  src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
+                  src="/images/login-background.webp"
                   alt="Auth Background"
                   fill
-                  className="object-cover grayscale brightness-[0.9] transition-all duration-1000 group-hover:scale-105 group-hover:grayscale-0"
+                  className="object-cover"
                   priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent" />
@@ -668,8 +668,6 @@ function RegisterModal({
 
                   {/* 表单内容 - 可滚动 */}
                   <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
-
-
                     <form onSubmit={handleRegister} className="space-y-3">
                       {/* 手机号 */}
                       <div className="group">
@@ -955,12 +953,12 @@ function ForgotPasswordModal({
           >
             <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
-              <div className="absolute inset-0 z-0 hidden md:block group">
+              <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
-                  src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
+                  src="/images/login-background.webp"
                   alt="Auth Background"
                   fill
-                  className="object-cover grayscale brightness-[0.9] transition-all duration-1000 group-hover:scale-105 group-hover:grayscale-0"
+                  className="object-cover"
                   priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent" />
@@ -1319,12 +1317,12 @@ function WechatBindModal({
             className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
           >
             <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
-              <div className="absolute inset-0 z-0 hidden md:block group">
+              <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
-                  src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
+                  src="/images/login-background.webp"
                   alt="Auth Background"
                   fill
-                  className="object-cover grayscale brightness-[0.9] transition-all duration-1000 group-hover:scale-105 group-hover:grayscale-0"
+                  className="object-cover"
                   priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent" />
