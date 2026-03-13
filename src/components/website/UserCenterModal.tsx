@@ -92,7 +92,7 @@ export function UserCenterModal() {
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block group">
                 <Image
-                  src="/images/login-background.webp"
+                  src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
                   alt="Background"
                   fill
                   className="object-cover grayscale brightness-[0.9] transition-all duration-1000 group-hover:scale-105 group-hover:grayscale-0"
