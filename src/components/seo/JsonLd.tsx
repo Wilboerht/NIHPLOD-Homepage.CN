@@ -38,7 +38,7 @@ export function OrganizationJsonLd() {
     },
     description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启逆转时光的奢华护肤之旅",
     slogan: "逆转时光",
-    foundingDate: "2020",
+    foundingDate: "2008",
     foundingLocation: {
       "@type": "Place",
       name: "摩纳哥",

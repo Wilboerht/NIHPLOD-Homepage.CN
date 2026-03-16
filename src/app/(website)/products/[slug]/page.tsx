@@ -62,9 +62,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${product.name} | NIHPLOD 旎柏`,
     description: product.description.slice(0, 160),
     openGraph: {
-      title: `${product.name} - ${product.nameEn}`,
+      title: `${product.name} - NIHPLOD 旎柏`,
       description: product.description.slice(0, 160),
-      images: product.images[0]?.url ? [product.images[0].url] : undefined,
+      images: product.images[0]?.url ? [product.images[0].url] : ["/images/og-image.png"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${product.name} | NIHPLOD 旎柏`,
+      description: product.description.slice(0, 160),
+      images: product.images[0]?.url ? [product.images[0].url] : ["/images/og-image.png"],
     },
   };
 }

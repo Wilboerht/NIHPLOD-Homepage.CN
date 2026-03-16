@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启逆转时光的奢华护肤之旅",
     images: [
       {
-        url: "/images/og-image.jpg",
+        url: "/images/og-image.png",
         width: 1200,
         height: 630,
         alt: "NIHPLOD 旎柏 - 逆转时光",
@@ -58,9 +58,9 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "NIHPLOD 旎柏 | 逆转时光",
-    description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启逆转时光的奢华护肤之旅",
-    images: ["/images/og-image.jpg"],
+    title: "NIHPLOD 旎柏 (旎柏) | 极简美学的修护动力",
+    description: "NIHPLOD 旎柏源自摩纳哥，致力于通过 Liposome 真脂质体专利技术，为全球高净值人群提供精准护肤方案。复刻海豚肌肤每 2 小时自我更新的生命力，开启逆转时光之旅。",
+    images: ["/images/og-image.png"],
     creator: "@nihplod",
   },
 
