@@ -164,14 +164,14 @@ export async function GET(request: NextRequest) {
         todayRevenue: Number(todayRevenueData._sum.payAmount) || 0,
         recentMessages: recentMessages.map((msg) => ({
           ...msg,
-          createdAt: msg.createdAt.toISOString(),
+          createdAt: new Date(msg.createdAt).toISOString(),
         })),
         recentOrders: recentOrders.map((order) => ({
           id: order.id,
           orderNo: order.orderNo,
           status: order.status,
           payAmount: Number(order.payAmount),
-          createdAt: order.createdAt.toISOString(),
+          createdAt: new Date(order.createdAt).toISOString(),
         })),
       },
     });
