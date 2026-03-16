@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical } from "lucide-react";
+import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select, SelectOption } from "@/components/ui/Select";
@@ -52,6 +52,7 @@ interface FormData {
   // 站内购买
   allowDirectBuy: boolean;
   stock: number;
+  geoFaqs: { question: string; answer: string }[] | null;
 }
 
 // 分类类型
@@ -101,6 +102,7 @@ const defaultFormData: FormData = {
   published: false,
   allowDirectBuy: false,
   stock: 0,
+  geoFaqs: null,
 };
 
 // 购买平台选项
@@ -126,6 +128,42 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [isGeneratingAIFaq, setIsGeneratingAIFaq] = useState(false);
+
+  // AI 生成 FAQ
+  const generateAIFaq = async () => {
+    if (!formData.name || !formData.description) {
+      showError("请先填写产品名称和描述，以便 AI 生成 FAQ");
+      return;
+    }
+
+    setIsGeneratingAIFaq(true);
+    try {
+      const res = await fetch("/api/admin/products/ai-gen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          nameEn: formData.nameEn,
+          description: formData.description,
+          benefits: formData.benefits,
+          ingredients: formData.ingredients,
+          usage: formData.usage,
+          categoryName: categories.find(c => c.id === formData.categoryId)?.name
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "生成失败");
+
+      updateField("geoFaqs", data.data);
+      success("AI 已成功为您生成深度 GEO FAQ");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "生成失败");
+    } finally {
+      setIsGeneratingAIFaq(false);
+    }
+  };
 
   // 分类选项
   const categoryOptions: SelectOption[] = [
@@ -559,6 +597,93 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               <p className="mt-2 text-sm text-red-500">{errors.purchaseLinks}</p>
             )}
           </div>
+        </section>
+
+        {/* GEO FAQ 设置 */}
+        <section className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-medium text-gray-900">GEO AI 优化 (SEO)</h2>
+              <p className="text-xs text-gray-500 mt-1">
+                生成隐藏的问答对，提升在 AI 搜索（如 Perplexity, ChatGPT）中的曝光权重
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={generateAIFaq}
+              loading={isGeneratingAIFaq}
+              className="border-brand-gold text-brand-gold hover:bg-brand-gold/10"
+              leftIcon={<Sparkles className="h-4 w-4" />}
+            >
+              {formData.geoFaqs ? "重新生成 AI FAQ" : "AI 一键生成 GEO FAQ"}
+            </Button>
+          </div>
+
+          {!formData.geoFaqs ? (
+            <div className="flex flex-col items-center justify-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <Sparkles className="h-8 w-8 text-gray-300 mb-2" />
+              <p className="text-sm text-gray-500">尚未生成 GEO 优化内容</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {formData.geoFaqs.map((faq, index) => (
+                <div key={index} className="space-y-2 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex gap-2">
+                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-brand-gold text-white rounded text-xs font-bold">Q</span>
+                    <input
+                      className="flex-1 bg-transparent border-none p-0 text-sm font-medium focus:ring-0"
+                      value={faq.question}
+                      onChange={(e) => {
+                        const newFaqs = [...(formData.geoFaqs || [])];
+                        newFaqs[index].question = e.target.value;
+                        updateField("geoFaqs", newFaqs);
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-800 text-white rounded text-xs font-bold">A</span>
+                    <textarea
+                      className="flex-1 bg-transparent border-none p-0 text-sm h-auto focus:ring-0 resize-none"
+                      rows={2}
+                      value={faq.answer}
+                      onChange={(e) => {
+                        const newFaqs = [...(formData.geoFaqs || [])];
+                        newFaqs[index].answer = e.target.value;
+                        updateField("geoFaqs", newFaqs);
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-end mt-1">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const newFaqs = formData.geoFaqs?.filter((_, i) => i !== index) || null;
+                        updateField("geoFaqs", newFaqs?.length ? newFaqs : null);
+                      }}
+                      className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1"
+                    >
+                      <Trash2 className="h-3 w-3" /> 删除这组
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  const newFaqs = [...(formData.geoFaqs || [])];
+                  newFaqs.push({ question: "", answer: "" });
+                  updateField("geoFaqs", newFaqs);
+                }}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                添加自定义问答
+              </Button>
+            </div>
+          )}
         </section>
 
         {/* 其他设置 */}

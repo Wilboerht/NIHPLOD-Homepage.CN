@@ -209,6 +209,7 @@ export async function PUT(
           category: { connect: { id: validated.categoryId } },
           allowDirectBuy: validated.allowDirectBuy,
           stock: validated.stock,
+          geoFaqs: validated.geoFaqs as any,
         },
       });
 

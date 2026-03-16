@@ -38,6 +38,7 @@ model Product {
   stock          Int           @default(0) // 库存数量
   salesCount     Int           @default(0) // 销量统计
   cartItems      CartItem[]    // 关联购物车
+  geoFaqs        Json?         // AI 生成的 GEO FAQ 数据
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

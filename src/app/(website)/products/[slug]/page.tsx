@@ -2,7 +2,8 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { ProductDetailContent } from "./ProductDetailContent";
-import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
+import { generateProductFaqs } from "@/config/geo-faq";
 
 // ISR: 产品详情页每60秒重新验证一次
 export const revalidate = 60;
@@ -150,6 +151,15 @@ export default async function ProductDetailPage({ params }: PageProps) {
       {/* Schema.org 结构化数据 */}
       <ProductJsonLd product={product} />
       <BreadcrumbJsonLd items={breadcrumbs} />
+      <FAQJsonLd 
+        items={(product.geoFaqs as any) || generateProductFaqs({
+          name: product.name,
+          nameEn: product.nameEn,
+          categoryName: product.category.name,
+          benefits: product.benefits,
+          description: product.description
+        })} 
+      />
 
       <ProductDetailContent
         product={product}

@@ -47,6 +47,11 @@ export const ProductSchema = z.object({
   // 站内购买
   allowDirectBuy: z.boolean().default(false),
   stock: z.number().int().min(0, "库存不能为负数").default(0),
+  // GEO FAQ 数据
+  geoFaqs: z.array(z.object({
+    question: z.string(),
+    answer: z.string()
+  })).optional().nullable(),
 });
 
 // 产品查询参数 Schema
