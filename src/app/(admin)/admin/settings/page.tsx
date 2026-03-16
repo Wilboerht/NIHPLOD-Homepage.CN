@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
-import { MediaPicker } from "@/components/admin/MediaPicker";
 
 // 设置类型
 interface SiteSettings {
@@ -42,8 +41,8 @@ export default function AdminSettingsPage() {
   // 状态
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
-  const [mediaPickerTarget, setMediaPickerTarget] = useState<"logo" | "wechat_qrcode" | null>(null);
+  // const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  // const [mediaPickerTarget, setMediaPickerTarget] = useState<"logo" | "wechat_qrcode" | null>(null);
 
   // 设置数据
   const [site, setSite] = useState<SiteSettings>({
@@ -112,13 +111,13 @@ export default function AdminSettingsPage() {
     }
   };
 
-  // 打开媒体选择器
+  /* 
+  // 暂时移除媒体选择器逻辑
   const openMediaPicker = (target: "logo" | "wechat_qrcode") => {
     setMediaPickerTarget(target);
     setMediaPickerOpen(true);
   };
 
-  // 选择媒体
   const handleMediaSelect = (url: string) => {
     if (mediaPickerTarget === "logo") {
       setSite({ ...site, logo: url });
@@ -128,6 +127,7 @@ export default function AdminSettingsPage() {
     setMediaPickerOpen(false);
     setMediaPickerTarget(null);
   };
+  */
 
   if (loading) {
     return (
@@ -186,38 +186,12 @@ export default function AdminSettingsPage() {
             <label className="mb-2 block text-sm font-medium text-gray-700">
               网站 Logo
             </label>
-            <div className="flex items-center gap-4">
-              {site.logo ? (
-                <div className="relative h-16 w-32 rounded-lg border border-gray-200 bg-gray-50 p-2">
-                  <Image
-                    src={site.logo}
-                    alt="Logo"
-                    fill
-                    className="object-contain"
-                  />
-                  <button
-                    onClick={() => setSite({ ...site, logo: "" })}
-                    className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => openMediaPicker("logo")}
-                  className="flex h-16 w-32 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-brand-gold hover:text-brand-gold"
-                >
-                  <Upload className="h-6 w-6" />
-                </button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => openMediaPicker("logo")}
-              >
-                选择图片
-              </Button>
-            </div>
+              <Input
+                value={site.logo}
+                onChange={(e) => setSite({ ...site, logo: e.target.value })}
+                placeholder="SVG 代码或图片 URL"
+                className="flex-1"
+              />
           </div>
         </div>
       </section>
@@ -239,38 +213,12 @@ export default function AdminSettingsPage() {
             <label className="mb-2 block text-sm font-medium text-gray-700">
               微信公众号二维码
             </label>
-            <div className="flex items-center gap-4">
-              {social.wechat_qrcode ? (
-                <div className="relative h-20 w-20 rounded-lg border border-gray-200 bg-gray-50">
-                  <Image
-                    src={social.wechat_qrcode}
-                    alt="WeChat QR"
-                    fill
-                    className="object-contain p-1"
-                  />
-                  <button
-                    onClick={() => setSocial({ ...social, wechat_qrcode: "" })}
-                    className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => openMediaPicker("wechat_qrcode")}
-                  className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-brand-gold hover:text-brand-gold"
-                >
-                  <Upload className="h-6 w-6" />
-                </button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => openMediaPicker("wechat_qrcode")}
-              >
-                上传二维码
-              </Button>
-            </div>
+              <Input
+                value={social.wechat_qrcode}
+                onChange={(e) => setSocial({ ...social, wechat_qrcode: e.target.value })}
+                placeholder="二维码图片 URL"
+                className="flex-1"
+              />
           </div>
           <Input
             label="微博"
@@ -319,16 +267,6 @@ export default function AdminSettingsPage() {
         </div>
       </section>
 
-      {/* 媒体选择器 */}
-      <MediaPicker
-        isOpen={mediaPickerOpen}
-        onClose={() => {
-          setMediaPickerOpen(false);
-          setMediaPickerTarget(null);
-        }}
-        onSelect={handleMediaSelect}
-        title={mediaPickerTarget === "logo" ? "选择 Logo" : "选择二维码图片"}
-      />
     </div>
   );
 }
