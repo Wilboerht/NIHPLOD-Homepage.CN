@@ -13,7 +13,6 @@ interface PageData {
   id: string;
   title: string;
   slug: string;
-  content: Record<string, unknown>;
   seo: SeoConfig | null;
   published: boolean;
   updatedAt: string;

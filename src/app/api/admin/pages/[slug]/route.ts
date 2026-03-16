@@ -14,7 +14,6 @@ const SeoSchema = z.object({
 // 页面更新 Schema
 const PageUpdateSchema = z.object({
   title: z.string().min(1).max(100).optional(),
-  content: z.record(z.string(), z.unknown()).optional(),
   seo: SeoSchema.optional(),
   published: z.boolean().optional(),
 });
@@ -97,7 +96,6 @@ export async function PUT(
       where: { slug },
       data: {
         ...(validated.title && { title: validated.title }),
-        ...(validated.content && { content: validated.content as object }),
         ...(validated.seo && { seo: validated.seo as object }),
         ...(typeof validated.published === "boolean" && { published: validated.published }),
       },

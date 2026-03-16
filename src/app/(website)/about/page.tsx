@@ -28,19 +28,5 @@ import prisma from "@/lib/prisma";
 // ...
 
 export default async function StoryPage() {
-
-
-  try {
-    const page = await prisma.page.findUnique({
-      where: { slug: "story" },
-      select: { published: true },
-    });
-
-    if (page?.published) {
-    }
-  } catch (error) {
-    console.error("获取品牌故事页面数据失败:", error);
-  }
-
   return <StoryContent />;
 }

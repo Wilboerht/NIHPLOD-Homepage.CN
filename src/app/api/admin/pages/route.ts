@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
-import { PAGE_META, getEmptyContent, type PageSlug } from "@/types/page-content";
+import { PAGE_META } from "@/types/page-content";
 
 // GET /api/admin/pages - 获取页面列表
 // 强制动态渲染，禁止静态预渲染
@@ -79,12 +79,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 创建页面
-    const content = getEmptyContent(slug as PageSlug);
     const page = await prisma.page.create({
       data: {
         title,
         slug,
-        content: content as object,
         seo: {},
         published: false,
       },
@@ -102,4 +100,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

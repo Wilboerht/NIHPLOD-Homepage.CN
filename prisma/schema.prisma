@@ -91,26 +91,11 @@ model Page {
   id              String   @id @default(cuid())
   title           String   // 页面标题
   slug            String   @unique // 页面标识 (home, story, ritual, contact, careers, privacy)
-  content         Json     // 页面内容（结构化 JSON）
   seo             Json?    // SEO 配置
-  backgroundImage String?  // 页面背景图片 URL
   published       Boolean  @default(false)
   updatedAt       DateTime @updatedAt
 }
 
-model Media {
-  id        String   @id @default(cuid())
-  filename  String   // 原始文件名
-  url       String   // 存储路径
-  type      String   // MIME 类型
-  size      Int      // 文件大小 (bytes)
-  width     Int?     // 图片宽度
-  height    Int?     // 图片高度
-  alt       String?  // 替代文本
-  createdAt DateTime @default(now())
-
-  @@index([type])
-}
 
 // ============================================
 // 职位管理
