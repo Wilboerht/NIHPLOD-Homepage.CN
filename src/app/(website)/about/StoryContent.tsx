@@ -32,14 +32,14 @@ const Watermark = () => (
 );
 
 const AWARDS_DATA = [
-  { year: "2026", org: "胡润百富", title: "国际高端护肤品牌最佳表现", image: "/images/story/award-1.webp" },
-  { year: "2025", org: "亚洲女性友好品牌", title: "时空逆转成就奖", image: "/images/story/award-2.webp" },
-  { year: "2024", org: "Timout Magazine", title: "年度影响力高奢品牌", image: "/images/story/award-3.webp" },
-  { year: "2023", org: "罗博报告", title: "优中优选奖", image: "/images/story/award-1.webp" },
-  { year: "2020", org: "LUX Magazine", title: "消费者满意奖", image: "/images/story/award-2.webp" },
-  { year: "2019", org: "Prestige Magazine", title: "最佳创新化妆品奖", image: "/images/story/award-3.webp" },
-  { year: "2018", org: "Wellness & SPA Innovation", title: "最佳治疗产品", image: "/images/story/award-1.webp" },
-  { year: "2017", org: "Pure Beauty Global Awards", title: "最佳新晋抗衰老产品", image: "/images/story/award-2.webp" },
+  { year: "2026", org: "胡润百富", title: "国际高端护肤品牌最佳表现", pcImage: "/images/story/awards/pc/hurun.png", mobileImage: "/images/story/award-1.webp" },
+  { year: "2025", org: "亚洲女性友好品牌", title: "时空逆转成就奖", pcImage: "/images/story/awards/pc/best.png", mobileImage: "/images/story/award-2.webp" },
+  { year: "2024", org: "Timout Magazine", title: "年度影响力高奢品牌", pcImage: "/images/story/awards/pc/timeout.png", mobileImage: "/images/story/award-3.webp" },
+  { year: "2023", org: "罗博报告", title: "优中优选奖", pcImage: "/images/story/awards/pc/robb.png", mobileImage: "/images/story/award-1.webp" },
+  { year: "2020", org: "LUX Magazine", title: "消费者满意奖", pcImage: "/images/story/awards/pc/lux.png", mobileImage: "/images/story/award-2.webp" },
+  { year: "2019", org: "Prestige Magazine", title: "最佳创新化妆品奖", pcImage: "/images/story/awards/pc/prestige.png", mobileImage: "/images/story/award-3.webp" },
+  { year: "2018", org: "Wellness & SPA Innovation", title: "最佳治疗产品", pcImage: "/images/story/awards/pc/wellness.png", mobileImage: "/images/story/award-1.webp" },
+  { year: "2017", org: "Pure Beauty Global Awards", title: "最佳新晋抗衰老产品", pcImage: "/images/story/awards/pc/purebeauty.png", mobileImage: "/images/story/award-2.webp" },
 ];
 
 
@@ -398,7 +398,7 @@ export function StoryContent() {
                                   {/* Award Image */}
                                   <div className="relative aspect-[16/9] w-full overflow-hidden mb-6 bg-white/30 rounded-sm">
                                     <Image
-                                      src={award.image}
+                                      src={award.mobileImage}
                                       alt={award.title}
                                       fill
                                       className="object-contain p-4"
@@ -660,7 +660,7 @@ export function StoryContent() {
                                 {/* 悬浮显示的背景图 */}
                                 <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
                                   <Image
-                                    src={award.image}
+                                    src={award.pcImage}
                                     alt={award.title}
                                     fill
                                     className="object-cover transition-transform duration-700 group-hover:scale-110"
