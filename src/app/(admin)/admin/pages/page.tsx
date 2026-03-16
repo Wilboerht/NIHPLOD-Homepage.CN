@@ -154,9 +154,9 @@ export default function AdminPagesPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">页面管理</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">搜索优化</h1>
           <p className="mt-1 text-sm text-gray-500">
-            编辑网站各页面内容，共 {pages.length} 个页面
+            优化各页面 SEO 信息，提高搜索排名
           </p>
         </div>
         <Button
@@ -201,7 +201,7 @@ export default function AdminPagesPage() {
                 href={`/admin/pages/${page.slug}`}
                 className="text-sm font-medium text-brand-gold hover:text-brand-gold/80"
               >
-                编辑内容
+                SEO 设置
               </Link>
               <div className="flex items-center gap-2">
                 <button

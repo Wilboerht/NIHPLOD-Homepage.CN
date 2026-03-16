@@ -7,12 +7,5 @@ export { ImageUploader } from "./ImageUploader";
 export { ProductForm } from "./ProductForm";
 export { CategoryForm } from "./CategoryForm";
 export { SeoEditor } from "./SeoEditor";
-export {
-  HomeContentEditor,
-  StoryContentEditor,
-  ContactContentEditor,
-  CareersContentEditor,
-  LegalContentEditor,
-} from "./PageContentEditor";
 export { MediaPicker } from "./MediaPicker";
 export { JobForm } from "./JobForm";

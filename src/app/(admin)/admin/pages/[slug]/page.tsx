@@ -3,23 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Eye, EyeOff, Settings, FileText } from "lucide-react";
+import { ArrowLeft, Save, Eye, EyeOff, Settings } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { SeoEditor } from "@/components/admin/SeoEditor";
-
-import {
-  HomeContentEditor,
-  StoryContentEditor,
-  ContactContentEditor,
-  CareersContentEditor,
-  PrivacyContentEditor,
-  LegalContentEditor,
-  RitualContentEditor,
-  ServicesContentEditor,
-} from "@/components/admin/PageContentEditor";
-import { PAGE_META, type PageSlug, type SeoConfig } from "@/types/page-content";
-import { cn } from "@/lib/utils";
+import { PAGE_META, type SeoConfig } from "@/types/page-content";
 
 interface PageData {
   id: string;
@@ -31,8 +19,6 @@ interface PageData {
   updatedAt: string;
 }
 
-type TabType = "content" | "seo";
-
 export default function PageEditPage() {
   const router = useRouter();
   const params = useParams();
@@ -42,9 +28,7 @@ export default function PageEditPage() {
   const [page, setPage] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>("content");
   const [hasChanges, setHasChanges] = useState(false);
-
 
   // 获取页面数据
   const fetchPage = useCallback(async () => {
@@ -82,8 +66,7 @@ export default function PageEditPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: page.content,
-          seo: page.seo,
+          seo: page.seo, // 仅保存 SEO 设置
         }),
       });
 
@@ -127,91 +110,10 @@ export default function PageEditPage() {
     }
   };
 
-  // 更新内容
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateContent = (content: any) => {
-    setPage((prev) => (prev ? { ...prev, content } : null));
-    setHasChanges(true);
-  };
-
   // 更新 SEO
   const updateSeo = (seo: SeoConfig) => {
     setPage((prev) => (prev ? { ...prev, seo } : null));
     setHasChanges(true);
-  };
-
-
-
-  // 渲染内容编辑器
-  const renderContentEditor = () => {
-    if (!page) return null;
-
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    switch (slug as PageSlug) {
-      case "home":
-        return (
-          <HomeContentEditor
-            content={page.content as any}
-            onChange={updateContent}
-          />
-        );
-      case "story":
-        return (
-          <StoryContentEditor
-            content={page.content as any}
-            onChange={updateContent}
-          />
-        );
-      case "contact":
-        return (
-          <ContactContentEditor
-            content={page.content as any}
-            onChange={updateContent}
-          />
-        );
-      case "careers":
-        return (
-          <CareersContentEditor
-            content={page.content as any}
-            onChange={updateContent}
-          />
-        );
-      case "privacy":
-        return (
-          <PrivacyContentEditor
-            content={page.content as any}
-            onChange={updateContent}
-          />
-        );
-      case "terms":
-        return (
-          <LegalContentEditor
-            content={page.content as any}
-            onChange={updateContent}
-          />
-        );
-      case "ritual":
-        return (
-          <RitualContentEditor
-            content={page.content as any}
-            onChange={updateContent}
-          />
-        );
-      case "services":
-        return (
-          <ServicesContentEditor
-            content={page.content as any}
-            onChange={updateContent}
-          />
-        );
-      default:
-        return (
-          <div className="rounded-lg bg-gray-50 p-8 text-center text-gray-500">
-            此页面类型暂无专用编辑器
-          </div>
-        );
-    }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
   };
 
   if (loading) {
@@ -241,7 +143,7 @@ export default function PageEditPage() {
           </Link>
           <div>
             <h1 className="text-xl font-semibold text-gray-900">
-              编辑页面 - {pageMeta.name}
+              搜索优化 - {pageMeta.name}
             </h1>
             <p className="mt-0.5 text-sm text-gray-500">/{slug}</p>
           </div>
@@ -274,47 +176,25 @@ export default function PageEditPage() {
         </div>
       )}
 
-      {/* Tab 切换 */}
-      <div className="border-b border-gray-200">
-        <div className="flex gap-4">
-          <button
-            onClick={() => setActiveTab("content")}
-            className={cn(
-              "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
-              activeTab === "content"
-                ? "border-brand-gold text-brand-gold"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            )}
-          >
-            <FileText className="h-4 w-4" />
-            页面内容
-          </button>
+      {/* 核心设置内容 */}
+      <div className="space-y-6">
+        <div className="rounded-xl bg-white shadow-sm overflow-hidden">
+          <div className="border-b border-gray-100 bg-gray-50/50 px-6 py-4">
+            <div className="flex items-center gap-2 font-medium text-gray-900">
+              <Settings className="h-4 w-4 text-brand-gold" />
+              SEO 搜索优化
+            </div>
+          </div>
+          <div className="p-6">
+             <SeoEditor value={page.seo || {}} onChange={updateSeo} />
+          </div>
+        </div>
 
-          <button
-            onClick={() => setActiveTab("seo")}
-            className={cn(
-              "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
-              activeTab === "seo"
-                ? "border-brand-gold text-brand-gold"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            )}
-          >
-            <Settings className="h-4 w-4" />
-            SEO 设置
-          </button>
+        <div className="rounded-xl bg-gray-50 border border-dashed border-gray-200 p-8 text-center text-gray-500">
+          <p className="text-sm font-medium">提示：页面具体文案已归入前端代码管理</p>
+          <p className="mt-1 text-xs">如需修改页面布局或特定文案，请联系开发团队或在源代码中进行调整。</p>
         </div>
       </div>
-
-      {/* 内容区域 */}
-      <div className="rounded-xl bg-white p-6 shadow-sm">
-        {activeTab === "content" && renderContentEditor()}
-
-        {activeTab === "seo" && (
-          <SeoEditor value={page.seo || {}} onChange={updateSeo} />
-        )}
-      </div>
-
-
     </div>
   );
 }
