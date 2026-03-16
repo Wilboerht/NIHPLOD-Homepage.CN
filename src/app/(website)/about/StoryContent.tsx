@@ -647,15 +647,15 @@ export function StoryContent() {
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                           className="flex h-full flex-col pb-16 lg:pb-20 relative"
                         >
-                          {/* 3x2 网格卡片布局 - 铺满容器 */}
-                          <div className="grid h-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 grid-rows-none md:grid-rows-2 gap-4 lg:gap-5 pb-12">
+                          {/* 奖项网格 - 使用 16:9 比例自适应布局 */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-12">
                             {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map((award, idx) => (
                               <m.div
                                 key={`${currentAwardPage}-${idx}`}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                                className="group relative flex flex-col justify-center overflow-hidden border border-[#00263e]/15 bg-[#F0EDE1]/50 p-6 transition-all duration-500 hover:border-[#00263e]/40 lg:p-8"
+                                className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/15 bg-[#F0EDE1]/50 p-6 transition-all duration-500 hover:border-[#00263e]/40 lg:p-8 xl:p-10"
                               >
                                 {/* 悬浮显示的背景图 */}
                                 <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
