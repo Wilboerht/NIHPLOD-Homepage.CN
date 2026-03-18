@@ -274,7 +274,7 @@ export const getProductIcon = (name: string, idSuffix: string = "") => {
       </svg>
     ),
     // 身体油
-    "护肤油": (
+    "护理油": (
       <svg width="48" height="48" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M224.841 51.218H175.082C171.534 51.218 168.658 54.0941 168.658 57.642V173.865C168.658 177.413 171.534 180.289 175.082 180.289H224.841C228.389 180.289 231.265 177.413 231.265 173.865V57.642C231.265 54.0941 228.389 51.218 224.841 51.218Z" fill={`url(#paint0_linear_22_2_${idSuffix})`} />
         <path d="M262.405 186.466H137.594C133.539 186.466 130.252 189.753 130.252 193.808V345.634C130.252 349.689 133.539 352.976 137.594 352.976H262.405C266.46 352.976 269.747 349.689 269.747 345.634V193.808C269.747 189.753 266.46 186.466 262.405 186.466Z" fill={`url(#paint1_radial_22_2_${idSuffix})`} />
@@ -606,7 +606,7 @@ const defaultModuleData: ModuleData = {
       tag: "芳疗",
       desc: "这款奢华护理油是您私人 SPA 的核心，在泡澡时滴入数滴，便可瞬间将浴室升华为芳香疗愈场，让卓越的润肤力包裹并环绕您的全身；而干燥时节，只需将其与任意面霜、精华或身体乳混合，即可定制出加倍润泽的顶级护理体验。",
       totalDuration: "自由",
-      products: "护肤油",
+      products: "护理油",
       benefits: ["滋润加强", "维稳舒缓", "疗愈焕颜"],
       heroImage: "/images/portable-aroma-hero.webp",
       steps: [
@@ -622,7 +622,7 @@ const defaultModuleData: ModuleData = {
       nameEn: "FACE RITUAL",
       desc: "仅需 4 个步骤",
       totalDuration: "20-30分钟",
-      products: "洁面、磨砂膏、护肤油、面霜、面膜",
+      products: "洁面、磨砂膏、护理油、面霜、面膜",
       benefits: ["保湿锁水", "屏障增强", "过敏修护", "抗初老", "维稳舒缓"],
       specialSupport: "孕期、月子期、轻医美术后",
       steps: [
@@ -658,7 +658,7 @@ const defaultModuleData: ModuleData = {
       nameEn: "FULL BODY RITUAL",
       desc: "仅需 6 个步骤",
       totalDuration: "30-45分钟",
-      products: "洁面、磨砂膏、护肤油、面霜、面膜、身体乳",
+      products: "洁面、磨砂膏、护理油、面霜、面膜、身体乳",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "维稳舒缓", "紧致提拉", "润泽提亮"],
       specialSupport: "孕期、月子期、轻医美术后",
       steps: [
@@ -708,7 +708,7 @@ const defaultModuleData: ModuleData = {
       nameEn: "FACIAL CARE",
       desc: "仅需 4 个步骤",
       totalDuration: "20-30分钟",
-      products: "洁面、磨砂膏、护肤油、精华露、面霜、面膜",
+      products: "洁面、磨砂膏、护理油、精华露、面霜、面膜",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
 
       steps: [
@@ -744,7 +744,7 @@ const defaultModuleData: ModuleData = {
       nameEn: "FULL BODY CARE",
       desc: "仅需 6 个步骤",
       totalDuration: "30-45分钟",
-      products: "洁面、磨砂膏、护肤油、精华露、面霜、面膜、身体乳",
+      products: "洁面、磨砂膏、护理油、精华露、面霜、面膜、身体乳",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
 
       steps: [
