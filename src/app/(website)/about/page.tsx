@@ -6,11 +6,11 @@ import { StoryContent } from "./StoryContent";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "品牌故事",
+  title: "官方品牌故事",
   description:
-    "探索 NIHPLOD 旎柏的品牌故事：源自 2008 年摩纳哥，复刻海豚肌肤每 2 小时自我更新的自愈力，开启逆转时光的真脂质体护肤传奇。",
+    "探索 NIHPLOD 旎柏官方网站：源自 2008 年摩纳哥，复刻海豚肌肤每 2 小时自我更新的自愈力，开启逆转时光的真脂质体护肤传奇。",
   openGraph: {
-    title: "品牌故事 | NIHPLOD 旎柏",
+    title: "品牌故事 | NIHPLOD 旎柏官方网站",
     description:
       "NIHPLOD 旎柏源自摩纳哥，复刻海豚肌肤自我更新的生命力，开启逆转时光之旅。",
     images: ["/images/og-image.png"],
