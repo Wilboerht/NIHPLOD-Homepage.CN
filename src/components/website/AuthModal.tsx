@@ -272,7 +272,7 @@ function LoginModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
@@ -461,12 +461,13 @@ function LoginModal({
 
                   {/* 底部导航 - 固定 */}
                   <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
-                    <p className="text-xs text-brand-charcoal/60">
+                    <p className="text-xs text-brand-charcoal/60 flex items-center justify-center">
                       还没有账户？
                       <a
                         href="/contact"
-                        className="ml-1 font-bold text-brand-gold hover:text-brand-gold-dark transition-all"
+                        className="ml-1 inline-flex items-center gap-1 font-bold text-brand-gold hover:text-brand-gold-dark transition-all"
                       >
+                        <Headset className="h-3.5 w-3.5" />
                         联系我们
                       </a>
                     </p>
@@ -648,7 +649,7 @@ function RegisterModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
