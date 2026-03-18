@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
@@ -209,7 +210,7 @@ export async function PUT(
           category: { connect: { id: validated.categoryId } },
           allowDirectBuy: validated.allowDirectBuy,
           stock: validated.stock,
-          geoFaqs: validated.geoFaqs as any,
+          geoFaqs: validated.geoFaqs as unknown as Prisma.InputJsonValue,
         },
       });
 

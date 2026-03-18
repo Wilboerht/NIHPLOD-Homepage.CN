@@ -2,7 +2,7 @@
  * 更新首页内容为新格式
  */
 import { config } from "dotenv";
-import { PrismaClient } from "../src/generated/prisma/client.js";
+import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 

@@ -1,7 +1,4 @@
 import HomeClient from "@/components/website/HomeClient";
-import prisma from "@/lib/prisma";
-import type { HomePageContent } from "@/types/page-content";
-
 // ISR: 首页每小时重新验证一次
 export const revalidate = 3600;
 

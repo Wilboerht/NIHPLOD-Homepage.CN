@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import {
   Save,
   Globe,
   Share2,
   Mail,
-  Upload,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";

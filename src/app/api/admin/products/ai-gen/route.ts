@@ -113,7 +113,7 @@ ${usage ? `使用方法: ${usage}` : ''}
       try {
         const parsed = JSON.parse(content);
         return Array.isArray(parsed) ? parsed : (parsed.faqs || parsed.faq || []);
-      } catch (e) {
+      } catch {
         // 如果不是纯 JSON，尝试正则匹配
         const match = content.match(/\[[\s\S]*\]/);
         if (match) return JSON.parse(match[0]);

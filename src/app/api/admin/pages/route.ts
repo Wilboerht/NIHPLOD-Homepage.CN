@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { verifyAuth } from "@/lib/auth";
-import { PAGE_META } from "@/types/page-content";
+import { PAGE_META, getEmptyContent, PageSlug } from "@/types/page-content";
 
 // GET /api/admin/pages - 获取页面列表
 // 强制动态渲染，禁止静态预渲染
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
       data: {
         title,
         slug,
+        content: getEmptyContent(slug as PageSlug) as unknown as Prisma.InputJsonValue,
         seo: {},
         published: false,
       },

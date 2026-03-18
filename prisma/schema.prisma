@@ -92,6 +92,7 @@ model Page {
   id              String   @id @default(cuid())
   title           String   // 页面标题
   slug            String   @unique // 页面标识 (home, story, ritual, contact, careers, privacy)
+  content         Json     // 页面内容
   seo             Json?    // SEO 配置
   published       Boolean  @default(false)
   updatedAt       DateTime @updatedAt

@@ -44,6 +44,7 @@ interface ProductData {
   published: boolean;
   allowDirectBuy: boolean;
   stock: number;
+  geoFaqs: { question: string; answer: string }[] | null;
 }
 
 export default function EditProductPage() {
@@ -103,6 +104,7 @@ export default function EditProductPage() {
           published: data.published,
           allowDirectBuy: data.allowDirectBuy ?? false,
           stock: data.stock ?? 0,
+          geoFaqs: data.geoFaqs ?? null,
         });
       })
       .catch((err) => {

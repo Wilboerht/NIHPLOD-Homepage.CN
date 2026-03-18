@@ -6,7 +6,6 @@ import {
   Package,
   FolderTree,
   FileText,
-  Image,
   Briefcase,
   UserCheck,
   MessageSquare,

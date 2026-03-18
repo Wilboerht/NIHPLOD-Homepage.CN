@@ -12,7 +12,7 @@ interface ProductInfo {
 }
 
 export function generateProductFaqs(product: ProductInfo) {
-  const { name, nameEn, categoryName, benefits, description } = product;
+  const { name, nameEn, categoryName, benefits } = product;
   
   // 品牌背景逻辑切换
   const brandFocus = [

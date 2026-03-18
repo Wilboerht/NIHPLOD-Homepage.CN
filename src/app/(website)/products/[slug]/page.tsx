@@ -158,7 +158,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <ProductJsonLd product={product} />
       <BreadcrumbJsonLd items={breadcrumbs} />
       <FAQJsonLd 
-        items={(product.geoFaqs as any) || generateProductFaqs({
+        items={(product.geoFaqs as { question: string; answer: string }[]) || generateProductFaqs({
           name: product.name,
           nameEn: product.nameEn,
           categoryName: product.category.name,

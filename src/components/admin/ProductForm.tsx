@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical, Sparkles, RefreshCw } from "lucide-react";
+import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select, SelectOption } from "@/components/ui/Select";

@@ -23,8 +23,6 @@ export const metadata: Metadata = {
   },
 };
 
-import prisma from "@/lib/prisma";
-
 // ...
 
 export default async function StoryPage() {
