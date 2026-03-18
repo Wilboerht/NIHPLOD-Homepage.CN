@@ -613,62 +613,64 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   {/* 桌面端主内容区：增加滚动支持并移除可能导致重叠的弹性冲突 */}
                   {/* 桌面端主内容区：通过限制高度和压缩间距实现单屏显示 */}
                   <div className="flex-1 overflow-hidden px-[12%] py-4">
-                    <div className="flex h-full flex-col justify-center">
-                      <m.header
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
-                        className="mb-6 flex-shrink-0"
-                      >
-                        <h1 className="text-2xl font-light tracking-[0.2em] text-[#00263E]">
-                          当季热卖
-                        </h1>
-                      </m.header>
+                    <div className="flex h-full flex-col">
+                      <div className="flex flex-1 flex-col justify-center">
+                        <m.header
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
+                          className="mb-8 flex-shrink-0"
+                        >
+                          <h1 className="text-2xl font-light tracking-[0.2em] text-[#00263E]">
+                            当季热卖
+                          </h1>
+                        </m.header>
 
-                      <section className="grid grid-cols-3 gap-8 min-h-0">
-                        {products.slice(0, 3).map((product, index) => (
-                          <m.div
-                            key={product.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1], delay: 0.1 + index * 0.1 }}
-                            onClick={() => handleProductClick(product)}
-                            className={cn(
-                              "group relative flex cursor-pointer flex-col",
-                              index === 1 && "mt-12" // 中间卡片微调，不宜过大以防超出
-                            )}
-                          >
-                            <div className={cn(
-                              "relative w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_15px_30px_rgba(0,38,62,0.1)]",
-                              index === 1 ? "aspect-[4/5.2] max-h-[50vh]" : "aspect-[4/4.5] max-h-[42vh]"
-                            )}>
-                              <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08] z-10" />
-                              {product.images[0] && (
-                                <Image
-                                  src={product.images[0].url}
-                                  alt={product.name}
-                                  fill
-                                  className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
-                                  sizes="33vw"
-                                />
+                        <section className="grid grid-cols-3 gap-8 min-h-0">
+                          {products.slice(0, 3).map((product, index) => (
+                            <m.div
+                              key={product.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1], delay: 0.1 + index * 0.1 }}
+                              onClick={() => handleProductClick(product)}
+                              className={cn(
+                                "group relative flex cursor-pointer flex-col",
+                                index === 1 && "mt-12" // 中间卡片微调，不宜过大以防超出
                               )}
-                            </div>
-                            <div className="mt-3">
-                              <h2 className="text-sm font-medium tracking-wide text-[#00263E]">
-                                {product.name}
-                              </h2>
-                              {product.capacity && (
-                                <span className="mt-0.5 block text-[10px] text-[#00263E]/60">
-                                  {product.capacity}
-                                </span>
-                              )}
-                            </div>
-                          </m.div>
-                        ))}
-                      </section>
+                            >
+                              <div className={cn(
+                                "relative w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_15px_30px_rgba(0,38,62,0.1)]",
+                                index === 1 ? "aspect-[4/5.2] max-h-[50vh]" : "aspect-[4/4.5] max-h-[42vh]"
+                              )}>
+                                <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08] z-10" />
+                                {product.images[0] && (
+                                  <Image
+                                    src={product.images[0].url}
+                                    alt={product.name}
+                                    fill
+                                    className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
+                                    sizes="33vw"
+                                  />
+                                )}
+                              </div>
+                              <div className="mt-3">
+                                <h2 className="text-sm font-medium tracking-wide text-[#00263E]">
+                                  {product.name}
+                                </h2>
+                                {product.capacity && (
+                                  <span className="mt-0.5 block text-[10px] text-[#00263E]/60">
+                                    {product.capacity}
+                                  </span>
+                                )}
+                              </div>
+                            </m.div>
+                          ))}
+                        </section>
+                      </div>
 
                       {/* 桌面端页脚 - 紧凑排版 */}
-                      <footer className="mt-auto pt-10 pb-4 flex flex-col items-center opacity-30">
+                      <footer className="pt-10 pb-4 flex flex-col items-center opacity-30 shrink-0">
                         <p className="text-[10px] font-light tracking-widest text-[#00263E] uppercase">
                           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                         </p>
