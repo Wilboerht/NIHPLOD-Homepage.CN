@@ -80,25 +80,6 @@ async function getProducts() {
 }
 
 /**
- * 获取页面背景图片
- */
-async function getPageData(): Promise<void> {
-  try {
-    const page = await prisma.page.findUnique({
-      where: { slug: "products" },
-      select: { published: true },
-    });
-
-    if (page?.published) {
-      return;
-    }
-  } catch (error) {
-    console.error("获取产品页面数据失败:", error);
-  }
-  return;
-}
-
-/**
  * 产品列表页
  * Server Component - 数据获取
  */
@@ -106,7 +87,6 @@ export default async function ProductsPage() {
   const [categories, products] = await Promise.all([
     getCategories(),
     getProducts(),
-    getPageData(),
   ]);
 
   return (

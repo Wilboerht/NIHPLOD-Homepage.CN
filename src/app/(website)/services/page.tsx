@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
 import { ServicesContent } from "./ServicesContent";
 import type { ServicesPageContent } from "@/types/page-content";
 
@@ -43,25 +42,6 @@ const defaultContent: ServicesPageContent = {
   ],
 };
 
-// 获取页面数据
-async function getPageData(): Promise<{ content: ServicesPageContent }> {
-  try {
-    const page = await prisma.page.findUnique({
-      where: { slug: "services" },
-      select: { content: true, published: true },
-    });
-
-    if (page?.published) {
-      return {
-        content: (page.content as unknown as ServicesPageContent) || defaultContent,
-      };
-    }
-  } catch (error) {
-    console.error("Failed to fetch services page content:", error);
-  }
-
-  return { content: defaultContent };
-}
 
 export const metadata: Metadata = {
   title: "服务入口",
@@ -80,8 +60,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function ServicesPage() {
-  const pageData = await getPageData();
-  return <ServicesContent content={pageData.content} />;
+export default function ServicesPage() {
+  return <ServicesContent content={defaultContent} />;
 }
 

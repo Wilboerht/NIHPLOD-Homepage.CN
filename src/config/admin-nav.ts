@@ -29,7 +29,6 @@ export const adminNavItems: NavItem[] = [
   { title: "用户管理", href: "/admin/users", icon: Users },
   { title: "产品管理", href: "/admin/products", icon: Package },
   { title: "分类管理", href: "/admin/categories", icon: FolderTree },
-  { title: "搜索优化", href: "/admin/pages", icon: FileText },
   { title: "优惠券管理", href: "/admin/coupons", icon: Ticket },
   { title: "职位管理", href: "/admin/jobs", icon: Briefcase },
   { title: "简历管理", href: "/admin/applications", icon: UserCheck },

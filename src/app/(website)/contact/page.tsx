@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import prisma from "@/lib/prisma";
 import { ContactContent } from "./ContactContent";
 import type { ContactPageContent } from "@/types/page-content";
 
@@ -20,25 +19,6 @@ export const metadata: Metadata = {
   },
 };
 
-async function getPageData(): Promise<{ content?: ContactPageContent }> {
-  try {
-    const page = await prisma.page.findUnique({
-      where: { slug: "contact" },
-      select: { content: true, published: true },
-    });
-
-    if (page?.published) {
-      return {
-        content: page.content as unknown as ContactPageContent,
-      };
-    }
-  } catch (error) {
-    console.error("获取联系我们页面内容失败:", error);
-  }
-  return {};
-}
-
-export default async function ContactPage() {
-  const pageData = await getPageData();
-  return <ContactContent content={pageData.content} />;
+export default function ContactPage() {
+  return <ContactContent content={undefined} />;
 }
