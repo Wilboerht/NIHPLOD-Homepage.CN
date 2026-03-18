@@ -172,8 +172,8 @@ export function KineticBackground() {
                 {/* Row 2, Col 4: 登录/CTA卡 */}
                 <div
                     ref={(el) => addCellRef(el, 5)}
-                    onClick={!user ? handleLoginClick : undefined}
-                    className={`kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect ${user ? "kinetic-cell-user-premium" : "cursor-pointer"}`}
+                    onClick={user ? () => openUserCenter() : handleLoginClick}
+                    className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect cursor-pointer"
                 >
                     <div className="kinetic-login-bg" />
                     <div className="kinetic-btn-group">
@@ -192,9 +192,18 @@ export function KineticBackground() {
                                     <LogOut className="h-4 w-4" strokeWidth={1.5} />
                                 </button>
 
-                                <div className="flex flex-col items-center justify-center w-full relative z-20 mb-0 sm:mb-2">
-                                    <div className="premium-avatar-ring mb-0 sm:mb-1">
-                                        <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-full overflow-hidden bg-white premium-avatar-box border border-white/50">
+                                <div className="mb-0 sm:mb-2 flex flex-col items-center justify-center w-full group/avatar mt-0">
+                                    <div className="relative h-16 w-16 sm:h-24 sm:w-24 flex items-center justify-center">
+                                        {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
+                                        <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
+                                        <div className="absolute inset-[2px] sm:inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:group-hover/avatar:scale-90" />
+
+                                        {/* 主图标容器 - 极简白润质感 */}
+                                        <div className="relative h-12 w-12 sm:h-20 sm:w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden cursor-pointer" onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            openUserCenter();
+                                        }}>
                                             {user.avatar ? (
                                                 <Image
                                                     src={user.avatar}
@@ -203,23 +212,18 @@ export function KineticBackground() {
                                                     className="object-cover"
                                                 />
                                             ) : (
-                                                <div className="h-full w-full bg-brand-gold/5 flex items-center justify-center">
-                                                    <BookUser className="h-7 w-7 sm:h-8 sm:w-8 text-brand-gold/20" strokeWidth={1.2} />
+                                                <div className="relative h-6 w-6 sm:h-9 sm:w-9 opacity-50">
+                                                    <Image
+                                                        src="/images/profile-icon.svg"
+                                                        alt="User Profile"
+                                                        fill
+                                                        className="object-contain"
+                                                    />
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-
-                                    <div className="user-premium-line hidden sm:block" />
-
-                                    <div className="text-brand-charcoal/40 text-[10px] sm:text-[11px] font-medium tracking-[0.2em] uppercase mb-0.5 hidden sm:block">
-                                        欢迎回来
-                                    </div>
-                                    <div className="text-brand-charcoal text-[16px] sm:text-lg font-bold tracking-tight hidden sm:block">
-                                        {user.nickname || "尊贵会员"}
-                                    </div>
                                 </div>
-
                                 <button
                                     type="button"
                                     onClick={(e) => {
@@ -227,10 +231,9 @@ export function KineticBackground() {
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
-                                    className="w-full py-1.5 sm:py-3 rounded-full sm:rounded-xl btn-glassy-premium btn-glimmer text-[11px] sm:text-sm tracking-[0.15em] font-bold transition-all duration-500 active:scale-[0.98] group flex items-center justify-center gap-1.5 sm:gap-2"
+                                    className="w-full py-2 sm:py-3 rounded-xl bg-white/30 backdrop-blur-sm border border-white/50 text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] font-medium transition-all duration-500 hover:bg-white/50 hover:border-white/80 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98]"
                                 >
-                                    <span><span className="hidden sm:inline">进入</span>会员中心</span>
-                                    <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                                    进入会员中心
                                 </button>
                             </>
                         ) : (

@@ -276,7 +276,7 @@ export function TermsContent({ content }: TermsContentProps) {
             {/* 底部版权信息 - 固定在卡片底部 */}
             <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12">
               <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60">
-                &copy; {new Date().getFullYear()} NIHPLOD. 中国官方授权网站. All Rights Reserved.
+                &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
             </div>
           </div>

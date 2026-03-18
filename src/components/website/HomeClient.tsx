@@ -470,7 +470,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     {/* 版权文本 & 备案信息 */}
                     <div className="flex flex-col items-center gap-1 opacity-40">
                       <p className="text-[10px] sm:text-[11px] font-light tracking-widest text-brand-charcoal relative z-10 leading-tight">
-                        &copy; {new Date().getFullYear()} NIHPLOD. 中国官方授权网站. All Rights Reserved.
+                        &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                       </p>
                       <div className="flex items-center justify-center gap-2 sm:gap-4 text-[9px] sm:text-[10px] font-light tracking-normal sm:tracking-widest text-brand-charcoal whitespace-nowrap flex-nowrap leading-tight">
                         <Link href="https://beian.miit.gov.cn/" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center">
