@@ -145,15 +145,15 @@ export function KineticBackground() {
                         src="/images/kinetic-desktop.webp"
                         alt="Product Desktop"
                         fill
-                        className="kinetic-cell-image !filter-none transition-all duration-500 hidden lg:block"
-                        sizes="(max-width: 1024px) 100vw, 25vw"
+                        className="kinetic-cell-image !filter-none transition-all duration-500 hidden xl:block"
+                        sizes="(max-width: 1280px) 100vw, 25vw"
                     />
                     {/* Mobile Image */}
                     <Image
                         src="/images/kinetic-mobile.webp"
                         alt="Product Mobile"
                         fill
-                        className="kinetic-cell-image !filter-none transition-all duration-500 block lg:hidden"
+                        className="kinetic-cell-image !filter-none transition-all duration-500 block xl:hidden"
                         sizes="100vw"
                     />
                 </div>
