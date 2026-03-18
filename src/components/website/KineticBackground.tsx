@@ -113,7 +113,7 @@ export function KineticBackground() {
                     className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect"
                 >
                     <div className="kinetic-name" style={{ marginBottom: '12px', lineHeight: '1.3' }}>更少步骤<br />更多呵护</div>
-                    <div className="kinetic-desc" style={{ fontSize: '13px', lineHeight: '1.5', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400, opacity: 0.8 }}>美丽不该复杂，<br />专注美好生活</div>
+                    <div className="kinetic-desc" style={{ fontSize: '13px', lineHeight: '1.5', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400, opacity: 0.8 }}>美丽不该复杂<br />专注美好生活</div>
                 </div>
 
                 {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
@@ -179,19 +179,6 @@ export function KineticBackground() {
                     <div className="kinetic-btn-group">
                         {user ? (
                             <>
-                                {/* 极简退出按钮 */}
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        logout();
-                                    }}
-                                    className="absolute -top-6 -right-2 btn-logout-minimal z-30"
-                                    title="退出登录"
-                                >
-                                    <LogOut className="h-4 w-4" strokeWidth={1.5} />
-                                </button>
-
                                 <div className="mb-0 sm:mb-2 flex flex-col items-center justify-center w-full group/avatar mt-0">
                                     <div className="relative h-16 w-16 sm:h-24 sm:w-24 flex items-center justify-center">
                                         {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
@@ -231,9 +218,10 @@ export function KineticBackground() {
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
-                                    className="w-full py-2 sm:py-3 rounded-xl bg-white/30 backdrop-blur-sm border border-white/50 text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] font-medium transition-all duration-500 hover:bg-white/50 hover:border-white/80 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98]"
+                                    className="w-full py-2 sm:py-3 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5"
                                 >
-                                    进入会员中心
+                                    <span>进入会员中心</span>
+                                    <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-0.5 opacity-70" />
                                 </button>
                             </>
                         ) : (
@@ -260,9 +248,10 @@ export function KineticBackground() {
                                 <button
                                     type="button"
                                     onClick={handleLoginClick}
-                                    className="w-full py-2 sm:py-3 rounded-xl bg-white/30 backdrop-blur-sm border border-white/50 text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.3em] font-medium transition-all duration-500 hover:bg-white/50 hover:border-white/80 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98]"
+                                    className="w-full py-2 sm:py-3 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5"
                                 >
-                                    立即登录
+                                    <span>立即登录</span>
+                                    <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-0.5 opacity-70" />
                                 </button>
                             </>
                         )}
