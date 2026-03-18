@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
-import { BookUser, ChevronRight, LogOut } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 /**
  * Graphite Kinetic Grid 全局背景组件
@@ -19,7 +19,7 @@ import { BookUser, ChevronRight, LogOut } from "lucide-react";
 export function KineticBackground() {
     const containerRef = useRef<HTMLDivElement>(null);
     const cellsRef = useRef<HTMLDivElement[]>([]);
-    const { user, logout, switchToLogin, openUserCenter } = useAuth();
+    const { user, switchToLogin, openUserCenter } = useAuth();
 
     useEffect(() => {
         const container = containerRef.current;

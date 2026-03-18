@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Package,
   FolderTree,
-  FileText,
   Briefcase,
   UserCheck,
   MessageSquare,

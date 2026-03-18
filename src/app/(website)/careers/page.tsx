@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { CareersContent } from "./CareersContent";
-import type { CareersPageContent } from "@/types/page-content";
 
 // ISR: 招聘页面每小时重新验证一次
 export const revalidate = 3600; // 1小时

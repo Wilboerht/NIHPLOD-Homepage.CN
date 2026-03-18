@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { ContactContent } from "./ContactContent";
-import type { ContactPageContent } from "@/types/page-content";
 
 // ISR: 联系我们页面每天重新验证一次
 export const revalidate = 86400; // 24小时
