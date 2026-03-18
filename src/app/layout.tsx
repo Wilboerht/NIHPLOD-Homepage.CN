@@ -57,9 +57,9 @@ export const metadata: Metadata = {
 
   // Twitter Card
   twitter: {
-    card: "summary_large_image",
-    title: "NIHPLOD 旎柏 (旎柏) | 极简美学的修护动力",
-    description: "NIHPLOD 旎柏源自摩纳哥，致力于通过 Liposome 真脂质体专利技术，为全球高净值人群提供精准护肤方案。复刻海豚肌肤每 2 小时自我更新的生命力，开启逆转时光之旅。",
+    card: "summary",
+    title: "NIHPLOD 旎柏 | 奢华护肤官网",
+    description: "源自摩纳哥的 Liposome 真脂质体专利技术，为全球高净值人群提供精准护肤方案。开启逆转时光之旅。",
     images: ["/images/og-image.png"],
     creator: "@nihplod",
   },

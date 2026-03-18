@@ -67,7 +67,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       images: product.images[0]?.url ? [product.images[0].url] : ["/images/og-image.png"],
     },
     twitter: {
-      card: "summary_large_image",
+      card: "summary",
       title: `${product.name} | NIHPLOD 旎柏`,
       description: product.description.slice(0, 160),
       images: product.images[0]?.url ? [product.images[0].url] : ["/images/og-image.png"],

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     images: ["/images/og-image.png"],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "品牌故事 | NIHPLOD 旎柏",
     description: "探索 NIHPLOD 旎柏源自摩纳哥的高端护肤传奇。",
     images: ["/images/og-image.png"],
