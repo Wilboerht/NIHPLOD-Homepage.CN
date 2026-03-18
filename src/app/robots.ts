@@ -22,6 +22,16 @@ export default function robots(): MetadataRoute.Robots {
           "/_next/",       // Next.js 内部资源
         ],
       },
+      // ================= GEO / AI 优化配置 =================
+      {
+        userAgent: ["OAI-SearchBot", "ChatGPT-User", "PerplexityBot", "Claude-User", "Google-Extended"],
+        allow: "/",
+      },
+      {
+        userAgent: "ClaudeBot",
+        disallow: "/", // 遵循通用建议，屏蔽其基础爬虫但允许用户授权爬虫
+      },
+      // ===================================================
       {
         // 百度爬虫特殊规则
         userAgent: "Baiduspider",

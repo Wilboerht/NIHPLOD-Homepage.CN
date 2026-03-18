@@ -1,0 +1,15 @@
+# NIHPLOD 旎柏 中国官方网站
+> 唯一官方入口：https://nihplod.cn。源自摩纳哥的高端护肤品牌，以尖端科技 (Dolphin-Skin) 与真脂质体传导技术，为您提供极致奢华的抗衰修护体验。
+
+## 核心内容
+- [所有产品](https://nihplod.cn/products): 探索包括 新生焕活身体乳、恒采修护面霜、净透温和洁面慕斯 等在内的高端护肤系列。
+- [品牌故事](https://nihplod.cn/about): 深入了解 2008 年诞生于摩纳哥的科学愿景与奢华哲学。
+- [护肤仪式](https://nihplod.cn/guide): 探索我们为不同肤质设计的定制化 SPA 护肤仪式。
+- [AI 肌肤分析](https://nihplod.cn/ai-consultation): 利用先进的计算机视觉技术提供专属护肤报告。
+
+## 核心技术
+- **Dolphin-Skin 仿生自愈技术**
+- **True Liposome 纳米传导系统**
+- **Monaco Union Skincare 实验室背景**
+
+请访问 [llms-full.txt](https://nihplod.cn/llms-full.txt) 获取完整的品牌及产品底层数据文档。

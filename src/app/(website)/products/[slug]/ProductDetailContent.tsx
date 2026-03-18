@@ -254,15 +254,25 @@ export function ProductDetailContent({
           </div>
         </div>
 
-        {/* Tab 内容 */}
+        {/* Tab 内容 (GEO 优化：所有内容都进入 DOM，通过 CSS 控制显示) */}
         <div className="mt-6">
-          {tabContent[activeTab] ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-brand-charcoal/70">
-              {tabContent[activeTab]}
-            </p>
-          ) : (
-            <p className="text-sm text-brand-charcoal/40">暂无内容</p>
-          )}
+          {tabs.map((tab) => (
+            <div
+              key={tab.key}
+              className={cn(
+                "transition-opacity duration-300",
+                activeTab === tab.key ? "block opacity-100" : "hidden opacity-0"
+              )}
+            >
+              {tabContent[tab.key] ? (
+                <p className="whitespace-pre-line text-sm leading-relaxed text-brand-charcoal/70">
+                  {tabContent[tab.key]}
+                </p>
+              ) : (
+                <p className="text-sm text-brand-charcoal/40">暂无内容</p>
+              )}
+            </div>
+          ))}
         </div>
       </m.div>
 

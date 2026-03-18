@@ -27,32 +27,35 @@ export function OrganizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${baseUrl}/#organization`,
-    name: "NIHPLOD 旎柏",
-    alternateName: "旎柏",
-    url: baseUrl,
-    logo: {
+    "name": "NIHPLOD 旎柏官方网站",
+    "legalName": "旎柏 (NIHPLOD) 中国",
+    "alternateName": ["旎柏", "NIHPLOD China"],
+    "url": baseUrl,
+    "logo": {
       "@type": "ImageObject",
-      url: `${baseUrl}/images/NIHPLOD-logo.svg`,
-      width: 200,
-      height: 60,
+      "url": `${baseUrl}/images/NIHPLOD-logo.svg`,
+      "width": 200,
+      "height": 60,
     },
-    description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启逆转时光的奢华护肤之旅",
-    slogan: "逆转时光",
-    foundingDate: "2008",
-    foundingLocation: {
+    "description": "NIHPLOD 旎柏官方网站，源自摩纳哥的高端护肤品牌。作为中国区唯一官方授权线上平台，为您提供真脂质体专利技术 (Dolphin-Skin) 驱动的奢华护肤体验。",
+    "slogan": "逆转时光",
+    "foundingDate": "2008",
+    "foundingLocation": {
       "@type": "Place",
-      name: "摩纳哥",
+      "name": "摩纳哥",
     },
-    sameAs: [
+    "sameAs": [
       "https://weibo.com/nihplod",
       "https://www.xiaohongshu.com/user/nihplod",
+      "https://nihplod.cn",
     ],
-    contactPoint: {
+    "contactPoint": {
       "@type": "ContactPoint",
-      contactType: "customer service",
-      email: "contact@nihplod.cn",
-      availableLanguage: ["Chinese", "English"],
+      "contactType": "customer service",
+      "email": "contact@nihplod.cn",
+      "availableLanguage": ["Chinese", "English"],
     },
+    "knowsAbout": ["高端护肤", "抗衰老科技", "真脂质体技术", "Dolphin-Skin"],
   };
 
   return <JsonLdScript data={data} />;
