@@ -465,7 +465,7 @@ function LoginModal({
                       还没有账户？
                       <a
                         href="/contact"
-                        className="ml-1 inline-flex items-center gap-1 font-bold text-brand-gold hover:text-brand-gold-dark transition-all"
+                        className="ml-1 inline-flex items-center gap-1 font-medium text-brand-charcoal/60 hover:text-brand-charcoal transition-all"
                       >
                         <Headset className="h-3.5 w-3.5" />
                         联系我们
