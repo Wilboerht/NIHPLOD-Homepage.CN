@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
@@ -47,6 +48,11 @@ export async function POST(request: NextRequest) {
       count = result.count;
     }
 
+    // 清除前端缓存
+    if (count > 0) {
+      revalidatePath("/careers");
+    }
+
     const actionText = {
       publish: "发布",
       unpublish: "取消发布",
@@ -74,4 +80,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

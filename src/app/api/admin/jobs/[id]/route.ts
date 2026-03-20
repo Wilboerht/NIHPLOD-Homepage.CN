@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 // 职位类型
 const JOB_TYPES = ["fulltime", "parttime", "intern"] as const;
@@ -109,6 +110,9 @@ export async function PUT(
       },
     });
 
+    // 清除前端缓存
+    revalidatePath("/careers");
+
     return NextResponse.json({
       success: true,
       data: {
@@ -160,6 +164,9 @@ export async function DELETE(
     // 删除职位
     await prisma.job.delete({ where: { id } });
 
+    // 清除前端缓存
+    revalidatePath("/careers");
+
     return NextResponse.json({
       success: true,
       data: { message: "职位已删除" },
@@ -172,4 +179,3 @@ export async function DELETE(
     );
   }
 }
-
