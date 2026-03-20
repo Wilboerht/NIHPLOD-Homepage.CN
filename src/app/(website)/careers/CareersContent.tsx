@@ -23,10 +23,10 @@ import { cn } from "@/lib/utils";
 import type { CareersPageContent } from "@/types/page-content";
 
 // 职位类型
-interface Job {
+export interface Job {
   id: string;
   title: string;
-  titleEn: string;
+  titleEn: string | null;
   location: string;
   type: string;
   description: string;
@@ -215,6 +215,35 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} contactEmail={contactEmail} />
         )}
       </AnimatePresence>
+
+      <style jsx global>{`
+        .amap-marker-label {
+          border: none !important;
+          background: transparent !important;
+          padding: 0 !important;
+        }
+        .amap-custom-label {
+          padding: 6px 12px;
+          background: white;
+          border: 1px solid #EBE8DB;
+          border-radius: 6px;
+          font-size: 13px;
+          color: #333;
+          white-space: nowrap;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+          font-family: inherit;
+        }
+        .amap-custom-label::after {
+          content: "";
+          position: absolute;
+          top: -6px;
+          left: 50%;
+          transform: translateX(-50%);
+          border-left: 6px solid transparent;
+          border-right: 6px solid transparent;
+          border-bottom: 6px solid white;
+        }
+      `}</style>
     </>
   );
 }
@@ -331,8 +360,9 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
             position: [lng, lat],
             title: job.location,
             label: {
-              content: `<div style="padding:4px 8px; background:white; border:1px solid #ddd; border-radius:4px; font-size:12px; white-space:nowrap">${job.location}</div>`,
-              direction: 'bottom'
+              content: `<div class="amap-custom-label">${job.location}</div>`,
+              direction: 'bottom',
+              offset: new AMap.Pixel(0, 10)
             }
           });
           map.add(marker);

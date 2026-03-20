@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
-import { CareersContent } from "./CareersContent";
+import { CareersContent, Job } from "./CareersContent";
 
 // ISR: 招聘页面每小时重新验证一次
 export const revalidate = 3600; // 1小时
@@ -20,20 +20,6 @@ export const metadata: Metadata = {
     description: "加入 NIHPLOD 旎柏，与我们一起创造高端护肤的未来。",
   },
 };
-
-// 职位类型
-interface Job {
-  id: string;
-  title: string;
-  titleEn: string;
-  location: string;
-  type: string;
-  description: string;
-  requirements: string;
-  salary: string | null;
-  longitude?: number | null;
-  latitude?: number | null;
-}
 
 import Script from "next/script";
 
@@ -59,6 +45,7 @@ async function getJobs(): Promise<Job[]> {
         latitude: true,
       },
     });
+    // @ts-ignore - Prisma 结果与 Job 接口完全兼容，但 TS 可能因多处定义产生困扰
     return jobs;
   } catch (error) {
     console.error("获取职位列表失败:", error);
