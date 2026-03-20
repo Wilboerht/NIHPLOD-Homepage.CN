@@ -142,7 +142,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
               {/* 内容区域 */}
               <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <div className="mx-auto max-w-4xl">
+                <div className="mx-auto max-w-4xl pb-12">
                   <div className="space-y-4">
                     {jobs.length === 0 ? (
                       <div className="py-8 text-center">

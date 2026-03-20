@@ -250,6 +250,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         const cleanKeyword = address.split(' ').shift() || address;
         const shortKeyword = cleanKeyword.split(/[A-Z,a-z,0-9]/)[0] || cleanKeyword; // 尝试剥离房号后缀
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ps.search(shortKeyword, (status: string, result: any) => {
            if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
               const poi = result.poiList.pois[0];
@@ -260,6 +261,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
            // 策略2：备选 Geocoder 
            const geocoder = new AMap.Geocoder({ city: "021" });
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any
            geocoder.getLocation(address, (s: string, r: any) => {
               if (s === 'complete' && r.geocodes.length > 0) {
                  const loc = r.geocodes[0].location;
@@ -270,6 +272,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
               // 策略3：极端兜底 - 只搜区名+大楼名关键词
               const fallbackKeyword = address.includes('区') ? address.split('区').pop()?.substring(0, 10) : address;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               geocoder.getLocation(fallbackKeyword || address, (fs: string, fr: any) => {
                  if (fs === 'complete' && fr.geocodes.length > 0) {
                     const loc = fr.geocodes[0].location;
