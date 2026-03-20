@@ -22,11 +22,11 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
 export const metadata: Metadata = {
   // 基本信息
   title: {
-    default: "NIHPLOD 旎柏官方网站 | 逆转时光",
-    template: "%s | NIHPLOD 旎柏官方网站",
+    default: "NIHPLOD 旎柏",
+    template: "%s | NIHPLOD 旎柏",
   },
-  description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启逆转时光的奢华护肤之旅",
-  keywords: ["NIHPLOD", "旎柏", "护肤品", "高端护肤", "摩纳哥", "抗衰老", "逆转时光", "奢华护肤"],
+  description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启奢华护肤之旅",
+  keywords: ["NIHPLOD", "旎柏", "护肤品", "高端护肤", "摩纳哥", "抗衰老", "真脂质体", "奢华护肤"],
   authors: [{ name: "NIHPLOD 官方" }],
   creator: "NIHPLOD 官方",
   publisher: "NIHPLOD 官方 (中国)",
@@ -42,9 +42,9 @@ export const metadata: Metadata = {
     type: "website",
     locale: "zh_CN",
     url: baseUrl,
-    siteName: "NIHPLOD 旎柏官方网站",
-    title: "NIHPLOD 旎柏官方网站 | 逆转时光",
-    description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启逆转时光的奢华护肤之旅",
+    siteName: "NIHPLOD 旎柏",
+    title: "NIHPLOD 旎柏",
+    description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启奢华护肤之旅",
     images: [
       {
         url: "/images/og-image.png",
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
     title: "NIHPLOD 旎柏",
-    description: "源自摩纳哥的 Liposome 真脂质体专利技术，为全球高净值人群提供精准护肤方案。开启逆转时光之旅。",
+    description: "源自摩纳哥的 Liposome 真脂质体专利技术，为全球高净值人群提供精准护肤方案。开启高端护肤之旅。",
     images: ["/images/og-image.png"],
     creator: "@nihplod",
   },

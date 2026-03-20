@@ -19,10 +19,10 @@ const defaultContent: ServicesPageContent = {
     },
     {
       id: "website",
-      label: "官方网站",
-      title: "官方网站",
+      label: "首页项目",
+      title: "NIHPLOD 官网",
       nameEn: "Official Website",
-      description: "NIHPLOD 旎柏品牌官方网站，展示品牌故事、产品系列、护肤仪式等内容。",
+      description: "NIHPLOD 旎柏品牌，展示品牌故事、产品系列、护肤仪式等内容。",
       links: [
         { label: "用户端", url: "https://nihplod.cn", isAdmin: false, description: "品牌展示、产品浏览、AI护肤顾问" },
         { label: "管理端", url: "https://nihplod.cn/admin", isAdmin: true, description: "仅授权人员使用" },
@@ -45,15 +45,15 @@ const defaultContent: ServicesPageContent = {
 
 export const metadata: Metadata = {
   title: "服务入口",
-  description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官方网站和达人合作平台。",
+  description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
   openGraph: {
     title: "服务入口 | NIHPLOD 旎柏",
-    description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官方网站和达人合作平台。",
+    description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
   },
   twitter: {
     card: "summary",
     title: "服务入口 | NIHPLOD 旎柏",
-    description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官方网站和达人合作平台。",
+    description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
   },
   robots: {
     index: false, // 服务入口页面不需要被索引

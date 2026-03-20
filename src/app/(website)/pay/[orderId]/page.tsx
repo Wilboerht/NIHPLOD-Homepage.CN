@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import PayContent from "./PayContent";
 
 export const metadata: Metadata = {
-  title: "订单支付 - 你好朵朵",
+  title: "订单支付 | NIHPLOD 旎柏",
 };
 
 interface PayPageProps {
