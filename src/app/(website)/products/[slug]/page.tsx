@@ -12,7 +12,7 @@ export const revalidate = 60;
 export const dynamicParams = true;
 
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: { slug: string };
 }
 
 /**
@@ -40,7 +40,7 @@ export async function generateStaticParams() {
  * 生成页面元数据
  */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug } = params;
 
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -134,7 +134,7 @@ async function getRelatedProducts(categoryId: string, currentProductId: string) 
  * 产品详情页
  */
 export default async function ProductDetailPage({ params }: PageProps) {
-  const { slug } = await params;
+  const { slug } = params;
 
   const product = await getProduct(slug);
 

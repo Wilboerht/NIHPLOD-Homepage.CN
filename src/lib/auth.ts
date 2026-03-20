@@ -17,7 +17,7 @@ import { prisma } from "./prisma";
  * 用于 Server Components 和 Server Actions
  */
 export async function getCurrentAdmin(): Promise<AdminUser | null> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
 
   if (!token) {
@@ -149,7 +149,7 @@ export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPaylo
  * 从 Cookie 中获取当前登录用户（完整信息）
  */
 export async function getCurrentLoginUser(): Promise<UserInfo | null> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const token = cookieStore.get(USER_COOKIE_NAME)?.value;
 
   if (!token) {

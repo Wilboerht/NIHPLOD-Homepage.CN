@@ -8,14 +8,14 @@ import { USER_COOKIE_NAME } from "@/types/auth";
 import { verifyUserToken } from "@/lib/jwt";
 
 interface LoginPageProps {
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: { redirect?: string };
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const params = await searchParams;
+  const params = searchParams;
 
   // 检查是否已登录
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const token = cookieStore.get(USER_COOKIE_NAME)?.value;
 
   if (token) {

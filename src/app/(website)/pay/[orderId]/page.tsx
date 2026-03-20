@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 interface PayPageProps {
-  params: Promise<{ orderId: string }>;
+  params: { orderId: string };
 }
 
 export default async function PayPage({ params }: PayPageProps) {
@@ -22,7 +22,7 @@ export default async function PayPage({ params }: PayPageProps) {
     redirect("/login");
   }
 
-  const { orderId } = await params;
+  const { orderId } = params;
 
   const order = await prisma.order.findFirst({
     where: { id: orderId, userId: user.id },

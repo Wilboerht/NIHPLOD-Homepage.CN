@@ -17,15 +17,15 @@ const globalForPrisma = globalThis as unknown as {
 // 创建连接池（单例）
 const poolConfig: pg.PoolConfig = {
   connectionString: process.env.DATABASE_URL,
-  // 连接池优化配置
-  // 生产环境：限制最大连接数
-  // 建议值：
-  // 2核4G -> 10
-  // 4核8G -> 20-30
-  // 公式：CPU核心数 * 2 + 磁盘IO并发数
+  // 生产环境强制开启 SSL 以确保与 Supabase/云数据库握手稳健
+  ssl:
+    process.env.NODE_ENV === "production" || process.env.DATABASE_URL?.includes("supabase")
+      ? { rejectUnauthorized: false }
+      : undefined,
+  // 连接池优化配置：在构建阶段会有高并发的 DB 请求
   max: process.env.DATABASE_MAX_CONNECTIONS
     ? parseInt(process.env.DATABASE_MAX_CONNECTIONS)
-    : (process.env.NODE_ENV === "production" ? 5 : 10),
+    : 20, // 增加连接数，防止构建时并行请求过载导致连接被服务端断开
   // 连接空闲 30秒后释放，节省资源
   idleTimeoutMillis: 30000,
   // 获取连接等待超时 30秒，避免请求长时间卡死
