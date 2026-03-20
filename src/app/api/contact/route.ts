@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, content, website, type, location, memberAccount } = result.data;
+    const { name, email, content, website, type: _type, location: _location, memberAccount: _memberAccount } = result.data;
 
     // 蜜罐检测 - 如果 website 字段有值，静默成功但不保存
     if (website) {
