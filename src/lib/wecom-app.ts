@@ -74,6 +74,8 @@ export async function appendMessageToWecomSheet(data: {
   email: string;
   type?: string;
   content: string;
+  location?: string;
+  memberAccount?: string;
 }) {
   const docId = process.env.WECOM_SHEET_DOC_ID;
 
@@ -101,6 +103,8 @@ export async function appendMessageToWecomSheet(data: {
       "姓名": data.name,
       "邮箱": data.email || "未填写",
       "咨询类型": data.type || "通用",
+      "所在地": data.location || "未提供",
+      "会员账号": data.memberAccount || "未提供",
       "咨询内容": data.content,
       "提交时间": timestamp,
     };

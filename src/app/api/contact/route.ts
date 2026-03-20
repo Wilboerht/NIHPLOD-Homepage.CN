@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, content, website, type: _type } = result.data;
+    const { name, email, content, website, type: _type, location, memberAccount } = result.data;
 
     // 蜜罐检测
     if (website) {
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       cooperation: "商务合作",
       feedback: "使用反馈",
       complaint: "投诉建议",
+      application: "入驻申请",
       other: "其他问题",
     };
     const readableType = typeMap[_type || ""] || _type || "其他";
@@ -73,7 +74,9 @@ export async function POST(request: NextRequest) {
         name, 
         email: safeEmail, 
         content,
-        type: readableType
+        type: readableType,
+        location,
+        memberAccount
       });
       await sendWecomNotification(wecomContent);
       console.log("✅ [Contact API] WeCom bot notification sent");
@@ -84,6 +87,8 @@ export async function POST(request: NextRequest) {
         email: safeEmail,
         type: readableType, // 传入中文翻译到表格
         content,
+        location,
+        memberAccount
       });
 
       // 2. 发送自动回复给用户 (如果填写了邮箱)

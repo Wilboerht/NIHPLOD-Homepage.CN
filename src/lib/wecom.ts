@@ -63,15 +63,27 @@ export function formatContactToWecom(data: {
   email: string;
   type?: string;
   content: string;
+  location?: string;
+  memberAccount?: string;
 }) {
-  return `### 📢 NIHPLOD 新留言通知
+  let details = `### 📢 NIHPLOD 新留言通知
 > **留言人**: ${data.name}
-> **咨询类型**: ${data.type || '通用'}
-> **邮件**: ${data.email || '未填写'}
+> **咨询类型**: ${data.type || '通用'}`;
+
+  if (data.location) {
+    details += `\n> **所在地**: ${data.location}`;
+  }
+  if (data.memberAccount) {
+    details += `\n> **会员账号**: ${data.memberAccount}`;
+  }
+
+  details += `\n> **邮件**: ${data.email || '未填写'}
 > **时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
 
 **留言内容**:
 ${data.content}
 
 [点击后台查看](https://nihplod.cn/admin/messages)`;
+
+  return details;
 }
