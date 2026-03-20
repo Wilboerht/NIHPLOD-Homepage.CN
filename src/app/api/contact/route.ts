@@ -6,8 +6,12 @@ import { sendContactNotification, sendAutoReply } from "@/lib/email";
 // 表单验证 schema
 const ContactFormSchema = z.object({
   name: z.string().min(2, "姓名至少2个字符").max(50, "姓名最多50个字符"),
-  email: z.string().email("请输入有效的邮箱地址"),
+  email: z.string().email("请输入有效的邮箱地址").optional().or(z.literal("")),
   content: z.string().min(10, "留言内容至少10个字符").max(2000, "留言内容最多2000个字符"),
+  // 可选的其他字段
+  type: z.string().optional(),
+  location: z.string().optional(),
+  memberAccount: z.string().optional(),
   // 蜜罐字段 - 如果有值说明是机器人
   website: z.string().optional(),
 });
@@ -29,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, content, website } = result.data;
+    const { name, email, content, website, type, location, memberAccount } = result.data;
 
     // 蜜罐检测 - 如果 website 字段有值，静默成功但不保存
     if (website) {
@@ -37,11 +41,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: "留言已提交" });
     }
 
+    // 确保 email 是字符串（如果为空则是 ""）
+    const safeEmail = email || "";
+
     // 保存留言到数据库
     await prisma.contactMessage.create({
       data: {
         name,
-        email,
+        email: safeEmail,
         content,
       },
     });
@@ -53,18 +60,22 @@ export async function POST(request: NextRequest) {
       // 1. 发送通知给管理员
       await sendContactNotification({
         name,
-        email,
+        email: safeEmail,
         content,
       });
       console.log("✅ [Contact API] Notification sent to admin");
 
-      // 2. 发送自动回复给用户
-      await sendAutoReply({
-        to: email,
-        name,
-        type: "contact",
-      });
-      console.log("✅ [Contact API] Auto-reply sent to user");
+      // 2. 发送自动回复给用户 (只有在有邮箱时才发送)
+      if (safeEmail) {
+        await sendAutoReply({
+          to: safeEmail,
+          name,
+          type: "contact",
+        });
+        console.log("✅ [Contact API] Auto-reply sent to user");
+      } else {
+        console.log("ℹ️ [Contact API] No email provided, skipping auto-reply");
+      }
     } catch (emailError) {
       console.error("❌ [Contact API] Email sending failed:", emailError);
       // 邮件发送失败不影响主流程，只记录日志
