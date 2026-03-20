@@ -331,7 +331,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
           });
           const marker = new AMap.Marker({
             position: [lng, lat],
-            title: job.title
+            title: job.location, // 修正：显示地址，不显示岗位名称
           });
           map.add(marker);
         };
@@ -343,14 +343,31 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
         // 尝试地理编码 (地址转坐标)
         else if (job.location) {
           const geocoder = new AMap.Geocoder();
-          geocoder.getLocation(job.location, (status: string, result: any) => {
-            if (status === "complete" && result.geocodes.length > 0) {
-              const loc = result.geocodes[0].location;
-              initRender(loc.lng, loc.lat);
-            } else {
-               console.log("Amap Geocoder failed for:", job.location);
-            }
-          });
+          
+          const doGeocode = (address: string) => {
+             geocoder.getLocation(address, (status: string, result: any) => {
+                if (status === "complete" && result.geocodes.length > 0) {
+                  const loc = result.geocodes[0].location;
+                  initRender(loc.lng, loc.lat);
+                } else {
+                  // 如果是详细地址解析失败，尝试去掉房号等细节，重新解析大楼/区域
+                  if (address.length > 10) {
+                    const fallback = address.substring(0, address.lastIndexOf(' ')) || address.substring(0, 12);
+                    console.log("Geocoder retrying with fallback:", fallback);
+                    geocoder.getLocation(fallback, (s: string, r: any) => {
+                      if (s === "complete" && r.geocodes.length > 0) {
+                        const loc2 = r.geocodes[0].location;
+                        initRender(loc2.lng, loc2.lat);
+                      }
+                    });
+                  } else {
+                    console.log("Amap Geocoder failed for:", job.location);
+                  }
+                }
+              });
+          };
+
+          doGeocode(job.location);
         }
       });
     };
@@ -480,7 +497,6 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
               )}
             </div>
           </div>
-
 
           {/* 职位详情 */}
           <div className="border-b border-brand-beige p-6">
