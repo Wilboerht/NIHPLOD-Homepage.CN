@@ -466,7 +466,7 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
           setErrorMessage(result.error || "投递失败，请稍后重试");
         }
       }
-    } catch (_err) {
+    } catch {
       setSubmitStatus("error");
       setErrorMessage("网络错误，请稍后重试");
     } finally {
