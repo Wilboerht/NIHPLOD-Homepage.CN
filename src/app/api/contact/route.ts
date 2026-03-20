@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { sendContactNotification, sendAutoReply } from "@/lib/email";
+import { sendAutoReply } from "@/lib/email";
+import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
@@ -57,15 +58,12 @@ export async function POST(request: NextRequest) {
     // 发送邮件通知
     console.log("📧 [Contact API] Sending emails");
     try {
-      // 1. 发送通知给管理员
-      await sendContactNotification({
-        name,
-        email: safeEmail,
-        content,
-      });
-      console.log("✅ [Contact API] Notification sent to admin");
+      // 1. 发送企业微信机器人通知 (替代原本的管理员邮件)
+      const wecomContent = formatContactToWecom({ name, email: safeEmail, content });
+      await sendWecomNotification(wecomContent);
+      console.log("✅ [Contact API] WeCom bot notification sent");
 
-      // 2. 发送自动回复给用户 (只有在有邮箱时才发送)
+      // 2. 发送自动回复给用户 (如果填写了邮箱)
       if (safeEmail) {
         await sendAutoReply({
           to: safeEmail,
@@ -73,12 +71,10 @@ export async function POST(request: NextRequest) {
           type: "contact",
         });
         console.log("✅ [Contact API] Auto-reply sent to user");
-      } else {
-        console.log("ℹ️ [Contact API] No email provided, skipping auto-reply");
       }
-    } catch (emailError) {
-      console.error("❌ [Contact API] Email sending failed:", emailError);
-      // 邮件发送失败不影响主流程，只记录日志
+    } catch (notifError) {
+      // 通知类错误不影响主流程，仅记录
+      console.error("❌ [Contact API] Notification/Auto-reply failed:", notifError);
     }
 
     return NextResponse.json({ success: true, message: "感谢您的留言，我们会尽快回复！" });
