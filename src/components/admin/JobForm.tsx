@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Input } from "@/components/ui/Input";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { MapPin } from "lucide-react";
 
 // 职位类型选项
 const JOB_TYPES = [
@@ -37,6 +38,106 @@ interface JobFormProps {
   initialData?: Partial<JobFormData>;
 }
 
+// ── 工作地点 combobox ───────────────────────────────────────
+function LocationCombobox({
+  value,
+  onChange,
+  error,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  error?: string;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [allLocations, setAllLocations] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // 拉取已有地点
+  useEffect(() => {
+    fetch("/api/admin/job-locations")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setAllLocations(d.data as string[]);
+      })
+      .catch(() => {});
+  }, []);
+
+  // 过滤候选项
+  useEffect(() => {
+    if (!value.trim()) {
+      setSuggestions(allLocations);
+    } else {
+      setSuggestions(
+        allLocations.filter((l) =>
+          l.toLowerCase().includes(value.toLowerCase())
+        )
+      );
+    }
+  }, [value, allLocations]);
+
+  // 点击外部关闭
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <label className="mb-1.5 block text-sm font-medium text-gray-700">
+        工作地点 <span className="text-red-500">*</span>
+      </label>
+      <div className="relative">
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={value}
+          placeholder="如：上海，或选择已有地点"
+          onFocus={() => setOpen(true)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setOpen(true);
+          }}
+          className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none transition-colors focus:ring-1 ${
+            error
+              ? "border-red-400 focus:border-red-400 focus:ring-red-400"
+              : "border-gray-200 focus:border-brand-gold focus:ring-brand-gold"
+          }`}
+        />
+      </div>
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+
+      {/* 下拉候选列表 */}
+      {open && suggestions.length > 0 && (
+        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+          {suggestions.map((loc) => (
+            <li
+              key={loc}
+              onMouseDown={(e) => {
+                e.preventDefault(); // 防止 blur 先于 click 触发
+                onChange(loc);
+                setOpen(false);
+              }}
+              className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-brand-gold/10 ${
+                loc === value ? "bg-brand-gold/5 font-medium text-brand-gold" : "text-gray-700"
+              }`}
+            >
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-gold/60" />
+              {loc}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+// ────────────────────────────────────────────────────────────
+
 export function JobForm({ jobId, initialData }: JobFormProps) {
   const router = useRouter();
   const { success, error: showError } = useToast();
@@ -61,7 +162,6 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   // 更新字段
   const updateField = <K extends keyof JobFormData>(key: K, value: JobFormData[K]) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
-    // 清除该字段的错误
     if (errors[key]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -100,7 +200,6 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       const url = isEdit ? `/api/admin/jobs/${jobId}` : "/api/admin/jobs";
       const method = isEdit ? "PUT" : "POST";
 
-      // 如果用户选择发布，则设置 published 为 true
       const dataToSave = shouldPublish !== undefined
         ? { ...formData, published: shouldPublish }
         : formData;
@@ -136,23 +235,19 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       return;
     }
 
-    // 如果是草稿状态，询问是否发布
     if (!formData.published) {
       setShowPublishConfirm(true);
       return;
     }
 
-    // 已经是发布状态，直接保存
     await doSave();
   };
 
-  // 确认发布
   const handleConfirmPublish = async () => {
     setShowPublishConfirm(false);
     await doSave(true);
   };
 
-  // 保持草稿
   const handleKeepDraft = async () => {
     setShowPublishConfirm(false);
     await doSave(false);
@@ -178,13 +273,11 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             error={errors.titleEn}
             required
           />
-          <Input
-            label="工作地点"
+          {/* 工作地点 — combobox */}
+          <LocationCombobox
             value={formData.location}
-            onChange={(e) => updateField("location", e.target.value)}
+            onChange={(val) => updateField("location", val)}
             error={errors.location}
-            placeholder="如：北京"
-            required
           />
           <Select
             label="职位类型"
@@ -263,4 +356,3 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     </form>
   );
 }
-
