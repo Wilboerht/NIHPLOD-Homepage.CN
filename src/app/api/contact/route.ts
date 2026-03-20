@@ -3,7 +3,6 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { sendAutoReply } from "@/lib/email";
 import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
-import { appendMessageToWecomSheet } from "@/lib/wecom-app";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
@@ -80,16 +79,6 @@ export async function POST(request: NextRequest) {
       });
       await sendWecomNotification(wecomContent);
       console.log("✅ [Contact API] WeCom bot notification sent");
-
-      // 1.5 同步到企业微信在线智能表格
-      await appendMessageToWecomSheet({
-        name,
-        email: safeEmail,
-        type: readableType, // 传入中文翻译到表格
-        content,
-        location,
-        memberAccount
-      });
 
       // 2. 发送自动回复给用户 (如果填写了邮箱)
       if (safeEmail) {
