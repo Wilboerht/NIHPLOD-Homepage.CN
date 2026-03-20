@@ -980,7 +980,7 @@ function ForgotPasswordModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
@@ -1103,7 +1103,7 @@ function ForgotPasswordModal({
                       <div className="space-y-3">
                         <div className="group relative">
                           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                            <Lock className="h-4 w-4 text-brand-charcoal/30" />
+                            <Lock className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
                           </div>
                           <input
                             type="password"
@@ -1111,12 +1111,12 @@ function ForgotPasswordModal({
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="新密码（至少6位）"
                             maxLength={32}
-                            className="w-full bg-brand-charcoal/[0.03] border-b border-brand-charcoal/10 py-3 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-gold/40 focus:bg-white focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                         <div className="group relative">
                           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                            <Lock className="h-4 w-4 text-brand-charcoal/30" />
+                            <Lock className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
                           </div>
                           <input
                             type="password"
@@ -1124,16 +1124,20 @@ function ForgotPasswordModal({
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder="确认新密码"
                             maxLength={32}
-                            className="w-full bg-brand-charcoal/[0.03] border-b border-brand-charcoal/10 py-3 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-gold/40 focus:bg-white focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={resetPassword}
                           disabled={loading || password.length < 6}
-                          className="group relative w-full overflow-hidden rounded-full border border-brand-charcoal/10 bg-white py-4 text-xs font-bold uppercase tracking-widest text-brand-charcoal transition-all hover:bg-brand-gold/5 hover:border-brand-gold/30 hover:text-brand-gold active:scale-[0.98] disabled:opacity-30"
+                          className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-4 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                         >
-                          {loading ? "更新中..." : "确认重置"}
+                          <span className="relative z-10 flex items-center justify-center gap-2">
+                            {loading ? (
+                              <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : "确认重置"}
+                          </span>
                         </button>
                       </div>
                     )}
@@ -1340,7 +1344,7 @@ function WechatBindModal({
                 <X className="h-5 w-5" />
               </button>
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/75 md:bg-white/35 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
                   <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
                       <Image
