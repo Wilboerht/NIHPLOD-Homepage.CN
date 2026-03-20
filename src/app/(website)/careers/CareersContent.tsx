@@ -529,14 +529,14 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
             <div className="mb-5">
               <h4 className="mb-3 text-sm font-medium text-brand-gold">职位描述</h4>
               <div
-                className="text-sm leading-relaxed text-brand-charcoal/80 [&>p]:mb-3"
+                className="text-sm leading-relaxed text-brand-charcoal/80 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-brand-gold [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: job.description }}
               />
             </div>
             <div>
               <h4 className="mb-3 text-sm font-medium text-brand-gold">任职要求</h4>
               <div
-                className="text-sm leading-relaxed text-brand-charcoal/80 [&>p]:mb-3"
+                className="text-sm leading-relaxed text-brand-charcoal/80 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-brand-gold [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: job.requirements }}
               />
             </div>
