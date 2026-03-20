@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/upload";
 import { sendAutoReply, sendJobApplicationNotification } from "@/lib/email";
+import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
 
 // 表单验证 schema
 const ApplyFormSchema = z.object({
@@ -148,6 +149,17 @@ export async function POST(request: NextRequest) {
         position: jobTitle,
       });
       console.log("✅ [Apply API] Notification sent to admin");
+
+      // 3. 发送企业微信群机器人通知
+      const wecomMsg = formatJobApplicationToWecom({
+        name,
+        email,
+        phone,
+        position: jobTitle,
+        resumeUrl: uploadResult.url,
+      });
+      await sendWecomNotification(wecomMsg, "job");
+      console.log("✅ [Apply API] WeCom bot notification sent to recruitment group");
     } catch (emailError) {
       console.error("❌ [Apply API] Email sending failed:", emailError);
       // 邮件发送失败不影响主流程，只记录日志

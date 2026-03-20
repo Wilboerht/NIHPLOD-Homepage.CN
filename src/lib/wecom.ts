@@ -16,9 +16,16 @@ interface WecomBotMessage {
 /**
  * 发送企业微信群机器人通知
  * @param content 消息内容 (支持 Markdown)
+ * @param type 通知类型 (contact 或 job)
  */
-export async function sendWecomNotification(content: string): Promise<{ success: boolean; error?: string }> {
-  const webhookUrl = process.env.WECOM_BOT_WEBHOOK;
+export async function sendWecomNotification(
+  content: string, 
+  type: "contact" | "job" = "contact"
+): Promise<{ success: boolean; error?: string }> {
+  // 根据类型选择不同的 Webhook 链接
+  const webhookUrl = type === "job" 
+    ? (process.env.WECOM_JOBS_WEBHOOK || process.env.WECOM_BOT_WEBHOOK)
+    : process.env.WECOM_BOT_WEBHOOK;
 
   if (!webhookUrl) {
     // 未配置 Webhook 时静默跳过
@@ -86,4 +93,26 @@ ${data.content}
 [点击后台查看](https://nihplod.cn/admin/messages)`;
 
   return details;
+}
+
+/**
+ * 格式化职位申请消息为 WeCom Markdown 格式
+ */
+export function formatJobApplicationToWecom(data: {
+  name: string;
+  email: string;
+  phone: string;
+  position: string;
+  resumeUrl: string;
+}) {
+  return `### 💼 NIHPLOD 新收到投递简历
+> **候选人**: ${data.name}
+> **应聘职位**: ${data.position}
+> **联系方式**: ${data.phone}
+> **邮箱**: ${data.email}
+> **时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+
+[点击下载简历](${data.resumeUrl})
+
+[点击进入管理系统查看详情](https://nihplod.cn/admin/jobs/applications)`;
 }
