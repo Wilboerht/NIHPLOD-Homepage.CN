@@ -5,7 +5,7 @@ import { PayClient } from "./PayClient";
 import { Loader2 } from "lucide-react";
 
 export const metadata: Metadata = {
-    title: "支付订单 | NIHPLOD 旎柏",
+    title: "支付订单",
 };
 
 export default function PayPage() {
