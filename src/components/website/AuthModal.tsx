@@ -64,6 +64,7 @@ function LoginModal({
   onSwitchToForgotPassword: () => void;
   onSuccess: () => Promise<void>;
 }) {
+  const { openContact } = useAuth();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -463,13 +464,17 @@ function LoginModal({
                   <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
                     <p className="text-xs text-brand-charcoal/60 flex items-center justify-center">
                       还没有账户？
-                      <a
-                        href="/contact"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          openContact();
+                        }}
                         className="ml-1 inline-flex items-center gap-1 font-medium text-brand-charcoal/60 hover:text-brand-charcoal transition-all"
                       >
                         <Headset className="h-3.5 w-3.5" />
                         联系我们
-                      </a>
+                      </button>
                     </p>
                   </div>
                 </div>
