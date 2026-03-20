@@ -10,7 +10,7 @@ const JOB_TYPES = ["fulltime", "parttime", "intern"] as const;
 // 更新职位 Schema
 const UpdateJobSchema = z.object({
   title: z.string().min(1).max(100).optional(),
-  titleEn: z.string().min(1).max(100).optional(),
+  titleEn: z.string().max(100).optional().nullable(),
   location: z.string().min(1).max(100).optional(),
   type: z.enum(JOB_TYPES).optional(),
   description: z.string().min(1).optional(),
@@ -69,8 +69,8 @@ export async function GET(
   }
 }
 
-// PUT /api/admin/jobs/[id] - 更新职位
-export async function PUT(
+// PATCH /api/admin/jobs/[id] - 更新职位
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {

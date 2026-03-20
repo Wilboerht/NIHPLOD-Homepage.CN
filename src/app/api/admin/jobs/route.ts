@@ -10,7 +10,7 @@ const JOB_TYPES = ["fulltime", "parttime", "intern"] as const;
 // 创建职位 Schema
 const CreateJobSchema = z.object({
   title: z.string().min(1, "请输入职位名称").max(100),
-  titleEn: z.string().min(1, "请输入英文职位名称").max(100),
+  titleEn: z.string().max(100).optional().nullable(),
   location: z.string().min(1, "请输入工作地点").max(100),
   type: z.enum(JOB_TYPES, { message: "请选择职位类型" }),
   description: z.string().min(1, "请输入职责描述"),

@@ -286,7 +286,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         body: JSON.stringify(finalData),
       });
 
-      const data = await res.json();
+      const data = res.status !== 204 ? await res.json() : {};
 
       if (!res.ok) {
         throw new Error(data.error?.message || "保存失败");
