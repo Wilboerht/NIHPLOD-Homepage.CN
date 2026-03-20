@@ -645,10 +645,10 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="flex h-full flex-col pb-16 lg:pb-20 relative"
+                          className="flex h-full flex-col justify-center relative pb-20 lg:pb-24"
                         >
                           {/* 奖项网格 - 使用 16:9 比例自适应布局 */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-12">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                             {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map((award, idx) => (
                               <m.div
                                 key={`${currentAwardPage}-${idx}`}
