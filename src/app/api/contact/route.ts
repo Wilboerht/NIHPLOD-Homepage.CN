@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { sendAutoReply } from "@/lib/email";
 import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
+import { appendMessageToWecomSheet } from "@/lib/wecom-app";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
@@ -34,34 +35,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, content, website, type: _type, location: _location, memberAccount: _memberAccount } = result.data;
+    const { name, email, content, website, type: _type } = result.data;
 
-    // 蜜罐检测 - 如果 website 字段有值，静默成功但不保存
+    // 蜜罐检测
     if (website) {
-      // 假装成功，但实际不保存（防机器人）
       return NextResponse.json({ success: true, message: "留言已提交" });
     }
 
-    // 确保 email 是字符串（如果为空则是 ""）
     const safeEmail = email || "";
 
-    // 保存留言到数据库
+    // 映射咨询类型为中文
+    const typeMap: Record<string, string> = {
+      consultation: "产品咨询",
+      cooperation: "商务合作",
+      feedback: "使用反馈",
+      complaint: "投诉建议",
+      other: "其他问题",
+    };
+    const readableType = typeMap[_type || ""] || _type || "其他";
+
+    // 保存留言到数据库 (注意需要自行在数据库执行 ALTER TABLE "ContactMessage" ADD COLUMN "type" TEXT;)
     await prisma.contactMessage.create({
       data: {
         name,
         email: safeEmail,
+        type: _type, // 保存原始英文枚举值到 DB
         content,
       },
     });
     console.log("✅ [Contact API] DB record created");
 
-    // 发送邮件通知
-    console.log("📧 [Contact API] Sending emails");
+    // 发送通知
+    console.log("📧 [Contact API] Sending notifications");
     try {
       // 1. 发送企业微信机器人通知 (替代原本的管理员邮件)
-      const wecomContent = formatContactToWecom({ name, email: safeEmail, content });
+      const wecomContent = formatContactToWecom({ 
+        name, 
+        email: safeEmail, 
+        content,
+        type: readableType
+      });
       await sendWecomNotification(wecomContent);
       console.log("✅ [Contact API] WeCom bot notification sent");
+
+      // 1.5 同步到企业微信在线智能表格
+      await appendMessageToWecomSheet({
+        name,
+        email: safeEmail,
+        type: readableType, // 传入中文翻译到表格
+        content,
+      });
 
       // 2. 发送自动回复给用户 (如果填写了邮箱)
       if (safeEmail) {

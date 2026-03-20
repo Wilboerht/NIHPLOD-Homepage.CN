@@ -61,11 +61,13 @@ export async function sendWecomNotification(content: string): Promise<{ success:
 export function formatContactToWecom(data: {
   name: string;
   email: string;
+  type?: string;
   content: string;
 }) {
   return `### 📢 NIHPLOD 新留言通知
 > **留言人**: ${data.name}
-> **邮箱**: ${data.email || '未填写'}
+> **咨询类型**: ${data.type || '通用'}
+> **邮件**: ${data.email || '未填写'}
 > **时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
 
 **留言内容**:
