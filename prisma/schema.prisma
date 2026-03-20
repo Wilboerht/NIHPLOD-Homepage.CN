@@ -100,6 +100,8 @@ model Job {
   description  String   @db.Text // 职责描述
   requirements String   @db.Text // 任职要求
   salary       String?  // 薪资范围（可选）
+  longitude    Float?   // 经度
+  latitude     Float?   // 纬度
   order        Int      @default(0) // 排序
   published    Boolean  @default(false)
   createdAt    DateTime @default(now())

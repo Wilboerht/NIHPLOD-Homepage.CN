@@ -31,6 +31,8 @@ interface Job {
   description: string;
   requirements: string;
   salary: string | null;
+  longitude?: number | null;
+  latitude?: number | null;
 }
 
 async function getJobs(): Promise<Job[]> {
@@ -47,6 +49,8 @@ async function getJobs(): Promise<Job[]> {
         description: true,
         requirements: true,
         salary: true,
+        longitude: true,
+        latitude: true,
       },
     });
     return jobs;

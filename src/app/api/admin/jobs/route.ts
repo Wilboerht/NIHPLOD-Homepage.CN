@@ -16,6 +16,8 @@ const CreateJobSchema = z.object({
   description: z.string().min(1, "请输入职责描述"),
   requirements: z.string().min(1, "请输入任职要求"),
   salary: z.string().max(50).optional(),
+  longitude: z.number().optional().nullable(),
+  latitude: z.number().optional().nullable(),
   published: z.boolean().optional(),
 });
 
@@ -116,6 +118,8 @@ export async function POST(request: NextRequest) {
       data: {
         ...validated,
         salary: validated.salary || null,
+        longitude: validated.longitude || null,
+        latitude: validated.latitude || null,
         published: validated.published ?? false,
         order: (maxOrder._max.order || 0) + 1,
       },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 
 import { Link } from "next-view-transitions";
@@ -32,7 +32,13 @@ interface Job {
   description: string;
   requirements: string;
   salary: string | null;
+  longitude?: number | null;
+  latitude?: number | null;
 }
+
+// 高德地图 Key 与 安全密钥
+const AMAP_KEY = "94e6ade4e8b23b2872d361c6784d0f66";
+const AMAP_SECRET = "c4de15af0445dd1973fc4d5840ceac3b";
 
 // 职位类型映射 - 使用品牌色系
 const jobTypeMap: Record<string, { label: string; color: string }> = {
@@ -55,7 +61,6 @@ const defaultContent: CareersPageContent = {
 interface CareersContentProps {
   jobs: Job[];
   content?: CareersPageContent;
-
 }
 
 /**
@@ -64,6 +69,21 @@ interface CareersContentProps {
  */
 export function CareersContent({ jobs, content }: CareersContentProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+
+  // 加载高德地图脚本
+  useEffect(() => {
+    if (typeof window !== "undefined" && !(window as any).AMap) {
+      // 配置安全密钥
+      (window as any)._AMapSecurityConfig = {
+        securityJsCode: AMAP_SECRET,
+      };
+
+      const script = document.createElement("script");
+      script.type = "text/javascript";
+      script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}`;
+      document.head.appendChild(script);
+    }
+  }, []);
 
   // 合并默认内容和传入内容
   const title = content?.title || defaultContent.title;
@@ -293,6 +313,25 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (job.longitude && job.latitude && (window as any).AMap) {
+      const container = document.getElementById(`map-${job.id}`);
+      if (container) {
+        const map = new (window as any).AMap.Map(container, {
+          zoom: 15,
+          center: [job.longitude, job.latitude],
+          dragEnable: true,
+          zoomEnable: true
+        });
+        const marker = new (window as any).AMap.Marker({
+          position: [job.longitude, job.latitude],
+          title: job.title
+        });
+        map.add(marker);
+      }
+    }
+  }, [job]);
+
   const typeInfo = jobTypeMap[job.type] || {
     label: job.type,
     color: "bg-gray-100 text-gray-700",
@@ -388,7 +427,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
         </button>
 
         {/* 内容区域 */}
-        <div className="max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="max-h-[85vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {/* 头部 */}
           <div className="bg-gradient-to-r from-brand-gold/10 to-brand-cream p-6">
             <div className="flex flex-wrap items-center gap-2">
@@ -413,6 +452,14 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
               )}
             </div>
           </div>
+
+          {/* 地图显示 */}
+          {job.longitude && job.latitude && (
+            <div className="p-6 pb-0">
+               <h4 className="mb-3 text-sm font-medium text-brand-gold">工作地点</h4>
+               <div id={`map-${job.id}`} className="h-48 w-full rounded-xl overflow-hidden border border-brand-beige" />
+            </div>
+          )}
 
           {/* 职位详情 */}
           <div className="border-b border-brand-beige p-6">
@@ -590,4 +637,3 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
     </m.div>
   );
 }
-

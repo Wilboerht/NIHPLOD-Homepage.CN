@@ -16,6 +16,8 @@ const UpdateJobSchema = z.object({
   description: z.string().min(1).optional(),
   requirements: z.string().min(1).optional(),
   salary: z.string().max(50).optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  latitude: z.number().optional().nullable(),
   published: z.boolean().optional(),
   order: z.number().optional(),
 });
@@ -105,6 +107,8 @@ export async function PUT(
         ...(validated.description !== undefined && { description: validated.description }),
         ...(validated.requirements !== undefined && { requirements: validated.requirements }),
         ...(validated.salary !== undefined && { salary: validated.salary }),
+        ...(validated.longitude !== undefined && { longitude: validated.longitude }),
+        ...(validated.latitude !== undefined && { latitude: validated.latitude }),
         ...(validated.published !== undefined && { published: validated.published }),
         ...(validated.order !== undefined && { order: validated.order }),
       },

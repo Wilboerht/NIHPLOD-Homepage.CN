@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/Button";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { MapPin } from "lucide-react";
+import { MapPin, Search } from "lucide-react";
+
+// 高德地图 Key 与 安全密钥
+const AMAP_KEY = "94e6ade4e8b23b2872d361c6784d0f66";
+const AMAP_SECRET = "c4de15af0445dd1973fc4d5840ceac3b";
 
 // 职位类型选项
 const JOB_TYPES = [
@@ -29,6 +33,8 @@ const JobFormSchema = z.object({
   requirements: z.string().min(1, "请输入任职要求"),
   salary: z.string().max(50).optional(),
   published: z.boolean(),
+  longitude: z.number().optional().nullable(),
+  latitude: z.number().optional().nullable(),
 });
 
 type JobFormData = z.infer<typeof JobFormSchema>;
@@ -38,43 +44,67 @@ interface JobFormProps {
   initialData?: Partial<JobFormData>;
 }
 
-// ── 工作地点 combobox ───────────────────────────────────────
-function LocationCombobox({
+// ── 高德地图地点选择器 ───────────────────────────────────────
+function AmapLocationPicker({
   value,
   onChange,
+  onCoordsChange,
   error,
 }: {
   value: string;
   onChange: (val: string) => void;
+  onCoordsChange: (lng: number | null, lat: number | null) => void;
   error?: string;
 }) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [allLocations, setAllLocations] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const autoCompleteRef = useRef<any>(null);
 
-  // 拉取已有地点
+  // 加载高德地图脚本
   useEffect(() => {
-    fetch("/api/admin/job-locations")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) setAllLocations(d.data as string[]);
-      })
-      .catch(() => {});
+    if ((window as any).AMap) return;
+
+    // 配置安全密钥
+    (window as any)._AMapSecurityConfig = {
+      securityJsCode: AMAP_SECRET,
+    };
+
+    const script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Autocomplete,AMap.PlaceSearch`;
+    document.head.appendChild(script);
+
+    return () => {
+      // 不建议删除脚本，因为可能其他组件也在用
+    };
   }, []);
 
-  // 过滤候选项
-  useEffect(() => {
-    if (!value.trim()) {
-      setSuggestions(allLocations);
-    } else {
-      setSuggestions(
-        allLocations.filter((l) =>
-          l.toLowerCase().includes(value.toLowerCase())
-        )
-      );
+  // 搜索建议逻辑
+  const handleSearch = (keyword: string) => {
+    onChange(keyword);
+    if (!(window as any).AMap) return;
+
+    if (!autoCompleteRef.current) {
+      autoCompleteRef.current = new (window as any).AMap.Autocomplete({
+        city: "全国",
+      });
     }
-  }, [value, allLocations]);
+
+    if (keyword.trim()) {
+      autoCompleteRef.current.search(keyword, (status: string, result: any) => {
+        if (status === "complete" && result.tips) {
+          setSuggestions(result.tips.filter((t: any) => t.location)); // 只保留有坐标的
+          setOpen(true);
+        } else {
+          setSuggestions([]);
+        }
+      });
+    } else {
+      setSuggestions([]);
+      setOpen(false);
+    }
+  };
 
   // 点击外部关闭
   useEffect(() => {
@@ -97,12 +127,11 @@ function LocationCombobox({
         <input
           type="text"
           value={value}
-          placeholder="如：上海，或选择已有地点"
-          onFocus={() => setOpen(true)}
-          onChange={(e) => {
-            onChange(e.target.value);
-            setOpen(true);
+          placeholder="搜索工作地点（高德地图支持）"
+          onFocus={() => {
+            if (suggestions.length > 0) setOpen(true);
           }}
+          onChange={(e) => handleSearch(e.target.value)}
           className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none transition-colors focus:ring-1 ${
             error
               ? "border-red-400 focus:border-red-400 focus:ring-red-400"
@@ -112,23 +141,27 @@ function LocationCombobox({
       </div>
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
 
-      {/* 下拉候选列表 */}
+      {/* 下拉建议列表 */}
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-          {suggestions.map((loc) => (
+        <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
+          {suggestions.map((tip, index) => (
             <li
-              key={loc}
+              key={index}
               onMouseDown={(e) => {
-                e.preventDefault(); // 防止 blur 先于 click 触发
-                onChange(loc);
+                e.preventDefault();
+                onChange(`${tip.name} (${tip.district})`);
+                if (tip.location) {
+                  onCoordsChange(tip.location.lng, tip.location.lat);
+                }
                 setOpen(false);
               }}
-              className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-brand-gold/10 ${
-                loc === value ? "bg-brand-gold/5 font-medium text-brand-gold" : "text-gray-700"
-              }`}
+              className="flex cursor-pointer flex-col px-4 py-2 hover:bg-gray-50"
             >
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-gold/60" />
-              {loc}
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                <Search className="h-3.5 w-3.5 text-gray-400" />
+                {tip.name}
+              </div>
+              <div className="ml-5 text-xs text-gray-500">{tip.district}{tip.address}</div>
             </li>
           ))}
         </ul>
@@ -156,6 +189,8 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     requirements: "",
     salary: "",
     published: false,
+    longitude: null,
+    latitude: null,
     ...initialData,
   });
 
@@ -273,10 +308,14 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             error={errors.titleEn}
             required
           />
-          {/* 工作地点 — combobox */}
-          <LocationCombobox
+          {/* 工作地点 — 高德地图搜索 */}
+          <AmapLocationPicker
             value={formData.location}
             onChange={(val) => updateField("location", val)}
+            onCoordsChange={(lng, lat) => {
+              updateField("longitude", lng);
+              updateField("latitude", lat);
+            }}
             error={errors.location}
           />
           <Select
@@ -301,6 +340,12 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             />
           </div>
         </div>
+        {/* 显示经纬度调试（可选，但在生产环境可以隐藏或只显示小图标） */}
+        {formData.longitude && formData.latitude && (
+          <p className="mt-2 text-xs text-gray-400">
+            已定位坐标: {formData.longitude.toFixed(6)}, {formData.latitude.toFixed(6)}
+          </p>
+        )}
       </section>
 
       {/* 职责描述 */}
