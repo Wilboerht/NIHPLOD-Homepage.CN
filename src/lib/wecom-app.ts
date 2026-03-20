@@ -97,7 +97,7 @@ export async function appendMessageToWecomSheet(data: {
     
     // 构造写入数据
     // 注意：这里的 key 必须与表格中的列名完全一致
-    const recordValues: Record<string, any> = {
+    const recordValues: Record<string, string | number | boolean> = {
       "姓名": data.name,
       "邮箱": data.email || "未填写",
       "咨询类型": data.type || "通用",
