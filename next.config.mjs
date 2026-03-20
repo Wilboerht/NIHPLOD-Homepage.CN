@@ -22,11 +22,12 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://webapi.amap.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://webapi.amap.com",
-      "img-src 'self' data: blob: https:",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://*.amap.com blob:",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
+      "img-src 'self' data: blob: https: http://*.amap.com http://*.autonavi.com",
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' https://api.openai.com https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com",
+      "worker-src 'self' blob:",
     ].join('; '),
   },
 ];
