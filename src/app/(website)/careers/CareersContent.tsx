@@ -208,7 +208,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       {/* 职位详情弹窗 */}
       <AnimatePresence>
         {selectedJob && (
-          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} contactEmail={contactEmail} />
+          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} _contactEmail={contactEmail} />
         )}
       </AnimatePresence>
 
@@ -316,7 +316,7 @@ function JobCard({
 /**
  * 职位详情弹窗组件
  */
-function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => void; contactEmail?: string }) {
+function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => void; _contactEmail?: string }) {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -333,6 +333,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
     const maxRetries = 20;
 
     const tryInitMap = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const AMap = (window as any).AMap;
       if (!AMap) {
         if (retryCount < maxRetries) {
@@ -381,12 +382,14 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
               ? job.location.split("区").pop()?.split(" ").shift()?.substring(0, 10) 
               : job.location.split(" ").shift();
           
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ps.search(pureBuilding || job.location, (status: string, result: any) => {
               if (status === "complete" && result.poiList && result.poiList.pois.length > 0) {
                   const poi = result.poiList.pois[0];
                   initRender(poi.location.lng, poi.location.lat);
               } else {
                   // 2. 备选：使用 Geocoder 
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   geocoder.getLocation(job.location, (status: string, result: any) => {
                       if (status === "complete" && result.geocodes.length > 0) {
                           const loc = result.geocodes[0].location;
@@ -394,6 +397,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                       } else {
                           // 3. 最终兜底：去掉结尾重试
                           const fallback = job.location.substring(0, 15);
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           geocoder.getLocation(fallback, (s: string, r: any) => {
                               if (s === "complete" && r.geocodes.length > 0) {
                                   const loc = r.geocodes[0].location;

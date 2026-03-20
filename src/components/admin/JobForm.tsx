@@ -53,15 +53,19 @@ interface AmapLocationPickerProps {
 // 高德地图辅助组件：地址选择器
 // ────────────────────────────────────────────────────────────
 function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLocationPickerProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const autoCompleteRef = useRef<any>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (typeof window === "undefined" || (window as any).AMap) return;
 
     // 配置安全密钥
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any)._AMapSecurityConfig = {
       securityJsCode: AMAP_SECRET,
     };
@@ -79,6 +83,7 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
   // 搜索建议逻辑
   const handleSearch = (keyword: string) => {
     onChange(keyword);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const AMap = (window as any).AMap;
     if (!AMap) return;
 
@@ -89,8 +94,10 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
     }
 
     if (keyword.trim()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       autoCompleteRef.current.search(keyword, (status: string, result: any) => {
         if (status === "complete" && result.tips) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setSuggestions(result.tips.filter((t: any) => t.location)); // 只保留有坐标的
           setOpen(true);
         } else {
@@ -225,11 +232,13 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   // 辅助函数：提交前尝试根据文字补全坐标
   const ensureCoordinates = async (address: string): Promise<{lng: number, lat: number} | null> => {
      return new Promise((resolve) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const AMap = (window as any).AMap;
         if (!AMap || !AMap.Geocoder) return resolve(null);
 
         const geocoder = new AMap.Geocoder({ city: "021" });
         // 先尝试完整地址，如果包含房号可能失败，再尝试去掉尾部细节
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         geocoder.getLocation(address, (status: string, result: any) => {
            if (status === 'complete' && result.geocodes.length > 0) {
               const loc = result.geocodes[0].location;
@@ -237,6 +246,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
            } else {
               // 自动剥离类似 "T3-610" 的后缀尝试再次解析
               const shortAddress = address.split(' ').shift() || address.substring(0, 15);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               geocoder.getLocation(shortAddress, (s: string, r: any) => {
                  if (s === 'complete' && r.geocodes.length > 0) {
                     const loc = r.geocodes[0].location;
