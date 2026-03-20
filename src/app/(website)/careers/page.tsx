@@ -35,6 +35,12 @@ interface Job {
   latitude?: number | null;
 }
 
+import Script from "next/script";
+
+// 高德地图 Key 与 安全密钥从环境变量读取
+const AMAP_KEY = process.env.NEXT_PUBLIC_AMAP_KEY;
+const AMAP_SECRET = process.env.NEXT_PUBLIC_AMAP_SECRET;
+
 async function getJobs(): Promise<Job[]> {
   try {
     const jobs = await prisma.job.findMany({
@@ -62,5 +68,26 @@ async function getJobs(): Promise<Job[]> {
 
 export default async function CareersPage() {
   const jobs = await getJobs();
-  return <CareersContent jobs={jobs} content={undefined} />;
+  return (
+    <>
+      {/* 预加载高德地图配置 */}
+      <Script
+        id="amap-security-config"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+            window._AMapSecurityConfig = {
+              securityJsCode: '${AMAP_SECRET}'
+            };
+          `,
+        }}
+      />
+      {/* 预加载高德地图脚本 */}
+      <Script
+        src={`https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Geocoder`}
+        strategy="afterInteractive"
+      />
+      <CareersContent jobs={jobs} content={undefined} />
+    </>
+  );
 }

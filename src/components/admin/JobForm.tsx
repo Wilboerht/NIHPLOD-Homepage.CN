@@ -12,9 +12,9 @@ import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { MapPin, Search } from "lucide-react";
 
-// 高德地图 Key 与 安全密钥
-const AMAP_KEY = "94e6ade4e8b23b2872d361c6784d0f66";
-const AMAP_SECRET = "c4de15af0445dd1973fc4d5840ceac3b";
+// 高德地图 Key 与 安全密钥从环境变量读取
+const AMAP_KEY = process.env.NEXT_PUBLIC_AMAP_KEY;
+const AMAP_SECRET = process.env.NEXT_PUBLIC_AMAP_SECRET;
 
 // 职位类型选项
 const JOB_TYPES = [

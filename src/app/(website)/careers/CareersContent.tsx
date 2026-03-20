@@ -36,9 +36,9 @@ interface Job {
   latitude?: number | null;
 }
 
-// 高德地图 Key 与 安全密钥
-const AMAP_KEY = "94e6ade4e8b23b2872d361c6784d0f66";
-const AMAP_SECRET = "c4de15af0445dd1973fc4d5840ceac3b";
+// 高德地图 Key 与 安全密钥从环境变量读取
+const AMAP_KEY = process.env.NEXT_PUBLIC_AMAP_KEY;
+const AMAP_SECRET = process.env.NEXT_PUBLIC_AMAP_SECRET;
 
 // 职位类型映射 - 使用品牌色系
 const jobTypeMap: Record<string, { label: string; color: string }> = {
@@ -70,19 +70,9 @@ interface CareersContentProps {
 export function CareersContent({ jobs, content }: CareersContentProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
-  // 加载高德地图脚本
+  // 脚本载入由父级页面 (page.tsx) 的 next/script 控制
   useEffect(() => {
-    if (typeof window !== "undefined" && !(window as any).AMap) {
-      // 配置安全密钥
-      (window as any)._AMapSecurityConfig = {
-        securityJsCode: AMAP_SECRET,
-      };
-
-      const script = document.createElement("script");
-      script.type = "text/javascript";
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}`;
-      document.head.appendChild(script);
-    }
+    // 这里可以留空或做一些全局插件声明
   }, []);
 
   // 合并默认内容和传入内容
@@ -314,22 +304,60 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (job.longitude && job.latitude && (window as any).AMap) {
-      const container = document.getElementById(`map-${job.id}`);
-      if (container) {
-        const map = new (window as any).AMap.Map(container, {
-          zoom: 15,
-          center: [job.longitude, job.latitude],
-          dragEnable: true,
-          zoomEnable: true
-        });
-        const marker = new (window as any).AMap.Marker({
-          position: [job.longitude, job.latitude],
-          title: job.title
-        });
-        map.add(marker);
+    let retryCount = 0;
+    const maxRetries = 20; // 4s
+
+    const tryInitMap = () => {
+      // 1. 基础 AMap 实例检查
+      const AMap = (window as any).AMap;
+      if (!AMap) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(tryInitMap, 200);
+        }
+        return;
       }
-    }
+
+      const container = document.getElementById(`map-${job.id}`);
+      if (!container) return;
+
+      // 2. 加载渲染组件和插件
+      AMap.plugin(["AMap.Geocoder"], () => {
+        const initRender = (lng: number, lat: number) => {
+          const map = new AMap.Map(container, {
+            zoom: 15,
+            center: [lng, lat],
+            viewMode: '2D'
+          });
+          const marker = new AMap.Marker({
+            position: [lng, lat],
+            title: job.title
+          });
+          map.add(marker);
+        };
+
+        // 优先使用坐标
+        if (job.longitude && job.latitude) {
+          initRender(job.longitude, job.latitude);
+        } 
+        // 尝试地理编码 (地址转坐标)
+        else if (job.location) {
+          const geocoder = new AMap.Geocoder();
+          geocoder.getLocation(job.location, (status: string, result: any) => {
+            if (status === "complete" && result.geocodes.length > 0) {
+              const loc = result.geocodes[0].location;
+              initRender(loc.lng, loc.lat);
+            } else {
+               console.log("Amap Geocoder failed for:", job.location);
+            }
+          });
+        }
+      });
+    };
+
+    // 弹窗完全打开后再开始尝试渲染
+    const timer = setTimeout(tryInitMap, 300);
+    return () => clearTimeout(timer);
   }, [job]);
 
   const typeInfo = jobTypeMap[job.type] || {
@@ -453,13 +481,6 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
             </div>
           </div>
 
-          {/* 地图显示 */}
-          {job.longitude && job.latitude && (
-            <div className="p-6 pb-0">
-               <h4 className="mb-3 text-sm font-medium text-brand-gold">工作地点</h4>
-               <div id={`map-${job.id}`} className="h-48 w-full rounded-xl overflow-hidden border border-brand-beige" />
-            </div>
-          )}
 
           {/* 职位详情 */}
           <div className="border-b border-brand-beige p-6">
@@ -477,6 +498,19 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                 dangerouslySetInnerHTML={{ __html: job.requirements }}
               />
             </div>
+
+            {/* 工作地点 - 移至此位置 */}
+            {(job.longitude || job.location) && (
+              <div className="mt-8">
+                <h4 className="mb-3 text-sm font-medium text-brand-gold">工作地点</h4>
+                <div id={`map-${job.id}`} className="relative h-48 w-full rounded-xl overflow-hidden border border-brand-beige bg-gray-50 flex items-center justify-center">
+                  {/* 加载中的背景提示 */}
+                  <div className="absolute inset-0 z-0 flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-brand-gold/20" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 投递表单 */}
