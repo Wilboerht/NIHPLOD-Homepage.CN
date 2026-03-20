@@ -36,10 +36,6 @@ export interface Job {
   latitude?: number | null;
 }
 
-// 高德地图 Key 与 安全密钥从环境变量读取
-const AMAP_KEY = process.env.NEXT_PUBLIC_AMAP_KEY;
-const AMAP_SECRET = process.env.NEXT_PUBLIC_AMAP_SECRET;
-
 // 职位类型映射 - 使用品牌色系
 const jobTypeMap: Record<string, { label: string; color: string }> = {
   fulltime: { label: "全职", color: "bg-brand-gold/15 text-brand-gold" },
@@ -466,7 +462,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
           setErrorMessage(result.error || "投递失败，请稍后重试");
         }
       }
-    } catch (err) {
+    } catch (_err) {
       setSubmitStatus("error");
       setErrorMessage("网络错误，请稍后重试");
     } finally {

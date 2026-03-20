@@ -45,7 +45,6 @@ async function getJobs(): Promise<Job[]> {
         latitude: true,
       },
     });
-    // @ts-ignore - Prisma 结果与 Job 接口完全兼容，但 TS 可能因多处定义产生困扰
     return jobs;
   } catch (error) {
     console.error("获取职位列表失败:", error);

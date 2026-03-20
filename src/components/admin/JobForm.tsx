@@ -9,7 +9,7 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { MapPin, Search, Loader2 } from "lucide-react";
+import { MapPin, Search } from "lucide-react";
 
 // 高德地图 Key 与 安全密钥从环境变量读取
 const AMAP_KEY = process.env.NEXT_PUBLIC_AMAP_KEY;
@@ -25,7 +25,7 @@ const JOB_TYPES = [
 interface Job {
   id: string;
   title: string;
-  titleEn: string;
+  titleEn: string | null;
   location: string;
   type: string;
   description: string;
@@ -42,10 +42,17 @@ interface JobFormProps {
   initialData?: Partial<Job>;
 }
 
+interface AmapLocationPickerProps {
+  value: string;
+  onChange: (val: string) => void;
+  onCoordsChange: (lng: number, lat: number) => void;
+  error?: string;
+}
+
 // ────────────────────────────────────────────────────────────
 // 高德地图辅助组件：地址选择器
 // ────────────────────────────────────────────────────────────
-function AmapLocationPicker({ value, onChange, onCoordsChange, error }: any) {
+function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLocationPickerProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -118,7 +125,7 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: any) {
           id="amap-location-input"
           type="text"
           value={value}
-          placeholder="搜索工作地点，如：信泰中心"
+          placeholder="搜索工作地点，如：信泰中心广场"
           onFocus={() => {
             if (suggestions.length > 0) setOpen(true);
           }}
@@ -307,7 +314,9 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     await doSave(true);
   };
 
-  const handleKeepDraft = async () => {
+  // 暂时保留，如果未来需要保存为草稿则启用
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _handleKeepDraft = async () => {
     setShowPublishConfirm(false);
     await doSave(false);
   };
@@ -333,7 +342,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           />
           {/* 工作地点 — 高德地图搜索 */}
           <AmapLocationPicker
-            value={formData.location}
+            value={formData.location || ""}
             onChange={(val: string) => updateField("location", val)}
             onCoordsChange={(lng: number, lat: number) => {
               updateField("longitude", lng);
@@ -344,7 +353,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           <Select
             label="职位类型"
             options={JOB_TYPES}
-            value={formData.type}
+            value={formData.type || "fulltime"}
             onChange={(e) => updateField("type", e.target.value as "fulltime" | "parttime" | "intern")}
             error={errors.type}
             required
@@ -358,7 +367,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           <div className="flex items-end">
             <Switch
               label="发布状态"
-              checked={formData.published}
+              checked={formData.published || false}
               onChange={(checked) => updateField("published", checked)}
             />
           </div>
@@ -401,7 +410,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           <Input
             label="显示排序"
             type="number"
-            value={formData.order}
+            value={formData.order || 0}
             onChange={(e) => updateField("order", parseInt(e.target.value) || 0)}
             placeholder="0"
           />
