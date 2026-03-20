@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import CartContent from "./CartContent";
 
 export const metadata: Metadata = {
-  title: "购物车 | NIHPLOD 旎柏",
+  title: "购物车",
   description: "查看您的购物车",
 };
 
