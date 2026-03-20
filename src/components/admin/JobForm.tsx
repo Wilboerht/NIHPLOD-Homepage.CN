@@ -2,15 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { z } from "zod";
+import { useToast } from "@/components/ui/Toast";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
-import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Search, Loader2 } from "lucide-react";
 
 // 高德地图 Key 与 安全密钥从环境变量读取
 const AMAP_KEY = process.env.NEXT_PUBLIC_AMAP_KEY;
@@ -18,52 +17,42 @@ const AMAP_SECRET = process.env.NEXT_PUBLIC_AMAP_SECRET;
 
 // 职位类型选项
 const JOB_TYPES = [
-  { value: "fulltime", label: "全职" },
-  { value: "parttime", label: "兼职" },
-  { value: "intern", label: "实习" },
+  { label: "全职", value: "fulltime" },
+  { label: "兼职", value: "parttime" },
+  { label: "实习", value: "intern" },
 ];
 
-// 表单 Schema
-const JobFormSchema = z.object({
-  title: z.string().min(1, "请输入职位名称").max(100),
-  titleEn: z.string().min(1, "请输入英文职位名称").max(100),
-  location: z.string().min(1, "请输入工作地点").max(100),
-  type: z.enum(["fulltime", "parttime", "intern"], { message: "请选择职位类型" }),
-  description: z.string().min(1, "请输入职责描述"),
-  requirements: z.string().min(1, "请输入任职要求"),
-  salary: z.string().max(50).optional(),
-  published: z.boolean(),
-  longitude: z.number().optional().nullable(),
-  latitude: z.number().optional().nullable(),
-});
-
-type JobFormData = z.infer<typeof JobFormSchema>;
+interface Job {
+  id: string;
+  title: string;
+  titleEn: string;
+  location: string;
+  type: string;
+  description: string;
+  requirements: string;
+  salary: string | null;
+  order: number;
+  published: boolean;
+  longitude?: number | null;
+  latitude?: number | null;
+}
 
 interface JobFormProps {
   jobId?: string;
-  initialData?: Partial<JobFormData>;
+  initialData?: Partial<Job>;
 }
 
-// ── 高德地图地点选择器 ───────────────────────────────────────
-function AmapLocationPicker({
-  value,
-  onChange,
-  onCoordsChange,
-  error,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  onCoordsChange: (lng: number | null, lat: number | null) => void;
-  error?: string;
-}) {
+// ────────────────────────────────────────────────────────────
+// 高德地图辅助组件：地址选择器
+// ────────────────────────────────────────────────────────────
+function AmapLocationPicker({ value, onChange, onCoordsChange, error }: any) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const autoCompleteRef = useRef<any>(null);
 
-  // 加载高德地图脚本
   useEffect(() => {
-    if ((window as any).AMap) return;
+    if (typeof window === "undefined" || (window as any).AMap) return;
 
     // 配置安全密钥
     (window as any)._AMapSecurityConfig = {
@@ -72,7 +61,7 @@ function AmapLocationPicker({
 
     const script = document.createElement("script");
     script.type = "text/javascript";
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Autocomplete,AMap.PlaceSearch`;
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Autocomplete,AMap.PlaceSearch,AMap.Geocoder`;
     document.head.appendChild(script);
 
     return () => {
@@ -83,11 +72,12 @@ function AmapLocationPicker({
   // 搜索建议逻辑
   const handleSearch = (keyword: string) => {
     onChange(keyword);
-    if (!(window as any).AMap) return;
+    const AMap = (window as any).AMap;
+    if (!AMap) return;
 
     if (!autoCompleteRef.current) {
-      autoCompleteRef.current = new (window as any).AMap.Autocomplete({
-        city: "全国",
+      autoCompleteRef.current = new AMap.Autocomplete({
+        city: "上海", // 锁定上海，减少偏移到豫园的概率
       });
     }
 
@@ -125,13 +115,15 @@ function AmapLocationPicker({
       <div className="relative">
         <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
+          id="amap-location-input"
           type="text"
           value={value}
-          placeholder="搜索工作地点（高德地图支持）"
+          placeholder="搜索工作地点，如：信泰中心"
           onFocus={() => {
             if (suggestions.length > 0) setOpen(true);
           }}
           onChange={(e) => handleSearch(e.target.value)}
+          autoComplete="off"
           className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none transition-colors focus:ring-1 ${
             error
               ? "border-red-400 focus:border-red-400 focus:ring-red-400"
@@ -149,7 +141,12 @@ function AmapLocationPicker({
               key={index}
               onMouseDown={(e) => {
                 e.preventDefault();
-                onChange(`${tip.name} (${tip.district})`);
+                // 拼接更完整的地址信息保存
+                const fullLocation = tip.address && typeof tip.address === 'string' && !tip.name.includes(tip.address) 
+                  ? `${tip.district}${tip.name}` 
+                  : `${tip.district}${tip.name}`;
+                
+                onChange(fullLocation);
                 if (tip.location) {
                   onCoordsChange(tip.location.lng, tip.location.lat);
                 }
@@ -161,7 +158,7 @@ function AmapLocationPicker({
                 <Search className="h-3.5 w-3.5 text-gray-400" />
                 {tip.name}
               </div>
-              <div className="ml-5 text-xs text-gray-500">{tip.district}{tip.address}</div>
+              <div className="ml-5 text-xs text-gray-500">{tip.district}{tip.address || ""}</div>
             </li>
           ))}
         </ul>
@@ -169,8 +166,10 @@ function AmapLocationPicker({
     </div>
   );
 }
-// ────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────
+// 主表单组件
+// ────────────────────────────────────────────────────────────
 export function JobForm({ jobId, initialData }: JobFormProps) {
   const router = useRouter();
   const { success, error: showError } = useToast();
@@ -180,69 +179,94 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
-  const [formData, setFormData] = useState<JobFormData>({
+  const [formData, setFormData] = useState<Partial<Job>>({
     title: "",
     titleEn: "",
     location: "",
     type: "fulltime",
+    salary: "",
     description: "",
     requirements: "",
-    salary: "",
-    published: false,
+    order: 0,
+    published: true,
     longitude: null,
     latitude: null,
     ...initialData,
   });
 
-  // 更新字段
-  const updateField = <K extends keyof JobFormData>(key: K, value: JobFormData[K]) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    if (errors[key]) {
+  const updateField = <K extends keyof Job>(field: K, value: Job[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
-        delete newErrors[key];
+        delete newErrors[field];
         return newErrors;
       });
     }
   };
 
-  // 验证表单
-  const validateForm = (): boolean => {
-    try {
-      JobFormSchema.parse(formData);
-      setErrors({});
-      return true;
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        const newErrors: Record<string, string> = {};
-        err.issues.forEach((issue) => {
-          const key = issue.path[0] as string;
-          if (!newErrors[key]) {
-            newErrors[key] = issue.message;
-          }
-        });
-        setErrors(newErrors);
-      }
-      return false;
-    }
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.title?.trim()) newErrors.title = "请输入中文职位名称";
+    if (!formData.location?.trim()) newErrors.location = "请输入工作地点";
+    if (!formData.description?.trim()) newErrors.description = "请输入职位描述";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  // 执行保存
-  const doSave = async (shouldPublish?: boolean) => {
+  // 辅助函数：提交前尝试根据文字补全坐标
+  const ensureCoordinates = async (address: string): Promise<{lng: number, lat: number} | null> => {
+     return new Promise((resolve) => {
+        const AMap = (window as any).AMap;
+        if (!AMap || !AMap.Geocoder) return resolve(null);
+
+        const geocoder = new AMap.Geocoder({ city: "021" });
+        // 先尝试完整地址，如果包含房号可能失败，再尝试去掉尾部细节
+        geocoder.getLocation(address, (status: string, result: any) => {
+           if (status === 'complete' && result.geocodes.length > 0) {
+              const loc = result.geocodes[0].location;
+              resolve({ lng: loc.lng, lat: loc.lat });
+           } else {
+              // 自动剥离类似 "T3-610" 的后缀尝试再次解析
+              const shortAddress = address.split(' ').shift() || address.substring(0, 15);
+              geocoder.getLocation(shortAddress, (s: string, r: any) => {
+                 if (s === 'complete' && r.geocodes.length > 0) {
+                    const loc = r.geocodes[0].location;
+                    resolve({ lng: loc.lng, lat: loc.lat });
+                 } else {
+                    resolve(null);
+                 }
+              });
+           }
+        });
+     });
+  };
+
+  const doSave = async (publishedState?: boolean) => {
     setLoading(true);
-
     try {
-      const url = isEdit ? `/api/admin/jobs/${jobId}` : "/api/admin/jobs";
-      const method = isEdit ? "PUT" : "POST";
+      const finalData = {
+        ...formData,
+        published: publishedState !== undefined ? publishedState : formData.published,
+      };
 
-      const dataToSave = shouldPublish !== undefined
-        ? { ...formData, published: shouldPublish }
-        : formData;
+      // 如果没有坐标，尝试强制解析一次
+      if (!finalData.longitude || !finalData.latitude) {
+         const coords = await ensureCoordinates(finalData.location || "");
+         if (coords) {
+            finalData.longitude = coords.lng;
+            finalData.latitude = coords.lat;
+         }
+      }
+
+      const url = isEdit ? `/api/admin/jobs/${jobId}` : "/api/admin/jobs";
+      const method = isEdit ? "PATCH" : "POST";
 
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSave),
+        body: JSON.stringify(finalData),
       });
 
       const data = await res.json();
@@ -303,16 +327,15 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           />
           <Input
             label="职位名称（英文）"
-            value={formData.titleEn}
+            value={formData.titleEn || ""}
             onChange={(e) => updateField("titleEn", e.target.value)}
             error={errors.titleEn}
-            required
           />
           {/* 工作地点 — 高德地图搜索 */}
           <AmapLocationPicker
             value={formData.location}
-            onChange={(val) => updateField("location", val)}
-            onCoordsChange={(lng, lat) => {
+            onChange={(val: string) => updateField("location", val)}
+            onCoordsChange={(lng: number, lat: number) => {
               updateField("longitude", lng);
               updateField("latitude", lat);
             }}
@@ -340,7 +363,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             />
           </div>
         </div>
-        {/* 显示经纬度调试（可选，但在生产环境可以隐藏或只显示小图标） */}
+        {/* 显示经纬度调试 */}
         {formData.longitude && formData.latitude && (
           <p className="mt-2 text-xs text-gray-400">
             已定位坐标: {formData.longitude.toFixed(6)}, {formData.latitude.toFixed(6)}
@@ -352,7 +375,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       <section className="rounded-xl bg-white p-6 shadow-sm">
         <h2 className="mb-6 text-lg font-medium text-gray-900">职责描述</h2>
         <RichTextEditor
-          value={formData.description}
+          value={formData.description || ""}
           onChange={(value) => updateField("description", value)}
           error={errors.description}
           placeholder="请输入职位职责描述..."
@@ -364,7 +387,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       <section className="rounded-xl bg-white p-6 shadow-sm">
         <h2 className="mb-6 text-lg font-medium text-gray-900">任职要求</h2>
         <RichTextEditor
-          value={formData.requirements}
+          value={formData.requirements || ""}
           onChange={(value) => updateField("requirements", value)}
           error={errors.requirements}
           placeholder="请输入任职要求..."
@@ -372,31 +395,41 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         />
       </section>
 
-      {/* 操作按钮 */}
-      <div className="flex items-center justify-end gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push("/admin/jobs")}
-        >
-          取消
-        </Button>
-        <Button type="submit" loading={loading}>
-          {isEdit ? "保存更改" : "创建职位"}
-        </Button>
-      </div>
+      {/* 排序与操作 */}
+      <section className="flex items-center justify-between rounded-xl bg-white p-6 shadow-sm">
+        <div className="w-32">
+          <Input
+            label="显示排序"
+            type="number"
+            value={formData.order}
+            onChange={(e) => updateField("order", parseInt(e.target.value) || 0)}
+            placeholder="0"
+          />
+        </div>
+        <div className="flex gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            disabled={loading}
+          >
+            取消
+          </Button>
+          <Button type="submit" loading={loading}>
+            {isEdit ? "更新职位" : "创建职位"}
+          </Button>
+        </div>
+      </section>
 
-      {/* 发布确认对话框 */}
+      {/* 发布确认弹窗 */}
       <ConfirmDialog
         open={showPublishConfirm}
-        onClose={handleKeepDraft}
-        onConfirm={handleConfirmPublish}
-        title="是否发布职位？"
-        description="该职位当前为草稿状态，您希望立即发布还是保持草稿？"
-        type="info"
+        onClose={() => setShowPublishConfirm(false)}
+        title="发布职位"
+        description="您当前选择不立即发布此职位。您可以选择将其保存为草稿，或者立即发布。"
         confirmText="立即发布"
-        cancelText="保持草稿"
-        loading={loading}
+        cancelText="保存草稿"
+        onConfirm={handleConfirmPublish}
       />
     </form>
   );

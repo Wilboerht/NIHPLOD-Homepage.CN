@@ -305,10 +305,9 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
 
   useEffect(() => {
     let retryCount = 0;
-    const maxRetries = 20; // 4s
+    const maxRetries = 20;
 
     const tryInitMap = () => {
-      // 1. 基础 AMap 实例检查
       const AMap = (window as any).AMap;
       if (!AMap) {
         if (retryCount < maxRetries) {
@@ -321,58 +320,68 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
       const container = document.getElementById(`map-${job.id}`);
       if (!container) return;
 
-      // 2. 加载渲染组件和插件
-      AMap.plugin(["AMap.Geocoder"], () => {
+      AMap.plugin(["AMap.Geocoder", "AMap.PlaceSearch"], () => {
         const initRender = (lng: number, lat: number) => {
           const map = new AMap.Map(container, {
-            zoom: 15,
+            zoom: 16,
             center: [lng, lat],
             viewMode: '2D'
           });
           const marker = new AMap.Marker({
             position: [lng, lat],
-            title: job.location, // 修正：显示地址，不显示岗位名称
+            title: job.location,
+            label: {
+              content: `<div style="padding:4px 8px; background:white; border:1px solid #ddd; border-radius:4px; font-size:12px; white-space:nowrap">${job.location}</div>`,
+              direction: 'bottom'
+            }
           });
           map.add(marker);
         };
 
-        // 优先使用坐标
+        // 核心修正：如果数据库有坐标，直接用坐标秒开
         if (job.longitude && job.latitude) {
           initRender(job.longitude, job.latitude);
-        } 
-        // 尝试地理编码 (地址转坐标)
-        else if (job.location) {
-          const geocoder = new AMap.Geocoder();
-          
-          const doGeocode = (address: string) => {
-             geocoder.getLocation(address, (status: string, result: any) => {
-                if (status === "complete" && result.geocodes.length > 0) {
-                  const loc = result.geocodes[0].location;
-                  initRender(loc.lng, loc.lat);
-                } else {
-                  // 如果是详细地址解析失败，尝试去掉房号等细节，重新解析大楼/区域
-                  if (address.length > 10) {
-                    const fallback = address.substring(0, address.lastIndexOf(' ')) || address.substring(0, 12);
-                    console.log("Geocoder retrying with fallback:", fallback);
-                    geocoder.getLocation(fallback, (s: string, r: any) => {
-                      if (s === "complete" && r.geocodes.length > 0) {
-                        const loc2 = r.geocodes[0].location;
-                        initRender(loc2.lng, loc2.lat);
-                      }
-                    });
-                  } else {
-                    console.log("Amap Geocoder failed for:", job.location);
-                  }
-                }
-              });
-          };
+          return;
+        }
 
-          doGeocode(job.location);
+        // 修正：多级解析策略，防止飘到豫园
+        if (job.location) {
+          const geocoder = new AMap.Geocoder({ city: "021" });
+          
+          // 1. 先尝试 PlaceSearch (对“信泰中心”这种建筑物名更精准)
+          const ps = new AMap.PlaceSearch({ city: "021" });
+          // 剥离详细房号，只搜大楼
+          const pureBuilding = job.location.includes("市") 
+              ? job.location.split("区").pop()?.split(" ").shift()?.substring(0, 10) 
+              : job.location.split(" ").shift();
+          
+          ps.search(pureBuilding || job.location, (status: string, result: any) => {
+              if (status === "complete" && result.poiList && result.poiList.pois.length > 0) {
+                  const poi = result.poiList.pois[0];
+                  initRender(poi.location.lng, poi.location.lat);
+              } else {
+                  // 2. 备选：使用 Geocoder 
+                  geocoder.getLocation(job.location, (status: string, result: any) => {
+                      if (status === "complete" && result.geocodes.length > 0) {
+                          const loc = result.geocodes[0].location;
+                          initRender(loc.lng, loc.lat);
+                      } else {
+                          // 3. 最终兜底：去掉结尾重试
+                          const fallback = job.location.substring(0, 15);
+                          geocoder.getLocation(fallback, (s: string, r: any) => {
+                              if (s === "complete" && r.geocodes.length > 0) {
+                                  const loc = r.geocodes[0].location;
+                                  initRender(loc.lng, loc.lat);
+                              }
+                          });
+                      }
+                  });
+              }
+          });
         }
       });
     };
 
-    // 弹窗完全打开后再开始尝试渲染
     const timer = setTimeout(tryInitMap, 300);
     return () => clearTimeout(timer);
   }, [job]);
@@ -420,19 +429,16 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
         }, 2000);
       } else {
         setSubmitStatus("error");
-        // 如果有字段级错误详情，显示第一个具体错误
         if (result.details) {
           const firstFieldError = Object.values(result.details).flat()[0] as string;
           setErrorMessage(firstFieldError || result.error || "投递失败，请稍后重试");
         } else {
           setErrorMessage(result.error || "投递失败，请稍后重试");
         }
-        console.error("申请失败:", result);
       }
     } catch (err) {
       setSubmitStatus("error");
       setErrorMessage("网络错误，请稍后重试");
-      console.error("申请异常:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -445,24 +451,17 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* 背景遮罩 */}
       <m.div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
       />
 
-      {/* 弹窗内容 */}
       <m.div
         className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl"
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
       >
-        {/* 关闭按钮 */}
         <button
           type="button"
           onClick={onClose}
@@ -471,9 +470,7 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
           <X className="h-4 w-4 text-brand-charcoal" />
         </button>
 
-        {/* 内容区域 */}
         <div className="max-h-[85vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {/* 头部 */}
           <div className="bg-gradient-to-r from-brand-gold/10 to-brand-cream p-6">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-serif text-xl text-brand-charcoal sm:text-2xl">
@@ -498,7 +495,6 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
             </div>
           </div>
 
-          {/* 职位详情 */}
           <div className="border-b border-brand-beige p-6">
             <div className="mb-5">
               <h4 className="mb-3 text-sm font-medium text-brand-gold">职位描述</h4>
@@ -515,12 +511,10 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
               />
             </div>
 
-            {/* 工作地点 - 移至此位置 */}
             {(job.longitude || job.location) && (
               <div className="mt-8">
                 <h4 className="mb-3 text-sm font-medium text-brand-gold">工作地点</h4>
                 <div id={`map-${job.id}`} className="relative h-48 w-full rounded-xl overflow-hidden border border-brand-beige bg-gray-50 flex items-center justify-center">
-                  {/* 加载中的背景提示 */}
                   <div className="absolute inset-0 z-0 flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-brand-gold/20" />
                   </div>
@@ -529,7 +523,6 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
             )}
           </div>
 
-          {/* 投递表单 */}
           <div className="p-6">
             <h4 className="mb-4 flex items-center gap-2 text-base font-medium text-brand-charcoal">
               <Send className="h-4 w-4 text-brand-gold" />
@@ -551,7 +544,6 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
               </m.div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* 姓名 */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
                     <User className="h-3.5 w-3.5" />
@@ -560,16 +552,13 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                   <input
                     type="text"
                     required
-                    minLength={2}
-                    maxLength={50}
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none transition-colors focus:border-brand-gold"
-                    placeholder="请输入您的姓名（2-50个字符）"
+                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none focus:border-brand-gold"
+                    placeholder="请输入您的姓名"
                   />
                 </div>
 
-                {/* 手机号 */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
                     <Phone className="h-3.5 w-3.5" />
@@ -578,21 +567,13 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                   <input
                     type="tel"
                     required
-                    pattern="1[3-9]\d{9}"
-                    maxLength={11}
                     value={formData.phone}
-                    onChange={(e) => {
-                      // 只允许输入数字
-                      const value = e.target.value.replace(/\D/g, "");
-                      setFormData({ ...formData, phone: value });
-                    }}
-                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none transition-colors focus:border-brand-gold"
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "") })}
+                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none focus:border-brand-gold"
                     placeholder="请输入11位手机号"
-                    title="请输入有效的手机号（以1开头的11位数字）"
                   />
                 </div>
 
-                {/* 邮箱 */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
                     <Mail className="h-3.5 w-3.5" />
@@ -603,13 +584,11 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none transition-colors focus:border-brand-gold"
+                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none focus:border-brand-gold"
                     placeholder="请输入您的邮箱"
-                    title="请输入有效的邮箱地址"
                   />
                 </div>
 
-                {/* 简历上传 */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
                     <Upload className="h-3.5 w-3.5" />
@@ -640,44 +619,29 @@ function JobModal({ job, onClose, contactEmail }: { job: Job; onClose: () => voi
                     ) : (
                       <>
                         <Upload className="h-4 w-4" />
-                        点击上传简历（支持 PDF、DOC、DOCX）
+                        点击上传简历（PDF、DOC、DOCX）
                       </>
                     )}
                   </button>
-                  <p className="mt-1.5 text-xs text-brand-charcoal/50">
-                    简历命名格式：【应聘】{job.title} - 姓名
-                  </p>
                 </div>
 
-                {/* 错误提示 */}
                 {submitStatus === "error" && (
                   <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                    {errorMessage || "投递失败"}，请稍后重试或直接发送简历至 {contactEmail || "hr@nihplod.com"}
+                    {errorMessage || "投递失败"}
                   </div>
                 )}
 
-                {/* 提交按钮 */}
                 <button
                   type="submit"
                   disabled={isSubmitting || !resumeFile}
                   className={cn(
                     "flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium text-white transition-all",
                     isSubmitting || !resumeFile
-                      ? "cursor-not-allowed bg-brand-charcoal/30"
+                      ? "bg-brand-charcoal/30"
                       : "bg-brand-gold hover:bg-brand-gold/90"
                   )}
                 >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      提交中...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      提交申请
-                    </>
-                  )}
+                  {isSubmitting ? "提交中..." : "提交申请"}
                 </button>
               </form>
             )}

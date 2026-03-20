@@ -94,7 +94,7 @@ model Image {
 model Job {
   id           String   @id @default(cuid())
   title        String   // 职位名称（中文）
-  titleEn      String   // 职位名称（英文）
+  titleEn      String?  // 职位名称（英文）
   location     String   // 工作地点
   type         String   // 职位类型 (fulltime, parttime, intern)
   description  String   @db.Text // 职责描述
