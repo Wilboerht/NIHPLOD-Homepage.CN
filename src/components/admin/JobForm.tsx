@@ -87,22 +87,24 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
     const AMap = (window as any).AMap;
     if (!AMap) return;
 
-    if (!autoCompleteRef.current) {
-      autoCompleteRef.current = new AMap.Autocomplete({
-        city: "上海", // 锁定上海，减少偏移到豫园的概率
-      });
-    }
-
     if (keyword.trim()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      autoCompleteRef.current.search(keyword, (status: string, result: any) => {
-        if (status === "complete" && result.tips) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setSuggestions(result.tips.filter((t: any) => t.location)); // 只保留有坐标的
-          setOpen(true);
-        } else {
-          setSuggestions([]);
+      AMap.plugin(["AMap.Autocomplete"], () => {
+        if (!autoCompleteRef.current) {
+          autoCompleteRef.current = new AMap.Autocomplete({
+            city: "上海",
+          });
         }
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        autoCompleteRef.current.search(keyword, (status: string, result: any) => {
+          if (status === "complete" && result.tips) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setSuggestions(result.tips.filter((t: any) => t.location));
+            setOpen(true);
+          } else {
+            setSuggestions([]);
+          }
+        });
       });
     } else {
       setSuggestions([]);
@@ -229,33 +231,54 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  // 辅助函数：提交前尝试根据文字补全坐标
+  // 辅助函数：提交前尝试根据文字补全坐标 (针对 POI + 高效纠合方案)
   const ensureCoordinates = async (address: string): Promise<{lng: number, lat: number} | null> => {
      return new Promise((resolve) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const AMap = (window as any).AMap;
-        if (!AMap || !AMap.Geocoder) return resolve(null);
+        if (!AMap || !AMap.PlaceSearch) return resolve(null);
 
-        const geocoder = new AMap.Geocoder({ city: "021" });
-        // 先尝试完整地址，如果包含房号可能失败，再尝试去掉尾部细节
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        geocoder.getLocation(address, (status: string, result: any) => {
-           if (status === 'complete' && result.geocodes.length > 0) {
-              const loc = result.geocodes[0].location;
-              resolve({ lng: loc.lng, lat: loc.lat });
-           } else {
-              // 自动剥离类似 "T3-610" 的后缀尝试再次解析
-              const shortAddress = address.split(' ').shift() || address.substring(0, 15);
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              geocoder.getLocation(shortAddress, (s: string, r: any) => {
-                 if (s === 'complete' && r.geocodes.length > 0) {
-                    const loc = r.geocodes[0].location;
+        // 默认上海中心坐标（高德常回落到这里，约在城隍庙/人民广场附近）
+        const IS_DEFAULT_CENTER = (lng: number, lat: number) => {
+           return Math.abs(lng - 121.472) < 0.05 && Math.abs(lat - 31.232) < 0.05;
+        };
+
+        // 策略1：优先用 PlaceSearch 搜具体的建筑物（针对 "信泰中心" 这种写字楼点对点最准）
+        const ps = new AMap.PlaceSearch({ city: "021", pageSize: 1 });
+        
+        // 智能提取关键词：如果是 "上海市普陀区信泰中心广场T3-610" -> 会尝试提取 "普陀区信泰中心广场"
+        const cleanKeyword = address.split(' ').shift() || address;
+        const shortKeyword = cleanKeyword.split(/[A-Z,a-z,0-9]/)[0] || cleanKeyword; // 尝试剥离房号后缀
+
+        ps.search(shortKeyword, (status: string, result: any) => {
+           if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+              const poi = result.poiList.pois[0];
+              if (!IS_DEFAULT_CENTER(poi.location.lng, poi.location.lat)) {
+                 return resolve({ lng: poi.location.lng, lat: poi.location.lat });
+              }
+           }
+
+           // 策略2：备选 Geocoder 
+           const geocoder = new AMap.Geocoder({ city: "021" });
+           geocoder.getLocation(address, (s: string, r: any) => {
+              if (s === 'complete' && r.geocodes.length > 0) {
+                 const loc = r.geocodes[0].location;
+                 if (!IS_DEFAULT_CENTER(loc.lng, loc.lat)) {
+                    return resolve({ lng: loc.lng, lat: loc.lat });
+                 }
+              }
+
+              // 策略3：极端兜底 - 只搜区名+大楼名关键词
+              const fallbackKeyword = address.includes('区') ? address.split('区').pop()?.substring(0, 10) : address;
+              geocoder.getLocation(fallbackKeyword || address, (fs: string, fr: any) => {
+                 if (fs === 'complete' && fr.geocodes.length > 0) {
+                    const loc = fr.geocodes[0].location;
                     resolve({ lng: loc.lng, lat: loc.lat });
                  } else {
                     resolve(null);
                  }
               });
-           }
+           });
         });
      });
   };

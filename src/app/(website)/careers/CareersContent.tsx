@@ -375,38 +375,42 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
         if (job.location) {
           const geocoder = new AMap.Geocoder({ city: "021" });
           
-          // 1. 先尝试 PlaceSearch (对“信泰中心”这种建筑物名更精准)
-          const ps = new AMap.PlaceSearch({ city: "021" });
-          // 剥离详细房号，只搜大楼
-          const pureBuilding = job.location.includes("市") 
-              ? job.location.split("区").pop()?.split(" ").shift()?.substring(0, 10) 
-              : job.location.split(" ").shift();
+          // 1. 先尝试 PlaceSearch (对建筑物名更精准)
+          const ps = new AMap.PlaceSearch({ city: "021", pageSize: 1 });
+          // 剥离详细房号，只搜大楼关键词
+          const rawLocation = job.location.split(' ').shift() || job.location;
+          // 如果有层号房间号（如 T3-610），剥离掉
+          const pureBuilding = rawLocation.split(/[a-zA-Z0-9-]/)[0] || rawLocation;
           
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ps.search(pureBuilding || job.location, (status: string, result: any) => {
+          ps.search(pureBuilding, (status: string, result: any) => {
               if (status === "complete" && result.poiList && result.poiList.pois.length > 0) {
                   const poi = result.poiList.pois[0];
-                  initRender(poi.location.lng, poi.location.lat);
-              } else {
-                  // 2. 备选：使用 Geocoder 
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  geocoder.getLocation(job.location, (status: string, result: any) => {
-                      if (status === "complete" && result.geocodes.length > 0) {
-                          const loc = result.geocodes[0].location;
-                          initRender(loc.lng, loc.lat);
-                      } else {
-                          // 3. 最终兜底：去掉结尾重试
-                          const fallback = job.location.substring(0, 15);
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          geocoder.getLocation(fallback, (s: string, r: any) => {
-                              if (s === "complete" && r.geocodes.length > 0) {
-                                  const loc = r.geocodes[0].location;
-                                  initRender(loc.lng, loc.lat);
-                              }
-                          });
-                      }
-                  });
+                  // 简单纠偏：经度 121.47 附近通常是高德的城隍庙回落点
+                  if (Math.abs(poi.location.lng - 121.47) > 0.01) {
+                    initRender(poi.location.lng, poi.location.lat);
+                    return;
+                  }
               }
+              
+              // 2. 备选：使用 Geocoder 
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              geocoder.getLocation(job.location, (status: string, result: any) => {
+                  if (status === "complete" && result.geocodes.length > 0) {
+                      const loc = result.geocodes[0].location;
+                      initRender(loc.lng, loc.lat);
+                  } else {
+                      // 3. 最终兜底：缩减地址重试
+                      const fallback = job.location.includes("区") ? job.location.split("区").pop()?.substring(0, 10) : job.location;
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      geocoder.getLocation(fallback || job.location, (s: string, r: any) => {
+                          if (s === "complete" && r.geocodes.length > 0) {
+                              const loc = r.geocodes[0].location;
+                              initRender(loc.lng, loc.lat);
+                          }
+                      });
+                  }
+              });
           });
         }
       });
