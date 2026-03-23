@@ -70,8 +70,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
  */
 export async function sendContactNotification(data: {
   name: string;
-  email: string;
-  phone?: string;
+  phone: string;
   content: string;
 }): Promise<SendEmailResult> {
   const { contactNotificationTemplate } = await import("./email-templates");
@@ -81,7 +80,6 @@ export async function sendContactNotification(data: {
     to: emailConfig.notificationEmail || emailConfig.from,
     subject: `[NIHPLOD] 新留言 - ${data.name}`,
     html,
-    replyTo: data.email,
   });
 }
 
@@ -90,7 +88,6 @@ export async function sendContactNotification(data: {
  */
 export async function sendJobApplicationNotification(data: {
   name: string;
-  email: string;
   phone: string;
   position: string;
   coverLetter?: string;
@@ -102,7 +99,6 @@ export async function sendJobApplicationNotification(data: {
     to: emailConfig.notificationEmail || emailConfig.from,
     subject: `[NIHPLOD] 新求职申请 - ${data.position} - ${data.name}`,
     html,
-    replyTo: data.email,
   });
 }
 

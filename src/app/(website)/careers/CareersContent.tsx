@@ -320,7 +320,6 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    email: "",
   });
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -446,7 +445,6 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
       formDataToSend.append("jobTitle", job.title);
       formDataToSend.append("name", formData.name);
       formDataToSend.append("phone", formData.phone);
-      formDataToSend.append("email", formData.email);
       formDataToSend.append("resume", resumeFile);
 
       const response = await fetch("/api/careers/apply", {
@@ -605,21 +603,6 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "") })}
                     className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none focus:border-brand-gold"
                     placeholder="请输入11位手机号"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
-                    <Mail className="h-3.5 w-3.5" />
-                    邮箱 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none focus:border-brand-gold"
-                    placeholder="请输入您的邮箱"
                   />
                 </div>
 

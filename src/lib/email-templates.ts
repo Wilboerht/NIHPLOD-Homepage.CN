@@ -64,8 +64,7 @@ function baseTemplate(content: string): string {
  */
 export function contactNotificationTemplate(data: {
   name: string;
-  email: string;
-  phone?: string;
+  phone: string;
   content: string;
 }): string {
   const content = `
@@ -81,26 +80,12 @@ export function contactNotificationTemplate(data: {
       </tr>
       <tr>
         <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
-          <span style="color: #666; font-size: 14px;">邮箱</span>
-          <p style="margin: 4px 0 0 0; font-size: 16px; color: ${BRAND_CHARCOAL};">
-            <a href="mailto:${escapeHtml(data.email)}" style="color: ${BRAND_GOLD}; text-decoration: none;">${escapeHtml(data.email)}</a>
-          </p>
-        </td>
-      </tr>
-      ${
-        data.phone
-          ? `
-      <tr>
-        <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
           <span style="color: #666; font-size: 14px;">电话</span>
           <p style="margin: 4px 0 0 0; font-size: 16px; color: ${BRAND_CHARCOAL};">
             <a href="tel:${escapeHtml(data.phone)}" style="color: ${BRAND_GOLD}; text-decoration: none;">${escapeHtml(data.phone)}</a>
           </p>
         </td>
       </tr>
-      `
-          : ""
-      }
     </table>
     <div style="background-color: ${BRAND_CREAM}; padding: 20px; border-radius: 4px;">
       <span style="color: #666; font-size: 14px;">留言内容</span>
@@ -119,7 +104,6 @@ export function contactNotificationTemplate(data: {
  */
 export function jobApplicationTemplate(data: {
   name: string;
-  email: string;
   phone: string;
   position: string;
   coverLetter?: string;
@@ -137,14 +121,6 @@ export function jobApplicationTemplate(data: {
         <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
           <span style="color: #666; font-size: 14px;">姓名</span>
           <p style="margin: 4px 0 0 0; font-size: 16px; color: ${BRAND_CHARCOAL};">${escapeHtml(data.name)}</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
-          <span style="color: #666; font-size: 14px;">邮箱</span>
-          <p style="margin: 4px 0 0 0; font-size: 16px; color: ${BRAND_CHARCOAL};">
-            <a href="mailto:${escapeHtml(data.email)}" style="color: ${BRAND_GOLD}; text-decoration: none;">${escapeHtml(data.email)}</a>
-          </p>
         </td>
       </tr>
       <tr>

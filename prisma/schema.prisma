@@ -121,7 +121,6 @@ model JobApplication {
   jobId      String   // 申请的职位ID
   name       String   // 申请人姓名
   phone      String   // 手机号
-  email      String   // 邮箱
   resumePath String   // 简历文件路径
   status     String   @default("pending") // 状态: pending, reviewed, interviewed, rejected, hired
   notes      String?  @db.Text // 备注
@@ -162,7 +161,7 @@ model ApplicationFolder {
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String   // 留言人姓名
-  email     String   // 邮箱
+  phone     String   // 联系电话
   type      String?  // 留言类型 (咨询、合作等)
   content   String   @db.Text // 留言内容
   read      Boolean  @default(false) // 是否已读

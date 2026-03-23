@@ -11,7 +11,6 @@ const ApplyFormSchema = z.object({
   jobTitle: z.string().min(1, "职位名称不能为空"),
   name: z.string().min(2, "姓名至少2个字符").max(50, "姓名最多50个字符"),
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
-  email: z.string().email("请输入有效的邮箱地址"),
 });
 
 // 允许的文件类型
@@ -39,7 +38,6 @@ export async function POST(request: NextRequest) {
     const jobTitle = formData.get("jobTitle") as string;
     const name = formData.get("name") as string;
     const phone = formData.get("phone") as string;
-    const email = formData.get("email") as string;
     const resumeFile = formData.get("resume") as File | null;
 
     console.log(`📝 [Apply API] Fields: JobId=${jobId}, Name=${name}, File=${resumeFile?.name}, Size=${resumeFile?.size}, Type=${resumeFile?.type}`);
@@ -50,7 +48,6 @@ export async function POST(request: NextRequest) {
       jobTitle,
       name,
       phone,
-      email,
     });
 
     if (!result.success) {
@@ -124,7 +121,6 @@ export async function POST(request: NextRequest) {
         jobId,
         name,
         phone,
-        email,
         resumePath: uploadResult.url,
       },
     });
@@ -133,27 +129,17 @@ export async function POST(request: NextRequest) {
     // 发送邮件通知
     console.log("📧 [Apply API] Sending emails");
     try {
-      // 1. 发送自动回复给用户
-      await sendAutoReply({
-        to: email,
-        name,
-        type: "job",
-      });
-      console.log("✅ [Apply API] Auto-reply sent to user");
-
-      // 2. 发送通知给管理员
+      // 1. 发送通知给管理员
       await sendJobApplicationNotification({
         name,
-        email,
         phone,
         position: jobTitle,
       });
       console.log("✅ [Apply API] Notification sent to admin");
 
-      // 3. 发送企业微信群机器人通知
+      // 2. 发送企业微信群机器人通知
       const wecomMsg = formatJobApplicationToWecom({
         name,
-        email,
         phone,
         position: jobTitle,
         resumeUrl: uploadResult.url,

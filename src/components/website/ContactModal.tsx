@@ -32,11 +32,10 @@ const messageTypesData = [
 
 interface FormData {
     name: string;
-    email: string;
+    phone: string; // 将邮箱改为手机号
     type: string;
     content: string;
     location?: string;
-    memberAccount?: string;
     website: string; // 蜜罐字段
 }
 
@@ -49,11 +48,10 @@ export function ContactModal() {
     // 表单状态
     const [formData, setFormData] = useState<FormData>({
         name: "",
-        email: "",
+        phone: "",
         type: "",
         content: "",
         location: "",
-        memberAccount: "",
         website: "",
     });
     const [status, setStatus] = useState<FormStatus>("idle");
@@ -108,7 +106,7 @@ export function ContactModal() {
     // 重置表单当关闭时
     useEffect(() => {
         if (!contactOpen) {
-            setFormData({ name: "", email: "", type: "", content: "", location: "", memberAccount: "", website: "" });
+            setFormData({ name: "", phone: "", type: "", content: "", location: "", website: "" });
             setStatus("idle");
             setErrors({});
         }
@@ -136,28 +134,22 @@ export function ContactModal() {
         } else if (formData.name.length > 50) {
             newErrors.name = "姓名最多50个字符";
         }
-        if (formData.type !== "application") {
-            if (!formData.email.trim()) {
-                newErrors.email = "请输入您的邮箱";
-            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-                newErrors.email = "请输入有效的邮箱地址";
-            } else if (formData.email.length > 100) {
-                newErrors.email = "邮箱最多100个字符";
-            }
+
+        if (!formData.phone.trim()) {
+            newErrors.phone = "请输入您的手机号";
+        } else if (!/^1[3456789]\d{9}$/.test(formData.phone)) {
+            newErrors.phone = "请输入有效的11位手机号";
         }
+
         if (!formData.type) {
             newErrors.type = "请选择留言类型";
         }
+
         if (formData.type === "application") {
             if (!formData.location?.trim()) {
                 newErrors.location = "请输入您的所在地";
             } else if (formData.location.length > 100) {
                 newErrors.location = "所在地最多100个字符";
-            }
-            if (!formData.memberAccount?.trim()) {
-                newErrors.memberAccount = "请输入会员账号（手机号）";
-            } else if (formData.memberAccount.length > 20) {
-                newErrors.memberAccount = "会员账号过长 (最多20位)";
             }
         } else {
             if (!formData.content.trim()) {
@@ -181,14 +173,13 @@ export function ContactModal() {
         const submitData = { 
             ...formData,
             name: formData.name.trim(),
-            email: formData.email.trim(),
+            phone: formData.phone.trim(),
             content: formData.content.trim(),
             location: formData.location?.trim(),
-            memberAccount: formData.memberAccount?.trim()
         };
 
         if (formData.type === "application") {
-            submitData.content = `申请入驻\n所在地: ${submitData.location}\n会员账号: ${submitData.memberAccount}`;
+            submitData.content = `申请入驻\n所在地: ${submitData.location}\n联系电话: ${submitData.phone}`;
         }
 
         try {
@@ -201,7 +192,7 @@ export function ContactModal() {
             if (response.ok) {
                 setStatus("success");
                 toastSuccess(data.message || "留言已提交");
-                setFormData({ name: "", email: "", type: "", content: "", location: "", memberAccount: "", website: "" });
+                setFormData({ name: "", phone: "", type: "", content: "", location: "", website: "" });
                 // 延迟关闭
                 setTimeout(() => {
                     closeContact();
@@ -341,9 +332,10 @@ export function ContactModal() {
                                     {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
                                 </div>
 
-                                <div className={cn("grid gap-5", formData.type === "application" ? "sm:grid-cols-1" : "sm:grid-cols-2")}>
+                                <div className="grid gap-5 sm:grid-cols-2">
                                     {/* 姓名 */}
                                     <div>
+                                        <label htmlFor="modal-name" className="sr-only">您的姓名</label>
 
                                         <input
                                             type="text"
@@ -363,56 +355,36 @@ export function ContactModal() {
                                         {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
                                     </div>
 
-                                    {/* 邮箱 - 申请入驻时不显示 */}
-                                    {formData.type !== "application" && (
-                                        <div>
-                                            <input
-                                                type="email"
-                                                id="modal-email"
-                                                name="email"
-                                                value={formData.email}
-                                                onChange={handleChange}
-                                                maxLength={100}
-                                                className={cn(
-                                                    "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
-                                                    errors.email
-                                                        ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
-                                                        : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
-                                                )}
-                                                placeholder="请输入您的邮箱"
-                                            />
-                                            {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-                                        </div>
-                                    )}
+                                    {/* 手机号 */}
+                                    <div>
+                                        <label htmlFor="modal-phone" className="sr-only">手机号</label>
+                                        <input
+                                            type="tel"
+                                            id="modal-phone"
+                                            name="phone"
+                                            value={formData.phone}
+                                            onChange={handleChange}
+                                            maxLength={11}
+                                            className={cn(
+                                                "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
+                                                errors.phone
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
+                                                    : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
+                                            )}
+                                            placeholder="请输入手机号"
+                                        />
+                                        {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+                                    </div>
                                 </div>
 
 
 
-                                {/* 留言内容 或 申请入驻表单 */}
+                                {/* 留言内容 或 申请入驻地址 */}
                                 {formData.type === "application" ? (
                                     <div className="space-y-4">
-                                        {/* 会员账号 */}
-                                        <div>
-                                            <input
-                                                type="text"
-                                                id="modal-memberAccount"
-                                                name="memberAccount"
-                                                value={formData.memberAccount || ""}
-                                                onChange={handleChange}
-                                                maxLength={20}
-                                                className={cn(
-                                                    "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
-                                                    errors.memberAccount
-                                                        ? "border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-100"
-                                                        : "hover:border-brand-gold/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/10"
-                                                )}
-                                                placeholder="会员账号（手机号）"
-                                            />
-                                            {errors.memberAccount && <p className="mt-1 text-xs text-red-500">{errors.memberAccount}</p>}
-                                        </div>
-
                                         {/* 所在地 */}
                                         <div>
+                                            <label htmlFor="modal-location" className="sr-only">您的所在地</label>
                                             <input
                                                 type="text"
                                                 id="modal-location"
@@ -433,6 +405,7 @@ export function ContactModal() {
                                     </div>
                                 ) : (
                                     <div>
+                                        <label htmlFor="modal-content" className="sr-only">留言内容</label>
                                         <textarea
                                             id="modal-content"
                                             name="content"

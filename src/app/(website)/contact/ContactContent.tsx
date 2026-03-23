@@ -38,7 +38,7 @@ const defaultContent: ContactPageContent = {
 
 interface FormData {
   name: string;
-  email: string;
+  phone: string; // 将邮箱改为手机号
   type: string;
   content: string;
   website: string; // 蜜罐字段
@@ -71,7 +71,7 @@ export function ContactContent({ content }: ContactContentProps) {
   ];
   const [formData, setFormData] = useState<FormData>({
     name: "",
-    email: "",
+    phone: "",
     type: "",
     content: "",
     website: "",
@@ -103,12 +103,10 @@ export function ContactContent({ content }: ContactContentProps) {
     } else if (formData.name.length > 50) {
       newErrors.name = "姓名最多50个字符";
     }
-    if (!formData.email.trim()) {
-      newErrors.email = "请输入您的邮箱";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "请输入有效的邮箱地址";
-    } else if (formData.email.length > 100) {
-      newErrors.email = "邮箱最多100个字符";
+    if (!formData.phone.trim()) {
+      newErrors.phone = "请输入您的手机号";
+    } else if (!/^1[3456789]\d{9}$/.test(formData.phone)) {
+      newErrors.phone = "请输入有效的11位手机号";
     }
     if (!formData.type) {
       newErrors.type = "请选择留言类型";
@@ -136,7 +134,7 @@ export function ContactContent({ content }: ContactContentProps) {
         body: JSON.stringify({
           ...formData,
           name: formData.name.trim(),
-          email: formData.email.trim(),
+          phone: formData.phone.trim(),
           content: formData.content.trim(),
         }),
       });
@@ -144,7 +142,7 @@ export function ContactContent({ content }: ContactContentProps) {
       if (response.ok) {
         setStatus("success");
         toastSuccess(data.message || "留言已提交");
-        setFormData({ name: "", email: "", type: "", content: "", website: "" });
+        setFormData({ name: "", phone: "", type: "", content: "", website: "" });
       } else {
         setStatus("error");
         toastError(data.error || "提交失败，请稍后重试");
@@ -223,25 +221,25 @@ export function ContactContent({ content }: ContactContentProps) {
                     </div>
 
                     <div>
-                      <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
-                        邮箱 <span className="text-red-500">*</span>
+                      <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
+                        手机号 <span className="text-red-500">*</span>
                       </label>
                       <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
                         onChange={handleChange}
-                        placeholder="请输入您的邮箱"
-                        autoComplete="email"
-                        inputMode="email"
-                        maxLength={100}
+                        placeholder="请输入您的手机号"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        maxLength={11}
                         className={cn(
                           "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
-                          errors.email ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                          errors.phone ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
                         )}
                       />
-                      {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
+                      {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
                     </div>
                   </div>
 

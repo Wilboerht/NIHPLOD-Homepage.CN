@@ -67,11 +67,10 @@ export async function sendWecomNotification(
  */
 export function formatContactToWecom(data: {
   name: string;
-  email?: string;
+  phone: string;
   type?: string;
   content: string;
   location?: string;
-  memberAccount?: string;
 }) {
   const lines = [
     `> **留言人**: ${data.name}`,
@@ -81,11 +80,8 @@ export function formatContactToWecom(data: {
   if (data.location) {
     lines.push(`> **所在地**: ${data.location}`);
   }
-  if (data.memberAccount) {
-    lines.push(`> **会员账号**: ${data.memberAccount}`);
-  }
-  if (data.email && data.email.trim()) {
-    lines.push(`> **邮件**: ${data.email}`);
+  if (data.phone) {
+    lines.push(`> **手机号**: ${data.phone}`);
   }
 
   lines.push(`> **时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
@@ -104,19 +100,17 @@ ${data.content}
  */
 export function formatJobApplicationToWecom(data: {
   name: string;
-  email: string;
   phone: string;
   position: string;
   resumeUrl: string;
 }) {
-  return `### 💼 NIHPLOD 新收到投递简历
-> **候选人**: ${data.name}
+  return `### 💼 NIHPLOD 新求职申请
+> **申请人**: ${data.name}
 > **应聘职位**: ${data.position}
-> **联系方式**: ${data.phone}
-> **邮箱**: ${data.email}
-> **时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+> **手机号**: ${data.phone}
+> **提交时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
 
-[点击下载简历](${data.resumeUrl})
+**简历详情**: [点击查看简历](${data.resumeUrl})
 
-[点击进入管理系统查看详情](https://nihplod.cn/admin/jobs/applications)`;
+[点击进入后台](https://nihplod.cn/admin/jobs)`;
 }
