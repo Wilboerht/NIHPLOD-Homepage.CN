@@ -91,6 +91,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'wp-cdn.4ce.cn',
       },
+      {
+        protocol: 'https',
+        hostname: '*.aliyuncs.com',
+      },
     ],
     // 启用的图片格式 (优先使用 AVIF，其次 WebP)
     formats: ['image/avif', 'image/webp'],

@@ -3,14 +3,34 @@ import { existsSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { uploadToStorage, deleteFromStorage, extractStoragePath } from "./supabase";
+import { 
+  isOSSConfigured, 
+  uploadToOSS, 
+  deleteOSSFiles,
+  getOSSPublicDomain 
+} from "./ali-oss";
 
-// ============================================
-// 上传与图片优化配置
-// ============================================
+/**
+ * 智能存储模式检测 (优先级: OSS > Local > Supabase)
+ * 允许通过环境变量强制指定，否则采用自动降级策略
+ */
+function getAutoStorageMode(): "oss" | "local" | "supabase" {
+  // 如果手动指定了模式，优先遵循
+  if (process.env.STORAGE_MODE) {
+    return process.env.STORAGE_MODE as "oss" | "local" | "supabase";
+  }
 
-// 存储模式：supabase（云端）或 local（本地）
-// Vercel 等无服务器平台必须使用 supabase
-export const storageMode = (process.env.STORAGE_MODE || "supabase") as "supabase" | "local";
+  // 1. 优先检查 OSS
+  if (isOSSConfigured()) {
+    return "oss";
+  }
+
+  // 2. 云服务器环境下，通常优先本地存储 (如果为了脱离 Supabase)
+  // 这里设为默认 fallback 到 local，除非明确需要 supabase
+  return "local";
+}
+
+export const storageMode = getAutoStorageMode();
 
 // 上传配置
 export const uploadConfig = {
@@ -138,20 +158,25 @@ export async function generateSizedImage(
 
   let url: string;
 
-  if (storageMode === "supabase") {
-    // 上传到 Supabase Storage
+  if (storageMode === "oss") {
+    // 优先级 1: 阿里云 OSS
+    const objectName = `${folder}/${size}/${filename}`;
+    const result = await uploadToOSS(processedBuffer, objectName, "image/webp");
+    url = result.url;
+  } else if (storageMode === "local") {
+    // 优先级 2: 本地存储
+    const uploadDir = ensureUploadDir(`${folder}/${size}`);
+    const filepath = join(uploadDir, filename);
+    await sharp(processedBuffer).toFile(filepath);
+    url = `/uploads/${folder}/${size}/${filename}`;
+  } else {
+    // 优先级 3: Supabase (降级或旧有配置)
     const storagePath = `${folder}/${size}/${filename}`;
     const result = await uploadToStorage(processedBuffer, storagePath, "image/webp");
     if (result.error) {
       throw result.error;
     }
     url = result.url;
-  } else {
-    // 本地存储
-    const uploadDir = ensureUploadDir(`${folder}/${size}`);
-    const filepath = join(uploadDir, filename);
-    await sharp(processedBuffer).toFile(filepath);
-    url = `/uploads/${folder}/${size}/${filename}`;
   }
 
   return { url, width, height };
@@ -203,20 +228,25 @@ export async function processAndSaveImage(
 
   let url: string;
 
-  if (storageMode === "supabase") {
-    // 上传到 Supabase Storage
+  if (storageMode === "oss") {
+    // 优先级 1: 阿里云 OSS
+    const objectName = `${folder}/${filename}`;
+    const result = await uploadToOSS(processedImage, objectName, "image/webp");
+    url = result.url;
+  } else if (storageMode === "local") {
+    // 优先级 2: 本地存储
+    const uploadDir = ensureUploadDir(folder);
+    const filepath = join(uploadDir, filename);
+    await sharp(processedImage).toFile(filepath);
+    url = `/uploads/${folder}/${filename}`;
+  } else {
+    // 优先级 3: Supabase
     const storagePath = `${folder}/${filename}`;
     const result = await uploadToStorage(processedImage, storagePath, "image/webp");
     if (result.error) {
       throw result.error;
     }
     url = result.url;
-  } else {
-    // 本地存储
-    const uploadDir = ensureUploadDir(folder);
-    const filepath = join(uploadDir, filename);
-    await sharp(processedImage).toFile(filepath);
-    url = `/uploads/${folder}/${filename}`;
   }
 
   // 生成模糊占位符
@@ -261,21 +291,26 @@ export async function uploadFile(
 
   let url: string;
 
-  if (storageMode === "supabase") {
-    // 上传到 Supabase Storage
+  if (storageMode === "oss") {
+    // 优先级 1: 阿里云 OSS
+    const objectName = `${folder}/${filename}`;
+    const result = await uploadToOSS(buffer, objectName, mimeType);
+    url = result.url;
+  } else if (storageMode === "local") {
+    // 优先级 2: 本地存储
+    const uploadDir = ensureUploadDir(folder);
+    const filepath = join(uploadDir, filename);
+    const fs = await import("fs/promises");
+    await fs.writeFile(filepath, buffer);
+    url = `/uploads/${folder}/${filename}`;
+  } else {
+    // 优先级 3: Supabase
     const storagePath = `${folder}/${filename}`;
     const result = await uploadToStorage(buffer, storagePath, mimeType);
     if (result.error) {
       throw result.error;
     }
     url = result.url;
-  } else {
-    // 本地存储
-    const uploadDir = ensureUploadDir(folder);
-    const filepath = join(uploadDir, filename);
-    const fs = await import("fs/promises");
-    await fs.writeFile(filepath, buffer);
-    url = `/uploads/${folder}/${filename}`;
   }
 
   return {
@@ -288,16 +323,22 @@ export async function uploadFile(
 // 删除上传的文件
 export async function deleteUploadedFile(url: string): Promise<boolean> {
   try {
-    if (storageMode === "supabase") {
-      // 从 Supabase Storage 删除
+    // 自动识别存储类型 (根据 URL 特征)
+    const ossDomain = getOSSPublicDomain();
+    
+    if (url.includes("supabase.co") || url.includes("/storage/v1/object/public/")) {
+      // 识别为 Supabase
       const storagePath = extractStoragePath(url);
       if (storagePath) {
         const { error } = await deleteFromStorage([storagePath]);
         return !error;
       }
-      return false;
-    } else {
-      // 本地删除
+    } else if (url.includes("aliyuncs.com") || url.includes(ossDomain)) {
+      // 识别为 OSS
+      await deleteOSSFiles([url]);
+      return true;
+    } else if (url.startsWith("/uploads/")) {
+      // 识别为本地存储
       const relativePath = url.replace(/^\//, "");
       const filepath = join(process.cwd(), "public", relativePath);
 
@@ -305,8 +346,9 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
         unlinkSync(filepath);
         return true;
       }
-      return false;
     }
+
+    return false;
   } catch (error) {
     console.error("删除文件失败:", error);
     return false;
@@ -349,3 +391,4 @@ export function validateUploadServer(
 
   return { valid: true };
 }
+

@@ -14,7 +14,7 @@ const ossConfig = {
 };
 
 // 检查配置是否完整
-const isOSSConfigured = () => {
+export const isOSSConfigured = () => {
     return (
         !!ossConfig.region &&
         !!ossConfig.accessKeyId &&
@@ -35,6 +35,14 @@ if (isOSSConfigured()) {
         bucket: ossConfig.bucket!,
         secure: ossConfig.secure,
     });
+}
+
+/**
+ * 获取 OSS 公开访问域名
+ */
+export function getOSSPublicDomain() {
+    return process.env.ALI_OSS_PUBLIC_DOMAIN ||
+        `https://${ossConfig.bucket}.${ossConfig.region}.aliyuncs.com`;
 }
 
 /**
@@ -62,17 +70,36 @@ export async function generateUploadSignature(filename: string, type: string) {
         "Content-Type": type,
     });
 
-    // 计算公开访问 URL (不带签名参数)
-    const publicDomain = process.env.ALI_OSS_PUBLIC_DOMAIN ||
-        `https://${ossConfig.bucket}.${ossConfig.region}.aliyuncs.com`;
-
-    const publicUrl = `${publicDomain}/${objectName}`;
+    const publicUrl = `${getOSSPublicDomain()}/${objectName}`;
 
     return {
         uploadUrl: url,
         publicUrl: publicUrl,
         objectName: objectName
     };
+}
+
+/**
+ * 服务端直接上传到 OSS
+ */
+export async function uploadToOSS(buffer: Buffer, objectName: string, type: string) {
+    if (!ossClient) {
+        throw new Error("阿里云 OSS 未配置");
+    }
+
+    try {
+        const result = await ossClient.put(objectName, buffer, {
+            mime: type,
+        });
+
+        return {
+            url: `${getOSSPublicDomain()}/${objectName}`,
+            name: result.name,
+        };
+    } catch (error) {
+        console.error("OSS Upload Error:", error);
+        throw error;
+    }
 }
 
 /**
@@ -84,15 +111,16 @@ export async function deleteOSSFiles(urls: string[]) {
 
     try {
         // 提取 objectName
-        // URL 格式: https://bucket.region.aliyuncs.com/uploads/xxx.jpg
-        // ObjectName: uploads/xxx.jpg
         const names = urls.map(url => {
             try {
-                const urlObj = new URL(url);
-                // 移除开头的 /
-                return urlObj.pathname.substring(1);
+                // 如果是完整 URL，尝试解析
+                if (url.startsWith("http")) {
+                    const urlObj = new URL(url);
+                    // 移除开头的 /
+                    return urlObj.pathname.substring(1);
+                }
+                return url;
             } catch {
-                // 如果传入的已经是 objectName 或者无效 URL，直接返回
                 return url;
             }
         });
@@ -104,6 +132,6 @@ export async function deleteOSSFiles(urls: string[]) {
         console.log("Deleted OSS files:", names);
     } catch (e) {
         console.error("Failed to delete OSS files:", e);
-        // 删除失败不抛出错误，以免影响主流程，反正有生命周期兜底
     }
 }
+
