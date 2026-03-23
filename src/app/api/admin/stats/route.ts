@@ -20,7 +20,7 @@ interface StatsResponse {
     recentMessages: {
       id: string;
       name: string;
-      email: string;
+      phone: string;
       content: string;
       read: boolean;
       createdAt: string;
@@ -76,7 +76,7 @@ const getCachedStats = unstable_cache(
         select: {
           id: true,
           name: true,
-          email: true,
+          phone: true,
           content: true,
           read: true,
           createdAt: true,

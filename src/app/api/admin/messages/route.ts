@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 构建查询条件
-    const where: Record<string, unknown> = {};
+    const where: Prisma.ContactMessageWhereInput = {};
 
     if (params.status === "unread") {
       where.read = false;
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     if (params.search) {
       where.OR = [
         { name: { contains: params.search, mode: "insensitive" } },
-        { email: { contains: params.search, mode: "insensitive" } },
+        { phone: { contains: params.search, mode: "insensitive" } },
         { content: { contains: params.search, mode: "insensitive" } },
       ];
     }
@@ -96,4 +97,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

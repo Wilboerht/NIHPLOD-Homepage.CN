@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { sendAutoReply } from "@/lib/email";
 import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
 
 // 表单验证 schema

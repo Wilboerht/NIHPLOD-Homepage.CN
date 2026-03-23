@@ -518,31 +518,31 @@ async function main() {
   const contactMessages = [
     {
       name: "刘女士",
-      email: "liu@example.com",
+      phone: "13812345678",
       content: "您好，我想咨询一下修护紧致精华是否适合敏感肌使用？我皮肤比较容易过敏，之前用过一些精华会刺痛，请问这款产品成分温和吗？",
       read: false,
     },
     {
       name: "陈先生",
-      email: "chen@example.com",
+      phone: "13987654321",
       content: "请问你们的产品在北京有线下体验店吗？我想实际试用后再决定购买，希望能提供一下门店地址，谢谢！",
       read: true,
     },
     {
       name: "王小姐",
-      email: "wang@example.com",
+      phone: "13711112222",
       content: "我之前在你们天猫旗舰店购买了逆龄面霜，使用了一周感觉非常好，皮肤明显变得更有光泽了。想问一下这个面霜和精华搭配使用效果会更好吗？",
       read: true,
     },
     {
       name: "张先生",
-      email: "zhang@example.com",
+      phone: "13633334444",
       content: "你好，我是一家高端美容院的采购负责人，想咨询一下是否可以批量采购你们的产品？希望能获取批发价格和合作方式，期待回复。",
       read: false,
     },
     {
       name: "赵女士",
-      email: "zhao@example.com",
+      phone: "13555556666",
       content: "我在官网购买的臻萃修护面膜，收到后发现包装有点变形，虽然产品本身没问题，但作为送礼用途有点担心，请问可以换货吗？订单号是 NP20241225001。",
       read: false,
     },

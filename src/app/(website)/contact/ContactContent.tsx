@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { Home, Send, CheckCircle, AlertCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown } from "lucide-react";
+import { Home, Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ContactPageContent } from "@/types/page-content";
 import { useToast } from "@/hooks";
