@@ -1189,7 +1189,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             <h1 className="text-3xl font-medium text-[#00263E] tracking-widest">护肤仪式指南</h1>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-4 sm:gap-6">
                             {modules.map((module, index) => (
                               <m.button
                                 key={module.id}
@@ -1198,11 +1198,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1 }}
                                 onClick={() => selectModule(module.id)}
-                                className="relative aspect-[3/5.5] overflow-hidden rounded-2xl shadow-sm bg-white/40 border border-[#00263E]/5 flex flex-col justify-end p-5 text-left transition-colors active:bg-white/60"
+                                className="relative aspect-[4/6] min-[400px]:aspect-[4/5.5] overflow-hidden rounded-[2rem] shadow-[0_8px_32px_-4px_rgba(0,38,62,0.06)] bg-white/60 backdrop-blur-md border border-[#00263E]/5 flex flex-col justify-end p-6 text-left transition-all active:bg-white/80 active:scale-[0.98]"
                               >
                                 <div className="relative z-10 flex flex-col">
                                   <div className="mb-4">
-                                    <module.icon className="w-8 h-8 text-[#8B7355]" strokeWidth={1.2} />
+                                    <module.icon className="w-8 h-8 text-[#8B7355]" strokeWidth={1} />
                                   </div>
                                   <span className="text-lg font-medium text-[#00263E] tracking-widest">{module.label}</span>
                                   <div className="mt-3 h-[1px] w-8 bg-[#8B7355]/20" />
