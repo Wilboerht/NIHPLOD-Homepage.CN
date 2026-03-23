@@ -683,14 +683,26 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
               {/* 全屏水印 - 最底层 */}
               <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
+                {/* PC 端水印 */}
                 <Image
                   src="/images/watermark.webp"
                   alt=""
                   width={2000}
-                  height={2000}
+                  height={800}
                   priority
-                  className="h-[120%] w-auto max-w-none opacity-[0.03]"
+                  className="hidden md:block h-[120%] w-auto max-w-none opacity-[0.03]"
                 />
+                {/* 移动端水印 */}
+                <div className="block md:hidden absolute inset-0">
+                  <Image
+                    src="/images/watermark-mobile.svg"
+                    alt=""
+                    fill
+                    priority
+                    className="opacity-[0.08] scale-[1.5]"
+                    style={{ objectFit: 'fill' }}
+                  />
+                </div>
               </div>
             </m.div>
 

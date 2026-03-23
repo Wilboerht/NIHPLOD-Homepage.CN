@@ -78,13 +78,26 @@ export function KineticBackground() {
             <div className="kinetic-bg-base" />
             <div className="kinetic-dot-pattern" />
             <div className="kinetic-watermark">
+                {/* PC 端水印 */}
                 <Image
                     src="/images/watermark.webp"
-                    alt="Watermark"
+                    alt="Watermark PC"
                     width={2800}
                     height={800}
                     style={{ objectFit: 'contain' }}
+                    className="hidden md:block"
                 />
+                {/* 移动端水印 - 竖版 SVG */}
+                <div className="block md:hidden absolute inset-0">
+                    <Image
+                        src="/images/watermark-mobile.svg"
+                        alt="Watermark Mobile"
+                        fill
+                        priority
+                        style={{ objectFit: 'fill' }}
+                        className="opacity-40 scale-[1.8]"
+                    />
+                </div>
             </div>
 
             <div ref={containerRef} className="kinetic-container">

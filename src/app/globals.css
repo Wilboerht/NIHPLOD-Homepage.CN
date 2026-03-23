@@ -841,10 +841,29 @@
   z-index: 1;
   /* 在背景基础层之上，但在网格容器之下 */
   max-width: 2800px;
-  width: 150vw;
+  width: auto;
+  min-width: 150vw;
   height: auto;
   filter: grayscale(1) brightness(2);
   mix-blend-mode: overlay;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .kinetic-watermark {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    transform: none; /* 移除任何偏移 */
+    min-width: 0;
+    filter: grayscale(1) brightness(1.2);
+    z-index: 0;
+  }
 }
 
 /* 3D 视差容器 */

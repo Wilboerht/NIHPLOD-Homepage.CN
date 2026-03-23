@@ -20,15 +20,18 @@ const navItems: { id: SectionId; label: string }[] = [
 ];
 
 const Watermark = () => (
-  <div
-    className="absolute inset-0 z-0 pointer-events-none opacity-[0.035] select-none"
-    style={{
-      backgroundImage: 'url(/images/watermark.webp)',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      backgroundSize: '160% auto', // 为了更好地匹配内容，轻微调小尺寸
-    }}
-  />
+  <>
+    {/* PC 端水印 */}
+    <div
+      className="absolute inset-0 z-0 pointer-events-none opacity-[0.035] select-none hidden md:block"
+      style={{
+        backgroundImage: 'url(/images/watermark.webp)',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: '160% auto', // 为了更好地匹配内容，轻微调小尺寸
+      }}
+    />
+  </>
 );
 
 const AWARDS_DATA = [
