@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     // 发送通知
     console.log("📢 [Apply API] Sending notifications");
     try {
-      // 发送企业微信群机器人通知
+      // 发送企业微信群机器人通知 (强制路由至招聘群)
       const wecomMsg = formatJobApplicationToWecom({
         name,
         phone,

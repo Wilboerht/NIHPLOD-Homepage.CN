@@ -570,20 +570,7 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
               投递简历
             </h4>
 
-            {submitStatus === "success" ? (
-              <m.div
-                className="rounded-xl bg-green-50 p-6 text-center"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                  <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <p className="text-green-700">简历投递成功！我们会尽快与您联系。</p>
-              </m.div>
-            ) : (
+            <div className="relative">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
@@ -674,7 +661,35 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
                   {isSubmitting ? "提交中..." : "提交申请"}
                 </button>
               </form>
-            )}
+
+              {/* 悬浮成功层 */}
+              <AnimatePresence>
+                {submitStatus === "success" && (
+                  <m.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="absolute inset-x-[-8px] inset-y-[-8px] z-50 flex flex-col items-center justify-center rounded-2xl bg-white/90 p-6 text-center backdrop-blur-sm"
+                  >
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100/50">
+                      <m.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
+                      >
+                        <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </m.div>
+                    </div>
+                    <h3 className="mb-2 text-lg font-medium text-brand-charcoal">投递成功</h3>
+                    <p className="text-sm text-brand-charcoal/60">
+                      简历已送达，我们会尽快与您联系
+                    </p>
+                  </m.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </m.div>
