@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/upload";
-import { sendJobApplicationNotification } from "@/lib/email";
 import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
 
 // 表单验证 schema
