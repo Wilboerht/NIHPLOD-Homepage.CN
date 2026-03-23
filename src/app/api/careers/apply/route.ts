@@ -16,8 +16,6 @@ const ApplyFormSchema = z.object({
 // 允许的文件类型
 const ALLOWED_TYPES = [
   "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
 // 最大文件大小 10MB
@@ -71,7 +69,7 @@ export async function POST(request: NextRequest) {
     if (!ALLOWED_TYPES.includes(resumeFile.type)) {
       console.log("❌ [Apply API] Invalid file type:", resumeFile.type);
       return NextResponse.json(
-        { error: "仅支持 PDF、DOC、DOCX 格式的简历" },
+        { error: "仅支持 PDF 格式的简历" },
         { status: 400 }
       );
     }

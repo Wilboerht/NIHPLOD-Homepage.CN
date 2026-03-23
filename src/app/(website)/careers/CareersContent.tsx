@@ -427,7 +427,16 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.type !== "application/pdf") {
+        setSubmitStatus("error");
+        setErrorMessage("请上传 PDF 格式的简历");
+        setResumeFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
       setResumeFile(file);
+      setSubmitStatus("idle");
+      setErrorMessage(null);
     }
   };
 
@@ -599,8 +608,12 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
                   <input
                     type="tel"
                     required
+                    maxLength={11}
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "") })}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      setFormData({ ...formData, phone: value });
+                    }}
                     className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none focus:border-brand-gold"
                     placeholder="请输入11位手机号"
                   />
@@ -614,7 +627,7 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf"
                     onChange={handleFileChange}
                     className="hidden"
                   />
@@ -636,7 +649,7 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
                     ) : (
                       <>
                         <Upload className="h-4 w-4" />
-                        点击上传简历（PDF、DOC、DOCX）
+                        点击上传简历（请使用 PDF 格式）
                       </>
                     )}
                   </button>
