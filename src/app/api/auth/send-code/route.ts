@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendLoginCode, generateVerifyCode } from "@/lib/sms";
 import { z } from "zod";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 请求参数验证
 const sendCodeSchema = z.object({
@@ -25,6 +26,21 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. 全局 IP 频率限制 (防止大规模短信轰炸)
+    const ip = getClientIP(request);
+    const ipLimit = await rateLimit(ip, "form"); // 使用 form 级别的限制 (1分钟10次)
+    if (!ipLimit.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "TOO_MANY_REQUESTS",
+            message: "请求过于频繁，请稍后再试",
+          },
+        },
+        { status: 429 }
+      );
+    }
     const body = await request.json();
 
     // 参数验证

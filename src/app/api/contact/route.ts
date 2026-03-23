@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
@@ -21,6 +22,15 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // 速率限制检查
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "form");
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { error: "请求过于频繁，请稍后再试" },
+        { status: 429 }
+      );
+    }
     const body = await request.json();
 
     // 验证表单数据

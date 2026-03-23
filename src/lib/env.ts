@@ -23,23 +23,6 @@ export const authConfig = {
   adminPassword: process.env.ADMIN_PASSWORD || "",
 } as const;
 
-// AI 配置
-export const aiConfig = {
-  apiKey: process.env.DEEPSEEK_API_KEY || "",
-  apiUrl: process.env.DEEPSEEK_API_URL || "https://api.deepseek.com/v1",
-  model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
-} as const;
-
-// 邮件配置
-export const emailConfig = {
-  host: process.env.SMTP_HOST || "",
-  port: parseInt(process.env.SMTP_PORT || "587", 10),
-  user: process.env.SMTP_USER || "",
-  password: process.env.SMTP_PASSWORD || "",
-  from: process.env.SMTP_FROM || "",
-  fromName: process.env.SMTP_FROM_NAME || "NIHPLOD",
-  notificationEmail: process.env.NOTIFICATION_EMAIL || "",
-} as const;
 
 // 上传配置
 export const uploadConfig = {

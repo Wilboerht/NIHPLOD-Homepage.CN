@@ -159,11 +159,6 @@ async function reportToExternalService(entry: LogEntry) {
 }
 
 /**
- * AI 模块日志器
- */
-export const aiLogger = createLogger("AI");
-
-/**
  * API 模块日志器
  */
 export const apiLogger = createLogger("API");

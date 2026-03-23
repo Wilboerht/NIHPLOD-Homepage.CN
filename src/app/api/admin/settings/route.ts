@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
     workingHours: "",
   },
   seo: {
-    title: "NIHPLOD 旎柏 | 高端护肤品牌",
+    title: "NIHPLOD 旎柏",
     description: "源自摩纳哥的高端护肤品牌，为您带来奢华护肤体验。",
     keywords: "NIHPLOD,旎柏,护肤品,高端护肤,摩纳哥",
   },

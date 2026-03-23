@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/upload";
 import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 表单验证 schema
 const ApplyFormSchema = z.object({
@@ -25,8 +26,17 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  console.log("🚀 [Apply API] Received request");
   try {
+    // 速率限制检查
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "form");
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { error: "请求过于频繁，请稍后再试" },
+        { status: 429 }
+      );
+    }
+    console.log("🚀 [Apply API] Received request");
     const formData = await request.formData();
     console.log("📄 [Apply API] FormData parsed");
 

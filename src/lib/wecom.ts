@@ -32,6 +32,10 @@ export async function sendWecomNotification(
     return { success: false, error: "WECOM_BOT_WEBHOOK not configured" };
   }
 
+  // 10秒超时控制，防止接口由于网络原因挂起请求
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
   try {
     const message: WecomBotMessage = {
       msgtype: "markdown",
@@ -46,8 +50,10 @@ export async function sendWecomNotification(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(message),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
     const data = await response.json();
 
     if (data.errcode === 0) {
@@ -57,9 +63,20 @@ export async function sendWecomNotification(
       return { success: false, error: data.errmsg };
     }
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error("企业微信通知请求异常:", error);
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    const errorMsg = error instanceof Error 
+      ? (error.name === 'AbortError' ? '请求超时 (10s)' : error.message) 
+      : String(error);
+    return { success: false, error: errorMsg };
   }
+}
+
+/**
+ * 获取基础站点链接
+ */
+function getBaseUrl() {
+  return (process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn").replace(/\/$/, "");
 }
 
 /**
@@ -86,13 +103,15 @@ export function formatContactToWecom(data: {
 
   lines.push(`> **时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
 
+  const baseUrl = getBaseUrl();
+
   return `### 📢 NIHPLOD 新留言通知
 ${lines.join('\n')}
 
 **留言内容**:
 ${data.content}
 
-[点击后台查看](https://nihplod.cn/admin/messages)`;
+[点击后台查看](${baseUrl}/admin/messages)`;
 }
 
 /**
@@ -104,6 +123,8 @@ export function formatJobApplicationToWecom(data: {
   position: string;
   resumeUrl: string;
 }) {
+  const baseUrl = getBaseUrl();
+  
   return `### 💼 NIHPLOD 新求职申请
 > **申请人**: ${data.name}
 > **应聘职位**: ${data.position}
@@ -112,5 +133,5 @@ export function formatJobApplicationToWecom(data: {
 
 **简历详情**: [点击查看简历](${data.resumeUrl})
 
-[点击进入后台](https://nihplod.cn/admin/jobs)`;
+[点击进入后台](${baseUrl}/admin/jobs)`;
 }

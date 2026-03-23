@@ -128,42 +128,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [isGeneratingAIFaq, setIsGeneratingAIFaq] = useState(false);
-
-  // AI 生成 FAQ
-  const generateAIFaq = async () => {
-    if (!formData.name || !formData.description) {
-      showError("请先填写产品名称和描述，以便 AI 生成 FAQ");
-      return;
-    }
-
-    setIsGeneratingAIFaq(true);
-    try {
-      const res = await fetch("/api/admin/products/ai-gen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          nameEn: formData.nameEn,
-          description: formData.description,
-          benefits: formData.benefits,
-          ingredients: formData.ingredients,
-          usage: formData.usage,
-          categoryName: categories.find(c => c.id === formData.categoryId)?.name
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || "生成失败");
-
-      updateField("geoFaqs", data.data);
-      success("AI 已成功为您生成深度 GEO FAQ");
-    } catch (err) {
-      showError(err instanceof Error ? err.message : "生成失败");
-    } finally {
-      setIsGeneratingAIFaq(false);
-    }
-  };
 
   // 分类选项
   const categoryOptions: SelectOption[] = [
@@ -603,22 +567,22 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         <section className="rounded-xl bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-medium text-gray-900">GEO AI 优化 (SEO)</h2>
+              <h2 className="text-lg font-medium text-gray-900">GEO FAQ 优化 (SEO)</h2>
               <p className="text-xs text-gray-500 mt-1">
-                生成隐藏的问答对，提升在 AI 搜索（如 Perplexity, ChatGPT）中的曝光权重
+                编写针对 AI 搜索（如 Perplexity, ChatGPT）优化的问答对，提升曝光权重
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={generateAIFaq}
-              loading={isGeneratingAIFaq}
-              className="border-brand-gold text-brand-gold hover:bg-brand-gold/10"
-              leftIcon={<Sparkles className="h-4 w-4" />}
-            >
-              {formData.geoFaqs ? "重新生成 AI FAQ" : "AI 一键生成 GEO FAQ"}
-            </Button>
+            {!formData.geoFaqs && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => updateField("geoFaqs", [{ question: "", answer: "" }])}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                添加问答
+              </Button>
+            )}
           </div>
 
           {!formData.geoFaqs ? (
