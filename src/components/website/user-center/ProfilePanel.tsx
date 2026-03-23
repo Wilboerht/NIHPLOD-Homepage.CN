@@ -8,7 +8,6 @@
 import { useState, useRef } from "react";
 import { User, Phone, Edit3, Check, X, Camera, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import imageCompression from "browser-image-compression";
 
 export function ProfilePanel() {
   const { user, refreshUser } = useAuth();
@@ -67,68 +66,28 @@ export function ProfilePanel() {
     setUploadingAvatar(true);
 
     try {
-      // 1. 尝试获取 OSS 签名
-      const signRes = await fetch("/api/oss/sign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, type: file.type }),
-      });
+      /**
+       * 方案：统一由服务器端处理上传 (支持 OSS 或本地存储)
+       * 这消除了客户端压缩的负担，并允许后端统一处理 WebP 格式化
+       */
+      const formData = new FormData();
+      formData.append("file", file);
 
-      let avatarUrl = "";
-
-      if (signRes.ok) {
-        // --- 方案 A: OSS 存在，走 OSS 直传 ---
-        const signData = await signRes.json();
-        if (signData.success) {
-          const { uploadUrl, publicUrl } = signData.data;
-
-          const uploadRes = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-
-          if (!uploadRes.ok) throw new Error("OSS 上传失败");
-          avatarUrl = publicUrl;
-        } else {
-          throw new Error("OSS 签名失败");
-        }
-      } else {
-        // --- 方案 B: OSS 不存在或报错，走本地压缩降级 (Base64) ---
-        console.warn("OSS 签名失败，启用端侧压缩降级方案 (Base64)");
-
-        const options = {
-          maxSizeMB: 0.05, // 目标大小 50KB
-          maxWidthOrHeight: 200, // 头像不需要太大，200x200 足够
-          useWebWorker: true,
-          fileType: "image/webp" as string, // 强转 WebP，体积更小
-        };
-
-        const compressedFile = await imageCompression(file, options);
-
-        // 转换为 Base64
-        avatarUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(compressedFile);
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-        });
-      }
-
-      // 3. 更新用户资料 (提交 URL 或 Base64)
       const res = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatar: avatarUrl }),
+        method: "POST",
+        body: formData,
       });
 
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        // 更新成功后刷新用户信息
         await refreshUser();
       } else {
-        setAvatarError("更新头像失败");
+        throw new Error(data.error?.message || "上传头像失败");
       }
     } catch (err) {
-      console.error("头像上传彻底失败:", err);
+      console.error("头像上传失败:", err);
       setAvatarError(err instanceof Error ? err.message : "上传失败，请稍后重试");
     } finally {
       setUploadingAvatar(false);
