@@ -6,6 +6,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { Home, Send, CheckCircle, AlertCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ContactPageContent } from "@/types/page-content";
+import { useToast } from "@/hooks";
 
 type FormStatus = "idle" | "loading" | "success" | "error";
 
@@ -76,8 +77,8 @@ export function ContactContent({ content }: ContactContentProps) {
     website: "",
   });
   const [status, setStatus] = useState<FormStatus>("idle");
-  const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { success: toastSuccess, error: toastError } = useToast();
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -99,11 +100,15 @@ export function ContactContent({ content }: ContactContentProps) {
       newErrors.name = "请输入您的姓名";
     } else if (formData.name.length < 2) {
       newErrors.name = "姓名至少2个字符";
+    } else if (formData.name.length > 50) {
+      newErrors.name = "姓名最多50个字符";
     }
     if (!formData.email.trim()) {
       newErrors.email = "请输入您的邮箱";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "请输入有效的邮箱地址";
+    } else if (formData.email.length > 100) {
+      newErrors.email = "邮箱最多100个字符";
     }
     if (!formData.type) {
       newErrors.type = "请选择留言类型";
@@ -112,6 +117,8 @@ export function ContactContent({ content }: ContactContentProps) {
       newErrors.content = "请输入留言内容";
     } else if (formData.content.length < 10) {
       newErrors.content = "留言内容至少10个字符";
+    } else if (formData.content.length > 2000) {
+      newErrors.content = "留言内容最多2000个字符";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -122,25 +129,29 @@ export function ContactContent({ content }: ContactContentProps) {
     e.preventDefault();
     if (!validateForm()) return;
     setStatus("loading");
-    setMessage("");
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          content: formData.content.trim(),
+        }),
       });
       const data = await response.json();
       if (response.ok) {
         setStatus("success");
-        setMessage(data.message || "留言已提交");
+        toastSuccess(data.message || "留言已提交");
         setFormData({ name: "", email: "", type: "", content: "", website: "" });
       } else {
         setStatus("error");
-        setMessage(data.error || "提交失败，请稍后重试");
+        toastError(data.error || "提交失败，请稍后重试");
       }
     } catch {
       setStatus("error");
-      setMessage("网络错误，请检查您的网络连接");
+      toastError("网络错误，请检查您的网络连接");
     }
   };
 
@@ -184,19 +195,6 @@ export function ContactContent({ content }: ContactContentProps) {
 
               {/* 联系表单 */}
               <div className="mx-auto w-full max-w-xl">
-                {status === "success" && (
-                  <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-green-50/80 p-4 text-green-700 backdrop-blur-sm">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="text-sm">{message}</span>
-                  </div>
-                )}
-                {status === "error" && (
-                  <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-red-50/80 p-4 text-red-700 backdrop-blur-sm">
-                    <AlertCircle className="h-5 w-5" />
-                    <span className="text-sm">{message}</span>
-                  </div>
-                )}
-
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* 蜜罐字段 */}
                   <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
@@ -215,6 +213,7 @@ export function ContactContent({ content }: ContactContentProps) {
                         onChange={handleChange}
                         placeholder="请输入您的姓名"
                         autoComplete="name"
+                        maxLength={50}
                         className={cn(
                           "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
                           errors.name ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
@@ -236,6 +235,7 @@ export function ContactContent({ content }: ContactContentProps) {
                         placeholder="请输入您的邮箱"
                         autoComplete="email"
                         inputMode="email"
+                        maxLength={100}
                         className={cn(
                           "w-full rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
                           errors.email ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
@@ -343,6 +343,7 @@ export function ContactContent({ content }: ContactContentProps) {
                       onChange={handleChange}
                       placeholder="请输入您的留言内容..."
                       rows={5}
+                      maxLength={2000}
                       className={cn(
                         "w-full resize-none rounded-xl border bg-white/90 px-4 py-3 text-sm outline-none transition-all backdrop-blur-sm",
                         errors.content ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-beige/50 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
@@ -359,7 +360,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     {status === "loading" ? (
                       <><Loader2 className="h-4 w-4 animate-spin" /><span>提交中...</span></>
                     ) : (
-                      <><Send className="h-4 w-4" /><span>提交留言</span></>
+                      <><Send className="h-4 w-4" /><span>提交</span></>
                     )}
                   </button>
                 </form>

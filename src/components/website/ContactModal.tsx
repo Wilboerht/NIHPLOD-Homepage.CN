@@ -7,6 +7,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { X, Send, CheckCircle, AlertCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks";
 
 // 图标映射
 const iconMap: Record<string, typeof HelpCircle> = {
@@ -56,8 +57,8 @@ export function ContactModal() {
         website: "",
     });
     const [status, setStatus] = useState<FormStatus>("idle");
-    const [message, setMessage] = useState("");
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const { success: toastSuccess, error: toastError } = useToast();
     const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
     const typeDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -110,7 +111,6 @@ export function ContactModal() {
             setFormData({ name: "", email: "", type: "", content: "", location: "", memberAccount: "", website: "" });
             setStatus("idle");
             setErrors({});
-            setMessage("");
         }
     }, [contactOpen]);
 
@@ -133,12 +133,16 @@ export function ContactModal() {
             newErrors.name = "请输入您的姓名";
         } else if (formData.name.length < 2) {
             newErrors.name = "姓名至少2个字符";
+        } else if (formData.name.length > 50) {
+            newErrors.name = "姓名最多50个字符";
         }
         if (formData.type !== "application") {
             if (!formData.email.trim()) {
                 newErrors.email = "请输入您的邮箱";
             } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
                 newErrors.email = "请输入有效的邮箱地址";
+            } else if (formData.email.length > 100) {
+                newErrors.email = "邮箱最多100个字符";
             }
         }
         if (!formData.type) {
@@ -147,15 +151,21 @@ export function ContactModal() {
         if (formData.type === "application") {
             if (!formData.location?.trim()) {
                 newErrors.location = "请输入您的所在地";
+            } else if (formData.location.length > 100) {
+                newErrors.location = "所在地最多100个字符";
             }
             if (!formData.memberAccount?.trim()) {
                 newErrors.memberAccount = "请输入会员账号（手机号）";
+            } else if (formData.memberAccount.length > 20) {
+                newErrors.memberAccount = "会员账号过长 (最多20位)";
             }
         } else {
             if (!formData.content.trim()) {
                 newErrors.content = "请输入留言内容";
             } else if (formData.content.length < 10) {
                 newErrors.content = "留言内容至少10个字符";
+            } else if (formData.content.length > 2000) {
+                newErrors.content = "留言内容最多2000个字符";
             }
         }
         setErrors(newErrors);
@@ -167,11 +177,18 @@ export function ContactModal() {
         e.preventDefault();
         if (!validateForm()) return;
         setStatus("loading");
-        setMessage("");
         // 构造提交数据
-        const submitData = { ...formData };
+        const submitData = { 
+            ...formData,
+            name: formData.name.trim(),
+            email: formData.email.trim(),
+            content: formData.content.trim(),
+            location: formData.location?.trim(),
+            memberAccount: formData.memberAccount?.trim()
+        };
+
         if (formData.type === "application") {
-            submitData.content = `申请入驻\n所在地: ${formData.location}\n会员账号: ${formData.memberAccount}`;
+            submitData.content = `申请入驻\n所在地: ${submitData.location}\n会员账号: ${submitData.memberAccount}`;
         }
 
         try {
@@ -183,7 +200,7 @@ export function ContactModal() {
             const data = await response.json();
             if (response.ok) {
                 setStatus("success");
-                setMessage(data.message || "留言已提交");
+                toastSuccess(data.message || "留言已提交");
                 setFormData({ name: "", email: "", type: "", content: "", location: "", memberAccount: "", website: "" });
                 // 延迟关闭
                 setTimeout(() => {
@@ -191,11 +208,11 @@ export function ContactModal() {
                 }, 2000);
             } else {
                 setStatus("error");
-                setMessage(data.error || "提交失败，请稍后重试");
+                toastError(data.error || "提交失败，请稍后重试");
             }
         } catch {
             setStatus("error");
-            setMessage("网络错误，请检查您的网络连接");
+            toastError("网络错误，请检查您的网络连接");
         }
     };
 
@@ -237,19 +254,6 @@ export function ContactModal() {
                                     有任何问题？期待与您的每一次交流
                                 </p>
                             </div>
-
-                            {status === "success" && (
-                                <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-green-50/80 p-4 text-green-700">
-                                    <CheckCircle className="h-5 w-5" />
-                                    <span className="text-sm">{message}</span>
-                                </div>
-                            )}
-                            {status === "error" && (
-                                <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-red-50/80 p-4 text-red-700">
-                                    <AlertCircle className="h-5 w-5" />
-                                    <span className="text-sm">{message}</span>
-                                </div>
-                            )}
 
                             <form onSubmit={handleSubmit} className="space-y-5">
                                 {/* 蜜罐字段 */}
@@ -347,6 +351,7 @@ export function ContactModal() {
                                             name="name"
                                             value={formData.name}
                                             onChange={handleChange}
+                                            maxLength={50}
                                             className={cn(
                                                 "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
                                                 errors.name
@@ -367,6 +372,7 @@ export function ContactModal() {
                                                 name="email"
                                                 value={formData.email}
                                                 onChange={handleChange}
+                                                maxLength={100}
                                                 className={cn(
                                                     "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
                                                     errors.email
@@ -393,6 +399,7 @@ export function ContactModal() {
                                                 name="memberAccount"
                                                 value={formData.memberAccount || ""}
                                                 onChange={handleChange}
+                                                maxLength={20}
                                                 className={cn(
                                                     "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
                                                     errors.memberAccount
@@ -412,6 +419,7 @@ export function ContactModal() {
                                                 name="location"
                                                 value={formData.location || ""}
                                                 onChange={handleChange}
+                                                maxLength={100}
                                                 className={cn(
                                                     "w-full rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
                                                     errors.location
@@ -432,6 +440,7 @@ export function ContactModal() {
                                             onChange={handleChange}
                                             placeholder="请输入您的具体需求或建议..."
                                             rows={6}
+                                            maxLength={2000}
                                             className={cn(
                                                 "w-full resize-none rounded-xl border border-gray-200 bg-white px-5 py-4 text-base outline-none transition-all placeholder:text-gray-400",
                                                 errors.content
@@ -452,7 +461,7 @@ export function ContactModal() {
                                         {status === "loading" ? (
                                             <><Loader2 className="h-5 w-5 animate-spin" /><span>正在提交...</span></>
                                         ) : (
-                                            <><span>提交意向</span><Send className="h-4 w-4" /></>
+                                            <><span>提交</span><Send className="h-4 w-4" /></>
                                         )}
                                     </button>
                                 </div>

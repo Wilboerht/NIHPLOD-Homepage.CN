@@ -11,8 +11,8 @@ const ContactFormSchema = z.object({
   content: z.string().min(10, "留言内容至少10个字符").max(2000, "留言内容最多2000个字符"),
   // 可选的其他字段
   type: z.string().optional(),
-  location: z.string().optional(),
-  memberAccount: z.string().optional(),
+  location: z.string().max(100, "所在地最多100个字符").optional(),
+  memberAccount: z.string().max(20, "会员账号最多20位").optional(),
   // 蜜罐字段 - 如果有值说明是机器人
   website: z.string().optional(),
 });
