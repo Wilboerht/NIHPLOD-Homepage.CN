@@ -836,7 +836,7 @@
   top: 46%;
   left: 50%;
   transform: translate(-50%, -50%);
-  opacity: 0.3;
+  opacity: 0.7;
   pointer-events: none;
   z-index: 1;
   /* 在背景基础层之上，但在网格容器之下 */
@@ -861,7 +861,7 @@
     left: 0;
     transform: none; /* 移除任何偏移 */
     min-width: 0;
-    filter: grayscale(1) brightness(1.2);
+    filter: grayscale(1) brightness(0.75);
     z-index: 0;
   }
 }

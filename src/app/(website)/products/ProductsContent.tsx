@@ -699,7 +699,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     alt=""
                     fill
                     priority
-                    className="opacity-[0.08] scale-[1.5]"
+                    className="opacity-[0.20]"
                     style={{ objectFit: 'fill' }}
                   />
                 </div>

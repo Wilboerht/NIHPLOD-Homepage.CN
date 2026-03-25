@@ -31,6 +31,16 @@ const Watermark = () => (
         backgroundSize: '160% auto', // 为了更好地匹配内容，轻微调小尺寸
       }}
     />
+    {/* 移动端水印 */}
+    <div className="block md:hidden absolute inset-0">
+      <Image
+        src="/images/watermark-mobile.svg"
+        alt=""
+        fill
+        className="opacity-[0.20]"
+        style={{ objectFit: 'fill' }}
+      />
+    </div>
   </>
 );
 

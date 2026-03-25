@@ -95,7 +95,7 @@ export function KineticBackground() {
                         fill
                         priority
                         style={{ objectFit: 'fill' }}
-                        className="opacity-40 scale-[1.8]"
+                        className="opacity-55"
                     />
                 </div>
             </div>
