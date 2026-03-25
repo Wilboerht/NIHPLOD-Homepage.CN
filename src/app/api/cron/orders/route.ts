@@ -3,7 +3,7 @@ import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "@/lib/order"
 
 export const dynamic = "force-dynamic"; // 不缓存，每次都执行
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     console.log("[Cron] 开始执行订单定时任务...");
 
