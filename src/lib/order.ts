@@ -280,3 +280,101 @@ export async function cancelOrder(
   }
 }
 
+/**
+ * 自动取消超时未支付订单
+ * 默认 30 分钟未支付则自动取消，释放库存与优惠券
+ */
+export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: boolean; canceledCount: number; error?: string }> {
+  try {
+    const expiredTime = new Date(Date.now() - minutes * 60 * 1000);
+    
+    // 查找所有待支付且超时的订单记录
+    const expiredOrders = await prisma.order.findMany({
+      where: {
+        status: OrderStatus.PENDING,
+        createdAt: {
+          lt: expiredTime,
+        }
+      },
+      include: { items: true, userCoupon: true }
+    });
+
+    if (expiredOrders.length === 0) {
+      return { success: true, canceledCount: 0 };
+    }
+
+    let canceledCount = 0;
+
+    for (const order of expiredOrders) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          // 恢复库存
+          for (const item of order.items) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
+
+          // 释放优惠券
+          if (order.userCoupon) {
+            await tx.userCoupon.update({
+              where: { id: order.userCoupon.id },
+              data: { status: 'UNUSED' }
+            });
+          }
+
+          // 更新订单状态
+          await tx.order.update({
+            where: { id: order.id },
+            data: { 
+              status: OrderStatus.CANCELLED,
+              adminNote: order.adminNote ? `${order.adminNote}\n[系统] 超时未支付自动取消` : '[系统] 超时未支付自动取消'
+            },
+          });
+        });
+        canceledCount++;
+      } catch (err) {
+        console.error(`[Order] 自动取消订单 ${order.id} 失败:`, err);
+      }
+    }
+
+    console.log(`[Order] 系统自动取消了 ${canceledCount} 个超时订单`);
+    return { success: true, canceledCount };
+  } catch (error) {
+    console.error("[Order] 自动取消超时订单出错:", error);
+    return { success: false, canceledCount: 0, error: String(error) };
+  }
+}
+
+/**
+ * 自动完成（确认收货）超时未确认的已发货订单
+ * 默认 15 天后自动收货
+ */
+export async function autoCompleteShippedOrders(days = 15): Promise<{ success: boolean; completedCount: number; error?: string }> {
+  try {
+    const expiredTime = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const result = await prisma.order.updateMany({
+      where: {
+        status: OrderStatus.SHIPPED,
+        shippedAt: {
+          lt: expiredTime,
+        }
+      },
+      data: {
+        status: OrderStatus.COMPLETED,
+        receivedAt: new Date(),
+        // Prisma 不允许在 updateMany 中基于已有字段做字符串拼接，所以暂时不更新 adminNote
+      }
+    });
+
+    console.log(`[Order] 系统自动完成了 ${result.count} 个发货超期订单`);
+    return { success: true, completedCount: result.count };
+  } catch (error) {
+    console.error("[Order] 自动完成已发货订单出错:", error);
+    return { success: false, completedCount: 0, error: String(error) };
+  }
+}
+
+
