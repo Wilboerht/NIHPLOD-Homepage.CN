@@ -21,18 +21,6 @@ async function main() {
   console.log("🌱 开始初始化种子数据...\n");
 
   // 1. 创建默认管理员
-  const hashedPassword = await bcrypt.hash("admin123456", 12);
-  await prisma.admin.upsert({
-    where: { email: "admin@nihplod.cn" },
-    update: {},
-    create: {
-      email: "admin@nihplod.cn",
-      password: hashedPassword,
-      name: "Admin",
-    },
-  });
-  console.log("✅ 管理员账号已创建 (admin@nihplod.cn / admin123456)");
-
   const hankPassword = await bcrypt.hash("whk35168", 12);
   await prisma.admin.upsert({
     where: { email: "hank.wang@nihplod.cn" },
@@ -646,40 +634,17 @@ async function main() {
   }
   console.log("✅ 测试联系留言已创建 (5 条留言)");
 
-  // 10. 创建电商相关设置
-  const ecommerceSettings = [
-    {
-      key: "shipping",
-      value: {
-        freeShippingThreshold: 299,  // 满299包邮
-        baseShippingFee: 15,         // 基础运费
-        expressCompanies: ["顺丰速运", "京东物流", "圆通速递", "中通快递"],
-      },
-    },
-
-    {
-      key: "order",
-      value: {
-        autoCancelMinutes: 30,       // 未支付自动取消时间（分钟）
-        autoReceiveDays: 15,         // 自动确认收货天数
-        returnDays: 7,               // 可申请退货天数
-      },
-    },
-  ];
-  for (const s of ecommerceSettings) {
-    await prisma.setting.upsert({
-      where: { key: s.key },
-      update: { value: s.value },
-      create: s,
-    });
-  }
-  console.log("✅ 电商设置已创建 (运费/积分/订单规则)");
-
-  // 11. 创建默认页面逻辑已移除（页面内容现在统一在代码中管理）
+  // 10. 创建默认页面逻辑已移除（页面内容现在统一在代码中管理）
 
   console.log("\n🎉 种子数据初始化完成！");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("管理员登录: admin@nihplod.cn / admin123456");
+  console.log("管理员登录信息:");
+  console.log(" - hank.wang@nihplod.cn / whk35168");
+  console.log(" - kiki.wang@nihplod.cn / MOIDAS2026kiki");
+  console.log(" - walter@nihplod.cn / walter");
+  console.log(" - grace.zhang@nihplod.cn / grace2026");
+  console.log(" - skye.cao@nihplod.cn / 315426");
+  console.log(" - rosy.zhang@nihplod.cn / rosy2026");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 
