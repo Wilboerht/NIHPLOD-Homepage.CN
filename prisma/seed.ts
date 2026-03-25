@@ -69,6 +69,42 @@ async function main() {
   });
   console.log("✅ 管理员账号已创建 (walter@nihplod.cn / walter)");
 
+  const gracePassword = await bcrypt.hash("grace2026", 12);
+  await prisma.admin.upsert({
+    where: { email: "grace.zhang@nihplod.cn" },
+    update: {},
+    create: {
+      email: "grace.zhang@nihplod.cn",
+      password: gracePassword,
+      name: "Grace Zhang",
+    },
+  });
+  console.log("✅ 管理员账号已创建 (grace.zhang@nihplod.cn / grace2026)");
+
+  const skyePassword = await bcrypt.hash("skye2026", 12);
+  await prisma.admin.upsert({
+    where: { email: "skye.cao@nihplod.cn" },
+    update: {},
+    create: {
+      email: "skye.cao@nihplod.cn",
+      password: skyePassword,
+      name: "Skye Cao",
+    },
+  });
+  console.log("✅ 管理员账号已创建 (skye.cao@nihplod.cn / skye2026)");
+
+  const rosyPassword = await bcrypt.hash("rosy2026", 12);
+  await prisma.admin.upsert({
+    where: { email: "rosy.zhang@nihplod.cn" },
+    update: {},
+    create: {
+      email: "rosy.zhang@nihplod.cn",
+      password: rosyPassword,
+      name: "Rosy Zhang",
+    },
+  });
+  console.log("✅ 管理员账号已创建 (rosy.zhang@nihplod.cn / rosy2026)");
+
   // 2. 创建产品分类（包含 SVG 图标）
   const categories = [
     {
