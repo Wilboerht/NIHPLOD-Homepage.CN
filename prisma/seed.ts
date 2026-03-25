@@ -81,7 +81,7 @@ async function main() {
   });
   console.log("✅ 管理员账号已创建 (grace.zhang@nihplod.cn / grace2026)");
 
-  const skyePassword = await bcrypt.hash("skye2026", 12);
+  const skyePassword = await bcrypt.hash("315426", 12);
   await prisma.admin.upsert({
     where: { email: "skye.cao@nihplod.cn" },
     update: {},
@@ -196,7 +196,7 @@ async function main() {
       key: "site",
       value: {
         name: "NIHPLOD 旎柏",
-        description: "源自摩纳哥的高端护肤品牌",
+        description: "源自摩纳哥的高端护肤品牌，产品结合前沿科技与珍贵成分，为您开启逆转时光的奢华护肤之旅。",
         logo: "/images/logo.svg",
         favicon: "/favicon.ico",
       },
@@ -224,7 +224,7 @@ async function main() {
       key: "seo",
       value: {
         title: "NIHPLOD 旎柏 | 高端护肤品牌",
-        description: "源自摩纳哥的高端护肤品牌，为您带来奢华护肤体验。",
+        description: "源自摩纳哥的高端护肤品牌，产品结合前沿科技与珍贵成分，为您开启逆转时光的奢华护肤之旅。",
         keywords: "NIHPLOD,旎柏,护肤品,高端护肤,摩纳哥",
       },
     },
