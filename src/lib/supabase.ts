@@ -14,22 +14,23 @@ if (!supabaseUrl) {
   console.warn("⚠️ NEXT_PUBLIC_SUPABASE_URL 未配置");
 }
 
-/**
- * Supabase 公共客户端（用于前端）
- * 使用 anon key，受 RLS 策略限制
- */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// 验证配置并创建客户端
+export const supabase = supabaseUrl 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 /**
  * Supabase 服务端客户端（用于后端 API）
  * 使用 service role key，绕过 RLS 策略
  */
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+export const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  : null;
 
 // Storage bucket 名称
 export const STORAGE_BUCKET = "media";
@@ -38,6 +39,7 @@ export const STORAGE_BUCKET = "media";
  * 获取文件的公开 URL
  */
 export function getPublicUrl(path: string): string {
+  if (!supabase) return path; // 或者返回一个默认路径
   const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
@@ -50,6 +52,9 @@ export async function uploadToStorage(
   path: string,
   contentType: string
 ): Promise<{ url: string; error: Error | null }> {
+  if (!supabaseAdmin) {
+    return { url: "", error: new Error("Supabase Admin client is not initialized. Please check your environment variables.") };
+  }
   const { data, error } = await supabaseAdmin.storage
     .from(STORAGE_BUCKET)
     .upload(path, buffer, {
@@ -72,6 +77,9 @@ export async function uploadToStorage(
 export async function deleteFromStorage(
   paths: string[]
 ): Promise<{ error: Error | null }> {
+  if (!supabaseAdmin) {
+    return { error: new Error("Supabase Admin client is not initialized.") };
+  }
   const { error } = await supabaseAdmin.storage
     .from(STORAGE_BUCKET)
     .remove(paths);
