@@ -118,7 +118,7 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                     className="group flex flex-col items-center gap-2 mb-4"
                   >
                     <span className="text-2xl font-serif tracking-[0.3em] text-[#8B7355] transition-all group-hover:scale-105">
-                      探索更多
+                      探索旎柏
                     </span>
                     <div className="h-px w-12 bg-[#8B7355]/30 group-hover:w-20 transition-all duration-500" />
                   </button>
@@ -185,7 +185,7 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
           <div className="h-px w-4 bg-current opacity-40" />
           <div className="h-px w-2 bg-current opacity-40 ml-auto" />
         </div>
-        <span>查看资讯</span>
+        <span>更多</span>
       </m.button>
     </div>
   );
@@ -416,7 +416,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       whileTap={{ scale: 0.96 }}
                       className="btn btn-primary"
                     >
-                      探索更多
+                      探索旎柏
                     </m.button>
                     {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
                       <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
