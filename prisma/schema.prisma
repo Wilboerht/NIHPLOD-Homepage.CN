@@ -194,12 +194,55 @@ model User {
   orders        Order[]
   cartItems     CartItem[]
   userCoupons   UserCoupon[]
+  refreshTokens RefreshToken[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([phone])
   @@index([wechatOpenId])
+}
+
+// ============================================
+// 用户认证增强
+// ============================================
+
+/**
+ * Refresh Token 存储
+ * 用于实现 Token 刷新机制
+ */
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @db.Text                  // 加密后的 refresh token
+  expiresAt DateTime                           // 过期时间
+  revokedAt DateTime?                          // 撤销时间（已登出）
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId, expiresAt])
+  @@index([token])
+}
+
+/**
+ * 登录尝试记录
+ * 用于防止账户爆破和跟踪异常登录
+ */
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  phone     String                             // 手机号
+  type      String   @default("password")      // password | sms
+  success   Boolean                            // 是否成功
+  reason    String?                            // 失败原因（如：code_invalid、user_not_found 等）
+  ipAddress String?                            // IP 地址
+  userAgent String?  @db.Text                  // User Agent
+  
+  createdAt DateTime @default(now())
+  
+  @@index([phone, createdAt(sort: Desc)])
+  @@index([phone, success, createdAt(sort: Desc)])
 }
 
 model Address {

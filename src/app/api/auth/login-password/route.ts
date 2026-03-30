@@ -1,12 +1,25 @@
 ﻿/**
  * 手机号+密码登录 API
  * POST /api/auth/login-password
+ * 
+ * 安全增强：
+ * - 请求速率限制
+ * - 账户防爆破保护（失败5次后锁定30分钟）
+ * - 登录失败记录
+ * - 双Token机制（Access Token + Refresh Token）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { signUserToken, getTokenExpiresAt } from "@/lib/jwt";
+import { signUserToken, signRefreshToken, getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
 import { verifyPassword } from "@/lib/password";
 import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import {
+  checkAccountLockout,
+  recordLoginAttempt,
+  saveRefreshToken,
+  clearLoginAttempts,
+} from "@/lib/auth-security";
+import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 
 // 请求参数验证
@@ -39,12 +52,46 @@ export async function POST(request: NextRequest) {
 
     const { phone, password } = result.data;
 
-    // 查找用户
+    // 1. 项目级速率限制（防止滥用）
+    const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    const ipLimit = await rateLimit(clientIP, "login");
+    if (!ipLimit.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "TOO_MANY_REQUESTS",
+            message: "登录尝试过于频繁，请稍后再试",
+          },
+        },
+        { status: 429 }
+      );
+    }
+
+    // 2. 检查账户是否被锁定（防爆破）
+    const { locked, remainingMinutes } = await checkAccountLockout(phone);
+    if (locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_LOCKED",
+            message: `账户已被锁定，请在 ${remainingMinutes} 分钟后重试`,
+          },
+        },
+        { status: 429 }
+      );
+    }
+
+    // 3. 查找用户
     const user = await prisma.user.findUnique({
       where: { phone },
     });
 
     if (!user) {
+      // 记录失败尝试
+      await recordLoginAttempt(phone, false, request, "user_not_found", "password");
+
       return NextResponse.json(
         {
           success: false,
@@ -57,8 +104,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查是否设置了密码
+    // 4. 检查是否设置了密码
     if (!user.password) {
+      // 记录失败尝试
+      await recordLoginAttempt(phone, false, request, "password_not_set", "password");
+
       return NextResponse.json(
         {
           success: false,
@@ -71,9 +121,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证密码
+    // 5. 验证密码
     const isValid = await verifyPassword(password, user.password);
     if (!isValid) {
+      // 记录失败尝试
+      await recordLoginAttempt(phone, false, request, "password_incorrect", "password");
+
       return NextResponse.json(
         {
           success: false,
@@ -86,15 +139,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 签发 Token
-    const token = await signUserToken({
+    // 6. 记录成功登录
+    await recordLoginAttempt(phone, true, request, undefined, "password");
+
+    // 7. 清除失败登录记录（成功登录后重置）
+    await clearLoginAttempts(phone);
+
+    // 8. 签发 Access Token（短期，15分钟）
+    const accessToken = await signUserToken({
       id: user.id,
       phone: user.phone,
     });
 
-    const expiresAt = getTokenExpiresAt(30);
+    // 9. 签发 Refresh Token（长期，30天）
+    const refreshToken = await signRefreshToken({
+      id: user.id,
+      phone: user.phone,
+    });
 
-    // 构建响应
+    // 10. 保存 Refresh Token 到数据库
+    const refreshTokenExpiresAt = new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000
+    );
+    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
+
+    console.log(`[LoginPassword] 用户登录成功: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+
+    // 11. 构建响应
     const response = NextResponse.json({
       success: true,
       data: {
@@ -104,14 +175,17 @@ export async function POST(request: NextRequest) {
           nickname: user.nickname,
           avatar: user.avatar,
         },
-        expiresAt,
+        accessTokenExpiresAt: getTokenExpiresAt(15), // 15分钟
+        refreshTokenExpiresAt: getRefreshTokenExpiresAt(), // 30天
       },
     });
 
-    // 设置 Cookie
-    response.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
-
-    console.log(`[LoginPassword] 用户登录: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    // 12. 设置 Cookies
+    response.cookies.set(USER_COOKIE_NAME, accessToken, USER_COOKIE_OPTIONS);
+    response.cookies.set("user_refresh_token", refreshToken, {
+      ...USER_COOKIE_OPTIONS,
+      maxAge: 30 * 24 * 60 * 60, // 30天
+    });
 
     return response;
   } catch (error) {

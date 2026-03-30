@@ -1,11 +1,17 @@
 /**
  * 用户注册 API
  * POST /api/auth/register
+ * 
+ * 安全增强：
+ * - 请求速率限制（防垃圾注册）
+ * - 双Token机制（Access Token + Refresh Token）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { signUserToken, getTokenExpiresAt } from "@/lib/jwt";
+import { signUserToken, signRefreshToken, getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
 import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import { saveRefreshToken } from "@/lib/auth-security";
+import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
@@ -20,16 +26,30 @@ const registerSchema = z.object({
   path: ["confirmPassword"],
 });
 
-
-
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. 项目级速率限制（防止垃圾注册）
+    const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    const ipLimit = await rateLimit(clientIP, "form");
+    if (!ipLimit.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "TOO_MANY_REQUESTS",
+            message: "请求过于频繁，请稍后再试",
+          },
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
 
-    // 参数验证
+    // 2. 参数验证
     const result = registerSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
@@ -122,15 +142,25 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Register] 新用户注册: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
 
-    // 签发 Token
-    const token = await signUserToken({
+    // 3. 签发 Access Token（短期，15分钟）
+    const accessToken = await signUserToken({
       id: user.id,
       phone: user.phone,
     });
 
-    const expiresAt = getTokenExpiresAt(30);
+    // 4. 签发 Refresh Token（长期，30天）
+    const refreshToken = await signRefreshToken({
+      id: user.id,
+      phone: user.phone,
+    });
 
-    // 构建响应
+    // 5. 保存 Refresh Token 到数据库
+    const refreshTokenExpiresAt = new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000
+    );
+    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
+
+    // 6. 构建响应
     const response = NextResponse.json({
       success: true,
       data: {
@@ -141,12 +171,17 @@ export async function POST(request: NextRequest) {
           avatar: user.avatar,
         },
         isNewUser: true,
-        expiresAt,
+        accessTokenExpiresAt: getTokenExpiresAt(15), // 15分钟
+        refreshTokenExpiresAt: getRefreshTokenExpiresAt(), // 30天
       },
     });
 
-    // 设置 Cookie
-    response.cookies.set(USER_COOKIE_NAME, token, USER_COOKIE_OPTIONS);
+    // 7. 设置 Cookies
+    response.cookies.set(USER_COOKIE_NAME, accessToken, USER_COOKIE_OPTIONS);
+    response.cookies.set("user_refresh_token", refreshToken, {
+      ...USER_COOKIE_OPTIONS,
+      maxAge: 30 * 24 * 60 * 60, // 30天
+    });
 
     return response;
   } catch (error) {

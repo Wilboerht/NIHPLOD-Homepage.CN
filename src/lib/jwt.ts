@@ -1,6 +1,10 @@
 /**
  * JWT 工具
  * 使用 jose 库实现 JWT 签名和验证
+ * 
+ * Token 策略：
+ * - Access Token：短期（15分钟），用于 API 请求
+ * - Refresh Token：长期（30天），用于获取新 Access Token
  */
 import { SignJWT, jwtVerify, type JWTPayload as JoseJWTPayload } from "jose";
 
@@ -11,7 +15,9 @@ const secret = new TextEncoder().encode(
 
 // JWT 过期时间
 const adminExpiresIn = process.env.JWT_EXPIRES_IN || "7d";
-const userExpiresIn = process.env.USER_JWT_EXPIRES_IN || "30d";
+// C端用户 Token 时间
+const accessTokenExpiresIn = "15m";   // Access Token 15分钟
+const refreshTokenExpiresIn = "30d";  // Refresh Token 30天
 
 // ============================================
 // 管理员 Token
@@ -57,7 +63,7 @@ export const signJWT = signToken;
 export const verifyJWT = verifyToken;
 
 // ============================================
-// C端用户 Token
+// C端用户 Token（双 Token 策略）
 // ============================================
 
 export interface UserJWTPayload extends JoseJWTPayload {
@@ -66,8 +72,14 @@ export interface UserJWTPayload extends JoseJWTPayload {
   type: "user";
 }
 
+export interface RefreshTokenPayload extends JoseJWTPayload {
+  id: string;
+  phone: string;
+  type: "refresh";
+}
+
 /**
- * 签发用户 JWT Token
+ * 签发用户 Access Token（短期，15分钟）
  */
 export async function signUserToken(payload: {
   id: string;
@@ -76,14 +88,14 @@ export async function signUserToken(payload: {
   const token = await new SignJWT({ ...payload, type: "user" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(userExpiresIn)
+    .setExpirationTime(accessTokenExpiresIn)
     .sign(secret);
 
   return token;
 }
 
 /**
- * 验证用户 JWT Token
+ * 验证用户 Access Token
  */
 export async function verifyUserToken(token: string): Promise<UserJWTPayload | null> {
   try {
@@ -99,8 +111,49 @@ export async function verifyUserToken(token: string): Promise<UserJWTPayload | n
 }
 
 /**
- * 获取 Token 过期时间戳（秒）
+ * 签发用户 Refresh Token（长期，30天）
+ * 用于在 Access Token 过期后获取新的 Access Token
  */
-export function getTokenExpiresAt(days: number = 30): number {
-  return Math.floor(Date.now() / 1000) + days * 24 * 60 * 60;
+export async function signRefreshToken(payload: {
+  id: string;
+  phone: string;
+}): Promise<string> {
+  const token = await new SignJWT({ ...payload, type: "refresh" as const })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(refreshTokenExpiresIn)
+    .sign(secret);
+
+  return token;
+}
+
+/**
+ * 验证用户 Refresh Token
+ */
+export async function verifyRefreshToken(token: string): Promise<RefreshTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    // 确保是 refresh token
+    if ((payload as RefreshTokenPayload).type !== "refresh") {
+      return null;
+    }
+    return payload as RefreshTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 获取 Token 过期时间戳（秒）
+ * @param minutes 分钟数
+ */
+export function getTokenExpiresAt(minutes: number = 15): number {
+  return Math.floor(Date.now() / 1000) + minutes * 60;
+}
+
+/**
+ * 获取 Refresh Token 过期时间戳（秒，30天）
+ */
+export function getRefreshTokenExpiresAt(): number {
+  return Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
 }
