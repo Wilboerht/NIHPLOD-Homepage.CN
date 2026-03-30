@@ -245,6 +245,26 @@ model LoginAttempt {
   @@index([phone, success, createdAt(sort: Desc)])
 }
 
+model PaymentNotification {
+  id               String            @id @default(cuid())
+  gateway          String            // "wechat" 或 "alipay"
+  notificationId   String            // 通知ID（微信: out_trade_no, 支付宝: trade_no）
+  transactionId    String            // 交易ID（微信: transaction_id, 支付宝: trade_no）
+  amount           Int               // 金额（分）
+  status           String            @default("PENDING") // "PENDING" | "SUCCESS" | "FAILED"
+  rawData          String            @db.Text // 原始通知数据（JSON）
+  errorMessage     String?           // 错误信息
+  processedAt      DateTime?         // 处理时间
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // 复合索引：确保同一个通知在同一个网关上只处理一次
+  @@unique([gateway, notificationId])
+  @@index([gateway, status])
+  @@index([transactionId])
+  @@index([createdAt])
+}
+
 model Address {
   id          String   @id @default(cuid())
   userId      String
@@ -328,6 +348,12 @@ model Order {
   paymentTime    DateTime?
   paymentNo      String?
 
+  // 退款
+  refundNo       String?                       // 退款单号（微信/支付宝）
+  refundAmount   Decimal?    @db.Decimal(10, 2) // 退款金额
+  refundTime     DateTime?
+  refundStatus   RefundStatus? // PENDING | SUCCESS | FAILED | CLOSED
+
   // 物流
   shippingCompany String?
   trackingNo      String?
@@ -368,6 +394,7 @@ model OrderItem {
 
 enum OrderStatus {
   PENDING      // 待支付
+  PAYING       // 支付中（新增中间状态）
   PAID         // 已支付
   PROCESSING   // 处理中
   SHIPPED      // 已发货
@@ -376,6 +403,13 @@ enum OrderStatus {
   CANCELLED    // 已取消
   REFUNDING    // 退款中
   REFUNDED     // 已退款
+}
+
+enum RefundStatus {
+  PENDING      // 退款待处理
+  SUCCESS      // 退款成功
+  FAILED       // 退款失败
+  CLOSED       // 退款关闭
 }
 
 // ============================================

@@ -8,6 +8,7 @@ import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { initializeApp } from "@/lib/server-init";
 
 // Playfair Display 字体
 const playfair = Playfair_Display({
@@ -97,6 +98,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 初始化应用（定时任务等）
+  initializeApp();
+
   return (
     <ViewTransitions>
       <html lang="zh-CN">

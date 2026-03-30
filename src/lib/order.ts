@@ -288,10 +288,12 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
   try {
     const expiredTime = new Date(Date.now() - minutes * 60 * 1000);
     
-    // 查找所有待支付且超时的订单记录
+    // 查找所有待支付或支付中且超时的订单
     const expiredOrders = await prisma.order.findMany({
       where: {
-        status: OrderStatus.PENDING,
+        status: {
+          in: [OrderStatus.PENDING, OrderStatus.PAYING],
+        },
         createdAt: {
           lt: expiredTime,
         }

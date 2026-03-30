@@ -5,6 +5,7 @@
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { Wechatpay, Rsa, Formatter, Aes } from "wechatpay-axios-plugin";
+import { yuanToFen, moneyEqual } from "./money";
 
 // 格式化证书/私钥：处理 \n、引号以及多行格式
 const formatKey = (key?: string) => {
@@ -74,7 +75,7 @@ export async function createPayment(
     if (!order) return { success: false, error: "订单不存在" };
     if (order.status !== OrderStatus.PENDING) return { success: false, error: "订单状态不可支付" };
 
-    const amount = Math.round(Number(order.payAmount) * 100);
+    const amount = yuanToFen(order.payAmount);
     const description = `${config.siteName}-${order.items[0]?.productName || "订单"}`;
 
     let response: { data: { code_url?: string; prepay_id?: string; h5_url?: string } };
@@ -207,7 +208,12 @@ export async function handlePaymentNotify(
     await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { orderNo } });
       if (!order) throw new Error("ORDER_NOT_FOUND");
-      if (Math.round(Number(order.payAmount) * 100) !== totalFee) throw new Error("AMOUNT_MISMATCH");
+      
+      // 使用金额工具函数进行精确比较（允许1分钱的容差）
+      if (!moneyEqual(order.payAmount, totalFee / 100)) {
+        throw new Error("AMOUNT_MISMATCH");
+      }
+      
       if (order.status === OrderStatus.PAID) return;
 
       await tx.order.update({

@@ -8,6 +8,7 @@ import { verifyUserAuth } from "@/lib/auth";
 import { createPayment } from "@/lib/wechat-pay";
 import { createAlipayPayment } from "@/lib/alipay";
 import { createUnionPayPayment } from "@/lib/unionpay";
+import { isPaymentMethodEnabled } from "@/lib/payment-config";
 import { z } from "zod";
 
 // 创建支付参数验证
@@ -43,6 +44,14 @@ export async function POST(request: NextRequest) {
 
     const { orderId, payMethod, tradeType } = result.data;
 
+    // 检查支付方式是否启用
+    if (!isPaymentMethodEnabled(payMethod)) {
+      return NextResponse.json(
+        { success: false, error: { code: "PAYMENT_METHOD_DISABLED", message: `${payMethod} 暂不可用` } },
+        { status: 400 }
+      );
+    }
+
     // 验证订单归属
     const order = await prisma.order.findFirst({
       where: { id: orderId, userId: payload.id },
@@ -54,6 +63,20 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // 检查订单状态 - 只能从 PENDING 或 PAYING 发起支付
+    if (order.status !== "PENDING" && order.status !== "PAYING") {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_STATUS", message: "订单状态不支持支付" } },
+        { status: 400 }
+      );
+    }
+
+    // 将订单状态更新为 PAYING（支付中）
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: "PAYING" },
+    });
 
     // 支付宝支付
     if (payMethod === "alipay") {

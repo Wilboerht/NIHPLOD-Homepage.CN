@@ -5,6 +5,7 @@
 import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
+import { formatMoney } from "./money";
 
 // 支付宝配置
 const ALIPAY_CONFIG = {
@@ -81,7 +82,7 @@ export async function createAlipayPayment(orderId: string): Promise<{
     // 构建业务参数
     const bizContent = {
       out_trade_no: order.orderNo,
-      total_amount: Number(order.payAmount).toFixed(2),
+      total_amount: formatMoney(order.payAmount),
       subject: `你好朵朵-${order.items[0]?.productName || "商品"}`,
       product_code: "QUICK_WAP_WAY",
     };
@@ -181,7 +182,7 @@ export async function handleAlipayNotify(
 }
 
 /**
- * 支付宝退款
+ * 支付宝退款（内部函数，已废弃，使用 applyAlipayRefund）
  */
 export async function refundAlipayOrder(
   outTradeNo: string,
@@ -230,6 +231,38 @@ export async function refundAlipayOrder(
 
   } catch (e) {
     console.error("[Alipay] 退款异常:", e);
+    return { success: false, error: "Alipay Refund API Error" };
+  }
+}
+
+/**
+ * 申请支付宝退款
+ */
+export async function applyAlipayRefund(data: {
+  tradeNo: string;
+  refundAmount: string;
+  refundReason: string;
+}): Promise<{ success: boolean; refundNo?: string; error?: string }> {
+  try {
+    const result = await refundAlipayOrder(
+      data.tradeNo,
+      parseFloat(data.refundAmount),
+      data.refundReason
+    );
+
+    if (result.success) {
+      return {
+        success: true,
+        refundNo: `${data.tradeNo}-${Date.now()}`,
+      };
+    } else {
+      return {
+        success: false,
+        error: result.error,
+      };
+    }
+  } catch (e) {
+    console.error("[Alipay] 申请退款异常:", e);
     return { success: false, error: "Alipay Refund API Error" };
   }
 }
