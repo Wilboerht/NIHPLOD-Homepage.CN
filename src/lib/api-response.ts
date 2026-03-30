@@ -117,14 +117,14 @@ export interface ErrorResponse {
   error: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
 }
 
 /**
  * 统一的成功响应
  */
-export interface SuccessResponse<T = any> {
+export interface SuccessResponse<T = unknown> {
   success: true;
   data?: T;
   message?: string;
@@ -136,7 +136,7 @@ export interface SuccessResponse<T = any> {
 export function errorResponse(
   code: ErrorCode,
   customMessage?: string,
-  details?: any
+  details?: unknown
 ): [ErrorResponse, number] {
   const httpStatus = HttpStatusMap[code];
   const message = customMessage || ErrorMessageMap[code];
@@ -147,7 +147,7 @@ export function errorResponse(
       error: {
         code,
         message,
-        ...(details && { details }),
+        ...(details ? { details } : {}),
       },
     },
     httpStatus,
@@ -157,12 +157,12 @@ export function errorResponse(
 /**
  * 返回成功响应
  */
-export function successResponse<T = any>(data?: T, message?: string): [SuccessResponse<T>, number] {
+export function successResponse<T = unknown>(data?: T, message?: string): [SuccessResponse<T>, number] {
   return [
     {
       success: true,
-      ...(data && { data }),
-      ...(message && { message }),
+      ...(data ? { data } : {}),
+      ...(message ? { message } : {}),
     },
     200,
   ];
@@ -174,7 +174,7 @@ export function successResponse<T = any>(data?: T, message?: string): [SuccessRe
 export function apiError(
   code: ErrorCode,
   customMessage?: string,
-  details?: any
+  details?: unknown
 ): NextResponse<ErrorResponse> {
   const [response, status] = errorResponse(code, customMessage, details);
   return NextResponse.json(response, { status });
@@ -183,7 +183,7 @@ export function apiError(
 /**
  * NextResponse 成功包装
  */
-export function apiSuccess<T = any>(data?: T, message?: string): NextResponse<SuccessResponse<T>> {
+export function apiSuccess<T = unknown>(data?: T, message?: string): NextResponse<SuccessResponse<T>> {
   const [response] = successResponse(data, message);
   return NextResponse.json(response, { status: 200 });
 }

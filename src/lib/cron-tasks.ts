@@ -126,10 +126,11 @@ export async function runCronTaskManually(taskName: string): Promise<{ success: 
       success: true,
       message: `任务 ${taskName} 执行成功`,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      message: `任务 ${taskName} 执行失败: ${error.message}`,
+      message: `任务 ${taskName} 执行失败: ${errorMessage}`,
     };
   }
 }

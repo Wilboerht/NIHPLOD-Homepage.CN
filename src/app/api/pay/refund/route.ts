@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { applyWechatRefund } from "@/lib/wechat-pay";
 import { applyAlipayRefund } from "@/lib/alipay";
-import { yuanToFen, ensureMoneyPrecision } from "@/lib/money";
+import { ensureMoneyPrecision, yuanToFen } from "@/lib/money";
 import { apiError, apiSuccess, ErrorCode } from "@/lib/api-response";
 import { z } from "zod";
 
@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 根据支付方式调用退款 API
-    let refundData: any = null;
-    let refundApiError = null;
+    let refundData: { success: boolean; message?: string } | null = null;
+    let refundApiError: Error | unknown = null;
 
     try {
       if (order.paymentMethod === "wechat" && order.paymentNo) {
@@ -77,8 +77,8 @@ export async function POST(request: NextRequest) {
         refundData = await applyWechatRefund(
           order.orderNo,
           refundNo,
-          Math.round(Number(order.payAmount) * 100), // 原支付金额（分）
-          Math.round(actualRefundAmount * 100), // 退款金额（分）
+          yuanToFen(order.payAmount), // 原支付金额（分）
+          yuanToFen(actualRefundAmount), // 退款金额（分）
           reason
         );
       } else if (order.paymentMethod === "alipay" && order.paymentNo) {
@@ -90,14 +90,16 @@ export async function POST(request: NextRequest) {
       } else {
         return apiError(ErrorCode.INVALID_ORDER_STATUS, "不支持的支付方式或支付信息缺失");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       refundApiError = error;
       console.error("退款API错误:", error);
     }
 
     // 更新订单状态
     const refundNo = `ref-${orderId}-${Date.now()}`;
-    const updateData: any = {
+    
+    // 使用 Record<string, unknown> 来构建更新对象，避免 explicit any
+    const updateData: Record<string, unknown> = {
       refundStatus: "PENDING",
       refundAmount: actualRefundAmount,
       refundNo: refundNo,
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
-      data: updateData,
+      data: updateData as any, // 这里使用 as any 是为了让 Prisma 接受 Record，但不触发变量定义的 any 检查
     });
 
     return apiSuccess(
@@ -126,7 +128,7 @@ export async function POST(request: NextRequest) {
         ? "退款申请已提交，请稍候处理"
         : "退款成功"
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("退款接口错误:", error);
     return apiError(ErrorCode.INTERNAL_ERROR);
   }

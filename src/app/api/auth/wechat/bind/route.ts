@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        let { phone, code, password, allowAutoPassword } = result.data;
+        const { phone, code, allowAutoPassword } = result.data;
+        let { password } = result.data;
 
         const bindToken = request.cookies.get("wechat_bind_token")?.value;
         if (!bindToken) {

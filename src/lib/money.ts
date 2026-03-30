@@ -5,7 +5,7 @@
  */
 
 // 允许的参数类型
-type MoneyValue = number | string | any; // any 用于 Prisma Decimal 类型
+type MoneyValue = number | string | { toString(): string }; // 支持 Prisma Decimal 等具有 toString 方法的类型
 
 /**
  * 将值转换为字符串

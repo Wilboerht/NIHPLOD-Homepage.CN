@@ -90,7 +90,7 @@ export async function recordNotification(
   notificationId: string,
   transactionId: string,
   amount: number,
-  rawData: any
+  rawData: unknown
 ): Promise<{ success: boolean; recordId?: string; error?: string }> {
   try {
     const record = await prisma.paymentNotification.create({
@@ -105,9 +105,9 @@ export async function recordNotification(
     });
 
     return { success: true, recordId: record.id };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 可能已存在该记录（并发请求）
-    if (error.code === "P2002") {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
       console.warn(`[Notification] 通知 ${notificationId} 已被其他请求处理`);
       return { success: false, error: "Concurrent processing" };
     }

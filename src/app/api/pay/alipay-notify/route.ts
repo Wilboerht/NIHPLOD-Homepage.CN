@@ -73,10 +73,11 @@ export async function POST(request: NextRequest) {
       console.error("[AlipayNotify] 处理失败:", result.message);
       return new NextResponse("fail", { status: 200 });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     // 标记为失败
     if (recordId) {
-      await markNotificationFailed(recordId, error.message || String(error));
+      await markNotificationFailed(recordId, errorMessage);
     }
     console.error("[AlipayNotify] 异常:", error);
     return new NextResponse("fail", { status: 200 });

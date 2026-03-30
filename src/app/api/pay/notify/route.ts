@@ -78,10 +78,11 @@ export async function POST(request: NextRequest) {
       console.error("[PayNotify] 处理失败:", result.message);
       return NextResponse.json({ code: "FAIL", message: result.message }, { status: 400 });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     // 标记为失败
     if (recordId) {
-      await markNotificationFailed(recordId, error.message || String(error));
+      await markNotificationFailed(recordId, errorMessage);
     }
     console.error("[PayNotify] 异常:", error);
     return NextResponse.json({ code: "FAIL", message: "系统错误" }, { status: 500 });
