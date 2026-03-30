@@ -28,3 +28,36 @@ export async function verifyPassword(
 ): Promise<boolean> {
   return bcrypt.compare(password, hashedPassword);
 }
+
+/**
+ * 生成安全的随机密码
+ * 用于微信登录自动生成密码场景
+ * @param length 密码长度，默认 32
+ * @returns 随机密码字符串
+ */
+export function generateSecurePassword(length: number = 32): string {
+  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
+  let password = "";
+  const charsetLength = charset.length;
+  
+  // 确保包含大写、小写、数字、特殊字符
+  const has = {
+    upper: false,
+    lower: false,
+    digit: false,
+    special: false,
+  };
+
+  while (password.length < length || !has.upper || !has.lower || !has.digit || !has.special) {
+    const randomIndex = Math.floor(Math.random() * charsetLength);
+    const char = charset[randomIndex];
+    password += char;
+
+    if (/[A-Z]/.test(char)) has.upper = true;
+    if (/[a-z]/.test(char)) has.lower = true;
+    if (/[0-9]/.test(char)) has.digit = true;
+    if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(char)) has.special = true;
+  }
+
+  return password.slice(0, length);
+}
