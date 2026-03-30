@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
-      data: updateData as any, // 这里使用 as any 是为了让 Prisma 接受 Record，但不触发变量定义的 any 检查
+      data: updateData as unknown as Parameters<typeof prisma.order.update>[0]["data"],
     });
 
     return apiSuccess(
