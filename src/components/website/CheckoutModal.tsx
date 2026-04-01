@@ -4,7 +4,7 @@
  * 结算模态框组件
  * 自然纹理风格 - 与 UserCenterModal 风格一致
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { X, MapPin, ChevronRight, ShoppingBag, FileText, Loader2, Check } from "lucide-react";
@@ -77,13 +77,7 @@ export function CheckoutModal() {
   }, [closeCheckout]);
 
   // 加载结算数据
-  useEffect(() => {
-    if (checkoutOpen && user) {
-      loadCheckoutData();
-    }
-  }, [checkoutOpen, user]);
-
-  const loadCheckoutData = async () => {
+  const loadCheckoutData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -122,7 +116,13 @@ export function CheckoutModal() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [checkoutSelectedProductIds]);
+
+  useEffect(() => {
+    if (checkoutOpen && user) {
+      loadCheckoutData();
+    }
+  }, [checkoutOpen, user, loadCheckoutData]);
 
   // 提交订单
   const handleSubmit = async () => {

@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     // 支付宝要求返回 "success" 字符串
     return new NextResponse("success", { status: 200 });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const _errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[AlipayRefundNotify] 异常:", error);
     return new NextResponse("fail", { status: 200 });
   }
