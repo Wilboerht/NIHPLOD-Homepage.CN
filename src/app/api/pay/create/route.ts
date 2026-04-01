@@ -9,6 +9,7 @@ import { createPayment } from "@/lib/wechat-pay";
 import { createAlipayPayment } from "@/lib/alipay";
 import { createUnionPayPayment } from "@/lib/unionpay";
 import { isPaymentMethodEnabled } from "@/lib/payment-config";
+import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 
 // 创建支付参数验证
@@ -29,6 +30,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
+      );
+    }
+
+    // 速率限制检查（双重限制：IP + 用户）
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await dualRateLimit(
+      clientIP,
+      payload.id,
+      "payment-create",
+      "payment-user"
+    );
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: `请求过于频繁，请在 ${Math.ceil((rateLimitResult.reset - Date.now()) / 1000)} 秒后重试`,
+          },
+        },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
       );
     }
 

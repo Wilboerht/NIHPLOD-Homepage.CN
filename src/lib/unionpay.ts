@@ -168,13 +168,20 @@ export async function handleUnionPayNotify(body: Record<string, string>): Promis
 
 /**
  * 发起银联退款
+ * @param billNo 原账单号（订单号）
+ * @param refundAmount 退款金额（元）
  */
 export async function refundUnionPayOrder(
-    originalOrderId: string,
-    originalQueryId: string, // 银联这里一般不用原 queryId, 直接用 billNo
+    billNo: string,
     refundAmount: number
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        // 验证金额
+        if (refundAmount <= 0) {
+            console.warn("[UnionPay] 退款金额必须大于0");
+            return { success: false, error: "退款金额必须大于0" };
+        }
+
         // 创建新的交易流水号作为退款单号
         const refundOrderId = "R" + Date.now() + Math.floor(Math.random() * 1000);
         const amount = Math.round(refundAmount * 100);
@@ -187,7 +194,7 @@ export async function refundUnionPayOrder(
             mid: UMS_CONFIG.mid,
             tid: UMS_CONFIG.tid,
             instMid: UMS_CONFIG.instMid,
-            billNo: originalOrderId, // 原订单号
+            billNo: billNo, // 原账单号
             refundOrderId: refundOrderId, // 本次退款新单号
             refundAmount: amount, // 退款金额（分）
         };

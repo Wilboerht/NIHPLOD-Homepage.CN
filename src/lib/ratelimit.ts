@@ -76,6 +76,12 @@ export const RATE_LIMIT_PRESETS = {
   "chat-user": { maxRequests: 15, windowMs: 60 * 1000 },
   /** OSS 签名获取限制 - 每分钟 20 次 */
   "oss-sign": { maxRequests: 20, windowMs: 60 * 1000 },
+  /** 支付创建限制 - 每分钟 10 次（防止恶意支付订单创建） */
+  "payment-create": { maxRequests: 10, windowMs: 60 * 1000 },
+  /** 退款申请限制 - 每分钟 5 次（防止滥用） */
+  "refund-request": { maxRequests: 5, windowMs: 60 * 1000 },
+  /** 用户级支付限制 - 每分钟 20 次 */
+  "payment-user": { maxRequests: 20, windowMs: 60 * 1000 },
 } as const;
 
 /**

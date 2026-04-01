@@ -1,20 +1,23 @@
 /**
  * 申请退款 API
  * POST /api/pay/refund
+ * 
+ * 用户端退款申请（仅改变订单状态为 REFUNDING，等待管理员审批）
+ * 实际退款由管理员通过后台审批时触发
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
-import { applyWechatRefund } from "@/lib/wechat-pay";
-import { applyAlipayRefund } from "@/lib/alipay";
-import { ensureMoneyPrecision, yuanToFen } from "@/lib/money";
+import { ensureMoneyPrecision } from "@/lib/money";
 import { apiError, apiSuccess, ErrorCode } from "@/lib/api-response";
+import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
+import { OrderStatus } from "@/generated/prisma/client";
 
 // 退款参数验证
 const refundSchema = z.object({
   orderId: z.string().min(1, "订单ID不能为空"),
-  reason: z.string().optional().default("用户申请退款"),
+  reason: z.string().min(5, "退款原因需至少5个字符").max(500, "退款原因过长"),
   refundAmount: z.number().positive("退款金额必须大于0").optional(),
 });
 
@@ -29,92 +32,93 @@ export async function POST(request: NextRequest) {
       return apiError(ErrorCode.UNAUTHORIZED);
     }
 
+    // 速率限制检查（防止滥用退款申请）
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await dualRateLimit(
+      clientIP,
+      payload.id,
+      "refund-request",
+      "refund-request"
+    );
+
+    if (!rateLimitResult.success) {
+      return apiError(
+        ErrorCode.RATE_LIMITED,
+        `请求过于频繁，请在 ${Math.ceil((rateLimitResult.reset - Date.now()) / 1000)} 秒后重试`
+      );
+    }
+
     const body = await request.json();
     const result = refundSchema.safeParse(body);
 
     if (!result.success) {
-      return apiError(ErrorCode.INVALID_PARAMS, "参数验证失败");
+      const firstError = result.error.issues?.[0]?.message || "参数验证失败";
+      return apiError(ErrorCode.INVALID_PARAMS, firstError);
     }
 
     const { orderId, reason, refundAmount } = result.data;
 
-    // 获取订单
+    // 获取订单（包含items用于后续库存恢复）
     const order = await prisma.order.findFirst({
       where: { id: orderId, userId: payload.id },
+      include: { items: true },
     });
 
     if (!order) {
       return apiError(ErrorCode.ORDER_NOT_FOUND);
     }
 
-    // 检查订单状态
-    if (order.status !== "PAID" && order.status !== "PROCESSING" && order.status !== "SHIPPED") {
+    // 检查订单状态：只有已支付、处理中、已发货的订单才能申请退款
+    const refundableStatus: (typeof OrderStatus)[keyof typeof OrderStatus][] = [
+      OrderStatus.PAID,
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPED,
+    ];
+
+    if (!refundableStatus.includes(order.status)) {
       return apiError(ErrorCode.INVALID_ORDER_STATUS, "该订单状态不支持退款");
     }
 
-    // 检查是否已在退款中
-    if (order.refundStatus === "PENDING" || order.refundStatus === "SUCCESS") {
-      return apiError(ErrorCode.REFUND_ALREADY_PROCESSING);
+    // 检查是否已有退款申请在处理中
+    if (order.status === OrderStatus.REFUNDING) {
+      return apiError(ErrorCode.REFUND_ALREADY_PROCESSING, "您已有退款申请正在处理中");
     }
 
-    // 确定退款金额（如果未指定，则使用全额）
+    if (order.refundStatus === "SUCCESS" || order.status === OrderStatus.REFUNDED) {
+      return apiError(ErrorCode.REFUND_ALREADY_PROCESSING, "该订单已退款");
+    }
+
+    // 验证退款金额
     const actualRefundAmount = refundAmount 
       ? ensureMoneyPrecision(refundAmount) 
       : Number(order.payAmount);
 
-    // 验证退款金额
+    if (actualRefundAmount <= 0) {
+      return apiError(ErrorCode.INVALID_PARAMS, "退款金额必须大于0");
+    }
+
     if (actualRefundAmount > Number(order.payAmount)) {
-      return apiError(ErrorCode.REFUND_EXCEED_AMOUNT);
+      return apiError(ErrorCode.REFUND_EXCEED_AMOUNT, `退款金额不能超过订单金额 ${order.payAmount}`);
     }
 
-    // 根据支付方式调用退款 API
-    let refundData: { success: boolean; message?: string } | null = null;
-    let refundApiError: Error | unknown = null;
-
-    try {
-      if (order.paymentMethod === "wechat" && order.paymentNo) {
-        const refundNo = `ref-${orderId}-${Date.now()}`;
-        refundData = await applyWechatRefund(
-          order.orderNo,
-          refundNo,
-          yuanToFen(order.payAmount), // 原支付金额（分）
-          yuanToFen(actualRefundAmount), // 退款金额（分）
-          reason
-        );
-      } else if (order.paymentMethod === "alipay" && order.paymentNo) {
-        refundData = await applyAlipayRefund({
-          tradeNo: order.paymentNo,
-          refundAmount: actualRefundAmount.toFixed(2),
-          refundReason: reason,
-        });
-      } else {
-        return apiError(ErrorCode.INVALID_ORDER_STATUS, "不支持的支付方式或支付信息缺失");
-      }
-    } catch (error: unknown) {
-      refundApiError = error;
-      console.error("退款API错误:", error);
+    // 部分退款提示
+    if (actualRefundAmount < Number(order.payAmount)) {
+      console.log(`[Refund] 部分退款申请: 订单 ${order.orderNo}, 申请 ${actualRefundAmount}, 订单总额 ${order.payAmount}`);
     }
 
-    // 更新订单状态
+    // 更新订单状态为 REFUNDING（等待管理员审批）
+    // 不直接调用第三方支付网关的退款接口，改为等待管理员审批后再退款
     const refundNo = `ref-${orderId}-${Date.now()}`;
     
-    // 使用 Record<string, unknown> 来构建更新对象，避免 explicit any
-    const updateData: Record<string, unknown> = {
-      refundStatus: "PENDING",
-      refundAmount: actualRefundAmount,
-      refundNo: refundNo,
-    };
-
-    // 如果API返回成功，更新状态为SUCCESS
-    if (refundData?.success === true) {
-      updateData.refundStatus = "SUCCESS";
-      updateData.refundTime = new Date();
-      updateData.status = "REFUNDED";
-    }
-
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
-      data: updateData as unknown as Parameters<typeof prisma.order.update>[0]["data"],
+      data: {
+        status: OrderStatus.REFUNDING,
+        refundStatus: "PENDING",
+        refundAmount: actualRefundAmount,
+        refundNo: refundNo,
+        remark: reason,
+      },
     });
 
     return apiSuccess(
@@ -123,10 +127,9 @@ export async function POST(request: NextRequest) {
         refundNo: updatedOrder.refundNo,
         refundAmount: updatedOrder.refundAmount,
         refundStatus: updatedOrder.refundStatus,
+        message: "退款申请已提交，请等待管理员审批"
       },
-      refundApiError
-        ? "退款申请已提交，请稍候处理"
-        : "退款成功"
+      "退款申请已提交"
     );
   } catch (error: unknown) {
     console.error("退款接口错误:", error);

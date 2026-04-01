@@ -114,13 +114,12 @@ export async function processRefund(
       }
 
       // 银联退款
-      if (order.paymentMethod === "unionpay" && order.payAmount && order.paymentNo) {
+      if (order.paymentMethod === "unionpay" && order.payAmount) {
         const refundAmount = Number(order.payAmount);
-        console.log(`[Refund] 发起银联退款: ${order.orderNo}`);
+        console.log(`[Refund] 发起银联退款: ${order.orderNo}, 金额: ${refundAmount}`);
 
         const refundRes = await refundUnionPayOrder(
           order.orderNo,
-          order.paymentNo,
           refundAmount
         );
 
