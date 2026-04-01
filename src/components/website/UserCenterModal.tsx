@@ -90,15 +90,14 @@ export function UserCenterModal() {
             <div className="relative w-full max-h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl flex items-stretch md:justify-center md:p-6 p-0">
 
               {/* 背景图片区域 - 铺满整个卡片 */}
-              <div className="absolute inset-0 z-0 hidden md:block group">
+              <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
                   src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
                   alt="Background"
                   fill
-                  className="object-cover grayscale brightness-[0.9] transition-all duration-1000 group-hover:scale-105 group-hover:grayscale-0"
+                  className="object-cover"
                   priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent" />
               </div>
 
 

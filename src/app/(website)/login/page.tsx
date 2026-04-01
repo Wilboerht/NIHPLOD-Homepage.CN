@@ -27,6 +27,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   // 未登录，重定向到首页（用户可以通过点击登录按钮打开模态框）
-  redirect(params.redirect || "/");
+  redirect("/");
 }
 

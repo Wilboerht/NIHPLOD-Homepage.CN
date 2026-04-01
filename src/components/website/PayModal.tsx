@@ -35,14 +35,8 @@ export default function PayModal() {
   const [payMethod, setPayMethod] = useState<PayMethod>("wechat");
 
   useEffect(() => {
-    console.log("[PayModal] Mounted!");
     setMounted(true);
   }, []);
-
-  // 调试：监听 payOpen 变化
-  useEffect(() => {
-    console.log("[PayModal useEffect] payOpen changed to:", payOpen, "payOrderId:", payOrderId);
-  }, [payOpen, payOrderId]);
 
   const loadOrder = useCallback(async () => {
     if (!payOrderId) return;

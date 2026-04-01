@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { MapPin, Edit3, Trash2, Loader2, Check, ChevronDown, Plus, ArrowLeft } from "lucide-react";
 import cascaderOptions, { type CascaderOption } from "@pansy/china-division";
 import { m, AnimatePresence } from "framer-motion";
+import { useToast } from "@/components/ui/Toast";
 
 interface Address {
   id: string;
@@ -21,6 +22,7 @@ export function AddressesPanel() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Address | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { success: showSuccess, error: showError } = useToast();
 
   useEffect(() => {
     fetchAddresses();
@@ -42,19 +44,37 @@ export function AddressesPanel() {
   const handleDelete = async (id: string) => {
     if (!confirm("确定删除此地址？")) return;
     try {
-      await fetch(`/api/user/addresses/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/user/addresses/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error?.message || "删除地址失败");
+      }
+
+      showSuccess("地址已删除");
       fetchAddresses();
     } catch (e) {
       console.error("删除失败:", e);
+      const message = e instanceof Error ? e.message : "删除失败，请稍后重试";
+      showError(message);
     }
   };
 
   const handleSetDefault = async (id: string) => {
     try {
-      await fetch(`/api/user/addresses/${id}/default`, { method: "PUT" });
+      const res = await fetch(`/api/user/addresses/${id}/default`, { method: "PUT" });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error?.message || "设置默认地址失败");
+      }
+
+      showSuccess("已设为默认地址");
       fetchAddresses();
     } catch (e) {
       console.error("设置默认失败:", e);
+      const message = e instanceof Error ? e.message : "设置默认地址失败，请稍后重试";
+      showError(message);
     }
   };
 
@@ -257,6 +277,7 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
 }
 
 function AddressForm({ address, onClose, onSuccess }: { address: Address | null; onClose: () => void; onSuccess: () => void }) {
+  const { success: showSuccess, error: showError } = useToast();
   const [form, setForm] = useState({ name: address?.name || "", phone: address?.phone || "", province: address?.province || "", city: address?.city || "", district: address?.district || "", detail: address?.detail || "", isDefault: address?.isDefault || false });
   const [saving, setSaving] = useState(false);
 
@@ -289,9 +310,18 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
       const url = address ? `/api/user/addresses/${address.id}` : "/api/user/addresses";
       const method = address ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      if (res.ok) onSuccess();
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error?.message || "保存地址失败");
+      }
+
+      showSuccess(address ? "地址已更新" : "地址已添加");
+      onSuccess();
     } catch (e) {
       console.error("保存失败:", e);
+      const message = e instanceof Error ? e.message : "保存失败，请稍后重试";
+      showError(message);
     } finally {
       setSaving(false);
     }

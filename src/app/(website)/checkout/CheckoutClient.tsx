@@ -50,7 +50,7 @@ export function CheckoutClient() {
     // 如果购物车为空或未登录，重定向
     useEffect(() => {
         if (!authLoading && !user) {
-            router.push("/auth/login?redirect=/checkout");
+            router.push("/login?redirect=/checkout");
         }
     }, [user, authLoading, router]);
 
