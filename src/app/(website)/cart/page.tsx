@@ -12,7 +12,13 @@ export const metadata: Metadata = {
   description: "查看您的购物车",
 };
 
-export default async function CartPage() {
+interface CartPageProps {
+  searchParams?: {
+    openCheckout?: string;
+  };
+}
+
+export default async function CartPage({ searchParams }: CartPageProps) {
   const user = await getCurrentLoginUser();
   
   if (!user) {
@@ -41,11 +47,6 @@ export default async function CartPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  // 获取默认地址
-  const defaultAddress = await prisma.address.findFirst({
-    where: { userId: user.id, isDefault: true },
-  });
-
   // 格式化数据
   const items = cartItems.map((item) => ({
     id: item.id,
@@ -63,6 +64,8 @@ export default async function CartPage() {
     price: Number(item.product.price),
   }));
 
+  const autoOpenCheckout = searchParams?.openCheckout === "1";
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b sticky top-0 z-10">
@@ -72,8 +75,8 @@ export default async function CartPage() {
       </div>
 
       <CartContent 
-        initialItems={items} 
-        defaultAddress={defaultAddress}
+        initialItems={items}
+        autoOpenCheckout={autoOpenCheckout}
       />
     </div>
   );

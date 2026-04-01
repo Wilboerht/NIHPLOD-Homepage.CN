@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Package, ChevronRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,14 +44,21 @@ export function OrdersPanel() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
+
     const fetchOrders = async () => {
       setLoading(true);
       try {
         const url = activeTab === "all" ? "/api/orders" : `/api/orders?status=${activeTab}`;
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
         const data = await res.json();
+
+        if (requestId !== requestIdRef.current) return;
+
         if (data.success) {
           const fetchedOrders = data.data.orders || [];
           setOrders(fetchedOrders);
@@ -66,12 +73,16 @@ export function OrdersPanel() {
           }
         }
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
         console.error("获取订单失败:", e);
       } finally {
+        if (requestId !== requestIdRef.current) return;
         setLoading(false);
       }
     };
     fetchOrders();
+
+    return () => controller.abort();
   }, [activeTab, initialOrderId, clearInitialOrderId]);
 
   if (selectedOrder) {

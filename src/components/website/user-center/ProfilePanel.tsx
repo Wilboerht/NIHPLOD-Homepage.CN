@@ -8,9 +8,11 @@
 import { useState, useRef } from "react";
 import { User, Phone, Edit3, Check, X, Camera, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
 
 export function ProfilePanel() {
   const { user, refreshUser } = useAuth();
+  const { success: showSuccess, error: showError } = useToast();
   const [editing, setEditing] = useState(false);
   const [nickname, setNickname] = useState(user?.nickname || "");
   const [saving, setSaving] = useState(false);
@@ -28,12 +30,19 @@ export function ProfilePanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nickname: nickname.trim() }),
       });
-      if (res.ok) {
-        await refreshUser();
-        setEditing(false);
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error?.message || "保存失败");
       }
+
+      await refreshUser();
+      setEditing(false);
+      showSuccess("个人信息已更新");
     } catch (e) {
       console.error("保存失败:", e);
+      const message = e instanceof Error ? e.message : "保存失败，请稍后重试";
+      showError(message);
     } finally {
       setSaving(false);
     }
@@ -83,12 +92,15 @@ export function ProfilePanel() {
       if (res.ok && data.success) {
         // 更新成功后刷新用户信息
         await refreshUser();
+        showSuccess("头像已更新");
       } else {
         throw new Error(data.error?.message || "上传头像失败");
       }
     } catch (err) {
       console.error("头像上传失败:", err);
-      setAvatarError(err instanceof Error ? err.message : "上传失败，请稍后重试");
+      const message = err instanceof Error ? err.message : "上传失败，请稍后重试";
+      setAvatarError(message);
+      showError(message);
     } finally {
       setUploadingAvatar(false);
     }

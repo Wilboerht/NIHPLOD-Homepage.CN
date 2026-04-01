@@ -6,10 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore, CartItem } from "@/store/cart";
 import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { Link } from "next-view-transitions";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function CartDrawer() {
+    const { openCheckout } = useAuth();
     const {
         isOpen,
         closeCart,
@@ -27,6 +28,12 @@ export function CartDrawer() {
 
     // 计算总价
     const totalPrice = items.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0);
+
+    // 统一结算入口为弹窗
+    const handleCheckout = () => {
+        closeCart();
+        openCheckout();
+    };
 
     return (
         <AnimatePresence>
@@ -157,9 +164,9 @@ export function CartDrawer() {
                                         ¥{totalPrice.toLocaleString()}
                                     </span>
                                 </div>
-                                <Link href="/checkout" onClick={closeCart}>
-                                    <Button className="w-full py-6 text-lg">立即结算</Button>
-                                </Link>
+                                <Button onClick={handleCheckout} className="w-full py-6 text-lg">
+                                    立即结算
+                                </Button>
                                 <div className="mt-4 text-center">
                                     <button
                                         onClick={closeCart}

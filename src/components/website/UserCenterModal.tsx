@@ -5,7 +5,7 @@
  * 用户中心弹窗组件
  * 品牌风格 - 左侧菜单 + 右侧内容
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import { X, User, Package, MapPin, LogOut, ChevronRight, ArrowLeft } from "lucide-react";
@@ -26,6 +26,8 @@ export function UserCenterModal() {
   const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -59,6 +61,58 @@ export function UserCenterModal() {
     return () => window.removeEventListener("keydown", handleEsc);
   }, [closeUserCenter]);
 
+  // 打开时聚焦弹窗，关闭后归位焦点
+  useEffect(() => {
+    if (userCenterOpen) {
+      lastFocusedElementRef.current = document.activeElement as HTMLElement | null;
+      requestAnimationFrame(() => {
+        dialogRef.current?.focus();
+      });
+      return;
+    }
+
+    lastFocusedElementRef.current?.focus();
+  }, [userCenterOpen]);
+
+  // 焦点陷阱：Tab 键只在弹窗内部循环
+  useEffect(() => {
+    if (!userCenterOpen) return;
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+
+      const focusable = dialog.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+
+      if (focusable.length === 0) {
+        e.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleTabKey);
+    return () => window.removeEventListener("keydown", handleTabKey);
+  }, [userCenterOpen]);
+
   if (!mounted || !user) return null;
 
   const handleLogout = async () => {
@@ -85,6 +139,11 @@ export function UserCenterModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="用户中心"
+            tabIndex={-1}
             className="relative z-10 w-full max-w-[95%] md:max-w-[1100px] md:h-[680px] flex items-center justify-center transition-all duration-300"
           >
             <div className="relative w-full max-h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl flex items-stretch md:justify-center md:p-6 p-0">
@@ -179,6 +238,7 @@ export function UserCenterModal() {
                   <div className="absolute top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 md:hidden">
                     <button
                       onClick={() => setShowMobileDetail(false)}
+                      aria-label="返回"
                       className={`flex h-9 w-9 items-center justify-center rounded-full bg-black/5 text-brand-charcoal/60 transition-all border border-black/5 ${!showMobileDetail ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                     >
                       <ArrowLeft className="h-5 w-5" />
@@ -186,6 +246,7 @@ export function UserCenterModal() {
 
                     <button
                       onClick={closeUserCenter}
+                      aria-label="关闭用户中心"
                       className="flex h-9 w-9 items-center justify-center rounded-full bg-black/5 text-brand-charcoal/40 transition-all border border-black/5"
                     >
                       <X className="h-5 w-5" />
@@ -195,6 +256,7 @@ export function UserCenterModal() {
                   {/* 桌面端关闭按钮 */}
                   <button
                     onClick={closeUserCenter}
+                    aria-label="关闭用户中心"
                     className="absolute right-6 top-6 z-50 hidden md:flex h-9 w-9 items-center justify-center rounded-full bg-white/40 text-brand-charcoal/60 backdrop-blur-md transition-all hover:bg-brand-gold hover:text-white shadow-sm border border-white/20"
                   >
                     <X className="h-5 w-5" />

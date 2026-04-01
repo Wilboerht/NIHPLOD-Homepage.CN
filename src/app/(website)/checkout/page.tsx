@@ -1,12 +1,7 @@
 
-import { Metadata } from "next";
-import { CheckoutClient } from "./CheckoutClient";
-
-export const metadata: Metadata = {
-    title: "结算",
-    description: "安全结算您的订单",
-};
+import { redirect } from "next/navigation";
 
 export default function CheckoutPage() {
-    return <CheckoutClient />;
+    // 结算统一使用全局弹窗链路
+    redirect("/cart?openCheckout=1");
 }

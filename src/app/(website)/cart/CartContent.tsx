@@ -3,26 +3,11 @@
 /**
  * 购物车内容组件
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-
-// 地址类型（简化版，仅用于类型检查）
-interface Address {
-  id: string;
-  userId: string;
-  name: string;
-  phone: string;
-  province: string;
-  city: string;
-  district: string;
-  detail: string;
-  postalCode: string | null;
-  isDefault: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 interface CartItem {
   id: string;
@@ -47,18 +32,37 @@ interface CartItem {
 
 interface CartContentProps {
   initialItems: CartItem[];
-  defaultAddress: Address | null;
+  autoOpenCheckout?: boolean;
 }
 
-export default function CartContent({ initialItems, defaultAddress: _defaultAddress }: CartContentProps) {
+export default function CartContent({ initialItems, autoOpenCheckout = false }: CartContentProps) {
+  const router = useRouter();
   const { user, openCheckout, openLoginModal } = useAuth();
   const [items, setItems] = useState(initialItems);
   const [loading, _setLoading] = useState(false);
+  const autoOpenedRef = useRef(false);
 
   // 计算选中商品总价
   const selectedItems = items.filter((i) => i.selected);
   const totalPrice = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const totalCount = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
+
+  // 通过 /cart?openCheckout=1 进入时，自动拉起一次结算弹窗并清理参数
+  useEffect(() => {
+    if (!autoOpenCheckout || autoOpenedRef.current) return;
+
+    autoOpenedRef.current = true;
+    router.replace("/cart", { scroll: false });
+
+    if (selectedItems.length === 0) return;
+
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+
+    openCheckout();
+  }, [autoOpenCheckout, selectedItems.length, user, openCheckout, openLoginModal, router]);
 
   // 更新数量
   const updateQuantity = async (id: string, quantity: number) => {
