@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { trackEvent } from "@/lib/analytics";
 
 interface CartItem {
   id: string;
@@ -60,6 +61,12 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
       openLoginModal();
       return;
     }
+
+    trackEvent("checkout_auto_opened", {
+      source: "checkout_redirect",
+      selected_item_count: selectedItems.length,
+      has_user: true,
+    });
 
     openCheckout();
   }, [autoOpenCheckout, selectedItems.length, user, openCheckout, openLoginModal, router]);
