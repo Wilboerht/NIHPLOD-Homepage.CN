@@ -205,7 +205,10 @@ export function ProductDetailContent({
         <div className="mt-6 flex flex-col gap-3">
           {/* 站内购买按钮 */}
           {product.allowDirectBuy && (
-            <AddToCartButton productId={product.id} stock={product.stock} />
+            <>
+              <AddToCartButton productId={product.id} stock={product.stock} />
+              <DirectBuyButton productId={product.id} stock={product.stock} />
+            </>
           )}
 
           {/* 外部购买链接 */}
@@ -369,6 +372,60 @@ function AddToCartButton({ productId, stock }: { productId: string; stock: numbe
         <ShoppingCart className="h-4 w-4" />
       )}
       <span>{isOutOfStock ? "已售罄" : "加入购物车"}</span>
+    </button>
+  );
+}
+
+/**
+ * 直接购买按钮组件 - 不经购物车直接结算
+ */
+function DirectBuyButton({ productId, stock }: { productId: string; stock: number }) {
+  const [loading, setLoading] = useState(false);
+  const { user, openCheckout, openLoginModal } = useAuth();
+  const { error: showError } = useToast();
+
+  const handleDirectBuy = () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+
+    if (stock <= 0) {
+      showError("商品已售罄");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 直接打开结算弹窗，只结算这一个商品
+      openCheckout([productId]);
+    } catch {
+      showError("网络错误，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isOutOfStock = stock <= 0;
+
+  return (
+    <button
+      type="button"
+      onClick={handleDirectBuy}
+      disabled={loading || isOutOfStock}
+      className={cn(
+        "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
+        isOutOfStock
+          ? "cursor-not-allowed bg-gray-300 text-gray-500"
+          : "border border-brand-gold text-brand-gold hover:bg-brand-gold/10"
+      )}
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <ShoppingCart className="h-4 w-4" />
+      )}
+      <span>{isOutOfStock ? "已售罄" : "直接购买"}</span>
     </button>
   );
 }

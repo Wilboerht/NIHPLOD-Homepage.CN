@@ -73,7 +73,9 @@ export async function createPayment(
     });
 
     if (!order) return { success: false, error: "订单不存在" };
-    if (order.status !== OrderStatus.PENDING) return { success: false, error: "订单状态不可支付" };
+    if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAYING) {
+      return { success: false, error: "订单状态不可支付" };
+    }
 
     const amount = yuanToFen(order.payAmount);
     const description = `${config.siteName}-${order.items[0]?.productName || "订单"}`;

@@ -97,18 +97,9 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
     }
   };
 
-  // 切换选中状态
-  const toggleSelect = async (id: string, selected: boolean) => {
-    try {
-      await fetch(`/api/cart/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selected }),
-      });
-      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, selected } : i)));
-    } catch (e) {
-      console.error("更新失败:", e);
-    }
+  // 切换选中状态（仅前端本地状态）
+  const toggleSelect = (id: string, selected: boolean) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, selected } : i)));
   };
 
   // 去结算
@@ -123,7 +114,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
       return;
     }
     // 打开结算弹窗
-    openCheckout();
+    openCheckout(selectedItems.map((item) => item.product.id));
   };
 
   if (items.length === 0) {

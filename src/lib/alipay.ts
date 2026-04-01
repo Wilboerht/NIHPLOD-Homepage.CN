@@ -75,7 +75,7 @@ export async function createAlipayPayment(orderId: string): Promise<{
       return { success: false, error: "订单不存在" };
     }
 
-    if (order.status !== OrderStatus.PENDING) {
+    if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAYING) {
       return { success: false, error: "订单状态不正确" };
     }
 

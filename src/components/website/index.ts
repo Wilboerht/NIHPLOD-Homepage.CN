@@ -8,7 +8,6 @@ export { UserButton } from "./UserButton";
 export { FloatingCardLayout } from "./FloatingCardLayout";
 export { ProductCard } from "./ProductCard";
 export { ProductDrawer } from "./ProductDrawer";
-export { CartDrawer } from "./CartDrawer";
 export {
   Skeleton,
   ProductCardSkeleton,

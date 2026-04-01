@@ -94,12 +94,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 将订单状态更新为 PAYING（支付中）
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "PAYING" },
-    });
-
     // 支付宝支付
     if (payMethod === "alipay") {
       const alipayResult = await createAlipayPayment(orderId);
@@ -110,6 +104,12 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      // 创建支付单成功后再标记为 PAYING
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { status: "PAYING" },
+      });
 
       return NextResponse.json({
         success: true,
@@ -154,6 +154,12 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      // 创建支付单成功后再标记为 PAYING
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { status: "PAYING" },
+      });
 
       return NextResponse.json({
         success: true,

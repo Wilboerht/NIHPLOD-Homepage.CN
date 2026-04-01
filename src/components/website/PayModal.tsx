@@ -96,10 +96,28 @@ export default function PayModal() {
     setError("");
 
     try {
+      const isWechatBrowser = /MicroMessenger/i.test(navigator.userAgent);
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
+
+      const payload: {
+        orderId: string;
+        payMethod: PayMethod;
+        tradeType?: "JSAPI" | "MWEB" | "NATIVE";
+      } = {
+        orderId: order.id,
+        payMethod,
+      };
+
+      if (payMethod === "wechat") {
+        payload.tradeType = isWechatBrowser ? "JSAPI" : isMobile ? "MWEB" : "NATIVE";
+      }
+
       const res = await fetch("/api/pay/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: order.id, payMethod }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
@@ -127,7 +145,7 @@ export default function PayModal() {
         return;
       }
 
-      if (typeof WeixinJSBridge !== "undefined") {
+      if (data.data.payParams && typeof WeixinJSBridge !== "undefined") {
         WeixinJSBridge.invoke("getBrandWCPayRequest", data.data.payParams, (r: { err_msg: string }) => {
           if (r.err_msg === "get_brand_wcpay_request:ok") {
             closePay();
@@ -140,6 +158,16 @@ export default function PayModal() {
           }
         });
       } else {
+        if (data.data.mwebUrl) {
+          window.location.href = data.data.mwebUrl;
+          return;
+        }
+
+        if (data.data.codeUrl) {
+          setError("请使用微信扫码支付（当前设备不支持微信内直接唤起）");
+          return;
+        }
+
         setError("请在微信中打开支付");
       }
     } catch {

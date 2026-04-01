@@ -42,7 +42,7 @@ interface CheckoutData {
 const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`;
 
 export function CheckoutModal() {
-  const { user, checkoutOpen, closeCheckout, openUserCenter, openLoginModal, openPay } = useAuth();
+  const { user, checkoutOpen, checkoutSelectedProductIds, closeCheckout, openUserCenter, openLoginModal, openPay } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -90,10 +90,30 @@ export function CheckoutModal() {
       const res = await fetch("/api/checkout/data");
       const result = await res.json();
       if (result.success) {
-        setData(result.data);
+        let nextData = result.data as CheckoutData;
+
+        // 如果有指定选中商品，只结算选中的 productId
+        if (checkoutSelectedProductIds && checkoutSelectedProductIds.length > 0) {
+          const selectedSet = new Set(checkoutSelectedProductIds);
+          const filteredItems = nextData.items.filter((item) => selectedSet.has(item.productId));
+          const filteredTotal = filteredItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          nextData = {
+            ...nextData,
+            items: filteredItems,
+            totalPrice: filteredTotal,
+          };
+        }
+
+        if (nextData.items.length === 0) {
+          setError("没有可结算的商品，请返回购物车重新选择");
+          setData(null);
+          return;
+        }
+
+        setData(nextData);
         // 设置默认地址
-        const defaultAddr = result.data.addresses.find((a: AddressData) => a.isDefault);
-        setSelectedAddressId(defaultAddr?.id || result.data.addresses[0]?.id || "");
+        const defaultAddr = nextData.addresses.find((a: AddressData) => a.isDefault);
+        setSelectedAddressId(defaultAddr?.id || nextData.addresses[0]?.id || "");
       } else {
         setError(result.error?.message || "加载失败");
       }

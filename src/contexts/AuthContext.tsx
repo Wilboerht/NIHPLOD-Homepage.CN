@@ -28,7 +28,8 @@ interface AuthContextType {
   clearInitialOrderId: () => void;
   // 结算弹窗状态
   checkoutOpen: boolean;
-  openCheckout: () => void;
+  checkoutSelectedProductIds: string[] | null;
+  openCheckout: (selectedProductIds?: string[]) => void;
   closeCheckout: () => void;
   // 支付弹窗状态
   payOpen: boolean;
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 结算弹窗状态
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutSelectedProductIds, setCheckoutSelectedProductIds] = useState<string[] | null>(null);
 
   // 支付弹窗状态
   const [payOpen, setPayOpen] = useState(false);
@@ -106,12 +108,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 结算弹窗操作
-  const openCheckout = useCallback(() => {
+  const openCheckout = useCallback((selectedProductIds?: string[]) => {
+    if (selectedProductIds && selectedProductIds.length > 0) {
+      setCheckoutSelectedProductIds(selectedProductIds);
+    } else {
+      setCheckoutSelectedProductIds(null);
+    }
     setCheckoutOpen(true);
   }, []);
 
   const closeCheckout = useCallback(() => {
     setCheckoutOpen(false);
+    setCheckoutSelectedProductIds(null);
   }, []);
 
   // 支付弹窗操作
@@ -184,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserCenterView,
         clearInitialOrderId,
         checkoutOpen,
+        checkoutSelectedProductIds,
         openCheckout,
         closeCheckout,
         payOpen,
