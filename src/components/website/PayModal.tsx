@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 // 纹理背景 - 与 CheckoutModal 保持一致的透明度
 const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`;
 
-type PayMethod = "wechat" | "alipay" | "unionpay";
+type PayMethod = "wechat" | "alipay";
 
 interface OrderData {
   id: string;
@@ -128,7 +128,7 @@ export default function PayModal() {
         return;
       }
 
-      if (data.data.payType === "alipay" || data.data.payType === "unionpay") {
+      if (data.data.payType === "alipay") {
         window.location.href = data.data.payUrl;
         return;
       }
@@ -243,16 +243,7 @@ export default function PayModal() {
                       <span className="font-medium text-[#5C5347]">支付宝</span>
                       {payMethod === "alipay" && <Check className="w-5 h-5 text-blue-500 ml-auto" />}
                     </button>
-                    <button
-                      onClick={() => setPayMethod("unionpay")}
-                      className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${payMethod === "unionpay" ? "border-[#004A94] bg-blue-50/50" : "border-[#E8E3DC] bg-white/60"}`}
-                    >
-                      <div className="w-8 h-8 bg-[#004A94] rounded-lg flex items-center justify-center p-1.5 text-white">
-                        <CreditCard className="w-5 h-5" />
-                      </div>
-                      <span className="font-medium text-[#5C5347]">银联扫码/云闪付</span>
-                      {payMethod === "unionpay" && <Check className="w-5 h-5 text-[#004A94] ml-auto" />}
-                    </button>
+
                   </div>
                   {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100 mb-4">{error}</div>}
                   <button

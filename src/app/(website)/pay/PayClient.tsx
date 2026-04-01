@@ -25,7 +25,7 @@ export function PayClient() {
 
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
-    const [payMethod, setPayMethod] = useState<"wechat" | "alipay" | "unionpay">("wechat");
+    const [payMethod, setPayMethod] = useState<"wechat" | "alipay">("wechat");
     const [codeUrl, setCodeUrl] = useState<string>("");
     const [mwebUrl, setMwebUrl] = useState<string>("");
     const timerRef = useRef<NodeJS.Timeout>();
@@ -70,10 +70,6 @@ export function PayClient() {
         setCodeUrl("");
         setMwebUrl("");
 
-        // 清理旧的表单
-        const oldForm = document.getElementById("unionpaysubmit");
-        if (oldForm) oldForm.remove();
-
         const createPay = async () => {
             try {
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -108,20 +104,6 @@ export function PayClient() {
                         if (data.data.payUrl) {
                             setMwebUrl(data.data.payUrl); // 重用 mwebUrl 状态存储跳转链接
                             window.location.href = data.data.payUrl;
-                        }
-                    } else if (payMethod === "unionpay") {
-                        if (data.data.payHtml) {
-                            // 动态插入并提交表单
-                            const div = document.createElement("div");
-                            div.innerHTML = data.data.payHtml;
-                            document.body.appendChild(div);
-                            // 这里的 HTML 里包含 script 自动提交，
-                            // 但 React 插入 innerHTML 通常不会执行 script。
-                            // 所以我们需要手动查找 form 并提交。
-                            setTimeout(() => {
-                                const form = document.querySelector('form[name="unionpaysubmit"]') as HTMLFormElement;
-                                if (form) form.submit();
-                            }, 100);
                         }
                     }
                 } else {
@@ -204,29 +186,15 @@ export function PayClient() {
                             <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">A</div>
                             <span>支付宝</span>
                         </button>
-                        <button
-                            onClick={() => setPayMethod("unionpay")}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${payMethod === "unionpay"
-                                ? "border-red-500 bg-red-50 text-red-700"
-                                : "border-gray-200 hover:border-red-200"
-                                }`}
-                        >
-                            <div className="w-5 h-5 bg-gradient-to-r from-red-500 to-blue-500 rounded-full flex items-center justify-center text-white text-xs text-[8px] overflow-hidden">
-                                银联
-                            </div>
-                            <span>银行卡</span>
-                        </button>
                     </div>
 
                     <div className="mt-8 flex justify-center">
-                        {mwebUrl || (payMethod === "unionpay" && !codeUrl) ? (
+                        {mwebUrl ? (
                             <div className="space-y-4">
                                 <p>正在跳转支付...</p>
-                                {(payMethod === "wechat" || payMethod === "alipay") && (
-                                    <Button onClick={() => window.location.href = mwebUrl}>
-                                        点击跳转
-                                    </Button>
-                                )}
+                                <Button onClick={() => window.location.href = mwebUrl}>
+                                    点击跳转
+                                </Button>
                             </div>
                         ) : codeUrl ? (
                             <div className="space-y-4">
@@ -235,7 +203,7 @@ export function PayClient() {
                                 </div>
                                 <div className="flex items-center justify-center gap-2 text-sm text-brand-brown/60">
                                     <Smartphone className="h-4 w-4" />
-                                    请使用{payMethod === "wechat" ? "微信" : payMethod === "alipay" ? "支付宝" : "云闪付"}扫一扫
+                                    请使用{payMethod === "wechat" ? "微信" : "支付宝"}扫一扫
                                 </div>
                             </div>
                         ) : (

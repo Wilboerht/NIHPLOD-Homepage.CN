@@ -4,7 +4,7 @@
  */
 
 export interface PaymentMethodConfig {
-  id: "wechat" | "alipay" | "unionpay";
+  id: "wechat" | "alipay";
   name: string;
   enabled: boolean;
   priority: number; // 排序优先级，数字越小越靠前
@@ -13,7 +13,7 @@ export interface PaymentMethodConfig {
 
 /**
  * 解析环境变量中的支付方式配置
- * 格式: "wechat:true:1,alipay:true:2,unionpay:false:3"
+ * 格式: "wechat:true:1,alipay:true:2"
  * 表示: 支付方式ID:是否启用:优先级
  */
 function parsePaymentMethodsEnv(): PaymentMethodConfig[] {
@@ -24,7 +24,6 @@ function parsePaymentMethodsEnv(): PaymentMethodConfig[] {
     return [
       { id: "wechat", name: "微信支付", enabled: true, priority: 1 },
       { id: "alipay", name: "支付宝", enabled: true, priority: 2 },
-      { id: "unionpay", name: "银联支付", enabled: false, priority: 3 },
     ];
   }
 
@@ -40,11 +39,10 @@ function parsePaymentMethodsEnv(): PaymentMethodConfig[] {
     }
 
     const method: PaymentMethodConfig = {
-      id: id as "wechat" | "alipay" | "unionpay",
+      id: id as "wechat" | "alipay",
       name: {
         wechat: "微信支付",
         alipay: "支付宝",
-        unionpay: "银联支付",
       }[id] || id,
       enabled: enabledStr.toLowerCase() === "true",
       priority: parseInt(priorityStr, 10),
@@ -63,7 +61,6 @@ function parsePaymentMethodsEnv(): PaymentMethodConfig[] {
     : [
         { id: "wechat", name: "微信支付", enabled: true, priority: 1 },
         { id: "alipay", name: "支付宝", enabled: true, priority: 2 },
-        { id: "unionpay", name: "银联支付", enabled: false, priority: 3 },
       ];
 }
 
@@ -89,7 +86,7 @@ export function getEnabledPaymentMethods(): PaymentMethodConfig[] {
 /**
  * 检查指定支付方式是否启用
  */
-export function isPaymentMethodEnabled(methodId: "wechat" | "alipay" | "unionpay"): boolean {
+export function isPaymentMethodEnabled(methodId: "wechat" | "alipay"): boolean {
   const method = getPaymentMethods().find((m) => m.id === methodId);
   return method?.enabled ?? false;
 }
@@ -97,7 +94,7 @@ export function isPaymentMethodEnabled(methodId: "wechat" | "alipay" | "unionpay
 /**
  * 获取支付方式的优先级
  */
-export function getPaymentMethodPriority(methodId: "wechat" | "alipay" | "unionpay"): number {
+export function getPaymentMethodPriority(methodId: "wechat" | "alipay"): number {
   const method = getPaymentMethods().find((m) => m.id === methodId);
   return method?.priority ?? 999;
 }

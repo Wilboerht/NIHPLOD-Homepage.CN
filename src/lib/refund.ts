@@ -2,7 +2,6 @@ import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { applyWechatRefund, generateRefundNo } from "./wechat-pay";
 import { refundAlipayOrder } from "./alipay";
-import { refundUnionPayOrder } from "./unionpay";
 
 /**
  * 申请退款
@@ -111,24 +110,6 @@ export async function processRefund(
         }
 
         refundInfo = " | 支付宝退款成功";
-      }
-
-      // 银联退款
-      if (order.paymentMethod === "unionpay" && order.payAmount) {
-        const refundAmount = Number(order.payAmount);
-        console.log(`[Refund] 发起银联退款: ${order.orderNo}, 金额: ${refundAmount}`);
-
-        const refundRes = await refundUnionPayOrder(
-          order.orderNo,
-          refundAmount
-        );
-
-        if (!refundRes.success) {
-          console.error(`[Refund] 银联退款失败: ${refundRes.error}`);
-          return { success: false, error: `银联退款失败: ${refundRes.error}` };
-        }
-
-        refundInfo = " | 银联退款受理成功";
       }
 
       // 2. 只有退款接口调用成功（或非微信支付），才更新数据库

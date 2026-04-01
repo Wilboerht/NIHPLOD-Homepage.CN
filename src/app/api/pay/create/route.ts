@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { createPayment } from "@/lib/wechat-pay";
 import { createAlipayPayment } from "@/lib/alipay";
-import { createUnionPayPayment } from "@/lib/unionpay";
 import { isPaymentMethodEnabled } from "@/lib/payment-config";
 import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
@@ -15,7 +14,7 @@ import { z } from "zod";
 // 创建支付参数验证
 const createPaySchema = z.object({
   orderId: z.string().min(1, "订单ID不能为空"),
-  payMethod: z.enum(["wechat", "alipay", "unionpay"]).optional().default("wechat"),
+  payMethod: z.enum(["wechat", "alipay"]).optional().default("wechat"),
   tradeType: z.enum(["NATIVE", "JSAPI", "MWEB"]).default("NATIVE"),
 });
 
@@ -118,26 +117,6 @@ export async function POST(request: NextRequest) {
           payType: "alipay",
           payUrl: alipayResult.payUrl,
         },
-      });
-    }
-
-    // 银联支付 (聚合支付)
-    if (payMethod === "unionpay") {
-      const uResult = await createUnionPayPayment(orderId);
-
-      if (!uResult.success) {
-        return NextResponse.json(
-          { success: false, error: { code: "PAY_FAILED", message: uResult.error } },
-          { status: 400 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          payType: "unionpay",
-          payUrl: uResult.payUrl,
-        }
       });
     }
 

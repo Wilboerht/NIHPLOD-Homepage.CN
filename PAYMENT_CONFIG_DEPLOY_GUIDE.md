@@ -6,12 +6,12 @@
 
 ## 📊 当前状态总览
 
-| 项目 | 微信支付 | 支付宝 | 银联支付 | 总体 |
-|------|--------|--------|--------|------|
-| 代码实现 | ✅ 完成 | ✅ 完成 | ✅ 完成 | ✅ 完成 |
-| 环境变量配置 | ❌ 注释 | ❌ 注释 | ❌ 注释 | ❌ **0/19** |
-| 回调实现 | ✅ 完成 | ✅ 完成 | ✅ 完成 | ✅ 完成 |
-| 部署准备度 | 🔴 0% | 🔴 0% | 🔴 0% | 🔴 **25%** |
+| 项目 | 微信支付 | 支付宝 | 总体 |
+|------|--------|--------|------|
+| 代码实现 | ✅ 完成 | ✅ 完成 | ✅ 完成 |
+| 环境变量配置 | ❌ 注释 | ❌ 注释 | ❌ **0/13** |
+| 回调实现 | ✅ 完成 | ✅ 完成 | ✅ 完成 |
+| 部署准备度 | 🔴 0% | 🔴 0% | 🔴 **33%** |
 
 **紧急程度**: 🔴 **CRITICAL** - 必须在部署前完成
 
@@ -44,18 +44,6 @@
 ☐ ALIPAY_PUBLIC_KEY           → 开发设置 → 密钥管理 → 支付宝公钥
 ☐ ALIPAY_NOTIFY_URL           → https://nihplod.cn/api/pay/alipay-notify
 ☐ ALIPAY_RETURN_URL           → https://nihplod.cn/pay/success
-```
-
-#### 银联支付 - 需要收集 6 项 (可选)
-```
-来源: 银联商务 (https://www.chinaums.com/)
-
-☐ UNIONPAY_MID                → 银联分配的商户号 (898XXXX)
-☐ UNIONPAY_TID                → 银联分配的终端号 (8位数字)
-☐ UNIONPAY_MSG_SRC            → 来源编号 (如 WWW.NIHPLOD.CN)
-☐ UNIONPAY_APP_KEY            → 通讯密钥
-☐ UNIONPAY_API_URL            → https://qr.chinaums.com/netpay-route-server/api/
-☐ UNIONPAY_NOTIFY_URL         → https://nihplod.cn/api/pay/notify/unionpay
 ```
 
 ### 第二步：配置环境文件 (30分钟)
@@ -166,13 +154,6 @@ npm run build
 **支付宝**
 - [ ] ALIPAY_NOTIFY_URL - 设为生产 URL
 - [ ] ALIPAY_RETURN_URL - 设为生产 URL
-
-**银联支付** (可选)
-- [ ] UNIONPAY_MID - 必需 (如启用)
-- [ ] UNIONPAY_TID - 必需 (如启用)
-- [ ] UNIONPAY_MSG_SRC - 必需 (如启用)
-- [ ] UNIONPAY_APP_KEY - 必需 (如启用)
-- [ ] UNIONPAY_NOTIFY_URL - 必需 (如启用)
 
 ### 🟡 P2 - 功能完善 (可以延后)
 
