@@ -84,6 +84,7 @@ export async function createAlipayPayment(orderId: string): Promise<{
       out_trade_no: order.orderNo,
       total_amount: formatMoney(order.payAmount),
       subject: `你好朵朵-${order.items[0]?.productName || "商品"}`,
+      body: `订单号: ${order.orderNo}, 商品数量: ${order.items.length}`,  // 订单描述
       product_code: "QUICK_WAP_WAY",
     };
 
@@ -190,6 +191,17 @@ export async function refundAlipayOrder(
   refundReason: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // 验证退款金额
+    if (!refundAmount || refundAmount <= 0) {
+      return { success: false, error: "退款金额必须大于0" };
+    }
+
+    // 金额精度检查：确保金额精确到分
+    const refundAmountInFen = Math.round(refundAmount * 100);
+    if (refundAmountInFen <= 0) {
+      return { success: false, error: "退款金额过小，最小为0.01元" };
+    }
+
     const bizContent = {
       out_trade_no: outTradeNo,
       refund_amount: refundAmount.toFixed(2),
@@ -223,10 +235,12 @@ export async function refundAlipayOrder(
 
     const response = data.alipay_trade_refund_response;
     if (response && response.code === "10000") {
+      console.log(`[Alipay] 退款成功: ${outTradeNo}, 退款金额: ${refundAmount}`);
       return { success: true };
     } else {
+      const errorMsg = response?.sub_msg || response?.msg || "退款失败";
       console.error("[Alipay] 退款失败:", response);
-      return { success: false, error: response?.sub_msg || response?.msg || "退款失败" };
+      return { success: false, error: errorMsg };
     }
 
   } catch (e) {

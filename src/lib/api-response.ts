@@ -78,6 +78,7 @@ const ErrorMessageMap: Record<ErrorCode, string> = {
   [ErrorCode.INTERNAL_ERROR]: "服务器内部错误",
   [ErrorCode.DATABASE_ERROR]: "数据库操作失败",
   [ErrorCode.EXTERNAL_API_ERROR]: "第三方服务错误",
+  [ErrorCode.RATE_LIMITED]: "请求过于频繁，请稍后再试",
 };
 
 /**
@@ -108,6 +109,7 @@ const HttpStatusMap: Record<ErrorCode, number> = {
   [ErrorCode.INTERNAL_ERROR]: 500,
   [ErrorCode.DATABASE_ERROR]: 500,
   [ErrorCode.EXTERNAL_API_ERROR]: 502,
+  [ErrorCode.RATE_LIMITED]: 429,
 };
 
 /**
