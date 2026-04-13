@@ -107,10 +107,10 @@ export function AddressesPanel() {
       <div className="flex-1 overflow-y-auto px-16 py-0 scrollbar-hide flex flex-col">
         {/* 移动端新增按钮 - 仅在移动端列表顶部显示 */}
         {!loading && addresses.length > 0 && (
-          <div className="md:hidden pt-4 pb-2">
+          <div className="md:hidden pt-6 pb-4">
             <button
-              onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 text-[13px] text-stone-500 font-medium tracking-wider"
+              onClick={() => setEditing({} as Address)}
+              className="w-full flex items-center justify-center gap-2 py-3.5 border border-dashed border-stone-300 rounded-xl text-stone-500 hover:text-stone-800 hover:border-stone-400 hover:bg-stone-50/50 transition-all font-medium tracking-wide text-[13px]"
             >
               <Plus className="w-4 h-4" />
               <span>新增收货地址</span>
