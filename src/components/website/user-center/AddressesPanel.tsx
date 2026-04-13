@@ -90,24 +90,21 @@ export function AddressesPanel() {
 
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="flex-shrink-0 px-6 md:px-10 pb-6">
-        <div className="flex items-center justify-start gap-4 mb-2">
-          <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">收货地址</h2>
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-brand-gold/15 text-[#8B7355] border border-brand-gold/30 backdrop-blur-md rounded-xl text-sm font-bold tracking-wide shadow-sm hover:bg-brand-gold/25 hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            <Plus className="w-4 h-4" strokeWidth={3} />
-            <span>新增地址</span>
-          </button>
-        </div>
-        <p className="text-brand-charcoal/50 text-sm tracking-wide">管理您的常用收货信息</p>
+      <div className="pl-6 pr-6 md:pl-16 md:pr-28 pb-6 shrink-0 border-b border-stone-200/60 flex items-center justify-between">
+        <h2 className="text-xl font-medium tracking-wide text-stone-800">收货地址</h2>
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-1 text-[13px] tracking-wider text-stone-600 hover:text-stone-900 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          <span>新增地址</span>
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-10 py-2 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-0 scrollbar-hide">
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <Loader2 className="w-8 h-8 text-brand-gold animate-spin" />
+            <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
           </div>
         ) : addresses.length === 0 ? (
           <m.div
@@ -115,80 +112,65 @@ export function AddressesPanel() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center py-24 text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-black/5 md:bg-white/30 backdrop-blur-md flex items-center justify-center mb-5 border border-black/5 md:border-white/40 shadow-inner text-brand-charcoal/20">
-              <MapPin className="w-9 h-9" />
+            <div className="w-16 h-16 rounded-full bg-[#F9F8F6] border border-stone-200/60 flex items-center justify-center mb-5">
+              <MapPin className="w-6 h-6 text-stone-300" />
             </div>
-            <p className="text-brand-charcoal/50 font-medium tracking-wide mb-6">暂无收货地址</p>
+            <p className="text-stone-400 text-sm tracking-wider">暂无收货地址</p>
             <button
               onClick={() => setShowForm(true)}
-              className="text-brand-gold font-bold hover:text-brand-gold-dark transition-colors tracking-widest text-sm uppercase flex items-center gap-2 group"
+              className="text-stone-800 font-medium hover:text-stone-600 transition-colors tracking-widest text-sm uppercase flex items-center gap-2 mt-6"
             >
-              <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <Plus className="w-4 h-4 transition-transform" />
               立即添加一个地址
             </button>
           </m.div>
         ) : (
-          <div className="space-y-4 pb-10">
+          <div className="space-y-0 pb-10">
             {addresses.map((addr) => (
               <m.div
                 key={addr.id}
                 layout
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`group relative bg-black/[0.02] md:bg-white/30 rounded-[1.5rem] p-6 border transition-all backdrop-blur-md shadow-sm hover:shadow-md ${addr.isDefault
-                  ? "border-brand-gold/40 shadow-brand-gold/5"
-                  : "border-black/5 md:border-white/50 hover:border-brand-gold/20"
-                  }`}
+                className="group relative border-b border-stone-200/60 last:border-0 py-6 transition-colors hover:bg-stone-50/50 flex flex-col md:flex-row md:items-start md:justify-between gap-4"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-3 mb-3">
-                      <span className="text-brand-charcoal font-bold text-lg tracking-wide">{addr.name}</span>
-                      <span className="text-brand-charcoal/60 font-mono font-medium">{addr.phone}</span>
-                      {addr.isDefault && (
-                        <span className="px-2.5 py-0.5 bg-brand-gold/15 text-[#8B7355] text-[11px] font-bold rounded-lg tracking-widest uppercase border border-brand-gold/30 backdrop-blur-sm shadow-sm">
-                          默认
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-start gap-2 text-brand-charcoal/70 leading-relaxed text-base">
-                      <MapPin className="w-4 h-4 mt-1 shrink-0 opacity-40 text-brand-gold" />
-                      <p className="tracking-wide">
-                        <span className="font-semibold text-brand-charcoal/40 mr-1">{addr.province} {addr.city} {addr.district}</span>
-                        {addr.detail}
-                      </p>
-                    </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <span className="text-stone-800 font-medium tracking-wide text-base">{addr.name}</span>
+                    <span className="text-stone-500 font-mono text-sm tracking-wider">{addr.phone}</span>
+                    {addr.isDefault ? (
+                      <span className="px-2 py-0.5 border border-stone-800 text-stone-800 text-[11px] rounded tracking-widest uppercase">
+                        默认
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleSetDefault(addr.id)}
+                        className="px-2 py-0.5 border border-transparent text-stone-400 hover:text-stone-800 text-[11px] rounded tracking-widest uppercase transition-colors opacity-100 md:opacity-0 group-hover:opacity-100"
+                      >
+                        设为默认
+                      </button>
+                    )}
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setEditing(addr)}
-                      className="p-2.5 rounded-full bg-black/5 md:bg-white/40 text-brand-charcoal/40 hover:text-brand-gold hover:bg-white transition-all shadow-sm border border-transparent hover:border-brand-gold/20 group/btn"
-                      title="编辑"
-                    >
-                      <Edit3 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(addr.id)}
-                      className="p-2.5 rounded-full bg-black/5 md:bg-white/40 text-brand-charcoal/40 hover:text-red-500 hover:bg-white transition-all shadow-sm border border-transparent hover:border-red-100 group/btn"
-                      title="删除"
-                    >
-                      <Trash2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                    </button>
+                  <div className="text-sm font-medium tracking-wider text-stone-600 block pl-[2px] tabular-nums">
+                     {addr.province} {addr.city} {addr.district} {addr.detail}
                   </div>
                 </div>
 
-                {!addr.isDefault && (
+                <div className="flex items-center gap-5 mt-2 md:mt-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shrink-0">
                   <button
-                    onClick={() => handleSetDefault(addr.id)}
-                    className="mt-5 text-[12px] font-bold text-brand-charcoal/40 hover:text-brand-gold tracking-[0.15em] uppercase flex items-center gap-1.5 transition-all group/default"
+                    onClick={() => setEditing(addr)}
+                    className="text-stone-400 hover:text-stone-800 p-2 transition-colors flex items-center gap-1.5 rounded"
                   >
-                    <div className="w-4 h-4 rounded-full border border-black/10 md:border-white/40 flex items-center justify-center group-hover/default:border-brand-gold transition-colors">
-                      <div className="w-1.5 h-1.5 rounded-full bg-brand-gold scale-0 group-hover/default:scale-100 transition-transform" />
-                    </div>
-                    设为默认地址
+                    <Edit3 className="w-4 h-4" />
+                    <span className="text-[13px] tracking-wider font-medium">编辑</span>
                   </button>
-                )}
+                  <button
+                    onClick={() => handleDelete(addr.id)}
+                    className="text-stone-400 hover:text-red-500 p-2 transition-colors flex items-center justify-center rounded"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </m.div>
             ))}
           </div>
@@ -213,19 +195,19 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
 
   return (
     <div className="flex-1">
-      <label className="block text-brand-charcoal/50 text-[13px] font-bold tracking-wider uppercase mb-2 ml-1">{label}</label>
+      <label className="block text-stone-500 text-[13px] tracking-wider uppercase mb-2">{label}</label>
       <div className="relative">
         <button
           type="button"
           onClick={() => !disabled && setOpen(!open)}
-          className={`w-full px-4 py-3 border rounded-xl text-left flex items-center justify-between transition-all backdrop-blur-md shadow-sm text-base ${disabled
-            ? "bg-black/5 border-transparent text-brand-charcoal/20 cursor-not-allowed"
+          className={`w-full px-4 py-3 bg-[#F9F8F6] border rounded-xl text-left flex items-center justify-between transition-all text-base ${disabled
+            ? "border-transparent text-stone-300 cursor-not-allowed"
             : open
-              ? "border-brand-gold/60 ring-4 ring-brand-gold/5 bg-white text-brand-charcoal"
-              : "border-black/5 md:border-white/50 hover:border-brand-gold/40 bg-black/[0.02] md:bg-white/20 text-brand-charcoal"
+              ? "border-stone-400 ring-4 ring-stone-100 text-stone-800"
+              : "border-stone-200/60 hover:border-stone-300 text-stone-800"
             }`}
         >
-          <span className={hasValue ? "font-medium" : "text-brand-charcoal/30"}>
+          <span className={hasValue ? "font-medium" : "text-stone-300"}>
             {value || placeholder}
           </span>
           <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""} ${disabled ? "opacity-20" : "opacity-40"}`} />
@@ -246,10 +228,10 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute z-50 top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl border border-black/5 rounded-2xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden p-1.5 scrollbar-hide"
+                className="absolute z-50 top-full left-0 right-0 mt-2 bg-[#F9F8F6] border border-stone-200/60 rounded-xl shadow-lg max-h-60 overflow-y-auto overflow-x-hidden p-1.5 scrollbar-hide"
               >
                 {options.length === 0 ? (
-                  <div className="px-4 py-8 text-brand-charcoal/30 text-sm text-center font-medium italic">暂无可选数据</div>
+                  <div className="px-4 py-8 text-stone-400 text-sm text-center font-medium italic">暂无可选数据</div>
                 ) : (
                   <div className="grid grid-cols-1 gap-1">
                     {options.map((opt) => (
@@ -257,9 +239,9 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
                         key={opt.value}
                         type="button"
                         onClick={() => { onChange(opt.label); setOpen(false); }}
-                        className={`w-full px-3.5 py-2.5 text-left text-[14px] rounded-xl transition-all font-medium ${opt.label === value
-                          ? "bg-brand-gold text-white shadow-md shadow-brand-gold/20"
-                          : "text-brand-charcoal hover:bg-black/5"
+                        className={`w-full px-3.5 py-2.5 text-left text-[14px] rounded-lg transition-colors font-medium ${opt.label === value
+                          ? "bg-stone-800 text-[#F9F8F6]"
+                          : "text-stone-700 hover:bg-stone-100"
                           }`}
                       >
                         {opt.label}
@@ -329,95 +311,95 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
 
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="flex-shrink-0 px-6 md:px-10 pb-6 border-b border-black/5 md:border-white/30">
+      <div className="pl-6 pr-6 md:pl-16 md:pr-28 pb-6 shrink-0 border-b border-stone-200/60 flex items-center gap-4">
         <button
+          type="button"
           onClick={onClose}
-          className="group flex items-center gap-2 text-brand-charcoal/50 hover:text-brand-charcoal transition-colors mb-6"
+          className="text-stone-400 hover:text-stone-800 transition-colors p-1 -ml-1 rounded"
         >
-          <div className="w-7 h-7 rounded-full bg-black/5 md:bg-white/40 flex items-center justify-center group-hover:bg-black/10 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-          </div>
-          <span className="text-[14px] font-medium tracking-wide">返回地址列表</span>
+          <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
+        <h2 className="text-xl font-medium tracking-wide text-stone-800">
           {address ? "修改收货地址" : "添加收货地址"}
         </h2>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 md:px-10 py-8 scrollbar-hide">
-        <div className="space-y-8 max-w-2xl">
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 md:px-16 py-8 scrollbar-hide">
+        <div className="space-y-6 max-w-2xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="group">
-              <label className="block text-brand-charcoal/50 text-[12px] font-bold tracking-wider uppercase mb-2 ml-1">收货人姓名</label>
+            <div>
+              <label className="block text-stone-500 text-[13px] tracking-wider uppercase mb-2">收货人姓名</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-4 py-3 bg-black/[0.02] md:bg-white/20 border border-black/5 md:border-white/50 rounded-xl text-brand-charcoal font-medium placeholder:text-brand-charcoal/20 outline-none focus:border-brand-gold/60 focus:ring-4 focus:ring-brand-gold/5 transition-all shadow-sm"
+                className="w-full px-4 py-3 bg-[#F9F8F6] border border-stone-200/60 rounded-xl text-stone-800 font-medium placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors"
                 placeholder="请输入姓名"
                 required
               />
             </div>
-            <div className="group">
-              <label className="block text-brand-charcoal/50 text-[12px] font-bold tracking-wider uppercase mb-2 ml-1">联系电话</label>
+            <div>
+              <label className="block text-stone-500 text-[13px] tracking-wider uppercase mb-2">联系电话</label>
               <input
                 type="tel"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })}
-                className="w-full px-4 py-3 bg-black/[0.02] md:bg-white/20 border border-black/5 md:border-white/50 rounded-xl text-brand-charcoal font-medium placeholder:text-brand-charcoal/20 outline-none focus:border-brand-gold/60 focus:ring-4 focus:ring-brand-gold/5 transition-all shadow-sm font-mono"
-                placeholder="收货人及验证手机号"
+                className="w-full px-4 py-3 bg-[#F9F8F6] border border-stone-200/60 rounded-xl text-stone-800 font-medium font-mono placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors"
+                placeholder="收货人手机号"
                 required
               />
             </div>
           </div>
 
           <div className="flex flex-col md:flex-row gap-4">
-            <RegionSelect label="所属省份" value={form.province} onChange={handleProvinceChange} options={provinces} placeholder="请选择省" required />
+            <RegionSelect label="省份" value={form.province} onChange={handleProvinceChange} options={provinces} placeholder="请选择省" required />
             <RegionSelect label="城市" value={form.city} onChange={handleCityChange} options={cities} placeholder="请选择市" disabled={!form.province} required />
             <RegionSelect label="区县 / 街道" value={form.district} onChange={(v) => setForm({ ...form, district: v })} options={districts} placeholder="请选择区" disabled={!form.city} required />
           </div>
 
-          <div className="group">
-            <label className="block text-brand-charcoal/50 text-[12px] font-bold tracking-wider uppercase mb-2 ml-1">详细地址</label>
+          <div>
+            <label className="block text-stone-500 text-[13px] tracking-wider uppercase mb-2">详细地址</label>
             <textarea
               value={form.detail}
               onChange={(e) => setForm({ ...form, detail: e.target.value })}
-              className="w-full px-4 py-4 bg-black/[0.02] md:bg-white/20 border border-black/5 md:border-white/50 rounded-2xl text-brand-charcoal font-medium placeholder:text-brand-charcoal/20 outline-none focus:border-brand-gold/60 focus:ring-4 focus:ring-brand-gold/5 transition-all shadow-sm resize-none"
+              className="w-full px-4 py-3 bg-[#F9F8F6] border border-stone-200/60 rounded-xl text-stone-800 font-medium placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors resize-none"
               rows={3}
               placeholder="街道、门牌号等详细信息"
               required
             />
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer group/check w-fit">
-            <div className="relative">
+          <label className="flex items-center gap-3 cursor-pointer group w-fit mt-2">
+            <div className="relative flex items-center justify-center">
               <input
                 type="checkbox"
                 checked={form.isDefault}
                 onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
                 className="peer sr-only"
               />
-              <div className="h-6 w-6 rounded-lg border-2 border-black/10 md:border-white/40 bg-white/20 transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
-              <Check className="absolute inset-0 h-6 w-6 scale-0 text-white transition-transform peer-checked:scale-75" strokeWidth={4} />
+              <div className="w-5 h-5 rounded border-2 border-stone-300 bg-white transition-colors peer-checked:bg-stone-800 peer-checked:border-stone-800 group-hover:border-stone-400" />
+              <Check className="absolute w-3.5 h-3.5 text-white pointer-events-none scale-0 peer-checked:scale-100 transition-transform" strokeWidth={3} />
             </div>
-            <span className="text-brand-charcoal/70 text-[14px] font-bold tracking-widest uppercase select-none group-hover/check:text-brand-charcoal transition-colors">设为默认收货地址</span>
+            <span className="text-stone-600 text-[14px] font-medium tracking-wide select-none group-hover:text-stone-900 transition-colors">
+              设为默认收货地址
+            </span>
           </label>
         </div>
 
-        <div className="mt-12 flex gap-4 max-w-2xl">
+        <div className="mt-10 flex gap-4 max-w-2xl">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-4 border border-black/10 md:border-white/40 text-brand-charcoal/60 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-black/5 md:hover:bg-white/30 transition-all active:scale-[0.98]"
+            className="flex-1 py-3.5 border border-stone-200/60 text-stone-500 hover:text-stone-800 hover:bg-stone-50/50 rounded-xl font-medium tracking-widest uppercase transition-all"
           >
             取消
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 py-4 bg-brand-gold text-white rounded-xl font-bold tracking-[0.2em] uppercase shadow-lg shadow-brand-gold/20 hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 py-3.5 bg-stone-800 text-[#F9F8F6] rounded-xl font-medium tracking-widest uppercase shadow-sm hover:bg-stone-900 hover:shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" strokeWidth={3} />}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             <span>确认保存</span>
           </button>
         </div>

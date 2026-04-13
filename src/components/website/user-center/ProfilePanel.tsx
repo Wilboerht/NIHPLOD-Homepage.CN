@@ -6,7 +6,7 @@
  * 支持头像上传和昵称编辑 - 品牌风格版
  */
 import { useState, useRef } from "react";
-import { User, Phone, Edit3, Check, X, Camera, Loader2 } from "lucide-react";
+import { User, Camera, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 
@@ -109,137 +109,144 @@ export function ProfilePanel() {
   if (!user) return null;
 
   return (
-    <div className="scrollbar-hide h-full overflow-y-auto p-6 md:py-10 md:px-12">
+    <div className="h-full flex flex-col pt-6 md:pt-10">
       {/* 标题 */}
-      <div className="mb-14">
-        <h2 className="text-[28px] font-light text-stone-800 font-serif">个人信息</h2>
-        <p className="mt-2 text-xs text-stone-400">
-          管理您的账户信息与资料
-        </p>
+      <div className="flex-shrink-0 pl-6 pr-6 md:pl-16 md:pr-28 pb-6 border-b border-stone-200/60">
+        <h2 className="text-xl font-medium tracking-wide text-stone-800">个人信息</h2>
       </div>
 
-      {/* 头像区域 */}
-      <div className="mb-10 flex items-center gap-6">
-        {/* 可点击上传头像 */}
-        <div className="group relative">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#E5E0D8]/20 transition-all group-hover:border-stone-300">
-            {user.avatar ? (
-              <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover transition-all" />
-            ) : (
-              <User className="h-8 w-8 text-stone-400" strokeWidth={1} />
-            )}
+      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-6 scrollbar-hide">
+        {/* 头像区域 */}
+        <div className="mb-10 flex items-center gap-6">
+          {/* 可点击上传头像 */}
+          <div className="group relative">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#E5E0D8]/20 transition-all group-hover:border-stone-300">
+              {user.avatar ? (
+                <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover transition-all" />
+              ) : (
+                <User className="h-8 w-8 text-stone-400" strokeWidth={1} />
+              )}
+            </div>
+
+              {/* 上传遮罩 */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/0 transition-all disabled:cursor-wait group-hover:bg-black/30"
+              >
+                {uploadingAvatar ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-white" />
+                ) : (
+                  <Camera className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                )}
+              </button>
+
+            {/* 隐藏的文件输入 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
           </div>
 
-            {/* 上传遮罩 */}
+          <div>
+            <p className="text-sm font-medium text-stone-800">
+              {user.nickname || `用户${user.phone?.slice(-4)}`}
+            </p>
             <button
-              type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/0 transition-all disabled:cursor-wait group-hover:bg-black/30"
+              className="mt-1 text-xs text-stone-400 hover:text-stone-800 transition-colors"
             >
-              {uploadingAvatar ? (
-                <Loader2 className="h-6 w-6 animate-spin text-white" />
-              ) : (
-                <Camera className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
-              )}
+              {uploadingAvatar ? "上传中..." : "点击更换头像"}
             </button>
-
-          {/* 隐藏的文件输入 */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleAvatarChange}
-            className="hidden"
-          />
+          </div>
         </div>
 
-        <div>
-          <p className="text-sm font-medium text-stone-800">
-            {user.nickname || `用户${user.phone?.slice(-4)}`}
+        {/* 头像上传错误提示 */}
+        {avatarError && (
+          <p className="mb-6 border-l-2 border-red-200 pl-3 text-xs text-stone-500">
+            {avatarError}
           </p>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingAvatar}
-            className="mt-1 text-xs text-stone-400 hover:text-stone-800 transition-colors"
-          >
-            {uploadingAvatar ? "上传中..." : "点击更换头像"}
-          </button>
-        </div>
-      </div>
+        )}
 
-      {/* 头像上传错误提示 */}
-      {avatarError && (
-        <p className="mb-6 border-l-2 border-red-200 pl-3 text-xs text-stone-500">
-          {avatarError}
-        </p>
-      )}
-
-      {/* 信息卡片 */}
-      <div className="flex flex-col">
-        {/* 昵称 */}
-        <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
-          <div className="flex items-center gap-6 px-4">
-            <div className="w-[100px]">
-              <p className="text-sm font-light text-stone-500">昵称</p>
+        {/* 信息卡片 */}
+        <div className="flex flex-col">
+          {/* 昵称 */}
+          <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
+            <div className="flex items-center gap-6 px-4">
+              <div className="w-[100px]">
+                <p className="text-sm font-light text-stone-500">昵称</p>
+              </div>
+              <div>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSave();
+                      if (e.key === "Escape") {
+                        e.stopPropagation(); // 防止触发上层 modal 关闭
+                        setEditing(false);
+                        setNickname(user.nickname || "");
+                      }
+                    }}
+                    className="w-56 border-b border-stone-400 bg-transparent py-1 text-sm font-medium text-stone-800 outline-none transition-colors placeholder:text-stone-300"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-stone-800">
+                    {user.nickname || "未设置"}
+                  </p>
+                )}
+              </div>
             </div>
-            <div>
+            <div className="px-4">
               {editing ? (
-                <input
-                  type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  className="w-56 border-b border-stone-400 bg-transparent py-1 text-sm font-medium text-stone-800 outline-none transition-colors placeholder:text-stone-300"
-                  autoFocus
-                />
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      setEditing(false);
+                      setNickname(user.nickname || "");
+                    }}
+                    className="text-xs text-stone-500 font-light hover:text-stone-800 transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="text-xs text-stone-800 font-medium hover:text-stone-500 transition-colors disabled:opacity-50"
+                  >
+                    保存
+                  </button>
+                </div>
               ) : (
-                <p className="text-sm font-medium text-stone-800">
-                  {user.nickname || "未设置"}
-                </p>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-xs text-stone-500 font-light hover:text-stone-800 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                >
+                  修改
+                </button>
               )}
             </div>
           </div>
-          <div className="px-4">
-            {editing ? (
-              <div className="flex gap-4">
-                <button
-                  onClick={() => {
-                    setEditing(false);
-                    setNickname(user.nickname || "");
-                  }}
-                  className="text-xs text-stone-500 font-light hover:text-stone-800 transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="text-xs text-stone-800 font-medium hover:text-stone-500 transition-colors disabled:opacity-50"
-                >
-                  保存
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setEditing(true)}
-                className="text-xs text-stone-500 font-light hover:text-stone-800 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
-              >
-                修改
-              </button>
-            )}
-          </div>
-        </div>
 
-        {/* 手机号 */}
-        <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
-          <div className="flex items-center gap-6 px-4">
-            <div className="w-[100px]">
-              <p className="text-sm font-light text-stone-500">绑定手机号</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-stone-800">
-                {user.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : "未绑定"}
-              </p>
+          {/* 手机号 */}
+          <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
+            <div className="flex items-center gap-6 px-4">
+              <div className="w-[100px]">
+                <p className="text-sm font-light text-stone-500">绑定手机号</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-stone-800">
+                  {user.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : "未绑定"}
+                </p>
+              </div>
             </div>
           </div>
         </div>

@@ -24,11 +24,11 @@ interface Order {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  PENDING: { label: "待付款", color: "text-amber-600 bg-amber-500/10 border-amber-500/20" },
-  PAID: { label: "已付款", color: "text-blue-600 bg-blue-500/10 border-blue-500/20" },
-  SHIPPED: { label: "已发货", color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" },
-  COMPLETED: { label: "已完成", color: "text-brand-charcoal/80 bg-black/5 border-black/10" },
-  CANCELLED: { label: "已取消", color: "text-brand-charcoal/50 bg-black/5 border-black/5" },
+  PENDING: { label: "待付款", color: "text-amber-800 bg-transparent border-amber-800/20" },
+  PAID: { label: "已付款", color: "text-stone-800 bg-transparent border-stone-800/20" },
+  SHIPPED: { label: "已发货", color: "text-emerald-800 bg-transparent border-emerald-800/20" },
+  COMPLETED: { label: "已完成", color: "text-stone-800 bg-transparent border-stone-200/60" },
+  CANCELLED: { label: "已取消", color: "text-stone-400 bg-transparent border-stone-200/60" },
 };
 
 const TABS = [
@@ -91,39 +91,39 @@ export function OrdersPanel() {
 
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="flex-shrink-0 px-6 md:px-10 pb-2">
-        <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal mb-6">
+      <div className="flex-shrink-0 pl-6 pr-6 md:pl-16 md:pr-28 pb-6 border-b border-stone-200/60 flex flex-col md:flex-row items-center justify-between gap-4">
+        <h2 className="text-xl font-medium tracking-wide text-stone-800 text-center md:text-left self-start">
           我的订单
         </h2>
 
         {/* 导航标签 */}
-        <div className="flex gap-2 p-1.5 bg-black/5 md:bg-white/30 rounded-2xl backdrop-blur-md border border-black/5 md:border-white/40">
+        <div className="flex gap-6 self-start w-full md:w-auto overflow-x-auto scrollbar-hide pb-2 md:pb-0">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`relative flex-1 py-2.5 text-[15px] font-medium rounded-xl transition-all ${activeTab === tab.key
-                ? "text-[#8B7355]"
-                : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+              className={`relative pb-1 whitespace-nowrap text-[13px] tracking-wider font-medium transition-all ${activeTab === tab.key
+                ? "text-stone-800"
+                : "text-stone-400 hover:text-stone-600"
                 }`}
             >
               {activeTab === tab.key && (
                 <m.div
                   layoutId="ordersTabActive"
-                  className="absolute inset-0 bg-brand-gold/15 shadow-sm rounded-xl border border-brand-gold/30 backdrop-blur-md"
+                  className="absolute bottom-[-16px] md:bottom-[-25px] left-0 right-0 h-[1.5px] bg-stone-800"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
-              <span className="relative z-10 tracking-wide">{tab.label}</span>
+              <span className="relative z-10">{tab.label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-10 py-4 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-6 scrollbar-hide">
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <Loader2 className="w-8 h-8 text-brand-gold animate-spin" />
+            <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
           </div>
         ) : orders.length === 0 ? (
           <m.div
@@ -131,13 +131,13 @@ export function OrdersPanel() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center py-24 text-center"
           >
-            <div className="w-20 h-20 rounded-full bg-black/5 md:bg-white/30 backdrop-blur-md flex items-center justify-center mb-5 border border-black/5 md:border-white/40 shadow-inner">
-              <Package className="w-9 h-9" style={{ color: "#B0B0B0" }} />
+            <div className="w-16 h-16 rounded-full bg-[#F9F8F6] border border-stone-200/60 flex items-center justify-center mb-5">
+              <Package className="w-6 h-6 text-stone-300" />
             </div>
-            <p className="text-brand-charcoal/50 font-medium tracking-wide">暂无相关订单</p>
+            <p className="text-stone-400 text-sm tracking-wider">暂无相关订单</p>
           </m.div>
         ) : (
-          <div className="space-y-4 pb-10">
+          <div className="space-y-0 pb-10">
             {orders.map((order) => (
               <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
             ))}
@@ -149,24 +149,30 @@ export function OrdersPanel() {
 }
 
 function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
-  const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-brand-charcoal/50 bg-black/5 border-black/5" };
+  const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-stone-400 bg-transparent border-transparent" };
   const firstItem = order.items[0];
 
   return (
     <button
       onClick={onClick}
-      className="w-full bg-black/[0.02] md:bg-white/40 rounded-[1.25rem] p-5 border border-black/5 md:border-white/50 hover:bg-black/[0.04] md:hover:bg-white/60 transition-all text-left group backdrop-blur-md shadow-sm hover:shadow-md shadow-black/5"
+      className="w-full text-left group border-b border-stone-200/60 last:border-b-0 py-6 transition-colors hover:bg-stone-50/50"
     >
-      <div className="flex items-center justify-between mb-4 border-b border-black/5 md:border-white/30 pb-3">
-        <span className="text-brand-charcoal/40 text-[13px] font-mono tracking-wider">
-          {order.orderNo}
-        </span>
-        <span className={`px-2.5 py-1 rounded-md text-[13px] font-medium border ${status.color}`}>
-          {status.label}
-        </span>
+      <div className="flex justify-between items-start mb-4 px-2">
+        <div className="flex flex-col">
+          <span className="text-xs text-stone-400 font-mono tracking-wider mb-1">
+            {order.orderNo}
+          </span>
+          <span className={`text-[11px] px-2 py-0.5 rounded border ${status.color} w-fit`}>
+            {status.label}
+          </span>
+        </div>
+        <div className="text-sm font-medium tracking-wider text-stone-800 tabular-nums">
+          ¥{Number(order.payAmount).toFixed(2)}
+        </div>
       </div>
-      <div className="flex gap-4 items-center">
-        <div className="w-20 h-20 rounded-xl overflow-hidden bg-black/5 md:bg-white/50 flex-shrink-0 border border-black/5 md:border-white/50 shadow-inner">
+      
+      <div className="flex gap-5 items-center px-2">
+        <div className="w-20 h-20 bg-stone-100 flex-shrink-0 relative overflow-hidden">
           {firstItem?.productImage ? (
             <Image
               src={firstItem.productImage}
@@ -177,25 +183,24 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package className="w-7 h-7" style={{ color: "#BDBDBD" }} />
+              <Package className="w-6 h-6 text-stone-300" />
             </div>
           )}
         </div>
-        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          <p className="text-brand-charcoal text-base font-semibold truncate tracking-wide group-hover:text-brand-gold transition-colors">
+        
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <h3 className="text-sm font-medium text-stone-800 truncate tracking-wide group-hover:text-stone-600 transition-colors">
             {firstItem?.productName || "未知商品"}
-          </p>
+          </h3>
           {order.items.length > 1 && (
-            <p className="text-brand-charcoal/50 text-[13px]">
-              等 共 <span className="text-brand-charcoal font-medium">{order.items.length}</span> 件商品
+            <p className="text-xs text-stone-400 tracking-wider">
+              等 共 {order.items.length} 件商品
             </p>
           )}
-          <p className="text-brand-gold text-[17px] font-semibold mt-0.5 tracking-wider">
-            ¥{Number(order.payAmount).toFixed(2)}
-          </p>
         </div>
-        <div className="w-8 h-8 rounded-full bg-black/5 md:bg-white/50 flex items-center justify-center group-hover:bg-brand-gold shrink-0 transition-colors">
-          <ChevronRight className="w-4 h-4 text-brand-charcoal/30 group-hover:text-white transition-colors" />
+        
+        <div className="w-8 h-8 flex justify-center items-center opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all duration-300">
+          <ChevronRight className="w-4 h-4 text-stone-400" />
         </div>
       </div>
     </button>
