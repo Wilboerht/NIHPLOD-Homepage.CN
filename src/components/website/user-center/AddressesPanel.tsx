@@ -148,44 +148,48 @@ export function AddressesPanel() {
                 layout
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="group relative border-b border-stone-200/60 last:border-0 py-6 transition-colors hover:bg-stone-50/50 flex flex-col md:flex-row md:items-start md:justify-between gap-4"
+                className="group relative border-b border-stone-200/60 last:border-0 py-6 transition-colors hover:bg-stone-50/50 flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2">
                     <span className="text-stone-800 font-medium tracking-wide text-base">{addr.name}</span>
-                    <span className="text-stone-500 font-mono text-sm tracking-wider">{addr.phone}</span>
-                    {addr.isDefault ? (
-                      <span className="px-2 py-0.5 border border-stone-800 text-stone-800 text-[11px] rounded tracking-widest uppercase">
+                    <span className="text-stone-500 font-mono text-[15px] tracking-wider">{addr.phone}</span>
+                    {addr.isDefault && (
+                      <span className="px-2 py-0.5 border border-stone-800 text-stone-800 text-[11px] rounded tracking-widest uppercase shrink-0">
                         默认
                       </span>
-                    ) : (
-                      <button
-                        onClick={() => handleSetDefault(addr.id)}
-                        className="px-2 py-0.5 border border-transparent text-stone-400 hover:text-stone-800 text-[11px] rounded tracking-widest uppercase transition-colors opacity-100 md:opacity-0 group-hover:opacity-100"
-                      >
-                        设为默认
-                      </button>
                     )}
                   </div>
-                  <div className="text-sm font-medium tracking-wider text-stone-600 block pl-[2px] tabular-nums">
+                  <div className="text-sm font-medium tracking-wider text-stone-600 block pl-[2px] tabular-nums mt-3 leading-relaxed">
                      {addr.province} {addr.city} {addr.district} {addr.detail}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-5 mt-2 md:mt-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                  <button
-                    onClick={() => setEditing(addr)}
-                    className="text-stone-400 hover:text-stone-800 p-2 transition-colors flex items-center gap-1.5 rounded"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                    <span className="text-[13px] tracking-wider font-medium">编辑</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(addr.id)}
-                    className="text-stone-400 hover:text-red-500 p-2 transition-colors flex items-center justify-center rounded"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div className="flex items-center justify-between md:justify-end w-full md:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t border-stone-100 md:border-transparent opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                  {!addr.isDefault && (
+                    <button
+                      onClick={() => handleSetDefault(addr.id)}
+                      className="text-[13px] tracking-wider font-medium text-stone-400 hover:text-stone-800 transition-colors"
+                    >
+                      设为默认
+                    </button>
+                  )}
+                  
+                  <div className="flex items-center gap-5 ml-auto">
+                    <button
+                      onClick={() => setEditing(addr)}
+                      className="text-stone-400 hover:text-stone-800 transition-colors flex items-center gap-1.5"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      <span className="text-[13px] tracking-wider font-medium">编辑</span>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(addr.id)}
+                      className="text-stone-400 hover:text-red-500 transition-colors flex items-center justify-center p-1 -mr-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </m.div>
             ))}

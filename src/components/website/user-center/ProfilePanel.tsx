@@ -177,11 +177,11 @@ export function ProfilePanel() {
         <div className="flex flex-col md:divide-y md:divide-stone-200/60">
           {/* 昵称 */}
           <div className="group flex items-center justify-between py-6 transition-colors hover:bg-stone-100/50">
-            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
-              <div className="md:w-20">
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6 flex-1 min-w-0 mr-4">
+              <div className="md:w-20 shrink-0">
                 <p className="text-[10px] md:text-sm font-bold md:font-light text-stone-400 tracking-widest uppercase md:normal-case">昵称</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0 w-full">
                 {editing ? (
                   <input
                     type="text"
@@ -195,19 +195,19 @@ export function ProfilePanel() {
                         setNickname(user.nickname || "");
                       }
                     }}
-                    className="w-48 md:w-56 border-b border-stone-400 bg-transparent py-1 text-sm md:text-base font-medium text-stone-800 outline-none transition-colors placeholder:text-stone-300"
+                    className="w-full md:w-56 border-b border-stone-400 bg-transparent py-1 text-sm md:text-base font-medium text-stone-800 outline-none transition-colors placeholder:text-stone-300"
                     autoFocus
                   />
                 ) : (
-                  <p className="text-base md:text-sm font-medium text-stone-800">
+                  <p className="text-base md:text-sm font-medium text-stone-800 truncate">
                     {user.nickname || "未设置"}
                   </p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {editing ? (
-                <div className="flex gap-4">
+                <div className="flex gap-3">
                   <button
                     onClick={() => {
                       setEditing(false);
