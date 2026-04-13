@@ -6,7 +6,7 @@
  * 支持头像上传和昵称编辑 - 品牌风格版
  */
 import { useState, useRef } from "react";
-import { User, Camera, Loader2 } from "lucide-react";
+import { User, Camera, Loader2, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 
@@ -111,11 +111,11 @@ export function ProfilePanel() {
   return (
     <div className="h-full flex flex-col pt-4 md:pt-10">
       {/* 标题 - 移动端由全局 Header 管理 */}
-      <div className="hidden md:flex flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60">
+      <div className="hidden md:flex flex-shrink-0 px-6 md:px-16 pb-6 border-b-0 md:border-b border-stone-200/60">
         <h2 className="text-xl font-medium tracking-wide text-stone-800">个人信息</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-6 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-16 py-6 scrollbar-hide">
         {/* 头像区域 */}
         <div className="mb-10 flex items-center gap-6">
           {/* 可点击上传头像 */}
@@ -173,15 +173,15 @@ export function ProfilePanel() {
           </p>
         )}
 
-        {/* 信息卡片 */}
-        <div className="flex flex-col">
+        {/* 信息卡片 - 移动端采用上下堆叠，PC 采用左右对齐 */}
+        <div className="flex flex-col md:divide-y md:divide-stone-200/60">
           {/* 昵称 */}
-          <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
-            <div className="flex items-center gap-6 px-4">
-              <div className="w-[100px]">
-                <p className="text-sm font-light text-stone-500">昵称</p>
+          <div className="group flex items-center justify-between py-6 transition-colors hover:bg-stone-100/50">
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
+              <div className="md:w-20">
+                <p className="text-[10px] md:text-sm font-bold md:font-light text-stone-400 tracking-widest uppercase md:normal-case">昵称</p>
               </div>
-              <div>
+              <div className="flex items-center gap-2">
                 {editing ? (
                   <input
                     type="text"
@@ -190,22 +190,22 @@ export function ProfilePanel() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSave();
                       if (e.key === "Escape") {
-                        e.stopPropagation(); // 防止触发上层 modal 关闭
+                        e.stopPropagation();
                         setEditing(false);
                         setNickname(user.nickname || "");
                       }
                     }}
-                    className="w-56 border-b border-stone-400 bg-transparent py-1 text-sm font-medium text-stone-800 outline-none transition-colors placeholder:text-stone-300"
+                    className="w-48 md:w-56 border-b border-stone-400 bg-transparent py-1 text-sm md:text-base font-medium text-stone-800 outline-none transition-colors placeholder:text-stone-300"
                     autoFocus
                   />
                 ) : (
-                  <p className="text-sm font-medium text-stone-800">
+                  <p className="text-base md:text-sm font-medium text-stone-800">
                     {user.nickname || "未设置"}
                   </p>
                 )}
               </div>
             </div>
-            <div className="px-4">
+            <div className="flex items-center gap-2">
               {editing ? (
                 <div className="flex gap-4">
                   <button
@@ -228,22 +228,25 @@ export function ProfilePanel() {
               ) : (
                 <button
                   onClick={() => setEditing(true)}
-                  className="text-xs text-stone-500 font-light hover:text-stone-800 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                  className="flex items-center gap-1.5 text-xs text-stone-500 font-light hover:text-stone-800 transition-colors group"
                 >
-                  修改
+                  <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">修改</span>
+                  <ChevronRight className="w-3.5 h-3.5 md:hidden text-stone-300" />
                 </button>
               )}
             </div>
           </div>
 
+          <div className="h-px w-full bg-stone-100 md:hidden opacity-40" />
+
           {/* 手机号 */}
-          <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
-            <div className="flex items-center gap-6 px-4">
-              <div className="w-[100px]">
-                <p className="text-sm font-light text-stone-500">绑定手机号</p>
+          <div className="group flex items-center justify-between py-6 transition-colors hover:bg-stone-100/50">
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
+              <div className="md:w-20">
+                <p className="text-[10px] md:text-sm font-bold md:font-light text-stone-400 tracking-widest uppercase md:normal-case">绑定手机号</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-stone-800">
+                <p className="text-base md:text-sm font-medium text-stone-800">
                   {user.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : "未绑定"}
                 </p>
               </div>

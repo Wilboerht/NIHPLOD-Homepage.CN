@@ -92,7 +92,7 @@ export function OrdersPanel() {
   return (
     <div className="h-full flex flex-col pt-4 md:pt-10">
       {/* 头部：单向排列避免与关闭按钮冲突 */}
-      <div className="flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60 flex flex-col items-start">
+      <div className="flex-shrink-0 px-16 pb-6 border-b-0 md:border-b border-stone-200/60 flex flex-col items-start">
         <h2 className="hidden md:block text-xl font-medium tracking-wide text-stone-800">我的订单</h2>
         
         {/* 状态页签 */}
@@ -120,7 +120,7 @@ export function OrdersPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-6 scrollbar-hide flex flex-col">
+      <div className="flex-1 overflow-y-auto px-16 py-6 scrollbar-hide flex flex-col">
         {loading ? (
           <div className="flex-1 flex items-center justify-center pb-28">
             <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />

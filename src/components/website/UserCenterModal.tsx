@@ -158,7 +158,7 @@ export function UserCenterModal() {
                 <div className={`w-full md:w-72 shrink-0 flex flex-col transition-all duration-300 border-r border-stone-200/60 ${showMobileDetail ? 'hidden md:flex' : 'flex'
                   }`}>
                   {/* 用户头像区域 */}
-                  <div className="px-16 py-12">
+                  <div className="px-16 pt-12 pb-4">
                     <div className="flex flex-col items-start gap-4 text-left">
                       <div className="w-16 h-16 rounded-full bg-[#E5E0D8]/40 flex items-center justify-center overflow-hidden shrink-0 object-cover">
                         {user.avatar ? (
@@ -179,7 +179,7 @@ export function UserCenterModal() {
                   </div>
 
                   {/* 菜单列表 */}
-                  <nav className="flex-1 w-full space-y-1 overflow-y-auto scrollbar-hide py-6 flex flex-col justify-start items-start relative px-16">
+                  <nav className="flex-1 w-full space-y-1 overflow-y-auto scrollbar-hide py-2 flex flex-col justify-start items-start relative px-16">
                     {MENU_ITEMS.map((item) => {
                       const Icon = item.icon;
                       const isActive = userCenterView === item.id;
@@ -232,24 +232,28 @@ export function UserCenterModal() {
                   }`}>
 
                   {/* 移动端统一 Header */}
-                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden flex items-center justify-between px-4 bg-[#F9F8F6]/80 backdrop-blur-md border-b border-stone-200/40">
-                    <button
-                      onClick={() => setShowMobileDetail(false)}
-                      className="p-2 -ml-2 text-stone-500 hover:text-stone-800 transition-colors"
-                    >
-                      <ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
-                    </button>
+                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden flex items-center px-10 bg-[#F9F8F6]/80 backdrop-blur-md border-b border-stone-200/40">
+                    <div className="w-10 flex justify-start">
+                      <button
+                        onClick={() => setShowMobileDetail(false)}
+                        className="text-stone-500 hover:text-stone-800 transition-colors"
+                      >
+                        <ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
+                      </button>
+                    </div>
                     
-                    <span className="text-[15px] font-medium text-stone-800 tracking-wide">
+                    <h2 className="flex-1 text-[15px] font-medium text-stone-800 tracking-wide text-center">
                       {MENU_ITEMS.find(i => i.id === userCenterView)?.label || "个人动态"}
-                    </span>
+                    </h2>
 
-                    <button
-                      onClick={closeUserCenter}
-                      className="p-2 -mr-2 text-stone-500 hover:text-stone-800 transition-colors"
-                    >
-                      <X className="h-5 w-5" strokeWidth={1.5} />
-                    </button>
+                    <div className="w-10 flex justify-end">
+                      <button
+                        onClick={closeUserCenter}
+                        className="text-stone-500 hover:text-stone-800 transition-colors"
+                      >
+                        <X className="h-5 w-5" strokeWidth={1.5} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* 桌面端关闭按钮 */}
