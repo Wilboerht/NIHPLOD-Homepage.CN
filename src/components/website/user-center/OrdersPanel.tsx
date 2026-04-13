@@ -50,7 +50,9 @@ export function OrdersPanel() {
     const controller = new AbortController();
     const requestId = ++requestIdRef.current;
 
-    const fetchOrders = async () => {
+    // 视觉级防抖：延迟250ms执行，期间页签UI可随意滑动。
+    // 这不仅拦截了无效的网络请求，更避免了快速点击时 Loading UI 的疯狂闪烁。
+    const debounceTimer = setTimeout(async () => {
       setLoading(true);
       try {
         const url = activeTab === "all" ? "/api/orders" : `/api/orders?status=${activeTab}`;
@@ -79,10 +81,12 @@ export function OrdersPanel() {
         if (requestId !== requestIdRef.current) return;
         setLoading(false);
       }
-    };
-    fetchOrders();
+    }, 250);
 
-    return () => controller.abort();
+    return () => {
+      clearTimeout(debounceTimer);
+      controller.abort();
+    };
   }, [activeTab, initialOrderId, clearInitialOrderId]);
 
   if (selectedOrder) {
