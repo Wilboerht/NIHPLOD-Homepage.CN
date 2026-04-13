@@ -245,7 +245,7 @@ export function UserCenterModal() {
                   <button
                     onClick={closeUserCenter}
                     aria-label="关闭用户中心"
-                    className="absolute right-16 top-8 z-50 hidden md:flex h-9 w-9 items-center justify-center text-stone-400 hover:text-stone-800 transition-colors"
+                    className="absolute right-10 top-10 z-50 hidden md:flex h-9 w-9 items-center justify-center text-stone-400 hover:text-stone-800 transition-colors"
                   >
                     <X className="h-5 w-5" strokeWidth={1} />
                   </button>

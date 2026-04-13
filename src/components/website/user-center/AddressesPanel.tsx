@@ -90,15 +90,18 @@ export function AddressesPanel() {
 
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="pl-6 pr-6 md:pl-16 md:pr-28 pb-6 shrink-0 border-b border-stone-200/60 flex items-center justify-between">
+      <div className="px-6 md:px-16 pb-6 shrink-0 border-b border-stone-200/60 flex items-center gap-6">
         <h2 className="text-xl font-medium tracking-wide text-stone-800">收货地址</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1 text-[13px] tracking-wider text-stone-600 hover:text-stone-900 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>新增地址</span>
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="w-[1px] h-4 bg-stone-200" />
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 text-[13px] tracking-wider text-stone-500 hover:text-stone-800 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>新增地址</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 md:px-16 py-0 scrollbar-hide">
@@ -311,7 +314,7 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
 
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="pl-6 pr-6 md:pl-16 md:pr-28 pb-6 shrink-0 border-b border-stone-200/60 flex items-center gap-4">
+      <div className="px-6 md:px-16 pb-6 shrink-0 border-b border-stone-200/60 flex items-center gap-4">
         <button
           type="button"
           onClick={onClose}

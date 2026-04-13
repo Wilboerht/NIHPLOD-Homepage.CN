@@ -111,7 +111,7 @@ export function ProfilePanel() {
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
       {/* 标题 */}
-      <div className="flex-shrink-0 pl-6 pr-6 md:pl-16 md:pr-28 pb-6 border-b border-stone-200/60">
+      <div className="flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60">
         <h2 className="text-xl font-medium tracking-wide text-stone-800">个人信息</h2>
       </div>
 

@@ -91,7 +91,7 @@ export function OrdersPanel() {
 
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="flex-shrink-0 pl-6 pr-6 md:pl-16 md:pr-28 pb-6 border-b border-stone-200/60 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60 flex flex-col md:flex-row items-center justify-between gap-4">
         <h2 className="text-xl font-medium tracking-wide text-stone-800 text-center md:text-left self-start">
           我的订单
         </h2>
