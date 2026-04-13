@@ -150,7 +150,7 @@ export function UserCenterModal() {
             tabIndex={-1}
             className="relative z-10 w-full max-w-[95%] md:max-w-[1100px] md:h-[680px] flex items-center justify-center transition-all duration-300"
           >
-            <div className="relative w-full max-h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-[#F9F8F6] shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
+            <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-[#F9F8F6] shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
 
               {/* 浮动内容区域容器 */}
               <div className="relative z-10 w-full flex flex-col md:flex-row items-stretch">

@@ -5,7 +5,7 @@ import { FAQContent } from "@/components/website/FAQContent";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-    title: "官方咨询中心",
+    title: "常见问题",
     description: "NIHPLOD 旎柏咨询中心。了解关于真脂质体产品、科学护肤理念、各级服务的常见问题解答。",
 };
 
