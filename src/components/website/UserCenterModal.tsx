@@ -164,11 +164,11 @@ export function UserCenterModal() {
                         )}
                       </div>
                       <div className="flex flex-col justify-center">
-                        <p className="text-stone-800 text-[15px] font-medium tracking-[0.03em] truncate">
+                        <p className="text-stone-800 text-[15px] font-medium truncate">
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
-                        <p className="text-stone-400 text-[11px] font-light mt-1 tracking-[0.15em] uppercase">
-                          M E M B E R
+                        <p className="text-stone-400 text-xs font-light mt-1">
+                          普通会员
                         </p>
                       </div>
                     </div>
@@ -199,7 +199,7 @@ export function UserCenterModal() {
                             />
                           )}
                           <Icon className={`relative z-10 w-[15px] h-[15px] ${isActive ? "text-stone-800" : "text-stone-400 group-hover:text-stone-600 transition-colors"}`} strokeWidth={1.5} />
-                          <span className="relative z-10 tracking-[0.05em]">{item.label}</span>
+                          <span className="relative z-10">{item.label}</span>
                         </button>
                       );
                     })}
@@ -211,8 +211,8 @@ export function UserCenterModal() {
                       onClick={handleLogout}
                       className="group flex flex-col items-center justify-center gap-1.5 text-stone-400 hover:text-stone-800 transition-colors"
                     >
-                      <LogOut className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity" strokeWidth={1} />
-                      <span className="text-[10px] tracking-[0.2em] font-light uppercase">L O G O U T</span>
+                      <LogOut className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+                      <span className="text-xs font-light">退出登录</span>
                     </button>
                   </div>
                 </div>

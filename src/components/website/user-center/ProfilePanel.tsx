@@ -109,11 +109,11 @@ export function ProfilePanel() {
   if (!user) return null;
 
   return (
-    <div className="scrollbar-hide h-full overflow-y-auto p-6 md:p-14">
+    <div className="scrollbar-hide h-full overflow-y-auto p-6 md:py-10 md:px-12">
       {/* 标题 */}
       <div className="mb-14">
-        <h2 className="text-[28px] font-light tracking-[0.1em] text-stone-800 uppercase font-serif">Profile</h2>
-        <p className="mt-2 text-[11px] uppercase tracking-[0.15em] text-stone-400">
+        <h2 className="text-[28px] font-light text-stone-800 font-serif">个人信息</h2>
+        <p className="mt-2 text-xs text-stone-400">
           管理您的账户信息与资料
         </p>
       </div>
@@ -155,15 +155,15 @@ export function ProfilePanel() {
         </div>
 
         <div>
-          <p className="text-sm font-medium tracking-[0.05em] text-stone-800">
+          <p className="text-sm font-medium text-stone-800">
             {user.nickname || `用户${user.phone?.slice(-4)}`}
           </p>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingAvatar}
-            className="mt-1 text-[10px] tracking-[0.15em] text-stone-400 uppercase hover:text-stone-800 transition-colors uppercase"
+            className="mt-1 text-xs text-stone-400 hover:text-stone-800 transition-colors"
           >
-            {uploadingAvatar ? "U P L O A D I N G . . ." : "E D I T   A V A T A R"}
+            {uploadingAvatar ? "上传中..." : "点击更换头像"}
           </button>
         </div>
       </div>
@@ -181,7 +181,7 @@ export function ProfilePanel() {
         <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
           <div className="flex items-center gap-6 px-4">
             <div className="w-[100px]">
-              <p className="text-[10px] uppercase tracking-[0.2em] font-light text-stone-400">N a m e</p>
+              <p className="text-sm font-light text-stone-500">昵称</p>
             </div>
             <div>
               {editing ? (
@@ -189,11 +189,11 @@ export function ProfilePanel() {
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  className="w-56 border-b border-stone-400 bg-transparent py-1 text-sm font-medium tracking-wide text-stone-800 outline-none transition-colors placeholder:text-stone-300"
+                  className="w-56 border-b border-stone-400 bg-transparent py-1 text-sm font-medium text-stone-800 outline-none transition-colors placeholder:text-stone-300"
                   autoFocus
                 />
               ) : (
-                <p className="text-sm font-medium tracking-wide text-stone-800">
+                <p className="text-sm font-medium text-stone-800">
                   {user.nickname || "未设置"}
                 </p>
               )}
@@ -207,24 +207,24 @@ export function ProfilePanel() {
                     setEditing(false);
                     setNickname(user.nickname || "");
                   }}
-                  className="text-[10px] tracking-[0.2em] text-stone-400 font-light hover:text-stone-800 transition-colors uppercase"
+                  className="text-xs text-stone-500 font-light hover:text-stone-800 transition-colors"
                 >
-                  C A N C E L
+                  取消
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="text-[10px] tracking-[0.2em] text-stone-800 font-medium hover:text-stone-500 transition-colors uppercase disabled:opacity-50"
+                  className="text-xs text-stone-800 font-medium hover:text-stone-500 transition-colors disabled:opacity-50"
                 >
-                  S A V E
+                  保存
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setEditing(true)}
-                className="text-[10px] tracking-[0.2em] text-stone-400 font-light hover:text-stone-800 transition-colors uppercase opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                className="text-xs text-stone-500 font-light hover:text-stone-800 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
               >
-                E D I T
+                修改
               </button>
             )}
           </div>
@@ -234,12 +234,10 @@ export function ProfilePanel() {
         <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
           <div className="flex items-center gap-6 px-4">
             <div className="w-[100px]">
-              <p className="text-[10px] uppercase tracking-[0.2em] font-light text-stone-400">
-                P h o n e
-              </p>
+              <p className="text-sm font-light text-stone-500">绑定手机号</p>
             </div>
             <div>
-              <p className="text-sm font-medium tracking-wide text-stone-800">
+              <p className="text-sm font-medium text-stone-800">
                 {user.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : "未绑定"}
               </p>
             </div>
