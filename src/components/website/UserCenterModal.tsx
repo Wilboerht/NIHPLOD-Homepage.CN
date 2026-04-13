@@ -232,8 +232,9 @@ export function UserCenterModal() {
                   }`}>
 
                   {/* 移动端统一 Header */}
-                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden flex items-center px-10 bg-[#F9F8F6]/80 backdrop-blur-md border-b border-stone-200/40">
-                    <div className="w-10 flex justify-start">
+                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden flex items-center bg-[#F9F8F6]/80 backdrop-blur-md border-b border-stone-200/40">
+                    {/* 左侧锚点 */}
+                    <div className="absolute left-6 inset-y-0 flex items-center">
                       <button
                         onClick={() => setShowMobileDetail(false)}
                         className="text-stone-500 hover:text-stone-800 transition-colors"
@@ -242,11 +243,15 @@ export function UserCenterModal() {
                       </button>
                     </div>
                     
-                    <h2 className="flex-1 text-[15px] font-medium text-stone-800 tracking-wide text-center">
-                      {MENU_ITEMS.find(i => i.id === userCenterView)?.label || "个人动态"}
-                    </h2>
+                    {/* 绝对中心标题 */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                      <h2 className="text-[15px] font-medium text-stone-800 tracking-wide text-center px-16">
+                        {MENU_ITEMS.find(i => i.id === userCenterView)?.label || "个人动态"}
+                      </h2>
+                    </div>
 
-                    <div className="w-10 flex justify-end">
+                    {/* 右侧锚点 */}
+                    <div className="absolute right-6 inset-y-0 flex items-center">
                       <button
                         onClick={closeUserCenter}
                         className="text-stone-500 hover:text-stone-800 transition-colors"
