@@ -109,9 +109,9 @@ export function ProfilePanel() {
   if (!user) return null;
 
   return (
-    <div className="h-full flex flex-col pt-6 md:pt-10">
-      {/* 标题 */}
-      <div className="flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60">
+    <div className="h-full flex flex-col pt-4 md:pt-10">
+      {/* 标题 - 移动端由全局 Header 管理 */}
+      <div className="hidden md:flex flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60">
         <h2 className="text-xl font-medium tracking-wide text-stone-800">个人信息</h2>
       </div>
 

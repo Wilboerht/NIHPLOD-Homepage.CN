@@ -89,8 +89,8 @@ export function AddressesPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="px-6 md:px-16 pb-6 shrink-0 border-b border-stone-200/60 flex items-center gap-6">
+    <div className="h-full flex flex-col pt-4 md:pt-10">
+      <div className="hidden md:flex px-6 md:px-16 pb-6 shrink-0 border-b border-stone-200/60 items-center gap-6">
         <h2 className="text-xl font-medium tracking-wide text-stone-800">收货地址</h2>
         <div className="flex items-center gap-4">
           <div className="w-[1px] h-4 bg-stone-200" />
@@ -105,6 +105,19 @@ export function AddressesPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 md:px-16 py-0 scrollbar-hide flex flex-col">
+        {/* 移动端新增按钮 - 仅在移动端列表顶部显示 */}
+        {!loading && addresses.length > 0 && (
+          <div className="md:hidden pt-4 pb-2">
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 text-[13px] text-stone-500 font-medium tracking-wider"
+            >
+              <Plus className="w-4 h-4" />
+              <span>新增收货地址</span>
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex-1 flex items-center justify-center pb-28">
             <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
@@ -316,8 +329,8 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
   };
 
   return (
-    <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="px-6 md:px-16 pb-6 shrink-0 border-b border-stone-200/60 flex items-center gap-4">
+    <div className="h-full flex flex-col pt-4 md:pt-10">
+      <div className="hidden md:flex px-6 md:px-16 pb-6 shrink-0 border-b border-stone-200/60 items-center gap-4">
         <button
           type="button"
           onClick={onClose}

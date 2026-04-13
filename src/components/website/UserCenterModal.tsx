@@ -32,12 +32,17 @@ export function UserCenterModal() {
     setMounted(true);
   }, []);
 
-  // 监听视图切换，如果在移动端且切换了视图，进入详情页
+  // 初始加载及 PC/移动切换逻辑
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768 && userCenterOpen) {
-      if (userCenterView) setShowMobileDetail(true);
-    }
-  }, [userCenterView, userCenterOpen]);
+    // 监听窗口大小，若是 PC 端直接重置详情显示状态，确保左边栏可见
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setShowMobileDetail(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 禁止背景滚动
   useEffect(() => {
@@ -183,7 +188,9 @@ export function UserCenterModal() {
                           key={item.id}
                           onClick={() => {
                             setUserCenterView(item.id);
-                            if (window.innerWidth < 768) setShowMobileDetail(true);
+                            if (window.innerWidth < 768) {
+                              setShowMobileDetail(true);
+                            }
                           }}
                           className={`relative w-full flex items-center justify-start gap-5 py-3.5 transition-all group ${isActive
                             ? "text-stone-800 font-medium"
@@ -191,7 +198,7 @@ export function UserCenterModal() {
                             }`}
                         >
                           {isActive && (
-                            <div className="absolute inset-y-0 -left-4 flex items-center pointer-events-none">
+                            <div className="absolute inset-y-0 -left-4 hidden md:flex items-center pointer-events-none">
                               <m.div
                                 layoutId="activeSideMenu"
                                 className="w-[2px] h-[18px] bg-stone-800 rounded-full"
@@ -199,45 +206,49 @@ export function UserCenterModal() {
                               />
                             </div>
                           )}
-                          <Icon className="w-[18px] h-[18px] shrink-0 transition-colors" strokeWidth={1.5} />
-                          <span className="text-[13px]">{item.label}</span>
+                          <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? 'md:text-stone-800 text-stone-800' : 'md:text-stone-400 text-stone-800'}`} strokeWidth={1.5} />
+                          <span className={`text-[13px] transition-colors ${isActive ? 'md:text-stone-800 md:font-medium text-stone-800 font-light' : 'md:text-stone-400 text-stone-800 font-light group-hover:text-stone-800'}`}>
+                            {item.label}
+                          </span>
                         </button>
                       );
                     })}
                   </nav>
 
                   {/* 退出登录 */}
-                  <div className="p-8 md:px-16 mt-auto flex justify-start">
+                  <div className="mt-auto px-16 py-8">
                     <button
                       onClick={handleLogout}
-                      className="group flex flex-col items-start justify-center gap-1.5 text-stone-400 hover:text-stone-800 transition-all"
+                      className="group flex items-center justify-start gap-5 text-stone-400 hover:text-stone-800 transition-all"
                     >
-                      <LogOut className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
-                      <span className="text-xs font-light">退出登录</span>
+                      <LogOut className="w-[18px] h-[18px] opacity-60 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+                      <span className="text-[13px] font-medium tracking-wide">退出登录</span>
                     </button>
                   </div>
                 </div>
 
-                {/* 内容卡片 - 仅在移动端有详情时显示，PC 端始终显示 */}
+                  {/* 内容卡片 - 仅在移动端有详情时显示，PC 端始终显示 */}
                 <div className={`flex-1 relative transition-all duration-300 ${showMobileDetail ? 'flex' : 'hidden md:flex'
                   }`}>
 
                   {/* 移动端统一 Header */}
-                  <div className="absolute top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 md:hidden bg-[#F9F8F6]/90 backdrop-blur-md border-b border-stone-200/60">
+                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden flex items-center justify-between px-4 bg-[#F9F8F6]/80 backdrop-blur-md border-b border-stone-200/40">
                     <button
                       onClick={() => setShowMobileDetail(false)}
-                      aria-label="返回"
-                      className={`flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition-all ${!showMobileDetail ? 'opacity-0 pointer-events-none' : 'opacity-100 hover:text-stone-800'}`}
+                      className="p-2 -ml-2 text-stone-500 hover:text-stone-800 transition-colors"
                     >
                       <ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
                     </button>
+                    
+                    <span className="text-[15px] font-medium text-stone-800 tracking-wide">
+                      {MENU_ITEMS.find(i => i.id === userCenterView)?.label || "个人动态"}
+                    </span>
 
                     <button
                       onClick={closeUserCenter}
-                      aria-label="关闭用户中心"
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition-all hover:text-stone-800"
+                      className="p-2 -mr-2 text-stone-500 hover:text-stone-800 transition-colors"
                     >
-                      <X className="h-5 w-5" strokeWidth={1} />
+                      <X className="h-5 w-5" strokeWidth={1.5} />
                     </button>
                   </div>
 
@@ -250,7 +261,7 @@ export function UserCenterModal() {
                     <X className="h-5 w-5" strokeWidth={1} />
                   </button>
 
-                  <div className="h-full w-full overflow-hidden pt-16 md:pt-0">
+                  <div className="h-full w-full overflow-hidden pt-14 md:pt-0">
                     <ContentPanel view={userCenterView} />
                   </div>
                 </div>

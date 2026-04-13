@@ -90,13 +90,13 @@ export function OrdersPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col pt-6 md:pt-10">
+    <div className="h-full flex flex-col pt-4 md:pt-10">
       {/* 头部：单向排列避免与关闭按钮冲突 */}
       <div className="flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60 flex flex-col items-start">
-        <h2 className="text-xl font-medium tracking-wide text-stone-800">我的订单</h2>
+        <h2 className="hidden md:block text-xl font-medium tracking-wide text-stone-800">我的订单</h2>
         
         {/* 状态页签 */}
-        <div className="mt-8 flex gap-8 w-full overflow-x-auto scrollbar-hide">
+        <div className="mt-4 md:mt-8 flex gap-8 w-full overflow-x-auto scrollbar-hide">
           {TABS.map((tab) => (
             <button
               key={tab.key}
