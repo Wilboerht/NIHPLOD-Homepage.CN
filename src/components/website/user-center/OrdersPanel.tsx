@@ -91,26 +91,26 @@ export function OrdersPanel() {
 
   return (
     <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60 flex flex-col md:flex-row items-center justify-between gap-4">
-        <h2 className="text-xl font-medium tracking-wide text-stone-800 text-center md:text-left self-start">
-          我的订单
-        </h2>
-
-        {/* 导航标签 */}
-        <div className="flex gap-6 self-start w-full md:w-auto overflow-x-auto scrollbar-hide pb-2 md:pb-0">
+      {/* 头部：单向排列避免与关闭按钮冲突 */}
+      <div className="flex-shrink-0 px-6 md:px-16 pb-6 border-b border-stone-200/60 flex flex-col items-start">
+        <h2 className="text-xl font-medium tracking-wide text-stone-800">我的订单</h2>
+        
+        {/* 状态页签 */}
+        <div className="mt-8 flex gap-8 w-full overflow-x-auto scrollbar-hide">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`relative pb-1 whitespace-nowrap text-[13px] tracking-wider font-medium transition-all ${activeTab === tab.key
-                ? "text-stone-800"
-                : "text-stone-400 hover:text-stone-600"
-                }`}
+              className={`pb-2 text-[13px] tracking-wider transition-all whitespace-nowrap relative ${
+                activeTab === tab.key
+                  ? "text-stone-800 font-medium"
+                  : "text-stone-400 hover:text-stone-800 font-light"
+              }`}
             >
               {activeTab === tab.key && (
                 <m.div
                   layoutId="ordersTabActive"
-                  className="absolute bottom-[-16px] md:bottom-[-25px] left-0 right-0 h-[1.5px] bg-stone-800"
+                  className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-stone-800 rounded-full"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -120,16 +120,16 @@ export function OrdersPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-6 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-6 scrollbar-hide flex flex-col">
         {loading ? (
-          <div className="flex items-center justify-center py-24">
+          <div className="flex-1 flex items-center justify-center pb-28">
             <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
           </div>
         ) : orders.length === 0 ? (
           <m.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center py-24 text-center"
+            className="flex-1 flex flex-col items-center justify-center pb-28 text-center"
           >
             <div className="w-16 h-16 rounded-full bg-[#F9F8F6] border border-stone-200/60 flex items-center justify-center mb-5">
               <Package className="w-6 h-6 text-stone-300" />

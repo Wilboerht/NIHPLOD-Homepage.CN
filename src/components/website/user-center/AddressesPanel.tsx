@@ -104,16 +104,16 @@ export function AddressesPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-0 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-6 md:px-16 py-0 scrollbar-hide flex flex-col">
         {loading ? (
-          <div className="flex items-center justify-center py-24">
+          <div className="flex-1 flex items-center justify-center pb-28">
             <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
           </div>
         ) : addresses.length === 0 ? (
           <m.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center py-24 text-center"
+            className="flex-1 flex flex-col items-center justify-center pb-28 text-center"
           >
             <div className="w-16 h-16 rounded-full bg-[#F9F8F6] border border-stone-200/60 flex items-center justify-center mb-5">
               <MapPin className="w-6 h-6 text-stone-300" />
