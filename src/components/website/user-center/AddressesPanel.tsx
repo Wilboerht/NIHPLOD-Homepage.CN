@@ -148,7 +148,7 @@ export function AddressesPanel() {
                 layout
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="group relative border-b border-stone-200/60 last:border-0 py-6 transition-colors hover:bg-stone-50/50 flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6"
+                className="group relative border-b border-stone-200/60 last:border-0 py-6 transition-colors hover:bg-stone-50/50 flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-6"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
@@ -160,12 +160,12 @@ export function AddressesPanel() {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm font-medium tracking-wider text-stone-600 block pl-[2px] tabular-nums mt-3 leading-relaxed">
+                  <div className="text-[13px] font-light tracking-wide text-stone-500 block mt-2.5 leading-[1.6]">
                      {addr.province} {addr.city} {addr.district} {addr.detail}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between md:justify-end w-full md:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t border-stone-100 md:border-transparent opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                <div className="flex items-center justify-between md:justify-end w-full md:w-auto pt-3 md:pt-0 border-t border-stone-100 md:border-transparent opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shrink-0">
                   {!addr.isDefault && (
                     <button
                       onClick={() => handleSetDefault(addr.id)}
