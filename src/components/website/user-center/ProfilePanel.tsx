@@ -109,27 +109,26 @@ export function ProfilePanel() {
   if (!user) return null;
 
   return (
-    <div className="scrollbar-hide h-full overflow-y-auto p-6 md:p-10">
+    <div className="scrollbar-hide h-full overflow-y-auto p-6 md:p-14">
       {/* 标题 */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">个人信息</h2>
-        <p className="mt-1.5 text-sm tracking-wide text-brand-charcoal/50">
+      <div className="mb-14">
+        <h2 className="text-[28px] font-light tracking-[0.1em] text-stone-800 uppercase font-serif">Profile</h2>
+        <p className="mt-2 text-[11px] uppercase tracking-[0.15em] text-stone-400">
           管理您的账户信息与资料
         </p>
       </div>
 
       {/* 头像区域 */}
-      <div className="mb-6 rounded-2xl border border-black/5 bg-black/[0.02] p-6 backdrop-blur-md transition-all md:border-white/30 md:bg-white/20">
-        <div className="flex items-center gap-5">
-          {/* 可点击上传头像 */}
-          <div className="group relative">
-            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-brand-gold/30 bg-brand-gold/10 shadow-inner transition-all group-hover:border-brand-gold/60">
-              {user.avatar ? (
-                <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover" />
-              ) : (
-                <User className="h-10 w-10 text-brand-gold" />
-              )}
-            </div>
+      <div className="mb-10 flex items-center gap-6">
+        {/* 可点击上传头像 */}
+        <div className="group relative">
+          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#E5E0D8]/20 transition-all group-hover:border-stone-300">
+            {user.avatar ? (
+              <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover transition-all" />
+            ) : (
+              <User className="h-8 w-8 text-stone-400" strokeWidth={1} />
+            )}
+          </div>
 
             {/* 上传遮罩 */}
             <button
@@ -145,99 +144,102 @@ export function ProfilePanel() {
               )}
             </button>
 
-            {/* 隐藏的文件输入 */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleAvatarChange}
-              className="hidden"
-            />
-          </div>
-
-          <div>
-            <p className="text-lg font-semibold tracking-wide text-brand-charcoal">
-              {user.nickname || `用户${user.phone?.slice(-4)}`}
-            </p>
-            <p className="mt-1 text-sm font-medium text-brand-charcoal/50">
-              {uploadingAvatar ? "上传中..." : "点击头像更换"}
-            </p>
-          </div>
+          {/* 隐藏的文件输入 */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
         </div>
 
-        {/* 头像上传错误提示 */}
-        {avatarError && (
-          <p className="mt-4 rounded-xl border border-red-100/50 bg-red-50/80 px-4 py-3 text-xs text-red-600">
-            {avatarError}
+        <div>
+          <p className="text-sm font-medium tracking-[0.05em] text-stone-800">
+            {user.nickname || `用户${user.phone?.slice(-4)}`}
           </p>
-        )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="mt-1 text-[10px] tracking-[0.15em] text-stone-400 uppercase hover:text-stone-800 transition-colors uppercase"
+          >
+            {uploadingAvatar ? "U P L O A D I N G . . ." : "E D I T   A V A T A R"}
+          </button>
+        </div>
       </div>
 
+      {/* 头像上传错误提示 */}
+      {avatarError && (
+        <p className="mb-6 border-l-2 border-red-200 pl-3 text-xs text-stone-500">
+          {avatarError}
+        </p>
+      )}
+
       {/* 信息卡片 */}
-      <div className="flex flex-col divide-y divide-black/5 overflow-hidden rounded-2xl border border-black/5 bg-black/[0.02] backdrop-blur-md md:divide-white/20 md:border-white/30 md:bg-white/20">
+      <div className="flex flex-col">
         {/* 昵称 */}
-        <div className="group flex items-center justify-between p-5 transition-colors hover:bg-black/[0.01] md:hover:bg-white/40">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-black/5 bg-white/50 text-brand-charcoal/60 md:border-white/20 md:bg-white/20">
-              <User className="h-[18px] w-[18px]" />
+        <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
+          <div className="flex items-center gap-6 px-4">
+            <div className="w-[100px]">
+              <p className="text-[10px] uppercase tracking-[0.2em] font-light text-stone-400">N a m e</p>
             </div>
             <div>
-              <p className="text-[13px] font-medium tracking-wide text-brand-charcoal/50">昵称</p>
               {editing ? (
                 <input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  className="mt-0.5 w-48 border-b border-brand-gold/50 bg-transparent py-0.5 text-base font-medium text-brand-charcoal outline-none transition-colors placeholder:text-brand-charcoal/30 focus:border-brand-gold"
+                  className="w-56 border-b border-stone-400 bg-transparent py-1 text-sm font-medium tracking-wide text-stone-800 outline-none transition-colors placeholder:text-stone-300"
                   autoFocus
                 />
               ) : (
-                <p className="mt-0.5 text-base font-medium tracking-wide text-brand-charcoal">
+                <p className="text-sm font-medium tracking-wide text-stone-800">
                   {user.nickname || "未设置"}
                 </p>
               )}
             </div>
           </div>
-          {editing ? (
-            <div className="flex gap-2">
+          <div className="px-4">
+            {editing ? (
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setEditing(false);
+                    setNickname(user.nickname || "");
+                  }}
+                  className="text-[10px] tracking-[0.2em] text-stone-400 font-light hover:text-stone-800 transition-colors uppercase"
+                >
+                  C A N C E L
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="text-[10px] tracking-[0.2em] text-stone-800 font-medium hover:text-stone-500 transition-colors uppercase disabled:opacity-50"
+                >
+                  S A V E
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded-full bg-brand-gold p-2.5 text-white shadow-md shadow-brand-gold/30 transition-colors hover:bg-brand-gold-dark disabled:opacity-50"
+                onClick={() => setEditing(true)}
+                className="text-[10px] tracking-[0.2em] text-stone-400 font-light hover:text-stone-800 transition-colors uppercase opacity-100 md:opacity-0 md:group-hover:opacity-100"
               >
-                <Check className="h-[18px] w-[18px]" />
+                E D I T
               </button>
-              <button
-                onClick={() => {
-                  setEditing(false);
-                  setNickname(user.nickname || "");
-                }}
-                className="rounded-full border border-black/5 bg-black/5 p-2.5 text-brand-charcoal/60 transition-colors hover:bg-black/10 hover:text-brand-charcoal md:border-white/20 md:bg-white/20 md:hover:bg-white/40"
-              >
-                <X className="h-[18px] w-[18px]" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setEditing(true)}
-              className="rounded-full p-2.5 text-brand-charcoal/40 opacity-100 transition-all hover:bg-black/5 hover:text-brand-gold group-hover:opacity-100 md:opacity-0 md:hover:bg-white/40"
-            >
-              <Edit3 className="h-[18px] w-[18px]" />
-            </button>
-          )}
+            )}
+          </div>
         </div>
 
         {/* 手机号 */}
-        <div className="group flex items-center justify-between p-5 transition-colors hover:bg-black/[0.01] md:hover:bg-white/40">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-black/5 bg-white/50 text-brand-charcoal/60 md:border-white/20 md:bg-white/20">
-              <Phone className="h-[18px] w-[18px]" />
+        <div className="group flex items-center justify-between border-b border-stone-200/60 py-6 transition-colors hover:bg-stone-100/50">
+          <div className="flex items-center gap-6 px-4">
+            <div className="w-[100px]">
+              <p className="text-[10px] uppercase tracking-[0.2em] font-light text-stone-400">
+                P h o n e
+              </p>
             </div>
             <div>
-              <p className="text-[13px] font-medium tracking-wide text-brand-charcoal/50">
-                绑定手机号
-              </p>
-              <p className="mt-0.5 text-base font-medium tracking-wide text-brand-charcoal">
+              <p className="text-sm font-medium tracking-wide text-stone-800">
                 {user.phone ? `${user.phone.slice(0, 3)}****${user.phone.slice(-4)}` : "未绑定"}
               </p>
             </div>

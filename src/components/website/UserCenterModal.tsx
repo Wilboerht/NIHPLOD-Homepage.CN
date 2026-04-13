@@ -146,48 +146,36 @@ export function UserCenterModal() {
             tabIndex={-1}
             className="relative z-10 w-full max-w-[95%] md:max-w-[1100px] md:h-[680px] flex items-center justify-center transition-all duration-300"
           >
-            <div className="relative w-full max-h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl flex items-stretch md:justify-center md:p-6 p-0">
-
-              {/* 背景图片区域 - 铺满整个卡片 */}
-              <div className="absolute inset-0 z-0 hidden md:block">
-                <Image
-                  src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
-                  alt="Background"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-
+            <div className="relative w-full max-h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-[#F9F8F6] shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch md:justify-center p-0">
 
               {/* 浮动内容区域容器 */}
-              <div className="relative z-10 w-full md:w-[1040px] flex flex-col md:flex-row items-stretch gap-6">
+              <div className="relative z-10 w-full md:w-[1040px] flex flex-col md:flex-row items-stretch">
                 {/* 仅在移动端详情页时不显示侧边栏 */}
-                <div className={`w-full md:w-72 shrink-0 bg-white/75 md:bg-white/40 backdrop-blur-[32px] shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/40 rounded-[2.5rem] flex flex-col overflow-hidden transition-all duration-300 ${showMobileDetail ? 'hidden md:flex' : 'flex'
+                <div className={`w-full md:w-72 shrink-0 flex flex-col transition-all duration-300 border-r border-stone-200/60 ${showMobileDetail ? 'hidden md:flex' : 'flex'
                   }`}>
                   {/* 用户头像区域 */}
-                  <div className="p-8 border-b border-black/5 md:border-white/20">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-brand-gold/10 flex items-center justify-center overflow-hidden border border-brand-gold/30 shadow-inner shrink-0 object-cover">
+                  <div className="px-8 py-10">
+                    <div className="flex flex-col items-center gap-4 text-center">
+                      <div className="w-16 h-16 rounded-full bg-[#E5E0D8]/40 flex items-center justify-center overflow-hidden shrink-0 object-cover">
                         {user.avatar ? (
                           <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
-                          <User className="w-6 h-6 text-brand-gold" />
+                          <User className="w-6 h-6 text-stone-500" strokeWidth={1.5} />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <p className="text-brand-charcoal text-base font-semibold truncate tracking-wide">
+                      <div className="flex flex-col justify-center">
+                        <p className="text-stone-800 text-[15px] font-medium tracking-[0.03em] truncate">
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
-                        <p className="text-brand-charcoal/50 text-[13px] font-medium mt-1 tracking-wider uppercase">
-                          普通会员
+                        <p className="text-stone-400 text-[11px] font-light mt-1 tracking-[0.15em] uppercase">
+                          M E M B E R
                         </p>
                       </div>
                     </div>
                   </div>
 
                   {/* 菜单列表 */}
-                  <nav className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto scrollbar-hide flex flex-col">
+                  <nav className="flex-1 px-6 space-y-1 overflow-y-auto scrollbar-hide flex flex-col">
                     {MENU_ITEMS.map((item) => {
                       const Icon = item.icon;
                       const isActive = userCenterView === item.id;
@@ -198,40 +186,39 @@ export function UserCenterModal() {
                             setUserCenterView(item.id);
                             if (window.innerWidth < 768) setShowMobileDetail(true);
                           }}
-                          className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[15px] font-medium transition-all group ${isActive
-                            ? "text-[#8B7355]"
-                            : "text-brand-charcoal md:text-brand-charcoal/80 hover:bg-black/5 md:hover:bg-white/40 hover:text-brand-charcoal"
+                          className={`relative w-full flex items-center gap-4 px-4 py-3 rounded-sm text-[13px] transition-all group ${isActive
+                            ? "text-stone-800 font-medium"
+                            : "text-stone-500 font-normal hover:text-stone-800"
                             }`}
                         >
                           {isActive && (
                             <m.div
                               layoutId="activeSideMenu"
-                              className="absolute inset-0 bg-brand-gold/15 border border-brand-gold/30 backdrop-blur-md rounded-xl shadow-sm"
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-stone-800"
                               transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                             />
                           )}
-                          <Icon className={`relative z-10 w-[18px] h-[18px] ${isActive ? "text-[#8B7355]" : "transition-colors"}`} style={!isActive ? { color: "#666666" } : {}} />
-                          <span className="relative z-10 tracking-wide">{item.label}</span>
-                          <ChevronRight className={`relative z-10 w-4 h-4 ml-auto transition-opacity ${isActive ? "opacity-70" : "opacity-20 group-hover:opacity-40"}`} />
+                          <Icon className={`relative z-10 w-[15px] h-[15px] ${isActive ? "text-stone-800" : "text-stone-400 group-hover:text-stone-600 transition-colors"}`} strokeWidth={1.5} />
+                          <span className="relative z-10 tracking-[0.05em]">{item.label}</span>
                         </button>
                       );
                     })}
                   </nav>
 
                   {/* 退出登录 */}
-                  <div className="p-5 border-t border-black/5 md:border-white/20 mt-auto">
+                  <div className="p-8 mt-auto flex justify-center">
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 text-[15px] font-medium text-red-500 hover:text-red-500 md:text-red-500/80 md:hover:text-red-600 bg-red-50/50 hover:bg-red-50/80 md:bg-white/20 md:hover:bg-white/40 rounded-xl transition-all border border-red-100/50 md:border-transparent group"
+                      className="group flex flex-col items-center justify-center gap-1.5 text-stone-400 hover:text-stone-800 transition-colors"
                     >
-                      <LogOut className="w-[18px] h-[18px] md:opacity-80 md:group-hover:opacity-100" />
-                      <span className="tracking-wide">退出登录</span>
+                      <LogOut className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity" strokeWidth={1} />
+                      <span className="text-[10px] tracking-[0.2em] font-light uppercase">L O G O U T</span>
                     </button>
                   </div>
                 </div>
 
                 {/* 内容卡片 - 仅在移动端有详情时显示，PC 端始终显示 */}
-                <div className={`flex-1 bg-white/75 md:bg-white/35 backdrop-blur-[32px] md:shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] md:border border-white/60 md:border-white/40 rounded-[2.5rem] overflow-hidden relative group/content transition-all duration-300 ${showMobileDetail ? 'flex' : 'hidden md:flex'
+                <div className={`flex-1 relative transition-all duration-300 ${showMobileDetail ? 'flex' : 'hidden md:flex'
                   }`}>
 
                   {/* 移动端统一 Header */}
@@ -257,9 +244,9 @@ export function UserCenterModal() {
                   <button
                     onClick={closeUserCenter}
                     aria-label="关闭用户中心"
-                    className="absolute right-6 top-6 z-50 hidden md:flex h-9 w-9 items-center justify-center rounded-full bg-white/40 text-brand-charcoal/60 backdrop-blur-md transition-all hover:bg-brand-gold hover:text-white shadow-sm border border-white/20"
+                    className="absolute right-6 top-6 z-50 hidden md:flex h-9 w-9 items-center justify-center text-stone-400 hover:text-stone-800 transition-colors"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-5 w-5" strokeWidth={1} />
                   </button>
 
                   <div className="h-full w-full overflow-hidden pt-16 md:pt-0">
