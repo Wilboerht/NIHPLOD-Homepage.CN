@@ -242,12 +242,15 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
                         key={opt.value}
                         type="button"
                         onClick={() => { onChange(opt.label); setOpen(false); }}
-                        className={`w-full px-3.5 py-2.5 text-left text-[14px] rounded-lg transition-colors font-medium ${opt.label === value
-                          ? "bg-stone-800 text-[#F9F8F6]"
-                          : "text-stone-700 hover:bg-stone-100"
+                        className={`w-full px-4 py-2.5 text-left text-[14px] rounded-lg transition-all flex items-center justify-between group ${opt.label === value
+                          ? "bg-[#E5E0D8]/40 text-stone-800 font-medium"
+                          : "text-stone-500 hover:bg-stone-50 hover:text-stone-800"
                           }`}
                       >
-                        {opt.label}
+                        <span className="relative z-10">{opt.label}</span>
+                        {opt.label === value && (
+                          <div className="w-[1.5px] h-3.5 bg-stone-800 rounded-full" />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -389,21 +392,23 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
           </label>
         </div>
 
-        <div className="mt-10 flex gap-4 max-w-2xl">
+        <div className="mt-12 flex items-center justify-end gap-10 max-w-2xl">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3.5 border border-stone-200/60 text-stone-500 hover:text-stone-800 hover:bg-stone-50/50 rounded-xl font-medium tracking-widest uppercase transition-all"
+            className="text-[13px] text-stone-400 hover:text-stone-800 font-light tracking-[0.2em] uppercase transition-all"
           >
-            取消
+            取消编辑
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 py-3.5 bg-stone-800 text-[#F9F8F6] rounded-xl font-medium tracking-widest uppercase shadow-sm hover:bg-stone-900 hover:shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex items-center gap-3 text-[13px] text-stone-800 font-medium tracking-[0.2em] uppercase group disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            <span>确认保存</span>
+            <span className="border-b border-stone-800 pb-0.5 group-hover:border-stone-400 transition-colors">
+              确认保存地址
+            </span>
           </button>
         </div>
       </form>
