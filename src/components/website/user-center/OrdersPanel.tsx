@@ -124,8 +124,15 @@ export function OrdersPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-16 py-6 scrollbar-hide flex flex-col">
-        {loading ? (
+      <div className="flex-1 overflow-y-auto px-16 py-6 scrollbar-hide flex flex-col relative">
+        {/* 持久化加载遮罩层 - 防止 DOM 塌陷导致高度抖动 */}
+        {loading && orders.length > 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#F9F8F6]/40 backdrop-blur-[2px]">
+            <Loader2 className="w-8 h-8 text-stone-500 animate-spin" />
+          </div>
+        )}
+
+        {loading && orders.length === 0 ? (
           <div className="flex-1 flex items-center justify-center pb-28">
             <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
           </div>
@@ -141,7 +148,7 @@ export function OrdersPanel() {
             <p className="text-stone-400 text-sm tracking-wider">暂无相关订单</p>
           </m.div>
         ) : (
-          <div className="space-y-0 pb-10">
+          <div className={`space-y-0 pb-10 w-full transition-opacity duration-300 ${loading ? 'opacity-40' : 'opacity-100'}`}>
             {orders.map((order) => (
               <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
             ))}
