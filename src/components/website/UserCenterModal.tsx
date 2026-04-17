@@ -150,7 +150,7 @@ export function UserCenterModal() {
             tabIndex={-1}
             className="relative z-10 w-full max-w-[95%] md:max-w-[1100px] md:h-[680px] flex items-center justify-center transition-all duration-300"
           >
-            <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-[#F9F8F6] shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
+            <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-[#F5F2ED]/85 backdrop-blur-xl shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
 
               {/* 浮动内容区域容器 */}
               <div className="relative z-10 w-full flex flex-col md:flex-row items-stretch">
@@ -232,7 +232,7 @@ export function UserCenterModal() {
                   }`}>
 
                   {/* 移动端统一 Header (重工业级网格强对称) */}
-                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden grid grid-cols-[3.5rem_1fr_3.5rem] items-center bg-[#F9F8F6]/80 backdrop-blur-md border-b border-stone-200/40">
+                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden grid grid-cols-[3.5rem_1fr_3.5rem] items-center bg-[#F5F2ED]/80 backdrop-blur-md border-b border-stone-200/40">
                     <div className="flex h-full w-full items-center justify-center">
                       <button
                         onClick={() => setShowMobileDetail(false)}
