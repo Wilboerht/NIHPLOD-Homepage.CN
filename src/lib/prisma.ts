@@ -14,7 +14,6 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // 创建连接池（单例）
-// 创建连接池（单例）
 const poolConfig: pg.PoolConfig = {
   connectionString: process.env.DATABASE_URL,
   // 生产环境强制开启 SSL 以确保与 Supabase/云数据库握手稳健
@@ -25,7 +24,7 @@ const poolConfig: pg.PoolConfig = {
   // 连接池优化配置：在构建阶段会有高并发的 DB 请求
   max: process.env.DATABASE_MAX_CONNECTIONS
     ? parseInt(process.env.DATABASE_MAX_CONNECTIONS)
-    : 20, // 增加连接数，防止构建时并行请求过载导致连接被服务端断开
+    : 10, // 降低默认连接数，防止构建时并行进程过载导致数据库连接被服务端断开
   // 连接空闲 30秒后释放，节省资源
   idleTimeoutMillis: 30000,
   // 获取连接等待超时 30秒，避免请求长时间卡死
@@ -47,10 +46,9 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 
-// 在开发环境中缓存实例，防止热更新时创建多个连接
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-  globalForPrisma.pool = pool;
-}
+// 在所有环境中缓存实例，防止重复创建连接池
+// 注意：Next.js 构建阶段会启动多个 worker 进程，每个进程都会有自己的单例
+globalForPrisma.prisma = prisma;
+globalForPrisma.pool = pool;
 
 export default prisma;
