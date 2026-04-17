@@ -174,9 +174,9 @@ export function ProfilePanel() {
         )}
 
         {/* 信息卡片 - 移动端采用上下堆叠，PC 采用左右对齐 */}
-        <div className="flex flex-col md:divide-y md:divide-stone-200/60">
+        <div className="flex flex-col gap-1">
           {/* 昵称 */}
-          <div className="group flex items-center justify-between py-6 transition-colors hover:bg-stone-100/50">
+          <div className="group flex items-center justify-between py-6 px-6 -mx-6 rounded-2xl transition-all hover:bg-white/40">
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6 flex-1 min-w-0 mr-4">
               <div className="md:w-20 shrink-0">
                 <p className="text-[10px] md:text-sm font-bold md:font-light text-stone-400 tracking-widest uppercase md:normal-case">昵称</p>
@@ -240,7 +240,7 @@ export function ProfilePanel() {
           <div className="h-px w-full bg-stone-100 md:hidden opacity-40" />
 
           {/* 手机号 */}
-          <div className="group flex items-center justify-between py-6 transition-colors hover:bg-stone-100/50">
+          <div className="group flex items-center justify-between py-6 px-6 -mx-6 rounded-2xl transition-all hover:bg-white/40">
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
               <div className="md:w-20">
                 <p className="text-[10px] md:text-sm font-bold md:font-light text-stone-400 tracking-widest uppercase md:normal-case">绑定手机号</p>

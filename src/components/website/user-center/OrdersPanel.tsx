@@ -127,7 +127,7 @@ export function OrdersPanel() {
       <div className="flex-1 overflow-y-auto px-16 py-6 scrollbar-hide flex flex-col relative">
         {/* 持久化加载遮罩层 - 防止 DOM 塌陷导致高度抖动 */}
         {loading && orders.length > 0 && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#F5F2ED]/60 backdrop-blur-[2px]">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#F0EDE1]/60 backdrop-blur-[2px]">
             <Loader2 className="w-8 h-8 text-stone-500 animate-spin" />
           </div>
         )}
@@ -142,7 +142,7 @@ export function OrdersPanel() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex-1 flex flex-col items-center justify-center pb-28 text-center"
           >
-            <div className="w-16 h-16 rounded-full bg-[#F5F2ED]/60 backdrop-blur-sm border border-stone-200/60 flex items-center justify-center mb-5">
+            <div className="w-16 h-16 rounded-full bg-[#F0EDE1]/60 backdrop-blur-sm border border-stone-200/60 flex items-center justify-center mb-5">
               <Package className="w-6 h-6 text-stone-300" />
             </div>
             <p className="text-stone-400 text-sm tracking-wider">暂无相关订单</p>
@@ -166,7 +166,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left group border-b border-stone-200/60 last:border-b-0 py-6 transition-colors hover:bg-stone-50/50"
+      className="w-full text-left group border-b border-stone-200/60 last:border-b-0 py-6 px-6 -mx-6 rounded-[2.5rem] transition-all hover:bg-white/40"
     >
       <div className="flex justify-between items-start mb-4 px-2">
         <div className="flex flex-col">

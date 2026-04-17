@@ -150,7 +150,7 @@ export function UserCenterModal() {
             tabIndex={-1}
             className="relative z-10 w-full max-w-[95%] md:max-w-[1100px] md:h-[680px] flex items-center justify-center transition-all duration-300"
           >
-            <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-[#F5F2ED]/85 backdrop-blur-xl shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
+            <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-[#F0EDE1]/85 backdrop-blur-xl shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
 
               {/* 浮动内容区域容器 */}
               <div className="relative z-10 w-full flex flex-col md:flex-row items-stretch">
@@ -192,13 +192,13 @@ export function UserCenterModal() {
                               setShowMobileDetail(true);
                             }
                           }}
-                          className={`relative w-full flex items-center justify-start gap-5 py-3.5 transition-all group ${isActive
+                          className={`relative w-full flex items-center justify-start gap-5 py-3.5 px-4 -mx-4 rounded-2xl transition-all group ${isActive
                             ? "text-stone-800 font-medium"
-                            : "text-stone-400 font-light hover:text-stone-800"
+                            : "text-stone-400 font-light hover:text-stone-800 hover:bg-white/30"
                             }`}
                         >
                           {isActive && (
-                            <div className="absolute inset-y-0 -left-4 hidden md:flex items-center pointer-events-none">
+                            <div className="absolute inset-y-0 left-0 hidden md:flex items-center pointer-events-none">
                               <m.div
                                 layoutId="activeSideMenu"
                                 className="w-[2px] h-[18px] bg-stone-800 rounded-full"
@@ -206,7 +206,7 @@ export function UserCenterModal() {
                               />
                             </div>
                           )}
-                          <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? 'md:text-stone-800 text-stone-800' : 'md:text-stone-400 text-stone-800'}`} strokeWidth={1.5} />
+                          <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? 'md:text-stone-800 text-stone-800' : 'md:text-stone-400 text-stone-800 group-hover:text-stone-800'}`} strokeWidth={1.5} />
                           <span className={`text-[13px] transition-colors ${isActive ? 'md:text-stone-800 md:font-medium text-stone-800 font-light' : 'md:text-stone-400 text-stone-800 font-light group-hover:text-stone-800'}`}>
                             {item.label}
                           </span>
@@ -232,7 +232,7 @@ export function UserCenterModal() {
                   }`}>
 
                   {/* 移动端统一 Header (重工业级网格强对称) */}
-                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden grid grid-cols-[3.5rem_1fr_3.5rem] items-center bg-[#F5F2ED]/80 backdrop-blur-md border-b border-stone-200/40">
+                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden grid grid-cols-[3.5rem_1fr_3.5rem] items-center bg-[#F0EDE1]/80 backdrop-blur-md border-b border-stone-200/40">
                     <div className="flex h-full w-full items-center justify-center">
                       <button
                         onClick={() => setShowMobileDetail(false)}
