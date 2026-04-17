@@ -215,13 +215,12 @@ export function UserCenterModal() {
                     })}
                   </nav>
 
-                  {/* 退出登录 */}
-                  <div className="mt-auto px-16 py-8">
+                  <div className="mt-auto px-12 py-8">
                     <button
                       onClick={handleLogout}
-                      className="group flex items-center justify-start gap-5 text-stone-400 hover:text-stone-800 transition-all"
+                      className="group w-full flex items-center justify-start gap-5 py-3.5 px-4 -mx-4 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-white/40 transition-all"
                     >
-                      <LogOut className="w-[18px] h-[18px] opacity-60 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+                      <LogOut className="w-[18px] h-[18px] transition-colors" strokeWidth={1.5} />
                       <span className="text-[13px] font-medium tracking-wide">退出登录</span>
                     </button>
                   </div>

@@ -17,7 +17,7 @@ type LoginMethod = "code" | "password";
 type ForgotPasswordStep = "phone" | "code" | "password" | "success";
 
 export function AuthModal() {
-  const { activeModal, closeModal, switchToLogin, switchToRegister, switchToForgotPassword, refreshUser } = useAuth();
+  const { activeModal, closeModal, switchToLogin, switchToRegister, switchToForgotPassword, refreshUser, openUserCenter } = useAuth();
 
   return (
     <>
@@ -26,13 +26,19 @@ export function AuthModal() {
         onClose={closeModal}
         onSwitchToRegister={switchToRegister}
         onSwitchToForgotPassword={switchToForgotPassword}
-        onSuccess={refreshUser}
+        onSuccess={async () => {
+          await refreshUser();
+          openUserCenter();
+        }}
       />
       <RegisterModal
         isOpen={activeModal === "register"}
         onClose={closeModal}
         onSwitchToLogin={switchToLogin}
-        onSuccess={refreshUser}
+        onSuccess={async () => {
+          await refreshUser();
+          openUserCenter();
+        }}
       />
       <ForgotPasswordModal
         isOpen={activeModal === "forgot-password"}
@@ -42,7 +48,10 @@ export function AuthModal() {
       <WechatBindModal
         isOpen={activeModal === "wechat-bind"}
         onClose={closeModal}
-        onSuccess={refreshUser}
+        onSuccess={async () => {
+          await refreshUser();
+          openUserCenter();
+        }}
       />
     </>
   );
