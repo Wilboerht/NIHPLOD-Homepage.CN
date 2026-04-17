@@ -150,10 +150,48 @@ export function UserCenterModal() {
             tabIndex={-1}
             className="relative z-10 w-full max-w-[95%] md:max-w-[1100px] md:h-[680px] flex items-center justify-center transition-all duration-300"
           >
-            <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] bg-[#F0EDE1]/85 backdrop-blur-xl shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
+            <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
+              {/* 底层基础色 */}
+              <div className="absolute inset-0 z-0 bg-[#F0EDE1]" />
 
-              {/* 浮动内容区域容器 */}
-              <div className="relative z-10 w-full flex flex-col md:flex-row items-stretch">
+              {/* 背景动态装饰层 (位于模糊层之下) */}
+              <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
+                <m.div
+                  animate={{
+                    x: ["-30%", "40%", "10%", "-30%"],
+                    y: ["-30%", "20%", "40%", "-30%"],
+                    rotate: [0, 180, 360],
+                    scale: [1, 1.4, 1.2, 1]
+                  }}
+                  transition={{ 
+                    duration: 25, 
+                    repeat: Infinity, 
+                    ease: "linear" 
+                  }}
+                  className="absolute w-[120%] h-[120%] bg-brand-gold/10 blur-[150px] rounded-full"
+                />
+                <m.div
+                  animate={{
+                    x: ["40%", "-20%", "30%", "40%"],
+                    y: ["40%", "10%", "-30%", "40%"],
+                    rotate: [0, -180, -360],
+                    scale: [1, 1.3, 1.1, 1]
+                  }}
+                  transition={{ 
+                    duration: 35, 
+                    repeat: Infinity, 
+                    ease: "linear" 
+                  }}
+                  className="absolute w-[110%] h-[110%] bg-stone-400/15 blur-[130px] rounded-full"
+                />
+              </div>
+
+              {/* 模糊与纹理盖层 (在此之下的内容会被模糊) */}
+              <div className="absolute inset-0 z-20 backdrop-blur-[40px] bg-white/5" />
+              <div className="absolute inset-0 z-20 bg-[url('/textures/mineral-grain.png')] opacity-[0.05] mix-blend-overlay pointer-events-none" />
+
+              {/* 内容区域容器 (最上层) */}
+              <div className="relative z-30 w-full flex flex-col md:flex-row items-stretch">
                 {/* 仅在移动端详情页时不显示侧边栏 */}
                 <div className={`w-full md:w-72 shrink-0 flex flex-col transition-all duration-300 border-r border-stone-200/60 ${showMobileDetail ? 'hidden md:flex' : 'flex'
                   }`}>
