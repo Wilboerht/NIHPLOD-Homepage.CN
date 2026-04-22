@@ -474,7 +474,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       </p>
                       <div className="flex items-center justify-center gap-2 sm:gap-4 text-[9px] sm:text-[10px] font-light tracking-normal sm:tracking-widest text-brand-charcoal whitespace-nowrap flex-nowrap leading-tight">
                         <Link href="https://beian.miit.gov.cn/" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center">
-                          沪ICP备xxxxxx号-1
+                          沪ICP备2026014764号-1
                         </Link>
                         <span className="text-brand-charcoal/30">|</span>
                         <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center gap-1">

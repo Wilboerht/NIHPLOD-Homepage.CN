@@ -18,14 +18,14 @@ const defaultContent: ServicesPageContent = {
       ],
     },
     {
-      id: "website",
-      label: "首页项目",
-      title: "NIHPLOD 官网",
-      nameEn: "Official Website",
-      description: "NIHPLOD 旎柏品牌，展示品牌故事、产品系列、护肤仪式等内容。",
+      id: "auth",
+      label: "授权验真",
+      title: "授权验真系统",
+      nameEn: "Authorization Verification",
+      description: "NIHPLOD 旎柏产品授权查询与真伪验证平台，提供官方授权验证服务。",
       links: [
-        { label: "用户端", url: "https://nihplod.cn", isAdmin: false, description: "品牌展示、产品浏览、AI护肤顾问" },
-        { label: "管理端", url: "https://nihplod.cn/admin", isAdmin: true, description: "仅授权人员使用" },
+        { label: "用户端", url: "https://ba.nihplod.cn", isAdmin: false, description: "授权查询、真伪验证" },
+        { label: "管理端", url: "https://ba.nihplod.cn/admin", isAdmin: true, description: "仅授权人员使用" },
       ],
     },
     {
