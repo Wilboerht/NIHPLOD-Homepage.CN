@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
-import { Home, ScanFace } from "lucide-react";
+import { Home, ScanFace, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ServicesPageContent, ServiceDetail as CMSServiceDetail } from "@/types/page-content";
 
@@ -45,6 +45,16 @@ const InfluencerIcon = ({ className, isHovered }: { className?: string; isHovere
 
 
 
+// 授权验真图标
+const AuthIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
+  const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
+  return (
+    <div className={cn(className, "flex items-center justify-center transition-all duration-300")}>
+      <ShieldCheck stroke={color} strokeWidth="1.6" className="h-full w-full" />
+    </div>
+  );
+};
+
 // 测肤图标
 const AdvisorIcon = ({ className, isHovered }: { className?: string; isHovered?: boolean }) => {
   const color = isHovered ? ICON_HOVER_COLOR : ICON_COLOR;
@@ -58,7 +68,7 @@ const AdvisorIcon = ({ className, isHovered }: { className?: string; isHovered?:
 // 图标映射
 const iconMap: Record<string, React.FC<{ className?: string; isHovered?: boolean }>> = {
   vip: VipIcon,
-  website: WebsiteIcon,
+  auth: AuthIcon,
   influencer: InfluencerIcon,
   advisor: AdvisorIcon,
 };
