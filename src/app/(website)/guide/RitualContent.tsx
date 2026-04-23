@@ -1705,7 +1705,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 {/* ========== 桌面端布局 - 保持原有样式 ========== */}
                 <div className="hidden h-full flex-col sm:flex">
                   {/* 顶部栏：LOGO + 面包屑/用户按钮 */}
-                  <div className="flex flex-shrink-0 items-center justify-center border-b border-brand-charcoal/5 px-8 py-4 lg:px-12">
+                  <div className="flex flex-shrink-0 items-center justify-center border-b border-brand-charcoal/5 px-8 py-8 lg:px-12">
                     <div className="flex w-full max-w-[1440px] items-center justify-between">
                       {/* 左侧：LOGO - 点击返回 Level 1 */}
                       <button
