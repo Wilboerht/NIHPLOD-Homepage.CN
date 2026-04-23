@@ -483,7 +483,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   alt={product.name}
                   fill
                   className="object-contain drop-shadow-[0_12px_24px_rgba(56,51,46,0.08)] transition-transform duration-500 group-hover:scale-105"
-                  priority={idx === 0}
+                  priority={idx <= 1}
                 />
               </div>
             </div>
@@ -651,6 +651,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                                     fill
                                     className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
                                     sizes="33vw"
+                                    priority={index <= 1}
                                   />
                                 )}
                               </div>
@@ -689,7 +690,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   alt=""
                   width={2000}
                   height={800}
-                  priority
                   className="hidden md:block h-[120%] w-auto max-w-none opacity-[0.03]"
                 />
                 {/* 移动端水印 */}
@@ -698,7 +698,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     src="/images/watermark-mobile.svg"
                     alt=""
                     fill
-                    priority
                     className="opacity-[0.20]"
                     style={{ objectFit: 'fill' }}
                   />

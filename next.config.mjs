@@ -96,8 +96,8 @@ const nextConfig = {
         hostname: '*.aliyuncs.com',
       },
     ],
-    // 启用的图片格式 (优先使用 AVIF，其次 WebP)
-    formats: ['image/avif', 'image/webp'],
+    // 启用的图片格式 (自托管服务器不使用 AVIF，避免实时编码开销)
+    formats: ['image/webp'],
     // 响应式图片断点
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     // 固定尺寸图片断点
