@@ -42,7 +42,7 @@ export const uploadConfig = {
     "image/gif",
     "application/pdf", // 支持 PDF
   ],
-  uploadDir: "public/uploads",
+  uploadDir: "uploads",
   quality: 80, // WebP 质量
   maxWidth: 2000, // 最大宽度
   maxHeight: 2000, // 最大高度
