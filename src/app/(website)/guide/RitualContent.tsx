@@ -710,6 +710,7 @@ const defaultModuleData: ModuleData = {
       totalDuration: "20-30分钟",
       products: "洁面、磨砂膏、护理油、精华露、面霜、面膜",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
+      specialSupport: "",
 
       steps: [
         {
@@ -746,6 +747,7 @@ const defaultModuleData: ModuleData = {
       totalDuration: "30-45分钟",
       products: "洁面、磨砂膏、护理油、精华露、面霜、面膜、身体乳",
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
+      specialSupport: "",
 
       steps: [
         {
@@ -1618,7 +1620,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 </div>
 
                                 {(() => {
-                                  const supportText = selectedSubPlan?.specialSupport !== undefined ? selectedSubPlan.specialSupport : (selectedScheme.specialSupport || "孕期、月子期、轻医美术后");
+                                  const supportText = selectedSubPlan?.specialSupport !== undefined ? selectedSubPlan.specialSupport : (selectedScheme.specialSupport ?? "孕期、月子期、轻医美术后");
                                   if (!supportText) return null;
                                   const isRestricted = supportText.includes("不支持");
                                   return (
@@ -2108,7 +2110,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* Meta Item: Special Support */}
                                 {(() => {
-                                  const supportText = selectedSubPlan?.specialSupport !== undefined ? selectedSubPlan.specialSupport : (selectedScheme.specialSupport || "孕期、月子期、轻医美术后");
+                                  const supportText = selectedSubPlan?.specialSupport !== undefined ? selectedSubPlan.specialSupport : (selectedScheme.specialSupport ?? "孕期、月子期、轻医美术后");
                                   if (!supportText) return null;
                                   const isRestricted = supportText.includes("不支持");
 
