@@ -192,11 +192,11 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
 }
 
 const FOOTER_LINKS = [
-  { href: "/terms", label: "服务条款" },
   { href: "/services", label: "服务入口" },
+  { href: "/terms", label: "服务条款" },
+  { href: "/privacy", label: "隐私政策" },
   { href: "/careers", label: "加入我们" },
   { href: "/contact", label: "联系我们" },
-  { href: "/privacy", label: "隐私政策" },
 ];
 
 interface HomeClientProps {
