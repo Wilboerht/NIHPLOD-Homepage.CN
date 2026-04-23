@@ -170,15 +170,15 @@ export function ServicesContent({ content }: ServicesContentProps) {
           <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
             <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
               {/* 顶栏 / 标题区 */}
-              <header className="flex-shrink-0 px-4 pb-8 text-center sm:pb-10 lg:pb-12">
-                <div className="space-y-8">
+              <header className="flex-shrink-0 px-4 pt-8 pb-10 text-center sm:pt-10 sm:pb-12 lg:pt-12 lg:pb-14">
+                <div className="space-y-11 sm:space-y-12">
                   {/* Logo 保持在顶端 */}
                   <m.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="flex justify-center"
                   >
-                    <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                    <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
                         alt="公司标志"
