@@ -638,12 +638,12 @@ export function StoryContent() {
                           ].map((item, idx) => (
                             <div
                               key={idx}
-                              className="flex flex-col justify-between bg-[#F0EDE1] p-8 transition-all duration-300 hover:-translate-y-1 hover:bg-[#f7f5ef] hover:shadow-lg lg:p-10"
+                              className="flex h-full flex-col justify-between bg-[#F0EDE1] p-8 transition-all duration-300 hover:-translate-y-1 hover:bg-[#f7f5ef] hover:shadow-lg lg:p-10"
                             >
                               <span className="text-6xl font-thin text-[#00263e]/10">{item.num}</span>
-                              <div className="mt-auto">
-                                <h3 className="mb-5 text-lg tracking-[3px] text-[#00263e]">{item.title}</h3>
-                                <p className="text-[13px] leading-[2] text-[#00263e]/80">{item.desc}</p>
+                              <div>
+                                <h3 className="mb-3 text-lg tracking-[3px] text-[#00263e]">{item.title}</h3>
+                                <p className="line-clamp-4 min-h-[104px] text-[13px] leading-[2] text-[#00263e]/80">{item.desc}</p>
                               </div>
                             </div>
                           ))}
