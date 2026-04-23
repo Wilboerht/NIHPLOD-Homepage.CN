@@ -409,7 +409,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       {/* 顶部 Logo - 保持与首页一致的呼吸感 */}
       <header className="flex h-20 shrink-0 items-center justify-center pt-8">
         <Link href="/">
-          <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+          <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
             <Image
               src="/images/NIHPLOD-logo.svg"
               alt="Logo"
@@ -578,7 +578,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   <nav className="relative flex h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[12%]">
                     {/* Logo */}
                     <Link href="/">
-                      <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                      <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="Logo"
@@ -752,7 +752,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             {/* 顶部标题与关闭 */}
             <header className="flex h-24 shrink-0 items-center justify-center px-6 pt-6 relative z-20">
               <div className="flex w-full max-w-[340px] items-center justify-between">
-                <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
                     alt="NIHPLOD"

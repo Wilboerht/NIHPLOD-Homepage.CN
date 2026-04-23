@@ -1717,7 +1717,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         }}
                         className="block transition-opacity hover:opacity-70"
                       >
-                        <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                        <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
                           <Image
                             src="/images/NIHPLOD-logo.svg"
                             alt="NIHPLOD"
@@ -2335,7 +2335,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   /* <= 3 步骤：直接展示卡片 (无折叠逻辑) */
                                   <m.section
                                     key={`${selectedModule}-simple`}
-                                    className="relative flex w-full h-[530px] items-center justify-center"
+                                    className="relative flex w-full h-[530px] items-start justify-center"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
@@ -2383,7 +2383,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 ) : (
                                   <m.section
                                     key={`${selectedModule}-paginated`}
-                                    className="relative flex w-full flex-col items-center justify-center"
+                                    className="relative flex w-full flex-col items-center justify-start"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
