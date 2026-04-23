@@ -504,8 +504,8 @@ function LoginModal({
                     <Image
                       src="/images/NIHPLOD-logo.svg"
                       alt="NIHPLOD"
-                      width={140}
-                      height={35}
+                      width={120}
+                      height={30}
                       className="opacity-90 brightness-0 invert"
                     />
                   </div>
