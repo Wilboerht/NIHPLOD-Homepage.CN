@@ -488,6 +488,29 @@ function LoginModal({
                   </div>
                 </div>
               </div>
+
+              {/* 右侧品牌展示区域 - 桌面端 */}
+              <div className="relative z-10 hidden md:flex flex-1 flex-col items-center justify-center">
+                <div className="text-center space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-[2.5rem] font-light tracking-[0.15em] text-brand-gold">
+                      精简护肤
+                    </p>
+                    <p className="text-[2.5rem] font-light tracking-[0.15em] text-white/90">
+                      减法美学
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 pt-4">
+                    <Image
+                      src="/images/NIHPLOD-logo.svg"
+                      alt="NIHPLOD"
+                      width={140}
+                      height={35}
+                      className="opacity-90 brightness-0 invert"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </m.div>
         </div>
