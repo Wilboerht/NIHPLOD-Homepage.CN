@@ -208,7 +208,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
                         if (filteredJobs.length === 0) {
                           return (
-                            <div className="py-8 text-center">
+                            <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
                               <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
                               <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
                             </div>
