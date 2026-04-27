@@ -9,12 +9,9 @@ import {
   MapPin,
   Briefcase,
   Clock,
-  Mail,
   Home,
   X,
   Upload,
-  User,
-  Phone,
   FileText,
   Send,
   Loader2,
@@ -256,7 +253,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       {/* 职位详情弹窗 */}
       <AnimatePresence>
         {selectedJob && (
-          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} _contactEmail={contactEmail} submitTip={submitTip} />
+          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} _contactEmail={contactEmail} _submitTip={submitTip} />
         )}
       </AnimatePresence>
 
@@ -420,7 +417,7 @@ function JobCard({
 /**
  * 职位详情弹窗组件
  */
-function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClose: () => void; _contactEmail?: string; submitTip?: { title: string; content: string } }) {
+function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClose: () => void; _contactEmail?: string; _submitTip?: { title: string; content: string } }) {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",

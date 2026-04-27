@@ -22,7 +22,7 @@ export function TermsContent({ content }: TermsContentProps) {
   // 从 content 中获取数据
   const pageTitle = content.pageTitle || { en: "TERMS OF SERVICE", zh: "服务条款" };
   const description = content.description || "在使用我们的服务前，请仔细阅读以下条款";
-  const lastUpdated = content.lastUpdated || "2026年1月1日";
+  const _lastUpdated = content.lastUpdated || "2026年1月1日";
   const tabsContent = content.tabs;
 
   // 确保章节按逻辑顺序排列

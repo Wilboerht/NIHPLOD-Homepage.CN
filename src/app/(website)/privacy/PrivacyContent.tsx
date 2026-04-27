@@ -60,7 +60,7 @@ export function PrivacyContent() {
 
   const pageTitle = { en: "PRIVACY POLICY", zh: "隐私政策" };
   const description = "我们重视并尊重您的隐私，了解我们如何收集、使用和保护您的个人信息";
-  const lastUpdated = "2026年1月1日";
+  const _lastUpdated = "2026年1月1日";
 
   const sectionOrder = ["collect", "use", "protect", "rights"];
   const sections = sectionOrder.map((id, index) => ({
