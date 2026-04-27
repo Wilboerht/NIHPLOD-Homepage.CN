@@ -96,7 +96,7 @@ export function TermsContent({ content }: TermsContentProps) {
 
           <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
             {/* 顶栏 / Logo 区 */}
-            <header className="flex-shrink-0 px-4 pt-8 pb-4 text-center sm:pt-10 sm:pb-6 lg:pt-12 lg:pb-8">
+            <header className="flex-shrink-0 px-4 pt-1 pb-4 text-center sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8">
               {/* Logo 保持在顶端 */}
               <m.div
                 initial={{ opacity: 0, y: 10 }}
