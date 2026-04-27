@@ -169,53 +169,54 @@ export function ServicesContent({ content }: ServicesContentProps) {
           {/* 主内容卡片容器 */}
           <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
             <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
-              {/* 顶栏 / 标题区 */}
-              <header className="flex-shrink-0 px-4 pt-8 pb-10 text-center sm:pt-10 sm:pb-12 lg:pt-12 lg:pb-14">
-                <div className="space-y-11 sm:space-y-12">
-                  {/* Logo 保持在顶端 */}
-                  <m.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex justify-center"
-                  >
-                    <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
-                      <Image
-                        src="/images/NIHPLOD-logo.svg"
-                        alt="公司标志"
-                        fill
-                        className="object-contain"
-                        priority
-                      />
-                    </div>
-                  </m.div>
-
-                  <div className="space-y-2">
-                    <m.h1
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="font-serif text-2xl text-brand-charcoal sm:text-3xl"
-                    >
-                      {pageTitle.zh}
-                    </m.h1>
-                    <m.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="mx-auto max-w-lg text-sm leading-relaxed text-brand-charcoal/60"
-                    >
-                      <span>NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验</span>
-                    </m.p>
+              {/* 顶栏 / Logo 区 */}
+              <header className="flex-shrink-0 px-4 pt-8 pb-4 text-center sm:pt-10 sm:pb-6 lg:pt-12 lg:pb-8">
+                {/* Logo 保持在顶端 */}
+                <m.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-center"
+                >
+                  <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
+                    <Image
+                      src="/images/NIHPLOD-logo.svg"
+                      alt="公司标志"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
                   </div>
-                </div>
+                </m.div>
               </header>
 
               {/* 分割线 */}
-              <div className="mx-auto mb-8 w-full max-w-7xl border-b border-brand-charcoal/10" />
+              <div className="mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
 
-              {/* 内容区域 */}
+              {/* 内容区域：标题 + 卡片整体在分割线下方居中 */}
               <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <div className="mx-auto max-w-4xl h-full flex flex-col justify-center min-h-[300px]">
+                <div className="mx-auto max-w-4xl h-full min-h-0 flex flex-col justify-center">
+
+                  {/* 标题区 */}
+                  <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8">
+                    <div className="space-y-2">
+                      <m.h1
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="font-serif text-[26px] text-brand-charcoal sm:text-[32px]"
+                      >
+                        {pageTitle.zh}
+                      </m.h1>
+                      <m.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-brand-charcoal/60"
+                      >
+                        <span>NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验</span>
+                      </m.p>
+                    </div>
+                  </div>
 
                   <div className="flex flex-col items-center w-full">
                     {/* 服务卡片列表 - 调整网格布局以适应4个卡片 */}
