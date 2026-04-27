@@ -264,6 +264,9 @@ function normalizeJobHtml(html: string): string {
     return `<ol class="list-decimal pl-5">${items.join("")}</ol>`;
   });
 
+  // 3. 统一已有 <ol> 的样式，去掉可能存在的内联 padding-left:0
+  result = result.replace(/<ol[^>]*>/gi, '<ol class="list-decimal pl-5">');
+
   return result;
 }
 
