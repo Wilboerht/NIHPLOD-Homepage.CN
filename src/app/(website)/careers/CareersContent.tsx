@@ -47,7 +47,7 @@ const jobTypeMap: Record<string, { label: string; color: string }> = {
 // 默认内容
 const defaultContent: CareersPageContent = {
   title: { en: "JOIN US", zh: "加入我们" },
-  description: "与热爱美好事物的人一起，创造高端护肤的未来",
+  description: "我们正在寻找那些希望将想法转化为创新体验和解决方案的人",
   submitTip: {
     title: "简历投递",
     content: "请将简历直接投递到在招岗位的投递提交表单中\n简历命名格式：【应聘】职位名称 - 姓名",
@@ -479,48 +479,51 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
 
   return (
     <m.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
       <m.div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
         onClick={onClose}
       />
 
       <m.div
-        className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl"
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)]"
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        exit={{ opacity: 0, scale: 0.96, y: 10 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-brand-charcoal/10 transition-colors hover:bg-brand-charcoal/20"
-        >
-          <X className="h-4 w-4 text-brand-charcoal" />
-        </button>
+        <div className="absolute top-4 right-6 z-20">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X size={16} strokeWidth={2.5} />
+          </button>
+        </div>
 
         <div className="max-h-[85vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="bg-gradient-to-r from-brand-gold/10 to-brand-cream p-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-serif text-xl text-brand-charcoal sm:text-2xl">
-                {job.title}
-              </h2>
-              <span className="text-sm text-brand-charcoal/50">{job.titleEn}</span>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className={cn("rounded-full px-2 py-0.5 text-xs", typeInfo.color)}>
+          <div className="p-10 pt-10 pb-6">
+            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
+              {job.title}
+            </h2>
+            {job.titleEn && (
+              <span className="mt-1 block text-sm text-slate-400">{job.titleEn}</span>
+            )}
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider", typeInfo.color)}>
                 {typeInfo.label}
               </span>
-              <span className="flex items-center gap-1 text-sm text-brand-charcoal/60">
+              <span className="flex items-center gap-1 text-xs text-slate-400">
                 <MapPin className="h-3.5 w-3.5" />
                 {job.location}
               </span>
               {job.salary && (
-                <span className="flex items-center gap-1 text-sm text-brand-charcoal/60">
+                <span className="flex items-center gap-1 text-xs font-medium text-[#8B7355]">
                   <Clock className="h-3.5 w-3.5" />
                   {job.salary}
                 </span>
@@ -528,62 +531,58 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
             </div>
           </div>
 
-          <div className="border-b border-brand-beige p-6">
+          <div className="border-t border-slate-100" />
+
+          <div className="border-b border-slate-100 px-10 pt-8 pb-8">
             <div className="mb-5">
-              <h4 className="mb-3 text-sm font-medium text-brand-gold">职位描述</h4>
+              <h4 className="mb-3 text-sm font-bold tracking-widest text-[#8B7355]">职位描述</h4>
               <div
-                className="text-sm leading-relaxed text-brand-charcoal/80 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-brand-gold [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
+                className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: job.description }}
               />
             </div>
             <div>
-              <h4 className="mb-3 text-sm font-medium text-brand-gold">任职要求</h4>
+              <h4 className="mb-3 text-sm font-bold tracking-widest text-[#8B7355]">任职要求</h4>
               <div
-                className="text-sm leading-relaxed text-brand-charcoal/80 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-brand-gold [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
+                className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: job.requirements }}
               />
             </div>
 
             {(job.longitude || job.location) && (
               <div className="mt-8">
-                <h4 className="mb-3 text-sm font-medium text-brand-gold">工作地点</h4>
-                <div id={`map-${job.id}`} className="relative h-48 w-full rounded-xl overflow-hidden border border-brand-beige bg-gray-50 flex items-center justify-center">
+                <h4 className="mb-3 text-sm font-bold tracking-widest text-[#8B7355]">工作地点</h4>
+                <div id={`map-${job.id}`} className="relative h-48 w-full rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
                   <div className="absolute inset-0 z-0 flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-brand-gold/20" />
+                    <Loader2 className="h-6 w-6 animate-spin text-[#C6A87C]/20" />
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="p-6">
-            <h4 className="mb-4 flex items-center gap-2 text-base font-medium text-brand-charcoal">
-              <Send className="h-4 w-4 text-brand-gold" />
+          <div className="px-10 pb-10 pt-8">
+            <h4 className="mb-6 flex items-center gap-2 text-base font-bold tracking-widest text-[#8B7355]">
+              <Send className="h-4 w-4 text-[#8B7355]" />
               投递简历
             </h4>
 
             <div className="relative">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
-                    <User className="h-3.5 w-3.5" />
-                    姓名 <span className="text-red-500">*</span>
-                  </label>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <span className="text-[13px] font-medium text-slate-500">姓名 <span className="text-red-500">*</span></span>
                   <input
                     type="text"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none focus:border-brand-gold"
+                    className="block w-full rounded-xl border border-slate-100 bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
                     placeholder="请输入您的姓名"
                   />
                 </div>
 
-                <div>
-                  <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
-                    <Phone className="h-3.5 w-3.5" />
-                    手机号 <span className="text-red-500">*</span>
-                  </label>
+                <div className="flex flex-col gap-2">
+                  <span className="text-[13px] font-medium text-slate-500">手机号 <span className="text-red-500">*</span></span>
                   <input
                     type="tel"
                     required
@@ -593,23 +592,21 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
                       const value = e.target.value.replace(/\D/g, "").slice(0, 11);
                       setFormData({ ...formData, phone: value });
                     }}
-                    className="w-full rounded-lg border border-brand-beige bg-white px-4 py-2.5 text-sm text-brand-charcoal outline-none focus:border-brand-gold"
+                    className="block w-full rounded-xl border border-slate-100 bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
                     placeholder="请输入11位手机号"
                   />
                 </div>
 
-                <div>
-                  <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
-                    <Upload className="h-3.5 w-3.5" />
-                    简历 <span className="text-red-500">*</span>
-                    <span className="group/tooltip relative ml-0.5 cursor-help">
-                      <HelpCircle className="h-3.5 w-3.5 text-brand-charcoal/30 transition-colors group-hover/tooltip:text-brand-gold" />
-                      <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 w-64 -translate-y-1/2 rounded-lg border border-brand-charcoal/10 bg-white px-3 py-2 text-xs text-brand-charcoal opacity-0 shadow-lg transition-opacity group-hover/tooltip:opacity-100">
-                        <span className="absolute right-full top-1/2 h-2 w-2 -translate-y-1/2 translate-x-1/2 rotate-45 border-b border-l border-brand-charcoal/10 bg-white" />
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-medium text-slate-500">简历 <span className="text-red-500">*</span></span>
+                    <span className="group/tooltip relative cursor-help">
+                      <HelpCircle className="h-4 w-4 text-slate-300 transition-colors group-hover/tooltip:text-[#8B7355]" />
+                      <span className="pointer-events-none absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs text-slate-700 opacity-0 shadow-lg transition-opacity group-hover/tooltip:opacity-100">
                         简历命名格式：【应聘】职位名称 - 姓名
                       </span>
                     </span>
-                  </label>
+                  </div>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -621,28 +618,28 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className={cn(
-                      "flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-4 text-sm transition-colors",
+                      "flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-5 py-3.5 text-[13px] transition-all duration-300",
                       resumeFile
-                        ? "border-brand-gold bg-brand-gold/5 text-brand-charcoal"
-                        : "border-brand-beige text-brand-charcoal/60 hover:border-brand-gold/50"
+                        ? "border-[#C6A87C]/40 bg-[#C6A87C]/5 text-slate-900"
+                        : "border-slate-100 text-slate-400 hover:border-[#C6A87C]/30"
                     )}
                   >
                     {resumeFile ? (
                       <>
-                        <FileText className="h-4 w-4 text-brand-gold" />
+                        <FileText className="h-4 w-4 text-[#8B7355]" />
                         {resumeFile.name}
                       </>
                     ) : (
                       <>
                         <Upload className="h-4 w-4" />
-                        点击上传简历（请使用 PDF 格式）
+                        点击上传简历（PDF 格式）
                       </>
                     )}
                   </button>
                 </div>
 
                 {submitStatus === "error" && (
-                  <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                  <div className="rounded-xl bg-red-50 p-3 text-[13px] text-red-600">
                     {errorMessage || "投递失败"}
                   </div>
                 )}
@@ -651,13 +648,17 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
                   type="submit"
                   disabled={isSubmitting || !resumeFile}
                   className={cn(
-                    "flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium text-white transition-all",
+                    "flex w-full items-center justify-center gap-2 rounded-xl border py-3.5 text-[13px] font-bold tracking-widest transition-all duration-300",
                     isSubmitting || !resumeFile
-                      ? "bg-brand-charcoal/30"
-                      : "bg-brand-gold hover:bg-brand-gold/90"
+                      ? "border-slate-200 bg-slate-100 text-slate-400"
+                      : "border-[#8B7355]/40 bg-[#8B7355]/10 text-[#8B7355] hover:border-[#8B7355]/70 hover:bg-[#8B7355]/20"
                   )}
                 >
-                  {isSubmitting ? "提交中..." : "提交申请"}
+                  {isSubmitting ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <>提交申请</>
+                  )}
                 </button>
               </form>
 
@@ -668,21 +669,21 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="absolute inset-x-[-8px] inset-y-[-8px] z-50 flex flex-col items-center justify-center rounded-2xl bg-white/90 p-6 text-center backdrop-blur-sm"
+                    className="absolute inset-x-[-8px] inset-y-[-8px] z-50 flex flex-col items-center justify-center rounded-[28px] bg-white p-6 text-center"
                   >
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100/50">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#8B7355]/10">
                       <m.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
                       >
-                        <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="h-8 w-8 text-[#8B7355]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
                       </m.div>
                     </div>
-                    <h3 className="mb-2 text-lg font-medium text-brand-charcoal">投递成功</h3>
-                    <p className="text-sm text-brand-charcoal/60">
+                    <h3 className="mb-2 text-lg font-bold tracking-widest text-[#8B7355]">投递成功</h3>
+                    <p className="text-sm text-slate-500">
                       简历已送达，我们会尽快与您联系
                     </p>
                   </m.div>
