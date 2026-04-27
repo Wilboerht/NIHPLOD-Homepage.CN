@@ -66,6 +66,7 @@ interface CareersContentProps {
  */
 export function CareersContent({ jobs, content }: CareersContentProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [filterType, setFilterType] = useState<string>("all");
 
   // 脚本载入由父级页面 (page.tsx) 的 next/script 控制
   useEffect(() => {
@@ -143,27 +144,87 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               </div>
 
               {/* 内容区域 */}
-              <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <div className="mx-auto max-w-4xl pb-12">
-                  {jobs.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
-                      <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
+              <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative">
+                {/* 左侧边栏 - absolute 定位不影响内容布局 */}
+                <aside className="hidden w-48 lg:block absolute left-0 top-0 bottom-0 border-r border-brand-charcoal/5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <nav className="space-y-6 w-full px-6 pt-4">
+                    <div className="flex items-center gap-3 px-2 opacity-80">
+                      <p className="text-sm font-bold text-brand-charcoal">
+                        筛选
+                      </p>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-2xl mx-auto w-full">
-                      {jobs.map((job, index) => (
-                        <JobCard
-                          key={job.id}
-                          job={job}
-                          index={index}
-                          onClick={() => setSelectedJob(job)}
-                        />
+
+                    <div className="flex flex-col space-y-1">
+                      {[
+                        { id: "all", label: "全部职位", count: jobs.length },
+                        { id: "fulltime", label: "全职", count: jobs.filter(j => j.type === "fulltime").length },
+                        { id: "parttime", label: "兼职", count: jobs.filter(j => j.type === "parttime").length },
+                        { id: "intern", label: "实习", count: jobs.filter(j => j.type === "intern").length },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => setFilterType(item.id)}
+                          className={cn(
+                            "group relative flex w-full items-center justify-between py-3 px-2 text-left transition-all duration-300 rounded-lg hover:bg-brand-charcoal/5",
+                            filterType === item.id
+                              ? "text-brand-charcoal"
+                              : "text-brand-charcoal/60"
+                          )}
+                        >
+                          <span className={cn(
+                            "text-sm font-medium transition-all duration-300",
+                            filterType === item.id ? "font-bold translate-x-1" : "group-hover:translate-x-1"
+                          )}>
+                            {item.label}
+                          </span>
+                          <span className={cn(
+                            "text-xs tabular-nums transition-all duration-300",
+                            filterType === item.id ? "opacity-100 font-semibold" : "opacity-50"
+                          )}>
+                            {item.count}
+                          </span>
+
+                          {filterType === item.id && (
+                            <m.div
+                              layoutId="careers-active-dot"
+                              className="absolute left-0 h-4 w-0.5 rounded-full bg-brand-gold"
+                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            />
+                          )}
+                        </button>
                       ))}
                     </div>
-                  )}
+                  </nav>
+                </aside>
 
+                <div className="mx-auto max-w-4xl pb-12">
+                  {(() => {
+                    const filteredJobs = filterType === "all"
+                      ? jobs
+                      : jobs.filter((job) => job.type === filterType);
 
+                    if (filteredJobs.length === 0) {
+                      return (
+                        <div className="py-8 text-center">
+                          <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
+                          <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-2xl mx-auto w-full">
+                        {filteredJobs.map((job, index) => (
+                          <JobCard
+                            key={job.id}
+                            job={job}
+                            index={index}
+                            onClick={() => setSelectedJob(job)}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </main>
 
