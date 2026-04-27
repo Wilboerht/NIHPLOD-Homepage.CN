@@ -151,7 +151,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                       <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-2xl mx-auto w-full">
                       {jobs.map((job, index) => (
                         <JobCard
                           key={job.id}
@@ -259,48 +259,67 @@ function JobCard({
 
   const cityName = extractCity(job.location);
 
+  // 提取描述纯文本摘要（去掉 HTML 标签）
+  const plainDescription = job.description
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const descriptionSummary =
+    plainDescription.length > 80
+      ? plainDescription.slice(0, 80) + "..."
+      : plainDescription;
+
   return (
     <m.button
       type="button"
       onClick={onClick}
-      className="group relative flex flex-col items-center justify-center gap-3 p-6 sm:p-8 rounded-xl border border-brand-charcoal/10 bg-white/30 text-center transition-all duration-300 hover:bg-white/60 hover:border-brand-gold/40 min-h-[160px] sm:min-h-[180px]"
+      className="group relative w-full text-left transition-colors duration-200 hover:bg-brand-charcoal/[0.02]"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
       whileTap={{ scale: 0.98 }}
     >
-      {/* 类型标签 */}
-      <span
-        className={cn("rounded-full px-3 py-1 text-[10px] font-medium sm:text-xs", typeInfo.color)}
-      >
-        {typeInfo.label}
-      </span>
-
-      {/* 职位名称 */}
-      <h3 className="font-serif text-base font-medium text-brand-charcoal sm:text-lg">
-        {job.title}
-      </h3>
-
-      {/* 英文标题 */}
-      {job.titleEn && (
-        <span className="text-xs text-brand-charcoal/40 -mt-1">
-          {job.titleEn}
-        </span>
-      )}
-
-      {/* 地点 + 薪资 */}
-      <div className="mt-1 flex flex-wrap items-center justify-center gap-3 text-xs text-brand-charcoal/60 sm:text-sm">
-        <span className="flex items-center gap-1">
-          <MapPin className="h-3.5 w-3.5 text-brand-gold/70" />
-          {cityName}
-        </span>
-        {job.salary && (
-          <span className="flex items-center gap-1 font-medium text-brand-gold">
-            <Clock className="h-3.5 w-3.5" />
-            {job.salary}
+      <div className="px-5 py-4 sm:px-6 sm:py-5">
+        {/* 第一行：职位名称 + 箭头 */}
+        <div className="flex w-full items-center justify-between gap-3">
+          <h3 className="font-serif text-base font-medium text-brand-charcoal leading-snug sm:text-lg">
+            {job.title}
+          </h3>
+          <span className="flex-shrink-0 text-brand-charcoal/25 transition-all duration-300 group-hover:text-brand-gold">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
           </span>
+        </div>
+
+        {/* 第二行：Logo + 类型 | 地点 等元信息 */}
+        <div className="mt-2.5 flex items-center gap-2.5 text-[13px] sm:text-sm text-brand-charcoal/45">
+          {/* 小图标 */}
+          <Briefcase className="h-4 w-4 text-brand-charcoal/50" />
+          <span className="text-brand-charcoal/60 font-medium">{typeInfo.label}</span>
+          <span className="text-brand-charcoal/20">|</span>
+          {job.salary && (
+            <>
+              <span className="text-brand-gold/80">{job.salary}</span>
+              <span className="text-brand-charcoal/20">|</span>
+            </>
+          )}
+          <span className="flex items-center gap-1">
+            <MapPin className="h-3.5 w-3.5" />
+            {cityName}
+          </span>
+        </div>
+
+        {/* 第三行：描述摘要 */}
+        {descriptionSummary && (
+          <p className="mt-2.5 text-[13px] sm:text-sm leading-relaxed text-brand-charcoal/40 line-clamp-1">
+            {descriptionSummary}
+          </p>
         )}
       </div>
+
+      {/* 底部分割线 */}
+      <div className="mx-5 sm:mx-6 border-b border-brand-charcoal/8" />
     </m.button>
   );
 }

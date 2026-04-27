@@ -1,0 +1,24 @@
+[    7929ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/careers:0
+[    9187ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ webpack-internal:///./node_modules/react-dom/cjs/react-dom.development.js:29889
+[    9255ms] TypeError: Cannot read properties of undefined (reading 'clientModules')
+    at <unknown> (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:39:25703)
+    at <unknown> (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\server\lib\trace\tracer.js:191:62)
+    at <unknown> (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\server\lib\trace\tracer.js:140:36)
+    at NoopContextManager.with (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:7062)
+    at ContextAPI.with (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:518)
+    at NoopTracer.startActiveSpan (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:18093)
+    at ProxyTracer.startActiveSpan (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:18854)
+    at <unknown> (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\server\lib\trace\tracer.js:122:103)
+    at NoopContextManager.with (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:7062)
+    at ContextAPI.with (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:518)
+    at NextTracerImpl.trace (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\server\lib\trace\tracer.js:122:28)
+    at <unknown> (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\server\lib\trace\tracer.js:191:31)
+    at r3 (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:41:1678)
+    at async doRender (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\server\base-server.js:1427:30)
+    at async cacheEntry.responseCache.get.routeKind (file://C:\Users\hongk\Desktop\nihplod.cn - master\node_modules\next\dist\server\base-server.js:1588:28)
+[    9253ms] [LOG] [HMR] connected @ webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/websocket.js:38
+[   17445ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/websocket.js:63
+[   20770ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/websocket.js:63
+[   24105ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/websocket.js:63
+[   27448ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/websocket.js:63
+[   30786ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/components/react-dev-overlay/pages/websocket.js:63
