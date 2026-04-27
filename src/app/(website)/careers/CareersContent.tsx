@@ -248,6 +248,20 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 /**
  * 职位卡片组件 - 简化版，点击打开弹窗
  */
+// 提取城市名（只显示省份/城市，不显示具体地址）
+const extractCity = (location: string) => {
+  // 直辖市
+  const directCity = location.match(/^(北京|上海|天津|重庆)/);
+  if (directCity) return directCity[1];
+
+  // 匹配城市名
+  const cityMatch = location.match(/^(?:.*?省|.*?自治区)?(.*?市)/);
+  if (cityMatch) return cityMatch[1].replace(/市$/, "");
+
+  // 兜底
+  return location.split(/[区县]/)[0]?.replace(/市$/, "") || location;
+};
+
 function JobCard({
   job,
   index,
@@ -262,41 +276,35 @@ function JobCard({
     color: "bg-gray-100 text-gray-700",
   };
 
+  const cityName = extractCity(job.location);
+
   return (
     <m.button
       type="button"
       onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-2xl border border-white/60 bg-white/40 text-left shadow-sm backdrop-blur-md transition-all hover:bg-white/60 hover:shadow-xl hover:border-brand-gold/30 hover:-translate-y-1"
+      className="group relative w-full overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white/30 text-left transition-all duration-300 hover:bg-white/60 hover:border-brand-gold/40"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
       whileTap={{ scale: 0.98 }}
     >
-      {/* 矿物纹理叠加层 - 增加质感 */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-        }}
-      />
-
-      <div className="relative z-10 flex w-full items-center justify-between p-4 sm:p-5 lg:p-6">
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-serif text-base font-medium text-brand-charcoal sm:text-lg lg:text-xl">
+      <div className="flex w-full items-center justify-between p-4 sm:p-5 lg:p-6">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 className="font-serif text-base font-medium text-brand-charcoal sm:text-lg">
               {job.title}
             </h3>
-            <span className="text-xs text-brand-charcoal/40 sm:text-sm">{job.titleEn}</span>
+            <span className="text-xs text-brand-charcoal/40 hidden sm:inline">{job.titleEn}</span>
             <span
               className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium sm:text-xs", typeInfo.color)}
             >
               {typeInfo.label}
             </span>
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-brand-charcoal/60 sm:gap-4 sm:text-sm">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-brand-charcoal/60 sm:gap-4 sm:text-sm">
             <span className="flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-brand-gold/70" />
-              {job.location}
+              {cityName}
             </span>
             {job.salary && (
               <span className="flex items-center gap-1.5 font-medium text-brand-gold">
@@ -306,8 +314,11 @@ function JobCard({
             )}
           </div>
         </div>
-        <div className="ml-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gold/10 transition-all group-hover:bg-brand-gold group-hover:shadow-lg sm:h-12 sm:w-12">
-          <FileText className="h-5 w-5 text-brand-gold transition-colors group-hover:text-white sm:h-6 sm:w-6" />
+        <div className="ml-4 flex shrink-0 items-center text-xs text-brand-charcoal/40 transition-colors duration-300 group-hover:text-brand-gold">
+          <span className="hidden sm:inline mr-1">查看详情</span>
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
         </div>
       </div>
     </m.button>
