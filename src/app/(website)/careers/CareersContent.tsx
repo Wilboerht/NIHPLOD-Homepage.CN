@@ -144,9 +144,10 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               </div>
 
               {/* 内容区域 */}
-              <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative">
-                <div className="relative max-w-4xl mx-auto pb-12">
-                  {/* 左侧边栏 - 以内容区域为基准悬浮，不占位 */}
+              <div className="flex-1 relative min-h-0">
+                {/* 居中的内容容器 - 为侧边栏提供定位基准 */}
+                <div className="relative max-w-4xl mx-auto h-full">
+                  {/* 左侧边栏 - 在滚动区域外，不随内容滚动，不占位 */}
                   <aside className="hidden lg:block absolute -left-52 top-0 bottom-0 w-48 border-r border-brand-charcoal/5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <nav className="space-y-6 w-full px-4 py-4">
                       <div className="flex items-center gap-3 px-2 opacity-80">
@@ -198,35 +199,39 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                     </nav>
                   </aside>
 
-                  {(() => {
-                    const filteredJobs = filterType === "all"
-                      ? jobs
-                      : jobs.filter((job) => job.type === filterType);
+                  <main className="h-full overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <div className="pb-12">
+                      {(() => {
+                        const filteredJobs = filterType === "all"
+                          ? jobs
+                          : jobs.filter((job) => job.type === filterType);
 
-                    if (filteredJobs.length === 0) {
-                      return (
-                        <div className="py-8 text-center">
-                          <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
-                          <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
-                        </div>
-                      );
-                    }
+                        if (filteredJobs.length === 0) {
+                          return (
+                            <div className="py-8 text-center">
+                              <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
+                              <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
+                            </div>
+                          );
+                        }
 
-                    return (
-                      <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-2xl mx-auto w-full">
-                        {filteredJobs.map((job, index) => (
-                          <JobCard
-                            key={job.id}
-                            job={job}
-                            index={index}
-                            onClick={() => setSelectedJob(job)}
-                          />
-                        ))}
-                      </div>
-                    );
-                  })()}
+                        return (
+                          <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-2xl mx-auto w-full">
+                            {filteredJobs.map((job, index) => (
+                              <JobCard
+                                key={job.id}
+                                job={job}
+                                index={index}
+                                onClick={() => setSelectedJob(job)}
+                              />
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </main>
                 </div>
-              </main>
+              </div>
 
             {/* 底部版权信息 */}
               <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12">
