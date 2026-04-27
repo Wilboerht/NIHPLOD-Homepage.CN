@@ -95,58 +95,32 @@ export function TermsContent({ content }: TermsContentProps) {
         <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
 
           <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
-            {/* 顶栏 / 标题区 */}
-            <header className="flex-shrink-0 px-4 pt-8 pb-10 text-center sm:pt-10 sm:pb-12 lg:pt-12 lg:pb-14">
-              <div className="space-y-11 sm:space-y-12">
-                {/* Logo 保持在顶端 */}
-                <m.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex justify-center"
-                >
-                  <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
-                    <Image
-                      src="/images/NIHPLOD-logo.svg"
-                      alt="公司标志"
-                      fill
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                </m.div>
-
-                <div className="space-y-2">
-                  <m.h1
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="font-serif text-2xl text-brand-charcoal sm:text-3xl"
-                  >
-                    {pageTitle.zh}
-                  </m.h1>
-                  <m.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="mx-auto text-sm text-brand-charcoal/60"
-                  >
-                    {description}
-                  </m.p>
+            {/* 顶栏 / Logo 区 */}
+            <header className="flex-shrink-0 px-4 pt-8 pb-4 text-center sm:pt-10 sm:pb-6 lg:pt-12 lg:pb-8">
+              {/* Logo 保持在顶端 */}
+              <m.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-center"
+              >
+                <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
+                  <Image
+                    src="/images/NIHPLOD-logo.svg"
+                    alt="公司标志"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
                 </div>
-
-                <m.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-sm text-brand-charcoal/50"
-                >
-                  {formatText(`最后更新：${lastUpdated}`)}
-                </m.div>
-              </div>
+              </m.div>
             </header>
 
             {/* 分割线 */}
-            <div className="mx-auto mb-8 w-full max-w-7xl border-b border-brand-charcoal/10" />
+            <div className="mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
+
+            {/* 标题区 */}
+            <div className="flex-shrink-0 px-4 pt-4 pb-2 text-center sm:pt-6 sm:pb-3 lg:pt-8 lg:pb-4">
+            </div>
 
             {/* 布局：目录导航 + 条款内容 */}
             <div className="flex flex-1 overflow-hidden relative mx-auto w-full max-w-7xl">
