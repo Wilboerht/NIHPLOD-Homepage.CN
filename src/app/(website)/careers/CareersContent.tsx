@@ -243,6 +243,30 @@ const extractCity = (location: string) => {
   return location.split(/[区县]/)[0]?.replace(/市$/, "") || location;
 };
 
+/**
+ * 统一岗位 HTML 格式，把 <p>数字.内容</p> 转成有序列表，去掉空段落
+ */
+function normalizeJobHtml(html: string): string {
+  let result = html;
+
+  // 1. 去掉空段落和只含 br 的段落
+  result = result.replace(/<p[^>]*>\s*(?:<br\s*\/?>)*\s*<\/p>/gi, "");
+
+  // 2. 把连续的 <p>数字.内容</p> 转成 <ol><li>内容</li></ol>
+  const pattern = /(<p[^>]*>\s*\d+[\.．。、\s]+.*?<\/p>\s*){2,}/gi;
+  result = result.replace(pattern, (match) => {
+    const items: string[] = [];
+    const itemRegex = /<p[^>]*>\s*\d+[\.．。、\s]+(.*?)<\/p>/gi;
+    let m;
+    while ((m = itemRegex.exec(match)) !== null) {
+      items.push(`<li>${m[1].trim()}</li>`);
+    }
+    return `<ol class="list-decimal pl-5">${items.join("")}</ol>`;
+  });
+
+  return result;
+}
+
 function JobCard({
   job,
   index,
@@ -557,14 +581,14 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
               <h4 className="mb-3 text-sm font-bold tracking-widest text-[#8B7355]">职位描述</h4>
               <div
                 className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
-                dangerouslySetInnerHTML={{ __html: job.description }}
+                dangerouslySetInnerHTML={{ __html: normalizeJobHtml(job.description) }}
               />
             </div>
             <div>
               <h4 className="mb-3 text-sm font-bold tracking-widest text-[#8B7355]">任职要求</h4>
               <div
                 className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
-                dangerouslySetInnerHTML={{ __html: job.requirements }}
+                dangerouslySetInnerHTML={{ __html: normalizeJobHtml(job.requirements) }}
               />
             </div>
 
