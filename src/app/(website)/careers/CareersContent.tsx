@@ -145,59 +145,59 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
               {/* 内容区域 */}
               <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative">
-                {/* 左侧边栏 - absolute 定位不影响内容布局 */}
-                <aside className="hidden w-48 lg:block absolute left-0 top-0 bottom-0 border-r border-brand-charcoal/5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <nav className="space-y-6 w-full px-6 pt-4">
-                    <div className="flex items-center gap-3 px-2 opacity-80">
-                      <p className="text-sm font-bold text-brand-charcoal">
-                        筛选
-                      </p>
-                    </div>
+                <div className="relative max-w-4xl mx-auto pb-12">
+                  {/* 左侧边栏 - 以内容区域为基准悬浮，不占位 */}
+                  <aside className="hidden lg:block absolute -left-52 top-0 bottom-0 w-48 border-r border-brand-charcoal/5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <nav className="space-y-6 w-full px-4 py-4">
+                      <div className="flex items-center gap-3 px-2 opacity-80">
+                        <p className="text-sm font-bold text-brand-charcoal">
+                          筛选
+                        </p>
+                      </div>
 
-                    <div className="flex flex-col space-y-1">
-                      {[
-                        { id: "all", label: "全部职位", count: jobs.length },
-                        { id: "fulltime", label: "全职", count: jobs.filter(j => j.type === "fulltime").length },
-                        { id: "parttime", label: "兼职", count: jobs.filter(j => j.type === "parttime").length },
-                        { id: "intern", label: "实习", count: jobs.filter(j => j.type === "intern").length },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setFilterType(item.id)}
-                          className={cn(
-                            "group relative flex w-full items-center justify-between py-3 px-2 text-left transition-all duration-300 rounded-lg hover:bg-brand-charcoal/5",
-                            filterType === item.id
-                              ? "text-brand-charcoal"
-                              : "text-brand-charcoal/60"
-                          )}
-                        >
-                          <span className={cn(
-                            "text-sm font-medium transition-all duration-300",
-                            filterType === item.id ? "font-bold translate-x-1" : "group-hover:translate-x-1"
-                          )}>
-                            {item.label}
-                          </span>
-                          <span className={cn(
-                            "text-xs tabular-nums transition-all duration-300",
-                            filterType === item.id ? "opacity-100 font-semibold" : "opacity-50"
-                          )}>
-                            {item.count}
-                          </span>
+                      <div className="flex flex-col space-y-1">
+                        {[
+                          { id: "all", label: "全部职位", count: jobs.length },
+                          { id: "fulltime", label: "全职", count: jobs.filter(j => j.type === "fulltime").length },
+                          { id: "parttime", label: "兼职", count: jobs.filter(j => j.type === "parttime").length },
+                          { id: "intern", label: "实习", count: jobs.filter(j => j.type === "intern").length },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => setFilterType(item.id)}
+                            className={cn(
+                              "group relative flex w-full items-center justify-between py-3 px-2 text-left transition-all duration-300 rounded-lg hover:bg-brand-charcoal/5",
+                              filterType === item.id
+                                ? "text-brand-charcoal"
+                                : "text-brand-charcoal/60"
+                            )}
+                          >
+                            <span className={cn(
+                              "text-sm font-medium transition-all duration-300",
+                              filterType === item.id ? "font-bold translate-x-1" : "group-hover:translate-x-1"
+                            )}>
+                              {item.label}
+                            </span>
+                            <span className={cn(
+                              "text-xs tabular-nums transition-all duration-300",
+                              filterType === item.id ? "opacity-100 font-semibold" : "opacity-50"
+                            )}>
+                              {item.count}
+                            </span>
 
-                          {filterType === item.id && (
-                            <m.div
-                              layoutId="careers-active-dot"
-                              className="absolute left-0 h-4 w-0.5 rounded-full bg-brand-gold"
-                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </nav>
-                </aside>
+                            {filterType === item.id && (
+                              <m.div
+                                layoutId="careers-active-dot"
+                                className="absolute left-0 h-4 w-0.5 rounded-full bg-brand-gold"
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                              />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </nav>
+                  </aside>
 
-                <div className="mx-auto max-w-4xl pb-12">
                   {(() => {
                     const filteredJobs = filterType === "all"
                       ? jobs
@@ -228,7 +228,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 </div>
               </main>
 
-              {/* 底部版权信息 */}
+            {/* 底部版权信息 */}
               <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12">
                 <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
