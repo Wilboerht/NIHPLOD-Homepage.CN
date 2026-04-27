@@ -554,7 +554,7 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
 
         <div className="max-h-[85vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="p-10 pt-10 pb-6">
-            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
+            <h2 className="font-sans text-xl font-bold text-slate-900 sm:text-2xl">
               {job.title}
             </h2>
             {job.titleEn && (
@@ -581,14 +581,14 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
 
           <div className="border-b border-slate-100 px-10 pt-8 pb-8">
             <div className="mb-5">
-              <h4 className="mb-3 text-sm font-bold tracking-widest text-[#8B7355]">职位描述</h4>
+              <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">职位描述</h4>
               <div
                 className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: normalizeJobHtml(job.description) }}
               />
             </div>
             <div>
-              <h4 className="mb-3 text-sm font-bold tracking-widest text-[#8B7355]">任职要求</h4>
+              <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">任职要求</h4>
               <div
                 className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: normalizeJobHtml(job.requirements) }}
@@ -597,7 +597,7 @@ function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClos
 
             {(job.longitude || job.location) && (
               <div className="mt-8">
-                <h4 className="mb-3 text-sm font-bold tracking-widest text-[#8B7355]">工作地点</h4>
+                <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">工作地点</h4>
                 <div id={`map-${job.id}`} className="relative h-48 w-full rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
                   <div className="absolute inset-0 z-0 flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-[#C6A87C]/20" />
