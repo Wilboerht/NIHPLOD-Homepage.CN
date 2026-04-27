@@ -408,7 +408,7 @@ export function ContactModal() {
                                             rows={4}
                                             maxLength={2000}
                                             className={cn(
-                                                "block w-full resize-none rounded-xl border border-slate-100 bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
+                                                "block w-full resize-none rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
                                                 errors.content
                                                     ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
                                                     : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"

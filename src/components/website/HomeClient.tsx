@@ -476,13 +476,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                         <Link href="https://beian.miit.gov.cn/" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center">
                           沪ICP备2026014764号-1
                         </Link>
-                        {/* 公安网备暂未完成，先隐藏
                         <span className="text-brand-charcoal/30">|</span>
                         <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center gap-1">
                           <Image src="/images/beian.webp" alt="备案图标" width={12} height={12} className="shrink-0 opacity-80" />
-                          <span>公网安备xxxxxx号</span>
+                          <span>沪公网安备31010702010178号</span>
                         </Link>
-                        */}
                       </div>
                     </div>
                   </m.div>
