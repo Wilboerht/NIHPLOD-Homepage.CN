@@ -152,7 +152,13 @@ export function PrivacyContent() {
             <div className="mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
 
             {/* 标题区 */}
-            <div className="flex-shrink-0 px-4 pt-4 pb-2 text-center sm:pt-6 sm:pb-3 lg:pt-8 lg:pb-4">
+            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8">
+              <h1 className="font-serif text-[26px] text-brand-charcoal sm:text-[32px]">
+                {pageTitle.zh}
+              </h1>
+              <p className="mt-2 mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-brand-charcoal/60">
+                {description}
+              </p>
             </div>
 
             {/* 布局：目录导航 + 条款内容 */}
@@ -160,7 +166,7 @@ export function PrivacyContent() {
 
               {/* 左侧导航 - 更加精致的排版 */}
               <aside className="hidden w-48 flex-shrink-0 border-r border-brand-charcoal/5 lg:flex flex-col items-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <nav className="space-y-6 w-full px-6">
+                <nav className="space-y-6 w-full px-6 pt-4">
                   <div className="flex items-center gap-3 px-2 opacity-80">
                     <p className="text-sm font-bold text-brand-charcoal">
                       目录
@@ -220,13 +226,6 @@ export function PrivacyContent() {
                         id={section.id}
                         className="scroll-mt-24 group relative"
                       >
-                        {/* 章节标题 */}
-                        <div className="mb-6">
-                          <h2 className="text-center font-serif text-2xl font-medium text-brand-charcoal">
-                            第{['零', '一', '二', '三', '四', '五'][section.index]}章 {section.title}
-                          </h2>
-                        </div>
-
                         {/* 章节内容 */}
                         <div className="space-y-4 pl-2 lg:pl-6">
                           {(!section.content || section.content.length === 0) ? (
