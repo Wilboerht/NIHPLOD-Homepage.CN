@@ -18,6 +18,7 @@ import {
   FileText,
   Send,
   Loader2,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CareersPageContent } from "@/types/page-content";
@@ -144,45 +145,25 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               {/* 内容区域 */}
               <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="mx-auto max-w-4xl pb-12">
-                  <div className="space-y-4">
-                    {jobs.length === 0 ? (
-                      <div className="py-8 text-center">
-                        <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
-                        <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
-                      </div>
-                    ) : (
-                      jobs.map((job, index) => (
+                  {jobs.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-beige" />
+                      <p className="text-brand-charcoal/60">暂无开放职位，请稍后再来查看</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                      {jobs.map((job, index) => (
                         <JobCard
                           key={job.id}
                           job={job}
                           index={index}
                           onClick={() => setSelectedJob(job)}
                         />
-                      ))
-                    )}
+                      ))}
+                    </div>
+                  )}
 
-                    {/* 投递方式 */}
-                    {submitTip && (
-                      <m.div
-                        className="mt-6 rounded-xl bg-brand-gold/10 p-5"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.2 }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-gold">
-                            <Mail className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-serif text-base text-brand-charcoal">{submitTip.title}</h3>
-                            <p className="mt-1 whitespace-pre-line text-sm text-brand-charcoal/70">
-                              {submitTip.content}
-                            </p>
-                          </div>
-                        </div>
-                      </m.div>
-                    )}
-                  </div>
+
                 </div>
               </main>
 
@@ -209,7 +190,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       {/* 职位详情弹窗 */}
       <AnimatePresence>
         {selectedJob && (
-          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} _contactEmail={contactEmail} />
+          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} _contactEmail={contactEmail} submitTip={submitTip} />
         )}
       </AnimatePresence>
 
@@ -282,44 +263,43 @@ function JobCard({
     <m.button
       type="button"
       onClick={onClick}
-      className="group relative w-full overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white/30 text-left transition-all duration-300 hover:bg-white/60 hover:border-brand-gold/40"
+      className="group relative flex flex-col items-center justify-center gap-3 p-6 sm:p-8 rounded-xl border border-brand-charcoal/10 bg-white/30 text-center transition-all duration-300 hover:bg-white/60 hover:border-brand-gold/40 min-h-[160px] sm:min-h-[180px]"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
       whileTap={{ scale: 0.98 }}
     >
-      <div className="flex w-full items-center justify-between p-4 sm:p-5 lg:p-6">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h3 className="font-serif text-base font-medium text-brand-charcoal sm:text-lg">
-              {job.title}
-            </h3>
-            <span className="text-xs text-brand-charcoal/40 hidden sm:inline">{job.titleEn}</span>
-            <span
-              className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium sm:text-xs", typeInfo.color)}
-            >
-              {typeInfo.label}
-            </span>
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-brand-charcoal/60 sm:gap-4 sm:text-sm">
-            <span className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-brand-gold/70" />
-              {cityName}
-            </span>
-            {job.salary && (
-              <span className="flex items-center gap-1.5 font-medium text-brand-gold">
-                <Clock className="h-3.5 w-3.5" />
-                {job.salary}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="ml-4 flex shrink-0 items-center text-xs text-brand-charcoal/40 transition-colors duration-300 group-hover:text-brand-gold">
-          <span className="hidden sm:inline mr-1">查看详情</span>
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
+      {/* 类型标签 */}
+      <span
+        className={cn("rounded-full px-3 py-1 text-[10px] font-medium sm:text-xs", typeInfo.color)}
+      >
+        {typeInfo.label}
+      </span>
+
+      {/* 职位名称 */}
+      <h3 className="font-serif text-base font-medium text-brand-charcoal sm:text-lg">
+        {job.title}
+      </h3>
+
+      {/* 英文标题 */}
+      {job.titleEn && (
+        <span className="text-xs text-brand-charcoal/40 -mt-1">
+          {job.titleEn}
+        </span>
+      )}
+
+      {/* 地点 + 薪资 */}
+      <div className="mt-1 flex flex-wrap items-center justify-center gap-3 text-xs text-brand-charcoal/60 sm:text-sm">
+        <span className="flex items-center gap-1">
+          <MapPin className="h-3.5 w-3.5 text-brand-gold/70" />
+          {cityName}
+        </span>
+        {job.salary && (
+          <span className="flex items-center gap-1 font-medium text-brand-gold">
+            <Clock className="h-3.5 w-3.5" />
+            {job.salary}
+          </span>
+        )}
       </div>
     </m.button>
   );
@@ -328,7 +308,7 @@ function JobCard({
 /**
  * 职位详情弹窗组件
  */
-function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => void; _contactEmail?: string }) {
+function JobModal({ job, onClose, _contactEmail, submitTip }: { job: Job; onClose: () => void; _contactEmail?: string; submitTip?: { title: string; content: string } }) {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -622,6 +602,13 @@ function JobModal({ job, onClose, _contactEmail }: { job: Job; onClose: () => vo
                   <label className="mb-1.5 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
                     <Upload className="h-3.5 w-3.5" />
                     简历 <span className="text-red-500">*</span>
+                    <span className="group/tooltip relative ml-0.5 cursor-help">
+                      <HelpCircle className="h-3.5 w-3.5 text-brand-charcoal/30 transition-colors group-hover/tooltip:text-brand-gold" />
+                      <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 w-64 -translate-y-1/2 rounded-lg border border-brand-charcoal/10 bg-white px-3 py-2 text-xs text-brand-charcoal opacity-0 shadow-lg transition-opacity group-hover/tooltip:opacity-100">
+                        <span className="absolute right-full top-1/2 h-2 w-2 -translate-y-1/2 translate-x-1/2 rotate-45 border-b border-l border-brand-charcoal/10 bg-white" />
+                        简历命名格式：【应聘】职位名称 - 姓名
+                      </span>
+                    </span>
                   </label>
                   <input
                     ref={fileInputRef}
