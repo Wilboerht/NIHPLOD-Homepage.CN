@@ -97,11 +97,11 @@ export function ContactContent({ content }: ContactContentProps) {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) {
-      newErrors.name = "请输入您的姓名";
+      newErrors.name = "请输入您的称呼";
     } else if (formData.name.length < 2) {
-      newErrors.name = "姓名至少2个字符";
+      newErrors.name = "称呼至少2个字符";
     } else if (formData.name.length > 50) {
-      newErrors.name = "姓名最多50个字符";
+      newErrors.name = "称呼最多50个字符";
     }
     if (!formData.phone.trim()) {
       newErrors.phone = "请输入您的手机号";
@@ -201,7 +201,7 @@ export function ContactContent({ content }: ContactContentProps) {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
                       <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-brand-charcoal">
-                        姓名 <span className="text-red-500">*</span>
+                        称呼 <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -209,7 +209,7 @@ export function ContactContent({ content }: ContactContentProps) {
                         name="name"
                         value={formData.name}
                         onChange={handleChange}
-                        placeholder="请输入您的姓名"
+                        placeholder="请输入您的称呼"
                         autoComplete="name"
                         maxLength={50}
                         className={cn(

@@ -128,11 +128,11 @@ export function ContactModal() {
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
         if (!formData.name.trim()) {
-            newErrors.name = "请输入您的姓名";
+            newErrors.name = "请输入您的称呼";
         } else if (formData.name.length < 2) {
-            newErrors.name = "姓名至少2个字符";
+            newErrors.name = "称呼至少2个字符";
         } else if (formData.name.length > 50) {
-            newErrors.name = "姓名最多50个字符";
+            newErrors.name = "称呼最多50个字符";
         }
 
         if (!formData.phone.trim()) {
@@ -334,7 +334,7 @@ export function ContactModal() {
                                 <div className="grid gap-5 sm:grid-cols-2">
                                     {/* 姓名 */}
                                     <div className="flex flex-col gap-2">
-                                        <span className="text-[13px] font-medium text-slate-500">姓名 <span className="text-red-500">*</span></span>
+                                        <span className="text-[13px] font-medium text-slate-500">称呼 <span className="text-red-500">*</span></span>
                                         <input
                                             type="text"
                                             id="modal-name"
@@ -348,7 +348,7 @@ export function ContactModal() {
                                                     ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
                                                     : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
                                             )}
-                                            placeholder="请输入您的姓名"
+                                            placeholder="请输入您的称呼"
                                         />
                                         {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
                                     </div>
