@@ -38,6 +38,14 @@ export function truncateText(text: string, maxLength: number): string {
 }
 
 /**
+ * 检查当前路径是否匹配给定的 href
+ * 支持精确匹配和 startsWith 匹配（排除首页 "/" 的误判）
+ */
+export function isCurrentPage(pathname: string, href: string): boolean {
+  return href === pathname || (href !== "/" && pathname.startsWith(href));
+}
+
+/**
  * 延迟执行
  */
 export function sleep(ms: number): Promise<void> {

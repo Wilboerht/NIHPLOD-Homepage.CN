@@ -1,0 +1,41 @@
+- generic [ref=e2]:
+  - generic:
+    - generic:
+      - img "Watermark PC"
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "了解产品" [ref=e5] [cursor=pointer]:
+          - /url: /products
+        - img "Brand Story" [ref=e6]
+        - generic:
+          - generic: 探索产品
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - text: 更少步骤
+          - text: 更多呵护
+        - generic [ref=e9]:
+          - text: 美丽不该复杂
+          - text: 专注美好生活
+      - generic [ref=e10]:
+        - link "官方指南" [ref=e11] [cursor=pointer]:
+          - /url: /guide
+        - img "Cat Aesthetic" [ref=e12]
+        - generic:
+          - generic: 官方指南
+      - generic [ref=e13]:
+        - link "关于旎柏" [ref=e14] [cursor=pointer]:
+          - /url: /about
+        - img "Product Desktop" [ref=e15]
+      - generic [ref=e16]:
+        - generic [ref=e17]: 逆转时光
+        - generic [ref=e18]: REVERSE TIME
+      - generic [ref=e20]:
+        - img "User Profile" [ref=e27]
+        - button "立即登录" [ref=e28] [cursor=pointer]:
+          - generic [ref=e29]: 立即登录
+          - img [ref=e30]
+  - main:
+    - button [ref=e32] [cursor=pointer]:
+      - generic [ref=e33]:
+        - img [ref=e34]
+        - img [ref=e36]

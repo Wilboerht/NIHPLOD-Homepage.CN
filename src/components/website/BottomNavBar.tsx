@@ -5,7 +5,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 import { Menu, X, Home, BookOpen, HelpCircle, ShoppingBag } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isCurrentPage } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -74,7 +74,7 @@ export function BottomNavBar() {
     // 简单映射 pathname 到 currentPage，仅用于高亮和主导航判定
     // 如果路径是嵌套的（如 /products/123），可能需要 startsWith 逻辑
     // 这里暂时做精准匹配或一级匹配
-    const currentPage = allNavItems.find(item => item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href)))?.href || "/";
+    const currentPage = allNavItems.find(item => isCurrentPage(pathname, item.href))?.href || "/";
 
     // 根据当前页面获取主导航项和其他导航项
     // allNavItems 长度为 5，索引 0-4，首页为索引 4
@@ -86,12 +86,9 @@ export function BottomNavBar() {
      * 如果点击的是当前页面，则展开抽屉而不是跳转
      */
     const handleNavClick = (href: string, e: React.MouseEvent) => {
-        const isCurrentPage = href === currentPage || (href !== "/" && pathname.startsWith(href));
-        if (isCurrentPage) {
+        if (isCurrentPage(pathname, href)) {
             e.preventDefault();
             setDrawerOpen(true);
-        } else {
-            // 正常导航，Link 组件会处理
         }
     };
 

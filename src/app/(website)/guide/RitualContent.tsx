@@ -1226,7 +1226,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         >
                           <div className="flex-1 flex flex-col justify-center">
                             {/* 标题部分 - 与卡片组统一居中，避免大屏幕下方空洞 */}
-                            <div className="mb-10 text-center shrink-0">
+                            <div className="mb-6 text-center shrink-0">
                               <h2 className="text-2xl font-medium text-[#00263E] tracking-widest">
                                 {modules.find(m => m.id === selectedModule)?.label}
                               </h2>
@@ -1235,32 +1235,38 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               </div>
                             </div>
 
-                            <div className="flex flex-col gap-4">
-                              {moduleData[selectedModule].map((scheme, index) => (
+                            {/* 模块引导文案 */}
+                            <div className="mb-6 text-center px-4">
+                              <p className="text-sm text-[#00263E]/50 font-light leading-relaxed tracking-wide">
+                                在繁忙日常中，为肌肤预留一段专属的精简时光。告别繁琐，轻松护理。
+                              </p>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                              {moduleData[selectedModule].map((scheme) => (
                                 <button
                                   key={scheme.id}
                                   onClick={() => selectScheme(scheme)}
-                                  className="group relative flex flex-col bg-white overflow-hidden rounded-2xl p-5 shadow-[0_4px_20px_-4px_rgba(0,38,62,0.03)] border border-[#00263E]/5 active:scale-[0.98] transition-all duration-300"
+                                  className="group relative flex items-center bg-white overflow-hidden rounded-2xl px-5 py-5 shadow-[0_4px_20px_-4px_rgba(0,38,62,0.03)] border border-[#00263E]/5 active:scale-[0.98] transition-all duration-300"
                                 >
-                                  {/* 顶部信息平衡布局 */}
-                                  <div className="flex justify-between items-center mb-3">
-                                    <span className="text-[9px] font-serif text-[#8B7355]/60 tracking-widest">NUM.0{index + 1}</span>
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#8B7355]/5 rounded-full">
+                                  {/* 左侧装饰线 */}
+                                  <div className="w-[3px] h-10 bg-[#8B7355]/20 rounded-full mr-4 group-active:bg-[#8B7355]/40 transition-colors shrink-0" />
+
+                                  {/* 中间内容：标题 + 时长 */}
+                                  <div className="flex-1 flex flex-col gap-1.5 text-left min-w-0">
+                                    <h3 className="text-lg font-medium text-[#00263E] tracking-wider truncate">
+                                      {scheme.name}
+                                    </h3>
+                                    <div className="flex items-center gap-1.5">
                                       <Clock className="w-3 h-3 text-[#8B7355]/60" />
-                                      <span className="text-[10px] text-[#8B7355]/80 font-medium">{scheme.totalDuration?.replace("min", "分钟") || "15分钟"}</span>
+                                      <span className="text-[11px] text-[#8B7355]/80 font-medium">
+                                        {scheme.totalDuration || "15分钟"}
+                                      </span>
                                     </div>
                                   </div>
 
-                                  {/* 方案内容 */}
-                                  <div className="text-left">
-                                    <h3 className="text-lg font-medium text-[#00263E] mb-1.5 flex items-center justify-between">
-                                      {scheme.name}
-                                      <ChevronRight className="w-4 h-4 text-[#8B7355]/30 group-active:text-[#8B7355] transition-colors" />
-                                    </h3>
-                                    <p className="text-xs text-[#00263E]/40 font-light leading-relaxed line-clamp-2">
-                                      {scheme.desc || "根据全天候环境变化，为您定制的专业护理流程。"}
-                                    </p>
-                                  </div>
+                                  {/* 右侧箭头 */}
+                                  <ChevronRight className="w-5 h-5 text-[#8B7355]/30 group-active:text-[#8B7355] transition-colors shrink-0 ml-3" />
                                 </button>
                               ))}
                             </div>

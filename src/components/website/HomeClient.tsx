@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "next-view-transitions";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, X } from "lucide-react";
@@ -52,6 +52,7 @@ function UrlParamHandler() {
 function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { href: string; label: string }[], onContactClick: () => void, onExploreClick: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -78,19 +79,6 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                 }}
               />
 
-              {/* 顶部 Logo 标识 */}
-              <m.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.8 }}
-                className="absolute top-16 flex flex-col items-center gap-2 opacity-20"
-              >
-                <div className="relative h-[26px] w-[124px]">
-                  <Image src="/images/NIHPLOD-logo.svg" alt="NIHPLOD" fill className="grayscale object-contain" />
-                </div>
-                <div className="h-px w-8 bg-brand-charcoal/20" />
-              </m.div>
-
               {/* 链接列表 */}
               <m.div
                 className="flex flex-col items-center gap-10 mt-10"
@@ -110,15 +98,14 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                   }}
                 >
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       setIsOpen(false);
                       onExploreClick();
                     }}
                     className="group flex flex-col items-center gap-2 mb-4"
                   >
                     <span className="text-2xl font-serif tracking-[0.3em] text-[#8B7355] transition-all group-hover:scale-105">
-                      探索旎柏
+                      探索更多
                     </span>
                     <div className="h-px w-12 bg-[#8B7355]/30 group-hover:w-20 transition-all duration-500" />
                   </button>
@@ -134,13 +121,12 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                     }}
                   >
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={() => {
                         setIsOpen(false);
                         if (link.href === "/contact") {
                           onContactClick();
                         } else {
-                          window.location.href = link.href;
+                          router.push(link.href);
                         }
                       }}
                       className="group flex flex-col items-center gap-2"
@@ -159,8 +145,7 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   setIsOpen(false);
                 }}
                 className="absolute bottom-16 flex flex-col items-center group pointer-events-auto"
