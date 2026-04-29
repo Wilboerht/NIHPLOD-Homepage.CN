@@ -1374,11 +1374,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               <div className="text-center mb-6">
                                 <h2 className="text-3xl font-medium text-[#00263E] tracking-widest">{selectedScheme.name}</h2>
 
-                                {/* 涉及产品 - 横向滑动卡片 (Moved here) */}
+                                {/* 相关产品 - 横向滑动卡片 (Moved here) */}
                                 <div className="w-full mt-6 mb-2">
                                   <div className="flex items-center justify-center gap-3 mb-4">
                                     <div className="h-px w-8 bg-[#00263E]/10" />
-                                    <span className="text-[11px] uppercase font-medium tracking-[0.2em] text-[#00263E]/40">涉及产品</span>
+                                    <span className="text-[11px] uppercase font-medium tracking-[0.2em] text-[#00263E]/40">相关产品</span>
                                     <div className="h-px w-8 bg-[#00263E]/10" />
                                   </div>
                                   <div className="w-full px-6 text-center">
@@ -2040,7 +2040,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 {/* Meta Item: Products */}
                                 <div className="flex flex-col relative isolate">
                                   <h3 className="mb-4 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light z-10">
-                                    涉及产品
+                                    相关产品
                                   </h3>
 
 
