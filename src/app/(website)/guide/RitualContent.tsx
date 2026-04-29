@@ -1270,6 +1270,18 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 </button>
                               ))}
                             </div>
+
+                            {/* AI 护肤顾问引导 */}
+                            <div className="mt-6 text-center">
+                              <a
+                                href="https://advisor.nihplod.cn"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm text-[#8B7355] font-light tracking-wide leading-relaxed hover:underline active:opacity-70 transition-opacity"
+                              >
+                                精简护肤，从了解自己的肌肤开始 <span>→</span>
+                              </a>
+                            </div>
                           </div>
 
                           {/* 底部微调留白，确保不贴底 */}
