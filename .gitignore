@@ -40,3 +40,6 @@ next-env.d.ts
 
 # GeoIP Databases
 data/*.mmdb
+
+# Playwright MCP logs
+.playwright-mcp/

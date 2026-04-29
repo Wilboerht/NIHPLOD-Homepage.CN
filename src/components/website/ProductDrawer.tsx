@@ -119,6 +119,12 @@ function PlatformIcon({ platform }: { platform: string }) {
 export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 检测是否为移动端设备（用于决定小红书链接用 Scheme 唤起 App 还是 Web 链接）
+  useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  }, []);
 
   // 手风琴切换
   const toggleAccordion = (id: string) => {
@@ -311,18 +317,34 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                   {/* 小红书链接 */}
                   <section className="mb-8">
-                    <a
-                      href={`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(`nihplod ${product.category.name}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group inline-flex items-center gap-2 text-[14px] text-[#00263E] transition-opacity hover:opacity-70"
-                    >
-                      <span>去小红书了解更多</span>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform group-hover:translate-x-1">
-                        <path d="M5 12h14" />
-                        <path d="m12 5 7 7-7 7" />
-                      </svg>
-                    </a>
+                    {(() => {
+                      const keyword = `nihplod ${product.category.name}`;
+                      const encodedKeyword = encodeURIComponent(keyword);
+                      const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
+                      const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
+
+                      return (
+                        <>
+                          <a
+                            href={isMobile ? schemeUrl : webUrl}
+                            target={isMobile ? undefined : "_blank"}
+                            rel="noopener noreferrer"
+                            className="group inline-flex items-center gap-2 text-[14px] text-[#00263E] transition-opacity hover:opacity-70"
+                          >
+                            <span>去小红书了解更多</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform group-hover:translate-x-1">
+                              <path d="M5 12h14" />
+                              <path d="m12 5 7 7-7 7" />
+                            </svg>
+                          </a>
+                          {isMobile && (
+                            <p className="mt-2 text-xs text-[#00263E]/40">
+                              若未唤起小红书App，请手动搜索「{keyword}」
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </section>
 
                   {/* 折叠面板 */}

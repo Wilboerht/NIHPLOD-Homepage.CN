@@ -79,42 +79,27 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                 }}
               />
 
-              {/* 链接列表 */}
-              <m.div
-                className="flex flex-col items-center gap-10 mt-10"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  visible: {
-                    transition: { staggerChildren: 0.1 }
-                  }
-                }}
-              >
-                {/* === 新增：主导航项 === */}
+              {/* 点击背景关闭 */}
+              <div
+                className="absolute inset-0 z-0"
+                onClick={() => setIsOpen(false)}
+              />
+
+              {/* 菜单内容 + 关闭按钮 整体垂直居中 */}
+              <div className="relative z-10 flex flex-col items-center gap-12">
+                {/* 链接列表 */}
                 <m.div
+                  className="flex flex-col items-center gap-10"
+                  initial="hidden"
+                  animate="visible"
                   variants={{
-                    hidden: { opacity: 0, y: 30 },
-                    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+                    visible: {
+                      transition: { staggerChildren: 0.1 }
+                    }
                   }}
                 >
-                  <button
-                    onClick={() => {
-                      setIsOpen(false);
-                      onExploreClick();
-                    }}
-                    className="group flex flex-col items-center gap-2 mb-4"
-                  >
-                    <span className="text-2xl font-serif tracking-[0.3em] text-[#8B7355] transition-all group-hover:scale-105">
-                      探索更多
-                    </span>
-                    <div className="h-px w-12 bg-[#8B7355]/30 group-hover:w-20 transition-all duration-500" />
-                  </button>
-                </m.div>
-
-                {/* 次要链接 */}
-                {links.map((link) => (
+                  {/* === 新增：主导航项 === */}
                   <m.div
-                    key={link.href}
                     variants={{
                       hidden: { opacity: 0, y: 30 },
                       visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
@@ -123,37 +108,61 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                     <button
                       onClick={() => {
                         setIsOpen(false);
-                        if (link.href === "/contact") {
-                          onContactClick();
-                        } else {
-                          router.push(link.href);
-                        }
+                        onExploreClick();
                       }}
-                      className="group flex flex-col items-center gap-2"
+                      className="group flex flex-col items-center gap-2 mb-4"
                     >
-                      <span className="text-lg font-light tracking-[0.2em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
-                        {link.label}
+                      <span className="text-2xl font-serif tracking-[0.3em] text-[#8B7355] transition-all group-hover:scale-105">
+                        探索更多
                       </span>
-                      <div className="h-px w-0 bg-brand-gold/40 transition-all duration-500 group-hover:w-full" />
+                      <div className="h-px w-12 bg-[#8B7355]/30 group-hover:w-20 transition-all duration-500" />
                     </button>
                   </m.div>
-                ))}
-              </m.div>
 
-              {/* 底部关闭按钮 - 下移以平衡视觉 */}
-              <m.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                onClick={() => {
-                  setIsOpen(false);
-                }}
-                className="absolute bottom-16 flex flex-col items-center group pointer-events-auto"
-              >
-                <div className="relative h-14 w-14 flex items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/5 transition-all hover:bg-white/20">
-                  <X className="h-7 w-7 text-brand-charcoal/30 group-hover:text-brand-charcoal" strokeWidth={1} />
-                </div>
-              </m.button>
+                  {/* 次要链接 */}
+                  {links.map((link) => (
+                    <m.div
+                      key={link.href}
+                      variants={{
+                        hidden: { opacity: 0, y: 30 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+                      }}
+                    >
+                      <button
+                        onClick={() => {
+                          setIsOpen(false);
+                          if (link.href === "/contact") {
+                            onContactClick();
+                          } else {
+                            router.push(link.href);
+                          }
+                        }}
+                        className="group flex flex-col items-center gap-2"
+                      >
+                        <span className="text-lg font-light tracking-[0.2em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
+                          {link.label}
+                        </span>
+                        <div className="h-px w-0 bg-brand-gold/40 transition-all duration-500 group-hover:w-full" />
+                      </button>
+                    </m.div>
+                  ))}
+                </m.div>
+
+                {/* 关闭按钮 */}
+                <m.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  onClick={() => {
+                    setIsOpen(false);
+                  }}
+                  className="flex flex-col items-center group pointer-events-auto"
+                >
+                  <div className="relative h-14 w-14 flex items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/5 transition-all hover:bg-white/20">
+                    <X className="h-7 w-7 text-brand-charcoal/30 group-hover:text-brand-charcoal" strokeWidth={1} />
+                  </div>
+                </m.button>
+              </div>
             </m.div>
           )}
         </AnimatePresence>,
