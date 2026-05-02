@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
       id: admin.id,
       email: admin.email,
       name: admin.name,
+      role: admin.role,
     });
 
     // 计算过期时间（7天）
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
           id: admin.id,
           email: admin.email,
           name: admin.name,
+          role: admin.role,
         },
         expiresAt,
       },

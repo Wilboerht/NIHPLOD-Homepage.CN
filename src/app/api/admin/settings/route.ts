@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { withRole } from "@/lib/auth";
 import { z } from "zod";
 
 // 设置 keys
@@ -74,16 +74,8 @@ const UpdateSettingsSchema = z.object({
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withRole(["owner"], async (request: NextRequest) => {
   try {
-    const admin = await verifyAuth(request);
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
-        { status: 401 }
-      );
-    }
-
     // 获取所有设置
     const settings = await prisma.setting.findMany({
       where: { key: { in: [...SETTING_KEYS] } },
@@ -113,19 +105,11 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-// PUT /api/admin/settings - 更新设置
-export async function PUT(request: NextRequest) {
+// PUT /api/admin/settings - 更新设置（仅 owner）
+export const PUT = withRole(["owner"], async (request: NextRequest) => {
   try {
-    const admin = await verifyAuth(request);
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const validated = UpdateSettingsSchema.parse(body);
 
@@ -171,5 +155,5 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 

@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
           id: admin.id,
           email: admin.email,
           name: admin.name,
+          role: admin.role,
         },
       },
     });

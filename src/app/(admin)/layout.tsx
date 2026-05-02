@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, Suspense } from "react";
+import { ReactNode, Suspense, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar, AdminHeader } from "@/components/admin";
 import { useSidebar } from "@/hooks";
@@ -19,6 +19,20 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const { isOpen, isCollapsed, isMobile, toggle, close, toggleCollapse } = useSidebar();
+  const [userRole, setUserRole] = useState<string>("admin");
+
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.user?.role) {
+          setUserRole(data.data.user.role);
+        }
+      })
+      .catch(() => {
+        // 静默失败，使用默认 admin
+      });
+  }, []);
 
   // 登录页面使用独立的简洁布局
   if (pathname === "/admin-login") {
@@ -39,6 +53,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           isMobile={isMobile}
           onClose={close}
           onToggleCollapse={toggleCollapse}
+          userRole={userRole}
         />
 
         {/* 主内容区域 */}

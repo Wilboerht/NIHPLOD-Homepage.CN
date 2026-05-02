@@ -33,6 +33,7 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
     id: payload.id,
     email: payload.email,
     name: payload.name,
+    role: payload.role,
   };
 }
 
@@ -100,6 +101,34 @@ export function withAuth<T extends NextRequest>(
 
     return handler(request, admin);
   };
+}
+
+/**
+ * 基于角色的 API 路由保护高阶函数
+ * 在认证基础上增加角色权限校验
+ */
+export function withRole<T extends NextRequest>(
+  allowedRoles: string[],
+  handler: (request: T, admin: AdminJWTPayload) => Promise<Response>
+): (request: T) => Promise<Response> {
+  return withAuth(async (request, admin) => {
+    if (!allowedRoles.includes(admin.role)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "权限不足，无法执行此操作",
+          },
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+    return handler(request, admin);
+  });
 }
 
 /**

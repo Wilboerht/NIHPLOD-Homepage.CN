@@ -13,6 +13,7 @@ interface SidebarProps {
   isMobile: boolean;
   onClose: () => void;
   onToggleCollapse: () => void;
+  userRole?: string;
 }
 
 /**
@@ -24,6 +25,7 @@ export function Sidebar({
   isMobile,
   onClose,
   onToggleCollapse,
+  userRole = "admin",
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -87,35 +89,37 @@ export function Sidebar({
       {/* 导航菜单 */}
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1">
-          {adminNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item);
+          {adminNavItems
+            .filter((item) => !item.roles || item.roles.includes(userRole))
+            .map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item);
 
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={isMobile ? onClose : undefined}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-brand-gold/10 text-brand-gold"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-                    isCollapsed && !isMobile && "justify-center px-2"
-                  )}
-                  title={isCollapsed && !isMobile ? item.title : undefined}
-                >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
-                  {(!isCollapsed || isMobile) && <span>{item.title}</span>}
-                  {(!isCollapsed || isMobile) && item.badge !== undefined && (
-                    <span className="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={isMobile ? onClose : undefined}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-brand-gold/10 text-brand-gold"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                      isCollapsed && !isMobile && "justify-center px-2"
+                    )}
+                    title={isCollapsed && !isMobile ? item.title : undefined}
+                  >
+                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    {(!isCollapsed || isMobile) && <span>{item.title}</span>}
+                    {(!isCollapsed || isMobile) && item.badge !== undefined && (
+                      <span className="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
         </ul>
       </nav>
 

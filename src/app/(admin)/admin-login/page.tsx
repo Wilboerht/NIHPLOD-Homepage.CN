@@ -80,7 +80,7 @@ export default function LoginPage() {
               id="email"
               type="email"
               label="邮箱地址"
-              placeholder="admin@nihplod.cn"
+              placeholder="请输入邮箱地址"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -137,9 +137,9 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* 提示信息 */}
+          {/* 安全提示 */}
           <p className="mt-6 text-center text-xs text-brand-charcoal/40">
-            默认账号: admin@nihplod.cn / admin123456
+            请妥善保管您的管理员账号和密码
           </p>
         </div>
 

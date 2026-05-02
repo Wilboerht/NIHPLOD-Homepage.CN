@@ -29,6 +29,7 @@ async function main() {
       email: "hank.wang@nihplod.cn",
       password: hankPassword,
       name: "Hank Wang",
+      role: "owner",
     },
   });
   console.log("✅ 管理员账号已创建 (hank.wang@nihplod.cn / whk35168)");
@@ -41,6 +42,7 @@ async function main() {
       email: "kiki.wang@nihplod.cn",
       password: kikiPassword,
       name: "Kiki Wang",
+      role: "admin",
     },
   });
   console.log("✅ 管理员账号已创建 (kiki.wang@nihplod.cn / MOIDAS2026kiki)");
@@ -53,6 +55,7 @@ async function main() {
       email: "walter@nihplod.cn",
       password: walterPassword,
       name: "Walter",
+      role: "admin",
     },
   });
   console.log("✅ 管理员账号已创建 (walter@nihplod.cn / walter)");
@@ -65,6 +68,7 @@ async function main() {
       email: "grace.zhang@nihplod.cn",
       password: gracePassword,
       name: "Grace Zhang",
+      role: "admin",
     },
   });
   console.log("✅ 管理员账号已创建 (grace.zhang@nihplod.cn / grace2026)");
@@ -77,6 +81,7 @@ async function main() {
       email: "skye.cao@nihplod.cn",
       password: skyePassword,
       name: "Skye Cao",
+      role: "admin",
     },
   });
   console.log("✅ 管理员账号已创建 (skye.cao@nihplod.cn / skye2026)");
@@ -89,6 +94,7 @@ async function main() {
       email: "rosy.zhang@nihplod.cn",
       password: rosyPassword,
       name: "Rosy Zhang",
+      role: "admin",
     },
   });
   console.log("✅ 管理员账号已创建 (rosy.zhang@nihplod.cn / rosy2026)");

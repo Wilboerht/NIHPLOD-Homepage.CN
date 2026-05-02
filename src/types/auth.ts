@@ -13,6 +13,7 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
+  role: string;
 }
 
 /**
@@ -22,6 +23,7 @@ export interface AdminJWTPayload {
   id: string;
   email: string;
   name: string;
+  role: string;
   iat?: number; // 签发时间
   exp?: number; // 过期时间
 }

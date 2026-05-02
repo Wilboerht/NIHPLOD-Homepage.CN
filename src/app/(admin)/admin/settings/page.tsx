@@ -38,6 +38,7 @@ export default function AdminSettingsPage() {
   // 状态
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
   // const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   // const [mediaPickerTarget, setMediaPickerTarget] = useState<"logo" | "wechat_qrcode" | null>(null);
 
@@ -62,6 +63,12 @@ export default function AdminSettingsPage() {
       try {
         const res = await fetch("/api/admin/settings");
         const data = await res.json();
+
+        if (!res.ok && res.status === 403) {
+          setForbidden(true);
+          setLoading(false);
+          return;
+        }
 
         if (data.success) {
           const settings = data.data as AllSettings;
@@ -130,6 +137,18 @@ export default function AdminSettingsPage() {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center space-y-4">
+        <div className="rounded-full bg-red-50 p-4">
+          <Mail className="h-8 w-8 text-red-500" />
+        </div>
+        <h2 className="text-xl font-semibold text-gray-900">权限不足</h2>
+        <p className="text-sm text-gray-500">您没有权限访问系统设置页面。</p>
       </div>
     );
   }

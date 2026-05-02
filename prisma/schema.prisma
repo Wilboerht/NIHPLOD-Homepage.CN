@@ -416,13 +416,19 @@ enum RefundStatus {
 // 系统管理
 // ============================================
 
+enum AdminRole {
+  owner
+  admin
+}
+
 model Admin {
-  id        String   @id @default(cuid())
-  email     String   @unique // 登录邮箱
-  password  String   // 加密密码
-  name      String   // 显示名称
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id @default(cuid())
+  email     String    @unique // 登录邮箱
+  password  String    // 加密密码
+  name      String    // 显示名称
+  role      AdminRole @default(admin)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Setting {

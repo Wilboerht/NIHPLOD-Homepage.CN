@@ -27,6 +27,7 @@ export interface AdminJWTPayload extends JoseJWTPayload {
   id: string;
   email: string;
   name: string;
+  role: string;
 }
 
 /**
@@ -36,6 +37,7 @@ export async function signToken(payload: {
   id: string;
   email: string;
   name: string;
+  role: string;
 }): Promise<string> {
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
