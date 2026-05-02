@@ -8,7 +8,6 @@ import {
   MessageSquare,
   Briefcase,
   Plus,
-  Upload,
   Eye,
   Clock,
 } from "lucide-react";
@@ -76,7 +75,6 @@ export default function AdminDashboard() {
   // 快捷操作
   const quickActions = [
     { title: "新增产品", href: "/admin/products/new", icon: Plus },
-    { title: "上传媒体", href: "/admin/media", icon: Upload },
     { title: "发布职位", href: "/admin/jobs/new", icon: Briefcase },
     { title: "查看网站", href: "/", icon: Eye, external: true },
   ];
