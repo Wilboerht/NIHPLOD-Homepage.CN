@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Eye,
   EyeOff,
-  ArrowLeft,
   AlertCircle,
   Loader2,
 } from "lucide-react";
@@ -122,9 +121,13 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-brand-cream px-6">
-      {/* 右上角标题 */}
-      <div className="absolute right-6 top-6 z-20 text-xs font-bold tracking-[0.2em] text-slate-400 sm:right-10 sm:top-8 sm:text-sm">
-        后台登录
+      {/* 面包屑导航 */}
+      <div className="absolute left-6 top-6 z-20 flex items-center gap-2 text-xs text-slate-400 sm:left-10 sm:top-8">
+        <Link href="/" className="transition-colors hover:text-slate-600">
+          首页
+        </Link>
+        <span className="text-slate-300">/</span>
+        <span className="font-medium text-slate-600">后台登录</span>
       </div>
 
       {/* 装饰背景光晕 */}
@@ -144,7 +147,7 @@ export default function LoginPage() {
           )}
         >
           <OrbitalIcons className="min-h-[620px] min-w-[380px] sm:min-h-[860px] sm:min-w-[860px]">
-            <div className="w-[260px] overflow-hidden rounded-[28px] bg-white shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] sm:w-[380px]">
+            <div className="w-[260px] overflow-hidden rounded-[28px] bg-transparent sm:w-[380px]">
               {/* Header */}
               <div className="px-8 pb-5 pt-10 text-center sm:px-10 sm:pb-6 sm:pt-12">
                 <div className="relative mx-auto mb-4 h-[34px] w-[140px] sm:mb-5 sm:w-[160px]">
@@ -273,23 +276,7 @@ export default function LoginPage() {
           </OrbitalIcons>
         </div>
 
-        {/* 返回首页 */}
-        <div
-          className={cn(
-            "mt-10 text-center transition-all duration-700 delay-300",
-            mounted
-              ? "translate-y-0 opacity-100"
-              : "translate-y-4 opacity-0"
-          )}
-        >
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 text-xs tracking-wider text-brand-charcoal/30 transition-colors hover:text-brand-charcoal/60"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            返回网站
-          </a>
-        </div>
+
       </div>
 
       {/* 页脚 */}
