@@ -74,7 +74,7 @@ const UpdateSettingsSchema = z.object({
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
-export const GET = withRole(["owner"], async (request: NextRequest) => {
+export const GET = withRole(["owner"], async (_request: NextRequest) => {
   try {
     // 获取所有设置
     const settings = await prisma.setting.findMany({
