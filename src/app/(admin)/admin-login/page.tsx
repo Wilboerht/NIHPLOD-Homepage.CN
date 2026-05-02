@@ -10,6 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { OrbitalIcons } from "@/components/ui/OrbitalIcons";
 
@@ -142,7 +143,7 @@ export default function LoginPage() {
               : "translate-y-4 opacity-0"
           )}
         >
-          <OrbitalIcons className="min-h-[580px] min-w-[360px] sm:min-h-[800px] sm:min-w-[800px]">
+          <OrbitalIcons className="min-h-[620px] min-w-[380px] sm:min-h-[860px] sm:min-w-[860px]">
             <div className="w-[260px] overflow-hidden rounded-[28px] bg-white shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] sm:w-[380px]">
               {/* Header */}
               <div className="px-8 pb-5 pt-10 text-center sm:px-10 sm:pb-6 sm:pt-12">
@@ -288,6 +289,37 @@ export default function LoginPage() {
             <ArrowLeft className="h-3 w-3" />
             返回网站
           </a>
+        </div>
+      </div>
+
+      {/* 页脚 */}
+      <div className="absolute bottom-6 left-0 right-0 z-20 flex flex-col items-center gap-1 px-6">
+        <p className="text-[10px] font-light tracking-widest text-brand-charcoal/40">
+          &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+        </p>
+        <div className="flex items-center justify-center gap-2 text-[9px] font-light tracking-normal text-brand-charcoal/40 whitespace-nowrap">
+          <Link
+            href="https://beian.miit.gov.cn/"
+            target="_blank"
+            className="hover:text-brand-gold transition-colors"
+          >
+            沪ICP备2026014764号-1
+          </Link>
+          <span className="text-brand-charcoal/20">|</span>
+          <Link
+            href="http://www.beian.gov.cn/portal/registerSystemInfo"
+            target="_blank"
+            className="flex items-center gap-1 hover:text-brand-gold transition-colors"
+          >
+            <Image
+              src="/images/beian.webp"
+              alt="备案图标"
+              width={12}
+              height={12}
+              className="shrink-0 opacity-60"
+            />
+            <span>沪公网安备31010702010178号</span>
+          </Link>
         </div>
       </div>
     </div>

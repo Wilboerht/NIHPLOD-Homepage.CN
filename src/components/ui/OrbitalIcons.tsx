@@ -40,19 +40,21 @@ function OrbitalRing({ radius, duration, reverse, items, className }: OrbitalRin
           return (
             <div
               key={i}
-              className="absolute left-1/2 top-1/2"
+              className="absolute"
               style={{
-                transform: `translate(${x}px, ${y}px) translate(-50%, -50%)`,
+                left: "50%",
+                top: "50%",
+                transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
               }}
             >
               {/* 图标容器：反向旋转保持 upright */}
               <div
-                className="flex h-10 w-10 items-center justify-center sm:h-11 sm:w-11"
+                className="flex h-14 w-14 items-center justify-center sm:h-16 sm:w-16"
                 style={{
                   animation: `orbit-spin ${duration}s linear infinite ${reverse ? "" : "reverse"}`,
                 }}
               >
-                <div className="h-8 w-8 sm:h-9 sm:w-9">{item.icon}</div>
+                <div className="h-12 w-12 sm:h-14 sm:w-14">{item.icon}</div>
               </div>
             </div>
           );
