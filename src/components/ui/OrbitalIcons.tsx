@@ -80,7 +80,7 @@ export function OrbitalIcons({ className, children }: OrbitalIconsProps) {
 
   const rings: OrbitalRingProps[] = [
     {
-      radius: 220,
+      radius: 260,
       duration: 28,
       items: [
         { icon: <Shield className={iconSize} />, angle: 0 },
@@ -89,7 +89,7 @@ export function OrbitalIcons({ className, children }: OrbitalIconsProps) {
       ],
     },
     {
-      radius: 310,
+      radius: 370,
       duration: 42,
       reverse: true,
       items: [
