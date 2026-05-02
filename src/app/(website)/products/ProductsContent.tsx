@@ -52,7 +52,7 @@ interface ProductsContentProps {
 }
 
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+export const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "洁面": (
     <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="17.9922" y="5" width="11.9999" height="37.9997" rx="1.99992" fill="url(#paint0_linear_2088_4549)" />

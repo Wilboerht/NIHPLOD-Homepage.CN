@@ -1,15 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import {
-  Shield,
-  User,
-  Lock,
-  KeyRound,
-  Fingerprint,
-  BadgeCheck,
-  Sparkles,
-} from "lucide-react";
+import { CATEGORY_ICONS } from "@/app/(website)/products/ProductsContent";
 
 interface OrbitalRingProps {
   radius: number; // px
@@ -38,7 +30,7 @@ function OrbitalRing({ radius, duration, reverse, items, className }: OrbitalRin
       <div
         className="absolute inset-0"
         style={{
-          animation: `orbit-spin ${duration}s linear infinite ${reverse ? "reverse" : ""}`
+          animation: `orbit-spin ${duration}s linear infinite ${reverse ? "reverse" : ""}`,
         }}
       >
         {items.map((item, i) => {
@@ -55,12 +47,12 @@ function OrbitalRing({ radius, duration, reverse, items, className }: OrbitalRin
             >
               {/* 图标容器：反向旋转保持 upright */}
               <div
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-beige/60 bg-white/70 shadow-sm backdrop-blur-sm sm:h-11 sm:w-11"
+                className="flex h-10 w-10 items-center justify-center sm:h-11 sm:w-11"
                 style={{
-                  animation: `orbit-spin ${duration}s linear infinite ${reverse ? "" : "reverse"}`
+                  animation: `orbit-spin ${duration}s linear infinite ${reverse ? "" : "reverse"}`,
                 }}
               >
-                <span className="text-brand-charcoal/50">{item.icon}</span>
+                <div className="h-8 w-8 sm:h-9 sm:w-9">{item.icon}</div>
               </div>
             </div>
           );
@@ -76,16 +68,15 @@ interface OrbitalIconsProps {
 }
 
 export function OrbitalIcons({ className, children }: OrbitalIconsProps) {
-  const iconSize = "h-4 w-4 sm:h-5 sm:w-5";
-
   const rings: OrbitalRingProps[] = [
     {
       radius: 260,
       duration: 28,
       items: [
-        { icon: <Shield className={iconSize} />, angle: 0 },
-        { icon: <User className={iconSize} />, angle: 120 },
-        { icon: <Lock className={iconSize} />, angle: 240 },
+        { icon: CATEGORY_ICONS["洁面"], angle: 0 },
+        { icon: CATEGORY_ICONS["面霜"], angle: 90 },
+        { icon: CATEGORY_ICONS["精华露"], angle: 180 },
+        { icon: CATEGORY_ICONS["面膜"], angle: 270 },
       ],
     },
     {
@@ -93,10 +84,11 @@ export function OrbitalIcons({ className, children }: OrbitalIconsProps) {
       duration: 42,
       reverse: true,
       items: [
-        { icon: <KeyRound className={iconSize} />, angle: 45 },
-        { icon: <Fingerprint className={iconSize} />, angle: 135 },
-        { icon: <BadgeCheck className={iconSize} />, angle: 225 },
-        { icon: <Sparkles className={iconSize} />, angle: 315 },
+        { icon: CATEGORY_ICONS["护手霜"], angle: 0 },
+        { icon: CATEGORY_ICONS["防晒"], angle: 72 },
+        { icon: CATEGORY_ICONS["身体乳"], angle: 144 },
+        { icon: CATEGORY_ICONS["磨砂膏"], angle: 216 },
+        { icon: CATEGORY_ICONS["护理油"], angle: 288 },
       ],
     },
   ];
