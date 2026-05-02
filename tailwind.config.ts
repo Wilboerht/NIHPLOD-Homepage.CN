@@ -66,6 +66,8 @@ const config: Config = {
         "pulse-soft": "pulseSoft 2s ease-in-out infinite",
         "float": "float 3s ease-in-out infinite",
         "marquee": "marquee 40s linear infinite",
+        "orbit-spin-slow": "orbitSpin 24s linear infinite",
+        "orbit-spin-slower": "orbitSpin 36s linear infinite reverse",
       },
       keyframes: {
         fadeIn: {
@@ -95,6 +97,10 @@ const config: Config = {
         marquee: {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-50%)" },
+        },
+        orbitSpin: {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
         },
       },
       transitionTimingFunction: {

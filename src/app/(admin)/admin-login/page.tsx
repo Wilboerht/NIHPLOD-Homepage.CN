@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { OrbitalIcons } from "@/components/ui/OrbitalIcons";
 
 const REMEMBER_EMAIL_KEY = "admin_login_email";
 
@@ -143,41 +144,35 @@ export default function LoginPage() {
         <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-brand-gold/10 blur-[100px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm">
-        {/* Logo */}
+      <div className="relative z-10 flex w-full flex-col items-center">
+        {/* 轨道动画 + 登录卡片 */}
         <div
           className={cn(
-            "mb-10 flex flex-col items-center transition-all duration-700",
+            "transition-all duration-700",
             mounted
               ? "translate-y-0 opacity-100"
               : "translate-y-4 opacity-0"
           )}
         >
-          <div className="relative h-[50px] w-[200px]">
-            <Image
-              src="/images/NIHPLOD-logo.svg"
-              alt="NIHPLOD"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-          <p className="mt-4 text-lg font-bold tracking-[0.15em] text-brand-charcoal/60">
-            管理后台
-          </p>
-        </div>
+          <OrbitalIcons className="min-h-[500px] min-w-[340px] sm:min-h-[660px] sm:min-w-[660px]">
+            <div className="w-[300px] rounded-2xl border border-brand-beige bg-white/80 p-8 shadow-xl shadow-brand-charcoal/5 backdrop-blur-sm sm:w-[340px]">
+              {/* Logo */}
+              <div className="mb-6 flex flex-col items-center">
+                <div className="relative h-[40px] w-[160px]">
+                  <Image
+                    src="/images/NIHPLOD-logo.svg"
+                    alt="NIHPLOD"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <p className="mt-3 text-sm font-bold tracking-[0.15em] text-brand-charcoal/50">
+                  管理后台
+                </p>
+              </div>
 
-        {/* 登录卡片 */}
-        <div
-          className={cn(
-            "transition-all duration-700 delay-150",
-            mounted
-              ? "translate-y-0 opacity-100"
-              : "translate-y-6 opacity-0"
-          )}
-        >
-          <div className="rounded-2xl border border-brand-beige bg-white/80 p-8 shadow-xl shadow-brand-charcoal/5 backdrop-blur-sm">
-            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               {/* 邮箱 */}
               <div>
                 <label
@@ -321,6 +316,7 @@ export default function LoginPage() {
               </Button>
             </form>
           </div>
+          </OrbitalIcons>
         </div>
 
         {/* 返回首页 */}
