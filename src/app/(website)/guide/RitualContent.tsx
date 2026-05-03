@@ -1587,28 +1587,28 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </div>
                           ) : (
                             /* Regular Steps Waterfall Layout (daily, spa) */
-                            <div className="space-y-12">
+                            <div className="space-y-10 sm:space-y-12">
                               {currentSteps.map((step, index) => (
-                                <div key={index} className="flex flex-col group relative">
+                                <div key={index} className="flex flex-col group relative pt-4">
                                   {/* 步骤胶囊 - 挂在卡片顶部正中间 */}
-                                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 bg-[#00263E] text-white text-[9px] px-5 py-1.5 rounded-full tracking-[0.2em] font-medium shadow-[0_2px_10px_rgba(0,0,0,0.1)] whitespace-nowrap">
-                                    步骤 0{index + 1}
+                                  <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-[#00263E] border border-[#00263E]/20 whitespace-nowrap shadow-sm">
+                                    步骤 {String(index + 1).padStart(2, "0")}
                                   </div>
 
                                   {/* 图片展示区 - 极简白背景 */}
-                                  <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden bg-white shadow-[0_4px_25px_-5px_rgba(0,38,62,0.04)] mb-7 transition-transform duration-500 group-active:scale-[0.99]">
+                                  <div className="relative w-full aspect-[4/3] sm:aspect-square rounded-2xl sm:rounded-[2rem] overflow-hidden bg-white shadow-[0_4px_25px_-5px_rgba(0,38,62,0.04)] mb-5 sm:mb-7 transition-transform duration-500 group-active:scale-[0.99]">
                                     <Image
                                       src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
                                       alt={step.title}
                                       fill
-                                      className="object-contain mix-blend-multiply p-8"
+                                      className="object-contain mix-blend-multiply p-4 sm:p-8"
                                     />
                                   </div>
 
                                   {/* 文本描述区 */}
-                                  <div className="px-3">
-                                    <h4 className="text-xl font-medium text-[#00263E] mb-3 tracking-wide text-center">{step.title}</h4>
-                                    <p className="text-[14px] font-light text-[#00263E]/60 leading-[1.8] text-left">
+                                  <div className="px-1 sm:px-3">
+                                    <h4 className="text-lg sm:text-xl font-medium text-[#00263E] mb-3 tracking-wide text-center">{step.title}</h4>
+                                    <p className="text-[13px] sm:text-[14px] font-light text-[#00263E]/60 leading-[1.8] text-left">
                                       {step.description}
                                     </p>
                                   </div>
