@@ -193,14 +193,12 @@ export function FAQContent() {
                                                     key={index}
                                                     className={cn(
                                                         "group transition-all duration-500 ease-out",
-                                                        // Mobile: Card Style with Glassmorphism
-                                                        "rounded-xl bg-white/50 backdrop-blur-md border border-white/40 mb-4 overflow-hidden",
-                                                        // Desktop: List Style (Reset/Override)
-                                                        "sm:rounded-none sm:bg-transparent sm:backdrop-blur-none sm:border-0 sm:border-b sm:border-brand-charcoal/10 sm:mb-0 sm:shadow-none sm:overflow-visible",
+                                                        // Unified list style (aligned with PC)
+                                                        "border-b border-brand-charcoal/10 overflow-visible",
                                                         // Interactive States
                                                         openIndex === index
-                                                            ? "bg-white/95 border-white/80 sm:bg-white/40 sm:shadow-none sm:border-brand-charcoal/10"
-                                                            : "hover:bg-white/70 sm:hover:bg-white/20"
+                                                            ? "bg-white/40"
+                                                            : "hover:bg-white/20"
                                                     )}
                                                 >
 
