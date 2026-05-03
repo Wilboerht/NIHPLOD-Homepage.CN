@@ -431,6 +431,7 @@ model Admin {
   updatedAt DateTime  @updatedAt
 }
 
+// @deprecated 系统设置功能已移除，此表保留以避免迁移问题，后续可清理
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique // 设置键名

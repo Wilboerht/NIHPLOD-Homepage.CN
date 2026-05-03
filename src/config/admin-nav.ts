@@ -8,7 +8,6 @@ import {
   Briefcase,
   UserCheck,
   MessageSquare,
-  Settings,
   ShoppingCart,
   Users,
   Ticket,
@@ -35,7 +34,6 @@ export const adminNavItems: NavItem[] = [
   { title: "简历管理", href: "/admin/applications", icon: UserCheck, roles: ["owner", "admin"] },
   { title: "留言管理", href: "/admin/messages", icon: MessageSquare, roles: ["owner", "admin"] },
   { title: "管理员管理", href: "/admin/admins", icon: Shield, roles: ["owner"] },
-  { title: "系统设置", href: "/admin/settings", icon: Settings, roles: ["owner"] },
 ];
 
 /**

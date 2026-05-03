@@ -184,53 +184,7 @@ async function main() {
   console.log("✅ 产品分类已创建 (10 个分类)");
 
 
-  // 3. 创建默认设置
-  const settings = [
-    {
-      key: "site",
-      value: {
-        name: "NIHPLOD 旎柏",
-        description: "源自摩纳哥的高端护肤品牌，产品结合前沿科技与珍贵成分，为您开启逆转时光的奢华护肤之旅。",
-        logo: "/images/logo.svg",
-        favicon: "/favicon.ico",
-      },
-    },
-    {
-      key: "social",
-      value: {
-        wechat_qrcode: "",
-        weibo: "",
-        xiaohongshu: "",
-        douyin: "",
-        instagram: "",
-      },
-    },
-    {
-      key: "contact",
-      value: {
-        email: "contact@nihplod.cn",
-        phone: "",
-        address: "",
-        workingHours: "周一至周五 9:00-18:00",
-      },
-    },
-    {
-      key: "seo",
-      value: {
-        title: "NIHPLOD 旎柏 | 高端护肤品牌",
-        description: "源自摩纳哥的高端护肤品牌，产品结合前沿科技与珍贵成分，为您开启逆转时光的奢华护肤之旅。",
-        keywords: "NIHPLOD,旎柏,护肤品,高端护肤,摩纳哥",
-      },
-    },
-  ];
-  for (const s of settings) {
-    await prisma.setting.upsert({
-      where: { key: s.key },
-      update: { value: s.value },
-      create: s,
-    });
-  }
-  console.log("✅ 系统设置已创建 (4 个配置)");
+  // 3. 系统设置功能已移除，不再初始化 Setting 数据
 
   // 5. 创建 NIHPLOD 产品 (基于 nihplod.net 官网)
   const products = [
