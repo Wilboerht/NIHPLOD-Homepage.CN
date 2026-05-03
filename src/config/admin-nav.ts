@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Users,
   Ticket,
+  Shield,
   LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ export const adminNavItems: NavItem[] = [
   { title: "职位管理", href: "/admin/jobs", icon: Briefcase, roles: ["owner", "admin"] },
   { title: "简历管理", href: "/admin/applications", icon: UserCheck, roles: ["owner", "admin"] },
   { title: "留言管理", href: "/admin/messages", icon: MessageSquare, roles: ["owner", "admin"] },
+  { title: "管理员管理", href: "/admin/admins", icon: Shield, roles: ["owner"] },
   { title: "系统设置", href: "/admin/settings", icon: Settings, roles: ["owner"] },
 ];
 
