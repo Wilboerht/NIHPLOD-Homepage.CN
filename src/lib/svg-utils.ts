@@ -14,7 +14,7 @@
 export function sanitizeSvg(svg: string | null | undefined): string {
   if (!svg) return "";
 
-  let cleaned = svg
+  const cleaned = svg
     // 移除 XML 声明
     .replace(/<\?xml[^>]*\?>/gi, "")
     // 移除 DOCTYPE

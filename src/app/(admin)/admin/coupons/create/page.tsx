@@ -60,7 +60,7 @@ export default function CreateCouponPage() {
             } else {
                 error(typeof data.error === "string" ? data.error : data.error?.message || "创建失败");
             }
-        } catch (err: unknown) {
+        } catch {
             error("创建失败，请检查网络或稍后重试");
         } finally {
             setLoading(false);
