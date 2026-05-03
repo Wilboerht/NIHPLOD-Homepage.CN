@@ -7,6 +7,8 @@ import {
   EyeOff,
   AlertCircle,
   Loader2,
+  ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,6 +37,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [breadcrumbOpen, setBreadcrumbOpen] = useState(false);
 
   // 挂载动画
   useEffect(() => {
@@ -127,7 +130,35 @@ export default function LoginPage() {
           首页
         </Link>
         <span className="text-slate-300">/</span>
-        <span className="font-medium text-slate-600">后台登录</span>
+        <div className="relative">
+          <button
+            onClick={() => setBreadcrumbOpen((v) => !v)}
+            className="flex items-center gap-1 p-0 font-medium text-slate-600 transition-colors hover:text-slate-800 bg-transparent border-none cursor-pointer"
+          >
+            后台登录（官网）
+            <ChevronDown
+              className={cn(
+                "h-3 w-3 transition-transform duration-200",
+                breadcrumbOpen && "rotate-180"
+              )}
+            />
+          </button>
+          {breadcrumbOpen && (
+            <div className="absolute left-0 top-full mt-1 flex items-center gap-2 text-xs text-slate-400 -translate-x-[13px]">
+              <span className="text-slate-300 select-none">/</span>
+              <a
+                href="https://advisor.nihplod.cn/admin"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-medium text-slate-600 transition-colors hover:text-slate-800"
+                onClick={() => setBreadcrumbOpen(false)}
+              >
+                后台登录（AI 护肤顾问）
+                <ExternalLink className="h-3 w-3 text-slate-400" />
+              </a>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 装饰背景光晕 */}
