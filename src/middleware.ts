@@ -8,10 +8,14 @@ import { jwtVerify } from "jose";
 // Cookie 名称
 const AUTH_COOKIE_NAME = "admin_token";
 
-// JWT 密钥
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-key-change-in-production-32chars"
-);
+// JWT 密钥（懒加载，禁止硬编码回退）
+function getSecret(): Uint8Array {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error("[Middleware] JWT_SECRET 环境变量未设置，请配置后再启动应用");
+  }
+  return new TextEncoder().encode(jwtSecret);
+}
 
 // 需要保护的页面路径（管理后台）
 const PROTECTED_PATHS = ["/admin"];
@@ -60,7 +64,7 @@ const PUBLIC_API_PREFIXES = [
  */
 async function verifyToken(token: string): Promise<boolean> {
   try {
-    await jwtVerify(token, secret);
+    await jwtVerify(token, getSecret());
     return true;
   } catch {
     return false;

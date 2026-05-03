@@ -28,7 +28,7 @@ export function AdminHeader({ onMenuClick, isMobile, userName = "Admin" }: Admin
   const handleLogout = async () => {
     try {
       await fetch("/api/admin/logout", { method: "POST" });
-      router.push("/login");
+      router.push("/admin-login");
       router.refresh();
     } catch (error) {
       console.error("登出失败:", error);

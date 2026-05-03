@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CategoryForm } from "@/components/admin/CategoryForm";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { sanitizeSvg } from "@/lib/svg-utils";
 
 // 分类类型
 interface Category {
@@ -242,7 +243,7 @@ export default function AdminCategoriesPage() {
                   {category.icon ? (
                     <div
                       className="h-8 w-8 text-brand-gold"
-                      dangerouslySetInnerHTML={{ __html: category.icon }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeSvg(category.icon) }}
                     />
                   ) : (
                     <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100 text-xs text-gray-400">

@@ -8,10 +8,14 @@
  */
 import { SignJWT, jwtVerify, type JWTPayload as JoseJWTPayload } from "jose";
 
-// JWT 密钥（从环境变量获取）
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-key-change-in-production-32chars"
-);
+// JWT 密钥（从环境变量获取，禁止硬编码回退）
+function getSecret(): Uint8Array {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error("[JWT] JWT_SECRET 环境变量未设置，请配置后再启动应用");
+  }
+  return new TextEncoder().encode(jwtSecret);
+}
 
 // JWT 过期时间
 const adminExpiresIn = process.env.JWT_EXPIRES_IN || "7d";
@@ -43,7 +47,7 @@ export async function signToken(payload: {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(adminExpiresIn)
-    .sign(secret);
+    .sign(getSecret());
 
   return token;
 }
@@ -53,7 +57,7 @@ export async function signToken(payload: {
  */
 export async function verifyToken(token: string): Promise<AdminJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, getSecret());
     return payload as AdminJWTPayload;
   } catch {
     return null;
@@ -91,7 +95,7 @@ export async function signUserToken(payload: {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(accessTokenExpiresIn)
-    .sign(secret);
+    .sign(getSecret());
 
   return token;
 }
@@ -101,7 +105,7 @@ export async function signUserToken(payload: {
  */
 export async function verifyUserToken(token: string): Promise<UserJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, getSecret());
     // 确保是用户 token
     if ((payload as UserJWTPayload).type !== "user") {
       return null;
@@ -124,7 +128,7 @@ export async function signRefreshToken(payload: {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(refreshTokenExpiresIn)
-    .sign(secret);
+    .sign(getSecret());
 
   return token;
 }
@@ -134,7 +138,7 @@ export async function signRefreshToken(payload: {
  */
 export async function verifyRefreshToken(token: string): Promise<RefreshTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, getSecret());
     // 确保是 refresh token
     if ((payload as RefreshTokenPayload).type !== "refresh") {
       return null;

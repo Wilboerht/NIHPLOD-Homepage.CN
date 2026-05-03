@@ -6,14 +6,14 @@
  * POST /api/admin/cron/run - 手动执行某个定时任务
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUserAuth } from "@/lib/auth";
+import { verifyAuth } from "@/lib/auth";
 import { getCronTasksStatus, runCronTaskManually } from "@/lib/cron-tasks";
 import { z } from "zod";
 
-// 只允许管理员访问
+// 只允许管理员访问（owner 和 admin）
 async function validateAdmin(request: NextRequest) {
-  const payload = await verifyUserAuth(request);
-  if (!payload || payload.role !== "admin") {
+  const payload = await verifyAuth(request);
+  if (!payload || !["admin", "owner"].includes(payload.role)) {
     return null;
   }
   return payload;

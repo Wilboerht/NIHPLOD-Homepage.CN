@@ -57,8 +57,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, data: coupon });
     } catch (e: unknown) {
         logError("AdminCoupons", e, { action: "create" });
-        const message = e instanceof Error ? e.message : String(e);
-        return NextResponse.json({ success: false, error: message }, { status: 400 });
+        if (e instanceof z.ZodError) {
+            return NextResponse.json(
+                { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: e.issues } },
+                { status: 400 }
+            );
+        }
+        return NextResponse.json({ success: false, error: { code: "CREATE_FAILED", message: "创建失败" } }, { status: 500 });
     }
 }
 
@@ -79,7 +84,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: true, data: coupons });
     } catch (e: unknown) {
         logError("AdminCoupons", e, { action: "list" });
-        const message = e instanceof Error ? e.message : String(e);
-        return NextResponse.json({ success: false, error: message || "Failed" }, { status: 500 });
+        return NextResponse.json({ success: false, error: { code: "LIST_FAILED", message: "获取列表失败" } }, { status: 500 });
     }
 }

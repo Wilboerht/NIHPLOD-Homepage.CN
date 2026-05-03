@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { sanitizeSvg } from "@/lib/svg-utils";
 import { Upload, X } from "lucide-react";
 
 // 分类类型
@@ -186,12 +187,8 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
         return;
       }
 
-      // 清理 SVG：移除 XML 声明、DOCTYPE 等，只保留 svg 标签
-      let cleanedSvg = text
-        .replace(/<\?xml[^>]*\?>/gi, "")
-        .replace(/<!DOCTYPE[^>]*>/gi, "")
-        .replace(/<!--[\s\S]*?-->/g, "")
-        .trim();
+      // 清理 SVG：安全净化 + 样式标准化
+      let cleanedSvg = sanitizeSvg(text);
 
       // 确保使用 currentColor 以支持颜色变化
       // 将 fill="xxx" 替换为 fill="currentColor"（除了 none 和 transparent）
@@ -199,6 +196,12 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
         /fill="(?!none|transparent|currentColor)[^"]*"/gi,
         'fill="currentColor"'
       );
+
+      // 二次确认净化后仍包含 svg 标签
+      if (!cleanedSvg.includes("<svg") || !cleanedSvg.includes("</svg>")) {
+        setCustomIconError("上传的 SVG 文件无效或包含不安全内容");
+        return;
+      }
 
       setFormData((prev) => ({ ...prev, icon: cleanedSvg }));
       setCustomIconError(null);
@@ -388,7 +391,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
                       "h-8 w-8 transition-colors",
                       formData.icon === icon.svg ? "text-brand-gold" : "text-gray-500 group-hover:text-brand-gold"
                     )}
-                    dangerouslySetInnerHTML={{ __html: icon.svg }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeSvg(icon.svg) }}
                   />
                   <span className="text-[10px] text-gray-500">{icon.name}</span>
                 </button>
@@ -413,7 +416,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
                   <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-brand-gold bg-brand-gold/10 p-2">
                     <div
                       className="h-full w-full text-brand-gold"
-                      dangerouslySetInnerHTML={{ __html: formData.icon }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeSvg(formData.icon) }}
                     />
                   </div>
                   <div className="flex-1">

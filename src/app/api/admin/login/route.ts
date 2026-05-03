@@ -4,6 +4,7 @@ import { verifyPassword } from "@/lib/password";
 import { signToken } from "@/lib/jwt";
 import { AdminLoginSchema } from "@/schemas/api";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // POST /api/admin/login - 管理员登录
 // 强制动态渲染，禁止静态预渲染
@@ -11,6 +12,22 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // 速率限制：防止暴力破解
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "login");
+    if (!limitResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: "登录尝试过于频繁，请稍后再试",
+          },
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
 
     // 验证请求数据
