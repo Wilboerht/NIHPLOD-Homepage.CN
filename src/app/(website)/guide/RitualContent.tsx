@@ -1621,17 +1621,17 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* 底部仪式感收尾 & 认证 */}
                           <div className="mt-4 sm:mt-12 pb-10 flex flex-col items-center text-center">
-                            <div className="h-px w-12 bg-[#8B7355]/20 mb-6 sm:mb-10" />
+                            <div className="h-px w-12 bg-[#8B7355]/20 mb-5 sm:mb-10" />
                             {selectedModule !== 'portable' && (
-                              <div className="flex flex-col items-center gap-10 sm:gap-14 mb-4">
+                              <div className="flex flex-col items-center gap-7 sm:gap-14 mb-4">
                                 {/* 核心优势 */}
-                                <div className="flex flex-col items-center gap-4 w-full">
-                                  <span className="text-[10px] uppercase tracking-[0.3em] text-[#00263E]/30 font-medium">核心优势</span>
-                                  <div className="flex flex-wrap justify-center gap-2.5 px-4 w-full">
+                                <div className="flex flex-col items-center gap-3 w-full">
+                                  <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">核心优势</span>
+                                  <div className="flex flex-wrap justify-center gap-2 px-4 w-full">
                                     {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
-                                      <div key={tag} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#8B7355]/5 rounded-full border border-[#8B7355]/10">
+                                      <div key={tag} className="flex items-center gap-1.5 px-3 py-1 bg-[#8B7355]/5 rounded-full border border-[#8B7355]/10">
                                         <span className="text-[9px] text-[#8B7355]/60">✦</span>
-                                        <span className="text-[12px] tracking-widest text-[#00263E]/70 font-light">
+                                        <span className="text-[11px] tracking-widest text-[#00263E]/70 font-light">
                                           {tag}
                                         </span>
                                       </div>
@@ -1644,11 +1644,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   if (!supportText) return null;
                                   const isRestricted = supportText.includes("不支持");
                                   return (
-                                    <div className="w-full px-6 flex flex-col items-center gap-4">
-                                      <span className="text-[10px] uppercase tracking-[0.3em] text-[#00263E]/30 font-medium">特殊时期支持</span>
+                                    <div className="w-full px-6 flex flex-col items-center gap-3">
+                                      <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">特殊时期支持</span>
                                       <div className={cn(
-                                        "px-5 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm shadow-sm inline-flex items-center gap-2",
-                                        isRestricted ? "border-orange-900/10" : "border-[#8B7355]/10"
+                                        "px-4 py-2 rounded-lg border inline-flex items-center gap-2",
+                                        isRestricted ? "border-orange-900/10 bg-orange-50/30" : "border-[#8B7355]/10 bg-[#8B7355]/[0.03]"
                                       )}>
                                         <Info className={cn("w-3.5 h-3.5", isRestricted ? "text-orange-900/40" : "text-[#8B7355]/40")} />
                                         <span className={cn(
@@ -1662,23 +1662,18 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   );
                                 })()}
 
-                                {/* Quote */}
-                                <p className="text-sm text-[#8B7355] font-light opacity-70">
-                                  “ 每一次护理，都是对身心的温柔洗礼。”
-                                </p>
-
                                 {/* Certifications (Quality Endorsement) */}
-                                <div className="flex flex-col items-center gap-4">
-                                  <span className="text-[10px] uppercase tracking-[0.3em] text-[#00263E]/30 font-medium">检测认证</span>
+                                <div className="flex flex-col items-center gap-3">
+                                  <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">检测认证</span>
                                   <div className="flex items-center gap-6 opacity-60 mix-blend-multiply">
-                                    <Image src="/images/sgs.svg" alt="SGS" width={22} height={22} className="h-[22px] w-auto" />
-                                    <Image src="/images/intertek-logo.svg" alt="Intertek" width={22} height={22} className="h-[20px] w-auto" />
+                                    <Image src="/images/sgs.svg" alt="SGS" width={18} height={18} className="h-[18px] w-auto" />
+                                    <Image src="/images/intertek-logo.svg" alt="Intertek" width={18} height={18} className="h-[16px] w-auto" />
                                   </div>
                                 </div>
 
                                 {/* 专业门店入驻提醒 - 特殊移动端位置 */}
                                 {selectedModule === "professional" && (
-                                  <div className="mt-6 flex items-start bg-[#8B7355]/5 p-4 rounded-xl border border-[#8B7355]/10 text-left">
+                                  <div className="mt-2 flex items-start bg-[#8B7355]/5 p-4 rounded-xl border border-[#8B7355]/10 text-left">
                                     <Info className="w-4 h-4 mt-0.5 mr-2 shrink-0 text-[#8B7355]/60" />
                                     <p className="text-[12px] text-[#00263E]/70 tracking-wide font-light leading-[1.6]">
                                       找不到您所在城市的门店？银卡级别以上会员可
@@ -1698,7 +1693,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 setCurrentLevel(1);
                               }}
                               className={cn(
-                                "mt-8 w-full max-w-[280px] rounded-full py-4 text-[13px] font-medium tracking-[0.2em] transition-all duration-300",
+                                "mt-6 sm:mt-8 w-full max-w-[280px] rounded-full py-3.5 sm:py-4 text-[13px] font-medium tracking-[0.2em] transition-all duration-300",
                                 "bg-brand-gold/15 border border-[#8b7355]/30 text-[#8B7355] backdrop-blur-[4px] shadow-[0_4px_15px_-3px_rgba(139,115,85,0.1)]",
                                 "active:scale-[0.97] active:bg-brand-gold/25"
                               )}
