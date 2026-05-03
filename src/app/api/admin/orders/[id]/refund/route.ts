@@ -3,6 +3,7 @@
  * POST /api/admin/orders/:id/refund
  */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { verifyAuth } from "@/lib/auth";
 import { processRefund } from "@/lib/refund";
 import { z } from "zod";
@@ -48,6 +49,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { status: 400 }
       );
     }
+
+    revalidateTag("admin-stats");
 
     return NextResponse.json({
       success: true,

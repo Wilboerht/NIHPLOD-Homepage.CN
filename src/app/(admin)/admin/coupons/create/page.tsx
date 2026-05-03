@@ -5,9 +5,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/components/ui/Toast";
 
 export default function CreateCouponPage() {
     const router = useRouter();
+    const { success, error } = useToast();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
@@ -53,13 +55,13 @@ export default function CreateCouponPage() {
 
             const data = await res.json();
             if (data.success) {
+                success("优惠券创建成功");
                 router.push("/admin/coupons");
             } else {
-                alert(data.error);
+                error(typeof data.error === "string" ? data.error : data.error?.message || "创建失败");
             }
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : String(err);
-            alert("创建失败: " + message);
+            error("创建失败，请检查网络或稍后重试");
         } finally {
             setLoading(false);
         }

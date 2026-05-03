@@ -19,7 +19,7 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const { isOpen, isCollapsed, isMobile, toggle, close, toggleCollapse } = useSidebar();
-  const [userRole, setUserRole] = useState<string>("admin");
+  const [userRole, setUserRole] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     fetch("/api/admin/me")
@@ -30,7 +30,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         }
       })
       .catch(() => {
-        // 静默失败，使用默认 admin
+        // 静默失败，不设置角色（Sidebar 会显示骨架屏）
       });
   }, []);
 

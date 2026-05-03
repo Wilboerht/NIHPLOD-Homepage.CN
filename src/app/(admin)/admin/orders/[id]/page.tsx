@@ -11,6 +11,7 @@ import { ArrowLeft, Truck, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { LOGISTICS_COMPANIES } from "@/lib/logistics-constants";
+import { useToast } from "@/components/ui/Toast";
 
 interface OrderDetail {
   id: string;
@@ -49,6 +50,7 @@ export default function OrderDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const { success, error } = useToast();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showShipModal, setShowShipModal] = useState(false);
@@ -74,11 +76,11 @@ export default function OrderDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert("发货成功");
+        success("发货成功");
         router.refresh();
         window.location.reload();
       } else {
-        alert(data.error?.message || "发货失败");
+        error(data.error?.message || "发货失败");
       }
     } finally {
       setActionLoading(false);
@@ -97,10 +99,10 @@ export default function OrderDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(approved ? "退款已批准" : "退款已拒绝");
+        success(approved ? "退款已批准" : "退款已拒绝");
         window.location.reload();
       } else {
-        alert(data.error?.message || "操作失败");
+        error(data.error?.message || "操作失败");
       }
     } finally {
       setActionLoading(false);

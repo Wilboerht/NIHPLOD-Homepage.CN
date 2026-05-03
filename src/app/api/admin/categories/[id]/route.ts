@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
@@ -114,6 +115,8 @@ export async function PUT(
       data: validated,
     });
 
+    revalidateTag("admin-stats");
+
     return NextResponse.json({
       success: true,
       data: category,
@@ -181,6 +184,8 @@ export async function DELETE(
     }
 
     await prisma.category.delete({ where: { id } });
+
+    revalidateTag("admin-stats");
 
     return NextResponse.json({
       success: true,

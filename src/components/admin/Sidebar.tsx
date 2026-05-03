@@ -25,7 +25,7 @@ export function Sidebar({
   isMobile,
   onClose,
   onToggleCollapse,
-  userRole = "admin",
+  userRole,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -89,9 +89,26 @@ export function Sidebar({
       {/* 导航菜单 */}
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1">
-          {adminNavItems
-            .filter((item) => !item.roles || item.roles.includes(userRole))
-            .map((item) => {
+          {!userRole
+            ? // 角色加载中：显示骨架屏，避免权限菜单闪烁
+              Array.from({ length: 8 }).map((_, i) => (
+                <li key={`skeleton-${i}`}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5",
+                      isCollapsed && !isMobile && "justify-center px-2"
+                    )}
+                  >
+                    <div className="h-5 w-5 flex-shrink-0 animate-pulse rounded bg-gray-200" />
+                    {(!isCollapsed || isMobile) && (
+                      <div className="h-4 flex-1 animate-pulse rounded bg-gray-200" />
+                    )}
+                  </div>
+                </li>
+              ))
+            : adminNavItems
+                .filter((item) => !item.roles || item.roles.includes(userRole))
+                .map((item) => {
               const Icon = item.icon;
               const active = isActive(item);
 
@@ -119,7 +136,7 @@ export function Sidebar({
                   </Link>
                 </li>
               );
-            })}
+              })}
         </ul>
       </nav>
 

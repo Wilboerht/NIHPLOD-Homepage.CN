@@ -5,7 +5,7 @@
  * PUT /api/admin/admins - 更新
  */
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { withRole } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { z } from "zod";

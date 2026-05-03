@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
@@ -108,6 +109,8 @@ export async function POST(request: NextRequest) {
         visible: validated.visible,
       },
     });
+
+    revalidateTag("admin-stats");
 
     return NextResponse.json({
       success: true,

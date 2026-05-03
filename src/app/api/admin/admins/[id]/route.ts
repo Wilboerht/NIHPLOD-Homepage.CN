@@ -3,7 +3,7 @@
  * DELETE /api/admin/admins/:id
  */
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { withRole } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';

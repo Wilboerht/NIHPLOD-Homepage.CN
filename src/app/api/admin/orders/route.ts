@@ -3,7 +3,7 @@
  * GET /api/admin/orders
  */
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
 import { z } from "zod";

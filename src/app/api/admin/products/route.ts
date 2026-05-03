@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
 import { verifyAuth } from "@/lib/auth";
+import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
 
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
         categoryId: validated.categoryId,
         allowDirectBuy: validated.allowDirectBuy,
         stock: validated.stock,
-        geoFaqs: validated.geoFaqs as unknown as Prisma.InputJsonValue,
+        geoFaqs: toInputJson(validated.geoFaqs),
         images: {
           create: validated.images.map((img, index) => ({
             url: img.url,
@@ -214,8 +214,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 重新验证前台页面缓存
+    // 重新验证前台页面缓存 & 管理后台统计缓存
     revalidatePath("/products");
+    revalidateTag("admin-stats");
 
     return NextResponse.json({
       success: true,

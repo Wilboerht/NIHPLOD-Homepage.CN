@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, RefreshCw, Pencil, Trash2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 
 interface AdminItem {
   id: string;
@@ -17,6 +18,7 @@ interface AdminItem {
 export default function AdminAdminsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { success, error } = useToast();
 
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,11 +93,12 @@ export default function AdminAdminsPage() {
       if (data.success) {
         setShowModal(false);
         fetchAdmins();
+        success(editing ? "更新成功" : "创建成功");
       } else {
-        alert(data.error?.message || "操作失败");
+        error(data.error?.message || "操作失败");
       }
     } catch {
-      alert("网络错误");
+      error("网络错误");
     } finally {
       setSubmitting(false);
     }
@@ -108,11 +111,12 @@ export default function AdminAdminsPage() {
       const data = await res.json();
       if (data.success) {
         fetchAdmins();
+        success("删除成功");
       } else {
-        alert(data.error?.message || "删除失败");
+        error(data.error?.message || "删除失败");
       }
     } catch {
-      alert("网络错误");
+      error("网络错误");
     }
   };
 
