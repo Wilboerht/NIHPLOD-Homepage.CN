@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useEffect, useCallback } from "react";
+import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Eye,
@@ -38,11 +38,37 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [breadcrumbOpen, setBreadcrumbOpen] = useState(false);
+  const breadcrumbRef = useRef<HTMLDivElement>(null);
 
   // 挂载动画
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 面包屑下拉：点击外部关闭 + Escape 关闭
+  useEffect(() => {
+    if (!breadcrumbOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (breadcrumbRef.current && !breadcrumbRef.current.contains(e.target as Node)) {
+        setBreadcrumbOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setBreadcrumbOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [breadcrumbOpen]);
 
   const validateForm = useCallback((): boolean => {
     const errors: FormErrors = {};
@@ -130,7 +156,7 @@ export default function LoginPage() {
           首页
         </Link>
         <span className="text-slate-300">/</span>
-        <div className="relative">
+        <div className="relative" ref={breadcrumbRef}>
           <button
             onClick={() => setBreadcrumbOpen((v) => !v)}
             className="flex items-center gap-1 p-0 font-medium text-slate-600 transition-colors hover:text-slate-800 bg-transparent border-none cursor-pointer"
@@ -144,18 +170,33 @@ export default function LoginPage() {
             />
           </button>
           {breadcrumbOpen && (
-            <div className="absolute left-0 top-full mt-1 flex items-center gap-2 text-xs text-slate-400 -translate-x-[13px]">
-              <span className="text-slate-300 select-none">/</span>
-              <a
-                href="https://advisor.nihplod.cn/admin"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-medium text-slate-600 transition-colors hover:text-slate-800"
-                onClick={() => setBreadcrumbOpen(false)}
-              >
-                后台登录（AI 护肤顾问）
-                <ExternalLink className="h-3 w-3 text-slate-400" />
-              </a>
+            <div className="absolute left-0 top-full mt-2 flex flex-col gap-2 whitespace-nowrap text-xs text-slate-400 -translate-x-[13px]">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300 select-none">/</span>
+                <a
+                  href="https://advisor.nihplod.cn/admin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium text-slate-600 transition-colors hover:text-slate-800"
+                  onClick={() => setBreadcrumbOpen(false)}
+                >
+                  后台登录（AI 护肤顾问）
+                  <ExternalLink className="h-3 w-3 text-slate-400" />
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300 select-none">/</span>
+                <a
+                  href="https://ba.nihplod.cn/admin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-medium text-slate-600 transition-colors hover:text-slate-800"
+                  onClick={() => setBreadcrumbOpen(false)}
+                >
+                  后台登录（授权管理）
+                  <ExternalLink className="h-3 w-3 text-slate-400" />
+                </a>
+              </div>
             </div>
           )}
         </div>
