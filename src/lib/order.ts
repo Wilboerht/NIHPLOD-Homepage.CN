@@ -153,6 +153,10 @@ export async function createOrder(
         if (coupon.type === 'DISCOUNT_AMOUNT') {
           // 满减券：直接减去固定金额
           discountAmount = Number(coupon.value);
+          // 零元购防护：满减券金额必须严格小于订单金额（不允许完全免费）
+          if (discountAmount >= totalAmount) {
+            throw new Error(`优惠券金额异常：优惠金额 (${discountAmount}元) 不能超过订单金额 (${totalAmount}元)`);
+          }
         } else if (coupon.type === 'DISCOUNT_PERCENT') {
           // 折扣券：value 存储的是折扣比例（保留价格的比例）
           // 规范：value 必须在 (0, 1) 之间，例如：

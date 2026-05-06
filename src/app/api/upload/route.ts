@@ -3,6 +3,7 @@ import { verifyAuth } from "@/lib/auth";
 import {
   processAndSaveImage,
   validateUploadServer,
+  validateFileBuffer,
   uploadConfig,
 } from "@/lib/upload";
 
@@ -59,6 +60,17 @@ export async function POST(request: NextRequest) {
     console.log("[DEBUG API] 读取文件内容...");
     const buffer = Buffer.from(await file.arrayBuffer());
     console.log("[DEBUG API] 文件内容读取完成, buffer大小:", buffer.length);
+
+    // 检测真实文件类型（防止 MIME 伪造）
+    const typeCheck = await validateFileBuffer(buffer);
+    if (!typeCheck.valid) {
+      console.log("[DEBUG API] 文件类型检测失败:", typeCheck.error);
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FILE_TYPE", message: typeCheck.error } },
+        { status: 400 }
+      );
+    }
+    console.log("[DEBUG API] 真实文件类型:", typeCheck.detectedType);
 
     // 处理并保存图片
     console.log("[DEBUG API] 处理并保存图片...");

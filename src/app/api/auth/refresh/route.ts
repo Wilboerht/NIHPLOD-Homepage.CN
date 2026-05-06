@@ -6,8 +6,8 @@
  * 当 Access Token 过期时调用此接口
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyRefreshToken, signUserToken, getTokenExpiresAt } from "@/lib/jwt";
-import { validateAndRefreshToken } from "@/lib/auth-security";
+import { verifyRefreshToken, signUserToken, signRefreshToken, getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
+import { validateAndRefreshToken, saveRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
 import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
 import { z } from "zod";
 
@@ -70,25 +70,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 签发新的 Access Token
+    // 3. Refresh Token Rotation：删除旧 Token，签发新双 Token
+    await revokeRefreshToken(payload.id, refreshToken);
+
     const newAccessToken = await signUserToken({
       id: payload.id,
       phone: payload.phone,
     });
+    const newRefreshToken = await signRefreshToken({
+      id: payload.id,
+      phone: payload.phone,
+    });
 
-    console.log(`[RefreshToken] Token 已刷新: ${payload.phone.slice(0, 3)}****${payload.phone.slice(-4)}`);
+    const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await saveRefreshToken(payload.id, newRefreshToken, refreshTokenExpiresAt);
 
-    // 4. 构建响应
+    console.log(`[RefreshToken] Token 已刷新并轮换: ${payload.phone.slice(0, 3)}****${payload.phone.slice(-4)}`);
+
+    // 4. 构建响应（返回新的双 Token）
     const response = NextResponse.json({
       success: true,
       data: {
         accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
         accessTokenExpiresAt: getTokenExpiresAt(15), // 15分钟
+        refreshTokenExpiresAt: getRefreshTokenExpiresAt(), // 30天
       },
     });
 
-    // 5. 更新 Cookie 中的 Access Token
+    // 5. 更新 Cookie 中的双 Token
     response.cookies.set(USER_COOKIE_NAME, newAccessToken, USER_ACCESS_COOKIE_OPTIONS);
+    response.cookies.set("user_refresh_token", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax" as const,
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60,
+    });
 
     return response;
   } catch (error) {

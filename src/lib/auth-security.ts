@@ -4,6 +4,7 @@
  */
 import { prisma } from "./prisma";
 import { NextRequest } from "next/server";
+import { createHash } from "crypto";
 
 // ============================================
 // 防爆破配置
@@ -146,8 +147,8 @@ export async function checkAccountLockout(
     return { locked: false, remainingMinutes: 0 };
   } catch (error) {
     console.error("[CheckAccountLockout] 检查错误:", error);
-    // 出错时不锁定账户，记录错误但继续
-    return { locked: false, remainingMinutes: 0 };
+    // fail-closed：数据库异常时默认锁定 15 分钟，防止攻击者利用故障绕过防爆破
+    return { locked: true, remainingMinutes: 15 };
   }
 }
 
@@ -215,12 +216,21 @@ export async function clearLoginAttempts(phone: string): Promise<void> {
 /**
  * 保存 Refresh Token 到数据库
  */
+/**
+ * 计算 Token 的 SHA-256 哈希值
+ * 数据库中只存储哈希，不存储原始 JWT
+ */
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 export async function saveRefreshToken(
   userId: string,
   token: string,
   expiresAt: Date
 ): Promise<void> {
   try {
+    const tokenHash = hashToken(token);
     // 原子操作：删除旧 Token + 创建新 Token，防止并发产生多个有效 Token
     await prisma.$transaction([
       prisma.refreshToken.deleteMany({
@@ -233,7 +243,7 @@ export async function saveRefreshToken(
       prisma.refreshToken.create({
         data: {
           userId,
-          token,
+          token: tokenHash,
           expiresAt,
         },
       }),
@@ -253,10 +263,11 @@ export async function validateAndRefreshToken(
   token: string
 ): Promise<boolean> {
   try {
+    const tokenHash = hashToken(token);
     const refreshToken = await prisma.refreshToken.findFirst({
       where: {
         userId,
-        token,
+        token: tokenHash,
         revokedAt: null,
         expiresAt: { gt: new Date() },
       },
@@ -278,11 +289,12 @@ export async function revokeRefreshToken(
 ): Promise<void> {
   try {
     if (token) {
-      // 撤销特定 token
+      // 撤销特定 token（比对哈希值）
+      const tokenHash = hashToken(token);
       await prisma.refreshToken.updateMany({
         where: {
           userId,
-          token,
+          token: tokenHash,
         },
         data: {
           revokedAt: new Date(),

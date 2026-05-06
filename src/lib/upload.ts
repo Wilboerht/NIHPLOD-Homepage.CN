@@ -2,6 +2,7 @@ import sharp from "sharp";
 import { existsSync, mkdirSync, unlinkSync } from "fs";
 import { join, resolve } from "path";
 import { randomUUID } from "crypto";
+import { fileTypeFromBuffer } from "file-type";
 import { uploadToStorage, deleteFromStorage, extractStoragePath } from "./supabase";
 import { 
   isOSSConfigured, 
@@ -80,6 +81,22 @@ export function validateFileType(mimeType: string): boolean {
 // 验证文件大小
 export function validateFileSize(size: number): boolean {
   return size <= uploadConfig.maxFileSize;
+}
+
+/**
+ * 通过 magic bytes 检测文件真实类型（防止 MIME 伪造）
+ * @param buffer 文件内容
+ * @returns 检测结果
+ */
+export async function validateFileBuffer(buffer: Buffer): Promise<{ valid: boolean; detectedType?: string; error?: string }> {
+  const type = await fileTypeFromBuffer(buffer);
+  if (!type) {
+    return { valid: false, error: "无法识别文件类型或文件内容为空" };
+  }
+  if (!uploadConfig.allowedTypes.includes(type.mime)) {
+    return { valid: false, detectedType: type.mime, error: `不支持的文件类型: ${type.mime}。支持的类型: ${uploadConfig.allowedTypes.join(", ")}` };
+  }
+  return { valid: true, detectedType: type.mime };
 }
 
 // 路径净化：只允许字母、数字、下划线、连字符和单层路径
