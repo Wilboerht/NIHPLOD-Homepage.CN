@@ -208,7 +208,10 @@ export async function handlePaymentNotify(
     const totalFee = data.amount.total;
 
     await prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({ where: { orderNo } });
+      const order = await tx.order.findUnique({
+        where: { orderNo },
+        include: { items: true },
+      });
       if (!order) throw new Error("ORDER_NOT_FOUND");
       
       // 使用金额工具函数进行精确比较（允许1分钱的容差）
@@ -227,6 +230,14 @@ export async function handlePaymentNotify(
           paymentTime: new Date(),
         },
       });
+
+      // 更新商品销量
+      for (const item of order.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { salesCount: { increment: item.quantity } },
+        });
+      }
     });
 
     return { success: true };

@@ -87,18 +87,27 @@ export async function createOrder(
           throw new Error(`商品 ${item.productId} 不存在或已下架`);
         }
 
-        const price = Number(product.price);
-
-        // 检查库存
-        if (product.stock < item.quantity) {
-          throw new Error(`${product.name} 库存不足`);
+        // 检查是否允许站内购买
+        if (!product.allowDirectBuy) {
+          throw new Error(`${product.name} 不支持站内购买`);
         }
 
-        // 扣减库存
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
+        const price = Number(product.price);
+
+        // 原子扣减库存（检查+扣减一步完成，避免并发超卖）
+        const stockUpdate = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            stock: { gte: item.quantity },
+          },
+          data: {
+            stock: { decrement: item.quantity },
+          },
         });
+
+        if (stockUpdate.count === 0) {
+          throw new Error(`${product.name} 库存不足`);
+        }
 
         const subtotal = price * item.quantity;
         totalAmount += subtotal;
@@ -310,8 +319,17 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
     for (const order of expiredOrders) {
       try {
         await prisma.$transaction(async (tx) => {
+          // 重新查询确认订单状态（防止与其他取消流程并发冲突）
+          const freshOrder = await tx.order.findUnique({
+            where: { id: order.id },
+            include: { items: true, userCoupon: true },
+          });
+          if (!freshOrder || (freshOrder.status !== OrderStatus.PENDING && freshOrder.status !== OrderStatus.PAYING)) {
+            return;
+          }
+
           // 恢复库存
-          for (const item of order.items) {
+          for (const item of freshOrder.items) {
             await tx.product.update({
               where: { id: item.productId },
               data: { stock: { increment: item.quantity } },
@@ -319,19 +337,19 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
           }
 
           // 释放优惠券
-          if (order.userCoupon) {
+          if (freshOrder.userCoupon) {
             await tx.userCoupon.update({
-              where: { id: order.userCoupon.id },
+              where: { id: freshOrder.userCoupon.id },
               data: { status: 'UNUSED' }
             });
           }
 
           // 更新订单状态
           await tx.order.update({
-            where: { id: order.id },
+            where: { id: freshOrder.id },
             data: { 
               status: OrderStatus.CANCELLED,
-              adminNote: order.adminNote ? `${order.adminNote}\n[系统] 超时未支付自动取消` : '[系统] 超时未支付自动取消'
+              adminNote: freshOrder.adminNote ? `${freshOrder.adminNote}\n[系统] 超时未支付自动取消` : '[系统] 超时未支付自动取消'
             },
           });
         });

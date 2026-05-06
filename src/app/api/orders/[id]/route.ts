@@ -47,8 +47,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
       if (order.createdAt < timeoutDate) {
         // ✅ 在事务内完整执行：恢复库存 + 释放优惠券 + 更新订单状态
         await prisma.$transaction(async (tx) => {
+          // 重新查询确认订单仍是 PENDING（防止与定时任务并发冲突）
+          const freshOrder = await tx.order.findUnique({
+            where: { id: order!.id },
+            include: { items: true },
+          });
+          if (!freshOrder || freshOrder.status !== "PENDING") return;
+
           // 恢复每个商品的库存
-          for (const item of order!.items) {
+          for (const item of freshOrder.items) {
             await tx.product.update({
               where: { id: item.productId },
               data: { stock: { increment: item.quantity } },
@@ -57,7 +64,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
           // 释放被锁定的优惠券（如果有）
           const lockedCoupon = await tx.userCoupon.findFirst({
-            where: { orderId: order!.id, status: "LOCKED" },
+            where: { orderId: freshOrder.id, status: "LOCKED" },
           });
           if (lockedCoupon) {
             await tx.userCoupon.update({
@@ -68,7 +75,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
           // 更新订单状态为已取消
           await tx.order.update({
-            where: { id: order!.id },
+            where: { id: freshOrder.id },
             data: { status: "CANCELLED" },
           });
         });

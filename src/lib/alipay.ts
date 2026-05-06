@@ -5,7 +5,7 @@
 import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
-import { formatMoney } from "./money";
+import { formatMoney, moneyEqual } from "./money";
 
 // 支付宝配置
 const ALIPAY_CONFIG = {
@@ -156,11 +156,20 @@ export async function handleAlipayNotify(
       // 获取订单信息
       const order = await tx.order.findUnique({
         where: { orderNo },
+        include: { items: true },
       });
 
       if (!order) {
         throw new Error("订单不存在");
       }
+
+      // 校验支付金额
+      const notifyAmount = parseFloat(params.total_amount || "0");
+      if (!moneyEqual(order.payAmount, notifyAmount)) {
+        throw new Error("AMOUNT_MISMATCH");
+      }
+
+      if (order.status === OrderStatus.PAID) return;
 
       // 更新订单状态
       await tx.order.update({
@@ -172,6 +181,14 @@ export async function handleAlipayNotify(
           paymentTime: new Date(),
         },
       });
+
+      // 更新商品销量
+      for (const item of order.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { salesCount: { increment: item.quantity } },
+        });
+      }
     });
 
     console.log(`[Alipay] 订单支付成功: ${orderNo}`);
