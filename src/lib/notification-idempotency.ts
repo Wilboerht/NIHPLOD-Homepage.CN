@@ -64,9 +64,10 @@ export async function isNotificationProcessed(
       };
     }
 
-    // 如果处理失败，返回失败信息
+    // 如果处理失败，允许重试（返回 processed: false）
+    // 支付渠道会重发通知，重试时重新处理
     return {
-      processed: true,
+      processed: false,
       status: "FAILED",
       message: record.errorMessage || "通知处理失败",
     };

@@ -38,6 +38,7 @@ model Product {
   stock          Int           @default(0) // 库存数量
   salesCount     Int           @default(0) // 销量统计
   cartItems      CartItem[]    // 关联购物车
+  orderItems     OrderItem[]   // 关联订单项
   geoFaqs        Json?         // AI 生成的 GEO FAQ 数据
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -365,7 +366,7 @@ model Order {
   remark         String?     @db.Text
   adminNote      String?     @db.Text
 
-  user           User        @relation(fields: [userId], references: [id])
+  user           User        @relation(fields: [userId], references: [id], onDelete: Restrict)
   items          OrderItem[]
   userCoupon     UserCoupon?
 
@@ -373,7 +374,7 @@ model Order {
   updatedAt      DateTime    @updatedAt
 
   @@index([userId, createdAt(sort: Desc)])
-  @@index([status])
+  @@index([status, createdAt])
   @@index([orderNo])
 }
 
@@ -388,6 +389,7 @@ model OrderItem {
   subtotal     Decimal  @db.Decimal(10, 2)
 
   order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
 }
@@ -410,6 +412,13 @@ enum RefundStatus {
   SUCCESS      // 退款成功
   FAILED       // 退款失败
   CLOSED       // 退款关闭
+}
+
+enum UserCouponStatus {
+  UNUSED
+  USED
+  EXPIRED
+  LOCKED
 }
 
 // ============================================
@@ -473,7 +482,7 @@ model UserCoupon {
   userId    String
   couponId  String
   
-  status    String    // UNUSED (未使用), USED (已使用), EXPIRED (已过期), LOCKED (下单锁定)
+  status    UserCouponStatus @default(UNUSED)
   
   acquiredAt DateTime @default(now()) // 领取时间
   expiresAt  DateTime // 过期时间
@@ -482,7 +491,7 @@ model UserCoupon {
   // 关联
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  order     Order?   @relation(fields: [orderId], references: [id])
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
   orderId   String?  @unique
   
   createdAt DateTime @default(now())

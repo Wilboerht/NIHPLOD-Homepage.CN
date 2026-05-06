@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (order.status !== OrderStatus.PENDING) {
+    if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAYING) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_STATUS", message: "订单状态不正确" } },
         { status: 400 }
@@ -83,6 +83,17 @@ export async function POST(request: NextRequest) {
         await tx.product.update({
           where: { id: item.productId },
           data: { salesCount: { increment: item.quantity } },
+        });
+      }
+
+      // 将锁定的优惠券标记为已使用
+      const lockedCoupon = await tx.userCoupon.findFirst({
+        where: { orderId: orderId, status: "LOCKED" },
+      });
+      if (lockedCoupon) {
+        await tx.userCoupon.update({
+          where: { id: lockedCoupon.id },
+          data: { status: "USED", usedAt: new Date() },
         });
       }
     });

@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
             price: true,
             stock: true,
             published: true,
+            allowDirectBuy: true,
             images: { take: 1, select: { url: true } },
           },
         },

@@ -14,7 +14,8 @@ interface StatsResponse {
     jobs: number;
     // 电商统计
     totalUsers: number;
-    pendingOrders: number;
+    pendingOrders: number;   // 待支付
+    paidOrders: number;      // 已支付待发货
     refundingOrders: number;
     todayRevenue: number;
     recentMessages: {
@@ -51,6 +52,7 @@ const getCachedStats = unstable_cache(
       jobsCount,
       totalUsers,
       pendingOrders,
+      paidOrders,
       refundingOrders,
       todayRevenueData,
       recentMessages,
@@ -61,7 +63,8 @@ const getCachedStats = unstable_cache(
       prisma.contactMessage.count({ where: { read: false } }),
       prisma.job.count({ where: { published: true } }),
       prisma.user.count(),
-      prisma.order.count({ where: { status: OrderStatus.PAID } }),
+      prisma.order.count({ where: { status: OrderStatus.PENDING } }),   // 待支付
+      prisma.order.count({ where: { status: OrderStatus.PAID } }),      // 已支付待发货
       prisma.order.count({ where: { status: OrderStatus.REFUNDING } }),
       prisma.order.aggregate({
         where: {
@@ -102,6 +105,7 @@ const getCachedStats = unstable_cache(
       jobsCount,
       totalUsers,
       pendingOrders,
+      paidOrders,
       refundingOrders,
       todayRevenueData,
       recentMessages,
@@ -145,6 +149,7 @@ export async function GET(request: NextRequest) {
       jobsCount,
       totalUsers,
       pendingOrders,
+      paidOrders,
       refundingOrders,
       todayRevenueData,
       recentMessages,
@@ -160,6 +165,7 @@ export async function GET(request: NextRequest) {
         jobs: jobsCount,
         totalUsers,
         pendingOrders,
+        paidOrders,
         refundingOrders,
         todayRevenue: Number(todayRevenueData._sum.payAmount) || 0,
         recentMessages: recentMessages.map((msg) => ({

@@ -43,7 +43,7 @@ export async function signToken(payload: {
   name: string;
   role: string;
 }): Promise<string> {
-  const token = await new SignJWT(payload)
+  const token = await new SignJWT({ ...payload, type: "admin" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(adminExpiresIn)
@@ -58,6 +58,10 @@ export async function signToken(payload: {
 export async function verifyToken(token: string): Promise<AdminJWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
+    // 确保是管理员 token，防止用户 token 被用于访问 admin API
+    if ((payload as AdminJWTPayload & { type?: string }).type !== "admin") {
+      return null;
+    }
     return payload as AdminJWTPayload;
   } catch {
     return null;

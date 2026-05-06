@@ -221,6 +221,13 @@ export async function handlePaymentNotify(
         throw new Error("AMOUNT_MISMATCH");
       }
       
+      // 订单已取消，不应再被支付激活（避免超卖）
+      if (order.status === OrderStatus.CANCELLED) {
+        console.error(`[WechatPay] 订单 ${orderNo} 已取消，但收到支付成功通知，需人工介入处理`);
+        // 返回成功让微信停止重试，但不做状态变更
+        return;
+      }
+
       if (order.status === OrderStatus.PAID) return;
 
       await tx.order.update({
@@ -238,6 +245,17 @@ export async function handlePaymentNotify(
         await tx.product.update({
           where: { id: item.productId },
           data: { salesCount: { increment: item.quantity } },
+        });
+      }
+
+      // 将锁定的优惠券标记为已使用
+      const lockedCoupon = await tx.userCoupon.findFirst({
+        where: { orderId: order.id, status: "LOCKED" },
+      });
+      if (lockedCoupon) {
+        await tx.userCoupon.update({
+          where: { id: lockedCoupon.id },
+          data: { status: "USED", usedAt: new Date() },
         });
       }
     });
@@ -295,11 +313,30 @@ export async function handleRefundNotify(
     console.log(`[WechatPay] 收到退款通知: ${data.out_trade_no}, 状态: ${data.refund_status}`);
 
     if (data.refund_status === "SUCCESS") {
+      const order = await prisma.order.findUnique({
+        where: { orderNo: data.out_trade_no },
+      });
+
+      if (!order) {
+        return { success: false, message: "订单不存在" };
+      }
+
+      if (order.status === OrderStatus.REFUNDED) {
+        return { success: true, message: "订单已退款" };
+      }
+
+      // 调用统一退款确认逻辑（恢复库存、回滚销量、释放优惠券）
+      const { finalizeRefund } = await import("./refund");
+      const refundAmount = (data.amount?.refund || 0) / 100;
+      await finalizeRefund(order.id, data.refund_id, refundAmount);
+
+      // 追加 adminNote
       await prisma.order.update({
         where: { orderNo: data.out_trade_no },
         data: {
-          status: OrderStatus.REFUNDED,
-          adminNote: `微信自动退款成功 (单号: ${data.refund_id}, 时间: ${data.success_time})`,
+          adminNote: order.adminNote
+            ? `${order.adminNote}\n微信自动退款成功 (单号: ${data.refund_id}, 时间: ${data.success_time})`
+            : `微信自动退款成功 (单号: ${data.refund_id}, 时间: ${data.success_time})`,
         },
       });
     }

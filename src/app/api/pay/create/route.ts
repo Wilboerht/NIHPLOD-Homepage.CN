@@ -86,10 +86,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查订单状态 - 只能从 PENDING 或 PAYING 发起支付
-    if (order.status !== "PENDING" && order.status !== "PAYING") {
+    // 检查订单状态 - 只能从 PENDING 发起支付
+    if (order.status !== "PENDING") {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_STATUS", message: "订单状态不支持支付" } },
+        { status: 400 }
+      );
+    }
+
+    // 检查订单是否已超时（30分钟）
+    const ORDER_TIMEOUT_MS = 30 * 60 * 1000;
+    if (new Date(order.createdAt).getTime() + ORDER_TIMEOUT_MS < Date.now()) {
+      return NextResponse.json(
+        { success: false, error: { code: "ORDER_EXPIRED", message: "订单已超时，请重新下单" } },
         { status: 400 }
       );
     }
@@ -105,11 +114,17 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 创建支付单成功后再标记为 PAYING
-      await prisma.order.update({
-        where: { id: orderId },
+      // CAS：只有 PENDING 才能变为 PAYING，防止重复支付
+      const updated = await prisma.order.updateMany({
+        where: { id: orderId, userId: payload.id, status: "PENDING" },
         data: { status: "PAYING" },
       });
+      if (updated.count === 0) {
+        return NextResponse.json(
+          { success: false, error: { code: "PAY_IN_PROGRESS", message: "订单正在支付中或已支付" } },
+          { status: 400 }
+        );
+      }
 
       return NextResponse.json({
         success: true,
@@ -155,11 +170,17 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 创建支付单成功后再标记为 PAYING
-      await prisma.order.update({
-        where: { id: orderId },
+      // CAS：只有 PENDING 才能变为 PAYING，防止重复支付
+      const updated = await prisma.order.updateMany({
+        where: { id: orderId, userId: payload.id, status: "PENDING" },
         data: { status: "PAYING" },
       });
+      if (updated.count === 0) {
+        return NextResponse.json(
+          { success: false, error: { code: "PAY_IN_PROGRESS", message: "订单正在支付中或已支付" } },
+          { status: 400 }
+        );
+      }
 
       return NextResponse.json({
         success: true,

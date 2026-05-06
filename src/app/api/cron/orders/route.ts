@@ -1,9 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "@/lib/order";
 
 export const dynamic = "force-dynamic"; // 不缓存，每次都执行
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // 校验 Cron Secret，防止被外部恶意调用
+  const cronSecret = request.headers.get("x-cron-secret");
+  if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
   try {
     console.log("[Cron] 开始执行订单定时任务...");
 

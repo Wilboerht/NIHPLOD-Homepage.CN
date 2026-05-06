@@ -4,6 +4,7 @@
  */
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
+import { ensureMoneyPrecision } from "./money";
 
 /**
  * 生成订单号
@@ -109,8 +110,8 @@ export async function createOrder(
           throw new Error(`${product.name} 库存不足`);
         }
 
-        const subtotal = price * item.quantity;
-        totalAmount += subtotal;
+        const subtotal = ensureMoneyPrecision(price * item.quantity);
+        totalAmount = ensureMoneyPrecision(totalAmount + subtotal);
         orderItems.push({
           productId: item.productId,
           productName: product.name,
@@ -168,6 +169,7 @@ export async function createOrder(
 
         // 防止负数
         if (discountAmount > totalAmount) discountAmount = totalAmount;
+        discountAmount = ensureMoneyPrecision(discountAmount);
 
         usedCouponId = userCoupon.id;
 
@@ -182,7 +184,7 @@ export async function createOrder(
       }
 
       // 4. 创建订单
-      const payAmount = totalAmount - discountAmount;
+      const payAmount = ensureMoneyPrecision(Math.max(0, totalAmount - discountAmount));
       const orderNo = generateOrderNo();
 
       const order = await tx.order.create({
@@ -192,7 +194,7 @@ export async function createOrder(
           status: OrderStatus.PENDING,
           totalAmount,
           discountAmount,
-          payAmount: payAmount < 0 ? 0 : payAmount,
+          payAmount,
           // 收货信息快照
           recipientName,
           recipientPhone,
@@ -257,19 +259,24 @@ export async function cancelOrder(
         throw new Error("该订单状态不可取消");
       }
 
-      // 恢复库存
+      // 恢复库存（PENDING 订单从未支付，销量未增加，无需回滚销量）
       for (const item of order.items) {
-        await tx.product.update({
+        const product = await tx.product.findUnique({
           where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
         });
+        if (product) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
       }
 
       // 释放优惠券
       if (order.userCoupon) {
         await tx.userCoupon.update({
           where: { id: order.userCoupon.id },
-          data: { status: 'UNUSED' }
+          data: { status: 'UNUSED', usedAt: null, orderId: null }
         });
       }
 
@@ -328,19 +335,24 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
             return;
           }
 
-          // 恢复库存
+          // 恢复库存（PENDING/PAYING 订单未最终支付成功，销量未增加，无需回滚销量）
           for (const item of freshOrder.items) {
-            await tx.product.update({
+            const product = await tx.product.findUnique({
               where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
             });
+            if (product) {
+              await tx.product.update({
+                where: { id: item.productId },
+                data: { stock: { increment: item.quantity } },
+              });
+            }
           }
 
           // 释放优惠券
           if (freshOrder.userCoupon) {
             await tx.userCoupon.update({
               where: { id: freshOrder.userCoupon.id },
-              data: { status: 'UNUSED' }
+              data: { status: 'UNUSED', usedAt: null, orderId: null }
             });
           }
 

@@ -82,6 +82,18 @@ export const RATE_LIMIT_PRESETS = {
   "refund-request": { maxRequests: 5, windowMs: 60 * 1000 },
   /** 用户级支付限制 - 每分钟 20 次 */
   "payment-user": { maxRequests: 20, windowMs: 60 * 1000 },
+  /** 订单创建 - IP 级 - 每分钟 20 次 */
+  "order-create": { maxRequests: 20, windowMs: 60 * 1000 },
+  /** 订单创建 - 用户级 - 每分钟 5 次 */
+  "order-create-user": { maxRequests: 5, windowMs: 60 * 1000 },
+  /** 微信支付回调 - IP 级 - 每分钟 120 次 */
+  "pay-notify": { maxRequests: 120, windowMs: 60 * 1000 },
+  /** 支付宝支付回调 - IP 级 - 每分钟 120 次 */
+  "alipay-notify": { maxRequests: 120, windowMs: 60 * 1000 },
+  /** 微信退款回调 - IP 级 - 每分钟 120 次 */
+  "refund-notify": { maxRequests: 120, windowMs: 60 * 1000 },
+  /** 支付宝退款回调 - IP 级 - 每分钟 120 次 */
+  "alipay-refund-notify": { maxRequests: 120, windowMs: 60 * 1000 },
 } as const;
 
 /**
@@ -151,14 +163,19 @@ export async function rateLimit(
 /**
  * 获取客户端 IP 地址
  * 支持代理环境
+ * 
+ * 在反向代理架构中（Vercel/Nginx），X-Forwarded-For 格式为：
+ *   client, proxy1, proxy2, ..., lastProxy
+ * 前面的 IP 可能被客户端伪造，最后一个是由最靠近服务器的可信代理追加的，
+ * 因此取最后一个 IP作为真实来源。
  */
 export function getClientIP(request: Request): string {
-  // 尝试从各种头部获取真实 IP
   const headers = request.headers;
 
   const forwardedFor = headers.get("x-forwarded-for");
   if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
+    const ips = forwardedFor.split(",").map((ip) => ip.trim());
+    return ips[ips.length - 1] || ips[0] || "unknown";
   }
 
   const realIP = headers.get("x-real-ip");
@@ -166,7 +183,6 @@ export function getClientIP(request: Request): string {
     return realIP;
   }
 
-  // 回退到默认值
   return "unknown";
 }
 

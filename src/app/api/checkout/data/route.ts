@@ -92,6 +92,8 @@ export async function GET(request: NextRequest) {
               name: true,
               price: true,
               stock: true,
+              published: true,
+              allowDirectBuy: true,
               images: {
                 take: 1,
                 orderBy: { order: "asc" },
@@ -109,15 +111,47 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      items = cartItems.map((item) => ({
-        productId: item.productId,
-        variantId: null,
-        productName: item.product.name,
-        variantName: null,
-        price: Number(item.product.price),
-        quantity: item.quantity,
-        image: item.product.images[0]?.url || null,
-      }));
+      // 校验购物车商品有效性
+      const invalidItems: string[] = [];
+      items = cartItems
+        .filter((item) => {
+          const product = item.product;
+          if (!product.published) {
+            invalidItems.push(`${product.name} 已下架`);
+            return false;
+          }
+          if (!product.allowDirectBuy) {
+            invalidItems.push(`${product.name} 不支持站内购买`);
+            return false;
+          }
+          if (product.stock < item.quantity) {
+            invalidItems.push(`${product.name} 库存不足`);
+            return false;
+          }
+          return true;
+        })
+        .map((item) => ({
+          productId: item.productId,
+          variantId: null,
+          productName: item.product.name,
+          variantName: null,
+          price: Number(item.product.price),
+          quantity: item.quantity,
+          image: item.product.images[0]?.url || null,
+        }));
+
+      if (items.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "INVALID_CART_ITEMS",
+              message: invalidItems.join("；") || "购物车商品不可用",
+            },
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // 获取用户地址（两种模式共用）

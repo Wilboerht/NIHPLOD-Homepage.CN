@@ -152,7 +152,11 @@ export async function handleAlipayNotify(
 
     const signContent = buildSignContent(verifyParams);
 
-    if (signType === "RSA2" && !verifyWithRSA2(signContent, sign, ALIPAY_CONFIG.alipayPublicKey)) {
+    if (signType !== "RSA2") {
+      console.error("[Alipay] 不支持的签名类型");
+      return { success: false, message: "不支持的签名类型" };
+    }
+    if (!verifyWithRSA2(signContent, sign, ALIPAY_CONFIG.alipayPublicKey)) {
       console.error("[Alipay] 签名验证失败");
       return { success: false, message: "签名验证失败" };
     }
@@ -183,6 +187,13 @@ export async function handleAlipayNotify(
         throw new Error("AMOUNT_MISMATCH");
       }
 
+      // 订单已取消，不应再被支付激活（避免超卖）
+      if (order.status === OrderStatus.CANCELLED) {
+        console.error(`[Alipay] 订单 ${orderNo} 已取消，但收到支付成功通知，需人工介入处理`);
+        // 返回成功让支付宝停止重试，但不做状态变更
+        return;
+      }
+
       if (order.status === OrderStatus.PAID) return;
 
       // 更新订单状态
@@ -201,6 +212,17 @@ export async function handleAlipayNotify(
         await tx.product.update({
           where: { id: item.productId },
           data: { salesCount: { increment: item.quantity } },
+        });
+      }
+
+      // 将锁定的优惠券标记为已使用
+      const lockedCoupon = await tx.userCoupon.findFirst({
+        where: { orderId: order.id, status: "LOCKED" },
+      });
+      if (lockedCoupon) {
+        await tx.userCoupon.update({
+          where: { id: lockedCoupon.id },
+          data: { status: "USED", usedAt: new Date() },
         });
       }
     });

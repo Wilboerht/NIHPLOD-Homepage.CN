@@ -9,6 +9,7 @@ import { createOrder } from "@/lib/order";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 创建订单参数验证
 const createOrderSchema = z.object({
@@ -20,8 +21,8 @@ const createOrderSchema = z.object({
   }).optional(),
   items: z.array(z.object({
     productId: z.string(),
-    quantity: z.number().int().min(1),
-  })).min(1, "请选择商品"),
+    quantity: z.number().int().min(1).max(99),
+  })).min(1, "请选择商品").max(50, "单次最多结算50件商品"),
   remark: z.string().max(200).optional(),
   userCouponId: z.string().optional(),
 }).refine(data => data.addressId || data.recipient, {
@@ -106,6 +107,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
+      );
+    }
+
+    // 速率限制：每用户每分钟最多创建 10 个订单
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await dualRateLimit(
+      clientIP,
+      payload.id,
+      "order-create",
+      "order-create-user"
+    );
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "创建订单过于频繁，请稍后再试" } },
+        { status: 429 }
       );
     }
 

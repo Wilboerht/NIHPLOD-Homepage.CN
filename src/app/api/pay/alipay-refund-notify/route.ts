@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import crypto from "crypto";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 支付宝配置
 const ALIPAY_CONFIG = {
@@ -45,6 +46,13 @@ function buildSignContent(params: Record<string, string>): string {
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  // 速率限制：每个 IP 每分钟最多 60 次回调请求
+  const clientIP = getClientIP(request);
+  const limitResult = await rateLimit(clientIP, "alipay-refund-notify", { maxRequests: 60, windowMs: 60_000 });
+  if (!limitResult.success) {
+    return new NextResponse("fail", { status: 200 });
+  }
+
   try {
     const formData = await request.formData();
 
@@ -70,7 +78,11 @@ export async function POST(request: NextRequest) {
 
     const signContent = buildSignContent(verifyParams);
 
-    if (signType === "RSA2" && !verifyWithRSA2(signContent, sign, ALIPAY_CONFIG.alipayPublicKey)) {
+    if (signType !== "RSA2") {
+      console.error(`[AlipayRefundNotify] 不支持的签名类型: ${tradeNo}`);
+      return new NextResponse("fail", { status: 200 });
+    }
+    if (!verifyWithRSA2(signContent, sign, ALIPAY_CONFIG.alipayPublicKey)) {
       console.error(`[AlipayRefundNotify] 签名验证失败: ${tradeNo}`);
       return new NextResponse("fail", { status: 200 });
     }
@@ -103,14 +115,18 @@ export async function POST(request: NextRequest) {
       return new NextResponse("success", { status: 200 });
     }
 
-    // 更新订单为已退款
+    // 调用统一退款确认逻辑（恢复库存、回滚销量、释放优惠券）
+    const { finalizeRefund } = await import("@/lib/refund");
+    const refundAmount = parseFloat(params.refund_amount || params.total_amount || "0");
+    await finalizeRefund(order.id, params.refund_no || null, refundAmount);
+
+    // 追加 adminNote
     await prisma.order.update({
       where: { orderNo: tradeNo },
       data: {
-        status: OrderStatus.REFUNDED,
-        refundTime: new Date(),
-        refundStatus: "SUCCESS",
-        adminNote: `支付宝自动退款成功 (退款单号: ${params.refund_no || "未提供"})`,
+        adminNote: order.adminNote
+          ? `${order.adminNote}\n支付宝自动退款成功 (退款单号: ${params.refund_no || "未提供"})`
+          : `支付宝自动退款成功 (退款单号: ${params.refund_no || "未提供"})`,
       },
     });
 

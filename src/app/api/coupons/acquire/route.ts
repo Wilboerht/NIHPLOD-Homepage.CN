@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
@@ -61,9 +62,12 @@ export async function POST(req: NextRequest) {
         }
 
         // ✅ 核心修复：将库存校验和发放写入同一个数据库事务
-        // 事务内的所有操作是原子性的，并发请求无法同时通过校验，彻底杜绝超发。
+        // 先通过 UPDATE 锁定 Coupon 记录（获取行级排他锁），确保并发请求串行执行 count
         const userCoupon = await prisma.$transaction(async (tx) => {
-            // 4. 事务内重新校验总库存（防止并发超发）
+            // 4. 锁定 Coupon 记录（PostgreSQL 行锁，阻塞其他并发领取同一优惠券的事务）
+            await tx.$executeRaw(Prisma.sql`SELECT 1 FROM "Coupon" WHERE id = ${coupon.id} FOR UPDATE`);
+
+            // 5. 事务内重新校验总库存（在锁保护下 count，防止幻读超发）
             if (coupon.totalLimit !== null) {
                 const issuedCount = await tx.userCoupon.count({
                     where: { couponId: coupon.id },
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
                 }
             }
 
-            // 5. 事务内重新校验个人限领（防止并发重复领取）
+            // 6. 事务内重新校验个人限领（在锁保护下 count，防止幻读超领）
             const userCount = await tx.userCoupon.count({
                 where: { couponId: coupon.id, userId: user.id },
             });
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest) {
                 throw new Error(`每人限领 ${coupon.userLimit} 张`);
             }
 
-            // 6. 原子写入，不存在时间窗口
+            // 7. 原子写入，不存在时间窗口
             return tx.userCoupon.create({
                 data: {
                     userId: user.id,

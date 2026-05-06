@@ -9,11 +9,19 @@ import {
   markNotificationSuccess,
   markNotificationFailed,
 } from "@/lib/notification-idempotency";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+    // 速率限制：每个 IP 每分钟最多 60 次回调请求
+    const clientIP = getClientIP(request);
+    const limitResult = await rateLimit(clientIP, "refund-notify", { maxRequests: 60, windowMs: 60_000 });
+    if (!limitResult.success) {
+      return NextResponse.json({ code: "FAIL", message: "rate limited" }, { status: 429 });
+    }
+
     let recordId: string | undefined;
 
     try {
