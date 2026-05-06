@@ -8,8 +8,11 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import bcrypt from "bcryptjs";
 
-// 加载环境变量
+// 加载环境变量（优先 .env.local，回退到 .env）
 config({ path: ".env.local" });
+if (!process.env.DATABASE_URL) {
+  config({ path: ".env" });
+}
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
