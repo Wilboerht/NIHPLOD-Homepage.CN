@@ -29,6 +29,7 @@ const createOrderSchema = z.object({
     }, { message: "商品不能重复", path: ["items"] }),
   remark: z.string().max(200).optional(),
   userCouponId: z.string().optional(),
+  source: z.enum(["cart", "direct_buy"]).optional(),
 }).refine(data => data.addressId || data.recipient, {
   message: "请提供收货地址ID或完整的收货信息",
   path: ["addressId"], // Error path
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { addressId, recipient, items, remark, userCouponId } = result.data;
+    const { addressId, recipient, items, remark, userCouponId, source } = result.data;
 
     // 创建订单
     const orderResult = await createOrder(
@@ -147,7 +148,8 @@ export async function POST(request: NextRequest) {
       items,
       { addressId, recipient },
       remark,
-      userCouponId
+      userCouponId,
+      source
     );
 
     if (!orderResult.success) {

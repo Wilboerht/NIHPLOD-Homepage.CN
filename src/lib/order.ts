@@ -40,7 +40,8 @@ export async function createOrder(
   items: OrderItemData[],
   shippingInfo: { addressId?: string; recipient?: Recipient },
   remark?: string,
-  userCouponId?: string
+  userCouponId?: string,
+  source?: "cart" | "direct_buy"
 ): Promise<{ success: boolean; orderId?: string; orderNo?: string; error?: string }> {
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -220,14 +221,16 @@ export async function createOrder(
         },
       });
 
-      // 5. 清除购物车中已购买的商品
-      const productIds = items.map((i) => i.productId);
-      await tx.cartItem.deleteMany({
-        where: {
-          userId,
-          productId: { in: productIds },
-        },
-      });
+      // 5. 清除购物车中已购买的商品（仅购物车结算时清理，直接购买不清理）
+      if (source !== "direct_buy") {
+        const productIds = items.map((i) => i.productId);
+        await tx.cartItem.deleteMany({
+          where: {
+            userId,
+            productId: { in: productIds },
+          },
+        });
+      }
 
       return { orderId: order.id, orderNo: order.orderNo };
     });

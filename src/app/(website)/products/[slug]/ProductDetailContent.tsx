@@ -82,6 +82,7 @@ export function ProductDetailContent({
 }: ProductDetailContentProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
+  const [quantity, setQuantity] = useState(1);
 
   const currentImage = product.images[currentImageIndex];
 
@@ -206,8 +207,9 @@ export function ProductDetailContent({
           {/* 站内购买按钮 */}
           {product.allowDirectBuy && (
             <>
+              <QuantitySelector stock={product.stock} quantity={quantity} onChange={setQuantity} />
               <AddToCartButton productId={product.id} stock={product.stock} />
-              <DirectBuyButton productId={product.id} stock={product.stock} />
+              <DirectBuyButton productId={product.id} stock={product.stock} quantity={quantity} />
             </>
           )}
 
@@ -379,7 +381,7 @@ function AddToCartButton({ productId, stock }: { productId: string; stock: numbe
 /**
  * 直接购买按钮组件 - 不经购物车直接结算
  */
-function DirectBuyButton({ productId, stock }: { productId: string; stock: number }) {
+function DirectBuyButton({ productId, stock, quantity }: { productId: string; stock: number; quantity: number }) {
   const [loading, setLoading] = useState(false);
   const { user, openCheckout, openLoginModal } = useAuth();
   const { error: showError } = useToast();
@@ -395,10 +397,15 @@ function DirectBuyButton({ productId, stock }: { productId: string; stock: numbe
       return;
     }
 
+    if (quantity > stock) {
+      showError(`库存不足，仅剩 ${stock} 件`);
+      return;
+    }
+
     setLoading(true);
     try {
       // 直接打开结算弹窗，只结算这一个商品
-      openCheckout([productId]);
+      openCheckout([productId], { [productId]: quantity });
     } catch {
       showError("网络错误，请重试");
     } finally {
@@ -427,5 +434,56 @@ function DirectBuyButton({ productId, stock }: { productId: string; stock: numbe
       )}
       <span>{isOutOfStock ? "已售罄" : "直接购买"}</span>
     </button>
+  );
+}
+
+/**
+ * 数量选择器组件
+ */
+function QuantitySelector({ stock, quantity, onChange }: { stock: number; quantity: number; onChange: (q: number) => void }) {
+  const handleDecrease = () => {
+    if (quantity > 1) onChange(quantity - 1);
+  };
+  const handleIncrease = () => {
+    if (quantity < stock) onChange(quantity + 1);
+  };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10);
+    if (!isNaN(val) && val >= 1 && val <= stock) {
+      onChange(val);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-sm text-brand-charcoal/60">数量</span>
+      <div className="flex items-center rounded-lg border border-brand-beige bg-brand-cream">
+        <button
+          type="button"
+          onClick={handleDecrease}
+          disabled={quantity <= 1}
+          className="flex h-9 w-9 items-center justify-center text-brand-charcoal/60 transition-colors hover:bg-brand-beige disabled:cursor-not-allowed disabled:opacity-30 rounded-l-lg"
+        >
+          -
+        </button>
+        <input
+          type="number"
+          min={1}
+          max={stock}
+          value={quantity}
+          onChange={handleInputChange}
+          className="h-9 w-12 border-x border-brand-beige bg-transparent text-center text-sm text-brand-charcoal outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        <button
+          type="button"
+          onClick={handleIncrease}
+          disabled={quantity >= stock}
+          className="flex h-9 w-9 items-center justify-center text-brand-charcoal/60 transition-colors hover:bg-brand-beige disabled:cursor-not-allowed disabled:opacity-30 rounded-r-lg"
+        >
+          +
+        </button>
+      </div>
+      <span className="text-xs text-brand-charcoal/40">库存 {stock} 件</span>
+    </div>
   );
 }

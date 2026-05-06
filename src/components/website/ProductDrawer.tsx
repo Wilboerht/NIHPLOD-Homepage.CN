@@ -3,8 +3,11 @@
 import { useEffect, useCallback, useState } from "react";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
+import { useCartStore } from "@/store/cart";
 
 /**
  * 购买链接类型
@@ -33,6 +36,8 @@ interface ProductData {
   ingredients?: string;
   usage?: string;
   benefits: string[];
+  allowDirectBuy?: boolean;
+  stock?: number;
 }
 
 interface ProductDrawerProps {
@@ -120,6 +125,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
 
   // 检测是否为移动端设备（用于决定小红书链接用 Scheme 唤起 App 还是 Web 链接）
   useEffect(() => {
@@ -161,6 +167,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     if (!isOpen) {
       setCurrentImageIndex(0);
       setOpenAccordion(null);
+      setPurchaseModalOpen(false);
     }
   }, [isOpen]);
 
@@ -405,10 +412,24 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                       </div>
                     )}
 
-                    {/* 购买链接 */}
+                    {/* 官方旗舰店 */}
                     <div className="py-4">
                       <div className="mb-8 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
-                      <div className="flex flex-wrap gap-4">
+
+                      <div className="flex flex-wrap gap-4 items-center">
+                        {/* 官网购买 */}
+                        {product.allowDirectBuy && product.stock !== undefined && (
+                          <button
+                            type="button"
+                            onClick={() => setPurchaseModalOpen(true)}
+                            className="flex items-center gap-2 rounded-lg border border-brand-gold bg-transparent px-4 py-2 text-sm font-medium text-brand-gold transition-colors hover:bg-brand-gold/10"
+                          >
+                            <ShoppingBag className="h-4 w-4" />
+                            官网购买
+                          </button>
+                        )}
+
+                        {/* 外部平台链接 */}
                         {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
                           product.purchaseLinks.map((link) => (
                             <a
@@ -422,13 +443,53 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                             </a>
                           ))
                         ) : (
-                          <span className="text-[14px] text-[#00263E]/50">暂无购买链接</span>
+                          !product.allowDirectBuy && (
+                            <span className="text-[14px] text-[#00263E]/50">暂无购买链接</span>
+                          )
                         )}
                       </div>
                     </div>
                   </section>
                 </div>
               </div>
+
+              {/* 购买选择模态框 */}
+              <AnimatePresence>
+                {purchaseModalOpen && (
+                  <m.div
+                    className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setPurchaseModalOpen(false)}
+                  >
+                    <m.div
+                      className="mx-4 w-full max-w-sm rounded-2xl bg-[#F0EDE1] p-6 shadow-xl"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="mb-6 text-center">
+                        <h3 className="text-lg font-semibold text-[#00263E]">选择购买方式</h3>
+                        <p className="mt-1 text-sm text-[#00263E]/50">请选择您想要的操作</p>
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        <DrawerAddToCartButton productId={product.id} stock={product.stock!} />
+                        <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPurchaseModalOpen(false)}
+                        className="mt-4 w-full py-2 text-sm text-[#00263E]/50 transition-colors hover:text-[#00263E]"
+                      >
+                        取消
+                      </button>
+                    </m.div>
+                  </m.div>
+                )}
+              </AnimatePresence>
             </m.div>
           </div>
         </>
@@ -437,5 +498,122 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
   );
 }
 
+/**
+ * 加入购物车按钮（ProductDrawer 专用）
+ */
+function DrawerAddToCartButton({ productId, stock, compact }: { productId: string; stock: number; compact?: boolean }) {
+  const [loading, setLoading] = useState(false);
+  const { user, openLoginModal } = useAuth();
+  const { success, error: showError } = useToast();
+  const { addToCart } = useCartStore();
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    if (stock <= 0) {
+      showError("商品已售罄");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await addToCart(productId, 1);
+      if (result) {
+        success("已加入购物车");
+      } else {
+        showError("添加失败，请重试");
+      }
+    } catch {
+      showError("网络错误，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isOutOfStock = stock <= 0;
+
+  return (
+    <button
+      type="button"
+      onClick={handleAddToCart}
+      disabled={loading || isOutOfStock}
+      className={cn(
+        "flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors",
+        compact ? "flex-1 py-2 text-sm" : "w-full py-3",
+        isOutOfStock
+          ? "cursor-not-allowed bg-gray-300 text-gray-500"
+          : "bg-brand-gold text-white hover:bg-brand-gold/90"
+      )}
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <ShoppingBag className="h-4 w-4" />
+      )}
+      <span>{isOutOfStock ? "已售罄" : "加入购物车"}</span>
+    </button>
+  );
+}
+
+/**
+ * 直接购买按钮（ProductDrawer 专用）
+ */
+function DrawerDirectBuyButton({ productId, stock, quantity, compact }: { productId: string; stock: number; quantity: number; compact?: boolean }) {
+  const [loading, setLoading] = useState(false);
+  const { user, openCheckout, openLoginModal } = useAuth();
+  const { error: showError } = useToast();
+
+  const handleDirectBuy = () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    if (stock <= 0) {
+      showError("商品已售罄");
+      return;
+    }
+    if (quantity > stock) {
+      showError(`库存不足，仅剩 ${stock} 件`);
+      return;
+    }
+    setLoading(true);
+    try {
+      openCheckout([productId], { [productId]: quantity });
+    } catch {
+      showError("网络错误，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isOutOfStock = stock <= 0;
+
+  return (
+    <button
+      type="button"
+      onClick={handleDirectBuy}
+      disabled={loading || isOutOfStock}
+      className={cn(
+        "flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors",
+        compact ? "flex-1 py-2 text-sm" : "w-full py-3",
+        isOutOfStock
+          ? "cursor-not-allowed bg-gray-300 text-gray-500"
+          : "border border-brand-gold text-brand-gold hover:bg-brand-gold/10"
+      )}
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <ShoppingBag className="h-4 w-4" />
+      )}
+      <span>{isOutOfStock ? "已售罄" : "直接购买"}</span>
+    </button>
+  );
+}
+
+/**
+ * 数量选择器组件（ProductDrawer 专用）
+ */
 export type { ProductData, ProductDrawerProps };
 

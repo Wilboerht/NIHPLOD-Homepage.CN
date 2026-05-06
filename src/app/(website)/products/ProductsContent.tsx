@@ -396,6 +396,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       ingredients: product.ingredients || undefined,
       usage: product.usage || undefined,
       benefits: product.benefits,
+      allowDirectBuy: product.allowDirectBuy,
+      stock: product.stock,
     };
     setSelectedProduct(productData);
     setProductDrawerOpen(true);

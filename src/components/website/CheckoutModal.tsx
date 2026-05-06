@@ -32,23 +32,35 @@ interface AddressData {
   isDefault: boolean;
 }
 
+interface CouponData {
+  id: string;
+  name: string;
+  type: string;
+  value: number;
+  minAmount: number;
+}
+
 interface CheckoutData {
   items: CheckoutItem[];
   addresses: AddressData[];
   totalPrice: number;
+  shippingFee: number;
+  finalTotal: number;
+  availableCoupons: CouponData[];
 }
 
 // 自然纹理背景样式
 const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`;
 
 export function CheckoutModal() {
-  const { user, checkoutOpen, checkoutSelectedProductIds, closeCheckout, openUserCenter, openLoginModal, openPay } = useAuth();
+  const { user, checkoutOpen, checkoutSelectedProductIds, checkoutQuantities, closeCheckout, openUserCenter, openLoginModal, openPay } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<CheckoutData | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [selectedCouponId, setSelectedCouponId] = useState("");
   const [remark, setRemark] = useState("");
 
   useEffect(() => {
@@ -81,22 +93,19 @@ export function CheckoutModal() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/checkout/data");
+      // 直接购买模式：传 productIds + quantities；购物车模式：不传参
+      let url = "/api/checkout/data";
+      if (checkoutSelectedProductIds && checkoutSelectedProductIds.length > 0) {
+        url += `?productIds=${checkoutSelectedProductIds.join(",")}`;
+        if (checkoutQuantities) {
+          const qtyList = checkoutSelectedProductIds.map((id) => checkoutQuantities[id] || 1);
+          url += `&quantities=${qtyList.join(",")}`;
+        }
+      }
+      const res = await fetch(url);
       const result = await res.json();
       if (result.success) {
-        let nextData = result.data as CheckoutData;
-
-        // 如果有指定选中商品，只结算选中的 productId
-        if (checkoutSelectedProductIds && checkoutSelectedProductIds.length > 0) {
-          const selectedSet = new Set(checkoutSelectedProductIds);
-          const filteredItems = nextData.items.filter((item) => selectedSet.has(item.productId));
-          const filteredTotal = filteredItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-          nextData = {
-            ...nextData,
-            items: filteredItems,
-            totalPrice: filteredTotal,
-          };
-        }
+        const nextData = result.data as CheckoutData;
 
         if (nextData.items.length === 0) {
           setError("没有可结算的商品，请返回购物车重新选择");
@@ -105,6 +114,7 @@ export function CheckoutModal() {
         }
 
         setData(nextData);
+        setSelectedCouponId("");
         // 设置默认地址
         const defaultAddr = nextData.addresses.find((a: AddressData) => a.isDefault);
         setSelectedAddressId(defaultAddr?.id || nextData.addresses[0]?.id || "");
@@ -116,7 +126,7 @@ export function CheckoutModal() {
     } finally {
       setLoading(false);
     }
-  }, [checkoutSelectedProductIds]);
+  }, [checkoutSelectedProductIds, checkoutQuantities]);
 
   useEffect(() => {
     if (checkoutOpen && user) {
@@ -147,6 +157,8 @@ export function CheckoutModal() {
             quantity: i.quantity,
           })),
           remark: remark || undefined,
+          userCouponId: selectedCouponId || undefined,
+          source: checkoutSelectedProductIds && checkoutSelectedProductIds.length > 0 ? "direct_buy" : "cart",
         }),
       });
 
@@ -356,6 +368,30 @@ export function CheckoutModal() {
                     </div>
                   </div>
 
+                  {/* 优惠券 */}
+                  {data.availableCoupons.length > 0 && (
+                    <div className="bg-white/60 rounded-xl p-4 border border-[#E8E3DC]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-[#5C5347]">优惠券</span>
+                      </div>
+                      <select
+                        value={selectedCouponId}
+                        onChange={(e) => setSelectedCouponId(e.target.value)}
+                        className="w-full bg-[#F5F2ED] border-none rounded-lg text-sm text-[#5C5347] p-3 focus:ring-2 focus:ring-[#A69374]/30"
+                      >
+                        <option value="">不使用优惠券</option>
+                        {data.availableCoupons.map((coupon) => (
+                          <option key={coupon.id} value={coupon.id}>
+                            {coupon.name}
+                            {coupon.type === "DISCOUNT_AMOUNT"
+                              ? ` (满${coupon.minAmount}减${coupon.value}元)`
+                              : ` (满${coupon.minAmount}打${Math.round(coupon.value * 100)}折)`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* 备注 */}
                   <div className="bg-white/60 rounded-xl p-4 border border-[#E8E3DC]">
                     <div className="flex items-center gap-2 mb-2">
@@ -383,35 +419,69 @@ export function CheckoutModal() {
             </div>
 
             {/* 底部提交栏 */}
-            {data && (
-              <div className="border-t border-[#E8E3DC] bg-white/80 px-6 py-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-[#A69B8C]">
-                    共 {data.items.reduce((sum, i) => sum + i.quantity, 0)} 件商品
-                  </span>
-                  <div className="text-right">
-                    <span className="text-sm text-[#8B8579]">合计：</span>
-                    <span className="text-xl font-bold text-[#A69374]">
-                      ¥{data.totalPrice.toFixed(2)}
-                    </span>
+            {data && (() => {
+              const selectedCoupon = data.availableCoupons.find((c) => c.id === selectedCouponId);
+              let discountAmount = 0;
+              if (selectedCoupon) {
+                if (selectedCoupon.type === "DISCOUNT_AMOUNT") {
+                  discountAmount = Math.min(selectedCoupon.value, data.totalPrice);
+                } else if (selectedCoupon.type === "DISCOUNT_PERCENT") {
+                  discountAmount = data.totalPrice * (1 - selectedCoupon.value);
+                }
+              }
+              const finalTotal = Math.max(0, data.totalPrice + data.shippingFee - discountAmount);
+
+              return (
+                <div className="border-t border-[#E8E3DC] bg-white/80 px-6 py-4">
+                  {/* 价格明细 */}
+                  <div className="space-y-1 mb-3 text-sm">
+                    <div className="flex justify-between text-[#8B8579]">
+                      <span>商品小计</span>
+                      <span>¥{data.totalPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-[#8B8579]">
+                      <span>运费</span>
+                      {data.shippingFee === 0 ? (
+                        <span className="text-green-600">包邮</span>
+                      ) : (
+                        <span>¥{data.shippingFee.toFixed(2)}</span>
+                      )}
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>优惠券优惠</span>
+                        <span>-¥{discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-2 border-t border-[#E8E3DC]">
+                      <span className="text-sm text-[#A69B8C]">
+                        共 {data.items.reduce((sum, i) => sum + i.quantity, 0)} 件商品
+                      </span>
+                      <div className="text-right">
+                        <span className="text-sm text-[#8B8579]">合计：</span>
+                        <span className="text-xl font-bold text-[#A69374]">
+                          ¥{finalTotal.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting || !selectedAddressId}
+                    className="w-full py-3.5 bg-[#A69374] text-white rounded-xl font-medium disabled:opacity-50 hover:bg-[#8B7355] transition-colors flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        提交中...
+                      </>
+                    ) : (
+                      "提交订单"
+                    )}
+                  </button>
                 </div>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || !selectedAddressId}
-                  className="w-full py-3.5 bg-[#A69374] text-white rounded-xl font-medium disabled:opacity-50 hover:bg-[#8B7355] transition-colors flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      提交中...
-                    </>
-                  ) : (
-                    "提交订单"
-                  )}
-                </button>
-              </div>
-            )}
+              );
+            })()}
           </m.div>
         </div>
       )}

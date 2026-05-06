@@ -29,7 +29,8 @@ interface AuthContextType {
   // 结算弹窗状态
   checkoutOpen: boolean;
   checkoutSelectedProductIds: string[] | null;
-  openCheckout: (selectedProductIds?: string[]) => void;
+  checkoutQuantities: Record<string, number> | null;
+  openCheckout: (selectedProductIds?: string[], quantities?: Record<string, number>) => void;
   closeCheckout: () => void;
   // 支付弹窗状态
   payOpen: boolean;
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 结算弹窗状态
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutSelectedProductIds, setCheckoutSelectedProductIds] = useState<string[] | null>(null);
+  const [checkoutQuantities, setCheckoutQuantities] = useState<Record<string, number> | null>(null);
 
   // 支付弹窗状态
   const [payOpen, setPayOpen] = useState(false);
@@ -108,11 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 结算弹窗操作
-  const openCheckout = useCallback((selectedProductIds?: string[]) => {
+  const openCheckout = useCallback((selectedProductIds?: string[], quantities?: Record<string, number>) => {
     if (selectedProductIds && selectedProductIds.length > 0) {
       setCheckoutSelectedProductIds(selectedProductIds);
+      setCheckoutQuantities(quantities || null);
     } else {
       setCheckoutSelectedProductIds(null);
+      setCheckoutQuantities(null);
     }
     setCheckoutOpen(true);
   }, []);
@@ -120,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const closeCheckout = useCallback(() => {
     setCheckoutOpen(false);
     setCheckoutSelectedProductIds(null);
+    setCheckoutQuantities(null);
   }, []);
 
   // 支付弹窗操作
@@ -193,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearInitialOrderId,
         checkoutOpen,
         checkoutSelectedProductIds,
+        checkoutQuantities,
         openCheckout,
         closeCheckout,
         payOpen,

@@ -26,12 +26,17 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const productIdsParam = searchParams.get("productIds");
+    const quantitiesParam = searchParams.get("quantities");
 
     let items;
 
     if (productIdsParam) {
       // ========== 直接购买模式：从 Product 表读取 ==========
       const productIds = productIdsParam.split(",").filter(Boolean);
+      // 解析数量参数（与 productIds 一一对应，默认 1）
+      const quantities = quantitiesParam
+        ? quantitiesParam.split(",").map((q) => Math.max(1, parseInt(q.trim(), 10) || 1))
+        : productIds.map(() => 1);
 
       if (productIds.length === 0) {
         return NextResponse.json(
@@ -62,11 +67,16 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // 校验库存（直接购买默认数量为 1）
+      // 按 productId 建立数量映射
+      const qtyMap = new Map<string, number>();
+      productIds.forEach((id, idx) => qtyMap.set(id, quantities[idx] || 1));
+
+      // 校验库存（使用实际数量）
       for (const product of products) {
-        if (product.stock < 1) {
+        const qty = qtyMap.get(product.id) || 1;
+        if (product.stock < qty) {
           return NextResponse.json(
-            { success: false, error: { code: "INSUFFICIENT_STOCK", message: `${product.name} 库存不足` } },
+            { success: false, error: { code: "INSUFFICIENT_STOCK", message: `${product.name} 库存不足（剩余 ${product.stock} 件）` } },
             { status: 400 }
           );
         }
@@ -78,7 +88,7 @@ export async function GET(request: NextRequest) {
         productName: product.name,
         variantName: null,
         price: Number(product.price),
-        quantity: 1,
+        quantity: qtyMap.get(product.id) || 1,
         image: product.images[0]?.url || null,
       }));
     } else {
@@ -172,12 +182,51 @@ export async function GET(request: NextRequest) {
 
     const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
+    // 查询用户可用优惠券（UNUSED 且未过期，满足门槛）
+    const now = new Date();
+    const availableCoupons = await prisma.userCoupon.findMany({
+      where: {
+        userId: payload.id,
+        status: "UNUSED",
+        expiresAt: { gte: now },
+        coupon: {
+          isActive: true,
+          minAmount: { lte: totalPrice },
+          AND: [
+            { OR: [{ startDate: { lte: now } }, { startDate: null }] },
+            { OR: [{ endDate: { gte: now } }, { endDate: null }] },
+          ],
+        },
+      },
+      include: {
+        coupon: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const coupons = availableCoupons.map((uc: any) => ({
+      id: uc.id,
+      name: uc.coupon.name,
+      type: uc.coupon.type,
+      value: Number(uc.coupon.value),
+      minAmount: Number(uc.coupon.minAmount),
+    }));
+
+    // 运费计算（简单策略：满 99 元包邮，否则 10 元）
+    const FREE_SHIPPING_THRESHOLD = 99;
+    const BASE_SHIPPING_FEE = 10;
+    const shippingFee = totalPrice >= FREE_SHIPPING_THRESHOLD ? 0 : BASE_SHIPPING_FEE;
+
     return NextResponse.json({
       success: true,
       data: {
         items,
         addresses,
         totalPrice,
+        shippingFee,
+        finalTotal: totalPrice + shippingFee,
+        availableCoupons: coupons,
       },
     });
   } catch (error) {
