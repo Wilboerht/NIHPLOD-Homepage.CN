@@ -204,19 +204,19 @@ export function FAQContent() {
 
                                                     <button
                                                         onClick={() => toggleFAQ(index)}
-                                                        className="w-full flex items-center justify-between py-4 px-5 sm:py-6 sm:px-6 text-left relative z-10"
+                                                        className="w-full flex items-start sm:items-center justify-between py-5 px-4 sm:py-6 sm:px-6 text-left relative z-10 gap-4"
                                                     >
                                                         <span className={cn(
-                                                            "text-[14px] sm:text-[16px] font-normal tracking-wide text-brand-charcoal/80 transition-colors duration-300",
+                                                            "flex-1 text-[15px] sm:text-[16px] font-normal tracking-wide text-brand-charcoal/80 transition-colors duration-300 leading-snug sm:leading-normal",
                                                             openIndex === index ? "text-brand-charcoal font-medium" : "group-hover:text-brand-charcoal"
                                                         )}>
                                                             {faq.question}
                                                         </span>
                                                         <span className={cn(
-                                                            "shrink-0 ml-4 sm:ml-6 text-brand-charcoal/30 transition-transform duration-500",
-                                                            openIndex === index ? "rotate-45 text-brand-charcoal/60" : "group-hover:text-brand-charcoal/50"
+                                                            "shrink-0 mt-0.5 sm:mt-0 p-1.5 -mr-1.5 rounded-full text-brand-charcoal/30 transition-all duration-500",
+                                                            openIndex === index ? "rotate-45 text-brand-charcoal/60 bg-brand-charcoal/5" : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
                                                         )}>
-                                                            <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-1" />
+                                                            <Plus className="w-5 h-5 sm:w-5 sm:h-5 stroke-[1.5]" />
                                                         </span>
                                                     </button>
                                                     <AnimatePresence>
@@ -228,7 +228,7 @@ export function FAQContent() {
                                                                 transition={{ duration: 0.3, ease: "easeInOut" }}
                                                                 className="overflow-hidden"
                                                             >
-                                                                <div className="pb-6 pl-5 pr-5 sm:pb-8 sm:pl-6 sm:pr-12 text-brand-charcoal/60 leading-[1.6] sm:leading-[1.8] font-light text-[14px] sm:text-[15px] text-justify tracking-wide">
+                                                                <div className="pb-6 pl-4 pr-4 sm:pb-8 sm:pl-6 sm:pr-12 text-brand-charcoal/60 leading-[1.7] sm:leading-[1.8] font-light text-[14px] sm:text-[15px] tracking-wide">
                                                                     {faq.answer}
                                                                 </div>
                                                             </m.div>
