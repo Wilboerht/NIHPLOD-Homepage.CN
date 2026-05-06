@@ -13,7 +13,6 @@ import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
 import { saveRefreshToken } from "@/lib/auth-security";
 import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
 import { hashPassword, passwordSchema } from "@/lib/password";
 
 // 请求参数验证

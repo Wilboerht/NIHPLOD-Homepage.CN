@@ -8,7 +8,6 @@ import {
   isNotificationProcessed,
   recordNotification,
   markNotificationSuccess,
-  markNotificationFailed,
 } from "@/lib/notification-idempotency";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
@@ -22,8 +21,6 @@ export async function POST(request: NextRequest) {
   if (!limitResult.success) {
     return NextResponse.json({ code: "FAIL", message: "rate limited" }, { status: 429 });
   }
-
-  let recordId: string | undefined;
 
   try {
     // API v3 验签必须使用原始报文，不能解析后再 JSON.stringify
@@ -70,7 +67,6 @@ export async function POST(request: NextRequest) {
     // v3 成功应答：HTTP 200, JSON 格式
     return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[PayNotify] 异常:", error);
     return NextResponse.json({ code: "FAIL", message: "系统错误" }, { status: 500 });
   }

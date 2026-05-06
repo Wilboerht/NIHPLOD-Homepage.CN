@@ -5,7 +5,7 @@
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { Wechatpay, Rsa, Formatter, Aes } from "wechatpay-axios-plugin";
-import { yuanToFen, moneyEqual, moneyStrictEqual } from "./money";
+import { yuanToFen, moneyStrictEqual } from "./money";
 
 // 格式化证书/私钥：处理 \n、引号以及多行格式
 const formatKey = (key?: string) => {

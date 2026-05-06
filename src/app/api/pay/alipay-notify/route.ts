@@ -8,7 +8,6 @@ import {
   isNotificationProcessed,
   recordNotification,
   markNotificationSuccess,
-  markNotificationFailed,
 } from "@/lib/notification-idempotency";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 

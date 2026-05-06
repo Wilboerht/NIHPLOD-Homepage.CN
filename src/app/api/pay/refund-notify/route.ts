@@ -7,7 +7,6 @@ import {
   isNotificationProcessed,
   recordNotification,
   markNotificationSuccess,
-  markNotificationFailed,
 } from "@/lib/notification-idempotency";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
@@ -63,7 +62,6 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("[Refund Notify] 异常:", error);
         return NextResponse.json({ code: "FAIL", message: "系统错误" }, { status: 500 });
     }

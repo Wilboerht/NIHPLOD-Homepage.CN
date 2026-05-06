@@ -67,7 +67,7 @@ async function verifyToken(token: string): Promise<boolean> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
     // 中间件层也做基本的 admin type 校验，防止依赖遗漏
-    return (payload as any).type === "admin";
+    return (payload as Record<string, unknown>).type === "admin";
   } catch {
     return false;
   }

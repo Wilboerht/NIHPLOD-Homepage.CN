@@ -6,6 +6,7 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import fs from "fs";
 
 // 全局类型扩展
 const globalForPrisma = globalThis as unknown as {
@@ -21,7 +22,7 @@ const poolConfig: pg.PoolConfig = {
   ssl:
     process.env.NODE_ENV === "production" || process.env.DATABASE_URL?.includes("supabase")
       ? process.env.DATABASE_SSL_CA
-        ? { ca: require("fs").readFileSync(process.env.DATABASE_SSL_CA) }
+        ? { ca: fs.readFileSync(process.env.DATABASE_SSL_CA) }
         : { rejectUnauthorized: false }
       : undefined,
   // 连接池优化配置：在构建阶段会有高并发的 DB 请求

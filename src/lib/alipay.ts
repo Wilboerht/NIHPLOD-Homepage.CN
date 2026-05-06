@@ -5,7 +5,7 @@
 import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
-import { formatMoney, moneyEqual, moneyStrictEqual } from "./money";
+import { formatMoney, moneyStrictEqual } from "./money";
 
 // 格式化密钥：处理 \n 和首尾引号
 const formatKey = (key?: string) => {
