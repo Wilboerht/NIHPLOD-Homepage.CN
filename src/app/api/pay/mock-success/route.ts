@@ -60,14 +60,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 更新订单状态
-    await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: OrderStatus.PAID,
-        paymentNo: `MOCK_${Date.now()}`,
-        paymentTime: new Date(),
-      },
+    // 更新订单状态并增加销量
+    await prisma.$transaction(async (tx) => {
+      const orderWithItems = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { items: true },
+      });
+
+      if (!orderWithItems) throw new Error("订单不存在");
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.PAID,
+          paymentNo: `MOCK_${Date.now()}`,
+          paymentTime: new Date(),
+        },
+      });
+
+      // 更新商品销量
+      for (const item of orderWithItems.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { salesCount: { increment: item.quantity } },
+        });
+      }
     });
 
     console.log(`[MockPay] 模拟支付成功: ${order.orderNo}`);

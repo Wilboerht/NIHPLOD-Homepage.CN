@@ -26,23 +26,24 @@ export async function POST(request: NextRequest) {
       params[key] = value.toString();
     });
 
-    const tradeNo = params.trade_no || params.out_trade_no;
+    const outTradeNo = params.out_trade_no;
+    const tradeNo = params.trade_no || outTradeNo;
 
-    console.log("[AlipayNotify] 收到回调:", tradeNo);
+    console.log("[AlipayNotify] 收到回调:", outTradeNo);
 
-    // 检查通知是否已处理过
-    const idempotencyCheck = await isNotificationProcessed("alipay", tradeNo);
+    // 检查通知是否已处理过（用本地订单号 out_trade_no 作为幂等Key，稳定不变）
+    const idempotencyCheck = await isNotificationProcessed("alipay", outTradeNo);
     
     if (idempotencyCheck.processed && idempotencyCheck.status === "SUCCESS") {
       // 已成功处理过，直接返回成功
-      console.log(`[AlipayNotify] 通知 ${tradeNo} 已处理过，返回成功应答`);
+      console.log(`[AlipayNotify] 通知 ${outTradeNo} 已处理过，返回成功应答`);
       return new NextResponse("success", { status: 200 });
     }
 
     // 记录通知
     const recordResult = await recordNotification(
       "alipay",
-      tradeNo,
+      outTradeNo,
       tradeNo,
       Math.round(parseFloat(params.receipt_amount || params.total_amount || "0") * 100),
       params

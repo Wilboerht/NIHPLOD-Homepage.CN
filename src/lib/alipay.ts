@@ -7,11 +7,20 @@ import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { formatMoney, moneyEqual } from "./money";
 
+// 格式化密钥：处理 \n 和首尾引号
+const formatKey = (key?: string) => {
+  if (!key) return "";
+  return key
+    .replace(/^["']|["']$/g, "")
+    .replace(/\\n/g, "\n")
+    .trim();
+};
+
 // 支付宝配置
 const ALIPAY_CONFIG = {
   appId: process.env.ALIPAY_APP_ID || "",
-  privateKey: (process.env.ALIPAY_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
-  alipayPublicKey: (process.env.ALIPAY_PUBLIC_KEY || "").replace(/\\n/g, "\n"),
+  privateKey: formatKey(process.env.ALIPAY_PRIVATE_KEY),
+  alipayPublicKey: formatKey(process.env.ALIPAY_PUBLIC_KEY),
   notifyUrl: process.env.ALIPAY_NOTIFY_URL || "",
   returnUrl: process.env.ALIPAY_RETURN_URL || "",
   gateway: "https://openapi.alipay.com/gateway.do",
@@ -130,6 +139,11 @@ export async function handleAlipayNotify(
     // 验证签名
     const sign = params.sign;
     const signType = params.sign_type;
+
+    if (!sign || !signType) {
+      console.error("[Alipay] 缺少签名参数");
+      return { success: false, message: "缺少签名参数" };
+    }
 
     // 移除 sign 和 sign_type 后验签
     const verifyParams = { ...params };

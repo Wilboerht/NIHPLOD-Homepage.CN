@@ -6,7 +6,7 @@ import { prisma } from "./prisma";
 
 export interface PaymentNotificationRecord {
   id: string;
-  paymentGateway: "wechat" | "alipay"; // 支付网关
+  paymentGateway: "wechat" | "alipay" | "wechat_refund"; // 支付网关
   notificationId: string; // 网关返回的通知ID（微信: out_trade_no, 支付宝: trade_no）
   transactionId: string; // 交易ID（微信: transaction_id, 支付宝: trade_no）
   amount: number; // 金额（分）
@@ -25,7 +25,7 @@ export interface PaymentNotificationRecord {
  * @returns 是否已处理
  */
 export async function isNotificationProcessed(
-  gateway: "wechat" | "alipay",
+  gateway: "wechat" | "alipay" | "wechat_refund",
   notificationId: string
 ): Promise<{
   processed: boolean;
@@ -86,7 +86,7 @@ export async function isNotificationProcessed(
  * @param rawData 原始数据
  */
 export async function recordNotification(
-  gateway: "wechat" | "alipay",
+  gateway: "wechat" | "alipay" | "wechat_refund",
   notificationId: string,
   transactionId: string,
   amount: number,

@@ -33,8 +33,10 @@ let _wxpay: Wechatpay | null = null;
 function getWxPay() {
   if (!_wxpay) {
     const config = getConfig();
-    if (!config.privateKey || !config.mchId) {
-      console.warn("⚠️ 微信支付配置不完整，无法初始化");
+    const required = ["privateKey", "mchId", "apiV3Key", "platformPublicKey", "platformPublicKeyId"];
+    const missing = required.filter((k) => !config[k as keyof typeof config]);
+    if (missing.length > 0) {
+      console.warn(`⚠️ 微信支付配置不完整，缺少: ${missing.join(", ")}`);
       throw new Error("WECHAT_PAY_NOT_CONFIGURED");
     }
     _wxpay = new Wechatpay({

@@ -23,30 +23,30 @@ export async function POST(request: NextRequest) {
 
     // 解析通知数据用于幂等性检查
     const notifyData = JSON.parse(rawBody);
-    const outTradeNo = notifyData.out_trade_no;
-    const transactionId = notifyData.resource?.transaction_id || "";
+    // 微信 v3 通知的 out_trade_no 在解密后的密文中，外层只有 id（通知唯一ID）
+    const notifyId = notifyData.id || "";
 
-    // 检查通知是否已处理过
-    const idempotencyCheck = await isNotificationProcessed("wechat", outTradeNo);
+    // 检查通知是否已处理过（用微信通知唯一ID作为幂等Key）
+    const idempotencyCheck = await isNotificationProcessed("wechat", notifyId);
     
     if (idempotencyCheck.processed && idempotencyCheck.status === "SUCCESS") {
       // 已成功处理过，直接返回成功
-      console.log(`[PayNotify] 通知 ${outTradeNo} 已处理过，返回成功应答`);
+      console.log(`[PayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
       return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
     }
 
-    // 记录通知
+    // 记录通知（transactionId 和 amount 在解密后才能获取，先占位）
     const recordResult = await recordNotification(
       "wechat",
-      outTradeNo,
-      transactionId,
-      notifyData.resource?.amount?.total || 0,
+      notifyId,
+      "",
+      0,
       notifyData
     );
 
     if (!recordResult.success) {
       // 如果无法记录（可能是并发冲突），返回成功以避免重试
-      console.warn(`[PayNotify] 无法记录通知 ${outTradeNo}`);
+      console.warn(`[PayNotify] 无法记录通知 ${notifyId}`);
       return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
     }
 
