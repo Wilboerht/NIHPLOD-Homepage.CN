@@ -5,7 +5,7 @@
 import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
-import { formatMoney, moneyEqual } from "./money";
+import { formatMoney, moneyEqual, moneyStrictEqual } from "./money";
 
 // 格式化密钥：处理 \n 和首尾引号
 const formatKey = (key?: string) => {
@@ -181,16 +181,22 @@ export async function handleAlipayNotify(
         throw new Error("订单不存在");
       }
 
-      // 校验支付金额
+      // 支付回调金额必须严格相等，不容忍任何差异
       const notifyAmount = parseFloat(params.total_amount || "0");
-      if (!moneyEqual(order.payAmount, notifyAmount)) {
+      if (!moneyStrictEqual(order.payAmount, notifyAmount)) {
         throw new Error("AMOUNT_MISMATCH");
       }
 
-      // 订单已取消，不应再被支付激活（避免超卖）
-      if (order.status === OrderStatus.CANCELLED) {
-        console.error(`[Alipay] 订单 ${orderNo} 已取消，但收到支付成功通知，需人工介入处理`);
-        // 返回成功让支付宝停止重试，但不做状态变更
+      // 终态拦截：已取消/已退款/退款中/已完成 的订单不应再被支付激活
+      const terminalStatuses: OrderStatus[] = [
+        OrderStatus.CANCELLED,
+        OrderStatus.REFUNDED,
+        OrderStatus.REFUNDING,
+        OrderStatus.COMPLETED,
+        OrderStatus.DELIVERED,
+      ];
+      if (terminalStatuses.includes(order.status)) {
+        console.warn(`[Alipay] 订单 ${orderNo} 已处于终态 ${order.status}，忽略支付通知`);
         return;
       }
 

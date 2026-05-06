@@ -24,6 +24,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Missing filename or type" }, { status: 400 });
         }
 
+        // 校验文件扩展名（防止上传可执行文件）
+        const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf", "mp4", "mov"];
+        const ext = filename.split(".").pop()?.toLowerCase() || "";
+        if (!ALLOWED_EXTS.includes(ext)) {
+            return NextResponse.json({ error: "不支持的文件类型" }, { status: 400 });
+        }
+
         // 2. 生成签名
         const signature = await generateUploadSignature(filename, type);
 

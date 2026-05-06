@@ -34,17 +34,19 @@ export async function finalizeRefund(
       },
     });
 
-    // 恢复库存 + 回滚销量
+    // 恢复库存 + 回滚销量（防止销量为负）
     for (const item of order.items) {
       const product = await tx.product.findUnique({
         where: { id: item.productId },
       });
       if (product) {
+        // 防御性校验：销量不足时最多回滚到 0，避免负数
+        const decrementQty = Math.min(item.quantity, product.salesCount);
         await tx.product.update({
           where: { id: item.productId },
           data: {
             stock: { increment: item.quantity },
-            salesCount: { decrement: item.quantity },
+            salesCount: { decrement: decrementQty },
           },
         });
       }
@@ -95,6 +97,7 @@ export async function applyRefund(
       where: { id: orderId },
       data: {
         status: OrderStatus.REFUNDING,
+        previousStatus: order.status, // 记录退款前状态
         remark: order.remark ? `${order.remark}\n[退款申请] ${reason}` : `[退款申请] ${reason}`,
       },
     });
@@ -125,12 +128,20 @@ export async function processRefund(
       return { success: false, error: "订单不存在" };
     }
 
+    // 幂等性：已退款订单不可重复操作
+    if (order.status === OrderStatus.REFUNDED || order.refundStatus === RefundStatus.SUCCESS) {
+      return { success: false, error: "订单已退款，不可重复操作" };
+    }
+
     if (order.status !== OrderStatus.REFUNDING) {
       return { success: false, error: "订单状态不正确" };
     }
 
     if (approved) {
-      const refundAmount = Number(order.payAmount);
+      // 优先使用用户申请的部分退款金额，若未申请则全额退款
+      const refundAmount = order.refundAmount != null
+        ? Math.min(Number(order.refundAmount), Number(order.payAmount))
+        : Number(order.payAmount);
       let refundNo: string | null = null;
       let refundInfo = "";
 
@@ -210,12 +221,17 @@ export async function processRefund(
 
       console.log(`[Refund] 退款处理成功: ${order.orderNo}`);
     } else {
-      // 拒绝退款：恢复到退款前状态
-      const previousStatus = order.trackingNo ? OrderStatus.SHIPPED : OrderStatus.PAID;
+      // 拒绝退款：恢复到退款前状态（优先使用记录的 previousStatus）
+      const previousStatus = order.previousStatus
+        ? (order.previousStatus as OrderStatus)
+        : order.trackingNo
+          ? OrderStatus.SHIPPED
+          : OrderStatus.PAID;
       await prisma.order.update({
         where: { id: orderId },
         data: {
           status: previousStatus,
+          previousStatus: null, // 清空记录
           adminNote: order.adminNote
             ? `${order.adminNote}\n[退款拒绝] ${adminRemark || ""}`
             : `[退款拒绝] ${adminRemark || ""}`,

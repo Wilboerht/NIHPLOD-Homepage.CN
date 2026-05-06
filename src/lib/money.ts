@@ -56,6 +56,16 @@ export function moneyEqual(
 }
 
 /**
+ * 严格比较两个金额是否完全相等（无容差）
+ * 用于支付回调等不可容忍任何金额差异的场景
+ */
+export function moneyStrictEqual(amount1: MoneyValue, amount2: MoneyValue): boolean {
+  const fen1 = yuanToFen(amount1);
+  const fen2 = yuanToFen(amount2);
+  return fen1 === fen2;
+}
+
+/**
  * 格式化金额为字符串
  * @param amount 金额
  * @returns 格式化的金额字符串（保留2位小数）

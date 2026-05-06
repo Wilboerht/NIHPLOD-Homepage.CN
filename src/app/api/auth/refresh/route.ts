@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRefreshToken, signUserToken, getTokenExpiresAt } from "@/lib/jwt";
 import { validateAndRefreshToken } from "@/lib/auth-security";
-import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
 import { z } from "zod";
 
 // 请求参数验证
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 5. 更新 Cookie 中的 Access Token
-    response.cookies.set(USER_COOKIE_NAME, newAccessToken, USER_COOKIE_OPTIONS);
+    response.cookies.set(USER_COOKIE_NAME, newAccessToken, USER_ACCESS_COOKIE_OPTIONS);
 
     return response;
   } catch (error) {

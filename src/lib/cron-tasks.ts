@@ -48,10 +48,21 @@ let isInitialized = false;
 /**
  * 初始化所有定时任务
  * 在应用启动时调用
+ * 
+ * 注意：Vercel 部署请使用 HTTP Cron 端点（/api/cron/*），
+ * 自托管服务器可设置 ENABLE_LOCAL_CRON=true 启用 node-cron
  */
+export function isLocalCronEnabled(): boolean {
+  return process.env.ENABLE_LOCAL_CRON === "true";
+}
 export function initializeCronTasks(): void {
   if (isInitialized) {
     console.log("[Cron] 定时任务已初始化，跳过重复初始化");
+    return;
+  }
+
+  if (!isLocalCronEnabled()) {
+    console.log("[Cron] 本地定时任务已禁用（如需启用请设置 ENABLE_LOCAL_CRON=true）");
     return;
   }
 

@@ -45,7 +45,12 @@ function formatLogEntry(entry: LogEntry): string {
  * 脱敏处理敏感信息
  */
 function sanitizeContext(context: LogContext): LogContext {
-  const sensitiveKeys = ["apiKey", "password", "token", "secret", "authorization"];
+  const sensitiveKeys = [
+    "apiKey", "password", "token", "secret", "authorization",
+    "creditCard", "cardNumber", "cvv", "phone", "idCard",
+    "cookie", "session", "privateKey", "keyPem", "refreshToken",
+    "jwt", "passphrase", "apiSecret"
+  ];
   const sanitized: LogContext = {};
 
   for (const [key, value] of Object.entries(context)) {

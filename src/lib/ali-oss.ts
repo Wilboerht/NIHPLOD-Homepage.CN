@@ -56,10 +56,16 @@ export async function generateUploadSignature(filename: string, type: string) {
         throw new Error("阿里云 OSS 未配置");
     }
 
+    // 校验并提取文件扩展名
+    const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf", "mp4", "mov"];
+    const ext = filename.split(".").pop()?.toLowerCase() || "";
+    if (!ALLOWED_EXTS.includes(ext)) {
+        throw new Error(`不支持的文件扩展名: ${ext}`);
+    }
+
     // 生成随机文件路径: uploads/日期/随机ID.ext
     const date = new Date().toISOString().split("T")[0];
     const randomId = Math.random().toString(36).substring(2, 10);
-    const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
     const objectName = `uploads/${date}/${randomId}.${ext}`;
 
     // 生成签名 URL，有效期 15 分钟 (900秒)

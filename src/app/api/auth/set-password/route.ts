@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { hashPassword, verifyPassword, passwordSchema } from "@/lib/password";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
 
@@ -13,7 +13,7 @@ import { z } from "zod";
 const setPasswordSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   code: z.string().length(6, "验证码为6位数字"),
-  password: z.string().min(6, "密码至少6位").max(32, "密码最多32位"),
+  password: passwordSchema,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "两次密码不一致",
@@ -23,7 +23,7 @@ const setPasswordSchema = z.object({
 // 请求参数验证 - 修改密码（需要旧密码）
 const changePasswordSchema = z.object({
   oldPassword: z.string().min(6, "密码至少6位"),
-  newPassword: z.string().min(6, "密码至少6位").max(32, "密码最多32位"),
+  newPassword: passwordSchema,
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "两次密码不一致",
@@ -112,11 +112,14 @@ export async function POST(request: NextRequest) {
         data: { password: hashedPassword },
       });
 
+      // 密码变更后撤销该用户所有 Refresh Token，强制所有设备重新登录
+      await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+
       console.log(`[SetPassword] 用户修改密码: ${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`);
 
       return NextResponse.json({
         success: true,
-        data: { message: "密码修改成功" },
+        data: { message: "密码修改成功，请重新登录" },
       });
     } else {
       // 设置密码流程 - 需要验证码

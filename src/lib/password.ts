@@ -3,6 +3,21 @@
  * 使用 bcryptjs 进行密码哈希和验证
  */
 import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+/**
+ * 用户密码强度校验 Schema
+ * - 至少 8 位，最多 32 位
+ * - 包含至少一个大写字母
+ * - 包含至少一个小写字母
+ * - 包含至少一个数字
+ */
+export const passwordSchema = z.string()
+  .min(8, "密码至少8位")
+  .max(32, "密码最多32位")
+  .regex(/[A-Z]/, "密码需包含大写字母")
+  .regex(/[a-z]/, "密码需包含小写字母")
+  .regex(/[0-9]/, "密码需包含数字");
 
 // 盐的轮数 - 12 是一个良好的安全性与性能平衡点
 const SALT_ROUNDS = 12;

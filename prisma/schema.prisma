@@ -343,6 +343,7 @@ model Order {
 
   // 状态
   status         OrderStatus @default(PENDING)
+  previousStatus String?     // 申请退款前的状态，用于拒绝退款后恢复
 
   // 支付
   paymentMethod  String?                       // wechat | alipay

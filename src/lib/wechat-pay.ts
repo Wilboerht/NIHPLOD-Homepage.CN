@@ -5,7 +5,7 @@
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { Wechatpay, Rsa, Formatter, Aes } from "wechatpay-axios-plugin";
-import { yuanToFen, moneyEqual } from "./money";
+import { yuanToFen, moneyEqual, moneyStrictEqual } from "./money";
 
 // 格式化证书/私钥：处理 \n、引号以及多行格式
 const formatKey = (key?: string) => {
@@ -170,6 +170,13 @@ async function verifyAndDecrypt(headers: Record<string, string>, rawBody: string
 
   if (!signature || !timestamp || !nonce) throw new Error("MISSING_HEADERS");
 
+  // 校验时间戳 freshness，防止重放攻击（±5 分钟窗口）
+  const now = Math.floor(Date.now() / 1000);
+  const ts = parseInt(timestamp, 10);
+  if (isNaN(ts) || Math.abs(now - ts) > 300) {
+    throw new Error("TIMESTAMP_EXPIRED");
+  }
+
   // 使用平台公钥验签原始文本
   const verified = Rsa.verify(
     Formatter.response(timestamp, nonce, rawBody),
@@ -216,15 +223,21 @@ export async function handlePaymentNotify(
       });
       if (!order) throw new Error("ORDER_NOT_FOUND");
       
-      // 使用金额工具函数进行精确比较（允许1分钱的容差）
-      if (!moneyEqual(order.payAmount, totalFee / 100)) {
+      // 支付回调金额必须严格相等，不容忍任何差异
+      if (!moneyStrictEqual(order.payAmount, totalFee / 100)) {
         throw new Error("AMOUNT_MISMATCH");
       }
       
-      // 订单已取消，不应再被支付激活（避免超卖）
-      if (order.status === OrderStatus.CANCELLED) {
-        console.error(`[WechatPay] 订单 ${orderNo} 已取消，但收到支付成功通知，需人工介入处理`);
-        // 返回成功让微信停止重试，但不做状态变更
+      // 终态拦截：已取消/已退款/退款中/已完成 的订单不应再被支付激活
+      const terminalStatuses: OrderStatus[] = [
+        OrderStatus.CANCELLED,
+        OrderStatus.REFUNDED,
+        OrderStatus.REFUNDING,
+        OrderStatus.COMPLETED,
+        OrderStatus.DELIVERED,
+      ];
+      if (terminalStatuses.includes(order.status)) {
+        console.warn(`[WechatPay] 订单 ${orderNo} 已处于终态 ${order.status}，忽略支付通知`);
         return;
       }
 
@@ -264,7 +277,8 @@ export async function handlePaymentNotify(
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
     console.error("[WechatPay] 处理支付通知失败:", message);
-    return { success: false, message: message };
+    // 对外返回模糊错误，避免信息泄露
+    return { success: false, message: "PROCESSING_FAILED" };
   }
 }
 

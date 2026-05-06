@@ -135,12 +135,24 @@ export interface UserLoginResponse {
  */
 export const USER_COOKIE_NAME = "user_token";
 
-export const USER_COOKIE_OPTIONS = {
+// Access Token Cookie：15 分钟，与 JWT 过期时间一致
+export const USER_ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const, // 允许跨站请求携带（微信登录回调）
-  domain: process.env.NODE_ENV === "production" ? ".nihplod.cn" : undefined, // 允许跨子域名共享
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 15 * 60, // 15 分钟（秒）
+};
+
+// Refresh Token Cookie：30 天
+export const USER_REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
   path: "/",
   maxAge: 30 * 24 * 60 * 60, // 30 天（秒）
 };
+
+/** @deprecated 使用 USER_ACCESS_COOKIE_OPTIONS 或 USER_REFRESH_COOKIE_OPTIONS */
+export const USER_COOKIE_OPTIONS = USER_ACCESS_COOKIE_OPTIONS;
 

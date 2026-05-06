@@ -147,10 +147,10 @@ export async function POST(request: NextRequest) {
 
     let cartItem;
     if (existing) {
-      // 更新数量
+      // 使用原子 increment 避免并发更新丢失
       cartItem = await prisma.cartItem.update({
         where: { id: existing.id },
-        data: { quantity: existing.quantity + quantity },
+        data: { quantity: { increment: quantity } },
       });
     } else {
       // 新增

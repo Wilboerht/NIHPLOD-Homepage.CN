@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { existsSync, mkdirSync, unlinkSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 import { randomUUID } from "crypto";
 import { uploadToStorage, deleteFromStorage, extractStoragePath } from "./supabase";
 import { 
@@ -82,10 +82,16 @@ export function validateFileSize(size: number): boolean {
   return size <= uploadConfig.maxFileSize;
 }
 
+// 路径净化：只允许字母、数字、下划线、连字符和单层路径
+function sanitizeFolder(folder: string): string {
+  return folder.replace(/[^a-zA-Z0-9_\-/]/g, "").replace(/\.\./g, "");
+}
+
 // 确保上传目录存在
 function ensureUploadDir(folder: string = ""): string {
   const baseDir = join(process.cwd(), uploadConfig.uploadDir);
-  const targetDir = folder ? join(baseDir, folder) : baseDir;
+  const sanitized = sanitizeFolder(folder);
+  const targetDir = sanitized ? join(baseDir, sanitized) : baseDir;
 
   if (!existsSync(targetDir)) {
     mkdirSync(targetDir, { recursive: true });
@@ -339,8 +345,15 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
       return true;
     } else if (url.startsWith("/uploads/")) {
       // 识别为本地存储
-      const relativePath = url.replace(/^\//, "");
-      const filepath = join(process.cwd(), "public", relativePath);
+      const relativePath = url.replace(/^\//, "").replace(/\.\./g, "");
+      const filepath = resolve(join(process.cwd(), "public", relativePath));
+      const publicDir = resolve(join(process.cwd(), "public"));
+
+      // 路径越界检查
+      if (!filepath.startsWith(publicDir)) {
+        console.error("[DeleteFile] 路径越界:", filepath);
+        return false;
+      }
 
       if (existsSync(filepath)) {
         unlinkSync(filepath);

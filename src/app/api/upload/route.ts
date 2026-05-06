@@ -71,8 +71,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[DEBUG API] 上传失败:", error);
+    const isDev = process.env.NODE_ENV === "development";
     return NextResponse.json(
-      { success: false, error: { code: "UPLOAD_ERROR", message: "上传失败: " + (error instanceof Error ? error.message : String(error)) } },
+      { success: false, error: { code: "UPLOAD_ERROR", message: isDev ? (error instanceof Error ? error.message : "上传失败") : "上传失败，请稍后重试" } },
       { status: 500 }
     );
   }

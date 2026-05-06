@@ -11,12 +11,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signUserToken, signRefreshToken } from "@/lib/jwt";
 import { getWechatOAuthToken, getWechatUserInfo } from "@/lib/wechat";
-import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import { saveRefreshToken } from "@/lib/auth-security";
 import { SignJWT } from "jose";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-key-change-in-production-32chars"
-);
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  throw new Error("JWT_SECRET 未配置");
+}
+const secret = new TextEncoder().encode(jwtSecret);
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -34,7 +37,11 @@ export async function GET(request: NextRequest) {
       try {
         const stateData = JSON.parse(Buffer.from(state, "base64").toString());
         if (stateData.redirect) {
-          redirectUrl = stateData.redirect;
+          const url = stateData.redirect;
+          // 严格校验重定向目标：只允许相对路径，禁止协议和外部域名
+          if (url.startsWith("/") && !url.startsWith("//")) {
+            redirectUrl = url;
+          }
         }
       } catch {
         // state 解析失败，使用默认值
@@ -114,14 +121,9 @@ export async function GET(request: NextRequest) {
 
       console.log(`[WechatCallback] 用户登录: ${user.nickname || wechatUser.nickname}`);
 
-      // 保存 Refresh Token 到数据库
-      await prisma.refreshToken.create({
-        data: {
-          userId: user.id,
-          token: refreshToken,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30天后过期
-        },
-      });
+      // 保存 Refresh Token 到数据库（统一使用 saveRefreshToken，自动清理旧 Token）
+      const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
 
       const response = NextResponse.json({
         success: true,
@@ -139,8 +141,16 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      // 设置 Cookie
-      response.cookies.set(USER_COOKIE_NAME, accessToken, USER_COOKIE_OPTIONS);
+      // 设置 Access Token Cookie（15 分钟）
+      response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
+      // 设置 Refresh Token Cookie（30 天）
+      response.cookies.set("user_refresh_token", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax" as const,
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60,
+      });
 
       return response;
     }
@@ -176,19 +186,20 @@ export async function GET(request: NextRequest) {
 
     // 设置临时绑定令牌
     response.cookies.set("wechat_bind_token", bindToken, {
-      ...USER_COOKIE_OPTIONS,
+      ...USER_ACCESS_COOKIE_OPTIONS,
       maxAge: 60 * 60, // 1小时过期
     });
 
     return response;
   } catch (error) {
     console.error("[WechatCallback] 异常:", error);
+    const isDev = process.env.NODE_ENV === "development";
     return NextResponse.json(
       {
         success: false,
         error: {
           code: "INTERNAL_ERROR",
-          message: error instanceof Error ? error.message : "服务器错误",
+          message: isDev ? (error instanceof Error ? error.message : "服务器错误") : "服务器错误",
         },
       },
       { status: 500 }

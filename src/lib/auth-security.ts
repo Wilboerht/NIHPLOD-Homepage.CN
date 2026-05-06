@@ -38,14 +38,19 @@ export const DEFAULT_BRUTE_FORCE_CONFIG: BruteForceConfig = {
  * 获取客户端 IP 地址
  */
 export function getClientIP(request: NextRequest): string {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
-  }
+  // 优先使用可信代理直接提供的真实 IP
   const realIP = request.headers.get("x-real-ip");
   if (realIP) {
     return realIP;
   }
+
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const ips = forwardedFor.split(",").map((ip) => ip.trim()).filter(Boolean);
+    // 取最后一个 IP：由最靠近服务器的可信代理追加，不易被客户端伪造
+    return ips[ips.length - 1] || "unknown";
+  }
+
   // 回退到 socket 地址（开发环境）
   return "127.0.0.1";
 }
@@ -216,23 +221,23 @@ export async function saveRefreshToken(
   expiresAt: Date
 ): Promise<void> {
   try {
-    // 使用 upsert 确保同时间只有一个有效的 refresh token
-    // 这样可以防止多个 token 同时有效导致的安全问题
-    await prisma.refreshToken.deleteMany({
-      where: {
-        userId,
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-    });
-
-    await prisma.refreshToken.create({
-      data: {
-        userId,
-        token,
-        expiresAt,
-      },
-    });
+    // 原子操作：删除旧 Token + 创建新 Token，防止并发产生多个有效 Token
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({
+        where: {
+          userId,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+      }),
+      prisma.refreshToken.create({
+        data: {
+          userId,
+          token,
+          expiresAt,
+        },
+      }),
+    ]);
   } catch (error) {
     console.error("[SaveRefreshToken] 保存失败:", error);
     throw error;

@@ -60,6 +60,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 检查订单是否已超时（30 分钟）
+    const ORDER_TIMEOUT_MS = 30 * 60 * 1000;
+    const orderAge = Date.now() - order.createdAt.getTime();
+    if (orderAge > ORDER_TIMEOUT_MS) {
+      return NextResponse.json(
+        { success: false, error: { code: "ORDER_EXPIRED", message: "订单已超时，请重新下单" } },
+        { status: 400 }
+      );
+    }
+
     // 更新订单状态并增加销量
     await prisma.$transaction(async (tx) => {
       const orderWithItems = await tx.order.findUnique({

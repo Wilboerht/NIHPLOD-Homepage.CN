@@ -23,8 +23,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: "FAIL", message: "rate limited" }, { status: 429 });
   }
 
-  let recordId: string | undefined;
-
   try {
     const formData = await request.formData();
     
@@ -36,59 +34,46 @@ export async function POST(request: NextRequest) {
 
     const outTradeNo = params.out_trade_no;
     const tradeNo = params.trade_no || outTradeNo;
+    // 使用支付宝 notify_id 作为幂等 Key；若不存在则使用 out_trade_no + trade_status 组合
+    const notifyId = params.notify_id || `${outTradeNo}_${params.trade_status || ""}`;
 
     console.log("[AlipayNotify] 收到回调:", outTradeNo);
 
-    // 检查通知是否已处理过（用本地订单号 out_trade_no 作为幂等Key，稳定不变）
-    const idempotencyCheck = await isNotificationProcessed("alipay", outTradeNo);
-    
+    // 1. 只读幂等检查（不写入，防止 DoS 填满数据库）
+    const idempotencyCheck = await isNotificationProcessed("alipay", notifyId);
     if (idempotencyCheck.processed && idempotencyCheck.status === "SUCCESS") {
-      // 已成功处理过，直接返回成功
-      console.log(`[AlipayNotify] 通知 ${outTradeNo} 已处理过，返回成功应答`);
+      console.log(`[AlipayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
       return new NextResponse("success", { status: 200 });
     }
 
-    // 记录通知
-    const recordResult = await recordNotification(
-      "alipay",
-      outTradeNo,
-      tradeNo,
-      Math.round(parseFloat(params.receipt_amount || params.total_amount || "0") * 100),
-      params
-    );
-
-    if (!recordResult.success) {
-      // 如果无法记录（可能是并发冲突），返回成功以避免重试
-      console.warn(`[AlipayNotify] 无法记录通知 ${tradeNo}`);
-      return new NextResponse("success", { status: 200 });
-    }
-
-    recordId = recordResult.recordId;
-
+    // 2. 先验签 + 处理（验签失败会返回 fail，不会创建数据库记录）
     const result = await handleAlipayNotify(params);
-
-    if (result.success) {
-      // 标记为成功
-      if (recordId) {
-        await markNotificationSuccess(recordId);
-      }
-      // 返回成功响应（支付宝要求返回 "success" 字符串）
-      return new NextResponse("success", { status: 200 });
-    } else {
-      // 标记为失败
-      if (recordId) {
-        await markNotificationFailed(recordId, result.message || "Unknown error");
-      }
+    if (!result.success) {
       console.error("[AlipayNotify] 处理失败:", result.message);
       return new NextResponse("fail", { status: 200 });
     }
+
+    // 3. 验签通过且处理成功后，再记录幂等性
+    try {
+      const amount = Math.round(parseFloat(params.receipt_amount || params.total_amount || "0") * 100);
+      const recordResult = await recordNotification("alipay", notifyId, tradeNo, amount, params);
+      if (recordResult.success && recordResult.recordId) {
+        await markNotificationSuccess(recordResult.recordId);
+      }
+    } catch (recordError) {
+      console.warn(`[AlipayNotify] 幂等记录失败 ${notifyId}:`, recordError);
+    }
+
+    // 返回成功响应（支付宝要求返回 "success" 字符串）
+    return new NextResponse("success", { status: 200 });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    // 标记为失败
-    if (recordId) {
-      await markNotificationFailed(recordId, errorMessage);
-    }
     console.error("[AlipayNotify] 异常:", error);
+    // 区分系统错误和业务错误：系统错误返回 500 让支付宝重试
+    const isSystemError = errorMessage.includes("connection") || errorMessage.includes("timeout") || errorMessage.includes("Prisma");
+    if (isSystemError) {
+      return new NextResponse("system error", { status: 500 });
+    }
     return new NextResponse("fail", { status: 200 });
   }
 }

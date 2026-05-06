@@ -60,12 +60,14 @@ const PUBLIC_API_PREFIXES = [
 ];
 
 /**
- * 验证 JWT Token
+ * 验证 JWT Token（中间件层）
+ * 仅校验签名和过期时间，详细的 type 校验由 API 路由二次确认
  */
 async function verifyToken(token: string): Promise<boolean> {
   try {
-    await jwtVerify(token, getSecret());
-    return true;
+    const { payload } = await jwtVerify(token, getSecret());
+    // 中间件层也做基本的 admin type 校验，防止依赖遗漏
+    return (payload as any).type === "admin";
   } catch {
     return false;
   }

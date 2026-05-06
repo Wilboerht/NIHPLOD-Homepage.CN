@@ -22,7 +22,11 @@ const createOrderSchema = z.object({
   items: z.array(z.object({
     productId: z.string(),
     quantity: z.number().int().min(1).max(99),
-  })).min(1, "请选择商品").max(50, "单次最多结算50件商品"),
+  })).min(1, "请选择商品").max(50, "单次最多结算50件商品")
+    .refine((items) => {
+      const ids = items.map(i => i.productId);
+      return ids.length === new Set(ids).size;
+    }, { message: "商品不能重复", path: ["items"] }),
   remark: z.string().max(200).optional(),
   userCouponId: z.string().optional(),
 }).refine(data => data.addressId || data.recipient, {

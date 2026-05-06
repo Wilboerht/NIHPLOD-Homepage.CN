@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signUserToken, signRefreshToken } from "@/lib/jwt";
-import { USER_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import { saveRefreshToken } from "@/lib/auth-security";
 import { z } from "zod";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
 import { jwtVerify } from "jose";
 
-const secret = new TextEncoder().encode(
-    process.env.JWT_SECRET || "dev-secret-key-change-in-production-32chars"
-);
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+    throw new Error("JWT_SECRET 未配置");
+}
+const secret = new TextEncoder().encode(jwtSecret);
+
+import { passwordSchema } from "@/lib/password";
 
 /**
  * 微信绑定表单
@@ -17,7 +22,7 @@ const secret = new TextEncoder().encode(
 const bindSchema = z.object({
     phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
     code: z.string().length(6, "验证码为6位数字"),
-    password: z.string().min(6, "密码至少6位").max(32, "密码最多32位").optional(),
+    password: passwordSchema.optional(),
     allowAutoPassword: z.boolean().default(true),
 });
 
@@ -225,14 +230,9 @@ export async function POST(request: NextRequest) {
             phone: user.phone 
         });
 
-        // 保存 Refresh Token 到数据库
-        await prisma.refreshToken.create({
-            data: {
-                userId: user.id,
-                token: refreshToken,
-                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30天后过期
-            },
-        });
+        // 保存 Refresh Token 到数据库（统一使用 saveRefreshToken，自动清理旧 Token）
+        const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
 
         const response = NextResponse.json({
             success: true,
@@ -249,10 +249,18 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // 设置 Cookie
-        response.cookies.set(USER_COOKIE_NAME, accessToken, USER_COOKIE_OPTIONS);
+        // 设置 Access Token Cookie（15 分钟）
+        response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
+        // 设置 Refresh Token Cookie（30 天）
+        response.cookies.set("user_refresh_token", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax" as const,
+            path: "/",
+            maxAge: 30 * 24 * 60 * 60,
+        });
         // 清除临时绑定 token
-        response.cookies.set("wechat_bind_token", "", { ...USER_COOKIE_OPTIONS, maxAge: 0 });
+        response.cookies.set("wechat_bind_token", "", { ...USER_ACCESS_COOKIE_OPTIONS, maxAge: 0 });
 
         return response;
     } catch (error) {

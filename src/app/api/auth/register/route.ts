@@ -14,12 +14,13 @@ import { saveRefreshToken } from "@/lib/auth-security";
 import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { hashPassword, passwordSchema } from "@/lib/password";
 
 // 请求参数验证
 const registerSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   code: z.string().length(6, "验证码为6位数字"),
-  password: z.string().min(6, "密码至少6位").max(32, "密码最多32位"),
+  password: passwordSchema,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "两次密码不一致",
@@ -128,8 +129,8 @@ export async function POST(request: NextRequest) {
       data: { used: true },
     });
 
-    // 加密密码
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // 加密密码（使用项目统一的 salt rounds）
+    const hashedPassword = await hashPassword(password);
 
     // 创建用户
     const user = await prisma.user.create({

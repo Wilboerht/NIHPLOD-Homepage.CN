@@ -17,9 +17,12 @@ const globalForPrisma = globalThis as unknown as {
 const poolConfig: pg.PoolConfig = {
   connectionString: process.env.DATABASE_URL,
   // 生产环境强制开启 SSL 以确保与 Supabase/云数据库握手稳健
+  // 安全建议：通过 DATABASE_SSL_CA 环境变量指定 CA 证书路径，避免 rejectUnauthorized: false 的中间人风险
   ssl:
     process.env.NODE_ENV === "production" || process.env.DATABASE_URL?.includes("supabase")
-      ? { rejectUnauthorized: false }
+      ? process.env.DATABASE_SSL_CA
+        ? { ca: require("fs").readFileSync(process.env.DATABASE_SSL_CA) }
+        : { rejectUnauthorized: false }
       : undefined,
   // 连接池优化配置：在构建阶段会有高并发的 DB 请求
   max: process.env.DATABASE_MAX_CONNECTIONS
