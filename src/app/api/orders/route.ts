@@ -80,8 +80,6 @@ export async function GET(request: NextRequest) {
       prisma.order.count({ where: whereClause }),
     ]);
 
-    console.log(`[GetOrders] User ${payload.id}: page=${page} total=${total}`);
-
     return NextResponse.json({
       success: true,
       data: {

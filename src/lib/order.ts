@@ -5,6 +5,7 @@
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { ensureMoneyPrecision } from "./money";
+import { randomInt } from "./random";
 
 /**
  * 生成订单号
@@ -13,7 +14,7 @@ import { ensureMoneyPrecision } from "./money";
 export function generateOrderNo(): string {
   const now = new Date();
   const datePart = now.toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
-  const randomPart = Math.random().toString().slice(2, 8);
+  const randomPart = randomInt(100000, 1000000).toString();
   return `${datePart}${randomPart}`;
 }
 

@@ -197,7 +197,12 @@ export async function processRefund(
         refundNo = `${order.orderNo}-${Date.now()}`;
 
         // 支付宝同步退款成功，直接 finalize
-        await finalizeRefund(orderId, refundNo, refundAmount);
+        try {
+          await finalizeRefund(orderId, refundNo, refundAmount);
+        } catch (finalizeError) {
+          console.error(`[Refund] finalizeRefund 失败:`, finalizeError);
+          return { success: false, error: "退款已到账，但系统状态更新失败，请联系技术团队" };
+        }
       }
 
       // 3. 其他支付方式（如模拟支付）：直接 finalize
@@ -222,11 +227,7 @@ export async function processRefund(
       console.log(`[Refund] 退款处理成功: ${order.orderNo}`);
     } else {
       // 拒绝退款：恢复到退款前状态（优先使用记录的 previousStatus）
-      const previousStatus = order.previousStatus
-        ? (order.previousStatus as OrderStatus)
-        : order.trackingNo
-          ? OrderStatus.SHIPPED
-          : OrderStatus.PAID;
+      const previousStatus = order.previousStatus || OrderStatus.PAID;
       await prisma.order.update({
         where: { id: orderId },
         data: {
@@ -269,10 +270,12 @@ export async function cancelRefund(
     }
 
     // 恢复到退款前状态
+    const previousStatus = order.previousStatus || OrderStatus.PAID;
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: order.trackingNo ? OrderStatus.SHIPPED : OrderStatus.PAID,
+        status: previousStatus,
+        previousStatus: null,
         remark: order.remark?.replace(/\n?\[退款申请\].*/, "") || null,
       },
     });

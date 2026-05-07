@@ -209,47 +209,34 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
   // 上传图片到服务器
   const uploadImages = async (images: ImageItem[]): Promise<ImageItem[]> => {
-    console.log("[DEBUG] uploadImages 开始, 图片数量:", images.length);
     const uploaded: ImageItem[] = [];
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
-      console.log(`[DEBUG] 处理图片 ${i + 1}:`, { hasFile: !!img.file, url: img.url, id: img.id });
 
       if (img.file) {
         // 新上传的图片
-        console.log(`[DEBUG] 上传新图片:`, { name: img.file.name, size: img.file.size, type: img.file.type });
         const formData = new FormData();
         formData.append("file", img.file);
         formData.append("folder", "products");
 
-        try {
-          const res = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-          console.log(`[DEBUG] 上传响应状态:`, res.status, res.statusText);
-          const data = await res.json();
-          console.log(`[DEBUG] 上传响应数据:`, data);
+        const data = await res.json();
 
-          if (!res.ok) {
-            console.error(`[DEBUG] 上传失败:`, data);
-            throw new Error(data.error?.message || "图片上传失败");
-          }
-
-          uploaded.push({
-            url: data.data.url,
-            alt: img.alt,
-            order: img.order,
-          });
-          console.log(`[DEBUG] 图片上传成功:`, data.data.url);
-        } catch (uploadError) {
-          console.error(`[DEBUG] 上传异常:`, uploadError);
-          throw uploadError;
+        if (!res.ok) {
+          throw new Error(data.error?.message || "图片上传失败");
         }
+
+        uploaded.push({
+          url: data.data.url,
+          alt: img.alt,
+          order: img.order,
+        });
       } else {
         // 已有图片
-        console.log(`[DEBUG] 保留已有图片:`, img.url);
         uploaded.push({
           id: img.id,
           url: img.url,
@@ -258,7 +245,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         });
       }
     }
-    console.log("[DEBUG] uploadImages 完成, 上传成功:", uploaded.length);
     return uploaded;
   };
 

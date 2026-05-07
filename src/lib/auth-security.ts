@@ -90,8 +90,9 @@ export async function recordLoginAttempt(
       },
     });
   } catch (error) {
-    console.error("[RecordLoginAttempt] 记录失败:", error);
-    // 不抛出异常，避免影响主流程
+    // 使用结构化日志记录失败，不阻塞主流程
+    const { logError } = await import("./logger");
+    logError("RecordLoginAttempt", error, { phone, success });
   }
 }
 

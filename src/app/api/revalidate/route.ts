@@ -30,8 +30,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 重新验证指定路径
+    // 重新验证指定路径（白名单校验）
+    const ALLOWED_PATHS = ["/", "/about", "/products", "/services", "/guide", "/careers", "/contact", "/faq", "/terms", "/privacy"];
+    const isAllowed = (p: string) => ALLOWED_PATHS.includes(p) || p.startsWith("/products/") || p.startsWith("/admin/");
     for (const path of paths) {
+      if (!isAllowed(path)) {
+        return NextResponse.json(
+          { success: false, error: `路径不允许刷新: ${path}` },
+          { status: 400 }
+        );
+      }
       revalidatePath(path);
     }
 

@@ -46,12 +46,26 @@ export async function POST(request: NextRequest) {
         });
         break;
 
-      case "delete":
+      case "delete": {
+        // 检查是否有产品被订单引用
+        const referencedItems = await prisma.orderItem.findMany({
+          where: { productId: { in: ids } },
+          select: { productId: true },
+          distinct: ["productId"],
+        });
+        if (referencedItems.length > 0) {
+          const referencedIds = referencedItems.map((i) => i.productId);
+          return NextResponse.json(
+            { success: false, error: { code: "REFERENCED_PRODUCTS", message: "部分产品已被订单引用，无法删除", referencedIds } },
+            { status: 409 }
+          );
+        }
         // 删除产品会级联删除关联的图片
         result = await prisma.product.deleteMany({
           where: { id: { in: ids } },
         });
         break;
+      }
 
       default:
         return NextResponse.json(

@@ -42,6 +42,18 @@ export async function POST(request: NextRequest) {
       });
       count = result.count;
     } else if (action === "delete") {
+      const referencedApps = await prisma.jobApplication.findMany({
+        where: { jobId: { in: ids } },
+        select: { jobId: true },
+        distinct: ["jobId"],
+      });
+      if (referencedApps.length > 0) {
+        const referencedIds = referencedApps.map((a) => a.jobId);
+        return NextResponse.json(
+          { success: false, error: { code: "REFERENCED_JOBS", message: "部分职位存在申请记录，无法删除", referencedIds } },
+          { status: 409 }
+        );
+      }
       const result = await prisma.job.deleteMany({
         where: { id: { in: ids } },
       });

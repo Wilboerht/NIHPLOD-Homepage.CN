@@ -47,17 +47,27 @@ export const isTest = process.env.NODE_ENV === "test";
  * 验证必需的环境变量
  * 在应用启动时调用
  */
-export function validateEnv(): { valid: boolean; missing: string[] } {
+export function validateEnv(): { valid: boolean; missing: string[]; errors: string[] } {
   const required = ["DATABASE_URL", "JWT_SECRET"];
-
   const missing = required.filter((key) => !process.env[key]);
+  const errors: string[] = [];
 
-  if (missing.length > 0 && isProd) {
-    console.error("Missing required environment variables:", missing);
+  if (missing.length > 0) {
+    errors.push(`Missing required environment variables: ${missing.join(", ")}`);
+  }
+
+  const jwtSecret = process.env.JWT_SECRET;
+  if (jwtSecret && jwtSecret.length < 32) {
+    errors.push("JWT_SECRET must be at least 32 characters long");
+  }
+
+  if (errors.length > 0 && isProd) {
+    console.error("[EnvValidation] 环境变量校验失败:", errors);
   }
 
   return {
-    valid: missing.length === 0,
+    valid: errors.length === 0,
     missing,
+    errors,
   };
 }

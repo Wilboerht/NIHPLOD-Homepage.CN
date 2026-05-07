@@ -4,6 +4,7 @@
  */
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { randomInt } from "./random";
 
 /**
  * 用户密码强度校验 Schema
@@ -64,7 +65,7 @@ export function generateSecurePassword(length: number = 32): string {
   };
 
   while (password.length < length || !has.upper || !has.lower || !has.digit || !has.special) {
-    const randomIndex = Math.floor(Math.random() * charsetLength);
+    const randomIndex = randomInt(0, charsetLength);
     const char = charset[randomIndex];
     password += char;
 

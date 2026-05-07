@@ -51,14 +51,23 @@ export async function shipOrder(
       return { success: false, error: "订单状态不正确" };
     }
 
-    await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: OrderStatus.SHIPPED,
-        shippingCompany: logisticsCompany,
-        trackingNo,
-        shippedAt: new Date(),
-      },
+    await prisma.$transaction(async (tx) => {
+      const currentOrder = await tx.order.findUnique({
+        where: { id: orderId },
+        select: { status: true },
+      });
+      if (!currentOrder || (currentOrder.status !== OrderStatus.PAID && currentOrder.status !== OrderStatus.PROCESSING)) {
+        throw new Error("订单状态不正确");
+      }
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.SHIPPED,
+          shippingCompany: logisticsCompany,
+          trackingNo,
+          shippedAt: new Date(),
+        },
+      });
     });
 
     console.log(`[Logistics] 订单发货: ${order.orderNo} - ${logisticsCompany} ${trackingNo}`);

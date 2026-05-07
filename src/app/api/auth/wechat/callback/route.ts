@@ -39,8 +39,14 @@ export async function GET(request: NextRequest) {
         if (stateData.redirect) {
           const url = stateData.redirect;
           // 严格校验重定向目标：只允许相对路径，禁止协议和外部域名
-          if (url.startsWith("/") && !url.startsWith("//")) {
-            redirectUrl = url;
+          const base = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+          try {
+            const resolved = new URL(url, base);
+            if (resolved.origin === new URL(base).origin) {
+              redirectUrl = url;
+            }
+          } catch {
+            // URL 解析失败，保持默认根路径
           }
         }
       } catch {

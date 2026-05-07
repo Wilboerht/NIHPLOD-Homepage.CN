@@ -87,7 +87,9 @@ export async function middleware(request: NextRequest) {
   // 获取 Token
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   // 懒惰验证：只有在需要鉴权时才进行 verifyToken，节省 CPU
-  const checkAuth = async () => token ? await verifyToken(token) : false;
+  // 同一请求内记忆化结果，避免重复验证
+  let _authResult: boolean | undefined;
+  const checkAuth = async () => _authResult ?? (_authResult = token ? await verifyToken(token) : false);
 
   // ================= 1. 页面路由保护 =================
 

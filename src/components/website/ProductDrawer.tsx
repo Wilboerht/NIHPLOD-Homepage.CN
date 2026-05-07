@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from "lucide-react";
@@ -317,7 +318,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   <section className="mb-8">
                     <div
                       className="text-[15px] leading-[1.8] text-[#00263E]/70 text-justify"
-                      dangerouslySetInnerHTML={{ __html: product.description }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
                     />
                   </section>
 
@@ -376,7 +377,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                             >
                               <div
                                 className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
-                                dangerouslySetInnerHTML={{ __html: product.ingredients }}
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.ingredients) }}
                               />
                             </m.div>
                           )}
@@ -404,7 +405,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                             >
                               <div
                                 className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
-                                dangerouslySetInnerHTML={{ __html: product.usage }}
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
                               />
                             </m.div>
                           )}

@@ -101,7 +101,11 @@ export async function validateFileBuffer(buffer: Buffer): Promise<{ valid: boole
 
 // 路径净化：只允许字母、数字、下划线、连字符和单层路径
 function sanitizeFolder(folder: string): string {
-  return folder.replace(/[^a-zA-Z0-9_\-/]/g, "").replace(/\.\./g, "");
+  return folder
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter((s) => s && s !== "." && s !== "..")
+    .join("/");
 }
 
 // 确保上传目录存在

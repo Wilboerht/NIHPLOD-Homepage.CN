@@ -105,23 +105,28 @@ export async function POST(request: NextRequest) {
 
     // 支付宝支付
     if (payMethod === "alipay") {
-      const alipayResult = await createAlipayPayment(orderId);
-
-      if (!alipayResult.success) {
+      // CAS：先原子锁定为 PAYING，防止重复支付
+      const locked = await prisma.order.updateMany({
+        where: { id: orderId, userId: payload.id, status: "PENDING" },
+        data: { status: "PAYING" },
+      });
+      if (locked.count === 0) {
         return NextResponse.json(
-          { success: false, error: { code: "PAY_FAILED", message: alipayResult.error } },
+          { success: false, error: { code: "PAY_IN_PROGRESS", message: "订单正在支付中或已支付" } },
           { status: 400 }
         );
       }
 
-      // CAS：只有 PENDING 才能变为 PAYING，防止重复支付
-      const updated = await prisma.order.updateMany({
-        where: { id: orderId, userId: payload.id, status: "PENDING" },
-        data: { status: "PAYING" },
-      });
-      if (updated.count === 0) {
+      const alipayResult = await createAlipayPayment(orderId);
+
+      if (!alipayResult.success) {
+        // 回滚为 PENDING，允许用户重试
+        await prisma.order.updateMany({
+          where: { id: orderId, status: "PAYING" },
+          data: { status: "PENDING" },
+        });
         return NextResponse.json(
-          { success: false, error: { code: "PAY_IN_PROGRESS", message: "订单正在支付中或已支付" } },
+          { success: false, error: { code: "PAY_FAILED", message: alipayResult.error } },
           { status: 400 }
         );
       }
@@ -137,6 +142,18 @@ export async function POST(request: NextRequest) {
 
     // 微信支付
     if (payMethod === "wechat") {
+      // CAS：先原子锁定为 PAYING，防止重复支付
+      const locked = await prisma.order.updateMany({
+        where: { id: orderId, userId: payload.id, status: "PENDING" },
+        data: { status: "PAYING" },
+      });
+      if (locked.count === 0) {
+        return NextResponse.json(
+          { success: false, error: { code: "PAY_IN_PROGRESS", message: "订单正在支付中或已支付" } },
+          { status: 400 }
+        );
+      }
+
       let openId: string | undefined = undefined;
 
       // JSAPI 需要 OpenID
@@ -147,6 +164,11 @@ export async function POST(request: NextRequest) {
         });
 
         if (!user?.wechatOpenId) {
+          // 回滚为 PENDING
+          await prisma.order.updateMany({
+            where: { id: orderId, status: "PAYING" },
+            data: { status: "PENDING" },
+          });
           return NextResponse.json(
             { success: false, error: { code: "NO_OPENID", message: "请使用微信登录后支付" } },
             { status: 400 }
@@ -164,20 +186,13 @@ export async function POST(request: NextRequest) {
       const payResult = await createPayment(orderId, v3TradeType as "H5" | "JSAPI" | "NATIVE", openId, clientIp);
 
       if (!payResult.success) {
+        // 回滚为 PENDING，允许用户重试
+        await prisma.order.updateMany({
+          where: { id: orderId, status: "PAYING" },
+          data: { status: "PENDING" },
+        });
         return NextResponse.json(
           { success: false, error: { code: "PAY_FAILED", message: payResult.error } },
-          { status: 400 }
-        );
-      }
-
-      // CAS：只有 PENDING 才能变为 PAYING，防止重复支付
-      const updated = await prisma.order.updateMany({
-        where: { id: orderId, userId: payload.id, status: "PENDING" },
-        data: { status: "PAYING" },
-      });
-      if (updated.count === 0) {
-        return NextResponse.json(
-          { success: false, error: { code: "PAY_IN_PROGRESS", message: "订单正在支付中或已支付" } },
           { status: 400 }
         );
       }

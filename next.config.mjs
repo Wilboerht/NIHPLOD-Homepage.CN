@@ -22,7 +22,7 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://*.amap.com blob:",
+      "script-src 'self' 'unsafe-eval' https://static.cloudflareinsights.com https://*.amap.com blob:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
       // 收紧 img-src：禁止任意 https: 通配，只允许已知域名
       "img-src 'self' data: blob: https://*.nihplod.cn https://*.supabase.co https://*.aliyuncs.com http://*.amap.com http://*.autonavi.com",
@@ -45,8 +45,6 @@ const nextConfig = {
       '@prisma/client',
       'prisma',
       'tencentcloud-sdk-nodejs',
-      'nodemailer',
-      'maxmind',
       'pdfmake',
       'jspdf',
     ],

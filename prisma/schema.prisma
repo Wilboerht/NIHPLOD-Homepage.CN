@@ -297,6 +297,7 @@ model SmsCode {
 
   @@index([phone, type])
   @@index([expiresAt])
+  @@index([phone, used, expiresAt])
 }
 
 
@@ -343,7 +344,7 @@ model Order {
 
   // 状态
   status         OrderStatus @default(PENDING)
-  previousStatus String?     // 申请退款前的状态，用于拒绝退款后恢复
+  previousStatus OrderStatus? // 申请退款前的状态，用于拒绝退款后恢复
 
   // 支付
   paymentMethod  String?                       // wechat | alipay
@@ -377,6 +378,7 @@ model Order {
   @@index([userId, createdAt(sort: Desc)])
   @@index([status, createdAt])
   @@index([orderNo])
+  @@index([paymentNo])
 }
 
 model OrderItem {
@@ -476,6 +478,8 @@ model Coupon {
   createdAt   DateTime  @default(now())
   
   userCoupons UserCoupon[]
+
+  @@index([isActive])
 }
 
 model UserCoupon {
@@ -500,4 +504,5 @@ model UserCoupon {
 
   @@index([userId, status])
   @@index([expiresAt])
+  @@index([orderId])
 }

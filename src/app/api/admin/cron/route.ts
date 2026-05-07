@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import { getCronTasksStatus, runCronTaskManually } from "@/lib/cron-tasks";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 
 // 只允许管理员访问（owner 和 admin）
@@ -58,6 +59,16 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // 速率限制：管理员手动触发任务，每分钟最多 10 次
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "default", { maxRequests: 10, windowMs: 60 * 1000 });
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁" } },
+        { status: 429 }
+      );
+    }
+
     const admin = await validateAdmin(request);
     if (!admin) {
       return NextResponse.json(

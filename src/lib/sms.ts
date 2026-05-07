@@ -11,6 +11,8 @@
  */
 
 import crypto from "crypto";
+import { randomInt } from "./random";
+import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 
 export type SMSTemplate = "LOGIN_CODE";
@@ -112,7 +114,7 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
       .join("&");
 
-    const response = await fetch(`${endpoint}?${queryString}`, {
+    const response = await fetchWithTimeout(`${endpoint}?${queryString}`, {
       method: "GET",
     });
 
@@ -261,6 +263,6 @@ export async function sendLoginCode(phone: string, code: string): Promise<SMSRes
  * 生成6位数字验证码
  */
 export function generateVerifyCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
 }
 

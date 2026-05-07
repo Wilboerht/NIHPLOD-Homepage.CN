@@ -132,31 +132,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查库存
-    if (product.stock < quantity) {
-      return NextResponse.json(
-        { success: false, error: { code: "INSUFFICIENT_STOCK", message: "库存不足" } },
-        { status: 400 }
-      );
-    }
-
-    // 查找是否已在购物车中（使用 unique 约束）
-    const existing = await prisma.cartItem.findUnique({
-      where: { userId_productId: { userId: payload.id, productId } },
-    });
-
+    // 使用事务保证库存检查和购物车操作的原子性
     let cartItem;
-    if (existing) {
-      // 使用原子 increment 避免并发更新丢失
-      cartItem = await prisma.cartItem.update({
-        where: { id: existing.id },
-        data: { quantity: { increment: quantity } },
+    try {
+      cartItem = await prisma.$transaction(async (tx) => {
+        const currentProduct = await tx.product.findUnique({
+          where: { id: productId },
+          select: { stock: true, published: true, allowDirectBuy: true },
+        });
+        if (!currentProduct || !currentProduct.published) {
+          throw new Error("PRODUCT_NOT_FOUND");
+        }
+        if (!currentProduct.allowDirectBuy) {
+          throw new Error("DIRECT_BUY_NOT_ALLOWED");
+        }
+        if (currentProduct.stock < quantity) {
+          throw new Error("INSUFFICIENT_STOCK");
+        }
+
+        const existing = await tx.cartItem.findUnique({
+          where: { userId_productId: { userId: payload.id, productId } },
+        });
+
+        if (existing) {
+          return tx.cartItem.update({
+            where: { id: existing.id },
+            data: { quantity: { increment: quantity } },
+          });
+        }
+        return tx.cartItem.create({
+          data: { userId: payload.id, productId, quantity },
+        });
       });
-    } else {
-      // 新增
-      cartItem = await prisma.cartItem.create({
-        data: { userId: payload.id, productId, quantity },
-      });
+    } catch (txError) {
+      if (txError instanceof Error) {
+        if (txError.message === "PRODUCT_NOT_FOUND") {
+          return NextResponse.json(
+            { success: false, error: { code: "PRODUCT_NOT_FOUND", message: "商品不存在或已下架" } },
+            { status: 404 }
+          );
+        }
+        if (txError.message === "DIRECT_BUY_NOT_ALLOWED") {
+          return NextResponse.json(
+            { success: false, error: { code: "DIRECT_BUY_NOT_ALLOWED", message: "该商品不支持站内购买" } },
+            { status: 400 }
+          );
+        }
+        if (txError.message === "INSUFFICIENT_STOCK") {
+          return NextResponse.json(
+            { success: false, error: { code: "INSUFFICIENT_STOCK", message: "库存不足" } },
+            { status: 400 }
+          );
+        }
+      }
+      throw txError;
     }
 
     return NextResponse.json({

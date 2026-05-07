@@ -204,8 +204,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const coupons = availableCoupons.map((uc: any) => ({
+    const coupons = availableCoupons.map((uc) => ({
       id: uc.id,
       name: uc.coupon.name,
       type: uc.coupon.type,

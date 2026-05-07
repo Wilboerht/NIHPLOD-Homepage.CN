@@ -5,13 +5,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateUploadSignature } from "@/lib/ali-oss";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { verifyUserAuth } from "@/lib/auth";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
     try {
-        // 1. 简单的身份/频率检查
+        // 1. 要求用户登录
+        const user = await verifyUserAuth(request);
+        if (!user) {
+            return NextResponse.json({ error: "请先登录" }, { status: 401 });
+        }
+
+        // 2. 频率检查
         const ip = getClientIP(request);
         const limitParams = await rateLimit(ip, "oss-sign");
         if (!limitParams.success) {
@@ -24,14 +31,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Missing filename or type" }, { status: 400 });
         }
 
-        // 校验文件扩展名（防止上传可执行文件）
-        const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf", "mp4", "mov"];
+        // 校验文件扩展名（普通用户只能上传图片和 PDF，视频仅限管理员）
+        const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf"];
+        const ADMIN_EXTS = ["mp4", "mov"];
+        const isAdmin = user.role === "admin" || user.role === "owner";
         const ext = filename.split(".").pop()?.toLowerCase() || "";
-        if (!ALLOWED_EXTS.includes(ext)) {
+        const allAllowed = isAdmin ? [...ALLOWED_EXTS, ...ADMIN_EXTS] : ALLOWED_EXTS;
+        if (!allAllowed.includes(ext)) {
             return NextResponse.json({ error: "不支持的文件类型" }, { status: 400 });
         }
 
-        // 2. 生成签名
+        // 3. 生成签名
         const signature = await generateUploadSignature(filename, type);
 
         return NextResponse.json({

@@ -6,15 +6,9 @@ import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { Wechatpay, Rsa, Formatter, Aes } from "wechatpay-axios-plugin";
 import { yuanToFen, moneyStrictEqual } from "./money";
+import { formatKey } from "./crypto-utils";
 
-// 格式化证书/私钥：处理 \n、引号以及多行格式
-const formatKey = (key?: string) => {
-  if (!key) return "";
-  return key
-    .replace(/^["']|["']$/g, "") // 移除首尾引号
-    .replace(/\\n/g, "\n")      // 将 \n 转换为真实换行
-    .trim();
-};
+
 
 const getConfig = () => ({
   appId: process.env.WECHAT_PAY_APP_ID || process.env.WECHAT_APP_ID || "",
@@ -154,7 +148,7 @@ export async function createPayment(
   } catch (error) {
     const err = error as { response?: { data?: { message?: string } }; message?: string };
     const errorMsg = err.response?.data?.message || err.message || "未知错误";
-    console.error(`[WechatPay] 下单失败 (${orderId}):`, err.response?.data || err.message);
+    console.error(`[WechatPay] 下单失败 (${orderId}):`, err.message || "未知错误");
     return { success: false, error: errorMsg };
   }
 }

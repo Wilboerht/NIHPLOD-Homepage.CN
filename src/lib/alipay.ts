@@ -6,15 +6,10 @@ import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { formatMoney, moneyStrictEqual } from "./money";
+import { formatKey } from "./crypto-utils";
+import { fetchWithTimeout } from "./fetch-utils";
 
-// 格式化密钥：处理 \n 和首尾引号
-const formatKey = (key?: string) => {
-  if (!key) return "";
-  return key
-    .replace(/^["']|["']$/g, "")
-    .replace(/\\n/g, "\n")
-    .trim();
-};
+
 
 // 支付宝配置
 const ALIPAY_CONFIG = {
@@ -289,7 +284,7 @@ export async function refundAlipayOrder(
 
     const url = `${ALIPAY_CONFIG.gateway}?${query}`;
 
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, { timeout: 30000 });
     const data = await res.json();
 
     const response = data.alipay_trade_refund_response;

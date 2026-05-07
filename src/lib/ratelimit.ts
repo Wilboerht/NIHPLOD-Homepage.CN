@@ -2,6 +2,7 @@
  * 速率限制工具
  * 使用内存 LRU 缓存实现简单的 IP 限流
  */
+import { LRUCache } from "lru-cache";
 
 /** 速率限制配置 */
 export interface RateLimitOptions {
@@ -29,28 +30,11 @@ interface RequestRecord {
   windowStart: number;
 }
 
-/** 内存缓存 - 存储 IP 请求记录 */
-const rateLimitCache = new Map<string, RequestRecord>();
-
-/** 缓存清理间隔（5分钟） */
-const CLEANUP_INTERVAL = 5 * 60 * 1000;
-
-/** 定期清理过期记录 */
-let cleanupTimer: ReturnType<typeof setInterval> | null = null;
-
-function startCleanup() {
-  if (cleanupTimer) return;
-
-  cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    rateLimitCache.forEach((record, key) => {
-      // 删除超过 1 小时未活跃的记录
-      if (now - record.windowStart > 60 * 60 * 1000) {
-        rateLimitCache.delete(key);
-      }
-    });
-  }, CLEANUP_INTERVAL);
-}
+/** 内存缓存 - 使用 LRU 防止无界增长 */
+const rateLimitCache = new LRUCache<string, RequestRecord>({
+  max: 5000,
+  ttl: 60 * 60 * 1000, // 1 小时
+});
 
 /** 默认配置 */
 const DEFAULT_OPTIONS: RateLimitOptions = {
@@ -109,9 +93,6 @@ export async function rateLimit(
   type: keyof typeof RATE_LIMIT_PRESETS = "default",
   options?: Partial<RateLimitOptions>
 ): Promise<RateLimitResult> {
-  // 启动清理定时器
-  startCleanup();
-
   // 合并配置
   const preset = RATE_LIMIT_PRESETS[type] || DEFAULT_OPTIONS;
   const opts: RateLimitOptions = { ...preset, ...options };
@@ -163,7 +144,7 @@ export async function rateLimit(
 /**
  * 获取客户端 IP 地址
  * 支持代理环境
- * 
+ *
  * 在反向代理架构中（Vercel/Nginx），X-Forwarded-For 格式为：
  *   client, proxy1, proxy2, ..., lastProxy
  * 前面的 IP 可能被客户端伪造，最后一个是由最靠近服务器的可信代理追加的，

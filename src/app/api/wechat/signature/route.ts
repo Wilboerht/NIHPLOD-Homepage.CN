@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getWechatSignature } from "@/lib/wechat";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 缓存控制: 签名有效期 2 小时，但建议每次页面加载都获取新签名
 const CACHE_DURATION = 60; // 1 分钟缓存，减少重复请求
@@ -14,6 +15,16 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // 速率限制：每分钟最多 60 次
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "default", { maxRequests: 60, windowMs: 60 * 1000 });
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁" } },
+        { status: 429 }
+      );
+    }
+
     // 获取要签名的 URL
     const url = request.nextUrl.searchParams.get("url");
 
@@ -57,6 +68,15 @@ export async function GET(request: NextRequest) {
           },
         },
         { status: 503 }
+      );
+    }
+
+    // 域名白名单校验
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+    if (!url.startsWith(baseUrl)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_URL", message: "只能为官方域名生成签名" } },
+        { status: 400 }
       );
     }
 

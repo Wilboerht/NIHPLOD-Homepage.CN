@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { uploadFile } from "@/lib/upload";
 import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { fileTypeFromBuffer } from "file-type";
 
 // 表单验证 schema
 const ApplyFormSchema = z.object({
@@ -12,11 +13,6 @@ const ApplyFormSchema = z.object({
   name: z.string().min(2, "姓名至少2个字符").max(50, "姓名最多50个字符"),
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
 });
-
-// 允许的文件类型
-const ALLOWED_TYPES = [
-  "application/pdf",
-];
 
 // 最大文件大小 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -74,9 +70,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查文件类型
-    if (!ALLOWED_TYPES.includes(resumeFile.type)) {
-      console.log("❌ [Apply API] Invalid file type:", resumeFile.type);
+    // 读取文件内容用于真实类型检测
+    const fileBuffer = Buffer.from(await resumeFile.arrayBuffer());
+
+    // Magic bytes 校验真实文件类型（防止 MIME 伪造）
+    const fileTypeResult = await fileTypeFromBuffer(fileBuffer);
+    if (!fileTypeResult || fileTypeResult.mime !== "application/pdf") {
+      console.log("❌ [Apply API] Invalid file type (magic bytes):", fileTypeResult?.mime);
       return NextResponse.json(
         { error: "仅支持 PDF 格式的简历" },
         { status: 400 }
@@ -111,7 +111,6 @@ export async function POST(request: NextRequest) {
     console.log("✅ [Apply API] Job found:", job.title);
 
     // 上传文件到存储 (自动处理 Local/Supabase)
-    const fileBuffer = Buffer.from(await resumeFile.arrayBuffer());
     const uploadResult = await uploadFile(
       fileBuffer,
       resumeFile.name,
@@ -164,13 +163,9 @@ export async function POST(request: NextRequest) {
     // @ts-expect-error - error is unknown type
     if (error.message) console.error("Error Message:", error.message);
 
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorStack = error instanceof Error ? error.stack : undefined;
-
     return NextResponse.json(
       {
-        error: `投递失败: ${errorMessage}`,
-        details: errorStack
+        error: "投递失败，请稍后重试"
       },
       { status: 500 }
     );
