@@ -8,7 +8,7 @@ import { getWechatSignature } from "@/lib/wechat";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 缓存控制: 签名有效期 2 小时，但建议每次页面加载都获取新签名
-const CACHE_DURATION = 60; // 1 分钟缓存，减少重复请求
+const CACHE_DURATION = 300; // 5 分钟缓存，减少重复请求
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';

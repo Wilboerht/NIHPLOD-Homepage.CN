@@ -160,8 +160,6 @@ export function useWechatShare(
           jsApiList: [
             "updateAppMessageShareData",
             "updateTimelineShareData",
-            "onMenuShareAppMessage",
-            "onMenuShareTimeline",
           ],
         });
 
@@ -192,14 +190,7 @@ export function useWechatShare(
   // 更新分享配置
   const updateShare = useCallback((newConfig: WechatShareConfig) => {
     setConfig(newConfig);
-
-    if (!isReady) return;
-
-    const wx = (window as WechatWindow).wx;
-    if (wx) {
-      updateShareConfig(wx, newConfig);
-    }
-  }, [isReady]);
+  }, []);
 
   // 当配置变化时更新分享
   useEffect(() => {

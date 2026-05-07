@@ -43,6 +43,8 @@ interface CachedTicket {
 
 let cachedAccessToken: CachedToken | null = null;
 let cachedJsApiTicket: CachedTicket | null = null;
+let accessTokenPromise: Promise<string> | null = null;
+let jsApiTicketPromise: Promise<string> | null = null;
 
 // ============================================
 // 微信 API 调用
@@ -51,6 +53,7 @@ let cachedJsApiTicket: CachedTicket | null = null;
 /**
  * 获取 Access Token
  * 有效期 7200 秒，需要缓存
+ * 使用 Promise 锁防止并发刷新导致频率超限
  */
 async function getAccessToken(): Promise<string> {
   const appId = process.env.WECHAT_APP_ID;
@@ -66,28 +69,42 @@ async function getAccessToken(): Promise<string> {
     return cachedAccessToken.accessToken;
   }
 
-  // 请求新的 Access Token
-  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
-  
-  const response = await fetch(url);
-  const data = await response.json();
-
-  if (data.errcode) {
-    throw new Error(`获取 Access Token 失败: ${data.errmsg}`);
+  // 如果已有请求在获取中，复用该 Promise
+  if (accessTokenPromise) {
+    return accessTokenPromise;
   }
 
-  // 缓存 (提前 5 分钟过期，确保安全)
-  cachedAccessToken = {
-    accessToken: data.access_token,
-    expiresAt: now + (data.expires_in - 300) * 1000,
-  };
+  accessTokenPromise = (async () => {
+    try {
+      // 请求新的 Access Token
+      const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
 
-  return data.access_token;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.errcode) {
+        throw new Error(`获取 Access Token 失败: ${data.errmsg}`);
+      }
+
+      // 缓存 (提前 5 分钟过期，确保安全)
+      cachedAccessToken = {
+        accessToken: data.access_token,
+        expiresAt: now + (data.expires_in - 300) * 1000,
+      };
+
+      return data.access_token;
+    } finally {
+      accessTokenPromise = null;
+    }
+  })();
+
+  return accessTokenPromise;
 }
 
 /**
  * 获取 JSApi Ticket
  * 有效期 7200 秒，需要缓存
+ * 使用 Promise 锁防止并发刷新
  */
 async function getJsApiTicket(): Promise<string> {
   // 检查缓存
@@ -96,26 +113,39 @@ async function getJsApiTicket(): Promise<string> {
     return cachedJsApiTicket.ticket;
   }
 
-  // 先获取 Access Token
-  const accessToken = await getAccessToken();
-
-  // 请求 JSApi Ticket
-  const url = `https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=${accessToken}&type=jsapi`;
-  
-  const response = await fetch(url);
-  const data = await response.json();
-
-  if (data.errcode !== 0) {
-    throw new Error(`获取 JSApi Ticket 失败: ${data.errmsg}`);
+  // 如果已有请求在获取中，复用该 Promise
+  if (jsApiTicketPromise) {
+    return jsApiTicketPromise;
   }
 
-  // 缓存 (提前 5 分钟过期)
-  cachedJsApiTicket = {
-    ticket: data.ticket,
-    expiresAt: now + (data.expires_in - 300) * 1000,
-  };
+  jsApiTicketPromise = (async () => {
+    try {
+      // 先获取 Access Token
+      const accessToken = await getAccessToken();
 
-  return data.ticket;
+      // 请求 JSApi Ticket
+      const url = `https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=${accessToken}&type=jsapi`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.errcode !== 0) {
+        throw new Error(`获取 JSApi Ticket 失败: ${data.errmsg}`);
+      }
+
+      // 缓存 (提前 5 分钟过期)
+      cachedJsApiTicket = {
+        ticket: data.ticket,
+        expiresAt: now + (data.expires_in - 300) * 1000,
+      };
+
+      return data.ticket;
+    } finally {
+      jsApiTicketPromise = null;
+    }
+  })();
+
+  return jsApiTicketPromise;
 }
 
 // ============================================

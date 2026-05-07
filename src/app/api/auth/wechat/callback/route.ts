@@ -31,11 +31,20 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get("state");
     const error = searchParams.get("error");
 
-    // 获取重定向地址（从 state 解析或默认）
+    // 获取重定向地址（从 state 解析或默认）并校验 CSRF nonce
     let redirectUrl = "/";
+    let loginType: "open" | "mp" = "open";
+    const nonceCookie = request.cookies.get("wechat_oauth_nonce")?.value;
+    let stateValid = false;
+
     if (state) {
       try {
         const stateData = JSON.parse(Buffer.from(state, "base64").toString());
+        // 校验 CSRF nonce
+        if (stateData.nonce && stateData.nonce === nonceCookie) {
+          stateValid = true;
+          loginType = stateData.type === "mp" ? "mp" : "open";
+        }
         if (stateData.redirect) {
           const url = stateData.redirect;
           // 严格校验重定向目标：只允许相对路径，禁止协议和外部域名
@@ -54,10 +63,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // state 校验失败，拒绝处理
+    if (!stateValid) {
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_STATE",
+            message: "授权状态验证失败，请重试",
+          },
+          redirectUrl: "/",
+        },
+        { status: 400 }
+      );
+      response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+      return response;
+    }
+
     // 用户拒绝授权
     if (error) {
       console.log("[WechatCallback] 用户拒绝授权:", error);
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: {
@@ -68,10 +94,12 @@ export async function GET(request: NextRequest) {
         },
         { status: 400 }
       );
+      response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+      return response;
     }
 
     if (!code) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: {
@@ -81,10 +109,12 @@ export async function GET(request: NextRequest) {
         },
         { status: 400 }
       );
+      response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+      return response;
     }
 
-    // 获取 Access Token
-    const tokenData = await getWechatOAuthToken(code, "open");
+    // 获取 Access Token（根据 state 中的 type 选择开放平台或公众号）
+    const tokenData = await getWechatOAuthToken(code, loginType);
 
     // 获取用户信息
     const wechatUser = await getWechatUserInfo(tokenData.accessToken, tokenData.openid);
@@ -157,6 +187,8 @@ export async function GET(request: NextRequest) {
         path: "/",
         maxAge: 30 * 24 * 60 * 60,
       });
+      // 清除 CSRF nonce Cookie
+      response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
 
       return response;
     }
@@ -195,12 +227,14 @@ export async function GET(request: NextRequest) {
       ...USER_ACCESS_COOKIE_OPTIONS,
       maxAge: 60 * 60, // 1小时过期
     });
+    // 清除 CSRF nonce Cookie
+    response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
 
     return response;
   } catch (error) {
     console.error("[WechatCallback] 异常:", error);
     const isDev = process.env.NODE_ENV === "development";
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: false,
         error: {
@@ -210,6 +244,8 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     );
+    response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+    return response;
   }
 }
 

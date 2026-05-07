@@ -200,29 +200,6 @@ function LoginModal({
     }
   };
 
-  // 微信登录 (暂时未使用，相关UI已注释)
-  const _handleWechatLogin = async () => {
-    if (!agreed) {
-      toast.warning("请先同意用户协议和隐私政策");
-      return;
-    }
-    setLoading(true);
-    try {
-      const currentUrl = window.location.pathname + window.location.search;
-      const res = await fetch(`/api/auth/wechat?redirect=${encodeURIComponent(currentUrl)}`);
-      const data = await res.json();
-      if (data.success) {
-        window.location.href = data.data.authUrl;
-      } else {
-        toast.error(data.error?.message || "获取微信授权失败");
-      }
-    } catch {
-      toast.error("网络错误，请重试");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 登录
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -8,8 +8,13 @@
  */
 export function formatKey(key?: string): string {
   if (!key) return "";
-  return key
-    .replace(/^["']|["']$/g, "")
-    .replace(/\\n/g, "\n")
-    .trim();
+  let formatted = key.trim();
+  // 递归去除首尾引号（处理多层 JSON 转义）
+  while (
+    (formatted.startsWith('"') && formatted.endsWith('"')) ||
+    (formatted.startsWith("'") && formatted.endsWith("'"))
+  ) {
+    formatted = formatted.slice(1, -1).trim();
+  }
+  return formatted.replace(/\\n/g, "\n").trim();
 }

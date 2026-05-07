@@ -9,6 +9,7 @@ import { AnimatePresence, m } from "framer-motion";
 import { X, CreditCard, Loader2, Clock, Check, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { isWechatBrowser } from "@/lib/wechat";
 
 // 纹理背景 - 与 CheckoutModal 保持一致的透明度
 const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`;
@@ -96,7 +97,7 @@ export default function PayModal() {
     setError("");
 
     try {
-      const isWechatBrowser = /MicroMessenger/i.test(navigator.userAgent);
+      const inWechat = isWechatBrowser();
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
         navigator.userAgent
       );
@@ -111,7 +112,7 @@ export default function PayModal() {
       };
 
       if (payMethod === "wechat") {
-        payload.tradeType = isWechatBrowser ? "JSAPI" : isMobile ? "MWEB" : "NATIVE";
+        payload.tradeType = inWechat ? "JSAPI" : isMobile ? "MWEB" : "NATIVE";
       }
 
       const res = await fetch("/api/pay/create", {

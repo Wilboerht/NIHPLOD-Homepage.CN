@@ -62,6 +62,9 @@ export async function createPayment(
 }> {
   try {
     const config = getConfig();
+    if (!config.notifyUrl) {
+      return { success: false, error: "微信支付回调地址未配置" };
+    }
     const wxpay = getWxPay();
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -161,8 +164,14 @@ async function verifyAndDecrypt(headers: Record<string, string>, rawBody: string
   const signature = headers["wechatpay-signature"];
   const timestamp = headers["wechatpay-timestamp"];
   const nonce = headers["wechatpay-nonce"];
+  const serial = headers["wechatpay-serial"];
 
-  if (!signature || !timestamp || !nonce) throw new Error("MISSING_HEADERS");
+  if (!signature || !timestamp || !nonce || !serial) throw new Error("MISSING_HEADERS");
+
+  // 校验证书序列号是否与配置的平台公钥ID匹配
+  if (serial !== config.platformPublicKeyId) {
+    throw new Error("INVALID_CERTIFICATE_SERIAL");
+  }
 
   // 校验时间戳 freshness，防止重放攻击（±5 分钟窗口）
   const now = Math.floor(Date.now() / 1000);
