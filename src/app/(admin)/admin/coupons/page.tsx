@@ -37,9 +37,41 @@ export default function AdminCouponsPage() {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
-    const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+    const [modalCoupon, setModalCoupon] = useState<Coupon | null>(null);
+    const [modalMode, setModalMode] = useState<"create" | "edit">("create");
     const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
     const { success, error } = useToast();
+
+    const defaultCoupon: Coupon = {
+        id: "",
+        name: "",
+        code: null,
+        type: "DISCOUNT_AMOUNT",
+        value: 0,
+        minAmount: 0,
+        startDate: null,
+        endDate: null,
+        daysValid: null,
+        totalLimit: null,
+        userLimit: 1,
+        scopeType: "ALL",
+        scopeIds: [],
+        isActive: true,
+        _count: { userCoupons: 0 },
+        userCoupons: [],
+    };
+
+    const openCreateModal = () => {
+        setModalCoupon(defaultCoupon);
+        setModalMode("create");
+    };
+
+    const openEditModal = (coupon: Coupon) => {
+        setModalCoupon(coupon);
+        setModalMode("edit");
+    };
+
+    const closeModal = () => setModalCoupon(null);
 
     const fetchCoupons = useCallback(async (page = 1) => {
         setLoading(true);
@@ -85,46 +117,51 @@ export default function AdminCouponsPage() {
         }
     };
 
-    const handleEdit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editingCoupon) return;
+        if (!modalCoupon) return;
 
         try {
             const payload: Record<string, unknown> = {
-                name: editingCoupon.name,
-                type: editingCoupon.type,
-                value: Number(editingCoupon.value),
-                minAmount: Number(editingCoupon.minAmount),
-                userLimit: Number(editingCoupon.userLimit),
-                code: editingCoupon.code || null,
-                totalLimit: editingCoupon.totalLimit !== null ? Number(editingCoupon.totalLimit) : null,
+                name: modalCoupon.name,
+                type: modalCoupon.type,
+                value: Number(modalCoupon.value),
+                minAmount: Number(modalCoupon.minAmount),
+                userLimit: Number(modalCoupon.userLimit),
+                code: modalCoupon.code || null,
+                totalLimit: modalCoupon.totalLimit !== null ? Number(modalCoupon.totalLimit) : null,
+                scopeType: modalCoupon.scopeType,
+                scopeIds: modalCoupon.scopeType === "ALL" ? [] : modalCoupon.scopeIds,
             };
 
-            if (editingCoupon.daysValid) {
-                payload.daysValid = Number(editingCoupon.daysValid);
+            if (modalCoupon.daysValid) {
+                payload.daysValid = Number(modalCoupon.daysValid);
                 payload.startDate = null;
                 payload.endDate = null;
             } else {
                 payload.daysValid = null;
-                if (editingCoupon.startDate) payload.startDate = new Date(editingCoupon.startDate).toISOString();
-                if (editingCoupon.endDate) payload.endDate = new Date(editingCoupon.endDate).toISOString();
+                if (modalCoupon.startDate) payload.startDate = new Date(modalCoupon.startDate).toISOString();
+                if (modalCoupon.endDate) payload.endDate = new Date(modalCoupon.endDate).toISOString();
             }
 
-            const res = await fetch(`/api/admin/coupons/${editingCoupon.id}`, {
-                method: "PATCH",
+            const url = modalMode === "create" ? "/api/admin/coupons" : `/api/admin/coupons/${modalCoupon.id}`;
+            const method = modalMode === "create" ? "POST" : "PATCH";
+
+            const res = await fetch(url, {
+                method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
             const data = await res.json();
             if (data.success) {
-                success("编辑成功");
-                setEditingCoupon(null);
+                success(modalMode === "create" ? "创建成功" : "编辑成功");
+                closeModal();
                 fetchCoupons(pagination.page);
             } else {
-                error(data.error?.message || "编辑失败");
+                error(data.error?.message || (modalMode === "create" ? "创建失败" : "编辑失败"));
             }
         } catch {
-            error("编辑失败");
+            error(modalMode === "create" ? "创建失败" : "编辑失败");
         }
     };
 
@@ -148,13 +185,13 @@ export default function AdminCouponsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold tracking-tight">优惠券管理</h1>
-                <Link
-                    href="/admin/coupons/create"
+                <button
+                    onClick={openCreateModal}
                     className="flex items-center gap-2 rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90"
                 >
                     <Plus className="h-4 w-4" />
                     创建优惠券
-                </Link>
+                </button>
             </div>
 
             <div className="rounded-md border bg-white">
@@ -228,7 +265,7 @@ export default function AdminCouponsPage() {
                                         <td className="p-4 align-middle text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
-                                                    onClick={() => setEditingCoupon(coupon)}
+                                                    onClick={() => openEditModal(coupon)}
                                                     className="p-1.5 rounded-md hover:bg-blue-50 text-blue-600 transition-colors"
                                                     title="编辑"
                                                 >
@@ -281,33 +318,33 @@ export default function AdminCouponsPage() {
                 </div>
             )}
 
-            {/* 编辑弹窗 */}
-            {editingCoupon && (
+            {/* 创建/编辑弹窗 */}
+            {modalCoupon && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-lg bg-white rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-5 border-b">
-                            <h2 className="text-lg font-semibold">编辑优惠券</h2>
-                            <button onClick={() => setEditingCoupon(null)} className="p-1 hover:bg-gray-100 rounded">
+                            <h2 className="text-lg font-semibold">{modalMode === "create" ? "创建优惠券" : "编辑优惠券"}</h2>
+                            <button onClick={closeModal} className="p-1 hover:bg-gray-100 rounded">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <form onSubmit={handleEdit} className="p-5 space-y-4">
+                        <form onSubmit={handleSubmit} className="p-5 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-medium">名称</label>
                                     <input
                                         required
                                         className="w-full p-2 border rounded-md text-sm"
-                                        value={editingCoupon.name}
-                                        onChange={e => setEditingCoupon({ ...editingCoupon, name: e.target.value })}
+                                        value={modalCoupon.name}
+                                        onChange={e => setModalCoupon({ ...modalCoupon, name: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-medium">兑换码 (选填)</label>
                                     <input
                                         className="w-full p-2 border rounded-md text-sm"
-                                        value={editingCoupon.code || ""}
-                                        onChange={e => setEditingCoupon({ ...editingCoupon, code: e.target.value })}
+                                        value={modalCoupon.code || ""}
+                                        onChange={e => setModalCoupon({ ...modalCoupon, code: e.target.value })}
                                     />
                                 </div>
                             </div>
@@ -316,8 +353,8 @@ export default function AdminCouponsPage() {
                                     <label className="text-sm font-medium">类型</label>
                                     <select
                                         className="w-full p-2 border rounded-md text-sm"
-                                        value={editingCoupon.type}
-                                        onChange={e => setEditingCoupon({ ...editingCoupon, type: e.target.value })}
+                                        value={modalCoupon.type}
+                                        onChange={e => setModalCoupon({ ...modalCoupon, type: e.target.value })}
                                     >
                                         <option value="DISCOUNT_AMOUNT">金额立减</option>
                                         <option value="DISCOUNT_PERCENT">百分比折扣</option>
@@ -325,15 +362,15 @@ export default function AdminCouponsPage() {
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-medium">
-                                        {editingCoupon.type === "DISCOUNT_AMOUNT" ? "面值 (元)" : "折扣率 (0.9=9折)"}
+                                        {modalCoupon.type === "DISCOUNT_AMOUNT" ? "面值 (元)" : "折扣率 (0.9=9折)"}
                                     </label>
                                     <input
                                         required
                                         type="number"
                                         step="0.01"
                                         className="w-full p-2 border rounded-md text-sm"
-                                        value={editingCoupon.value}
-                                        onChange={e => setEditingCoupon({ ...editingCoupon, value: Number(e.target.value) })}
+                                        value={modalCoupon.value}
+                                        onChange={e => setModalCoupon({ ...modalCoupon, value: Number(e.target.value) })}
                                     />
                                 </div>
                             </div>
@@ -343,8 +380,8 @@ export default function AdminCouponsPage() {
                                     required
                                     type="number"
                                     className="w-full p-2 border rounded-md text-sm"
-                                    value={editingCoupon.minAmount}
-                                    onChange={e => setEditingCoupon({ ...editingCoupon, minAmount: Number(e.target.value) })}
+                                    value={modalCoupon.minAmount}
+                                    onChange={e => setModalCoupon({ ...modalCoupon, minAmount: Number(e.target.value) })}
                                 />
                             </div>
                             <div className="space-y-3 border-t pt-4">
@@ -353,29 +390,29 @@ export default function AdminCouponsPage() {
                                     <label className="flex items-center gap-2">
                                         <input
                                             type="radio"
-                                            checked={!editingCoupon.daysValid}
-                                            onChange={() => setEditingCoupon({ ...editingCoupon, daysValid: null })}
+                                            checked={!modalCoupon.daysValid}
+                                            onChange={() => setModalCoupon({ ...modalCoupon, daysValid: null })}
                                         />
                                         固定日期范围
                                     </label>
                                     <label className="flex items-center gap-2">
                                         <input
                                             type="radio"
-                                            checked={!!editingCoupon.daysValid}
-                                            onChange={() => setEditingCoupon({ ...editingCoupon, daysValid: editingCoupon.daysValid || 30 })}
+                                            checked={!!modalCoupon.daysValid}
+                                            onChange={() => setModalCoupon({ ...modalCoupon, daysValid: modalCoupon.daysValid || 30 })}
                                         />
                                         动态有效期 (领取后N天)
                                     </label>
                                 </div>
-                                {!editingCoupon.daysValid ? (
+                                {!modalCoupon.daysValid ? (
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <label className="text-xs text-gray-500">开始时间</label>
                                             <input
                                                 type="datetime-local"
                                                 className="w-full p-2 border rounded-md text-sm"
-                                                value={editingCoupon.startDate ? new Date(editingCoupon.startDate).toISOString().slice(0, 16) : ""}
-                                                onChange={e => setEditingCoupon({ ...editingCoupon, startDate: e.target.value })}
+                                                value={modalCoupon.startDate ? new Date(modalCoupon.startDate).toISOString().slice(0, 16) : ""}
+                                                onChange={e => setModalCoupon({ ...modalCoupon, startDate: e.target.value })}
                                             />
                                         </div>
                                         <div className="space-y-1">
@@ -383,8 +420,8 @@ export default function AdminCouponsPage() {
                                             <input
                                                 type="datetime-local"
                                                 className="w-full p-2 border rounded-md text-sm"
-                                                value={editingCoupon.endDate ? new Date(editingCoupon.endDate).toISOString().slice(0, 16) : ""}
-                                                onChange={e => setEditingCoupon({ ...editingCoupon, endDate: e.target.value })}
+                                                value={modalCoupon.endDate ? new Date(modalCoupon.endDate).toISOString().slice(0, 16) : ""}
+                                                onChange={e => setModalCoupon({ ...modalCoupon, endDate: e.target.value })}
                                             />
                                         </div>
                                     </div>
@@ -394,8 +431,8 @@ export default function AdminCouponsPage() {
                                         <input
                                             type="number"
                                             className="w-full p-2 border rounded-md text-sm"
-                                            value={editingCoupon.daysValid || ""}
-                                            onChange={e => setEditingCoupon({ ...editingCoupon, daysValid: Number(e.target.value) })}
+                                            value={modalCoupon.daysValid || ""}
+                                            onChange={e => setModalCoupon({ ...modalCoupon, daysValid: Number(e.target.value) })}
                                         />
                                     </div>
                                 )}
@@ -406,43 +443,43 @@ export default function AdminCouponsPage() {
                                     <label className="flex items-center gap-2">
                                         <input
                                             type="radio"
-                                            checked={editingCoupon.scopeType === 'ALL'}
-                                            onChange={() => setEditingCoupon({ ...editingCoupon, scopeType: 'ALL', scopeIds: [] })}
+                                            checked={modalCoupon.scopeType === 'ALL'}
+                                            onChange={() => setModalCoupon({ ...modalCoupon, scopeType: 'ALL', scopeIds: [] })}
                                         />
                                         全场通用
                                     </label>
                                     <label className="flex items-center gap-2">
                                         <input
                                             type="radio"
-                                            checked={editingCoupon.scopeType === 'CATEGORY'}
-                                            onChange={() => setEditingCoupon({ ...editingCoupon, scopeType: 'CATEGORY', scopeIds: [] })}
+                                            checked={modalCoupon.scopeType === 'CATEGORY'}
+                                            onChange={() => setModalCoupon({ ...modalCoupon, scopeType: 'CATEGORY', scopeIds: [] })}
                                         />
                                         指定品类
                                     </label>
                                     <label className="flex items-center gap-2">
                                         <input
                                             type="radio"
-                                            checked={editingCoupon.scopeType === 'PRODUCT'}
-                                            onChange={() => setEditingCoupon({ ...editingCoupon, scopeType: 'PRODUCT', scopeIds: [] })}
+                                            checked={modalCoupon.scopeType === 'PRODUCT'}
+                                            onChange={() => setModalCoupon({ ...modalCoupon, scopeType: 'PRODUCT', scopeIds: [] })}
                                         />
                                         指定商品
                                     </label>
                                 </div>
-                                {editingCoupon.scopeType === 'CATEGORY' && (
+                                {modalCoupon.scopeType === 'CATEGORY' && (
                                     <div className="space-y-2">
                                         <label className="text-xs text-gray-500">选择适用品类（可多选）</label>
                                         <div className="flex flex-wrap gap-2">
                                             {categories.map((cat) => (
-                                                <label key={cat.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors ${editingCoupon.scopeIds.includes(cat.id) ? 'bg-black text-white border-black' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
+                                                <label key={cat.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors ${modalCoupon.scopeIds.includes(cat.id) ? 'bg-black text-white border-black' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
                                                     <input
                                                         type="checkbox"
                                                         className="hidden"
-                                                        checked={editingCoupon.scopeIds.includes(cat.id)}
+                                                        checked={modalCoupon.scopeIds.includes(cat.id)}
                                                         onChange={(e) => {
-                                                            const ids = new Set(editingCoupon.scopeIds);
+                                                            const ids = new Set(modalCoupon.scopeIds);
                                                             if (e.target.checked) ids.add(cat.id);
                                                             else ids.delete(cat.id);
-                                                            setEditingCoupon({ ...editingCoupon, scopeIds: Array.from(ids) });
+                                                            setModalCoupon({ ...modalCoupon, scopeIds: Array.from(ids) });
                                                         }}
                                                     />
                                                     {cat.name}
@@ -451,14 +488,14 @@ export default function AdminCouponsPage() {
                                         </div>
                                     </div>
                                 )}
-                                {editingCoupon.scopeType === 'PRODUCT' && (
+                                {modalCoupon.scopeType === 'PRODUCT' && (
                                     <div className="space-y-2">
                                         <label className="text-xs text-gray-500">适用商品ID（逗号分隔）</label>
                                         <input
                                             className="w-full p-2 border rounded-md text-sm"
                                             placeholder="例如：abc123,def456"
-                                            value={editingCoupon.scopeIds.join(",")}
-                                            onChange={(e) => setEditingCoupon({ ...editingCoupon, scopeIds: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                                            value={modalCoupon.scopeIds.join(",")}
+                                            onChange={(e) => setModalCoupon({ ...modalCoupon, scopeIds: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
                                         />
                                     </div>
                                 )}
@@ -470,8 +507,8 @@ export default function AdminCouponsPage() {
                                         type="number"
                                         className="w-full p-2 border rounded-md text-sm"
                                         placeholder="留空为无限"
-                                        value={editingCoupon.totalLimit !== null ? editingCoupon.totalLimit : ""}
-                                        onChange={e => setEditingCoupon({ ...editingCoupon, totalLimit: e.target.value ? Number(e.target.value) : null })}
+                                        value={modalCoupon.totalLimit !== null ? modalCoupon.totalLimit : ""}
+                                        onChange={e => setModalCoupon({ ...modalCoupon, totalLimit: e.target.value ? Number(e.target.value) : null })}
                                     />
                                 </div>
                                 <div className="space-y-1.5">
@@ -480,15 +517,15 @@ export default function AdminCouponsPage() {
                                         required
                                         type="number"
                                         className="w-full p-2 border rounded-md text-sm"
-                                        value={editingCoupon.userLimit}
-                                        onChange={e => setEditingCoupon({ ...editingCoupon, userLimit: Number(e.target.value) })}
+                                        value={modalCoupon.userLimit}
+                                        onChange={e => setModalCoupon({ ...modalCoupon, userLimit: Number(e.target.value) })}
                                     />
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => setEditingCoupon(null)}
+                                    onClick={() => setModalCoupon(null)}
                                     className="px-4 py-2 border rounded-md text-sm hover:bg-gray-50"
                                 >
                                     取消
