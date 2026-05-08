@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Eye, FileJson } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { apiGet } from "@/lib/api-client";
 
 interface AuditLogItem {
@@ -13,6 +14,7 @@ interface AuditLogItem {
   targetId: string | null;
   detail: Record<string, unknown> | null;
   ipAddress: string | null;
+  userAgent: string | null;
   admin: { id: string; email: string; name: string } | null;
   createdAt: string;
 }
@@ -60,6 +62,24 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   system: "系统",
 };
 
+const ACTION_COLORS: Record<string, string> = {
+  login: "bg-green-50 text-green-700",
+  logout: "bg-gray-100 text-gray-700",
+  ship_order: "bg-blue-50 text-blue-700",
+  refund_approve: "bg-yellow-50 text-yellow-700",
+  refund_reject: "bg-orange-50 text-orange-700",
+  create_admin: "bg-purple-50 text-purple-700",
+  update_admin: "bg-purple-50 text-purple-700",
+  delete_admin: "bg-red-50 text-red-700",
+  create_product: "bg-emerald-50 text-emerald-700",
+  update_product: "bg-emerald-50 text-emerald-700",
+  delete_product: "bg-red-50 text-red-700",
+  create_coupon: "bg-pink-50 text-pink-700",
+  update_coupon: "bg-pink-50 text-pink-700",
+  delete_coupon: "bg-red-50 text-red-700",
+  run_cron_task: "bg-indigo-50 text-indigo-700",
+};
+
 export default function AuditLogsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,6 +91,10 @@ export default function AuditLogsPage() {
   const page = parseInt(searchParams.get("page") || "1");
   const action = searchParams.get("action") || "";
   const targetType = searchParams.get("targetType") || "";
+
+  // 模态框状态
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -89,7 +113,9 @@ export default function AuditLogsPage() {
     }
   }, [page, action, targetType]);
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const updateParams = (newParams: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -99,6 +125,11 @@ export default function AuditLogsPage() {
     });
     if (!newParams.page) params.set("page", "1");
     router.push(`/admin/audit-logs?${params.toString()}`);
+  };
+
+  const openDetail = (log: AuditLogItem) => {
+    setSelectedLog(log);
+    setDetailOpen(true);
   };
 
   const formatDate = (dateStr: string) => {
@@ -126,7 +157,9 @@ export default function AuditLogsPage() {
         >
           <option value="">全部操作</option>
           {Object.entries(ACTION_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
+            <option key={key} value={key}>
+              {label}
+            </option>
           ))}
         </select>
         <select
@@ -136,7 +169,9 @@ export default function AuditLogsPage() {
         >
           <option value="">全部类型</option>
           {Object.entries(TARGET_TYPE_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
+            <option key={key} value={key}>
+              {label}
+            </option>
           ))}
         </select>
       </div>
@@ -152,46 +187,66 @@ export default function AuditLogsPage() {
               <th className="px-4 py-3">目标类型</th>
               <th className="px-4 py-3">目标ID</th>
               <th className="px-4 py-3">IP地址</th>
-              <th className="px-4 py-3">详情</th>
+              <th className="px-4 py-3 text-right">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">加载中...</td></tr>
-            ) : logs.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">暂无记录</td></tr>
-            ) : logs.map((log) => (
-              <tr key={log.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{formatDate(log.createdAt)}</td>
-                <td className="px-4 py-3">
-                  {log.admin ? (
-                    <div>
-                      <div className="font-medium">{log.admin.name}</div>
-                      <div className="text-xs text-gray-400">{log.admin.email}</div>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                    {ACTION_LABELS[log.action] || log.action}
-                  </span>
-                </td>
-                <td className="px-4 py-3">{TARGET_TYPE_LABELS[log.targetType] || log.targetType}</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-400">{log.targetId || "-"}</td>
-                <td className="px-4 py-3 text-gray-400">{log.ipAddress || "-"}</td>
-                <td className="px-4 py-3">
-                  {log.detail ? (
-                    <pre className="text-xs text-gray-500 bg-gray-50 rounded p-1.5 max-w-[200px] overflow-auto">
-                      {JSON.stringify(log.detail, null, 2)}
-                    </pre>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  加载中...
                 </td>
               </tr>
-            ))}
+            ) : logs.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  暂无记录
+                </td>
+              </tr>
+            ) : (
+              logs.map((log) => (
+                <tr
+                  key={log.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => openDetail(log)}
+                >
+                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                    {formatDate(log.createdAt)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {log.admin ? (
+                      <div>
+                        <div className="font-medium">{log.admin.name}</div>
+                        <div className="text-xs text-gray-400">{log.admin.email}</div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        ACTION_COLORS[log.action] || "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {ACTION_LABELS[log.action] || log.action}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {TARGET_TYPE_LABELS[log.targetType] || log.targetType}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                    {log.targetId || "-"}
+                  </td>
+                  <td className="px-4 py-3 text-gray-400">{log.ipAddress || "-"}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openDetail(log); }}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -203,13 +258,81 @@ export default function AuditLogsPage() {
             <button
               key={i + 1}
               onClick={() => updateParams({ page: String(i + 1) })}
-              className={`px-3 py-1 rounded ${page === i + 1 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
+              className={`px-3 py-1 rounded ${
+                page === i + 1 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
+              }`}
             >
               {i + 1}
             </button>
           ))}
         </div>
       )}
+
+      {/* 详情模态框 */}
+      <Modal
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        title="审计日志详情"
+        size="lg"
+      >
+        {selectedLog ? (
+          <div className="space-y-5">
+            {/* 操作摘要 */}
+            <div className="flex items-center gap-3">
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  ACTION_COLORS[selectedLog.action] || "bg-gray-100 text-gray-700"
+                }`}
+              >
+                {ACTION_LABELS[selectedLog.action] || selectedLog.action}
+              </span>
+              <span className="text-sm text-gray-500">
+                {TARGET_TYPE_LABELS[selectedLog.targetType] || selectedLog.targetType}
+                {selectedLog.targetId && (
+                  <span className="ml-1 font-mono text-xs text-gray-400">({selectedLog.targetId})</span>
+                )}
+              </span>
+            </div>
+
+            {/* 基本信息 */}
+            <div className="grid gap-3 md:grid-cols-2 text-sm">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <dt className="text-gray-500 mb-1">操作人</dt>
+                <dd className="font-medium">
+                  {selectedLog.admin ? `${selectedLog.admin.name} (${selectedLog.admin.email})` : "-"}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-3">
+                <dt className="text-gray-500 mb-1">操作时间</dt>
+                <dd className="font-medium">{formatDate(selectedLog.createdAt)}</dd>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-3">
+                <dt className="text-gray-500 mb-1">IP 地址</dt>
+                <dd className="font-medium font-mono">{selectedLog.ipAddress || "-"}</dd>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-3">
+                <dt className="text-gray-500 mb-1">User-Agent</dt>
+                <dd className="font-medium text-xs break-all">{selectedLog.userAgent || "-"}</dd>
+              </div>
+            </div>
+
+            {/* JSON 详情 */}
+            {selectedLog.detail ? (
+              <div>
+                <h4 className="mb-2 text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                  <FileJson className="h-4 w-4" />
+                  操作详情
+                </h4>
+                <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-4 overflow-auto max-h-80 border border-gray-100">
+                  {JSON.stringify(selectedLog.detail, null, 2)}
+                </pre>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-400">无详细记录</div>
+            )}
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }
