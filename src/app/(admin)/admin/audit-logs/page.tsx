@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw, Search, Shield } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { apiGet } from "@/lib/api-client";
 

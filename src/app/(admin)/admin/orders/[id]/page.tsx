@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Truck, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -50,7 +50,6 @@ const STATUS_MAP: Record<string, { label: string; color: "default" | "warning" |
 export default function OrderDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const router = useRouter();
   const { success, error } = useToast();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
