@@ -64,9 +64,9 @@ export async function finalizeRefund(
       }
     }
 
-    // 释放优惠券
+    // 释放优惠券（退款时状态为 USED，不能限定 LOCKED）
     const lockedCoupon = await tx.userCoupon.findFirst({
-      where: { orderId: orderId, status: "LOCKED" },
+      where: { orderId: orderId },
     });
     if (lockedCoupon) {
       await tx.userCoupon.update({

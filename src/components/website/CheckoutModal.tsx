@@ -38,6 +38,7 @@ interface CouponData {
   type: string;
   value: number;
   minAmount: number;
+  expiresAt: string;
 }
 
 interface CheckoutData {
@@ -385,7 +386,9 @@ export function CheckoutModal() {
                             {coupon.name}
                             {coupon.type === "DISCOUNT_AMOUNT"
                               ? ` (满${coupon.minAmount}减${coupon.value}元)`
-                              : ` (满${coupon.minAmount}打${Math.round(coupon.value * 100)}折)`}
+                              : ` (满${coupon.minAmount}打${(coupon.value * 10).toFixed(1)}折)`}
+                            {" — "}
+                            有效期至{new Date(coupon.expiresAt).toLocaleDateString("zh-CN")}
                           </option>
                         ))}
                       </select>

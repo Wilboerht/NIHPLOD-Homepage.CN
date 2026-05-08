@@ -210,6 +210,7 @@ export async function GET(request: NextRequest) {
       type: uc.coupon.type,
       value: Number(uc.coupon.value),
       minAmount: Number(uc.coupon.minAmount),
+      expiresAt: uc.expiresAt.toISOString(),
     }));
 
     // 运费计算（简单策略：满 99 元包邮，否则 10 元）
