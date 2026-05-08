@@ -30,6 +30,14 @@ interface OrderDetail {
   adminNote: string | null;
   user: { id: string; nickname: string | null; phone: string | null };
   items: { id: string; productName: string; variantName: string | null; price: string | number; quantity: number }[];
+  userCoupon?: {
+    id: string;
+    coupon: {
+      name: string;
+      type: string;
+      value: number;
+    };
+  } | null;
   createdAt: string;
   paymentTime: string | null;
   shippedAt: string | null;
@@ -205,10 +213,14 @@ export default function OrderDetailPage() {
               <td colSpan={4} className="py-1 text-right text-gray-500">运费</td>
               <td className="py-1">¥{Number(order.shippingFee).toFixed(2)}</td>
             </tr>
-            <tr>
-              <td colSpan={4} className="py-1 text-right text-gray-500">优惠</td>
-              <td className="py-1 text-green-500">-¥{Number(order.discountAmount).toFixed(2)}</td>
-            </tr>
+            {Number(order.discountAmount) > 0 && (
+              <tr>
+                <td colSpan={4} className="py-1 text-right text-gray-500">
+                  优惠 {order.userCoupon?.coupon.name ? `(${order.userCoupon.coupon.name})` : ""}
+                </td>
+                <td className="py-1 text-green-500">-¥{Number(order.discountAmount).toFixed(2)}</td>
+              </tr>
+            )}
             <tr>
               <td colSpan={4} className="py-3 text-right font-medium">实付金额</td>
               <td className="py-3 text-lg font-bold text-pink-500">¥{Number(order.payAmount).toFixed(2)}</td>

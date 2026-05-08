@@ -35,6 +35,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
       where: { id, userId: payload.id },
       include: {
         items: true,
+        userCoupon: {
+          include: { coupon: true }
+        }
       },
     });
 

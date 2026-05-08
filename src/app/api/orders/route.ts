@@ -70,6 +70,9 @@ export async function GET(request: NextRequest) {
         where: whereClause,
         include: {
           items: true,
+          userCoupon: {
+            include: { coupon: true }
+          }
         },
         orderBy: {
           createdAt: "desc",

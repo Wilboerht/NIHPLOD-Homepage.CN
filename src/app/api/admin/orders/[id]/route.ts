@@ -28,6 +28,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
       include: {
         user: { select: { id: true, nickname: true, phone: true, avatar: true } },
         items: true,
+        userCoupon: {
+          include: { coupon: true }
+        }
       },
     });
 

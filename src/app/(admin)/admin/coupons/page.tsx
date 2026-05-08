@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Users, Pencil, Trash2, Power, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Users, Pencil, Trash2, Power, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 const formatDate = (dateStr: string) => {
@@ -23,6 +23,7 @@ interface Coupon {
     endDate: string | null;
     daysValid: number | null;
     totalLimit: number | null;
+    userLimit: number;
     isActive: boolean;
     _count: {
         userCoupons: number;
@@ -34,6 +35,7 @@ export default function AdminCouponsPage() {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
+    const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
     const { success, error } = useToast();
 
     const fetchCoupons = useCallback(async (page = 1) => {
@@ -70,6 +72,49 @@ export default function AdminCouponsPage() {
             }
         } catch {
             error("操作失败");
+        }
+    };
+
+    const handleEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingCoupon) return;
+
+        try {
+            const payload: Record<string, unknown> = {
+                name: editingCoupon.name,
+                type: editingCoupon.type,
+                value: Number(editingCoupon.value),
+                minAmount: Number(editingCoupon.minAmount),
+                userLimit: Number(editingCoupon.userLimit),
+                code: editingCoupon.code || null,
+                totalLimit: editingCoupon.totalLimit !== null ? Number(editingCoupon.totalLimit) : null,
+            };
+
+            if (editingCoupon.daysValid) {
+                payload.daysValid = Number(editingCoupon.daysValid);
+                payload.startDate = null;
+                payload.endDate = null;
+            } else {
+                payload.daysValid = null;
+                if (editingCoupon.startDate) payload.startDate = new Date(editingCoupon.startDate).toISOString();
+                if (editingCoupon.endDate) payload.endDate = new Date(editingCoupon.endDate).toISOString();
+            }
+
+            const res = await fetch(`/api/admin/coupons/${editingCoupon.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+                success("编辑成功");
+                setEditingCoupon(null);
+                fetchCoupons(pagination.page);
+            } else {
+                error(data.error?.message || "编辑失败");
+            }
+        } catch {
+            error("编辑失败");
         }
     };
 
@@ -173,6 +218,13 @@ export default function AdminCouponsPage() {
                                         <td className="p-4 align-middle text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
+                                                    onClick={() => setEditingCoupon(coupon)}
+                                                    className="p-1.5 rounded-md hover:bg-blue-50 text-blue-600 transition-colors"
+                                                    title="编辑"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                                <button
                                                     onClick={() => handleToggleActive(coupon.id, coupon.isActive)}
                                                     className={`p-1.5 rounded-md transition-colors ${coupon.isActive ? "hover:bg-red-50 text-red-600" : "hover:bg-green-50 text-green-600"}`}
                                                     title={coupon.isActive ? "下架" : "上架"}
@@ -216,6 +268,167 @@ export default function AdminCouponsPage() {
                     >
                         <ChevronRight className="w-4 h-4" />
                     </button>
+                </div>
+            )}
+
+            {/* 编辑弹窗 */}
+            {editingCoupon && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-lg bg-white rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between p-5 border-b">
+                            <h2 className="text-lg font-semibold">编辑优惠券</h2>
+                            <button onClick={() => setEditingCoupon(null)} className="p-1 hover:bg-gray-100 rounded">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEdit} className="p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">名称</label>
+                                    <input
+                                        required
+                                        className="w-full p-2 border rounded-md text-sm"
+                                        value={editingCoupon.name}
+                                        onChange={e => setEditingCoupon({ ...editingCoupon, name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">兑换码 (选填)</label>
+                                    <input
+                                        className="w-full p-2 border rounded-md text-sm"
+                                        value={editingCoupon.code || ""}
+                                        onChange={e => setEditingCoupon({ ...editingCoupon, code: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">类型</label>
+                                    <select
+                                        className="w-full p-2 border rounded-md text-sm"
+                                        value={editingCoupon.type}
+                                        onChange={e => setEditingCoupon({ ...editingCoupon, type: e.target.value })}
+                                    >
+                                        <option value="DISCOUNT_AMOUNT">金额立减</option>
+                                        <option value="DISCOUNT_PERCENT">百分比折扣</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">
+                                        {editingCoupon.type === "DISCOUNT_AMOUNT" ? "面值 (元)" : "折扣率 (0.9=9折)"}
+                                    </label>
+                                    <input
+                                        required
+                                        type="number"
+                                        step="0.01"
+                                        className="w-full p-2 border rounded-md text-sm"
+                                        value={editingCoupon.value}
+                                        onChange={e => setEditingCoupon({ ...editingCoupon, value: Number(e.target.value) })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">最低消费 (元)</label>
+                                <input
+                                    required
+                                    type="number"
+                                    className="w-full p-2 border rounded-md text-sm"
+                                    value={editingCoupon.minAmount}
+                                    onChange={e => setEditingCoupon({ ...editingCoupon, minAmount: Number(e.target.value) })}
+                                />
+                            </div>
+                            <div className="space-y-3 border-t pt-4">
+                                <label className="text-sm font-medium">有效期设置</label>
+                                <div className="flex gap-4 text-sm">
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            checked={!editingCoupon.daysValid}
+                                            onChange={() => setEditingCoupon({ ...editingCoupon, daysValid: null })}
+                                        />
+                                        固定日期范围
+                                    </label>
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            checked={!!editingCoupon.daysValid}
+                                            onChange={() => setEditingCoupon({ ...editingCoupon, daysValid: editingCoupon.daysValid || 30 })}
+                                        />
+                                        动态有效期 (领取后N天)
+                                    </label>
+                                </div>
+                                {!editingCoupon.daysValid ? (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-gray-500">开始时间</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="w-full p-2 border rounded-md text-sm"
+                                                value={editingCoupon.startDate ? new Date(editingCoupon.startDate).toISOString().slice(0, 16) : ""}
+                                                onChange={e => setEditingCoupon({ ...editingCoupon, startDate: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-gray-500">结束时间</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="w-full p-2 border rounded-md text-sm"
+                                                value={editingCoupon.endDate ? new Date(editingCoupon.endDate).toISOString().slice(0, 16) : ""}
+                                                onChange={e => setEditingCoupon({ ...editingCoupon, endDate: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-gray-500">有效天数</label>
+                                        <input
+                                            type="number"
+                                            className="w-full p-2 border rounded-md text-sm"
+                                            value={editingCoupon.daysValid || ""}
+                                            onChange={e => setEditingCoupon({ ...editingCoupon, daysValid: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">总发行量</label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-2 border rounded-md text-sm"
+                                        placeholder="留空为无限"
+                                        value={editingCoupon.totalLimit !== null ? editingCoupon.totalLimit : ""}
+                                        onChange={e => setEditingCoupon({ ...editingCoupon, totalLimit: e.target.value ? Number(e.target.value) : null })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">每人限领</label>
+                                    <input
+                                        required
+                                        type="number"
+                                        className="w-full p-2 border rounded-md text-sm"
+                                        value={editingCoupon.userLimit}
+                                        onChange={e => setEditingCoupon({ ...editingCoupon, userLimit: Number(e.target.value) })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingCoupon(null)}
+                                    className="px-4 py-2 border rounded-md text-sm hover:bg-gray-50"
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-black text-white rounded-md text-sm hover:bg-black/90"
+                                >
+                                    保存
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>

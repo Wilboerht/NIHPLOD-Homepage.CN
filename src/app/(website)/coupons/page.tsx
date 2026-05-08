@@ -32,11 +32,27 @@ export default function CouponsPage() {
   const fetchCoupons = async () => {
     setLoading(true);
     try {
-      // 获取所有 active 的优惠券
-      const res = await fetch("/api/coupons/public");
-      const data = await res.json();
-      if (data.success) {
-        setCoupons(data.data.coupons);
+      // 并行获取公开优惠券和用户已领列表
+      const [publicRes, userRes] = await Promise.all([
+        fetch("/api/coupons/public"),
+        user ? fetch("/api/user/coupons") : Promise.resolve(null),
+      ]);
+
+      const publicData = await publicRes.json();
+      if (publicData.success) {
+        setCoupons(publicData.data.coupons);
+      }
+
+      // 交叉比对：将用户已领的优惠券模板ID标记为已领取
+      if (userRes) {
+        const userData = await userRes.json();
+        if (userData.success && Array.isArray(userData.data)) {
+          const ids = new Set<string>();
+          for (const uc of userData.data) {
+            if (uc.coupon?.id) ids.add(uc.coupon.id);
+          }
+          setAcquiredIds(ids);
+        }
       }
     } catch {
       console.error("获取优惠券失败");

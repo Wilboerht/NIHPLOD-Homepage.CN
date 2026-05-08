@@ -18,9 +18,19 @@ interface Order {
   id: string;
   orderNo: string;
   status: string;
+  totalAmount: number;
+  discountAmount: number;
   payAmount: number;
   createdAt: string;
   items: OrderItem[];
+  userCoupon?: {
+    id: string;
+    coupon: {
+      name: string;
+      type: string;
+      value: number;
+    };
+  } | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -177,8 +187,15 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
             {status.label}
           </span>
         </div>
-        <div className="text-sm font-medium tracking-wider text-stone-800 tabular-nums">
-          ¥{Number(order.payAmount).toFixed(2)}
+        <div className="flex flex-col items-end">
+          <div className="text-sm font-medium tracking-wider text-stone-800 tabular-nums">
+            ¥{Number(order.payAmount).toFixed(2)}
+          </div>
+          {Number(order.discountAmount) > 0 && (
+            <span className="text-[11px] text-green-600 mt-0.5">
+              已优惠 ¥{Number(order.discountAmount).toFixed(2)}
+            </span>
+          )}
         </div>
       </div>
       
@@ -292,9 +309,24 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
           </div>
         </div>
 
-        <div className="mt-8 bg-brand-charcoal/5 md:bg-white/40 rounded-2xl p-5 border border-brand-charcoal/5 md:border-brand-gold/20 backdrop-blur-md relative overflow-hidden">
+        {/* 价格明细 */}
+        <div className="mt-8 bg-brand-charcoal/5 md:bg-white/40 rounded-2xl p-5 border border-brand-charcoal/5 md:border-brand-gold/20 backdrop-blur-md relative overflow-hidden space-y-2">
           <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-brand-gold/10 to-transparent pointer-events-none" />
-          <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center justify-between relative z-10 text-sm">
+            <span className="text-brand-charcoal/50">商品总额</span>
+            <span className="text-brand-charcoal/70">¥{Number(order.totalAmount).toFixed(2)}</span>
+          </div>
+          {Number(order.discountAmount) > 0 && (
+            <>
+              <div className="flex items-center justify-between relative z-10 text-sm">
+                <span className="text-brand-charcoal/50">
+                  优惠券优惠 {order.userCoupon?.coupon.name ? `(${order.userCoupon.coupon.name})` : ""}
+                </span>
+                <span className="text-green-600">-¥{Number(order.discountAmount).toFixed(2)}</span>
+              </div>
+            </>
+          )}
+          <div className="flex items-center justify-between relative z-10 pt-2 border-t border-brand-charcoal/10">
             <span className="text-brand-charcoal/60 text-[14px] font-medium tracking-wide">实付总额</span>
             <span className="text-brand-gold text-2xl font-bold tracking-wider relative">
               <span className="text-[16px] mr-1">¥</span>
