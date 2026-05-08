@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Ticket, Loader2, Check, Gift, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -25,11 +25,7 @@ export default function CouponsPage() {
   const [acquiring, setAcquiring] = useState<string | null>(null);
   const [acquiredIds, setAcquiredIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    fetchCoupons();
-  }, []);
-
-  const fetchCoupons = async () => {
+  const fetchCoupons = useCallback(async () => {
     setLoading(true);
     try {
       // 并行获取公开优惠券和用户已领列表
@@ -59,7 +55,11 @@ export default function CouponsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchCoupons();
+  }, [fetchCoupons]);
 
   const handleAcquire = async (coupon: Coupon) => {
     if (!user) {
