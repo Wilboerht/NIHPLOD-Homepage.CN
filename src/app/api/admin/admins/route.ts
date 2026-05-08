@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { withRole } from "@/lib/auth";
 import { hashPassword, passwordSchema } from "@/lib/password";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -22,7 +23,7 @@ const updateSchema = z.object({
   email: z.string().email().optional(),
   name: z.string().min(1).optional(),
   role: z.enum(["owner", "admin"]).optional(),
-  password: z.string().min(6).optional(),
+  password: passwordSchema.optional(),
 });
 
 const querySchema = z.object({
@@ -88,7 +89,7 @@ export const GET = withRole(["owner"], async (request) => {
 });
 
 // POST - 创建
-export const POST = withRole(["owner"], async (request) => {
+export const POST = withRole(["owner"], async (request, admin) => {
   try {
     const body = await request.json();
     const data = createSchema.parse(body);
@@ -102,7 +103,7 @@ export const POST = withRole(["owner"], async (request) => {
     }
 
     const hashedPassword = await hashPassword(data.password);
-    const admin = await prisma.admin.create({
+    const newAdmin = await prisma.admin.create({
       data: {
         email: data.email,
         name: data.name,
@@ -112,7 +113,17 @@ export const POST = withRole(["owner"], async (request) => {
       select: { id: true, email: true, name: true, role: true, createdAt: true },
     });
 
-    return NextResponse.json({ success: true, data: admin });
+    // 记录审计日志
+    await createAuditLog({
+      action: "create_admin",
+      targetType: "admin",
+      targetId: newAdmin.id,
+      detail: { email: newAdmin.email, name: newAdmin.name, role: newAdmin.role },
+      adminId: admin.id,
+      request,
+    });
+
+    return NextResponse.json({ success: true, data: newAdmin });
   } catch (error) {
     console.error("[AdminAdmins] POST 异常:", error);
     return NextResponse.json(
@@ -123,7 +134,7 @@ export const POST = withRole(["owner"], async (request) => {
 });
 
 // PUT - 更新
-export const PUT = withRole(["owner"], async (request) => {
+export const PUT = withRole(["owner"], async (request, admin) => {
   try {
     const body = await request.json();
     const data = updateSchema.parse(body);
@@ -147,13 +158,23 @@ export const PUT = withRole(["owner"], async (request) => {
     if (data.role) updateData.role = data.role;
     if (data.password) updateData.password = await hashPassword(data.password);
 
-    const admin = await prisma.admin.update({
+    const updatedAdmin = await prisma.admin.update({
       where: { id: data.id },
       data: updateData,
       select: { id: true, email: true, name: true, role: true, createdAt: true, updatedAt: true },
     });
 
-    return NextResponse.json({ success: true, data: admin });
+    // 记录审计日志
+    await createAuditLog({
+      action: "update_admin",
+      targetType: "admin",
+      targetId: updatedAdmin.id,
+      detail: { updatedFields: Object.keys(updateData).filter((k) => k !== "password") },
+      adminId: admin.id,
+      request,
+    });
+
+    return NextResponse.json({ success: true, data: updatedAdmin });
   } catch (error) {
     console.error("[AdminAdmins] PUT 异常:", error);
     return NextResponse.json(

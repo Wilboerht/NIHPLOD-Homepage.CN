@@ -10,6 +10,7 @@ import { Search, RefreshCw, Eye } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select, SelectOption } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { apiGet } from "@/lib/api-client";
 
 interface OrderItem {
   id: string;
@@ -63,13 +64,13 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), status, search });
-      const res = await fetch(`/api/admin/orders?${params}`);
-      const data = await res.json();
-      if (data.success) {
-        setOrders(data.data.orders);
-        setPagination(data.data.pagination);
-      }
+      const data = await apiGet<{ orders: OrderItem[]; pagination: typeof _pagination }>("/api/admin/orders", {
+        page,
+        status,
+        search,
+      });
+      setOrders(data.orders);
+      setPagination(data.pagination);
     } catch {
       console.error("获取订单失败");
     } finally {

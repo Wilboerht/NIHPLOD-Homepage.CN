@@ -5,6 +5,7 @@ import { signToken } from "@/lib/jwt";
 import { AdminLoginSchema } from "@/schemas/api";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { createAuditLog } from "@/lib/audit";
 
 // 管理员账户级防爆破配置
 const ADMIN_MAX_ATTEMPTS = 5;
@@ -171,6 +172,16 @@ export async function POST(request: NextRequest) {
 
     // 设置 HttpOnly Cookie
     response.cookies.set(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS);
+
+    // 记录登录审计日志
+    await createAuditLog({
+      action: "login",
+      targetType: "system",
+      targetId: admin.id,
+      detail: { email: admin.email, role: admin.role },
+      adminId: admin.id,
+      request,
+    });
 
     return response;
   } catch (error) {

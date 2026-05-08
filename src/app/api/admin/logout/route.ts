@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import { AUTH_COOKIE_NAME } from "@/types/auth";
+import { createAuditLog } from "@/lib/audit";
 
 // POST /api/admin/logout - 管理员登出
 // 强制动态渲染，禁止静态预渲染
@@ -15,6 +16,16 @@ export async function POST(request: NextRequest) {
       { status: 401 }
     );
   }
+
+  // 记录登出审计日志
+  await createAuditLog({
+    action: "logout",
+    targetType: "system",
+    targetId: admin.id,
+    detail: { email: admin.email },
+    adminId: admin.id,
+    request,
+  });
 
   const response = NextResponse.json({
     success: true,

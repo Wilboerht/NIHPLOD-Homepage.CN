@@ -1,99 +1,120 @@
-
 /**
- * 顺丰速运 (SF Express) 服务
+ * 顺丰丰桥 API 封装
+ * 用于查询真实物流轨迹
+ * 文档：https://open.sf-express.com/
  */
-import crypto from "crypto";
 
-const SF_CONFIG = {
-    partnerId: process.env.SF_PARTNER_ID || "", // 顾客编码 (Client Code)
-    checkword: process.env.SF_CHECKWORD || "",   // 校验码 (Check Word)
-    apiUrl: "https://bsp-oisp.sf-express.com/bsp-oisp/sfexpressService",
-};
+import { createHash } from "crypto";
 
-export interface RouteNode {
-    time: string;
-    context: string;
+const SF_API_URL = "https://sfapi.sf-express.com/routeService";
+
+interface SFConfig {
+  customerCode: string;
+  checkWord: string;
+}
+
+function getConfig(): SFConfig | null {
+  const customerCode = process.env.SF_EXPRESS_CUSTOMER_CODE;
+  const checkWord = process.env.SF_EXPRESS_CHECK_WORD;
+  if (!customerCode || !checkWord) return null;
+  return { customerCode, checkWord };
 }
 
 /**
- * 查询顺丰物流轨迹 (使用丰桥 API)
+ * 生成顺丰 API 请求签名（verifyCode）
+ * verifyCode = Base64(MD5(xml + checkWord))
  */
-export async function getSFTrack(trackingNo: string, phoneLast4?: string): Promise<{ success: boolean; data?: RouteNode[]; error?: string; redirectUrl?: string }> {
-    // 1. 如果没有配置 API，返回模拟数据 (Mock)，以便用户在无 key 情况下也能看到 UI 效果
-    if (!SF_CONFIG.partnerId) {
-        // 同时也返回官网链接作为备选
-        const officialUrl = `https://www.sf-express.com/cn/sc/dynamic_function/waybill/#search/bill-number/${trackingNo}`;
+function generateVerifyCode(xmlBody: string, checkWord: string): string {
+  const md5Hash = createHash("md5").update(xmlBody + checkWord).digest();
+  return Buffer.from(md5Hash).toString("base64");
+}
 
-        return {
-            success: true,
-            data: [
-                { time: new Date().toLocaleString(), context: "【已签收】感谢使用顺丰速运，期待再次为您服务" },
-                { time: new Date(Date.now() - 3600000).toLocaleString(), context: "【派送中】快递员正在为您派件，请保持电话畅通" },
-                { time: new Date(Date.now() - 86400000).toLocaleString(), context: "【杭州市】快件到达 [杭州萧山集散中心]" },
-                { time: new Date(Date.now() - 172800000).toLocaleString(), context: "【深圳市】快件已发车" },
-                { time: new Date(Date.now() - 180000000).toLocaleString(), context: "顺丰速运 已收取快件" },
-            ],
-            redirectUrl: officialUrl
-        };
+/**
+ * 构建顺丰查询路由 XML 请求体
+ */
+function buildRouteRequestXml(trackingNo: string, customerCode: string): string {
+  return `<?xml version="1.0" encoding="UTF-8" ?>
+<Request service="RouteService" lang="zh-CN">
+  <Head>${customerCode}</Head>
+  <Body>
+    <RouteRequest tracking_number="${trackingNo}"/>
+  </Body>
+</Request>`;
+}
+
+export interface SFTrace {
+  time: string;
+  status: string;
+  location?: string;
+}
+
+export interface SFLogisticsResult {
+  success: boolean;
+  traces?: SFTrace[];
+  error?: string;
+}
+
+/**
+ * 通过顺丰丰桥查询物流轨迹
+ */
+export async function querySFExpressRoute(trackingNo: string): Promise<SFLogisticsResult> {
+  const config = getConfig();
+  if (!config) {
+    return { success: false, error: "顺丰丰桥未配置" };
+  }
+
+  try {
+    const xmlBody = buildRouteRequestXml(trackingNo, config.customerCode);
+    const verifyCode = generateVerifyCode(xmlBody, config.checkWord);
+
+    const response = await fetch(SF_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        xml: xmlBody,
+        verifyCode,
+      }),
+    });
+
+    if (!response.ok) {
+      return { success: false, error: `顺丰API请求失败: ${response.status}` };
     }
 
-    // 2. 真实 API 调用
-    try {
-        const msgData = JSON.stringify({
-            language: "0",
-            trackingType: "1",
-            trackingNumber: [trackingNo],
-            methodType: "1",
-            checkPhoneNo: phoneLast4 || null
+    const xmlText = await response.text();
+
+    // 解析顺丰返回的 XML
+    // 使用宽松匹配，支持任意 attribute 顺序
+    const routeMatches = Array.from(xmlText.matchAll(/<Route\s+([^>]*)\/>/g));
+    const traces: SFTrace[] = [];
+
+    for (const match of routeMatches) {
+      const attrs = match[1];
+      const timeMatch = attrs.match(/accept_time="([^"]+)"/);
+      const remarkMatch = attrs.match(/remark="([^"]*)"/);
+      if (timeMatch) {
+        traces.push({
+          time: timeMatch[1],
+          status: remarkMatch?.[1] || "运输中",
         });
-
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-        const toSign = decodeURIComponent(msgData) + timestamp + SF_CONFIG.checkword;
-        const msgDigest = crypto.createHash("md5").update(toSign, "utf8").digest("base64");
-
-        const params = new URLSearchParams();
-        params.append("partnerID", SF_CONFIG.partnerId);
-        params.append("requestID", crypto.randomUUID());
-        params.append("serviceCode", "EXP_RECE_SEARCH_ROUTES");
-        params.append("timestamp", timestamp);
-        params.append("msgData", msgData);
-        params.append("msgDigest", msgDigest);
-
-        const res = await fetch(SF_CONFIG.apiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-            body: params
-        });
-
-        const resultText = await res.text();
-        // 丰桥返回可能是 JSON 字符串
-        let result;
-        try {
-            result = JSON.parse(resultText);
-        } catch {
-            // 如果返回非 JSON，可能是错误 HTML
-            console.error("SF API parse error:", resultText);
-            return { success: false, error: "解析顺丰响应失败" };
-        }
-
-        if (result.apiResultCode === "A1000") {
-            // 解析路由
-            const routeResps = JSON.parse(result.apiResultData || "{}").msgData?.routeResps?.[0];
-            if (routeResps && routeResps.routes) {
-                return {
-                    success: true,
-                    data: routeResps.routes.map((r: { acceptTime: string; acceptAddress?: string; remark: string }) => ({
-                        time: r.acceptTime,
-                        context: `${r.acceptAddress ? `【${r.acceptAddress}】` : ""}${r.remark}`
-                    }))
-                };
-            }
-            return { success: true, data: [] };
-        } else {
-            return { success: false, error: result.apiErrorMsg || "查询失败" };
-        }
-    } catch (e) {
-        console.error("SF API Error:", e);
-        return { success: false, error: "调用顺丰接口异常" };
+      }
     }
+
+    // 检查是否有错误
+    const errorMatch = xmlText.match(/<ERROR\s+code="([^"]+)"\s*>([^<]*)<\/ERROR>/);
+    if (errorMatch) {
+      return { success: false, error: errorMatch[2] || errorMatch[1] };
+    }
+
+    // 如果没有轨迹数据，可能是尚未揽收
+    if (traces.length === 0) {
+      return { success: true, traces: [] };
+    }
+
+    return { success: true, traces: traces.reverse() };
+  } catch (error) {
+    console.error("[SFExpress] 查询失败:", error);
+    return { success: false, error: "物流查询异常" };
+  }
 }

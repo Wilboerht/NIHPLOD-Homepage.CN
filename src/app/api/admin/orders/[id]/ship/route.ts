@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { verifyAuth } from "@/lib/auth";
 import { shipOrder } from "@/lib/logistics";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -49,6 +50,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { status: 400 }
       );
     }
+
+    // 记录审计日志
+    await createAuditLog({
+      action: "ship_order",
+      targetType: "order",
+      targetId: id,
+      detail: { logisticsCompany, trackingNo },
+      adminId: admin.id,
+      request,
+    });
 
     revalidateTag("admin-stats");
 

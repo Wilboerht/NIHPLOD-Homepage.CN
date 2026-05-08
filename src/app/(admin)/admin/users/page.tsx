@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Search, RefreshCw, Eye } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
+import { apiGet } from "@/lib/api-client";
 
 interface UserItem {
   id: string;
@@ -34,13 +35,12 @@ export default function AdminUsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), search });
-      const res = await fetch(`/api/admin/users?${params}`);
-      const data = await res.json();
-      if (data.success) {
-        setUsers(data.data.users);
-        setPagination(data.data.pagination);
-      }
+      const data = await apiGet<{ users: UserItem[]; pagination: typeof pagination }>("/api/admin/users", {
+        page,
+        search,
+      });
+      setUsers(data.users);
+      setPagination(data.pagination);
     } catch {
       console.error("获取用户失败");
     } finally {

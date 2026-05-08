@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { StatsCard, StatsCardSkeleton } from "@/components/admin";
 import { cn } from "@/lib/utils";
+import { apiGet } from "@/lib/api-client";
 
 interface StatsData {
   products: number;
@@ -41,16 +42,10 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/admin/stats");
-      const data = await response.json();
-
-      if (data.success) {
-        setStats(data.data);
-      } else {
-        setError(data.error?.message || "获取数据失败");
-      }
-    } catch {
-      setError("网络错误，请稍后重试");
+      const data = await apiGet<StatsData>("/api/admin/stats");
+      setStats(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "网络错误，请稍后重试");
     } finally {
       setLoading(false);
     }

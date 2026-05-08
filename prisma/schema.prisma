@@ -425,6 +425,28 @@ enum UserCouponStatus {
 }
 
 // ============================================
+// 审计日志
+// ============================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // 操作类型: ship_order, refund_order, create_admin, update_admin, delete_admin, login, logout 等
+  targetType String  // 目标类型: order, admin, product, category, job, message, application 等
+  targetId  String?  // 目标记录ID
+  detail    Json?    // 操作详情（变更前后数据快照等）
+  ipAddress String?  // 操作者IP
+  userAgent String?  @db.Text // 浏览器UA
+  adminId   String?  // 操作管理员ID
+  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+  @@index([adminId, createdAt(sort: Desc)])
+  @@index([createdAt])
+}
+
+// ============================================
 // 系统管理
 // ============================================
 
@@ -441,6 +463,8 @@ model Admin {
   role      AdminRole @default(admin)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  auditLogs AuditLog[] // 审计日志关联
 }
 
 // @deprecated 系统设置功能已移除，此表保留以避免迁移问题，后续可清理

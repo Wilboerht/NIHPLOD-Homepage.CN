@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { LOGISTICS_COMPANIES } from "@/lib/logistics-constants";
 import { useToast } from "@/components/ui/Toast";
+import { apiGet, apiPost } from "@/lib/api-client";
 
 interface OrderDetail {
   id: string;
@@ -61,35 +62,30 @@ export default function OrderDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/admin/orders/${id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setOrder(data.data.order);
-      })
+    apiGet<{ order: OrderDetail }>(`/api/admin/orders/${id}`)
+      .then((data) => setOrder(data.order))
+      .catch(() => setOrder(null))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const refreshOrder = async () => {
+    try {
+      const data = await apiGet<{ order: OrderDetail }>(`/api/admin/orders/${id}`);
+      setOrder(data.order);
+    } catch {
+      error("刷新订单数据失败");
+    }
+  };
 
   const handleShip = async () => {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/admin/orders/${id}/ship`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(shipForm),
-      });
-      const data = await res.json();
-      if (data.success) {
-        success("发货成功");
-        setShowShipModal(false);
-        // 重新获取订单数据
-        const refreshRes = await fetch(`/api/admin/orders/${id}`);
-        const refreshData = await refreshRes.json();
-        if (refreshData.success) {
-          setOrder(refreshData.data.order);
-        }
-      } else {
-        error(data.error?.message || "发货失败");
-      }
+      await apiPost(`/api/admin/orders/${id}/ship`, shipForm);
+      success("发货成功");
+      setShowShipModal(false);
+      await refreshOrder();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "发货失败");
     } finally {
       setActionLoading(false);
     }
@@ -105,25 +101,16 @@ export default function OrderDetailPage() {
     if (refundAction === null) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/admin/orders/${id}/refund`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approved: refundAction, adminRemark: refundRemark.trim() || undefined }),
+      await apiPost(`/api/admin/orders/${id}/refund`, {
+        approved: refundAction,
+        adminRemark: refundRemark.trim() || undefined,
       });
-      const data = await res.json();
-      if (data.success) {
-        success(refundAction ? "退款已批准" : "退款已拒绝");
-        setShowRefundModal(false);
-        setRefundAction(null);
-        // 重新获取订单数据而不是强制刷新
-        const refreshRes = await fetch(`/api/admin/orders/${id}`);
-        const refreshData = await refreshRes.json();
-        if (refreshData.success) {
-          setOrder(refreshData.data.order);
-        }
-      } else {
-        error(data.error?.message || "操作失败");
-      }
+      success(refundAction ? "退款已批准" : "退款已拒绝");
+      setShowRefundModal(false);
+      setRefundAction(null);
+      await refreshOrder();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "操作失败");
     } finally {
       setActionLoading(false);
     }

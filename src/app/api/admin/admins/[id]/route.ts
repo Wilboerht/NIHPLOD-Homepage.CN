@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { withRole } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,20 @@ export const DELETE = withRole(["owner"], async (request, admin, { params }: { p
       }
     }
 
-    await prisma.admin.delete({ where: { id } });
+    const deletedAdmin = await prisma.admin.delete({
+      where: { id },
+      select: { id: true, email: true, name: true, role: true },
+    });
+
+    // 记录审计日志
+    await createAuditLog({
+      action: "delete_admin",
+      targetType: "admin",
+      targetId: deletedAdmin.id,
+      detail: { email: deletedAdmin.email, name: deletedAdmin.name, role: deletedAdmin.role },
+      adminId: admin.id,
+      request,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

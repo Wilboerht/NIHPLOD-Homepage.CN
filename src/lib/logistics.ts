@@ -6,6 +6,7 @@
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { LOGISTICS_COMPANIES } from "./logistics-constants";
+import { querySFExpressRoute } from "./sf-express";
 
 // 重新导出常量以保持兼容性
 export { LOGISTICS_COMPANIES } from "./logistics-constants";
@@ -79,8 +80,8 @@ export async function shipOrder(
 }
 
 /**
- * 查询物流信息（模拟）
- * 实际项目中应对接快递100等物流查询API
+ * 查询物流信息
+ * 优先对接顺丰丰桥真实 API，未配置时回退到模拟数据
  */
 export async function queryLogistics(orderId: string): Promise<LogisticsInfo | null> {
   const order = await prisma.order.findUnique({
@@ -99,7 +100,27 @@ export async function queryLogistics(orderId: string): Promise<LogisticsInfo | n
 
   const company = LOGISTICS_COMPANIES.find((c) => c.code === order.shippingCompany);
 
-  // 模拟物流轨迹
+  // 顺丰优先对接丰桥真实 API
+  if (order.shippingCompany === "SF") {
+    const sfResult = await querySFExpressRoute(order.trackingNo);
+    if (sfResult.success && sfResult.traces) {
+      return {
+        company: order.shippingCompany,
+        companyName: company?.name || "顺丰速运",
+        trackingNo: order.trackingNo,
+        status: order.status,
+        traces: sfResult.traces.map((t) => ({
+          time: t.time,
+          status: t.status,
+          location: t.location,
+        })),
+      };
+    }
+    // 丰桥查询失败时回退到模拟数据（避免页面空白）
+    console.warn("[Logistics] 顺丰丰桥查询失败，使用模拟数据:", sfResult.error);
+  }
+
+  // 模拟物流轨迹（其他物流公司或未配置丰桥时）
   const traces: LogisticsTrace[] = [];
 
   if (order.shippedAt) {
