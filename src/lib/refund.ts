@@ -5,6 +5,18 @@ import { refundAlipayOrder } from "./alipay";
 import { ensureMoneyPrecision } from "./money";
 
 /**
+ * 简单的 HTML 转义，防止存储型 XSS
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
  * 退款最终确认（恢复库存、回滚销量、释放优惠券）
  * 用于：支付宝同步退款成功后、微信/支付宝退款回调确认后
  */
@@ -172,8 +184,8 @@ export async function processRefund(
             refundNo,
             refundAmount: ensureMoneyPrecision(refundAmount),
             adminNote: order.adminNote
-              ? `${order.adminNote}\n[退款审批] ${adminRemark || "同意退款"}${refundInfo}`
-              : `[退款审批] ${adminRemark || "同意退款"}${refundInfo}`,
+              ? `${order.adminNote}\n[退款审批] ${escapeHtml(adminRemark || "同意退款")}${refundInfo}`
+              : `[退款审批] ${escapeHtml(adminRemark || "同意退款")}${refundInfo}`,
           },
         });
       }
@@ -218,8 +230,8 @@ export async function processRefund(
           where: { id: orderId },
           data: {
             adminNote: order.adminNote
-              ? `${order.adminNote}\n[退款审批] ${adminRemark || "同意退款"}${refundInfo}`
-              : `[退款审批] ${adminRemark || "同意退款"}${refundInfo}`,
+              ? `${order.adminNote}\n[退款审批] ${escapeHtml(adminRemark || "同意退款")}${refundInfo}`
+              : `[退款审批] ${escapeHtml(adminRemark || "同意退款")}${refundInfo}`,
           },
         });
       }

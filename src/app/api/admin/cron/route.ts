@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import { getCronTasksStatus, runCronTaskManually } from "@/lib/cron-tasks";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 // 只允许管理员访问（owner 和 admin）
@@ -32,6 +33,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "仅管理员可访问" } },
         { status: 401 }
+      );
+    }
+
+    // 速率限制
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "default");
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁" } },
+        { status: 429 }
       );
     }
 
@@ -92,6 +103,16 @@ export async function POST(request: NextRequest) {
 
     const { taskName } = result.data;
     const execResult = await runCronTaskManually(taskName);
+
+    // 记录审计日志
+    await createAuditLog({
+      action: "run_cron_task",
+      targetType: "system",
+      targetId: taskName,
+      detail: { success: execResult.success, message: execResult.message },
+      adminId: admin.id,
+      request,
+    });
 
     return NextResponse.json({
       success: execResult.success,

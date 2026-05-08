@@ -366,7 +366,12 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
       return true;
     } else if (url.startsWith("/uploads/")) {
       // 识别为本地存储
-      const relativePath = url.replace(/^\//, "").replace(/\.\./g, "");
+      const relativePath = url.replace(/^\//, "");
+      // 严格拒绝任何包含路径遍历的 URL
+      if (relativePath.includes("..")) {
+        console.error("[DeleteFile] 路径包含非法字符:", relativePath);
+        return false;
+      }
       const filepath = resolve(join(process.cwd(), "public", relativePath));
       const publicDir = resolve(join(process.cwd(), "public"));
 

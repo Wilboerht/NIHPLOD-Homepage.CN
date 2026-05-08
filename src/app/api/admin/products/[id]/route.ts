@@ -5,6 +5,8 @@ import { verifyAuth } from "@/lib/auth";
 import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
+import { deleteUploadedFile } from "@/lib/upload";
+import { createAuditLog } from "@/lib/audit";
 
 // GET /api/admin/products/[id] - 获取产品详情
 // 强制动态渲染，禁止静态预渲染
@@ -96,6 +98,16 @@ export async function PATCH(
     const product = await prisma.product.update({
       where: { id },
       data: updateData,
+    });
+
+    // 记录审计日志
+    await createAuditLog({
+      action: "update_product",
+      targetType: "product",
+      targetId: id,
+      detail: { fields: Object.keys(updateData), values: updateData },
+      adminId: admin.id,
+      request,
     });
 
     return NextResponse.json({
@@ -314,7 +326,10 @@ export async function DELETE(
     const { id } = await params;
 
     // 检查产品是否存在
-    const existing = await prisma.product.findUnique({ where: { id } });
+    const existing = await prisma.product.findUnique({
+      where: { id },
+      include: { images: true },
+    });
     if (!existing) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "产品不存在" } },
@@ -322,7 +337,12 @@ export async function DELETE(
       );
     }
 
-    // 删除产品（级联删除关联的图片）
+    // 先删除关联的物理图片文件
+    for (const image of existing.images) {
+      await deleteUploadedFile(image.url);
+    }
+
+    // 删除产品（级联删除关联的图片数据库记录）
     await prisma.product.delete({ where: { id } });
 
     // 重新验证前台页面缓存 & 管理后台统计缓存

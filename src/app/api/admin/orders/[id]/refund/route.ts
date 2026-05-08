@@ -52,7 +52,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // 记录审计日志
-    await createAuditLog({
+    const auditSuccess = await createAuditLog({
       action: approved ? "refund_approve" : "refund_reject",
       targetType: "order",
       targetId: id,
@@ -60,6 +60,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       adminId: admin.id,
       request,
     });
+
+    if (!auditSuccess) {
+      console.error("[AdminRefund] 审计日志写入失败，业务操作已执行");
+    }
 
     revalidateTag("admin-stats");
 

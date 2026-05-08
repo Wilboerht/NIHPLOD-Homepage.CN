@@ -153,15 +153,20 @@ export async function rateLimit(
 export function getClientIP(request: Request): string {
   const headers = request.headers;
 
-  const forwardedFor = headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    const ips = forwardedFor.split(",").map((ip) => ip.trim());
-    return ips[ips.length - 1] || ips[0] || "unknown";
-  }
+  // 仅在信任代理环境时读取 X-Forwarded-For
+  const trustProxy = process.env.TRUST_PROXY === "true";
 
-  const realIP = headers.get("x-real-ip");
-  if (realIP) {
-    return realIP;
+  if (trustProxy) {
+    const forwardedFor = headers.get("x-forwarded-for");
+    if (forwardedFor) {
+      const ips = forwardedFor.split(",").map((ip) => ip.trim());
+      return ips[ips.length - 1] || ips[0] || "unknown";
+    }
+
+    const realIP = headers.get("x-real-ip");
+    if (realIP) {
+      return realIP;
+    }
   }
 
   return "unknown";

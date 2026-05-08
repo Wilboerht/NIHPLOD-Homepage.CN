@@ -58,8 +58,9 @@ interface AuditLogInput {
 
 /**
  * 写入审计日志
+ * @returns 是否写入成功
  */
-export async function createAuditLog(input: AuditLogInput): Promise<void> {
+export async function createAuditLog(input: AuditLogInput): Promise<boolean> {
   try {
     await prisma.auditLog.create({
       data: {
@@ -72,9 +73,11 @@ export async function createAuditLog(input: AuditLogInput): Promise<void> {
         userAgent: input.request?.headers.get("user-agent") ?? null,
       },
     });
+    return true;
   } catch (error) {
-    // 审计日志写入失败不应影响主业务流程
+    // 审计日志写入失败不应静默忽略，至少记录到 console 并返回失败
     console.error("[AuditLog] 写入失败:", error);
+    return false;
   }
 }
 

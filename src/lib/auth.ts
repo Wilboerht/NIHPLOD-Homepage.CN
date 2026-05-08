@@ -70,7 +70,27 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
     return null;
   }
 
-  return verifyToken(token);
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return null;
+  }
+
+  // 验证管理员是否仍存在且未被禁用
+  const admin = await prisma.admin.findUnique({
+    where: { id: payload.id },
+    select: { id: true, email: true, name: true, role: true },
+  });
+
+  if (!admin) {
+    return null;
+  }
+
+  return {
+    id: admin.id,
+    email: admin.email,
+    name: admin.name,
+    role: admin.role,
+  };
 }
 
 /**

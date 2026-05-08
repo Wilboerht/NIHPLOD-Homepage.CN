@@ -76,11 +76,13 @@ export async function apiRequest<T = unknown>(path: string, options: RequestOpti
   const response = await fetch(url, init);
 
   // 尝试解析 JSON，即使状态码不是 2xx
-  let data: ApiResponse<T>;
-  try {
-    data = (await response.json()) as ApiResponse<T>;
-  } catch {
-    throw new ApiError("PARSE_ERROR", "响应解析失败", response.status);
+  let data: ApiResponse<T> = { success: true };
+  if (response.status !== 204) {
+    try {
+      data = (await response.json()) as ApiResponse<T>;
+    } catch {
+      throw new ApiError("PARSE_ERROR", "响应解析失败", response.status);
+    }
   }
 
   if (!response.ok || !data.success) {

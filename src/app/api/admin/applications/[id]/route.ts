@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { deleteUploadedFile } from "@/lib/upload";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -136,6 +137,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+
+    // 先获取申请记录以删除关联的简历文件
+    const application = await prisma.jobApplication.findUnique({
+      where: { id },
+      select: { resumePath: true },
+    });
+
+    if (application?.resumePath) {
+      await deleteUploadedFile(application.resumePath);
+    }
 
     await prisma.jobApplication.delete({ where: { id } });
 

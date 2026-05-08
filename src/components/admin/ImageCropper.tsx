@@ -74,28 +74,37 @@ export function ImageCropper({
           return;
         }
 
-        // 设置画布大小为裁剪区域大小
-        canvas.width = croppedAreaPixels.width;
-        canvas.height = croppedAreaPixels.height;
+        // 计算旋转后的包围矩形尺寸
+        const rad = (rotation * Math.PI) / 180;
+        const absCos = Math.abs(Math.cos(rad));
+        const absSin = Math.abs(Math.sin(rad));
+        const rotatedWidth = croppedAreaPixels.width * absCos + croppedAreaPixels.height * absSin;
+        const rotatedHeight = croppedAreaPixels.width * absSin + croppedAreaPixels.height * absCos;
+
+        // 设置画布大小为旋转后的包围矩形
+        canvas.width = Math.ceil(rotatedWidth);
+        canvas.height = Math.ceil(rotatedHeight);
 
         // 应用旋转
         if (rotation !== 0) {
           const centerX = canvas.width / 2;
           const centerY = canvas.height / 2;
           ctx.translate(centerX, centerY);
-          ctx.rotate((rotation * Math.PI) / 180);
+          ctx.rotate(rad);
           ctx.translate(-centerX, -centerY);
         }
 
-        // 绘制裁剪后的图片
+        // 绘制裁剪后的图片（居中绘制以匹配旋转后的画布）
+        const offsetX = (canvas.width - croppedAreaPixels.width) / 2;
+        const offsetY = (canvas.height - croppedAreaPixels.height) / 2;
         ctx.drawImage(
           image,
           croppedAreaPixels.x,
           croppedAreaPixels.y,
           croppedAreaPixels.width,
           croppedAreaPixels.height,
-          0,
-          0,
+          offsetX,
+          offsetY,
           croppedAreaPixels.width,
           croppedAreaPixels.height
         );

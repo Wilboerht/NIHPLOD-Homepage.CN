@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CareersPageContent } from "@/types/page-content";
+import DOMPurify from "isomorphic-dompurify";
 
 // 职位类型
 export interface Job {
@@ -647,14 +648,14 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
               <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">职位描述</h4>
               <div
                 className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
-                dangerouslySetInnerHTML={{ __html: normalizeJobHtml(job.description) }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeJobHtml(job.description)) }}
               />
             </div>
             <div>
               <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">任职要求</h4>
               <div
                 className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
-                dangerouslySetInnerHTML={{ __html: normalizeJobHtml(job.requirements) }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeJobHtml(job.requirements)) }}
               />
             </div>
 

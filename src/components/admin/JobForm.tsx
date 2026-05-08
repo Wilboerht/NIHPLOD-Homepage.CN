@@ -64,6 +64,10 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (typeof window === "undefined" || (window as any).AMap) return;
 
+    // 防止重复插入脚本
+    const existing = document.querySelector('script[src*="webapi.amap.com"]');
+    if (existing) return;
+
     // 配置安全密钥
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any)._AMapSecurityConfig = {
@@ -76,7 +80,10 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
     document.head.appendChild(script);
 
     return () => {
-      // 不建议删除脚本，因为可能其他组件也在用
+      // 清理：仅移除当前组件添加的脚本
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
     };
   }, []);
 
@@ -294,9 +301,14 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         published: publishedState !== undefined ? publishedState : formData.published,
       };
 
-      // 如果没有坐标，尝试强制解析一次
+      // 如果没有坐标，尝试强制解析一次（带 10 秒超时）
       if (!finalData.longitude || !finalData.latitude) {
-         const coords = await ensureCoordinates(finalData.location || "");
+         const coords = await Promise.race([
+           ensureCoordinates(finalData.location || ""),
+           new Promise<null>((_, reject) =>
+             setTimeout(() => reject(new Error("坐标获取超时")), 10000)
+           ),
+         ]);
          if (coords) {
             finalData.longitude = coords.lng;
             finalData.latitude = coords.lat;
@@ -312,10 +324,17 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         body: JSON.stringify(finalData),
       });
 
-      const data = res.status !== 204 ? await res.json() : {};
+      let data = {};
+      if (res.status !== 204) {
+        try {
+          data = await res.json();
+        } catch {
+          // body 为空，忽略解析错误
+        }
+      }
 
       if (!res.ok) {
-        throw new Error(data.error?.message || "保存失败");
+        throw new Error((data as { error?: { message?: string } }).error?.message || "保存失败");
       }
 
       success(isEdit ? "职位已更新" : "职位已创建");

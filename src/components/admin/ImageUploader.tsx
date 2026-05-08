@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Upload, X, GripVertical, ImageIcon, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -135,11 +135,26 @@ export function ImageUploader({
 
   // 删除图片
   const removeImage = (index: number) => {
+    const removed = value[index];
+    if (removed?.url?.startsWith("blob:")) {
+      URL.revokeObjectURL(removed.url);
+    }
     const newImages = value.filter((_, i) => i !== index);
-    // 重新计算 order
-    newImages.forEach((img, i) => (img.order = i));
-    onChange(newImages);
+    // 重新计算 order（不可变更新）
+    onChange(newImages.map((img, i) => ({ ...img, order: i })));
   };
+
+  // 组件卸载时清理所有 blob URL
+  useEffect(() => {
+    return () => {
+      value.forEach((img) => {
+        if (img?.url?.startsWith("blob:")) {
+          URL.revokeObjectURL(img.url);
+        }
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 图片排序拖拽
   const handleDragStart = (index: number) => {
@@ -162,9 +177,8 @@ export function ImageUploader({
     const draggedItem = newImages[dragItem.current];
     newImages.splice(dragItem.current, 1);
     newImages.splice(dragOverIndex, 0, draggedItem);
-    // 重新计算 order
-    newImages.forEach((img, i) => (img.order = i));
-    onChange(newImages);
+    // 重新计算 order（不可变更新）
+    onChange(newImages.map((img, i) => ({ ...img, order: i })));
 
     setDragOverIndex(null);
     dragItem.current = null;

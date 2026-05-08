@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth"; // Admin auth
 import { z } from "zod";
 import { logError } from "@/lib/logger";
+import { createAuditLog } from "@/lib/audit";
 
 const createSchema = z.object({
     name: z.string().min(1, "优惠券名称不能为空"),
@@ -52,6 +53,16 @@ export async function POST(req: NextRequest) {
                 startDate: data.startDate ? new Date(data.startDate) : null,
                 endDate: data.endDate ? new Date(data.endDate) : null,
             },
+        });
+
+        // 记录审计日志
+        await createAuditLog({
+            action: "create_coupon",
+            targetType: "coupon",
+            targetId: coupon.id,
+            detail: { name: data.name, type: data.type, value: data.value },
+            adminId: admin.id,
+            request: req,
         });
 
         return NextResponse.json({ success: true, data: coupon });

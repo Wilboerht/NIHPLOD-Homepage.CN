@@ -44,15 +44,20 @@ async function recordAdminAttempt(
   success: boolean,
   request: NextRequest
 ): Promise<void> {
-  await prisma.loginAttempt.create({
-    data: {
-      phone: email,
-      type: "admin",
-      success,
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get("user-agent"),
-    },
-  }).catch(() => { /* 忽略数据库错误，避免影响登录流程 */ });
+  try {
+    await prisma.loginAttempt.create({
+      data: {
+        phone: email,
+        type: "admin",
+        success,
+        ipAddress: getClientIP(request),
+        userAgent: request.headers.get("user-agent"),
+      },
+    });
+  } catch (error) {
+    // 记录到日志但不阻断登录流程，确保防爆破机制故障时可被察觉
+    console.error("[Login] 记录登录尝试失败:", error);
+  }
 }
 
 // POST /api/admin/login - 管理员登录
@@ -62,24 +67,26 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
 
-    // 1. 账户级防爆破检查（基于 email，持久化到数据库）
-    const lockout = await checkAdminLockout(email);
-    if (lockout.locked) {
+    // 1. 先验证请求数据格式
+    const result = AdminLoginSchema.safeParse(body);
+    if (!result.success) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "ACCOUNT_LOCKED",
-            message: `账户已锁定，请 ${lockout.remainingMinutes} 分钟后再试`,
+            code: "VALIDATION_ERROR",
+            message: "请求数据格式错误",
+            details: result.error.issues,
           },
         },
-        { status: 429 }
+        { status: 400 }
       );
     }
 
-    // 2. IP 级速率限制
+    const { email, password } = result.data;
+
+    // 2. IP 级速率限制（零成本内存操作优先）
     const ip = getClientIP(request);
     const limitResult = await rateLimit(ip, "login");
     if (!limitResult.success) {
@@ -95,20 +102,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证请求数据
-    const result = AdminLoginSchema.safeParse(body);
-    if (!result.success) {
-      await recordAdminAttempt(email, false, request);
+    // 3. 账户级防爆破检查（基于 email，持久化到数据库）
+    const lockout = await checkAdminLockout(email);
+    if (lockout.locked) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "VALIDATION_ERROR",
-            message: "请求数据格式错误",
-            details: result.error.issues,
+            code: "ACCOUNT_LOCKED",
+            message: `账户已锁定，请 ${lockout.remainingMinutes} 分钟后再试`,
           },
         },
-        { status: 400 }
+        { status: 429 }
       );
     }
 
@@ -117,21 +122,12 @@ export async function POST(request: NextRequest) {
       where: { email },
     });
 
-    // 使用通用错误信息，避免泄露用户是否存在
-    if (!admin) {
-      await recordAdminAttempt(email, false, request);
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "INVALID_CREDENTIALS", message: "邮箱或密码错误" },
-        },
-        { status: 401 }
-      );
-    }
+    // 使用恒定时间比较防御时序攻击：无论用户是否存在都执行一次 bcrypt
+    const targetHash = admin ? admin.password : "$2a$12$dummy.hash.to.prevent.timing.attacks.on.nonexistent.users";
+    const isPasswordValid = await verifyPassword(password, targetHash);
 
-    // 验证密码
-    const isPasswordValid = await verifyPassword(password, admin.password);
-    if (!isPasswordValid) {
+    // 使用通用错误信息，避免泄露用户是否存在
+    if (!admin || !isPasswordValid) {
       await recordAdminAttempt(email, false, request);
       return NextResponse.json(
         {

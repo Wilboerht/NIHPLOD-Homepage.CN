@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 统计数据响应类型
 interface StatsResponse {
@@ -137,6 +138,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 速率限制
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "default");
+    if (!limitResult.success) {
+      return NextResponse.json<StatsResponse>(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: "请求过于频繁，请稍后再试",
+          },
+        },
+        { status: 429 }
+      );
+    }
+
     // 生成当天日期字符串（自然切分每天的缓存边界）
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
@@ -156,6 +173,10 @@ export async function GET(request: NextRequest) {
       recentOrders,
     } = await getCachedStats(dateStr);
 
+    // 手机号脱敏辅助函数
+    const maskPhone = (phone: string) =>
+      phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
+
     return NextResponse.json<StatsResponse>({
       success: true,
       data: {
@@ -170,6 +191,7 @@ export async function GET(request: NextRequest) {
         todayRevenue: Number(todayRevenueData._sum.payAmount) || 0,
         recentMessages: recentMessages.map((msg) => ({
           ...msg,
+          phone: maskPhone(msg.phone),
           createdAt: new Date(msg.createdAt).toISOString(),
         })),
         recentOrders: recentOrders.map((order) => ({

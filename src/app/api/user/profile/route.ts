@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
-import { processAndSaveImage, validateUploadServer } from "@/lib/upload";
+import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 
 // 更新参数验证
 const updateSchema = z.object({
@@ -178,7 +178,16 @@ export async function POST(request: NextRequest) {
 
     // 4. 读取内容并处理
     const buffer = Buffer.from(await file.arrayBuffer());
-    
+
+    // 4.1 通过 magic bytes 检测真实文件类型
+    const fileTypeResult = await validateFileBuffer(buffer);
+    if (!fileTypeResult.valid) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FILE", message: fileTypeResult.error || "不支持的文件类型" } },
+        { status: 400 }
+      );
+    }
+
     // 使用统一上传逻辑 (自动根据策略选择 OSS 或本地)
     const result = await processAndSaveImage(buffer, file.name, "avatars");
 

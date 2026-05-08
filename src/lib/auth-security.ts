@@ -39,21 +39,24 @@ export const DEFAULT_BRUTE_FORCE_CONFIG: BruteForceConfig = {
  * 获取客户端 IP 地址
  */
 export function getClientIP(request: NextRequest): string {
-  // 优先使用可信代理直接提供的真实 IP
-  const realIP = request.headers.get("x-real-ip");
-  if (realIP) {
-    return realIP;
+  const trustProxy = process.env.TRUST_PROXY === "true";
+
+  if (trustProxy) {
+    // 优先使用可信代理直接提供的真实 IP
+    const realIP = request.headers.get("x-real-ip");
+    if (realIP) {
+      return realIP;
+    }
+
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    if (forwardedFor) {
+      const ips = forwardedFor.split(",").map((ip) => ip.trim()).filter(Boolean);
+      // 取最后一个 IP：由最靠近服务器的可信代理追加，不易被客户端伪造
+      return ips[ips.length - 1] || "unknown";
+    }
   }
 
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    const ips = forwardedFor.split(",").map((ip) => ip.trim()).filter(Boolean);
-    // 取最后一个 IP：由最靠近服务器的可信代理追加，不易被客户端伪造
-    return ips[ips.length - 1] || "unknown";
-  }
-
-  // 回退到 socket 地址（开发环境）
-  return "127.0.0.1";
+  return "unknown";
 }
 
 /**
