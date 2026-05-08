@@ -477,8 +477,8 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         <p className="mt-1 text-sm text-[#00263E]/50">请选择您想要的操作</p>
                       </div>
                       <div className="flex flex-col gap-3">
-                        <DrawerAddToCartButton productId={product.id} stock={product.stock!} />
-                        <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} />
+                        <DrawerAddToCartButton productId={product.id} stock={product.stock!} onClose={onClose} />
+                        <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} />
                       </div>
                       <button
                         type="button"
@@ -502,7 +502,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 /**
  * 加入购物车按钮（ProductDrawer 专用）
  */
-function DrawerAddToCartButton({ productId, stock, compact }: { productId: string; stock: number; compact?: boolean }) {
+function DrawerAddToCartButton({ productId, stock, compact, onClose }: { productId: string; stock: number; compact?: boolean; onClose?: () => void }) {
   const [loading, setLoading] = useState(false);
   const { user, openLoginModal } = useAuth();
   const { success, error: showError } = useToast();
@@ -522,6 +522,7 @@ function DrawerAddToCartButton({ productId, stock, compact }: { productId: strin
       const result = await addToCart(productId, 1);
       if (result) {
         success("已加入购物车");
+        onClose?.();
       } else {
         showError("添加失败，请重试");
       }
@@ -560,7 +561,7 @@ function DrawerAddToCartButton({ productId, stock, compact }: { productId: strin
 /**
  * 直接购买按钮（ProductDrawer 专用）
  */
-function DrawerDirectBuyButton({ productId, stock, quantity, compact }: { productId: string; stock: number; quantity: number; compact?: boolean }) {
+function DrawerDirectBuyButton({ productId, stock, quantity, compact, onClose }: { productId: string; stock: number; quantity: number; compact?: boolean; onClose?: () => void }) {
   const [loading, setLoading] = useState(false);
   const { user, openCheckout, openLoginModal } = useAuth();
   const { error: showError } = useToast();
@@ -581,6 +582,7 @@ function DrawerDirectBuyButton({ productId, stock, quantity, compact }: { produc
     setLoading(true);
     try {
       openCheckout([productId], { [productId]: quantity });
+      onClose?.();
     } catch {
       showError("网络错误，请重试");
     } finally {

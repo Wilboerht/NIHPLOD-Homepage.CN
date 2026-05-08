@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
 import { Plus, Users, Pencil, Trash2, Power, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
