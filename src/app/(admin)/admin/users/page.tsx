@@ -5,10 +5,11 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Search, RefreshCw, Eye } from "lucide-react";
+import { Search, RefreshCw, Eye, User, Loader2, MapPin, Ticket, Smartphone, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
 import { apiGet } from "@/lib/api-client";
 
 interface UserItem {
@@ -19,6 +20,56 @@ interface UserItem {
   orderCount: number;
   createdAt: string;
 }
+
+interface UserDetail {
+  id: string;
+  phone: string | null;
+  phoneVerified: boolean;
+  nickname: string | null;
+  avatar: string | null;
+  wechatOpenId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  orders: {
+    id: string;
+    orderNo: string;
+    status: string;
+    payAmount: number;
+    createdAt: string;
+  }[];
+  addresses: {
+    id: string;
+    name: string;
+    phone: string;
+    province: string;
+    city: string;
+    district: string;
+    detail: string;
+    isDefault: boolean;
+  }[];
+  userCoupons: {
+    id: string;
+    coupon: {
+      name: string;
+      type: string;
+      value: number;
+    };
+  }[];
+  _count: { orders: number };
+}
+
+const orderStatusMap: Record<string, { label: string; variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline" }> = {
+  PENDING: { label: "待支付", variant: "warning" },
+  PAYING: { label: "支付中", variant: "primary" },
+  PAID: { label: "已支付", variant: "success" },
+  PROCESSING: { label: "处理中", variant: "primary" },
+  SHIPPED: { label: "已发货", variant: "success" },
+  DELIVERED: { label: "已签收", variant: "success" },
+  COMPLETED: { label: "已完成", variant: "default" },
+  CANCELLED: { label: "已取消", variant: "danger" },
+  REFUNDING: { label: "退款中", variant: "warning" },
+  REFUNDED: { label: "已退款", variant: "danger" },
+};
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -31,6 +82,11 @@ export default function AdminUsersPage() {
   const page = parseInt(searchParams.get("page") || "1");
   const search = searchParams.get("search") || "";
   const [searchInput, setSearchInput] = useState(search);
+
+  // 模态框状态
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -48,7 +104,9 @@ export default function AdminUsersPage() {
     }
   }, [page, search]);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const updateParams = (newParams: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -58,6 +116,33 @@ export default function AdminUsersPage() {
     });
     if (!newParams.page) params.set("page", "1");
     router.push(`/admin/users?${params.toString()}`);
+  };
+
+  const openDetail = async (id: string) => {
+    setDetailOpen(true);
+    setDetailLoading(true);
+    setDetailUser(null);
+    try {
+      const data = await apiGet<{ user: UserDetail }>(`/api/admin/users/${id}`);
+      setDetailUser(data.user);
+    } catch {
+      console.error("获取用户详情失败");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleString("zh-CN");
+  };
+
+  const formatDateShort = (date: string) => {
+    return new Date(date).toLocaleDateString("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -101,40 +186,50 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">加载中...</td></tr>
-            ) : users.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">暂无用户</td></tr>
-            ) : users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs overflow-hidden">
-                      {user.avatar && user.avatar.startsWith("http") ? (
-                        <Image
-                          src={user.avatar}
-                          alt=""
-                          width={32}
-                          height={32}
-                          className="h-8 w-8 rounded-full object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        user.nickname?.charAt(0) || "U"
-                      )}
-                    </div>
-                    <span>{user.nickname || "未设置"}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">{user.phone || "-"}</td>
-                <td className="px-4 py-3">{user.orderCount}</td>
-                <td className="px-4 py-3 text-gray-400">{new Date(user.createdAt).toLocaleDateString("zh-CN")}</td>
-                <td className="px-4 py-3">
-                  <Link href={`/admin/users/${user.id}`}>
-                    <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
-                  </Link>
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  加载中...
                 </td>
               </tr>
-            ))}
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  暂无用户
+                </td>
+              </tr>
+            ) : (
+              users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs overflow-hidden">
+                        {user.avatar && user.avatar.startsWith("http") ? (
+                          <Image
+                            src={user.avatar}
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="h-8 w-8 rounded-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          user.nickname?.charAt(0) || "U"
+                        )}
+                      </div>
+                      <span>{user.nickname || "未设置"}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">{user.phone || "-"}</td>
+                  <td className="px-4 py-3">{user.orderCount}</td>
+                  <td className="px-4 py-3 text-gray-400">{new Date(user.createdAt).toLocaleDateString("zh-CN")}</td>
+                  <td className="px-4 py-3">
+                    <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -153,7 +248,212 @@ export default function AdminUsersPage() {
           ))}
         </div>
       )}
+
+      {/* 用户详情模态框 */}
+      <Modal
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        title={detailUser?.nickname || detailUser?.phone || "用户详情"}
+        size="lg"
+      >
+        {detailLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
+          </div>
+        ) : !detailUser ? (
+          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+            <User className="mb-2 h-12 w-12" />
+            <p>用户不存在</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* 顶部：头像 + ID */}
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xl overflow-hidden flex-shrink-0">
+                {detailUser.avatar && detailUser.avatar.startsWith("http") ? (
+                  <Image
+                    src={detailUser.avatar}
+                    alt=""
+                    width={64}
+                    height={64}
+                    className="h-16 w-16 rounded-full object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  detailUser.nickname?.charAt(0) || "U"
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-semibold text-gray-900 truncate">
+                  {detailUser.nickname || "未设置昵称"}
+                </p>
+                <p className="text-xs text-gray-400 font-mono truncate">ID: {detailUser.id}</p>
+              </div>
+            </div>
+
+            {/* 基本信息 + 账号状态 */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl bg-gray-50 p-5">
+                <h3 className="mb-3 text-sm font-medium text-gray-900">基本信息</h3>
+                <dl className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <dt className="text-gray-500 flex items-center gap-1.5">
+                      <Smartphone className="h-3.5 w-3.5" />
+                      手机号
+                    </dt>
+                    <dd className="flex items-center gap-2">
+                      {detailUser.phone || "未绑定"}
+                      {detailUser.phoneVerified && (
+                        <Badge variant="success" className="text-[10px] px-1.5 py-0">已验证</Badge>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <dt className="text-gray-500 flex items-center gap-1.5">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      微信绑定
+                    </dt>
+                    <dd>
+                      {detailUser.wechatOpenId ? (
+                        <Badge variant="success" className="text-[10px] px-1.5 py-0">已绑定</Badge>
+                      ) : (
+                        <span className="text-gray-400">未绑定</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">注册时间</dt>
+                    <dd>{formatDate(detailUser.createdAt)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">最后更新</dt>
+                    <dd>{formatDate(detailUser.updatedAt)}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="rounded-xl bg-gray-50 p-5">
+                <h3 className="mb-3 text-sm font-medium text-gray-900">数据统计</h3>
+                <dl className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">订单数量</dt>
+                    <dd className="font-medium">{detailUser._count?.orders ?? 0}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">收货地址</dt>
+                    <dd className="font-medium">{detailUser.addresses?.length ?? 0}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">可用优惠券</dt>
+                    <dd className="font-medium">{detailUser.userCoupons?.length ?? 0}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            {/* 收货地址 */}
+            {detailUser.addresses && detailUser.addresses.length > 0 && (
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4" />
+                  收货地址
+                </h3>
+                <div className="space-y-2">
+                  {detailUser.addresses.map((addr) => (
+                    <div
+                      key={addr.id}
+                      className="rounded-xl border border-gray-100 bg-white p-4 text-sm"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium">
+                          {addr.name} {addr.phone}
+                        </span>
+                        {addr.isDefault && (
+                          <Badge variant="success" className="text-[10px] px-1.5 py-0">默认</Badge>
+                        )}
+                      </div>
+                      <p className="text-gray-500">
+                        {addr.province} {addr.city} {addr.district} {addr.detail}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 优惠券 */}
+            {detailUser.userCoupons && detailUser.userCoupons.length > 0 && (
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                  <Ticket className="h-4 w-4" />
+                  可用优惠券
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {detailUser.userCoupons.map((uc) => (
+                    <div
+                      key={uc.id}
+                      className="rounded-lg border border-dashed border-brand-gold/40 bg-brand-gold/5 px-3 py-1.5 text-xs"
+                    >
+                      <span className="font-medium text-gray-800">{uc.coupon.name}</span>
+                      <span className="ml-1 text-brand-gold">
+                        {uc.coupon.type === "DISCOUNT_PERCENT"
+                          ? `${(uc.coupon.value * 10).toFixed(1)}折`
+                          : `¥${uc.coupon.value}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 最近订单 */}
+            {detailUser.orders && detailUser.orders.length > 0 && (
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-gray-900">最近订单</h3>
+                <div className="rounded-xl border border-gray-100 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-left text-gray-500">
+                      <tr>
+                        <th className="px-4 py-2 font-normal">订单号</th>
+                        <th className="px-4 py-2 font-normal">状态</th>
+                        <th className="px-4 py-2 font-normal">金额</th>
+                        <th className="px-4 py-2 font-normal">时间</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {detailUser.orders.map((order) => {
+                        const status = orderStatusMap[order.status] || {
+                          label: order.status,
+                          variant: "default",
+                        };
+                        return (
+                          <tr key={order.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2">
+                              <button
+                                className="text-brand-gold hover:underline"
+                                onClick={() => router.push(`/admin/orders/${order.id}`)}
+                              >
+                                {order.orderNo}
+                              </button>
+                            </td>
+                            <td className="px-4 py-2">
+                              <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">
+                                {status.label}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-2">¥{order.payAmount}</td>
+                            <td className="px-4 py-2 text-gray-400">{formatDateShort(order.createdAt)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
-

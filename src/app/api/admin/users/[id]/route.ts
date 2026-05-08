@@ -37,6 +37,32 @@ export async function GET(request: NextRequest, context: RouteContext) {
             createdAt: true,
           },
         },
+        addresses: {
+          orderBy: { isDefault: "desc", createdAt: "desc" },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            province: true,
+            city: true,
+            district: true,
+            detail: true,
+            isDefault: true,
+          },
+        },
+        userCoupons: {
+          where: { status: "UNUSED" },
+          select: {
+            id: true,
+            coupon: {
+              select: {
+                name: true,
+                type: true,
+                value: true,
+              },
+            },
+          },
+        },
         _count: { select: { orders: true } },
       },
     });
