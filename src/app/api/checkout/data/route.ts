@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: payload.id,
         status: "UNUSED",
-        expiresAt: { gte: now },
+        expiresAt: { gt: now },
         coupon: {
           isActive: true,
           minAmount: { lte: totalPrice },

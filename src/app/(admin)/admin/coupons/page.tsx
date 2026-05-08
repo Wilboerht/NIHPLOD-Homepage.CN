@@ -1,9 +1,10 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Pencil, Trash2, Power, ChevronLeft, ChevronRight } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -26,22 +27,67 @@ interface Coupon {
     _count: {
         userCoupons: number;
     };
+    userCoupons: { id: string }[];
 }
 
 export default function AdminCouponsPage() {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [loading, setLoading] = useState(true);
+    const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
+    const { success, error } = useToast();
+
+    const fetchCoupons = useCallback(async (page = 1) => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/admin/coupons?page=${page}&pageSize=20`);
+            const data = await res.json();
+            if (data.success) {
+                setCoupons(data.data.coupons);
+                setPagination(data.data.pagination);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        fetch("/api/admin/coupons")
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.success) {
-                    setCoupons(data.data);
-                }
-            })
-            .finally(() => setLoading(false));
-    }, []);
+        fetchCoupons(1);
+    }, [fetchCoupons]);
+
+    const handleToggleActive = async (id: string, current: boolean) => {
+        try {
+            const res = await fetch(`/api/admin/coupons/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: !current }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                success(current ? "已下架" : "已上架");
+                fetchCoupons(pagination.page);
+            } else {
+                error(data.error?.message || "操作失败");
+            }
+        } catch {
+            error("操作失败");
+        }
+    };
+
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`确定要删除优惠券「${name}」吗？此操作不可恢复。`)) return;
+        try {
+            const res = await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
+            const data = await res.json();
+            if (data.success) {
+                success("删除成功");
+                fetchCoupons(pagination.page);
+            } else {
+                error(data.error?.message || "删除失败");
+            }
+        } catch {
+            error("删除失败");
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -67,16 +113,17 @@ export default function AdminCouponsPage() {
                                 <th className="h-12 px-4 align-middle font-medium text-muted-foreground">有效期</th>
                                 <th className="h-12 px-4 align-middle font-medium text-muted-foreground">发放/总限</th>
                                 <th className="h-12 px-4 align-middle font-medium text-muted-foreground">状态</th>
+                                <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right">操作</th>
                             </tr>
                         </thead>
                         <tbody className="[&_tr:last-child]:border-0">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="p-4 text-center">加载中...</td>
+                                    <td colSpan={7} className="p-4 text-center">加载中...</td>
                                 </tr>
                             ) : coupons.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="p-4 text-center text-muted-foreground">暂无优惠券</td>
+                                    <td colSpan={7} className="p-4 text-center text-muted-foreground">暂无优惠券</td>
                                 </tr>
                             ) : (
                                 coupons.map((coupon) => (
@@ -114,11 +161,32 @@ export default function AdminCouponsPage() {
                                                 <Users className="w-4 h-4 text-gray-400" />
                                                 {coupon._count.userCoupons} / {coupon.totalLimit === null ? "∞" : coupon.totalLimit}
                                             </div>
+                                            <div className="text-xs text-gray-400 mt-0.5">
+                                                已使用 {coupon.userCoupons.length} 张
+                                            </div>
                                         </td>
                                         <td className="p-4 align-middle">
                                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${coupon.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                                                 {coupon.isActive ? "进行中" : "下架"}
                                             </span>
+                                        </td>
+                                        <td className="p-4 align-middle text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleToggleActive(coupon.id, coupon.isActive)}
+                                                    className={`p-1.5 rounded-md transition-colors ${coupon.isActive ? "hover:bg-red-50 text-red-600" : "hover:bg-green-50 text-green-600"}`}
+                                                    title={coupon.isActive ? "下架" : "上架"}
+                                                >
+                                                    <Power className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(coupon.id, coupon.name)}
+                                                    className="p-1.5 rounded-md hover:bg-red-50 text-red-600 transition-colors"
+                                                    title="删除"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -127,6 +195,29 @@ export default function AdminCouponsPage() {
                     </table>
                 </div>
             </div>
+
+            {/* 分页 */}
+            {pagination.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-2">
+                    <button
+                        onClick={() => fetchCoupons(pagination.page - 1)}
+                        disabled={pagination.page <= 1}
+                        className="p-2 rounded-md border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm text-gray-600">
+                        第 {pagination.page} / {pagination.totalPages} 页，共 {pagination.total} 条
+                    </span>
+                    <button
+                        onClick={() => fetchCoupons(pagination.page + 1)}
+                        disabled={pagination.page >= pagination.totalPages}
+                        className="p-2 rounded-md border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

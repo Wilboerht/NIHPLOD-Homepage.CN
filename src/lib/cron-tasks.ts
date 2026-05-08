@@ -5,6 +5,7 @@
  */
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
+import { autoExpireUserCoupons } from "./coupon";
 
 interface ScheduledTask {
   name: string;
@@ -37,6 +38,19 @@ const tasks: ScheduledTask[] = [
         console.log(`[Cron] 订单完成处理: ${result.completedCount} 个订单自动完成`);
       } catch (error) {
         console.error("[Cron] 订单完成任务失败:", error);
+      }
+    },
+  },
+  {
+    name: "Auto Expire User Coupons",
+    cronExpression: "0 2 * * *", // 每天凌晨 2 点执行
+    handler: async () => {
+      try {
+        console.log("[Cron] 开始执行优惠券过期清理任务...");
+        const result = await autoExpireUserCoupons();
+        console.log(`[Cron] 优惠券过期清理完成: ${result.expiredCount} 张优惠券被标记为过期`);
+      } catch (error) {
+        console.error("[Cron] 优惠券过期清理任务失败:", error);
       }
     },
   },

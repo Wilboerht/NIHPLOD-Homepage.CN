@@ -12,7 +12,7 @@ interface User {
 type ModalType = "login" | "register" | "forgot-password" | "wechat-bind" | null;
 
 // 用户中心视图类型
-export type UserCenterView = "profile" | "orders" | "addresses" | null;
+export type UserCenterView = "profile" | "orders" | "addresses" | "coupons" | null;
 
 interface AuthContextType {
   user: User | null;

@@ -8,17 +8,19 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
-import { X, User, Package, MapPin, LogOut, ArrowLeft } from "lucide-react";
+import { X, User, Package, MapPin, LogOut, ArrowLeft, Ticket } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { OrdersPanel } from "./user-center/OrdersPanel";
 import { AddressesPanel } from "./user-center/AddressesPanel";
 import { ProfilePanel } from "./user-center/ProfilePanel";
+import { CouponsPanel } from "./user-center/CouponsPanel";
 
 // 菜单项配置
 const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
   { id: "orders", label: "我的订单", icon: Package },
   { id: "addresses", label: "收货地址", icon: MapPin },
+  { id: "coupons", label: "我的优惠券", icon: Ticket },
 ];
 
 export function UserCenterModal() {
@@ -322,6 +324,7 @@ function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
     case "orders": return <OrdersPanel />;
     case "addresses": return <AddressesPanel />;
+    case "coupons": return <CouponsPanel />;
     default: return <ProfilePanel />;
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "@/lib/order";
+import { autoExpireUserCoupons } from "@/lib/coupon";
 
 export const dynamic = "force-dynamic"; // 不缓存，每次都执行
 
@@ -22,11 +23,15 @@ export async function GET(request: NextRequest) {
     // 2. 15天未签收自动完成 (时间可以调整)
     const completeResult = await autoCompleteShippedOrders(15);
 
+    // 3. 过期优惠券清理
+    const expireResult = await autoExpireUserCoupons();
+
     return NextResponse.json({
       success: true,
       data: {
         cancelled: cancelResult,
         completed: completeResult,
+        couponsExpired: expireResult,
       },
       message: "定时任务执行成功"
     });

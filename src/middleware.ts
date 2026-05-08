@@ -56,6 +56,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/pay",
   "/api/wechat",
   "/api/coupons",
+  "/api/coupons/public",
   "/api/revalidate",
 ];
 

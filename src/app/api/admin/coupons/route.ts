@@ -74,6 +74,14 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+        // Prisma P2002: Unique constraint failed on code
+        const isDuplicateCode = e && typeof e === "object" && "code" in e && (e as { code?: string }).code === "P2002";
+        if (isDuplicateCode) {
+            return NextResponse.json(
+                { success: false, error: { code: "DUPLICATE_CODE", message: "兑换码已存在，请更换" } },
+                { status: 409 }
+            );
+        }
         return NextResponse.json({ success: false, error: { code: "CREATE_FAILED", message: "创建失败" } }, { status: 500 });
     }
 }
@@ -91,7 +99,13 @@ export async function GET(req: NextRequest) {
             prisma.coupon.findMany({
                 include: {
                     _count: {
-                        select: { userCoupons: true }
+                        select: {
+                            userCoupons: true,
+                        }
+                    },
+                    userCoupons: {
+                        where: { status: "USED" },
+                        select: { id: true },
                     }
                 },
                 orderBy: { createdAt: 'desc' },
