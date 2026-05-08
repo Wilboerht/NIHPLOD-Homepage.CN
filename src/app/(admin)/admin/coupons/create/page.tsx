@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -23,7 +23,20 @@ export default function CreateCouponPage() {
         daysValid: "",
         totalLimit: "",
         userLimit: "1",
+        scopeType: "ALL" as "ALL" | "CATEGORY" | "PRODUCT",
+        scopeIds: [] as string[],
     });
+    const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+    useEffect(() => {
+        // 加载品类列表（用于适用范围选择）
+        fetch("/api/admin/categories")
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success) setCategories(data.data);
+            })
+            .catch(() => {});
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,6 +51,8 @@ export default function CreateCouponPage() {
                 userLimit: Number(formData.userLimit),
                 code: formData.code || undefined,
                 totalLimit: formData.totalLimit ? Number(formData.totalLimit) : null,
+                scopeType: formData.scopeType,
+                scopeIds: formData.scopeType === "ALL" ? [] : formData.scopeIds,
             };
 
             if (formData.validityType === 'fixed') {
@@ -171,6 +186,61 @@ export default function CreateCouponPage() {
                                 <label className="text-xs text-gray-500">有效天数</label>
                                 <input type="number" className="w-full p-2 border rounded" placeholder="30"
                                     value={formData.daysValid} onChange={e => setFormData({ ...formData, daysValid: e.target.value })} />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 适用范围 */}
+                    <div className="space-y-4 border-t pt-4">
+                        <label className="text-sm font-medium">适用范围</label>
+                        <div className="flex gap-4">
+                            <label className="flex items-center gap-2 text-sm">
+                                <input type="radio" checked={formData.scopeType === 'ALL'} onChange={() => setFormData({ ...formData, scopeType: 'ALL', scopeIds: [] })} />
+                                全场通用
+                            </label>
+                            <label className="flex items-center gap-2 text-sm">
+                                <input type="radio" checked={formData.scopeType === 'CATEGORY'} onChange={() => setFormData({ ...formData, scopeType: 'CATEGORY', scopeIds: [] })} />
+                                指定品类
+                            </label>
+                            <label className="flex items-center gap-2 text-sm">
+                                <input type="radio" checked={formData.scopeType === 'PRODUCT'} onChange={() => setFormData({ ...formData, scopeType: 'PRODUCT', scopeIds: [] })} />
+                                指定商品
+                            </label>
+                        </div>
+
+                        {formData.scopeType === 'CATEGORY' && (
+                            <div className="space-y-2">
+                                <label className="text-xs text-gray-500">选择适用品类（可多选）</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {categories.map((cat) => (
+                                        <label key={cat.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors ${formData.scopeIds.includes(cat.id) ? 'bg-black text-white border-black' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
+                                            <input
+                                                type="checkbox"
+                                                className="hidden"
+                                                checked={formData.scopeIds.includes(cat.id)}
+                                                onChange={(e) => {
+                                                    const ids = new Set(formData.scopeIds);
+                                                    if (e.target.checked) ids.add(cat.id);
+                                                    else ids.delete(cat.id);
+                                                    setFormData({ ...formData, scopeIds: Array.from(ids) });
+                                                }}
+                                            />
+                                            {cat.name}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {formData.scopeType === 'PRODUCT' && (
+                            <div className="space-y-2">
+                                <label className="text-xs text-gray-500">适用商品ID（逗号分隔）</label>
+                                <input
+                                    className="w-full p-2 border rounded text-sm"
+                                    placeholder="例如：abc123,def456"
+                                    value={formData.scopeIds.join(",")}
+                                    onChange={(e) => setFormData({ ...formData, scopeIds: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                                />
                             </div>
                         )}
                     </div>

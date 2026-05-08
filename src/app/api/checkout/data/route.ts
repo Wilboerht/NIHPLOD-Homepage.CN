@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
 
     const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-    // 查询用户可用优惠券（UNUSED 且未过期，满足门槛）
+    // 查询用户可用优惠券（UNUSED 且未过期，满足门槛，且适用于当前商品）
     const now = new Date();
     const availableCoupons = await prisma.userCoupon.findMany({
       where: {
@@ -204,7 +204,28 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    const coupons = availableCoupons.map((uc) => ({
+    // 获取当前商品的品类ID，用于过滤适用范围
+    const productIds = items.map((i) => i.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, categoryId: true },
+    });
+    const categoryIds = Array.from(new Set(products.map((p) => p.categoryId)));
+
+    // 过滤掉不适用于当前商品的优惠券
+    const filteredCoupons = availableCoupons.filter((uc) => {
+      const coupon = uc.coupon;
+      if (coupon.scopeType === "ALL" || !coupon.scopeType) return true;
+      if (coupon.scopeType === "CATEGORY") {
+        return categoryIds.some((cid) => coupon.scopeIds.includes(cid));
+      }
+      if (coupon.scopeType === "PRODUCT") {
+        return productIds.some((pid) => coupon.scopeIds.includes(pid));
+      }
+      return true;
+    });
+
+    const coupons = filteredCoupons.map((uc) => ({
       id: uc.id,
       name: uc.coupon.name,
       type: uc.coupon.type,

@@ -151,6 +151,27 @@ export async function createOrder(
           throw new Error(`订单金额未满足优惠券门槛 (需满 ${coupon.minAmount}元)`);
         }
 
+        // 校验适用范围
+        if (coupon.scopeType && coupon.scopeType !== 'ALL' && coupon.scopeIds.length > 0) {
+          const orderProductIds = items.map((i) => i.productId);
+          if (coupon.scopeType === 'CATEGORY') {
+            const products = await tx.product.findMany({
+              where: { id: { in: orderProductIds } },
+              select: { categoryId: true },
+            });
+            const categoryIds = products.map((p) => p.categoryId);
+            const hasMatch = categoryIds.some((cid) => coupon.scopeIds.includes(cid));
+            if (!hasMatch) {
+              throw new Error('优惠券不适用于当前商品品类');
+            }
+          } else if (coupon.scopeType === 'PRODUCT') {
+            const hasMatch = orderProductIds.some((pid) => coupon.scopeIds.includes(pid));
+            if (!hasMatch) {
+              throw new Error('优惠券不适用于当前商品');
+            }
+          }
+        }
+
         // 计算优惠
         if (coupon.type === 'DISCOUNT_AMOUNT') {
           // 满减券：直接减去固定金额

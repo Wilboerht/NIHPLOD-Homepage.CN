@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
         daysValid: true,
         totalLimit: true,
         userLimit: true,
+        scopeType: true,
+        scopeIds: true,
       },
     });
 

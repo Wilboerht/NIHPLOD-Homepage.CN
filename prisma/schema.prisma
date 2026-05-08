@@ -488,19 +488,23 @@ model Coupon {
   type        String   // DISCOUNT_AMOUNT (满减) | DISCOUNT_PERCENT (折扣)
   value       Decimal  @db.Decimal(10, 2)
   minAmount   Decimal  @default(0) @db.Decimal(10, 2)
-  
+
   // 有效期规则
   startDate   DateTime? // 固定开始时间
   endDate     DateTime? // 固定结束时间
   daysValid   Int?      // 领取后多少天有效 (相对时间)
-  
+
   // 发放规则
   totalLimit  Int?      // 总发行量
   userLimit   Int       @default(1) // 每人限领张数
-  
+
+  // 适用范围
+  scopeType   String    @default("ALL") // ALL | CATEGORY | PRODUCT
+  scopeIds    String[]  @default([])    // 品类ID或商品ID列表
+
   isActive    Boolean   @default(true) // 上下架
   createdAt   DateTime  @default(now())
-  
+
   userCoupons UserCoupon[]
 
   @@index([isActive])

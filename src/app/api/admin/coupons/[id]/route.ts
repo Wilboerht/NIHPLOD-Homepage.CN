@@ -18,6 +18,8 @@ const updateSchema = z.object({
     userLimit: z.number().int().positive().optional(),
     isActive: z.boolean().optional(),
     code: z.string().optional().nullable(),
+    scopeType: z.enum(["ALL", "CATEGORY", "PRODUCT"]).optional(),
+    scopeIds: z.array(z.string()).optional(),
 }).superRefine((data, ctx) => {
     if (data.type === "DISCOUNT_PERCENT" && data.value !== undefined && (data.value <= 0 || data.value >= 1)) {
         ctx.addIssue({
@@ -56,6 +58,8 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
                 ...(data.userLimit !== undefined && { userLimit: data.userLimit }),
                 ...(data.isActive !== undefined && { isActive: data.isActive }),
                 ...(data.code !== undefined && { code: data.code }),
+                ...(data.scopeType !== undefined && { scopeType: data.scopeType }),
+                ...(data.scopeIds !== undefined && { scopeIds: data.scopeIds }),
             },
         });
 

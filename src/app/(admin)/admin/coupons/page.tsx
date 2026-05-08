@@ -24,6 +24,8 @@ interface Coupon {
     daysValid: number | null;
     totalLimit: number | null;
     userLimit: number;
+    scopeType: string;
+    scopeIds: string[];
     isActive: boolean;
     _count: {
         userCoupons: number;
@@ -36,6 +38,7 @@ export default function AdminCouponsPage() {
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
     const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+    const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
     const { success, error } = useToast();
 
     const fetchCoupons = useCallback(async (page = 1) => {
@@ -54,6 +57,13 @@ export default function AdminCouponsPage() {
 
     useEffect(() => {
         fetchCoupons(1);
+        // 加载品类列表（用于编辑弹窗的适用范围选择）
+        fetch("/api/admin/categories")
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success) setCategories(data.data);
+            })
+            .catch(() => {});
     }, [fetchCoupons]);
 
     const handleToggleActive = async (id: string, current: boolean) => {
@@ -386,6 +396,69 @@ export default function AdminCouponsPage() {
                                             className="w-full p-2 border rounded-md text-sm"
                                             value={editingCoupon.daysValid || ""}
                                             onChange={e => setEditingCoupon({ ...editingCoupon, daysValid: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-3 border-t pt-4">
+                                <label className="text-sm font-medium">适用范围</label>
+                                <div className="flex gap-4 text-sm">
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            checked={editingCoupon.scopeType === 'ALL'}
+                                            onChange={() => setEditingCoupon({ ...editingCoupon, scopeType: 'ALL', scopeIds: [] })}
+                                        />
+                                        全场通用
+                                    </label>
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            checked={editingCoupon.scopeType === 'CATEGORY'}
+                                            onChange={() => setEditingCoupon({ ...editingCoupon, scopeType: 'CATEGORY', scopeIds: [] })}
+                                        />
+                                        指定品类
+                                    </label>
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            checked={editingCoupon.scopeType === 'PRODUCT'}
+                                            onChange={() => setEditingCoupon({ ...editingCoupon, scopeType: 'PRODUCT', scopeIds: [] })}
+                                        />
+                                        指定商品
+                                    </label>
+                                </div>
+                                {editingCoupon.scopeType === 'CATEGORY' && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-gray-500">选择适用品类（可多选）</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {categories.map((cat) => (
+                                                <label key={cat.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition-colors ${editingCoupon.scopeIds.includes(cat.id) ? 'bg-black text-white border-black' : 'bg-white hover:bg-gray-50 border-gray-200'}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="hidden"
+                                                        checked={editingCoupon.scopeIds.includes(cat.id)}
+                                                        onChange={(e) => {
+                                                            const ids = new Set(editingCoupon.scopeIds);
+                                                            if (e.target.checked) ids.add(cat.id);
+                                                            else ids.delete(cat.id);
+                                                            setEditingCoupon({ ...editingCoupon, scopeIds: Array.from(ids) });
+                                                        }}
+                                                    />
+                                                    {cat.name}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {editingCoupon.scopeType === 'PRODUCT' && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-gray-500">适用商品ID（逗号分隔）</label>
+                                        <input
+                                            className="w-full p-2 border rounded-md text-sm"
+                                            placeholder="例如：abc123,def456"
+                                            value={editingCoupon.scopeIds.join(",")}
+                                            onChange={(e) => setEditingCoupon({ ...editingCoupon, scopeIds: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
                                         />
                                     </div>
                                 )}

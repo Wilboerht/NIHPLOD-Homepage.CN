@@ -17,6 +17,8 @@ const createSchema = z.object({
     totalLimit: z.number().int().positive().nullable().optional(),
     userLimit: z.number().int().positive().default(1),
     code: z.string().optional().nullable(),
+    scopeType: z.enum(["ALL", "CATEGORY", "PRODUCT"]).default("ALL"),
+    scopeIds: z.array(z.string()).default([]),
 }).superRefine((data, ctx) => {
     // ✅ 规则1：折扣比例强制在 (0, 1) 区间——例如 0.8 = 八折，0.9 = 九折
     if (data.type === "DISCOUNT_PERCENT" && (data.value <= 0 || data.value >= 1)) {
@@ -49,9 +51,18 @@ export async function POST(req: NextRequest) {
 
         const coupon = await prisma.coupon.create({
             data: {
-                ...data,
+                name: data.name,
+                type: data.type,
+                value: data.value,
+                minAmount: data.minAmount,
+                daysValid: data.daysValid,
                 startDate: data.startDate ? new Date(data.startDate) : null,
                 endDate: data.endDate ? new Date(data.endDate) : null,
+                totalLimit: data.totalLimit,
+                userLimit: data.userLimit,
+                code: data.code,
+                scopeType: data.scopeType,
+                scopeIds: data.scopeIds,
             },
         });
 
@@ -108,6 +119,7 @@ export async function GET(req: NextRequest) {
                         select: { id: true },
                     }
                 },
+                // scopeIds 是数组，直接包含在查询结果中
                 orderBy: { createdAt: 'desc' },
                 skip: (page - 1) * pageSize,
                 take: pageSize,
