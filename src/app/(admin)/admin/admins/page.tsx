@@ -175,7 +175,7 @@ export default function AdminAdminsPage() {
                 <td className="px-4 py-3">{admin.email}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${admin.role === "owner" ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-600"}`}>
-                    {admin.role === "owner" ? "超级管理员" : "管理员"}
+                    {admin.role === "owner" ? "最高权限管理员" : "管理员"}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-400">{new Date(admin.createdAt).toLocaleDateString("zh-CN")}</td>
@@ -261,7 +261,7 @@ export default function AdminAdminsPage() {
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                 >
                   <option value="admin">管理员</option>
-                  <option value="owner">超级管理员</option>
+                  <option value="owner">最高权限管理员</option>
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-2">

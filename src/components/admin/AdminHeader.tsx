@@ -106,7 +106,7 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
         >
           <div className="border-b border-gray-100 px-4 py-2">
             <p className="text-sm font-medium text-gray-900">{userName || "管理员"}</p>
-            <p className="text-xs text-gray-500">{userRole === "owner" ? "所有者" : "管理员"}</p>
+            <p className="text-xs text-gray-500">{userRole === "owner" ? "最高权限管理员" : "管理员"}</p>
           </div>
           <button
             onClick={handleLogout}
