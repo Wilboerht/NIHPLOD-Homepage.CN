@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import DOMPurify from "isomorphic-dompurify";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
@@ -126,7 +126,20 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [purchaseMenuOpen, setPurchaseMenuOpen] = useState(false);
+  const purchaseMenuRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭购买菜单
+  useEffect(() => {
+    if (!purchaseMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (purchaseMenuRef.current && !purchaseMenuRef.current.contains(e.target as Node)) {
+        setPurchaseMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [purchaseMenuOpen]);
 
   // 检测是否为移动端设备（用于决定小红书链接用 Scheme 唤起 App 还是 Web 链接）
   useEffect(() => {
@@ -168,7 +181,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     if (!isOpen) {
       setCurrentImageIndex(0);
       setOpenAccordion(null);
-      setPurchaseModalOpen(false);
+      setPurchaseMenuOpen(false);
     }
   }, [isOpen]);
 
@@ -415,19 +428,30 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                     {/* 官方旗舰店 */}
                     <div className="py-4">
-                      <div className="mb-8 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
+                      <div className="mb-4 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
 
                       <div className="flex flex-wrap gap-4 items-center">
-                        {/* 官网购买 */}
+                        {/* 官网购买按钮 + 气泡菜单 */}
                         {product.allowDirectBuy && product.stock !== undefined && (
-                          <button
-                            type="button"
-                            onClick={() => setPurchaseModalOpen(true)}
-                            className="flex items-center gap-2 rounded-lg border border-brand-gold bg-transparent px-4 py-2 text-sm font-medium text-brand-gold transition-colors hover:bg-brand-gold/10"
-                          >
-                            <ShoppingBag className="h-4 w-4" />
-                            官网购买
-                          </button>
+                          <div className="relative" ref={purchaseMenuRef}>
+                            <button
+                              type="button"
+                              onClick={() => setPurchaseMenuOpen(!purchaseMenuOpen)}
+                              className="flex items-center gap-2 rounded-lg border border-brand-gold bg-transparent px-4 py-2 text-sm font-medium text-brand-gold transition-colors hover:bg-brand-gold/10"
+                            >
+                              <ShoppingBag className="h-4 w-4" />
+                              官网购买
+                              <span className={cn("ml-1 text-xs transition-transform", purchaseMenuOpen ? "rotate-180" : "")}>▼</span>
+                            </button>
+
+                            {purchaseMenuOpen && (
+                              <div className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl bg-white p-3 shadow-xl ring-1 ring-black/5">
+                                <DrawerAddToCartButton productId={product.id} stock={product.stock!} onClose={onClose} compact />
+                                <div className="my-1.5 border-t border-[#00263E]/5" />
+                                <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
+                              </div>
+                            )}
+                          </div>
                         )}
 
                         {/* 外部平台链接 */}
@@ -454,43 +478,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                 </div>
               </div>
 
-              {/* 购买选择模态框 */}
-              <AnimatePresence>
-                {purchaseModalOpen && (
-                  <m.div
-                    className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setPurchaseModalOpen(false)}
-                  >
-                    <m.div
-                      className="mx-4 w-full max-w-sm rounded-2xl bg-[#F0EDE1] p-6 shadow-xl"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.2 }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="mb-6 text-center">
-                        <h3 className="text-lg font-semibold text-[#00263E]">选择购买方式</h3>
-                        <p className="mt-1 text-sm text-[#00263E]/50">请选择您想要的操作</p>
-                      </div>
-                      <div className="flex flex-col gap-3">
-                        <DrawerAddToCartButton productId={product.id} stock={product.stock!} onClose={onClose} />
-                        <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setPurchaseModalOpen(false)}
-                        className="mt-4 w-full py-2 text-sm text-[#00263E]/50 transition-colors hover:text-[#00263E]"
-                      >
-                        取消
-                      </button>
-                    </m.div>
-                  </m.div>
-                )}
-              </AnimatePresence>
+
             </m.div>
           </div>
         </>
