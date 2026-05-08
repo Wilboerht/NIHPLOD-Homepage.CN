@@ -11,12 +11,13 @@ interface AdminHeaderProps {
   onMenuClick: () => void;
   isMobile: boolean;
   userName?: string;
+  userRole?: string;
 }
 
 /**
  * 后台顶部导航组件
  */
-export function AdminHeader({ onMenuClick, isMobile, userName = "Admin" }: AdminHeaderProps) {
+export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: AdminHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const breadcrumbs = getBreadcrumbs(pathname);
@@ -91,7 +92,7 @@ export function AdminHeader({ onMenuClick, isMobile, userName = "Admin" }: Admin
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold">
             <User className="h-4 w-4" />
           </div>
-          <span className="hidden md:block">{userName}</span>
+          <span className="hidden md:block">{userName || "加载中..."}</span>
         </button>
 
         {/* 用户下拉菜单 */}
@@ -104,8 +105,8 @@ export function AdminHeader({ onMenuClick, isMobile, userName = "Admin" }: Admin
           )}
         >
           <div className="border-b border-gray-100 px-4 py-2">
-            <p className="text-sm font-medium text-gray-900">{userName}</p>
-            <p className="text-xs text-gray-500">管理员</p>
+            <p className="text-sm font-medium text-gray-900">{userName || "管理员"}</p>
+            <p className="text-xs text-gray-500">{userRole === "owner" ? "所有者" : "管理员"}</p>
           </div>
           <button
             onClick={handleLogout}

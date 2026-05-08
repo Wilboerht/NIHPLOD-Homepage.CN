@@ -20,13 +20,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const { isOpen, isCollapsed, isMobile, toggle, close, toggleCollapse } = useSidebar();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
+  const [userName, setUserName] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     fetch("/api/admin/me")
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.data?.user?.role) {
+        if (data.success && data.data?.user) {
           setUserRole(data.data.user.role);
+          setUserName(data.data.user.name);
         }
       })
       .catch(() => {
@@ -64,7 +66,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           )}
         >
           {/* 顶部导航 */}
-          <AdminHeader onMenuClick={toggle} isMobile={isMobile} />
+          <AdminHeader onMenuClick={toggle} isMobile={isMobile} userName={userName} userRole={userRole} />
 
           {/* 页面内容 */}
           <main className="flex-1 p-4 md:p-6">
