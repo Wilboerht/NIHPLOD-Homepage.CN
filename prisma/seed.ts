@@ -20,84 +20,81 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("🌱 开始初始化种子数据...\n");
 
-  // 1. 创建默认管理员
-  const hankPassword = await bcrypt.hash("whk35168", 12);
-  await prisma.admin.upsert({
-    where: { email: "hank.wang@nihplod.cn" },
-    update: {},
-    create: {
-      email: "hank.wang@nihplod.cn",
-      password: hankPassword,
-      name: "Hank Wang",
-      role: "owner",
-    },
-  });
-  console.log("✅ 管理员账号已创建 (hank.wang@nihplod.cn / whk35168)");
+  // 1. 创建默认管理员（密码从环境变量读取）
+  const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!seedAdminPassword) {
+    console.warn("⚠️ 未设置 SEED_ADMIN_PASSWORD 环境变量，跳过管理员创建");
+  } else {
+    const adminPasswordHash = await bcrypt.hash(seedAdminPassword, 12);
 
-  const kikiPassword = await bcrypt.hash("MOIDAS2026kiki", 12);
-  await prisma.admin.upsert({
-    where: { email: "kiki.wang@nihplod.cn" },
-    update: {},
-    create: {
-      email: "kiki.wang@nihplod.cn",
-      password: kikiPassword,
-      name: "Kiki Wang",
-      role: "admin",
-    },
-  });
-  console.log("✅ 管理员账号已创建 (kiki.wang@nihplod.cn / MOIDAS2026kiki)");
+    await prisma.admin.upsert({
+      where: { email: "hank.wang@nihplod.cn" },
+      update: {},
+      create: {
+        email: "hank.wang@nihplod.cn",
+        password: adminPasswordHash,
+        name: "Hank Wang",
+        role: "owner",
+      },
+    });
 
-  const walterPassword = await bcrypt.hash("walter", 12);
-  await prisma.admin.upsert({
-    where: { email: "walter@nihplod.cn" },
-    update: {},
-    create: {
-      email: "walter@nihplod.cn",
-      password: walterPassword,
-      name: "Walter",
-      role: "admin",
-    },
-  });
-  console.log("✅ 管理员账号已创建 (walter@nihplod.cn / walter)");
+    await prisma.admin.upsert({
+      where: { email: "kiki.wang@nihplod.cn" },
+      update: {},
+      create: {
+        email: "kiki.wang@nihplod.cn",
+        password: adminPasswordHash,
+        name: "Kiki Wang",
+        role: "admin",
+      },
+    });
 
-  const gracePassword = await bcrypt.hash("grace2026", 12);
-  await prisma.admin.upsert({
-    where: { email: "grace.zhang@nihplod.cn" },
-    update: {},
-    create: {
-      email: "grace.zhang@nihplod.cn",
-      password: gracePassword,
-      name: "Grace Zhang",
-      role: "admin",
-    },
-  });
-  console.log("✅ 管理员账号已创建 (grace.zhang@nihplod.cn / grace2026)");
+    await prisma.admin.upsert({
+      where: { email: "walter@nihplod.cn" },
+      update: {},
+      create: {
+        email: "walter@nihplod.cn",
+        password: adminPasswordHash,
+        name: "Walter",
+        role: "admin",
+      },
+    });
 
-  const skyePassword = await bcrypt.hash("315426", 12);
-  await prisma.admin.upsert({
-    where: { email: "skye.cao@nihplod.cn" },
-    update: {},
-    create: {
-      email: "skye.cao@nihplod.cn",
-      password: skyePassword,
-      name: "Skye Cao",
-      role: "admin",
-    },
-  });
-  console.log("✅ 管理员账号已创建 (skye.cao@nihplod.cn / skye2026)");
+    await prisma.admin.upsert({
+      where: { email: "grace.zhang@nihplod.cn" },
+      update: {},
+      create: {
+        email: "grace.zhang@nihplod.cn",
+        password: adminPasswordHash,
+        name: "Grace Zhang",
+        role: "admin",
+      },
+    });
 
-  const rosyPassword = await bcrypt.hash("rosy2026", 12);
-  await prisma.admin.upsert({
-    where: { email: "rosy.zhang@nihplod.cn" },
-    update: {},
-    create: {
-      email: "rosy.zhang@nihplod.cn",
-      password: rosyPassword,
-      name: "Rosy Zhang",
-      role: "admin",
-    },
-  });
-  console.log("✅ 管理员账号已创建 (rosy.zhang@nihplod.cn / rosy2026)");
+    await prisma.admin.upsert({
+      where: { email: "skye.cao@nihplod.cn" },
+      update: {},
+      create: {
+        email: "skye.cao@nihplod.cn",
+        password: adminPasswordHash,
+        name: "Skye Cao",
+        role: "admin",
+      },
+    });
+
+    await prisma.admin.upsert({
+      where: { email: "rosy.zhang@nihplod.cn" },
+      update: {},
+      create: {
+        email: "rosy.zhang@nihplod.cn",
+        password: adminPasswordHash,
+        name: "Rosy Zhang",
+        role: "admin",
+      },
+    });
+
+    console.log("✅ 管理员账号已创建（密码从环境变量读取）");
+  }
 
   // 2. 创建产品分类（包含 SVG 图标）
   const categories = [
@@ -502,69 +499,76 @@ async function main() {
 
   await prisma.address.deleteMany({});
   await prisma.user.deleteMany({});
-  const testUserPassword = await bcrypt.hash("123456", 10);
-  const testUser = await prisma.user.create({
-    data: {
-      phone: "13800138000",
-      phoneVerified: true,
-      password: testUserPassword,
-      nickname: "测试用户",
-    },
-  });
-  console.log("✅ 测试用户已创建 (13800138000 / 123456)");
 
-  // 9.1 创建测试用户收货地址
-  const addresses = [
-    {
-      userId: testUser.id,
-      name: "张三",
-      phone: "13800138000",
-      province: "上海市",
-      city: "上海市",
-      district: "浦东新区",
-      detail: "陆家嘴环路1000号 恒生银行大厦 28楼",
-      postalCode: "200120",
-      isDefault: true,
-    },
-    {
-      userId: testUser.id,
-      name: "李四",
-      phone: "13900139000",
-      province: "北京市",
-      city: "北京市",
-      district: "朝阳区",
-      detail: "建国门外大街1号 国贸大厦A座 15层",
-      postalCode: "100004",
-      isDefault: false,
-    },
-    {
-      userId: testUser.id,
-      name: "王五",
-      phone: "13700137000",
-      province: "广东省",
-      city: "深圳市",
-      district: "南山区",
-      detail: "科技园南区 腾讯大厦 10楼",
-      postalCode: "518057",
-      isDefault: false,
-    },
-  ];
-  for (const addr of addresses) {
-    await prisma.address.create({ data: addr });
+  // 9. 创建测试用户（密码从环境变量读取）
+  const seedTestPassword = process.env.SEED_TEST_USER_PASSWORD;
+  if (seedTestPassword) {
+    const testUserPasswordHash = await bcrypt.hash(seedTestPassword, 10);
+    const testUser = await prisma.user.create({
+      data: {
+        phone: "13800138000",
+        phoneVerified: true,
+        password: testUserPasswordHash,
+        nickname: "测试用户",
+      },
+    });
+    console.log("✅ 测试用户已创建");
+
+    // 9.1 创建测试用户收货地址
+    const addresses = [
+      {
+        userId: testUser.id,
+        name: "张三",
+        phone: "13800138000",
+        province: "上海市",
+        city: "上海市",
+        district: "浦东新区",
+        detail: "陆家嘴环路1000号 恒生银行大厦 28楼",
+        postalCode: "200120",
+        isDefault: true,
+      },
+      {
+        userId: testUser.id,
+        name: "李四",
+        phone: "13900139000",
+        province: "北京市",
+        city: "北京市",
+        district: "朝阳区",
+        detail: "建国门外大街1号 国贸大厦A座 15层",
+        postalCode: "100004",
+        isDefault: false,
+      },
+      {
+        userId: testUser.id,
+        name: "王五",
+        phone: "13700137000",
+        province: "广东省",
+        city: "深圳市",
+        district: "南山区",
+        detail: "科技园南区 腾讯大厦 10楼",
+        postalCode: "518057",
+        isDefault: false,
+      },
+    ];
+    for (const addr of addresses) {
+      await prisma.address.create({ data: addr });
+    }
+    console.log("✅ 测试用户收货地址已创建 (3 个地址)");
+  } else {
+    console.warn("⚠️ 未设置 SEED_TEST_USER_PASSWORD 环境变量，跳过测试用户创建");
   }
-  console.log("✅ 测试用户收货地址已创建 (3 个地址)");
 
   // 10. 创建默认页面逻辑已移除（页面内容现在统一在代码中管理）
 
   console.log("\n🎉 种子数据初始化完成！");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("管理员登录信息:");
-  console.log(" - hank.wang@nihplod.cn / whk35168");
-  console.log(" - kiki.wang@nihplod.cn / MOIDAS2026kiki");
-  console.log(" - walter@nihplod.cn / walter");
-  console.log(" - grace.zhang@nihplod.cn / grace2026");
-  console.log(" - skye.cao@nihplod.cn / 315426");
-  console.log(" - rosy.zhang@nihplod.cn / rosy2026");
+  console.log(" - hank.wang@nihplod.cn (owner)");
+  console.log(" - kiki.wang@nihplod.cn (admin)");
+  console.log(" - walter@nihplod.cn (admin)");
+  console.log(" - grace.zhang@nihplod.cn (admin)");
+  console.log(" - skye.cao@nihplod.cn (admin)");
+  console.log(" - rosy.zhang@nihplod.cn (admin)");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 

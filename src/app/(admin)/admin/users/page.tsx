@@ -7,7 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, RefreshCw, Eye } from "lucide-react";
-/* eslint-disable @next/next/no-img-element */
+import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 
 interface UserItem {
@@ -108,9 +108,16 @@ export default function AdminUsersPage() {
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs">
-                      {user.avatar ? (
-                        <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
+                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs overflow-hidden">
+                      {user.avatar && user.avatar.startsWith("http") ? (
+                        <Image
+                          src={user.avatar}
+                          alt=""
+                          width={32}
+                          height={32}
+                          className="h-8 w-8 rounded-full object-cover"
+                          unoptimized
+                        />
                       ) : (
                         user.nickname?.charAt(0) || "U"
                       )}

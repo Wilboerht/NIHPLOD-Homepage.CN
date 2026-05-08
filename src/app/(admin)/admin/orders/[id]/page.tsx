@@ -55,6 +55,9 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showShipModal, setShowShipModal] = useState(false);
   const [shipForm, setShipForm] = useState({ logisticsCompany: "SF", trackingNo: "" });
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundAction, setRefundAction] = useState<boolean | null>(null);
+  const [refundRemark, setRefundRemark] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -77,30 +80,47 @@ export default function OrderDetailPage() {
       const data = await res.json();
       if (data.success) {
         success("发货成功");
-        router.refresh();
-        window.location.reload();
+        setShowShipModal(false);
+        // 重新获取订单数据
+        const refreshRes = await fetch(`/api/admin/orders/${id}`);
+        const refreshData = await refreshRes.json();
+        if (refreshData.success) {
+          setOrder(refreshData.data.order);
+        }
       } else {
         error(data.error?.message || "发货失败");
       }
     } finally {
       setActionLoading(false);
-      setShowShipModal(false);
     }
   };
 
-  const handleRefund = async (approved: boolean) => {
-    if (!confirm(approved ? "确认同意退款？" : "确认拒绝退款？")) return;
+  const openRefundModal = (approved: boolean) => {
+    setRefundAction(approved);
+    setRefundRemark("");
+    setShowRefundModal(true);
+  };
+
+  const handleRefund = async () => {
+    if (refundAction === null) return;
     setActionLoading(true);
     try {
       const res = await fetch(`/api/admin/orders/${id}/refund`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approved }),
+        body: JSON.stringify({ approved: refundAction, adminRemark: refundRemark.trim() || undefined }),
       });
       const data = await res.json();
       if (data.success) {
-        success(approved ? "退款已批准" : "退款已拒绝");
-        window.location.reload();
+        success(refundAction ? "退款已批准" : "退款已拒绝");
+        setShowRefundModal(false);
+        setRefundAction(null);
+        // 重新获取订单数据而不是强制刷新
+        const refreshRes = await fetch(`/api/admin/orders/${id}`);
+        const refreshData = await refreshRes.json();
+        if (refreshData.success) {
+          setOrder(refreshData.data.order);
+        }
       } else {
         error(data.error?.message || "操作失败");
       }
@@ -131,10 +151,10 @@ export default function OrderDetailPage() {
           )}
           {order.status === "REFUNDING" && (
             <>
-              <Button variant="primary" onClick={() => handleRefund(true)} disabled={actionLoading}>
+              <Button variant="primary" onClick={() => openRefundModal(true)} disabled={actionLoading}>
                 <CheckCircle className="h-4 w-4 mr-1" /> 同意退款
               </Button>
-              <Button variant="outline" onClick={() => handleRefund(false)} disabled={actionLoading}>
+              <Button variant="outline" onClick={() => openRefundModal(false)} disabled={actionLoading}>
                 <XCircle className="h-4 w-4 mr-1" /> 拒绝
               </Button>
             </>
@@ -244,6 +264,40 @@ export default function OrderDetailPage() {
               <Button variant="outline" onClick={() => setShowShipModal(false)}>取消</Button>
               <Button onClick={handleShip} disabled={actionLoading || !shipForm.trackingNo}>
                 {actionLoading ? "处理中..." : "确认发货"}
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 退款审批弹窗 */}
+      {showRefundModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-lg font-medium">
+              {refundAction ? "同意退款" : "拒绝退款"}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm text-gray-600">备注（可选）</label>
+                <textarea
+                  value={refundRemark}
+                  onChange={(e) => setRefundRemark(e.target.value)}
+                  placeholder="请输入退款备注..."
+                  rows={3}
+                  className="w-full rounded-lg border p-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRefundModal(false)}>取消</Button>
+              <Button
+                variant={refundAction ? "primary" : "outline"}
+                onClick={handleRefund}
+                disabled={actionLoading}
+              >
+                {actionLoading ? "处理中..." : refundAction ? "确认同意" : "确认拒绝"}
               </Button>
             </div>
           </div>

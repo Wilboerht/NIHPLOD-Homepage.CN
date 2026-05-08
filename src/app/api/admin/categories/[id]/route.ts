@@ -152,38 +152,52 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // 检查分类是否存在
-    const existing = await prisma.category.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: { products: true },
-        },
-      },
-    });
-
-    if (!existing) {
-      return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "分类不存在" } },
-        { status: 404 }
-      );
-    }
-
-    // 检查是否有关联产品（删除保护）
-    if (existing._count.products > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "HAS_PRODUCTS",
-            message: `该分类下有 ${existing._count.products} 个产品，无法删除`,
+    // 使用事务原子性检查并删除
+    try {
+      await prisma.$transaction(async (tx) => {
+        const existing = await tx.category.findUnique({
+          where: { id },
+          include: {
+            _count: {
+              select: { products: true },
+            },
           },
-        },
-        { status: 400 }
-      );
-    }
+        });
 
-    await prisma.category.delete({ where: { id } });
+        if (!existing) {
+          throw new Error("CATEGORY_NOT_FOUND");
+        }
+
+        if (existing._count.products > 0) {
+          throw new Error(`HAS_PRODUCTS:${existing._count.products}`);
+        }
+
+        await tx.category.delete({ where: { id } });
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.message === "CATEGORY_NOT_FOUND") {
+          return NextResponse.json(
+            { success: false, error: { code: "NOT_FOUND", message: "分类不存在" } },
+            { status: 404 }
+          );
+        }
+        if (error.message.startsWith("HAS_PRODUCTS:")) {
+          const count = error.message.split(":")[1];
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "HAS_PRODUCTS",
+                message: `该分类下有 ${count} 个产品，无法删除`,
+              },
+            },
+            { status: 400 }
+          );
+        }
+      }
+      throw error;
+    }
 
     revalidateTag("admin-stats");
 

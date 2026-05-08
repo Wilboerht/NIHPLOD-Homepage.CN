@@ -5,15 +5,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateUploadSignature } from "@/lib/ali-oss";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { verifyUserAuth } from "@/lib/auth";
+import { verifyAuth, verifyUserAuth } from "@/lib/auth";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
     try {
-        // 1. 要求用户登录
-        const user = await verifyUserAuth(request);
+        // 1. 要求用户登录（优先验证管理员，再验证普通用户）
+        const admin = await verifyAuth(request);
+        const user = admin ?? (await verifyUserAuth(request));
         if (!user) {
             return NextResponse.json({ error: "请先登录" }, { status: 401 });
         }
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
         // 校验文件扩展名（普通用户只能上传图片和 PDF，视频仅限管理员）
         const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf"];
         const ADMIN_EXTS = ["mp4", "mov"];
-        const isAdmin = user.role === "admin" || user.role === "owner";
+        const isAdmin = admin !== null;
         const ext = filename.split(".").pop()?.toLowerCase() || "";
         const allAllowed = isAdmin ? [...ALLOWED_EXTS, ...ADMIN_EXTS] : ALLOWED_EXTS;
         if (!allAllowed.includes(ext)) {

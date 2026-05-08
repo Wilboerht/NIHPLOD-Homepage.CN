@@ -72,16 +72,36 @@ export async function GET(req: NextRequest) {
         const admin = await verifyAuth(req);
         if (!admin) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
-        const coupons = await prisma.coupon.findMany({
-            include: {
-                _count: {
-                    select: { userCoupons: true }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
+        const { searchParams } = new URL(req.url);
+        const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+        const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "20", 10)));
 
-        return NextResponse.json({ success: true, data: coupons });
+        const [coupons, total] = await Promise.all([
+            prisma.coupon.findMany({
+                include: {
+                    _count: {
+                        select: { userCoupons: true }
+                    }
+                },
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.coupon.count(),
+        ]);
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                coupons,
+                pagination: {
+                    page,
+                    pageSize,
+                    total,
+                    totalPages: Math.ceil(total / pageSize),
+                },
+            },
+        });
     } catch (e: unknown) {
         logError("AdminCoupons", e, { action: "list" });
         return NextResponse.json({ success: false, error: { code: "LIST_FAILED", message: "获取列表失败" } }, { status: 500 });

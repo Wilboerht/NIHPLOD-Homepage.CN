@@ -22,7 +22,7 @@ interface StatsData {
   recentMessages: {
     id: string;
     name: string;
-    email: string;
+    phone: string;
     content: string;
     read: boolean;
     createdAt: string;

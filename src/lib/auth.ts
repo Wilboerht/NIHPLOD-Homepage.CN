@@ -76,11 +76,12 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
 /**
  * API 路由保护高阶函数（管理员）
  * 包装 API 处理函数，自动验证认证
+ * 支持 Next.js App Router Route Context
  */
-export function withAuth<T extends NextRequest>(
-  handler: (request: T, admin: AdminJWTPayload) => Promise<Response>
-): (request: T) => Promise<Response> {
-  return async (request: T) => {
+export function withAuth<T extends NextRequest, C = unknown, R extends Response = Response>(
+  handler: (request: T, admin: AdminJWTPayload, context: C) => Promise<R>
+): (request: T, context: C) => Promise<R> {
+  return async (request: T, context: C) => {
     const admin = await verifyAuth(request);
 
     if (!admin) {
@@ -96,22 +97,23 @@ export function withAuth<T extends NextRequest>(
           status: 401,
           headers: { "Content-Type": "application/json" },
         }
-      );
+      ) as R;
     }
 
-    return handler(request, admin);
+    return handler(request, admin, context);
   };
 }
 
 /**
  * 基于角色的 API 路由保护高阶函数
  * 在认证基础上增加角色权限校验
+ * 支持 Next.js App Router Route Context
  */
-export function withRole<T extends NextRequest>(
+export function withRole<T extends NextRequest, C = unknown, R extends Response = Response>(
   allowedRoles: string[],
-  handler: (request: T, admin: AdminJWTPayload) => Promise<Response>
-): (request: T) => Promise<Response> {
-  return withAuth(async (request, admin) => {
+  handler: (request: T, admin: AdminJWTPayload, context: C) => Promise<R>
+): (request: T, context: C) => Promise<R> {
+  return withAuth(async (request, admin, context) => {
     if (!allowedRoles.includes(admin.role)) {
       return new Response(
         JSON.stringify({
@@ -125,9 +127,9 @@ export function withRole<T extends NextRequest>(
           status: 403,
           headers: { "Content-Type": "application/json" },
         }
-      );
+      ) as R;
     }
-    return handler(request, admin);
+    return handler(request, admin, context);
   });
 }
 

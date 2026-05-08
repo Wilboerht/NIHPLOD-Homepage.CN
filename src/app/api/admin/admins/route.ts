@@ -7,13 +7,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { withRole } from "@/lib/auth";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, passwordSchema } from "@/lib/password";
 import { z } from "zod";
 
 const createSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
-  password: z.string().min(6),
+  password: passwordSchema,
   role: z.enum(["owner", "admin"]),
 });
 
@@ -127,6 +127,19 @@ export const PUT = withRole(["owner"], async (request) => {
   try {
     const body = await request.json();
     const data = updateSchema.parse(body);
+
+    // 检查邮箱唯一性（排除自身）
+    if (data.email) {
+      const existing = await prisma.admin.findFirst({
+        where: { email: data.email, id: { not: data.id } },
+      });
+      if (existing) {
+        return NextResponse.json(
+          { success: false, error: { code: "DUPLICATE_EMAIL", message: "该邮箱已被使用" } },
+          { status: 409 }
+        );
+      }
+    }
 
     const updateData: Record<string, unknown> = {};
     if (data.email) updateData.email = data.email;

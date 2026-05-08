@@ -36,9 +36,11 @@ const ORDER_STATUS_MAP: Record<string, { label: string; color: "default" | "warn
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: "all", label: "全部状态" },
-  { value: "PENDING_PAYMENT", label: "待付款" },
-  { value: "PENDING_SHIPMENT", label: "待发货" },
+  { value: "PENDING", label: "待付款" },
+  { value: "PAID", label: "已支付" },
+  { value: "PROCESSING", label: "处理中" },
   { value: "SHIPPED", label: "已发货" },
+  { value: "DELIVERED", label: "已签收" },
   { value: "COMPLETED", label: "已完成" },
   { value: "REFUNDING", label: "退款中" },
   { value: "REFUNDED", label: "已退款" },
