@@ -153,8 +153,11 @@ export async function rateLimit(
 export function getClientIP(request: Request): string {
   const headers = request.headers;
 
-  // 仅在信任代理环境时读取 X-Forwarded-For
-  const trustProxy = process.env.TRUST_PROXY === "true";
+  // 信任代理头的条件：显式设置 TRUST_PROXY=true / 开发环境 / Vercel 部署环境
+  const trustProxy =
+    process.env.TRUST_PROXY === "true" ||
+    process.env.NODE_ENV === "development" ||
+    process.env.VERCEL === "1";
 
   if (trustProxy) {
     const forwardedFor = headers.get("x-forwarded-for");
