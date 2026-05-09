@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     default: "NIHPLOD 旎柏",
     template: "%s | NIHPLOD 旎柏",
   },
-  description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启奢华护肤之旅",
+  description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
   keywords: ["NIHPLOD", "旎柏", "护肤品", "高端护肤", "摩纳哥", "抗衰老", "真脂质体", "奢华护肤"],
   authors: [{ name: "NIHPLOD 官方" }],
   creator: "NIHPLOD 官方",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     url: baseUrl,
     siteName: "NIHPLOD 旎柏",
     title: "NIHPLOD 旎柏",
-    description: "NIHPLOD 旎柏，源自摩纳哥的高端护肤品牌，以尖端科技与珍贵成分，为您开启奢华护肤之旅",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: [
       {
         url: "/images/og-image.png",
