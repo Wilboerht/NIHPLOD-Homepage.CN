@@ -59,6 +59,18 @@ export function ContactModal() {
     const { success: toastSuccess, error: toastError } = useToast();
     const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
     const typeDropdownRef = useRef<HTMLDivElement>(null);
+    const mobileTypeTriggerRef = useRef<HTMLButtonElement>(null);
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+    // 构建带图标的留言类型选项（纯常量，提前声明以便 effect 引用）
+    const messageTypes = [
+        { value: "", label: "请选择留言类型", icon: HelpCircle },
+        ...messageTypesData.map((t) => ({
+            value: t.value,
+            label: t.label,
+            icon: iconMap[t.value] || HelpCircle,
+        })),
+    ];
 
     useEffect(() => {
         setMounted(true);
@@ -86,11 +98,17 @@ export function ContactModal() {
     // ESC 关闭及重置
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
-            if (e.key === "Escape") closeContact();
+            if (e.key === "Escape") {
+                if (isTypeDropdownOpen) {
+                    setIsTypeDropdownOpen(false);
+                } else {
+                    closeContact();
+                }
+            }
         };
         window.addEventListener("keydown", handleEsc);
         return () => window.removeEventListener("keydown", handleEsc);
-    }, [closeContact]);
+    }, [closeContact, isTypeDropdownOpen]);
 
     // 点击外部关闭下拉框
     useEffect(() => {
@@ -103,6 +121,61 @@ export function ContactModal() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // 下拉框键盘导航
+    useEffect(() => {
+        if (!isTypeDropdownOpen) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const options = messageTypes.filter(t => t.value !== "");
+
+            switch (e.key) {
+                case "ArrowDown":
+                    e.preventDefault();
+                    setHighlightedIndex(prev => (prev < options.length - 1 ? prev + 1 : 0));
+                    break;
+                case "ArrowUp":
+                    e.preventDefault();
+                    setHighlightedIndex(prev => (prev > 0 ? prev - 1 : options.length - 1));
+                    break;
+                case "Enter":
+                    e.preventDefault();
+                    if (highlightedIndex >= 0 && highlightedIndex < options.length) {
+                        const selected = options[highlightedIndex];
+                        setFormData(prev => ({ ...prev, type: selected.value }));
+                        setIsTypeDropdownOpen(false);
+                        if (errors.type) {
+                            setErrors(prev => ({ ...prev, type: "" }));
+                        }
+                    }
+                    break;
+                case "Escape":
+                    e.preventDefault();
+                    setIsTypeDropdownOpen(false);
+                    break;
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isTypeDropdownOpen, highlightedIndex, errors.type, messageTypes]);
+
+    // 下拉框展开时初始化高亮索引，收起时焦点回归触发器
+    const prevDropdownOpen = useRef(isTypeDropdownOpen);
+    useEffect(() => {
+        if (isTypeDropdownOpen) {
+            const options = messageTypes.filter(t => t.value !== "");
+            const currentIndex = options.findIndex(t => t.value === formData.type);
+            setHighlightedIndex(currentIndex >= 0 ? currentIndex : 0);
+        } else {
+            setHighlightedIndex(-1);
+            // 只有从打开变为关闭时才聚焦，避免输入时抢焦点
+            if (prevDropdownOpen.current) {
+                mobileTypeTriggerRef.current?.focus();
+            }
+        }
+        prevDropdownOpen.current = isTypeDropdownOpen;
+    }, [isTypeDropdownOpen, formData.type, messageTypes]);
+
     // 重置表单当关闭时
     useEffect(() => {
         if (!contactOpen) {
@@ -113,16 +186,6 @@ export function ContactModal() {
     }, [contactOpen]);
 
     if (!mounted) return null;
-
-    // 构建带图标的留言类型选项
-    const messageTypes = [
-        { value: "", label: "请选择留言类型", icon: HelpCircle },
-        ...messageTypesData.map((t) => ({
-            value: t.value,
-            label: t.label,
-            icon: iconMap[t.value] || HelpCircle,
-        })),
-    ];
 
     // 表单验证
     const validateForm = (): boolean => {
@@ -235,7 +298,7 @@ export function ContactModal() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 10 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="relative w-full h-full md:w-full md:max-w-[1100px] md:h-[600px] rounded-none md:rounded-[2.5rem] bg-transparent md:bg-[#F2F0EA] shadow-none md:shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row max-h-none overflow-hidden"
+                        className="relative w-full h-full md:w-full md:max-w-[880px] md:h-[600px] rounded-none md:rounded-[2.5rem] bg-transparent md:bg-[#F2F0EA] shadow-none md:shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row max-h-none overflow-hidden"
                     >
                         {/* 左侧：表单区域 */}
                         <div className="flex flex-1 flex-col overflow-y-auto md:p-10 h-full justify-center md:justify-start">
@@ -513,7 +576,7 @@ export function ContactModal() {
                                                 onChange={handleChange}
                                                 maxLength={50}
                                                 className={cn(
-                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors",
                                                     errors.name && "border-red-400 focus:border-red-400"
                                                 )}
                                                 placeholder="您的称呼"
@@ -530,7 +593,7 @@ export function ContactModal() {
                                                 onChange={handleChange}
                                                 maxLength={11}
                                                 className={cn(
-                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors",
                                                     errors.phone && "border-red-400 focus:border-red-400"
                                                 )}
                                                 placeholder="您的手机号"
@@ -539,21 +602,80 @@ export function ContactModal() {
                                         </div>
 
                                         {/* 留言类型 */}
-                                        <div>
-                                            <select
-                                                name="type"
-                                                value={formData.type}
-                                                onChange={handleChange}
+                                        <div ref={typeDropdownRef} className="relative">
+                                            <button
+                                                ref={mobileTypeTriggerRef}
+                                                type="button"
+                                                aria-haspopup="listbox"
+                                                aria-expanded={isTypeDropdownOpen}
+                                                onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                                                 className={cn(
-                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors appearance-none",
-                                                    !formData.type ? "text-brand-charcoal/40" : "text-brand-charcoal"
+                                                    "flex w-full items-center justify-between border-0 border-b bg-transparent py-3 px-0 text-left text-base tracking-wide outline-none transition-colors",
+                                                    !formData.type ? "text-brand-charcoal/40 border-brand-charcoal/25" : "text-brand-charcoal border-brand-charcoal/25",
+                                                    errors.type && "border-red-400"
                                                 )}
                                             >
-                                                <option value="" disabled className="text-brand-charcoal/40">请选择留言类型</option>
-                                                {messageTypesData.map((t) => (
-                                                    <option key={t.value} value={t.value} className="text-brand-charcoal">{t.label}</option>
-                                                ))}
-                                            </select>
+                                                <span>
+                                                    {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
+                                                </span>
+                                                <ChevronDown className={cn(
+                                                    "h-4 w-4 text-brand-charcoal/40 transition-transform duration-200",
+                                                    isTypeDropdownOpen && "rotate-180"
+                                                )} />
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {isTypeDropdownOpen && (
+                                                    <m.div
+                                                        role="listbox"
+                                                        aria-label="留言类型"
+                                                        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                                                        transition={{ duration: 0.2, ease: "easeOut" }}
+                                                        className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[#C8C4BC]/40 bg-[#FDFCF8] shadow-[0_16px_40px_-10px_rgba(107,95,71,0.18)]"
+                                                    >
+                                                        {messageTypes.filter(t => t.value !== "").map((type, index) => {
+                                                            const Icon = type.icon;
+                                                            const isSelected = formData.type === type.value;
+                                                            const isHighlighted = index === highlightedIndex;
+                                                            return (
+                                                                <button
+                                                                    key={type.value}
+                                                                    type="button"
+                                                                    role="option"
+                                                                    aria-selected={isSelected}
+                                                                    onClick={() => {
+                                                                        setFormData(prev => ({ ...prev, type: type.value }));
+                                                                        setIsTypeDropdownOpen(false);
+                                                                        if (errors.type) {
+                                                                            setErrors(prev => ({ ...prev, type: "" }));
+                                                                        }
+                                                                    }}
+                                                                    className={cn(
+                                                                        "flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] transition-all",
+                                                                        isSelected
+                                                                            ? "bg-[#8B7355]/[0.08] text-[#8B7355]"
+                                                                            : isHighlighted
+                                                                                ? "bg-[#F0EDE1]/60 text-brand-charcoal"
+                                                                                : "text-brand-charcoal/80 hover:bg-[#F0EDE1]/40",
+                                                                        index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-[#E8E4DA]/80"
+                                                                    )}
+                                                                >
+                                                                    <Icon className={cn(
+                                                                        "h-[18px] w-[18px] shrink-0 transition-colors",
+                                                                        isSelected ? "text-[#8B7355]" : "text-brand-charcoal/30"
+                                                                    )} />
+                                                                    <span className="flex-1">{type.label}</span>
+                                                                    {isSelected && (
+                                                                        <CheckCircle className="ml-auto h-[18px] w-[18px] text-[#8B7355]" />
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </m.div>
+                                                )}
+                                            </AnimatePresence>
                                             {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
                                         </div>
 
@@ -567,7 +689,7 @@ export function ContactModal() {
                                                     onChange={handleChange}
                                                     maxLength={100}
                                                     className={cn(
-                                                        "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                        "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors",
                                                         errors.location && "border-red-400 focus:border-red-400"
                                                     )}
                                                     placeholder="您的所在城市（如：上海、北京）"
@@ -583,7 +705,7 @@ export function ContactModal() {
                                                     rows={3}
                                                     maxLength={2000}
                                                     className={cn(
-                                                        "block w-full resize-none bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                        "block w-full resize-none bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors",
                                                         errors.content && "border-red-400 focus:border-red-400"
                                                     )}
                                                     placeholder="请输入您的具体需求或建议..."
@@ -607,18 +729,19 @@ export function ContactModal() {
                                                 "提交"
                                             )}
                                         </button>
+
+                                        {/* 关闭按钮 */}
+                                        <div className="flex justify-center pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={closeContact}
+                                                className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/15 text-brand-charcoal/40 hover:border-brand-charcoal/30 hover:text-brand-charcoal/70 hover:bg-brand-charcoal/[0.03] transition-all"
+                                            >
+                                                <X className="h-4 w-4" strokeWidth={1.5} />
+                                            </button>
+                                        </div>
                                     </form>
                                 )}
-
-                                {/* 底部关闭按钮 */}
-                                <div className="mt-auto flex justify-center pt-6">
-                                    <button
-                                        onClick={closeContact}
-                                        className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/15 text-brand-charcoal/40 hover:border-brand-charcoal/30 hover:text-brand-charcoal/70 hover:bg-brand-charcoal/[0.03] transition-all"
-                                    >
-                                        <X className="h-4 w-4" strokeWidth={1.5} />
-                                    </button>
-                                </div>
                             </div>
                         </div>
 

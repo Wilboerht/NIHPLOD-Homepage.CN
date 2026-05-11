@@ -1390,10 +1390,10 @@ function ForgotPasswordModal({
                           <div className="text-center">
                             <button
                               type="button"
-                              onClick={() => openContact("other")}
+                              onClick={onSwitchToLogin}
                               className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                             >
-                              遇到问题？联系我们
+                              返回登录
                             </button>
                           </div>
                         </div>
@@ -1498,16 +1498,6 @@ function ForgotPasswordModal({
                       )}
 
                       <div className="mt-8 flex flex-col items-center gap-4">
-                        {step !== "success" && (
-                          <button
-                            type="button"
-                            onClick={onSwitchToLogin}
-                            className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
-                          >
-                            想起密码了？返回登录
-                          </button>
-                        )}
-
                         {/* 手机端关闭按钮 */}
                         <button
                           type="button"
@@ -1565,11 +1555,10 @@ function ForgotPasswordModal({
                           <div className="pt-4 text-center">
                             <button
                               type="button"
-                              onClick={() => openContact("other")}
-                              className="inline-flex items-center gap-1.5 text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors"
+                              onClick={onSwitchToLogin}
+                              className="text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors"
                             >
-                              <Headset className="h-3.5 w-3.5" />
-                              <span>遇到问题？请联系我们</span>
+                              返回登录
                             </button>
                           </div>
                         </div>
@@ -1688,17 +1677,10 @@ function ForgotPasswordModal({
                   </div>
 
                   {/* 底部导航 - 固定（PC端 only） */}
-                  {step !== "success" && (
+                  {step === "success" && (
                     <div className="hidden md:block shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-6 md:px-10 py-4 text-center">
                       <p className="text-xs text-brand-charcoal/60">
-                        想起密码了？
-                        <button
-                          type="button"
-                          onClick={onSwitchToLogin}
-                          className="ml-1 font-bold text-brand-gold hover:text-brand-gold-dark transition-all"
-                        >
-                          返回登录
-                        </button>
+                        密码已重置，请使用新密码登录
                       </p>
                     </div>
                   )}
