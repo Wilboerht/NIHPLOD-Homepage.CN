@@ -58,6 +58,13 @@
     max-width: 100vw;
   }
 
+  /* 恢复定位元素的最大宽度，避免移动端 fixed/absolute 元素被意外截断 */
+  :is(.fixed, .absolute, .sticky, .relative),
+  :is(.fixed, .absolute, .sticky, .relative)::before,
+  :is(.fixed, .absolute, .sticky, .relative)::after {
+    max-width: none;
+  }
+
   /* ========== 全屏背景安全区域处理 ========== */
 
   /* 底层背景 - 与内容区域颜色一致 */
