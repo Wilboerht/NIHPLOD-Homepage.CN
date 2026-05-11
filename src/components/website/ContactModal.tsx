@@ -219,14 +219,14 @@ export function ContactModal() {
     const content = (
         <AnimatePresence>
             {contactOpen && (
-                <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center pt-3 px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                     {/* 遮罩 */}
                     <m.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={closeContact}
-                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
+                        className="absolute inset-0 bg-[#F0EDE1] md:bg-slate-900/40 md:backdrop-blur-md"
                     />
 
                     {/* 弹窗主体 - 双列布局 */}
@@ -235,236 +235,391 @@ export function ContactModal() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 10 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="relative w-full max-w-4xl overflow-hidden rounded-[28px] bg-[#F2F0EA] shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row h-auto max-h-[85vh] md:h-[600px]"
+                        className="relative w-full h-full md:w-full md:max-w-[1100px] md:h-[600px] rounded-none md:rounded-[2.5rem] bg-transparent md:bg-[#F2F0EA] shadow-none md:shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row max-h-none overflow-hidden"
                     >
                         {/* 左侧：表单区域 */}
-                        <div className="flex flex-1 flex-col overflow-y-auto p-6 md:p-10">
-                            <div className="mb-8">
-                                <h2 className="font-sans text-xl font-bold text-slate-900 sm:text-2xl">联系我们</h2>
-                                <p className="mt-2 text-sm text-slate-400">
-                                    有任何问题？期待与您的每一次交流
-                                </p>
+                        <div className="flex flex-1 flex-col overflow-y-auto md:p-10 h-full justify-center md:justify-start">
+                            
+                            {/* === PC 端表单 === */}
+                            <div className="hidden md:flex md:flex-1 md:flex-col">
+                                <div className="mb-8">
+                                    <h2 className="font-sans text-xl font-bold text-slate-900 sm:text-2xl">联系我们</h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        有任何问题？期待与您的每一次交流
+                                    </p>
+                                </div>
+
+                                <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-5">
+                                    {/* 蜜罐字段 */}
+                                    <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
+
+                                    {/* 留言类型 */}
+                                    <div ref={typeDropdownRef} className="relative flex flex-col gap-2">
+                                        <span className="text-[13px] font-medium text-slate-500">留言类型 <span className="text-red-500">*</span></span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                                            className={cn(
+                                                "flex w-full items-center justify-between rounded-xl border bg-slate-50 px-5 py-3.5 text-left text-[13px] outline-none transition-all duration-300",
+                                                !formData.type && "text-slate-400",
+                                                errors.type
+                                                    ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                                                    : "border-[#C8C4BC] hover:border-[#C6A87C]/50 focus:border-[#C6A87C] focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                            )}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                {formData.type && (() => {
+                                                    const selected = messageTypes.find(t => t.value === formData.type);
+                                                    if (selected) {
+                                                        const Icon = selected.icon;
+                                                        return <Icon className="h-4 w-4 text-[#8B7355]" />;
+                                                    }
+                                                    return null;
+                                                })()}
+                                                <span className={formData.type ? "text-slate-900" : ""}>
+                                                    {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
+                                                </span>
+                                            </span>
+                                            <ChevronDown className={cn(
+                                                "h-4 w-4 text-slate-400 transition-transform duration-200",
+                                                isTypeDropdownOpen && "rotate-180"
+                                            )} />
+                                        </button>
+
+                                        <AnimatePresence>
+                                            {isTypeDropdownOpen && (
+                                                <m.div
+                                                    initial={{ opacity: 0, y: 5 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: 5 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl"
+                                                >
+                                                    {messageTypes.filter(t => t.value !== "").map((type, index) => {
+                                                        const Icon = type.icon;
+                                                        const isSelected = formData.type === type.value;
+                                                        return (
+                                                            <button
+                                                                key={type.value}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setFormData(prev => ({ ...prev, type: type.value }));
+                                                                    setIsTypeDropdownOpen(false);
+                                                                    if (errors.type) {
+                                                                        setErrors(prev => ({ ...prev, type: "" }));
+                                                                    }
+                                                                }}
+                                                                className={cn(
+                                                                    "flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all",
+                                                                    isSelected
+                                                                        ? "bg-[#8B7355]/5 text-[#8B7355]"
+                                                                        : "text-slate-600 hover:bg-slate-50",
+                                                                    index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-slate-50"
+                                                                )}
+                                                            >
+                                                                <Icon className={cn(
+                                                                    "h-4 w-4 transition-colors",
+                                                                    isSelected ? "text-[#8B7355]" : "text-slate-400"
+                                                                )} />
+                                                                <span>{type.label}</span>
+                                                                {isSelected && (
+                                                                    <CheckCircle className="ml-auto h-4 w-4 text-[#8B7355]" />
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </m.div>
+                                            )}
+                                        </AnimatePresence>
+                                        {errors.type && <p className="text-xs text-red-500">{errors.type}</p>}
+                                    </div>
+
+                                    <div className="grid gap-5 sm:grid-cols-2">
+                                        {/* 姓名 */}
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-[13px] font-medium text-slate-500">称呼 <span className="text-red-500">*</span></span>
+                                            <input
+                                                type="text"
+                                                id="modal-name"
+                                                name="name"
+                                                value={formData.name}
+                                                onChange={handleChange}
+                                                maxLength={50}
+                                                className={cn(
+                                                    "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
+                                                    errors.name
+                                                        ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                                                        : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                )}
+                                                placeholder="请输入您的称呼"
+                                            />
+                                            {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                                        </div>
+
+                                        {/* 手机号 */}
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-[13px] font-medium text-slate-500">手机号 <span className="text-red-500">*</span></span>
+                                            <input
+                                                type="tel"
+                                                id="modal-phone"
+                                                name="phone"
+                                                value={formData.phone}
+                                                onChange={handleChange}
+                                                maxLength={11}
+                                                className={cn(
+                                                    "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
+                                                    errors.phone
+                                                        ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                                                        : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                )}
+                                                placeholder="请输入11位手机号"
+                                            />
+                                            {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* 留言内容 或 申请入驻地址 */}
+                                    {formData.type === "application" ? (
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-[13px] font-medium text-slate-500">所在地 <span className="text-red-500">*</span></span>
+                                            <input
+                                                type="text"
+                                                id="modal-location"
+                                                name="location"
+                                                value={formData.location || ""}
+                                                onChange={handleChange}
+                                                maxLength={100}
+                                                className={cn(
+                                                    "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
+                                                    errors.location
+                                                        ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                                                        : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                )}
+                                                placeholder="您的所在城市（如：上海、北京）"
+                                            />
+                                            {errors.location && <p className="text-xs text-red-500">{errors.location}</p>}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-[13px] font-medium text-slate-500">留言内容 <span className="text-red-500">*</span></span>
+                                            <textarea
+                                                id="modal-content"
+                                                name="content"
+                                                value={formData.content}
+                                                onChange={handleChange}
+                                                placeholder="请输入您的具体需求或建议..."
+                                                rows={4}
+                                                maxLength={2000}
+                                                className={cn(
+                                                    "block w-full resize-none rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
+                                                    errors.content
+                                                        ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                                                        : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                )}
+                                            />
+                                            {errors.content && <p className="text-xs text-red-500">{errors.content}</p>}
+                                        </div>
+                                    )}
+
+                                    <div className="relative mt-auto pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={status === "loading"}
+                                            className={cn(
+                                                "flex w-full items-center justify-center gap-2 rounded-xl border py-3.5 text-[13px] font-bold tracking-widest transition-all duration-300",
+                                                status === "loading"
+                                                    ? "border-slate-200 bg-slate-100 text-slate-400"
+                                                    : "border-[#8B7355]/40 bg-[#8B7355]/10 text-[#8B7355] hover:border-[#8B7355]/70 hover:bg-[#8B7355]/20"
+                                            )}
+                                        >
+                                            {status === "loading" ? (
+                                                <><Loader2 className="h-5 w-5 animate-spin" /><span>正在提交...</span></>
+                                            ) : (
+                                                <><span>提交</span><Send className="h-4 w-4" /></>
+                                            )}
+                                        </button>
+
+                                        {/* 悬浮成功层 */}
+                                        <AnimatePresence>
+                                            {status === "success" && (
+                                                <m.div
+                                                    initial={{ opacity: 0, scale: 0.95 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    className="absolute inset-x-[-8px] inset-y-[-8px] z-50 flex flex-col items-center justify-center rounded-[28px] bg-white p-6 text-center"
+                                                >
+                                                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#8B7355]/10">
+                                                        <m.div
+                                                            initial={{ scale: 0 }}
+                                                            animate={{ scale: 1 }}
+                                                            transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
+                                                        >
+                                                            <svg className="h-8 w-8 text-[#8B7355]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        </m.div>
+                                                    </div>
+                                                    <h3 className="mb-2 text-lg font-bold tracking-widest text-[#8B7355]">提交成功</h3>
+                                                    <p className="text-sm text-slate-500">
+                                                        留言已送达，我们会尽快与您联系
+                                                    </p>
+                                                </m.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                </form>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-5">
-                                {/* 蜜罐字段 */}
-                                <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
+                            {/* === 手机端极简表单 === */}
+                            <div className="md:hidden flex-1 flex flex-col justify-center px-6 pt-6 pb-4">
+                                <Image
+                                    src="/images/NIHPLOD-logo.svg"
+                                    width={120}
+                                    className="object-contain h-auto w-[140px] mb-12"
+                                    height={48}
+                                    priority
+                                    alt="NIHPLOD"
+                                />
 
-                                {/* 留言类型 */}
-                                <div ref={typeDropdownRef} className="relative flex flex-col gap-2">
-                                    <span className="text-[13px] font-medium text-slate-500">留言类型 <span className="text-red-500">*</span></span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                                        className={cn(
-                                            "flex w-full items-center justify-between rounded-xl border bg-slate-50 px-5 py-3.5 text-left text-[13px] outline-none transition-all duration-300",
-                                            !formData.type && "text-slate-400",
-                                            errors.type
-                                                ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                : "border-[#C8C4BC] hover:border-[#C6A87C]/50 focus:border-[#C6A87C] focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
-                                        )}
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            {formData.type && (() => {
-                                                const selected = messageTypes.find(t => t.value === formData.type);
-                                                if (selected) {
-                                                    const Icon = selected.icon;
-                                                    return <Icon className="h-4 w-4 text-[#8B7355]" />;
-                                                }
-                                                return null;
-                                            })()}
-                                            <span className={formData.type ? "text-slate-900" : ""}>
-                                                {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
-                                            </span>
-                                        </span>
-                                        <ChevronDown className={cn(
-                                            "h-4 w-4 text-slate-400 transition-transform duration-200",
-                                            isTypeDropdownOpen && "rotate-180"
-                                        )} />
-                                    </button>
-
-                                    <AnimatePresence>
-                                        {isTypeDropdownOpen && (
+                                {status === "success" ? (
+                                    <div className="flex flex-col items-center justify-center">
+                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#8B7355]/10">
                                             <m.div
-                                                initial={{ opacity: 0, y: 5 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: 5 }}
-                                                transition={{ duration: 0.15 }}
-                                                className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl"
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
                                             >
-                                                {messageTypes.filter(t => t.value !== "").map((type, index) => {
-                                                    const Icon = type.icon;
-                                                    const isSelected = formData.type === type.value;
-                                                    return (
-                                                        <button
-                                                            key={type.value}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setFormData(prev => ({ ...prev, type: type.value }));
-                                                                setIsTypeDropdownOpen(false);
-                                                                if (errors.type) {
-                                                                    setErrors(prev => ({ ...prev, type: "" }));
-                                                                }
-                                                            }}
-                                                            className={cn(
-                                                                "flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all",
-                                                                isSelected
-                                                                    ? "bg-[#8B7355]/5 text-[#8B7355]"
-                                                                    : "text-slate-600 hover:bg-slate-50",
-                                                                index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-slate-50"
-                                                            )}
-                                                        >
-                                                            <Icon className={cn(
-                                                                "h-4 w-4 transition-colors",
-                                                                isSelected ? "text-[#8B7355]" : "text-slate-400"
-                                                            )} />
-                                                            <span>{type.label}</span>
-                                                            {isSelected && (
-                                                                <CheckCircle className="ml-auto h-4 w-4 text-[#8B7355]" />
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
+                                                <svg className="h-8 w-8 text-[#8B7355]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                </svg>
                                             </m.div>
-                                        )}
-                                    </AnimatePresence>
-                                    {errors.type && <p className="text-xs text-red-500">{errors.type}</p>}
-                                </div>
-
-                                <div className="grid gap-5 sm:grid-cols-2">
-                                    {/* 姓名 */}
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-[13px] font-medium text-slate-500">称呼 <span className="text-red-500">*</span></span>
-                                        <input
-                                            type="text"
-                                            id="modal-name"
-                                            name="name"
-                                            value={formData.name}
-                                            onChange={handleChange}
-                                            maxLength={50}
-                                            className={cn(
-                                                "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
-                                                errors.name
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                    : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
-                                            )}
-                                            placeholder="请输入您的称呼"
-                                        />
-                                        {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
-                                    </div>
-
-                                    {/* 手机号 */}
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-[13px] font-medium text-slate-500">手机号 <span className="text-red-500">*</span></span>
-                                        <input
-                                            type="tel"
-                                            id="modal-phone"
-                                            name="phone"
-                                            value={formData.phone}
-                                            onChange={handleChange}
-                                            maxLength={11}
-                                            className={cn(
-                                                "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
-                                                errors.phone
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                    : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
-                                            )}
-                                            placeholder="请输入11位手机号"
-                                        />
-                                        {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
-                                    </div>
-                                </div>
-
-                                {/* 留言内容 或 申请入驻地址 */}
-                                {formData.type === "application" ? (
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-[13px] font-medium text-slate-500">所在地 <span className="text-red-500">*</span></span>
-                                        <input
-                                            type="text"
-                                            id="modal-location"
-                                            name="location"
-                                            value={formData.location || ""}
-                                            onChange={handleChange}
-                                            maxLength={100}
-                                            className={cn(
-                                                "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
-                                                errors.location
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                    : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
-                                            )}
-                                            placeholder="您的所在城市（如：上海、北京）"
-                                        />
-                                        {errors.location && <p className="text-xs text-red-500">{errors.location}</p>}
+                                        </div>
+                                        <h3 className="mb-2 text-lg font-bold tracking-widest text-[#8B7355]">提交成功</h3>
+                                        <p className="text-sm text-slate-500">
+                                            留言已送达，我们会尽快与您联系
+                                        </p>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-[13px] font-medium text-slate-500">留言内容 <span className="text-red-500">*</span></span>
-                                        <textarea
-                                            id="modal-content"
-                                            name="content"
-                                            value={formData.content}
-                                            onChange={handleChange}
-                                            placeholder="请输入您的具体需求或建议..."
-                                            rows={4}
-                                            maxLength={2000}
-                                            className={cn(
-                                                "block w-full resize-none rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
-                                                errors.content
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                    : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                                        {/* 蜜罐字段 */}
+                                        <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
+                                        
+                                        {/* 称呼 */}
+                                        <div>
+                                            <input
+                                                type="text"
+                                                name="name"
+                                                value={formData.name}
+                                                onChange={handleChange}
+                                                maxLength={50}
+                                                className={cn(
+                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                    errors.name && "border-red-400 focus:border-red-400"
+                                                )}
+                                                placeholder="您的称呼"
+                                            />
+                                            {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+                                        </div>
+
+                                        {/* 手机号 */}
+                                        <div>
+                                            <input
+                                                type="tel"
+                                                name="phone"
+                                                value={formData.phone}
+                                                onChange={handleChange}
+                                                maxLength={11}
+                                                className={cn(
+                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                    errors.phone && "border-red-400 focus:border-red-400"
+                                                )}
+                                                placeholder="您的手机号"
+                                            />
+                                            {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+                                        </div>
+
+                                        {/* 留言类型 */}
+                                        <div>
+                                            <select
+                                                name="type"
+                                                value={formData.type}
+                                                onChange={handleChange}
+                                                className={cn(
+                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors appearance-none",
+                                                    !formData.type ? "text-brand-charcoal/40" : "text-brand-charcoal"
+                                                )}
+                                            >
+                                                <option value="" disabled className="text-brand-charcoal/40">请选择留言类型</option>
+                                                {messageTypesData.map((t) => (
+                                                    <option key={t.value} value={t.value} className="text-brand-charcoal">{t.label}</option>
+                                                ))}
+                                            </select>
+                                            {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
+                                        </div>
+
+                                        {/* 留言内容 或 申请入驻地址 */}
+                                        {formData.type === "application" ? (
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    name="location"
+                                                    value={formData.location || ""}
+                                                    onChange={handleChange}
+                                                    maxLength={100}
+                                                    className={cn(
+                                                        "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                        errors.location && "border-red-400 focus:border-red-400"
+                                                    )}
+                                                    placeholder="您的所在城市（如：上海、北京）"
+                                                />
+                                                {errors.location && <p className="mt-1 text-xs text-red-500">{errors.location}</p>}
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <textarea
+                                                    name="content"
+                                                    value={formData.content}
+                                                    onChange={handleChange}
+                                                    rows={3}
+                                                    maxLength={2000}
+                                                    className={cn(
+                                                        "block w-full resize-none bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                        errors.content && "border-red-400 focus:border-red-400"
+                                                    )}
+                                                    placeholder="请输入您的具体需求或建议..."
+                                                />
+                                                {errors.content && <p className="mt-1 text-xs text-red-500">{errors.content}</p>}
+                                            </div>
+                                        )}
+
+                                        {/* 提交按钮 */}
+                                        <button
+                                            type="submit"
+                                            disabled={status === "loading"}
+                                            className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40 mt-2"
+                                        >
+                                            {status === "loading" ? (
+                                                <span className="flex items-center justify-center gap-2">
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    正在提交...
+                                                </span>
+                                            ) : (
+                                                "提交"
                                             )}
-                                        />
-                                        {errors.content && <p className="text-xs text-red-500">{errors.content}</p>}
-                                    </div>
+                                        </button>
+                                    </form>
                                 )}
 
-                                <div className="relative mt-auto pt-2">
+                                {/* 底部关闭按钮 */}
+                                <div className="mt-auto flex justify-center pt-6">
                                     <button
-                                        type="submit"
-                                        disabled={status === "loading"}
-                                        className={cn(
-                                            "flex w-full items-center justify-center gap-2 rounded-xl border py-3.5 text-[13px] font-bold tracking-widest transition-all duration-300",
-                                            status === "loading"
-                                                ? "border-slate-200 bg-slate-100 text-slate-400"
-                                                : "border-[#8B7355]/40 bg-[#8B7355]/10 text-[#8B7355] hover:border-[#8B7355]/70 hover:bg-[#8B7355]/20"
-                                        )}
+                                        onClick={closeContact}
+                                        className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/15 text-brand-charcoal/40 hover:border-brand-charcoal/30 hover:text-brand-charcoal/70 hover:bg-brand-charcoal/[0.03] transition-all"
                                     >
-                                        {status === "loading" ? (
-                                            <><Loader2 className="h-5 w-5 animate-spin" /><span>正在提交...</span></>
-                                        ) : (
-                                            <><span>提交</span><Send className="h-4 w-4" /></>
-                                        )}
+                                        <X className="h-4 w-4" strokeWidth={1.5} />
                                     </button>
-
-                                    {/* 悬浮成功层 */}
-                                    <AnimatePresence>
-                                        {status === "success" && (
-                                            <m.div
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.95 }}
-                                                className="absolute inset-x-[-8px] inset-y-[-8px] z-50 flex flex-col items-center justify-center rounded-[28px] bg-white p-6 text-center"
-                                            >
-                                                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#8B7355]/10">
-                                                    <m.div
-                                                        initial={{ scale: 0 }}
-                                                        animate={{ scale: 1 }}
-                                                        transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
-                                                    >
-                                                        <svg className="h-8 w-8 text-[#8B7355]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                    </m.div>
-                                                </div>
-                                                <h3 className="mb-2 text-lg font-bold tracking-widest text-[#8B7355]">提交成功</h3>
-                                                <p className="text-sm text-slate-500">
-                                                    留言已送达，我们会尽快与您联系
-                                                </p>
-                                            </m.div>
-                                        )}
-                                    </AnimatePresence>
                                 </div>
-                            </form>
+                            </div>
                         </div>
 
                         {/* 右侧：图片区域 */}
@@ -472,7 +627,7 @@ export function ContactModal() {
                             {/* 关闭按钮 - 悬浮在右上角 */}
                             <button
                                 onClick={closeContact}
-                                className="absolute top-6 right-6 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-slate-50/80 text-slate-400 backdrop-blur-md transition-colors hover:bg-slate-100 hover:text-slate-700"
+                                className="hidden md:flex absolute top-6 right-6 z-20 h-8 w-8 items-center justify-center rounded-full bg-slate-50/80 text-slate-400 backdrop-blur-md transition-colors hover:bg-slate-100 hover:text-slate-700"
                             >
                                 <X size={16} strokeWidth={2.5} />
                             </button>
@@ -487,14 +642,6 @@ export function ContactModal() {
                                 />
                             </div>
                         </div>
-
-                        {/* 移动端关闭按钮 */}
-                        <button
-                            onClick={closeContact}
-                            className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-slate-50/80 text-slate-400 backdrop-blur-md transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden"
-                        >
-                            <X size={16} strokeWidth={2.5} />
-                        </button>
                     </m.div>
                 </div>
             )}
