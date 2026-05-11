@@ -247,7 +247,7 @@ function LoginModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-[#F0EDE1] md:bg-black/40 md:backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -257,9 +257,9 @@ function LoginModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full max-w-[300px] md:max-w-[1100px] md:h-[680px] flex items-center max-h-[85dvh] md:max-h-none"
+            className="relative z-10 w-full h-full md:w-auto md:max-w-[1100px] md:h-[680px] flex items-center max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-2xl md:rounded-[2.5rem] bg-white/95 md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-transparent md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
@@ -275,34 +275,133 @@ function LoginModal({
               {/* 关闭按钮 */}
               <button
                 onClick={onClose}
-                className="absolute right-6 top-6 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 md:bg-white/40 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-black/10 md:hover:bg-white/80 hover:text-brand-charcoal/70"
+                className="hidden md:flex absolute right-6 top-6 z-50 h-9 w-9 items-center justify-center rounded-full bg-brand-charcoal/5 md:bg-white/40 text-brand-charcoal/40 backdrop-blur-md transition-all hover:bg-brand-charcoal/10 md:hover:bg-white/80 hover:text-brand-charcoal/70"
               >
                 <X className="h-5 w-5" />
               </button>
 
               {/* 浮动表单区域 */}
-              <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-2xl md:rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_4px_16px_0_rgba(0,0,0,0.05)] md:shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
+              <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch h-full justify-center">
+                <div className="flex-1 flex flex-col justify-center md:justify-start rounded-none md:rounded-[2.5rem] bg-transparent md:bg-white/65 backdrop-blur-none md:backdrop-blur-xl shadow-none md:shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border-none md:border md:border-white/50 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
-                  <div className="relative px-6 md:px-8 pb-3 pt-6 md:pb-5 md:pt-10 text-center shrink-0">
-                    <div className="mx-auto mb-2 md:mb-4 flex justify-center">
+                  <div className="hidden md:block relative px-6 md:px-8 pb-3 pt-6 md:pb-5 md:pt-10 text-center shrink-0">
+                    <div className="mx-auto mb-4 flex justify-center">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
                         alt="NIHPLOD Logo"
                         width={120}
-                        className="object-contain h-auto w-[100px] md:w-[120px]"
+                        className="object-contain h-auto w-[120px]"
                         height={48}
                         priority
                       />
                     </div>
-                    <h2 className="hidden md:block text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
+                    <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
                       欢迎回来
                     </h2>
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide">
-                    {/* 登录方式切换 */}
+                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-center md:justify-start">
+
+                    {/* ===== 手机端极简全屏登录 ===== */}
+                    <div className="md:hidden flex-1 flex flex-col justify-center">
+                      <div className="mx-auto mb-12 flex justify-center">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          width={120}
+                          className="object-contain h-auto w-[140px]"
+                          height={48}
+                          priority
+                        />
+                      </div>
+                      <form onSubmit={handleLogin} className="space-y-6">
+                        <div>
+                          <input
+                            type="tel"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                            placeholder="手机号"
+                            className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
+                          />
+                        </div>
+
+                        <div>
+                          <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="密码"
+                            maxLength={32}
+                            className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
+                          />
+                          <div className="mt-3 text-right">
+                            <button
+                              type="button"
+                              onClick={onSwitchToForgotPassword}
+                              className="text-xs text-brand-charcoal/40 hover:text-brand-charcoal/70 transition-colors"
+                            >
+                              找回密码
+                            </button>
+                          </div>
+                        </div>
+
+                        <label className="flex items-center gap-2 pt-2">
+                          <input
+                            type="checkbox"
+                            checked={agreed}
+                            onChange={(e) => setAgreed(e.target.checked)}
+                            className="h-3.5 w-3.5 rounded border-brand-charcoal/20 text-brand-gold focus:ring-0 focus:ring-offset-0"
+                          />
+                          <span className="text-[11px] text-brand-charcoal/30">
+                            同意《用户协议》和《隐私政策》
+                          </span>
+                        </label>
+
+                        <div className="pt-2">
+                          <button
+                            type="submit"
+                            disabled={loading || !agreed}
+                            className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40"
+                          >
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                              {loading ? (
+                                <div className="h-4 w-4 border-2 border-brand-charcoal/20 border-t-brand-charcoal rounded-full animate-spin" />
+                              ) : "立即登录"}
+                            </span>
+                          </button>
+                        </div>
+                      </form>
+
+                      <div className="mt-8 flex flex-col items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            openContact();
+                          }}
+                          className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
+                        >
+                          还没有账户？联系我们
+                        </button>
+
+                        {/* 手机端关闭按钮 */}
+                        <button
+                          type="button"
+                          onClick={onClose}
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-brand-charcoal/40 hover:text-brand-charcoal/70 transition-colors"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* ===== PC端原有卡片布局 ===== */}
+                    <div className="hidden md:block">
+                      {/* 登录方式切换 */}
                     <div className="mb-6 flex justify-center gap-10 pb-2">
                       <button
                         type="button"
@@ -470,10 +569,11 @@ function LoginModal({
                       </button>
                       */}
                     </form>
+                    </div>{/* 关闭 PC端 hidden md:block */}
                   </div>
 
-                  {/* 底部导航 - 固定 */}
-                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-6 md:px-10 py-4 text-center">
+                  {/* 底部导航 - 固定（PC端 only） */}
+                  <div className="hidden md:block shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-6 md:px-10 py-4 text-center">
                     <p className="text-xs text-brand-charcoal/60 flex items-center justify-center">
                       还没有账户？
                       <button
