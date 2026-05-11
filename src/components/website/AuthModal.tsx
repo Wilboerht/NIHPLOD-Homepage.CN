@@ -389,7 +389,7 @@ function LoginModal({
                           type="button"
                           onClick={() => {
                             onClose();
-                            openContact();
+                            _openContact();
                           }}
                           className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                         >
@@ -588,7 +588,7 @@ function LoginModal({
                         type="button"
                         onClick={() => {
                           onClose();
-                          openContact();
+                          _openContact();
                         }}
                         className="ml-1 inline-flex items-center gap-1 font-medium text-brand-charcoal/60 hover:text-brand-charcoal transition-all"
                       >
