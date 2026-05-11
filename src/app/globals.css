@@ -109,7 +109,7 @@
     }
   }
 
-  /* 安全区域内的内容容器 */
+  /* 安全区域内的内容容器 - fixed 定位，通过 will-change 减少 iOS scroll jank */
   .safe-area-content {
     position: fixed;
     top: max(1rem, env(safe-area-inset-top, 1rem));
@@ -117,6 +117,7 @@
     right: max(1.5rem, env(safe-area-inset-right, 1.5rem));
     bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
     z-index: 20;
+    will-change: transform;
   }
 
   /* 平板/桌面端安全区域调整 */
