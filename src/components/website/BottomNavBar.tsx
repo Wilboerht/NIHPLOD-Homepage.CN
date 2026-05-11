@@ -127,7 +127,7 @@ export function BottomNavBar() {
                             duration: 0.6,
                             ease: [0.22, 1, 0.36, 1]
                         }}
-                        className="fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pointer-events-none lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]"
+                        className="fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pointer-events-none pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]"
                         role="banner"
                     >
                         {/* 移动端弹出菜单 - 嵌套在 header 内以实现 Dock 对齐 */}
