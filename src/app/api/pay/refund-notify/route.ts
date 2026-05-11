@@ -52,7 +52,13 @@ export async function POST(request: NextRequest) {
 
         // 4. 验签通过且处理成功后，再记录幂等性
         try {
-            const recordResult = await recordNotification("wechat_refund", notifyId, "", 0, notifyData);
+            const recordResult = await recordNotification(
+                "wechat_refund",
+                notifyId,
+                result.refundId || "",
+                result.refundAmount || 0,
+                notifyData
+            );
             if (recordResult.success && recordResult.recordId) {
                 await markNotificationSuccess(recordResult.recordId);
             }

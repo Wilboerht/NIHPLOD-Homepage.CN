@@ -79,14 +79,18 @@ export async function POST(request: NextRequest) {
 
       if (!orderWithItems) throw new Error("订单不存在");
 
-      await tx.order.update({
-        where: { id: orderId },
+      // CAS 乐观锁：只有 PENDING 或 PAYING 状态的订单才能被模拟支付
+      const updated = await tx.order.updateMany({
+        where: { id: orderId, status: { in: [OrderStatus.PENDING, OrderStatus.PAYING] } },
         data: {
           status: OrderStatus.PAID,
           paymentNo: `MOCK_${Date.now()}`,
           paymentTime: new Date(),
         },
       });
+      if (updated.count === 0) {
+        throw new Error("订单已被并发处理或状态已变更");
+      }
 
       // 更新商品销量
       for (const item of orderWithItems.items) {

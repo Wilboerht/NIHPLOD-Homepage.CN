@@ -200,14 +200,14 @@ export async function createOrder(
 
         usedCouponId = userCoupon.id;
 
-        // 锁定优惠券
-        await tx.userCoupon.update({
-          where: { id: userCoupon.id },
-          data: {
-            status: 'LOCKED',
-            // orderId 会在 order create 时关联，或者这里不用管，下面建立关联
-          }
+        // 锁定优惠券（CAS：只有 UNUSED 状态才能被锁定）
+        const locked = await tx.userCoupon.updateMany({
+          where: { id: userCoupon.id, status: 'UNUSED' },
+          data: { status: 'LOCKED' }
         });
+        if (locked.count === 0) {
+          throw new Error("优惠券已被使用或锁定，请刷新后重试");
+        }
       }
 
       // 4. 创建订单
@@ -288,6 +288,15 @@ export async function cancelOrder(
         throw new Error("该订单状态不可取消");
       }
 
+      // CAS 乐观锁：只有 PENDING 状态的订单才能被取消
+      const canceled = await tx.order.updateMany({
+        where: { id: orderId, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.CANCELLED },
+      });
+      if (canceled.count === 0) {
+        throw new Error("订单已被并发处理或状态已变更");
+      }
+
       // 恢复库存（PENDING 订单从未支付，销量未增加，无需回滚销量）
       for (const item of order.items) {
         const product = await tx.product.findUnique({
@@ -308,12 +317,6 @@ export async function cancelOrder(
           data: { status: 'UNUSED', usedAt: null, orderId: null }
         });
       }
-
-      // 更新订单状态
-      await tx.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.CANCELLED },
-      });
     });
 
     console.log(`[Order] 订单取消成功: ${orderId}`);
@@ -355,17 +358,20 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
     for (const order of expiredOrders) {
       try {
         await prisma.$transaction(async (tx) => {
-          // 重新查询确认订单状态（防止与其他取消流程并发冲突）
-          const freshOrder = await tx.order.findUnique({
-            where: { id: order.id },
-            include: { items: true, userCoupon: true },
+          // CAS 乐观锁：只有 PENDING 或 PAYING 状态的订单才能被取消
+          const canceled = await tx.order.updateMany({
+            where: { id: order.id, status: { in: [OrderStatus.PENDING, OrderStatus.PAYING] } },
+            data: {
+              status: OrderStatus.CANCELLED,
+              adminNote: order.adminNote ? `${order.adminNote}\n[系统] 超时未支付自动取消` : '[系统] 超时未支付自动取消'
+            },
           });
-          if (!freshOrder || (freshOrder.status !== OrderStatus.PENDING && freshOrder.status !== OrderStatus.PAYING)) {
-            return;
+          if (canceled.count === 0) {
+            return; // 已被其他流程处理
           }
 
           // 恢复库存（PENDING/PAYING 订单未最终支付成功，销量未增加，无需回滚销量）
-          for (const item of freshOrder.items) {
+          for (const item of order.items) {
             const product = await tx.product.findUnique({
               where: { id: item.productId },
             });
@@ -378,21 +384,12 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
           }
 
           // 释放优惠券
-          if (freshOrder.userCoupon) {
+          if (order.userCoupon) {
             await tx.userCoupon.update({
-              where: { id: freshOrder.userCoupon.id },
+              where: { id: order.userCoupon.id },
               data: { status: 'UNUSED', usedAt: null, orderId: null }
             });
           }
-
-          // 更新订单状态
-          await tx.order.update({
-            where: { id: freshOrder.id },
-            data: { 
-              status: OrderStatus.CANCELLED,
-              adminNote: freshOrder.adminNote ? `${freshOrder.adminNote}\n[系统] 超时未支付自动取消` : '[系统] 超时未支付自动取消'
-            },
-          });
         });
         canceledCount++;
       } catch (err) {

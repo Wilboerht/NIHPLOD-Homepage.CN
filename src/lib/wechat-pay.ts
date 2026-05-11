@@ -6,7 +6,8 @@ import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { Wechatpay, Rsa, Formatter, Aes } from "wechatpay-axios-plugin";
 import { yuanToFen, moneyStrictEqual } from "./money";
-import { formatKey } from "./crypto-utils";
+import { formatKey, validateKeyFormat } from "./crypto-utils";
+import { recordTransaction } from "./transaction";
 
 
 
@@ -27,6 +28,17 @@ let _wxpay: Wechatpay | null = null;
 function getWxPay() {
   if (!_wxpay) {
     const config = getConfig();
+    // 密钥格式校验（在缺失检查之前，提前发现格式问题）
+    const keyChecks = [
+      validateKeyFormat(process.env.WECHAT_PAY_KEY_PEM, "private", "WECHAT_PAY_KEY_PEM"),
+      validateKeyFormat(process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY, "public", "WECHAT_PAY_PLATFORM_PUBLIC_KEY"),
+    ];
+    for (const check of keyChecks) {
+      if (!check.valid) {
+        console.error(`[WechatPay] ${check.error}`);
+      }
+    }
+
     const required = ["privateKey", "mchId", "apiV3Key", "platformPublicKey", "platformPublicKeyId"];
     const missing = required.filter((k) => !config[k as keyof typeof config]);
     if (missing.length > 0) {
@@ -208,7 +220,7 @@ async function verifyAndDecrypt(headers: Record<string, string>, rawBody: string
 export async function handlePaymentNotify(
   headers: Record<string, string>,
   rawBody: string
-): Promise<{ success: boolean; message?: string }> {
+): Promise<{ success: boolean; message?: string; transactionId?: string; amount?: number }> {
   try {
     const data = await verifyAndDecrypt(headers, rawBody);
     console.log(`[WechatPay] 收到支付通知: ${data.out_trade_no}, 状态: ${data.trade_state}`);
@@ -219,12 +231,19 @@ export async function handlePaymentNotify(
     const transactionId = data.transaction_id;
     const totalFee = data.amount.total;
 
+    let capturedOrderId: string | undefined;
+    let capturedPayAmount: number | undefined;
+    let shouldRecordTransaction = false;
+
     await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { orderNo },
         include: { items: true },
       });
       if (!order) throw new Error("ORDER_NOT_FOUND");
+
+      capturedOrderId = order.id;
+      capturedPayAmount = Number(order.payAmount);
       
       // 支付回调金额必须严格相等，不容忍任何差异
       if (!moneyStrictEqual(order.payAmount, totalFee / 100)) {
@@ -246,8 +265,10 @@ export async function handlePaymentNotify(
 
       if (order.status === OrderStatus.PAID) return;
 
-      await tx.order.update({
-        where: { orderNo },
+      // CAS 乐观锁：只有 PENDING 或 PAYING 状态的订单才能被更新为 PAID
+      // create/route.ts 发起支付时会将 PENDING → PAYING，回调需兼容 PAYING 状态
+      const updatedOrder = await tx.order.updateMany({
+        where: { orderNo, status: { in: [OrderStatus.PENDING, OrderStatus.PAYING] } },
         data: {
           status: OrderStatus.PAID,
           paymentMethod: "wechat",
@@ -255,6 +276,13 @@ export async function handlePaymentNotify(
           paymentTime: new Date(),
         },
       });
+
+      if (updatedOrder.count === 0) {
+        console.warn(`[WechatPay] 订单 ${orderNo} 已被并发处理，跳过`);
+        return;
+      }
+
+      shouldRecordTransaction = true;
 
       // 更新商品销量
       for (const item of order.items) {
@@ -276,7 +304,20 @@ export async function handlePaymentNotify(
       }
     });
 
-    return { success: true };
+    // 记录交易流水（仅在成功更新订单时记录，避免重复流水）
+    if (shouldRecordTransaction && capturedOrderId && capturedPayAmount !== undefined) {
+      await recordTransaction({
+        orderId: capturedOrderId,
+        type: "PAYMENT",
+        gateway: "wechat",
+        amount: capturedPayAmount,
+        status: "SUCCESS",
+        gatewayTrxId: transactionId,
+        rawData: JSON.stringify(data),
+      });
+    }
+
+    return { success: true, transactionId, amount: totalFee };
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
     console.error("[WechatPay] 处理支付通知失败:", message);
@@ -324,7 +365,7 @@ export async function applyWechatRefund(
 export async function handleRefundNotify(
   headers: Record<string, string>,
   rawBody: string
-): Promise<{ success: boolean; message?: string }> {
+): Promise<{ success: boolean; message?: string; refundId?: string; refundAmount?: number }> {
   try {
     const data = await verifyAndDecrypt(headers, rawBody);
     console.log(`[WechatPay] 收到退款通知: ${data.out_trade_no}, 状态: ${data.refund_status}`);
@@ -339,12 +380,18 @@ export async function handleRefundNotify(
       }
 
       if (order.status === OrderStatus.REFUNDED) {
-        return { success: true, message: "订单已退款" };
+        return { success: true, message: "订单已退款", refundId: data.refund_id, refundAmount: data.amount?.refund };
+      }
+
+      // 退款金额校验：不能超过订单实付金额
+      const refundAmount = (data.amount?.refund || 0) / 100;
+      if (refundAmount <= 0 || refundAmount > Number(order.payAmount)) {
+        console.error(`[WechatPay] 退款金额异常: ${refundAmount}, 订单金额: ${order.payAmount}`);
+        return { success: false, message: "REFUND_AMOUNT_INVALID" };
       }
 
       // 调用统一退款确认逻辑（恢复库存、回滚销量、释放优惠券）
       const { finalizeRefund } = await import("./refund");
-      const refundAmount = (data.amount?.refund || 0) / 100;
       await finalizeRefund(order.id, data.refund_id, refundAmount);
 
       // 追加 adminNote
@@ -356,9 +403,12 @@ export async function handleRefundNotify(
             : `微信自动退款成功 (单号: ${data.refund_id}, 时间: ${data.success_time})`,
         },
       });
+
+      return { success: true, refundId: data.refund_id, refundAmount: data.amount?.refund };
     }
 
-    return { success: true };
+    // 非 SUCCESS 状态，返回成功但附带信息
+    return { success: true, refundId: data.refund_id, refundAmount: data.amount?.refund };
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
     console.error("[WechatPay] 处理退款通知失败:", message);

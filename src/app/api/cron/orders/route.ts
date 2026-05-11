@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "@/lib/order";
 import { autoExpireUserCoupons } from "@/lib/coupon";
+import { healStuckNotifications, cleanupOldNotifications } from "@/lib/notification-idempotency";
 
 export const dynamic = "force-dynamic"; // 不缓存，每次都执行
 
@@ -26,12 +27,20 @@ export async function GET(request: NextRequest) {
     // 3. 过期优惠券清理
     const expireResult = await autoExpireUserCoupons();
 
+    // 4. 修复卡住的支付通知记录（PENDING 超时自愈）
+    const healedCount = await healStuckNotifications(5);
+
+    // 5. 清理 30 天前的 SUCCESS/FAILED 通知记录
+    const cleanedCount = await cleanupOldNotifications(30);
+
     return NextResponse.json({
       success: true,
       data: {
         cancelled: cancelResult,
         completed: completeResult,
         couponsExpired: expireResult,
+        healedNotifications: healedCount,
+        cleanedNotifications: cleanedCount,
       },
       message: "定时任务执行成功"
     });

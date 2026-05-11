@@ -3,6 +3,7 @@ import { OrderStatus, RefundStatus } from "@/generated/prisma/client";
 import { applyWechatRefund, generateRefundNo } from "./wechat-pay";
 import { refundAlipayOrder } from "./alipay";
 import { ensureMoneyPrecision } from "./money";
+import { recordTransaction } from "./transaction";
 
 /**
  * 简单的 HTML 转义，防止存储型 XSS
@@ -25,6 +26,12 @@ export async function finalizeRefund(
   refundNo: string | null,
   refundAmount: number
 ): Promise<void> {
+  // 先查询订单支付信息，用于后续记录交易流水
+  const orderPreview = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { paymentMethod: true, paymentNo: true },
+  });
+
   await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
@@ -75,6 +82,19 @@ export async function finalizeRefund(
       });
     }
   });
+
+  // 记录退款流水（失败不阻断）
+  if (orderPreview) {
+    await recordTransaction({
+      orderId,
+      type: "REFUND",
+      gateway: orderPreview.paymentMethod || "unknown",
+      amount: refundAmount,
+      status: "SUCCESS",
+      gatewayTrxId: orderPreview.paymentNo,
+      gatewayRefundId: refundNo,
+    });
+  }
 }
 
 /**

@@ -22,6 +22,10 @@ const createPaySchema = z.object({
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  let orderId: string | undefined;
+  let payMethod: "wechat" | "alipay" | undefined;
+  let tradeType: "NATIVE" | "JSAPI" | "MWEB" | undefined;
+
   try {
     const payload = await verifyUserAuth(request);
 
@@ -64,7 +68,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { orderId, payMethod, tradeType } = result.data;
+    const parsed = result.data;
+    orderId = parsed.orderId;
+    payMethod = parsed.payMethod;
+    tradeType = parsed.tradeType;
 
     // 检查支付方式是否启用
     if (!isPaymentMethodEnabled(payMethod)) {
@@ -216,6 +223,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("[CreatePay] 异常:", error);
+    // 异常时尝试回滚 CAS 锁，防止订单永久停留在 PAYING 状态
+    try {
+      await prisma.order.updateMany({
+        where: { id: orderId, status: "PAYING" },
+        data: { status: "PENDING" },
+      });
+    } catch (rollbackError) {
+      console.error("[CreatePay] 回滚 CAS 锁失败:", rollbackError);
+    }
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

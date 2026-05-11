@@ -121,6 +121,19 @@ export async function middleware(request: NextRequest) {
 
   // 2.1 显式公开的 API -> 放行
   if (matchesPath(pathname, PUBLIC_API_PREFIXES)) {
+    // 对支付回调路由增加额外安全限制：只允许 POST（防止 GET/HEAD 探测）
+    const PAYMENT_CALLBACK_PATHS = [
+      "/api/pay/notify",
+      "/api/pay/alipay-notify",
+      "/api/pay/alipay-refund-notify",
+      "/api/pay/refund-notify",
+    ];
+    if (matchesPath(pathname, PAYMENT_CALLBACK_PATHS)) {
+      if (method !== "POST") {
+        console.warn(`[Middleware] 支付回调路由 ${pathname} 收到非 POST 请求 (${method})，已拦截`);
+        return new NextResponse("Method Not Allowed", { status: 405 });
+      }
+    }
     return NextResponse.next();
   }
 

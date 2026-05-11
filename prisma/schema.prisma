@@ -370,6 +370,7 @@ model Order {
 
   user           User        @relation(fields: [userId], references: [id], onDelete: Restrict)
   items          OrderItem[]
+  transactions   Transaction[] // 交易流水记录
   userCoupon     UserCoupon?
 
   createdAt      DateTime    @default(now())
@@ -395,6 +396,29 @@ model OrderItem {
   product      Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
+}
+
+// ============================================
+// 交易流水（支付/退款资金变动记录）
+// ============================================
+
+model Transaction {
+  id              String   @id @default(cuid())
+  orderId         String
+  type            String   // PAYMENT | REFUND
+  gateway         String   // wechat | alipay | mock
+  amount          Decimal  @db.Decimal(10, 2)
+  status          String   // SUCCESS | FAILED
+  gatewayTrxId    String?  // 第三方交易流水号（如微信 transaction_id、支付宝 trade_no）
+  gatewayRefundId String?  // 退款单号
+  rawData         String?  @db.Text // 原始响应/通知数据（JSON）
+  createdAt       DateTime @default(now())
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([gatewayTrxId])
+  @@index([createdAt])
 }
 
 enum OrderStatus {

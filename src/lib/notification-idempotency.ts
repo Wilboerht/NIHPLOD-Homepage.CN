@@ -164,6 +164,40 @@ export async function markNotificationFailed(
 }
 
 /**
+ * 修复卡住的通知记录（PENDING 超时自愈）
+ * 场景：请求在处理过程中崩溃，导致 PENDING 记录永久残留
+ * 修复：将超过超时时间的 PENDING 记录标记为 FAILED，允许后续重试正确处理
+ * @param timeoutMinutes 超时时间（分钟），默认 5 分钟
+ */
+export async function healStuckNotifications(timeoutMinutes: number = 5): Promise<number> {
+  try {
+    const cutoffDate = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+
+    const result = await prisma.paymentNotification.updateMany({
+      where: {
+        status: "PENDING",
+        createdAt: {
+          lt: cutoffDate,
+        },
+      },
+      data: {
+        status: "FAILED",
+        errorMessage: "TIMEOUT_HEAL: 处理超时，允许重试",
+        processedAt: new Date(),
+      },
+    });
+
+    if (result.count > 0) {
+      console.warn(`[Notification] 修复了 ${result.count} 条卡住的 PENDING 通知记录（超时 ${timeoutMinutes} 分钟）`);
+    }
+    return result.count;
+  } catch (error) {
+    console.error("[Notification] 修复卡住记录失败:", error);
+    return 0;
+  }
+}
+
+/**
  * 清理过期的通知记录（可选）
  * @param daysOld 多少天以前的记录
  */

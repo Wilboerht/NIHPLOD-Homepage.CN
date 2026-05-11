@@ -6,7 +6,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/generated/prisma/client";
-import crypto from "crypto";
+import { formatKey } from "@/lib/crypto-utils";
+import { verifyWithRSA2, buildSignContent } from "@/lib/alipay";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   isNotificationProcessed,
@@ -17,36 +18,8 @@ import {
 
 // 支付宝配置
 const ALIPAY_CONFIG = {
-  alipayPublicKey: (process.env.ALIPAY_PUBLIC_KEY || "").replace(/\\n/g, "\n"),
+  alipayPublicKey: formatKey(process.env.ALIPAY_PUBLIC_KEY),
 };
-
-/**
- * RSA2 验签
- */
-function verifyWithRSA2(content: string, sign: string, publicKey: string): boolean {
-  try {
-    const verify = crypto.createVerify("RSA-SHA256");
-    verify.update(content, "utf8");
-    return verify.verify(
-      `-----BEGIN PUBLIC KEY-----\n${publicKey}\n-----END PUBLIC KEY-----`,
-      sign,
-      "base64"
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 生成待签名字符串
- */
-function buildSignContent(params: Record<string, string>): string {
-  return Object.keys(params)
-    .filter((key) => params[key] !== undefined && params[key] !== "")
-    .sort()
-    .map((key) => `${key}=${params[key]}`)
-    .join("&");
-}
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -94,7 +67,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查退款状态：只有 REFUND_SUCCESS 表示退款成功
-    if (refundStatus !== "REFUND_SUCCESS") {
+    // 注意：支付宝退款通知中通常不包含 refund_status 字段，此检查为防御性逻辑
+    if (refundStatus && refundStatus !== "REFUND_SUCCESS") {
       console.warn(`[AlipayRefundNotify] 退款状态无效: ${refundStatus}`);
       return new NextResponse("success", { status: 200 });
     }
@@ -171,7 +145,7 @@ export async function POST(request: NextRequest) {
       error.message.includes("connection") ||
       error.message.includes("timeout") ||
       error.message.includes("ECONNREFUSED") ||
-      error.message.includes(" Prisma ")
+      error.message.includes("Prisma")
     );
     console.error("[AlipayRefundNotify] 异常:", error);
     // 系统错误返回 500，让支付宝重试；业务错误返回 200 + fail

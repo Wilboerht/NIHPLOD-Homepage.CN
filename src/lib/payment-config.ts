@@ -38,12 +38,18 @@ function parsePaymentMethodsEnv(): PaymentMethodConfig[] {
       continue;
     }
 
+    // 运行时校验：只允许已知的支付方式 ID
+    if (id !== "wechat" && id !== "alipay") {
+      console.warn(`[Payment Config] 未知的支付方式 ID: ${id}，已忽略`);
+      continue;
+    }
+
     const method: PaymentMethodConfig = {
-      id: id as "wechat" | "alipay",
+      id,
       name: {
         wechat: "微信支付",
         alipay: "支付宝",
-      }[id] || id,
+      }[id],
       enabled: enabledStr.toLowerCase() === "true",
       priority: parseInt(priorityStr, 10),
     };

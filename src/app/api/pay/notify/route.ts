@@ -55,7 +55,13 @@ export async function POST(request: NextRequest) {
 
     // 4. 验签通过且处理成功后，再记录幂等性（防止伪造通知 DoS）
     try {
-      const recordResult = await recordNotification("wechat", notifyId, "", 0, notifyData);
+      const recordResult = await recordNotification(
+        "wechat",
+        notifyId,
+        result.transactionId || "",
+        result.amount || 0,
+        notifyData
+      );
       if (recordResult.success && recordResult.recordId) {
         await markNotificationSuccess(recordResult.recordId);
       }
