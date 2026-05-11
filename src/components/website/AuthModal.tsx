@@ -257,7 +257,7 @@ function LoginModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full h-full md:w-auto md:max-w-[1100px] md:h-[680px] flex items-center max-h-none"
+            className="relative z-10 w-full h-full md:w-full md:max-w-[1100px] md:h-[680px] flex items-center max-h-none"
           >
             <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-transparent md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
@@ -342,22 +342,30 @@ function LoginModal({
                             <button
                               type="button"
                               onClick={onSwitchToForgotPassword}
-                              className="text-xs text-brand-charcoal/40 hover:text-brand-charcoal/70 transition-colors"
+                              className="inline-flex items-center gap-1.5 text-xs tracking-wider text-brand-charcoal/50 hover:text-brand-charcoal transition-colors"
                             >
+                              <KeyRound className="h-3 w-3" strokeWidth={2} />
                               找回密码
                             </button>
                           </div>
                         </div>
 
-                        <label className="flex items-center gap-2 pt-2">
-                          <input
-                            type="checkbox"
-                            checked={agreed}
-                            onChange={(e) => setAgreed(e.target.checked)}
-                            className="h-3.5 w-3.5 rounded border-brand-charcoal/20 text-brand-gold focus:ring-0 focus:ring-offset-0"
-                          />
-                          <span className="text-[11px] text-brand-charcoal/30">
-                            同意《用户协议》和《隐私政策》
+                        <label className="flex cursor-pointer items-center gap-2.5 pt-2 group/agreement">
+                          <div className="relative flex-shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={agreed}
+                              onChange={(e) => setAgreed(e.target.checked)}
+                              className="peer sr-only"
+                            />
+                            <div className="h-4 w-4 rounded border border-brand-charcoal/25 bg-transparent transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
+                            <Check className="absolute inset-0 m-auto h-3 w-3 scale-0 text-white transition-transform peer-checked:scale-100" strokeWidth={3} />
+                          </div>
+                          <span className="text-xs text-brand-charcoal/50 tracking-wide">
+                            我已阅读并同意
+                            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline decoration-brand-charcoal/20 underline-offset-2 hover:text-brand-charcoal transition-colors">《用户协议》</a>
+                            和
+                            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline decoration-brand-charcoal/20 underline-offset-2 hover:text-brand-charcoal transition-colors">《隐私政策》</a>
                           </span>
                         </label>
 
@@ -392,9 +400,9 @@ function LoginModal({
                         <button
                           type="button"
                           onClick={onClose}
-                          className="flex h-10 w-10 items-center justify-center rounded-full text-brand-charcoal/40 hover:text-brand-charcoal/70 transition-colors"
+                          className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/15 text-brand-charcoal/40 hover:border-brand-charcoal/30 hover:text-brand-charcoal/70 hover:bg-brand-charcoal/[0.03] transition-all"
                         >
-                          <X className="h-5 w-5" />
+                          <X className="h-4 w-4" strokeWidth={1.5} />
                         </button>
                       </div>
                     </div>
