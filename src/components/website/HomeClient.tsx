@@ -336,7 +336,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
                   {/* 品牌文案 - 针对不同设备切换 2行/4行 */}
                   <m.div
-                    className="content-wrapper mt-14 md:mt-20"
+                    className="content-wrapper mt-12 md:mt-20"
                     initial="hidden"
                     animate="visible"
                     variants={{
@@ -399,7 +399,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
                   {/* 按钮组 - 增加触压反馈 */}
                   <m.div
-                    className="button-group mt-16 md:mt-24 flex gap-6"
+                    className="button-group mt-12 md:mt-24 flex gap-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, delay: 1.2 }}
