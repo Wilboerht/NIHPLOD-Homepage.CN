@@ -30,6 +30,16 @@ const messageTypesData = [
     { value: "other", label: "其他问题" },
 ];
 
+// 构建带图标的留言类型选项（纯常量，组件外定义避免重复创建）
+const messageTypes = [
+    { value: "", label: "请选择留言类型", icon: HelpCircle },
+    ...messageTypesData.map((t) => ({
+        value: t.value,
+        label: t.label,
+        icon: iconMap[t.value] || HelpCircle,
+    })),
+];
+
 interface FormData {
     name: string;
     phone: string; // 将邮箱改为手机号
@@ -61,16 +71,6 @@ export function ContactModal() {
     const typeDropdownRef = useRef<HTMLDivElement>(null);
     const mobileTypeTriggerRef = useRef<HTMLButtonElement>(null);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
-
-    // 构建带图标的留言类型选项（纯常量，提前声明以便 effect 引用）
-    const messageTypes = [
-        { value: "", label: "请选择留言类型", icon: HelpCircle },
-        ...messageTypesData.map((t) => ({
-            value: t.value,
-            label: t.label,
-            icon: iconMap[t.value] || HelpCircle,
-        })),
-    ];
 
     useEffect(() => {
         setMounted(true);
@@ -157,7 +157,7 @@ export function ContactModal() {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isTypeDropdownOpen, highlightedIndex, errors.type, messageTypes]);
+    }, [isTypeDropdownOpen, highlightedIndex, errors.type]);
 
     // 下拉框展开时初始化高亮索引，收起时焦点回归触发器
     const prevDropdownOpen = useRef(isTypeDropdownOpen);
@@ -174,7 +174,7 @@ export function ContactModal() {
             }
         }
         prevDropdownOpen.current = isTypeDropdownOpen;
-    }, [isTypeDropdownOpen, formData.type, messageTypes]);
+    }, [isTypeDropdownOpen, formData.type]);
 
     // 重置表单当关闭时
     useEffect(() => {

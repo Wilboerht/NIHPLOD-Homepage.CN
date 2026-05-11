@@ -74,7 +74,7 @@ function LoginModal({
   onSwitchToForgotPassword: () => void;
   onSuccess: () => Promise<void>;
 }) {
-  const { openContact } = useAuth();
+  const { openContact: _openContact } = useAuth();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -1136,7 +1136,7 @@ function ForgotPasswordModal({
   onClose: () => void;
   onSwitchToLogin: () => void;
 }) {
-  const { openContact } = useAuth();
+  const { openContact: _openContact } = useAuth();
   const [step, setStep] = useState<ForgotPasswordStep>("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
