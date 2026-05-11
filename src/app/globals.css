@@ -743,7 +743,22 @@
   }
 
   .home-container .btn-primary {
-    width: 180px;
+    width: auto;
+    height: 46px;
+    padding: 0 28px;
+    background-color: transparent;
+    color: #8B7355;
+    border: 1px solid rgba(139, 115, 85, 0.35);
+    box-shadow: none;
+    font-size: 14px;
+  }
+
+  .home-container .btn-primary:hover {
+    background-color: rgba(201, 168, 108, 0.08);
+    border-color: rgba(139, 115, 85, 0.55);
+    transform: none;
+    box-shadow: none;
+    color: #6d5a42;
   }
 
   .home-container .btn-secondary {
@@ -767,8 +782,22 @@
   }
 
   .home-container .btn-primary {
-    width: 160px;
+    width: auto;
+    height: 44px;
+    padding: 0 24px;
+    background-color: transparent;
+    color: #8B7355;
+    border: 1px solid rgba(139, 115, 85, 0.35);
+    box-shadow: none;
     font-size: 14px;
+  }
+
+  .home-container .btn-primary:hover {
+    background-color: rgba(201, 168, 108, 0.08);
+    border-color: rgba(139, 115, 85, 0.55);
+    transform: none;
+    box-shadow: none;
+    color: #6d5a42;
   }
 }
 
