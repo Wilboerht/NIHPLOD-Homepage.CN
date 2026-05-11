@@ -13,7 +13,7 @@ export default function NotFound() {
   const { openContact } = useAuth();
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-brand-cream px-4">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-brand-cream px-4">
       {/* 装饰背景 */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute -left-20 -top-20 h-80 w-80 rounded-full bg-brand-gold blur-3xl" />

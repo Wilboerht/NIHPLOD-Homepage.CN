@@ -90,7 +90,7 @@ export function Modal({
         className={cn(
           "relative z-10 w-full rounded-xl bg-white shadow-2xl",
           "animate-in fade-in-0 zoom-in-95 duration-200",
-          "flex max-h-[calc(100vh-2rem)] flex-col sm:max-h-[calc(100vh-3rem)] md:max-h-[calc(100vh-4rem)]",
+          "flex max-h-[calc(100dvh-2rem)] flex-col sm:max-h-[calc(100dvh-3rem)] md:max-h-[calc(100dvh-4rem)]",
           sizeStyles[size]
         )}
       >

@@ -50,7 +50,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-brand-cream p-8 text-center">
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-brand-cream p-8 text-center">
           <h2 className="mb-4 text-xl font-medium text-brand-text">
             页面加载出错
           </h2>

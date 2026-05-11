@@ -196,7 +196,7 @@ export function Sidebar({
         {/* 侧边栏 */}
         <aside
           className={cn(
-            "fixed left-0 top-0 z-50 flex h-screen w-72 flex-col bg-white shadow-xl transition-transform duration-300 ease-in-out",
+            "fixed left-0 top-0 z-50 flex h-dvh w-72 flex-col bg-white shadow-xl transition-transform duration-300 ease-in-out",
             isOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
@@ -210,7 +210,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300",
+        "fixed left-0 top-0 z-40 flex h-dvh flex-col border-r border-gray-200 bg-white transition-all duration-300",
         isCollapsed ? "w-16" : "w-64"
       )}
     >

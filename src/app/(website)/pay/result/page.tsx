@@ -14,7 +14,7 @@ function PayResultClient() {
   const { openUserCenter } = useAuth();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] pb-20 pt-24 md:pt-32">
+    <div className="flex min-h-dvh items-center justify-center bg-[#FAFAFA] pb-20 pt-24 md:pt-32">
       <div className="mx-auto max-w-lg px-6 text-center">
         <div className="mb-6 flex justify-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-green-600">

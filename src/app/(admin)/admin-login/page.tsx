@@ -149,7 +149,7 @@ export default function LoginPage() {
   );
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-brand-cream px-6">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-brand-cream px-6">
       {/* 面包屑导航 */}
       <div className="absolute left-6 top-6 z-20 flex items-center gap-2 text-xs text-slate-400 sm:left-10 sm:top-8">
         <Link href="/" className="transition-colors hover:text-slate-600">

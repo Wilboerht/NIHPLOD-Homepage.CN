@@ -14,7 +14,7 @@ import { WebsiteLayoutClient } from "@/components/website/WebsiteLayoutClient";
  */
 export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-dvh">
       {/* Skip to main content 链接 - 可访问性 */}
 
 

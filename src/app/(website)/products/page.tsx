@@ -92,7 +92,7 @@ export default async function ProductsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen items-center justify-center bg-brand-cream">
+        <div className="flex h-dvh items-center justify-center bg-brand-cream">
           <div className="text-brand-charcoal/50">加载中...</div>
         </div>
       }

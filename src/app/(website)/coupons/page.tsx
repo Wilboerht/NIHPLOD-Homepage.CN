@@ -120,7 +120,7 @@ export default function CouponsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] py-12 px-4">
+    <div className="min-h-dvh bg-[#FAF8F5] py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* 头部 */}
         <div className="text-center mb-10">

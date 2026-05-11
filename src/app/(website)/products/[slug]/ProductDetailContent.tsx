@@ -99,7 +99,7 @@ export function ProductDetailContent({
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-dvh bg-white pb-20">
       {/* 返回按钮 */}
       <div className="fixed left-4 top-4 z-40">
         <Link

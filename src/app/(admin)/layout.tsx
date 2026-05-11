@@ -39,7 +39,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   // 登录页面使用独立的简洁布局
   if (pathname === "/admin-login") {
     return (
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center">加载中...</div>}>
+      <Suspense fallback={<div className="flex min-h-dvh items-center justify-center">加载中...</div>}>
         {children}
       </Suspense>
     );
@@ -47,7 +47,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-dvh bg-gray-50">
         {/* 侧边栏 */}
         <Sidebar
           isOpen={isOpen}
@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* 主内容区域 */}
         <div
           className={cn(
-            "flex min-h-screen flex-col transition-all duration-300",
+            "flex min-h-dvh flex-col transition-all duration-300",
             isMobile ? "ml-0" : isCollapsed ? "ml-16" : "ml-64"
           )}
         >

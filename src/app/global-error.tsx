@@ -28,7 +28,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     return (
         <html lang="zh-CN">
             <body>
-                <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#F9F7F5] px-4 font-sans text-stone-800">
+                <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#F9F7F5] px-4 font-sans text-stone-800">
                     {/* 装饰背景 (硬编码颜色以确保不依赖外部 CSS) */}
                     <div className="absolute inset-0 opacity-5 pointer-events-none">
                         <div className="absolute -left-20 -top-20 h-80 w-80 rounded-full bg-red-500 blur-3xl" />
