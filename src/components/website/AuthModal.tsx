@@ -9,6 +9,7 @@ import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset } f
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 
 // 登录方式类型
 type LoginMethod = "code" | "password";
@@ -103,17 +104,39 @@ function LoginModal({
     }
   }, [countdown]);
 
-  // 禁止背景滚动
+  const isMobile = useIsMobile();
+
+  // 禁止背景滚动（移动端使用 fixed 定位防止 iOS 弹性滚动）
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      if (isMobile) {
+        const scrollY = window.scrollY;
+        document.body.style.position = "fixed";
+        document.body.style.width = "100%";
+        document.body.style.top = `-${scrollY}px`;
+      }
     } else {
       document.body.style.overflow = "unset";
+      if (isMobile) {
+        const scrollY = document.body.style.top;
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+        if (scrollY) {
+          window.scrollTo(0, parseInt(scrollY) * -1);
+        }
+      }
     }
     return () => {
       document.body.style.overflow = "unset";
+      if (isMobile) {
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+      }
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   // 发送验证码
   const sendCode = async () => {
@@ -217,7 +240,7 @@ function LoginModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pt-3 px-3 md:pt-4 md:px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-4">
           {/* 背景遮罩 */}
           <m.div
             initial={{ opacity: 0 }}
@@ -234,9 +257,9 @@ function LoginModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
+            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center max-h-[85dvh] md:max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-white/95 md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
@@ -259,9 +282,9 @@ function LoginModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-3xl md:rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
-                  <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
+                  <div className="relative px-5 md:px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
@@ -278,7 +301,7 @@ function LoginModal({
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
+                  <div className="flex-1 overflow-y-auto px-5 md:px-10 pt-8 pb-4 scrollbar-hide">
                     {/* 登录方式切换 */}
                     <div className="mb-6 flex justify-center gap-10 pb-2">
                       <button
@@ -321,6 +344,9 @@ function LoginModal({
                           </div>
                           <input
                             type="tel"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                             placeholder="手机号"
@@ -447,7 +473,7 @@ function LoginModal({
                   </div>
 
                   {/* 底部导航 - 固定 */}
-                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
+                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-5 md:px-10 py-6 text-center">
                     <p className="text-xs text-brand-charcoal/60 flex items-center justify-center">
                       还没有账户？
                       <button
@@ -539,17 +565,39 @@ function RegisterModal({
     }
   }, [countdown]);
 
-  // 禁止背景滚动
+  const isMobile = useIsMobile();
+
+  // 禁止背景滚动（移动端使用 fixed 定位防止 iOS 弹性滚动）
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      if (isMobile) {
+        const scrollY = window.scrollY;
+        document.body.style.position = "fixed";
+        document.body.style.width = "100%";
+        document.body.style.top = `-${scrollY}px`;
+      }
     } else {
       document.body.style.overflow = "unset";
+      if (isMobile) {
+        const scrollY = document.body.style.top;
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+        if (scrollY) {
+          window.scrollTo(0, parseInt(scrollY) * -1);
+        }
+      }
     }
     return () => {
       document.body.style.overflow = "unset";
+      if (isMobile) {
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+      }
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   // 发送验证码
   const sendCode = async () => {
@@ -621,7 +669,7 @@ function RegisterModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pt-3 px-3 md:pt-4 md:px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-4">
           {/* 背景遮罩 */}
           <m.div
             initial={{ opacity: 0 }}
@@ -638,9 +686,9 @@ function RegisterModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
+            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center max-h-[85dvh] md:max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-white/95 md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
@@ -663,9 +711,9 @@ function RegisterModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-3xl md:rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
-                  <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
+                  <div className="relative px-5 md:px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
@@ -682,7 +730,7 @@ function RegisterModal({
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
+                  <div className="flex-1 overflow-y-auto px-5 md:px-10 pt-8 pb-4 scrollbar-hide">
                     <form onSubmit={handleRegister} className="space-y-3">
                       {/* 手机号 */}
                       <div className="group">
@@ -692,6 +740,9 @@ function RegisterModal({
                           </div>
                           <input
                             type="tel"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                             placeholder="手机号"
@@ -796,7 +847,7 @@ function RegisterModal({
                   </div>
 
                   {/* 底部导航 - 固定 */}
-                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
+                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-5 md:px-10 py-6 text-center">
                     <p className="text-xs text-brand-charcoal/60">
                       已有账户？
                       <button
@@ -861,17 +912,39 @@ function ForgotPasswordModal({
     }
   }, [countdown]);
 
-  // 禁止背景滚动
+  const isMobile = useIsMobile();
+
+  // 禁止背景滚动（移动端使用 fixed 定位防止 iOS 弹性滚动）
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      if (isMobile) {
+        const scrollY = window.scrollY;
+        document.body.style.position = "fixed";
+        document.body.style.width = "100%";
+        document.body.style.top = `-${scrollY}px`;
+      }
     } else {
       document.body.style.overflow = "unset";
+      if (isMobile) {
+        const scrollY = document.body.style.top;
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+        if (scrollY) {
+          window.scrollTo(0, parseInt(scrollY) * -1);
+        }
+      }
     }
     return () => {
       document.body.style.overflow = "unset";
+      if (isMobile) {
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+      }
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   // 发送验证码
   const sendCode = async () => {
@@ -947,7 +1020,7 @@ function ForgotPasswordModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pt-3 px-3 md:pt-4 md:px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-4">
           {/* 背景遮罩 */}
           <m.div
             initial={{ opacity: 0 }}
@@ -964,9 +1037,9 @@ function ForgotPasswordModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
+            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center max-h-[85dvh] md:max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-white/95 md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
@@ -989,9 +1062,9 @@ function ForgotPasswordModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-3xl md:rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
-                  <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
+                  <div className="relative px-5 md:px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
@@ -1008,7 +1081,7 @@ function ForgotPasswordModal({
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide md:px-12">
+                  <div className="flex-1 overflow-y-auto px-5 md:px-12 pt-8 pb-4 scrollbar-hide">
                     {/* 错误提示 */}
                     <AnimatePresence>
                       {errorMsg && (
@@ -1032,6 +1105,9 @@ function ForgotPasswordModal({
                           </div>
                           <input
                             type="tel"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                             placeholder="手机号"
@@ -1173,7 +1249,7 @@ function ForgotPasswordModal({
 
                   {/* 底部导航 - 固定 */}
                   {step !== "success" && (
-                    <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-10 py-6 text-center">
+                    <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-5 md:px-10 py-6 text-center">
                       <p className="text-xs text-brand-charcoal/60">
                         想起密码了？
                         <button
@@ -1236,17 +1312,39 @@ function WechatBindModal({
     }
   }, [countdown]);
 
-  // 禁止背景滚动
+  const isMobile = useIsMobile();
+
+  // 禁止背景滚动（移动端使用 fixed 定位防止 iOS 弹性滚动）
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      if (isMobile) {
+        const scrollY = window.scrollY;
+        document.body.style.position = "fixed";
+        document.body.style.width = "100%";
+        document.body.style.top = `-${scrollY}px`;
+      }
     } else {
       document.body.style.overflow = "unset";
+      if (isMobile) {
+        const scrollY = document.body.style.top;
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+        if (scrollY) {
+          window.scrollTo(0, parseInt(scrollY) * -1);
+        }
+      }
     }
     return () => {
       document.body.style.overflow = "unset";
+      if (isMobile) {
+        document.body.style.position = "";
+        document.body.style.width = "";
+        document.body.style.top = "";
+      }
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   // 发送验证码
   const sendCode = async () => {
@@ -1319,7 +1417,7 @@ function WechatBindModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pt-3 px-3 md:pt-4 md:px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-4">
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1333,9 +1431,9 @@ function WechatBindModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center"
+            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center max-h-[85dvh] md:max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-[2.5rem] bg-transparent shadow-none md:bg-black/10 md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-white/95 md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
                   src="/images/login-background.webp"
@@ -1353,8 +1451,8 @@ function WechatBindModal({
                 <X className="h-5 w-5" />
               </button>
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
-                  <div className="relative px-8 pb-5 pt-10 text-center shrink-0">
+                <div className="flex-1 flex flex-col rounded-3xl md:rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
+                  <div className="relative px-5 md:px-8 pb-5 pt-10 text-center shrink-0">
                     <div className="mx-auto mb-4 flex justify-center">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
@@ -1369,7 +1467,7 @@ function WechatBindModal({
                       绑定手机号
                     </h2>
                   </div>
-                  <div className="flex-1 overflow-y-auto px-10 pt-8 pb-4 scrollbar-hide">
+                  <div className="flex-1 overflow-y-auto px-5 md:px-10 pt-8 pb-4 scrollbar-hide">
                     {/* 错误提示 */}
                     <AnimatePresence>
                       {errorMsg && (
@@ -1396,6 +1494,9 @@ function WechatBindModal({
                           </div>
                           <input
                             type="tel"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                             placeholder="请输入绑定的真实手机号"
