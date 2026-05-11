@@ -94,7 +94,7 @@ export function KineticBackground() {
                         alt="Watermark Mobile"
                         fill
                         priority
-                        style={{ objectFit: 'fill' }}
+                        style={{ objectFit: 'cover' }}
                         className="opacity-90"
                     />
                 </div>

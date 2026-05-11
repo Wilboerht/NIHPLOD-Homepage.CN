@@ -701,7 +701,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     alt=""
                     fill
                     className="opacity-[0.20]"
-                    style={{ objectFit: 'fill' }}
+                    style={{ objectFit: 'cover' }}
                   />
                 </div>
               </div>
