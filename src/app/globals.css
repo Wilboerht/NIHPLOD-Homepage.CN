@@ -746,7 +746,7 @@
     width: auto;
     height: 46px;
     padding: 0 28px;
-    background-color: transparent;
+    background-color: rgba(201, 168, 108, 0.08);
     color: #8B7355;
     border: 1px solid rgba(139, 115, 85, 0.35);
     box-shadow: none;
@@ -754,7 +754,7 @@
   }
 
   .home-container .btn-primary:hover {
-    background-color: rgba(201, 168, 108, 0.08);
+    background-color: rgba(201, 168, 108, 0.14);
     border-color: rgba(139, 115, 85, 0.55);
     transform: none;
     box-shadow: none;
@@ -785,7 +785,7 @@
     width: auto;
     height: 44px;
     padding: 0 24px;
-    background-color: transparent;
+    background-color: rgba(201, 168, 108, 0.08);
     color: #8B7355;
     border: 1px solid rgba(139, 115, 85, 0.35);
     box-shadow: none;
@@ -793,7 +793,7 @@
   }
 
   .home-container .btn-primary:hover {
-    background-color: rgba(201, 168, 108, 0.08);
+    background-color: rgba(201, 168, 108, 0.14);
     border-color: rgba(139, 115, 85, 0.55);
     transform: none;
     box-shadow: none;
