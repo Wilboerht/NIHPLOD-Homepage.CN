@@ -240,7 +240,7 @@ function LoginModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center pt-3 px-3 md:pt-4 md:px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pt-3 px-6 md:pt-4 md:px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-4">
           {/* 背景遮罩 */}
           <m.div
             initial={{ opacity: 0 }}
@@ -257,9 +257,9 @@ function LoginModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full max-w-sm md:max-w-[1100px] md:h-[680px] flex items-center max-h-[85dvh] md:max-h-none"
+            className="relative z-10 w-full max-w-[300px] md:max-w-[1100px] md:h-[680px] flex items-center max-h-[85dvh] md:max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-white/95 md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-2xl md:rounded-[2.5rem] bg-white/95 md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
@@ -282,26 +282,26 @@ function LoginModal({
 
               {/* 浮动表单区域 */}
               <div className="relative z-10 w-full md:w-[440px] flex flex-col items-stretch">
-                <div className="flex-1 flex flex-col rounded-3xl md:rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
+                <div className="flex-1 flex flex-col rounded-2xl md:rounded-[2.5rem] bg-white/90 md:bg-white/65 backdrop-blur-xl shadow-[0_4px_16px_0_rgba(0,0,0,0.05)] md:shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] border border-white/60 md:border-white/50 overflow-hidden">
                   {/* 顶部装饰 - 固定 */}
-                  <div className="relative px-5 md:px-8 pb-5 pt-10 text-center shrink-0">
-                    <div className="mx-auto mb-4 flex justify-center">
+                  <div className="relative px-6 md:px-8 pb-3 pt-6 md:pb-5 md:pt-10 text-center shrink-0">
+                    <div className="mx-auto mb-2 md:mb-4 flex justify-center">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
                         alt="NIHPLOD Logo"
                         width={120}
-                        className="object-contain"
+                        className="object-contain h-auto w-[100px] md:w-[120px]"
                         height={48}
                         priority
                       />
                     </div>
-                    <h2 className="text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
+                    <h2 className="hidden md:block text-2xl font-semibold tracking-[0.05em] text-brand-charcoal">
                       欢迎回来
                     </h2>
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-5 md:px-10 pt-8 pb-4 scrollbar-hide">
+                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide">
                     {/* 登录方式切换 */}
                     <div className="mb-6 flex justify-center gap-10 pb-2">
                       <button
@@ -335,7 +335,7 @@ function LoginModal({
                       */}
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-3">
+                    <form onSubmit={handleLogin} className="space-y-2.5">
                       {/* 手机号 */}
                       <div className="group">
                         <div className="relative">
@@ -350,7 +350,7 @@ function LoginModal({
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
                             placeholder="手机号"
-                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                            className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-2.5 md:py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                           />
                         </div>
                       </div>
@@ -398,7 +398,7 @@ function LoginModal({
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="密码"
                                 maxLength={32}
-                                className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                                className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-2.5 md:py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                               />
                             </div>
                             {/* 忘记密码链接 */}
@@ -439,7 +439,7 @@ function LoginModal({
                       <button
                         type="submit"
                         disabled={loading || !agreed}
-                        className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-4 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                        className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-3 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-md shadow-brand-gold/15 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                       >
                         <span className="relative z-10 flex items-center justify-center gap-2">
                           {loading ? (
@@ -473,7 +473,7 @@ function LoginModal({
                   </div>
 
                   {/* 底部导航 - 固定 */}
-                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-5 md:px-10 py-6 text-center">
+                  <div className="shrink-0 border-t border-black/5 md:border-white/20 bg-black/[0.02] md:bg-white/10 px-6 md:px-10 py-4 text-center">
                     <p className="text-xs text-brand-charcoal/60 flex items-center justify-center">
                       还没有账户？
                       <button
