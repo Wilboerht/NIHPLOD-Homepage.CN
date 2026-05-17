@@ -220,11 +220,11 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
           {/* 遮罩层以及模态框容器合并点击事件 */}
           <div
-            className="fixed inset-0 z-[210] flex items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-[210] flex items-center justify-center p-0 lg:p-6"
             onClick={onClose}
           >
             <m.div
-              className="relative flex w-full max-w-6xl h-[85vh] flex-col overflow-hidden rounded-3xl bg-[#F0EDE1] shadow-2xl lg:h-[700px] lg:flex-row"
+              className="relative flex w-full max-w-6xl h-full flex-col overflow-hidden rounded-none bg-[#F0EDE1] shadow-2xl lg:h-[700px] lg:rounded-3xl lg:flex-row"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
