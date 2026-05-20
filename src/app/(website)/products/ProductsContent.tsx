@@ -451,13 +451,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
             onClick={() => handleProductClick(product)}
-            className="group relative flex w-full flex-col rounded-[20px] bg-white/40 backdrop-blur-md p-3 pb-5 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
+            className="group relative flex w-full flex-col bg-white/40 backdrop-blur-md p-3 pb-5 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
           >
             {/* 矿物纹理 - 极淡 */}
-            <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none rounded-[20px]" />
+            <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
             {/* 上方：产品图片区域 */}
-            <div className="relative z-10 w-full aspect-square overflow-hidden rounded-[12px] bg-[#F8F6F1]">
+            <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#F8F6F1]">
               {/* 容量标签 */}
               {product.capacity && (
                 <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
