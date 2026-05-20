@@ -201,12 +201,12 @@ export default function PayModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-sm bg-[#FAF8F5] rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-sm bg-[#F0EDE1] rounded-2xl shadow-2xl overflow-hidden"
             style={{ backgroundImage: TEXTURE_BG }}
           >
             <button
               onClick={closePay}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full text-[#8B8579] hover:text-[#5C5347] hover:bg-[#E8E3DC] transition-colors"
+              className="absolute top-4 right-4 z-10 p-2 rounded-full text-[#8B8579] hover:text-[#5C5347] hover:bg-[#F0EDE1] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>

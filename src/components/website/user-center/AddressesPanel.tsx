@@ -260,7 +260,7 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
                         type="button"
                         onClick={() => { onChange(opt.label); setOpen(false); }}
                         className={`w-full px-4 py-2.5 text-left text-[14px] rounded-lg transition-all flex items-center justify-between group ${opt.label === value
-                          ? "bg-[#E5E0D8]/40 text-stone-800 font-medium"
+                          ? "bg-[#F0EDE1]/40 text-stone-800 font-medium"
                           : "text-stone-500 hover:bg-stone-50 hover:text-stone-800"
                           }`}
                       >

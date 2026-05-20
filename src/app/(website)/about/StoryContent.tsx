@@ -531,7 +531,7 @@ export function StoryContent() {
                         >
                           {/* 左侧图片区域 */}
                           <div className="relative flex h-full flex-col justify-center gap-4">
-                            <div className="relative h-44 w-[70%] self-start overflow-hidden bg-[#e5e2d5] md:h-56 lg:h-64">
+                            <div className="relative h-44 w-[70%] self-start overflow-hidden bg-[#F0EDE1] md:h-56 lg:h-64">
                               <Image
                                 src="/images/story/dolphin-ocean.webp"
                                 alt="大自然"
@@ -539,7 +539,7 @@ export function StoryContent() {
                                 className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
                               />
                             </div>
-                            <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#F0EDE1] bg-[#e5e2d5] lg:-mt-14 lg:h-80">
+                            <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#F0EDE1] bg-[#F0EDE1] lg:-mt-14 lg:h-80">
                               <Image
                                 src="/images/story/lab-research.webp"
                                 alt="科技"
@@ -588,7 +588,7 @@ export function StoryContent() {
                             </div>
 
                             {/* 右侧悬浮卡片 - 减小高度并叠层 */}
-                            <div className="relative z-10 -ml-12 md:-ml-16 lg:-ml-24 flex h-[460px] md:h-[500px] flex-1 flex-col justify-between bg-[#DDD9C9] p-8 md:p-10 lg:p-14 shadow-[20px_20px_60px_rgba(0,0,0,0.1)]">
+                            <div className="relative z-10 -ml-12 md:-ml-16 lg:-ml-24 flex h-[460px] md:h-[500px] flex-1 flex-col justify-between bg-[#F0EDE1] p-8 md:p-10 lg:p-14 shadow-[20px_20px_60px_rgba(0,0,0,0.1)]">
                               <div>
                                 <span className="mb-3 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
                                   公司使命
@@ -638,7 +638,7 @@ export function StoryContent() {
                           ].map((item, idx) => (
                             <div
                               key={idx}
-                              className="flex h-full flex-col justify-between bg-[#F0EDE1] p-8 transition-all duration-300 hover:-translate-y-1 hover:bg-[#f7f5ef] hover:shadow-lg lg:p-10"
+                              className="flex h-full flex-col justify-between bg-[#F0EDE1] p-8 transition-all duration-300 hover:-translate-y-1 hover:bg-[#F0EDE1] hover:shadow-lg lg:p-10"
                             >
                               <span className="text-6xl font-thin text-[#00263e]/10">{item.num}</span>
                               <div>

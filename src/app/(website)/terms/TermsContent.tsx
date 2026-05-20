@@ -92,7 +92,7 @@ export function TermsContent({ content }: TermsContentProps) {
     >
       <div className="flex h-full flex-col items-center pointer-events-none">
         {/* 主内容卡片容器 */}
-        <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#EBE8DB] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
+        <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#F0EDE1] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
 
           <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
             {/* 顶栏 / Logo 区 */}
@@ -258,7 +258,7 @@ export function TermsContent({ content }: TermsContentProps) {
         {/* 返回上页按钮 */}
         <button
           onClick={() => typeof window !== "undefined" && window.history.back()}
-          className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#EBE8DB] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3 pointer-events-auto"
+          className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#F0EDE1] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3 pointer-events-auto"
         >
           <ArrowLeft className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
           <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回上页</span>

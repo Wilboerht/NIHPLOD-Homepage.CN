@@ -120,7 +120,7 @@ export function ProfilePanel() {
         <div className="mb-6 md:mb-10 flex items-center gap-6">
           {/* 可点击上传头像 */}
           <div className="group relative">
-            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#E5E0D8]/20 transition-all group-hover:border-stone-300">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#F0EDE1]/20 transition-all group-hover:border-stone-300">
               {user.avatar ? (
                 <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover transition-all" />
               ) : (

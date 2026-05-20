@@ -457,7 +457,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
             {/* 上方：产品图片区域 */}
-            <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#F8F6F1]">
+            <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#F0EDE1]">
               {/* 容量标签 */}
               {product.capacity && (
                 <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
@@ -811,7 +811,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           setIsCategoryMenuOpen(false);
                         }
                       }}
-                      className="group flex w-full flex-row items-center justify-center gap-4 rounded-2xl bg-[#EAE7DC]/60 py-6 px-4 transition-all active:scale-95 active:bg-[#EAE7DC]"
+                      className="group flex w-full flex-row items-center justify-center gap-4 rounded-2xl bg-[#F0EDE1]/60 py-6 px-4 transition-all active:scale-95 active:bg-[#F0EDE1]"
                     >
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center text-[#00263E] opacity-90 transition-transform group-active:scale-110">
                         {CATEGORY_ICONS[cat.name]}

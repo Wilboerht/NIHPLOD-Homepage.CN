@@ -15,12 +15,12 @@ const config: Config = {
           gold: "#C9A86C", // 品牌金 - Logo、按钮、强调
           "gold-light": "#D4B77A", // 浅金色 - 高亮、hover状态
           "gold-dark": "#B8975B", // 深金色 - 按下状态
-          cream: "#FAF8F5", // 暖白 - 主背景
-          "cream-dark": "#F5F2ED", // 米色背景 - 卡片背景
+          cream: "#F0EDE1", // 暖白 - 主背景
+          "cream-dark": "#F0EDE1", // 米色背景 - 卡片背景
           charcoal: "#2C2C2C", // 深炭灰 - 主文字
           "charcoal-light": "#4A4A4A", // 浅炭灰 - 次要文字
           blush: "#F5E6E0", // 柔粉 - 辅助背景
-          beige: "#E8E2D9", // 米色 - 分隔、边框
+          beige: "#F0EDE1", // 米色 - 分隔、边框
           "beige-dark": "#D9D0C3", // 深米色 - 边框hover
           blue: "#7a9fd4", // AI蓝 - AI护肤顾问专用
           bronze: "#8B6914", // 青铜色 - 高级装饰
@@ -54,7 +54,7 @@ const config: Config = {
       },
       backgroundImage: {
         "gradient-luxury": "linear-gradient(135deg, #C9A86C 0%, #D4B77A 50%, #B8975B 100%)",
-        "gradient-cream": "linear-gradient(180deg, #FAF8F5 0%, #F5F2ED 100%)",
+        "gradient-cream": "linear-gradient(180deg, #F0EDE1 0%, #F0EDE1 100%)",
         "gradient-radial-gold": "radial-gradient(circle, rgba(201, 168, 108, 0.1) 0%, transparent 70%)",
         "shimmer": "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)",
       },

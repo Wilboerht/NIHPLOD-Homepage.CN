@@ -200,7 +200,7 @@ export function UserCenterModal() {
                   {/* 用户头像区域 */}
                   <div className="px-16 pt-12 pb-4">
                     <div className="flex flex-col items-start gap-4 text-left">
-                      <div className="w-16 h-16 rounded-full bg-[#E5E0D8]/40 flex items-center justify-center overflow-hidden shrink-0 object-cover">
+                      <div className="w-16 h-16 rounded-full bg-[#F0EDE1]/40 flex items-center justify-center overflow-hidden shrink-0 object-cover">
                         {user.avatar ? (
                           <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
