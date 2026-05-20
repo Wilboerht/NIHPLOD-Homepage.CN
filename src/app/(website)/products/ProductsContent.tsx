@@ -4,7 +4,6 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
-import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, X } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
@@ -369,8 +368,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     return () => clearTimeout(timer);
   }, [setDrawerOpen]);
 
-  const router = useRouter();
-
   // 状态管理
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
@@ -404,8 +401,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     };
     setSelectedProduct(productData);
     setProductDrawerOpen(true);
-    // 同步更新 URL，便于 SEO 和分享
-    router.push(`/products/${product.slug}`, { scroll: false });
+    // 同步更新 URL，便于 SEO 和分享（使用原生 History API，不触发页面导航）
+    window.history.replaceState(null, '', `/products/${product.slug}`);
   };
 
   /**
@@ -524,8 +521,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   // 关闭抽屉
   const handleCloseDrawer = () => {
     setProductDrawerOpen(false);
-    // 恢复 URL 到产品列表
-    router.push('/products', { scroll: false });
+    // 恢复 URL 到产品列表（使用原生 History API，不触发页面导航）
+    window.history.replaceState(null, '', '/products');
   };
 
   return (
