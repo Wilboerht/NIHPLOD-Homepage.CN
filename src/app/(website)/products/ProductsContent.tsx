@@ -442,8 +442,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         </m.button>
       </div>
 
-      {/* 三个主推产品区域 - 极简平面布局 */}
-      <div className="flex flex-1 flex-col gap-4 px-5 py-4 overflow-y-auto">
+      {/* 三个主推产品区域 - 手机端卡片布局 */}
+      <div className="flex flex-1 flex-col gap-5 px-5 py-4 overflow-y-auto">
         {featuredProducts.map((product, idx) => (
           <m.div
             key={product.id}
@@ -451,43 +451,54 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
             onClick={() => handleProductClick(product)}
-            className="group relative flex w-full items-center justify-center rounded-[24px] bg-white/40 backdrop-blur-md p-6 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
+            className="group relative flex w-full flex-col rounded-[20px] bg-white/40 backdrop-blur-md p-3 pb-5 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
           >
             {/* 矿物纹理 - 极淡 */}
-            <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none rounded-[24px]" />
+            <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none rounded-[20px]" />
 
-            <div className="flex w-full items-center justify-between gap-4 relative z-10">
-              {/* 左侧：产品信息 */}
-              <div className="flex flex-1 flex-col items-start pr-2">
-                {/* 分类标签 - 品牌精致样式 */}
-                <span className="mb-2.5 inline-flex items-center rounded-[4px] bg-[#8B7355]/5 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.2em] text-[#8B7355] border border-[#8B7355]/10 backdrop-blur-sm">
-                  {product.category.name}
-                </span>
+            {/* 上方：产品图片区域 */}
+            <div className="relative z-10 w-full aspect-square overflow-hidden rounded-[12px] bg-[#F8F6F1]">
+              {/* 容量标签 */}
+              {product.capacity && (
+                <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
+                  {product.capacity}
+                </div>
+              )}
+              <Image
+                src={product.images[0]?.url || ""}
+                alt={product.name}
+                fill
+                className="object-cover transition-transform duration-500 group-active:scale-105"
+                priority={idx <= 1}
+              />
+            </div>
 
-                {/* 产品名称 - 衬线体 */}
-                <h2 className="text-[1.125rem] font-serif font-medium tracking-[0.02em] text-[#00263E] leading-snug mb-4 line-clamp-2">
+            {/* 下方：产品信息 */}
+            <div className="relative z-10 mt-4 flex flex-col px-2">
+              {/* 产品名称 + 箭头 */}
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-[1.05rem] font-serif font-medium tracking-[0.02em] text-[#00263E] leading-snug line-clamp-1">
                   {product.name}
                 </h2>
-
-                {/* 详情引导 */}
-                <div className="flex items-center gap-2 opacity-50 group-active:opacity-80 transition-opacity">
-                  <span className="text-[10px] tracking-[0.1em] text-[#00263E]">查看详情</span>
-                  <div className="h-px w-8 bg-[#00263E]/20" />
-                </div>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#00263E"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0 opacity-60"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
               </div>
 
-              {/* 右侧：产品图片 */}
-              <div className="relative h-32 w-32 shrink-0">
-                {/* 背景装饰圆 */}
-                <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F8F6F1]" />
-                <Image
-                  src={product.images[0]?.url || ""}
-                  alt={product.name}
-                  fill
-                  className="object-contain drop-shadow-[0_12px_24px_rgba(56,51,46,0.08)] transition-transform duration-500 group-hover:scale-105"
-                  priority={idx <= 1}
-                />
-              </div>
+              {/* 价格 */}
+              <p className="mt-1 text-[0.95rem] font-medium text-[#00263E]/80">
+                ¥{product.price.toLocaleString()}
+              </p>
             </div>
           </m.div>
         ))}
