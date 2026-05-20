@@ -10,6 +10,10 @@ import CartContent from "./CartContent";
 export const metadata: Metadata = {
   title: "购物车",
   description: "查看您的购物车",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 interface CartPageProps {

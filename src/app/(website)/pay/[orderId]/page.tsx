@@ -9,6 +9,10 @@ import PayContent from "./PayContent";
 
 export const metadata: Metadata = {
   title: "订单支付",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 interface PayPageProps {

@@ -419,7 +419,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
             <Image
               src="/images/NIHPLOD-logo.svg"
-              alt="Logo"
+              alt="NIHPLOD 旎柏品牌Logo"
               fill
               className="object-contain"
               priority
@@ -430,9 +430,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
       {/* 移动端标题与导航 - 左右布局 */}
       <div className="flex shrink-0 items-center justify-between px-6 pt-6 pb-3 relative z-10">
-        <h2 className="text-[22px] font-normal tracking-[0.2em] text-[#00263e] leading-none">
-          当季热卖
-        </h2>
+        <h1 className="text-[22px] font-normal tracking-[0.2em] text-[#00263e] leading-none">
+          产品系列
+        </h1>
         <m.button
           type="button"
           onClick={() => setIsCategoryMenuOpen(true)}
@@ -605,7 +605,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
-                          alt="Logo"
+                          alt="NIHPLOD 旎柏品牌Logo"
                           fill
                           className="object-contain"
                           priority
@@ -651,7 +651,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         </m.header>
 
                         <section className="grid grid-cols-3 gap-8 min-h-0">
-                          {products.slice(0, 3).map((product, index) => (
+                          {products.map((product, index) => (
                             <Link
                               key={product.id}
                               href={`/products/${product.slug}`}
@@ -783,7 +783,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
-                    alt="NIHPLOD"
+                    alt="NIHPLOD 旎柏"
                     fill
                     className="object-contain"
                     priority

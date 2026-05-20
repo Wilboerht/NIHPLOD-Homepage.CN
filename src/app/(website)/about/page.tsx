@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "品牌故事",
   description:
     "探索 NIHPLOD 旎柏：源自 2008 年摩纳哥，复刻海豚肌肤每 2 小时自我更新的自愈力，开启真脂质体护肤传奇。",
+  alternates: {
+    canonical: "/about",
+  },
   openGraph: {
     title: "品牌故事 | NIHPLOD 旎柏",
     description:

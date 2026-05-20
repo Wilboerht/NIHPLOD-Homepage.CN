@@ -49,7 +49,7 @@ function UrlParamHandler() {
  * 移动端底部菜单组件 - 仪式感全屏抽屉版
  * 点击 "更多" 开启沉浸式服务导航层
  */
-function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { href: string; label: string }[], onContactClick: () => void, onExploreClick: () => void }) {
+function MobileFooterMenu({ links, onExploreClick }: { links: { href: string; label: string }[], onExploreClick: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -131,11 +131,7 @@ function MobileFooterMenu({ links, onContactClick, onExploreClick }: { links: { 
                       <button
                         onClick={() => {
                           setIsOpen(false);
-                          if (link.href === "/contact") {
-                            onContactClick();
-                          } else {
-                            router.push(link.href);
-                          }
+                          router.push(link.href);
                         }}
                         className="group flex flex-col items-center gap-2"
                       >
@@ -203,7 +199,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   const textureRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
   const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
-  const { openContact } = useAuth();
+  // const { openContact } = useAuth();
   // const router = useRouter();
 
   // 首页特殊处理：立即设置抽屉为展开状态，不需要动画
@@ -372,7 +368,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     </h1>
 
                     {/* 移动端 & iPad mini (4行) - 字号从 base 提升至 lg */}
-                    <h1 className="title block min-[820px]:hidden text-lg font-light leading-[2.1] tracking-[0.2em] text-brand-charcoal">
+                    <h2 className="title block min-[820px]:hidden text-lg font-light leading-[2.1] tracking-[0.2em] text-brand-charcoal">
                       {[
                         "海豚的肌肤，拥有每两小时",
                         "自我更新的神奇能力，",
@@ -394,7 +390,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                           {line}
                         </m.span>
                       ))}
-                    </h1>
+                    </h2>
                   </m.div>
 
                   {/* 按钮组 - 增加触压反馈 */}
@@ -430,34 +426,20 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     {/* 辅助链接 */}
                     {/* 辅助链接 - 桌面端 (静态列表) */}
                     <div className="hidden md:flex items-center gap-3 sm:gap-6">
-                      {FOOTER_LINKS.map((link) => {
-                        if (link.href === "/contact") {
-                          return (
-                            <button
-                              key={link.href}
-                              onClick={() => openContact()}
-                              className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-                            >
-                              {link.label}
-                            </button>
-                          );
-                        }
-                        return (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-                          >
-                            {link.label}
-                          </Link>
-                        );
-                      })}
+                      {FOOTER_LINKS.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
                     </div>
 
                     {/* 辅助链接 - 移动端 (可折叠菜单) */}
                     <MobileFooterMenu
                       links={FOOTER_LINKS}
-                      onContactClick={() => openContact()}
                       onExploreClick={handleCollapse}
                     />
 
@@ -472,7 +454,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                         </Link>
                         <span className="text-brand-charcoal/30">|</span>
                         <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center gap-1">
-                          <Image src="/images/beian.webp" alt="备案图标" width={12} height={12} className="shrink-0 opacity-80" />
+                          <Image src="/images/beian.webp" alt="公安部备案图标" width={12} height={12} className="shrink-0 opacity-80" />
                           <span>沪公网安备31010702010178号</span>
                         </Link>
                       </div>

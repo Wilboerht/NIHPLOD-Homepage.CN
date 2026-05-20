@@ -14,6 +14,9 @@ export const metadata: Metadata = {
     "修护面霜用法", "焕活身体乳用法", "晨间护肤", "晚间护肤",
     "科学护肤", "脂质体护肤方法", "高端护肤品使用"
   ],
+  alternates: {
+    canonical: "/guide",
+  },
   openGraph: {
     title: "护肤仪式 | NIHPLOD 旎柏",
     description:

@@ -50,9 +50,8 @@ export const metadata: Metadata = {
 
   // 规范链接
   metadataBase: new URL(baseUrl),
-  alternates: {
-    canonical: "/",
-  },
+  // 注意：不要在根 layout 设置 canonical，否则所有子页面会继承指向首页
+  // 每个页面应在各自的 page.tsx 中设置自身的 canonical
 
   // Open Graph
   openGraph: {

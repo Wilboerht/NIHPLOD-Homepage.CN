@@ -13,6 +13,9 @@ export const metadata: Metadata = {
     "高端护肤品", "抗衰老面霜", "脂质体护肤", "奢华护肤", "修护精华",
     "贵妇护肤", "精准护肤", "Dolphin-Skin", "逆转时光"
   ],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "NIHPLOD 旎柏 | 源自摩纳哥的高端护肤品牌",
     description:
