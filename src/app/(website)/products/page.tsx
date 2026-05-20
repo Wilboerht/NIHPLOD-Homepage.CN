@@ -9,9 +9,6 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "产品系列",
   description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
-  alternates: {
-    canonical: "/products",
-  },
   openGraph: {
     title: "产品系列 | NIHPLOD 旎柏",
     description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
