@@ -176,6 +176,52 @@ const nextConfig = {
         destination: '/',
         permanent: true,
       },
+      // 产品昵称重定向（帮助用户通过昵称找到产品页）
+      {
+        source: '/童颜精华',
+        destination: '/products',
+        permanent: false,
+      },
+      {
+        source: '/白魔法面霜',
+        destination: '/products',
+        permanent: false,
+      },
+      {
+        source: '/绿魔法护理油',
+        destination: '/products',
+        permanent: false,
+      },
+      {
+        source: '/守护面膜',
+        destination: '/products',
+        permanent: false,
+      },
+      {
+        source: '/聚宝瓶身体乳',
+        destination: '/products',
+        permanent: false,
+      },
+      {
+        source: '/蛋定防晒',
+        destination: '/products',
+        permanent: false,
+      },
+      {
+        source: '/黑曜磨砂膏',
+        destination: '/products',
+        permanent: false,
+      },
+      {
+        source: '/云朵洁面',
+        destination: '/products',
+        permanent: false,
+      },
+      {
+        source: '/随身笔护手霜',
+        destination: '/products',
+        permanent: false,
+      },
     ];
   },
 };

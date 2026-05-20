@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
+import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, X } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
@@ -368,6 +369,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     return () => clearTimeout(timer);
   }, [setDrawerOpen]);
 
+  const router = useRouter();
+
   // 状态管理
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
@@ -401,6 +404,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     };
     setSelectedProduct(productData);
     setProductDrawerOpen(true);
+    // 同步更新 URL，便于 SEO 和分享
+    router.push(`/products/${product.slug}`, { scroll: false });
   };
 
   /**
@@ -445,14 +450,17 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       {/* 三个主推产品区域 - 手机端卡片布局 */}
       <div className="flex flex-1 flex-col gap-5 px-5 py-4 overflow-y-auto">
         {featuredProducts.map((product, idx) => (
-          <m.div
+          <Link
             key={product.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
-            onClick={() => handleProductClick(product)}
+            href={`/products/${product.slug}`}
+            onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
             className="group relative flex w-full flex-col bg-white/40 backdrop-blur-md p-3 pb-5 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
           >
+            <m.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
+            >
             {/* 矿物纹理 - 极淡 */}
             <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
@@ -500,7 +508,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 ¥{product.price.toLocaleString()}
               </p>
             </div>
-          </m.div>
+            </m.div>
+          </Link>
         ))}
       </div>
       {/* 移动端版权信息 - 与指南页保持一致 */}
@@ -515,6 +524,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   // 关闭抽屉
   const handleCloseDrawer = () => {
     setProductDrawerOpen(false);
+    // 恢复 URL 到产品列表
+    router.push('/products', { scroll: false });
   };
 
   return (
@@ -641,44 +652,48 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
                         <section className="grid grid-cols-3 gap-8 min-h-0">
                           {products.slice(0, 3).map((product, index) => (
-                            <m.div
+                            <Link
                               key={product.id}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1], delay: 0.1 + index * 0.1 }}
-                              onClick={() => handleProductClick(product)}
+                              href={`/products/${product.slug}`}
+                              onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
                               className={cn(
                                 "group relative flex cursor-pointer flex-col",
                                 index === 1 && "mt-12" // 中间卡片微调，不宜过大以防超出
                               )}
                             >
-                              <div className={cn(
-                                "relative w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_15px_30px_rgba(0,38,62,0.1)]",
-                                index === 1 ? "aspect-[4/5.2] max-h-[50vh]" : "aspect-[4/4.5] max-h-[42vh]"
-                              )}>
-                                <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08] z-10" />
-                                {product.images[0] && (
-                                  <Image
-                                    src={product.images[0].url}
-                                    alt={product.name}
-                                    fill
-                                    className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
-                                    sizes="33vw"
-                                    priority={index <= 1}
-                                  />
-                                )}
-                              </div>
-                              <div className="mt-3">
-                                <h2 className="text-sm font-medium tracking-wide text-[#00263E]">
-                                  {product.name}
-                                </h2>
-                                {product.capacity && (
-                                  <span className="mt-0.5 block text-[10px] text-[#00263E]/60">
-                                    {product.capacity}
-                                  </span>
-                                )}
-                              </div>
-                            </m.div>
+                              <m.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1], delay: 0.1 + index * 0.1 }}
+                              >
+                                <div className={cn(
+                                  "relative w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_15px_30px_rgba(0,38,62,0.1)]",
+                                  index === 1 ? "aspect-[4/5.2] max-h-[50vh]" : "aspect-[4/4.5] max-h-[42vh]"
+                                )}>
+                                  <div className="pointer-events-none absolute inset-3 border border-[#00263E]/[0.08] z-10" />
+                                  {product.images[0] && (
+                                    <Image
+                                      src={product.images[0].url}
+                                      alt={product.name}
+                                      fill
+                                      className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
+                                      sizes="33vw"
+                                      priority={index <= 1}
+                                    />
+                                  )}
+                                </div>
+                                <div className="mt-3">
+                                  <h2 className="text-sm font-medium tracking-wide text-[#00263E]">
+                                    {product.name}
+                                  </h2>
+                                  {product.capacity && (
+                                    <span className="mt-0.5 block text-[10px] text-[#00263E]/60">
+                                      {product.capacity}
+                                    </span>
+                                  )}
+                                </div>
+                              </m.div>
+                            </Link>
                           ))}
                         </section>
                       </div>
@@ -794,7 +809,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   visible: { transition: { staggerChildren: 0.05 } }
                 }}
               >
-                {categories.map((cat) => (
+                {categories.map((cat) => {
+                  const categoryProduct = products.find(p => p.categoryId === cat.id);
+                  return (
                   <m.div
                     key={cat.id}
                     variants={{
@@ -803,11 +820,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     }}
                     className="w-full"
                   >
-                    <button
-                      onClick={() => {
-                        const product = products.find(p => p.categoryId === cat.id);
-                        if (product) {
-                          handleProductClick(product);
+                    <Link
+                      href={categoryProduct ? `/products/${categoryProduct.slug}` : '/products'}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (categoryProduct) {
+                          handleProductClick(categoryProduct);
                           setIsCategoryMenuOpen(false);
                         }
                       }}
@@ -819,9 +837,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       <span className="text-base font-medium tracking-[0.1em] text-[#00263E]/90 whitespace-nowrap text-center">
                         {cat.name}
                       </span>
-                    </button>
+                    </Link>
                   </m.div>
-                ))}
+                );})}
               </m.div>
               {/* 为底栏留出空间 */}
               <div className="h-24 shrink-0" />
