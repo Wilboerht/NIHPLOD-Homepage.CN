@@ -26,8 +26,16 @@ export const metadata: Metadata = {
     default: "NIHPLOD 旎柏",
     template: "%s | NIHPLOD 旎柏",
   },
-  description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
-  keywords: ["NIHPLOD", "旎柏", "护肤品", "高端护肤", "摩纳哥", "抗衰老", "真脂质体", "奢华护肤"],
+  description: "NIHPLOD 旎柏（Niphlod）是源自摩纳哥的高端护肤品牌，独创真脂质体（Dolphin-Skin）专利技术，专注于抗衰老修护面霜、焕活身体乳等奢华护肤产品，为全球高净值人士提供精准、高效的护肤方案。",
+  keywords: [
+    "NIHPLOD", "旎柏", "尼柏", "Niphlod", "Niphold",
+    "护肤品", "高端护肤", "摩纳哥护肤品牌", "摩纳哥护肤品",
+    "抗衰老", "抗衰老面霜", "抗衰老精华", "抗老护肤",
+    "真脂质体", "脂质体护肤", "脂质体技术", "Liposome护肤",
+    "奢华护肤", "贵妇护肤", "高净值护肤", "精准护肤",
+    "修护面霜", "焕活身体乳", "洁面慕斯", "保湿精华",
+    " Dolphin-Skin", "海豚肌肤", "逆转时光护肤"
+  ],
   authors: [{ name: "NIHPLOD 官方" }],
   creator: "NIHPLOD 官方",
   publisher: "NIHPLOD 官方 (中国)",

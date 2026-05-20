@@ -145,6 +145,37 @@ const nextConfig = {
         destination: '/?contact=true',
         permanent: false,
       },
+      // 品牌名常见拼写错误重定向（帮助搜索引擎和用户找到正确页面）
+      {
+        source: '/niphlod',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/niphold',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/nihplad',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/nihplood',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/nibai',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        source: '/nibo',
+        destination: '/',
+        permanent: true,
+      },
     ];
   },
 };

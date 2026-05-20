@@ -29,7 +29,10 @@ export function OrganizationJsonLd() {
     "@id": `${baseUrl}/#organization`,
     "name": "NIHPLOD 旎柏官方网站",
     "legalName": "旎柏 (NIHPLOD) 中国",
-    "alternateName": ["旎柏", "NIHPLOD China"],
+    "alternateName": [
+      "旎柏", "NIHPLOD China", "尼柏", "Niphlod", "Niphold",
+      "Nihplad", "Nihplood", "旎白", "旎珀", "旎泊"
+    ],
     "url": baseUrl,
     "logo": {
       "@type": "ImageObject",
@@ -55,7 +58,11 @@ export function OrganizationJsonLd() {
       "email": "contact@nihplod.cn",
       "availableLanguage": ["Chinese", "English"],
     },
-    "knowsAbout": ["高端护肤", "抗衰老科技", "真脂质体技术", "Dolphin-Skin"],
+    "knowsAbout": [
+      "高端护肤", "抗衰老科技", "真脂质体技术", "Liposome技术",
+      "Dolphin-Skin", "修护面霜", "焕活身体乳", "奢华护肤品",
+      "摩纳哥护肤品牌", "精准护肤方案", "贵妇级护肤"
+    ],
   };
 
   return <JsonLdScript data={data} />;

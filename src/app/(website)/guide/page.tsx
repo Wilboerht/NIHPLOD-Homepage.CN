@@ -6,9 +6,14 @@ import { RitualContent } from "./RitualContent";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "护肤仪式",
+  title: "护肤仪式与指南 | NIHPLOD 旎柏——摩纳哥高端护肤品牌",
   description:
-    "每一次护肤，都是与自己对话的珍贵时光。探索 NIHPLOD 旎柏专属晨间与晚间护肤仪式。",
+    "探索 NIHPLOD 旎柏专属护肤仪式与官方使用指南。了解真脂质体修护面霜、焕活身体乳等高端产品的正确使用方法、晨间与晚间护肤步骤及科学护肤理念。",
+  keywords: [
+    "NIHPLOD", "旎柏", "护肤仪式", "护肤指南", "护肤步骤",
+    "修护面霜用法", "焕活身体乳用法", "晨间护肤", "晚间护肤",
+    "科学护肤", "脂质体护肤方法", "高端护肤品使用"
+  ],
   openGraph: {
     title: "护肤仪式 | NIHPLOD 旎柏",
     description:

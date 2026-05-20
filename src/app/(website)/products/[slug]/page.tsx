@@ -48,6 +48,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       name: true,
       nameEn: true,
       description: true,
+      benefits: true,
       images: { take: 1, select: { url: true } },
     },
   });
@@ -58,18 +59,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  const benefitsText = product.benefits?.length ? `主要功效：${product.benefits.join('、')}。` : '';
+  const enhancedDescription = `${benefitsText}${product.description}`.slice(0, 160);
+  const productKeywords = [
+    product.name,
+    product.nameEn,
+    "NIHPLOD",
+    "旎柏",
+    ...(product.benefits || []),
+    "高端护肤",
+    "摩纳哥护肤",
+    "脂质体护肤",
+  ];
+
   return {
-    title: product.name,
-    description: product.description.slice(0, 160),
+    title: `${product.name} | NIHPLOD 旎柏`,
+    description: enhancedDescription,
+    keywords: productKeywords,
     openGraph: {
-      title: product.name,
-      description: product.description.slice(0, 160),
+      title: `${product.name} | NIHPLOD 旎柏`,
+      description: enhancedDescription,
       images: product.images[0]?.url ? [product.images[0].url] : ["/images/og-image.png"],
     },
     twitter: {
       card: "summary",
-      title: product.name,
-      description: product.description.slice(0, 160),
+      title: `${product.name} | NIHPLOD 旎柏`,
+      description: enhancedDescription,
       images: product.images[0]?.url ? [product.images[0].url] : ["/images/og-image.png"],
     },
   };
