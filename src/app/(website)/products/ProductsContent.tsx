@@ -456,7 +456,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             <Link
               href={`/products/${product.slug}`}
               onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
-              className="group relative flex w-full flex-col overflow-hidden rounded-xl bg-white/60 backdrop-blur-md border border-white/30 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.08)] transition-all active:scale-[0.98]"
+              className="group relative flex w-full flex-col bg-white/60 backdrop-blur-md border border-white/30 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.08)] transition-all active:scale-[0.98]"
             >
               {/* 矿物纹理 - 极淡 */}
               <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
