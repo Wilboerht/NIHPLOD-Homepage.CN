@@ -447,66 +447,66 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       {/* 三个主推产品区域 - 手机端卡片布局 */}
       <div className="flex flex-1 flex-col gap-5 px-5 py-4 overflow-y-auto">
         {featuredProducts.map((product, idx) => (
-          <Link
+          <m.div
             key={product.id}
-            href={`/products/${product.slug}`}
-            onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
-            className="group relative flex w-full flex-col bg-white/40 backdrop-blur-md p-3 pb-5 border border-white/20 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.05)] transition-all active:scale-[0.98]"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
           >
-            <m.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
+            <Link
+              href={`/products/${product.slug}`}
+              onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
+              className="group relative flex w-full flex-col overflow-hidden rounded-xl bg-white/60 backdrop-blur-md border border-white/30 shadow-[0_4px_24px_-12px_rgba(0,38,62,0.08)] transition-all active:scale-[0.98]"
             >
-            {/* 矿物纹理 - 极淡 */}
-            <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
+              {/* 矿物纹理 - 极淡 */}
+              <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
-            {/* 上方：产品图片区域 */}
-            <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#F0EDE1]">
-              {/* 容量标签 */}
-              {product.capacity && (
-                <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
-                  {product.capacity}
-                </div>
-              )}
-              <Image
-                src={product.images[0]?.url || ""}
-                alt={product.name}
-                fill
-                className="object-cover transition-transform duration-500 group-active:scale-105"
-                priority={idx <= 1}
-              />
-            </div>
-
-            {/* 下方：产品信息 */}
-            <div className="relative z-10 mt-4 flex flex-col px-2">
-              {/* 产品名称 + 箭头 */}
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-[1.05rem] font-serif font-medium tracking-[0.02em] text-[#00263E] leading-snug line-clamp-1">
-                  {product.name}
-                </h2>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#00263E"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="shrink-0 opacity-60"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
+              {/* 上方：产品图片区域 —— 填满卡片宽度，4:5 比例匹配产品图 */}
+              <div className="relative z-10 w-full aspect-[4/5] overflow-hidden bg-[#F0EDE1]">
+                {/* 容量标签 */}
+                {product.capacity && (
+                  <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
+                    {product.capacity}
+                  </div>
+                )}
+                <Image
+                  src={product.images[0]?.url || ""}
+                  alt={product.name}
+                  fill
+                  className="object-cover transition-transform duration-500 group-active:scale-105"
+                  priority={idx <= 1}
+                />
               </div>
 
-              {/* 价格 */}
-              <p className="mt-1 text-[0.95rem] font-medium text-[#00263E]/80">
-                ¥{product.price.toLocaleString()}
-              </p>
-            </div>
-            </m.div>
-          </Link>
+              {/* 下方：产品信息 */}
+              <div className="relative z-10 flex flex-col p-4">
+                {/* 产品名称 + 箭头 */}
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-[1.05rem] font-serif font-medium tracking-[0.02em] text-[#00263E] leading-snug line-clamp-1">
+                    {product.name}
+                  </h3>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#00263E"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="shrink-0 opacity-60"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </div>
+
+                {/* 价格 */}
+                <p className="mt-1 text-[0.95rem] font-medium text-[#00263E]/80">
+                  ¥{product.price.toLocaleString()}
+                </p>
+              </div>
+            </Link>
+          </m.div>
         ))}
       </div>
       {/* 移动端版权信息 - 与指南页保持一致 */}
