@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { confirmReceipt } from "@/lib/logistics";
+import { apiConsole } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
-    console.error("[ConfirmReceipt] 异常:", error);
+    apiConsole.error("[ConfirmReceipt] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWechatSignature } from "@/lib/wechat";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 
 // 缓存控制: 签名有效期 2 小时，但建议每次页面加载都获取新签名
 const CACHE_DURATION = 300; // 5 分钟缓存，减少重复请求
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("获取微信签名失败:", error);
+    apiConsole.error("获取微信签名失败:", error);
 
     return NextResponse.json(
       {

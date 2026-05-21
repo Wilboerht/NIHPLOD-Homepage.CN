@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -78,7 +79,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       data: { cartItem },
     });
   } catch (error) {
-    console.error("[UpdateCartItem] 异常:", error);
+    apiConsole.error("[UpdateCartItem] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
@@ -118,7 +119,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       data: { message: "已从购物车移除" },
     });
   } catch (error) {
-    console.error("[DeleteCartItem] 异常:", error);
+    apiConsole.error("[DeleteCartItem] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

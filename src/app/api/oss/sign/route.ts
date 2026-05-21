@@ -7,6 +7,7 @@ import { generateUploadSignature } from "@/lib/ali-oss";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { verifyAuth, verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 const signSchema = z.object({
   filename: z.string().min(1, "文件名不能为空").max(255, "文件名过长"),
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error("OSS Sign Error:", error);
+        apiConsole.error("OSS Sign Error:", error);
 
         // 如果是未配置 OSS，返回特定错误以便前端降级
         if (error instanceof Error && error.message === "阿里云 OSS 未配置") {

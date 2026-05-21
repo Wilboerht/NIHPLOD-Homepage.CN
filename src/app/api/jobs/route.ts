@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { apiConsole } from "@/lib/logger";
 
 // GET /api/jobs - 获取已发布的招聘列表
 // 强制动态渲染，禁止静态预渲染
@@ -24,7 +25,7 @@ export async function GET() {
 
     return NextResponse.json({ data: jobs });
   } catch (error) {
-    console.error("Failed to fetch jobs:", error);
+    apiConsole.error("Failed to fetch jobs:", error);
     return NextResponse.json(
       { error: "获取职位列表失败" },
       { status: 500 }

@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 更新留言 Schema
 const UpdateSchema = z.object({
@@ -47,7 +48,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("获取留言详情失败:", error);
+    apiConsole.error("获取留言详情失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取留言详情失败" } },
       { status: 500 }
@@ -100,7 +101,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    console.error("更新留言失败:", error);
+    apiConsole.error("更新留言失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误" } },
@@ -149,7 +150,7 @@ export async function DELETE(
       data: { message: "留言已删除" },
     });
   } catch (error) {
-    console.error("删除留言失败:", error);
+    apiConsole.error("删除留言失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "删除留言失败" } },
       { status: 500 }

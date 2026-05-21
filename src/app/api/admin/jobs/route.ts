@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { apiConsole } from "@/lib/logger";
 
 // 职位类型
 const JOB_TYPES = ["fulltime", "parttime", "intern"] as const;
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("获取职位列表失败:", error);
+    apiConsole.error("获取职位列表失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取职位列表失败" } },
       { status: 500 }
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("创建职位失败:", error);
+    apiConsole.error("创建职位失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" } },

@@ -14,6 +14,7 @@ import { getWechatOAuthToken, getWechatUserInfo } from "@/lib/wechat";
 import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
 import { saveRefreshToken } from "@/lib/auth-security";
 import { SignJWT } from "jose";
+import { apiConsole } from "@/lib/logger";
 
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret) {
@@ -232,7 +233,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("[WechatCallback] 异常:", error);
+    apiConsole.error("[WechatCallback] 异常:", error);
     const isDev = process.env.NODE_ENV === "development";
     const response = NextResponse.json(
       {

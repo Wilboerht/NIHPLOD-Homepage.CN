@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 地址参数验证
 const addressSchema = z.object({
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       data: { addresses },
     });
   } catch (error) {
-    console.error("[GetAddresses] 异常:", error);
+    apiConsole.error("[GetAddresses] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
       data: { address },
     });
   } catch (error) {
-    console.error("[CreateAddress] 异常:", error);
+    apiConsole.error("[CreateAddress] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

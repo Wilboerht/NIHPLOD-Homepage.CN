@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 
 // 统计数据响应类型
 interface StatsResponse {
@@ -204,7 +205,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("获取统计数据失败:", error);
+    apiConsole.error("获取统计数据失败:", error);
     return NextResponse.json<StatsResponse>(
       {
         success: false,

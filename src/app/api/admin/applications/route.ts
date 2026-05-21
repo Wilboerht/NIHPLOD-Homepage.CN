@@ -3,6 +3,7 @@ import { verifyAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("获取简历列表失败:", error);
+    apiConsole.error("获取简历列表失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取失败" } },
       { status: 500 }

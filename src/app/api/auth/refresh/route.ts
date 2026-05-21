@@ -10,6 +10,7 @@ import { verifyRefreshToken, signUserToken, signRefreshToken, getTokenExpiresAt,
 import { validateAndRefreshToken, saveRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
 import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 请求参数验证
 const refreshSchema = z.object({
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("[RefreshToken] 异常:", error);
+    apiConsole.error("[RefreshToken] 异常:", error);
     return NextResponse.json(
       {
         success: false,

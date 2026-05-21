@@ -8,6 +8,7 @@ import { verifyAuth } from "@/lib/auth";
 import { shipOrder } from "@/lib/logistics";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     if (!auditSuccess) {
-      console.error("[AdminShip] 审计日志写入失败，业务操作已执行");
+      apiConsole.error("[AdminShip] 审计日志写入失败，业务操作已执行");
     }
 
     revalidateTag("admin-stats");
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       data: { message: "发货成功" },
     });
   } catch (error) {
-    console.error("[AdminShip] 异常:", error);
+    apiConsole.error("[AdminShip] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

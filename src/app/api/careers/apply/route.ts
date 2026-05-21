@@ -5,6 +5,7 @@ import { uploadFile } from "@/lib/upload";
 import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { fileTypeFromBuffer } from "file-type";
+import { apiConsole } from "@/lib/logger";
 
 // 表单验证 schema
 const ApplyFormSchema = z.object({
@@ -146,10 +147,10 @@ export async function POST(request: NextRequest) {
       if (result.success) {
         if (process.env.NODE_ENV === "development") console.log("✅ [Apply API] WeCom bot notification sent to recruitment group");
       } else {
-        console.error("❌ [Apply API] WeCom notification failed:", result.error);
+        apiConsole.error("❌ [Apply API] WeCom notification failed:", result.error);
       }
     } catch (notifError) {
-      console.error("❌ [Apply API] Notification system error:", notifError);
+      apiConsole.error("❌ [Apply API] Notification system error:", notifError);
     }
 
     return NextResponse.json({
@@ -157,11 +158,11 @@ export async function POST(request: NextRequest) {
       message: "简历投递成功！我们会尽快与您联系。",
     });
   } catch (error) {
-    console.error("💥 [Apply API] Error:", error);
+    apiConsole.error("💥 [Apply API] Error:", error);
     // @ts-expect-error - error is unknown type
-    if (error.code) console.error("Error Code:", error.code);
+    if (error.code) apiConsole.error("Error Code:", error.code);
     // @ts-expect-error - error is unknown type
-    if (error.message) console.error("Error Message:", error.message);
+    if (error.message) apiConsole.error("Error Message:", error.message);
 
     return NextResponse.json(
       {

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, data: { address } });
   } catch (error) {
-    console.error("[GetAddress] 异常:", error);
+    apiConsole.error("[GetAddress] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
@@ -113,7 +114,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, data: { address } });
   } catch (error) {
-    console.error("[UpdateAddress] 异常:", error);
+    apiConsole.error("[UpdateAddress] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
@@ -164,7 +165,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, data: { message: "地址已删除" } });
   } catch (error) {
-    console.error("[DeleteAddress] 异常:", error);
+    apiConsole.error("[DeleteAddress] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

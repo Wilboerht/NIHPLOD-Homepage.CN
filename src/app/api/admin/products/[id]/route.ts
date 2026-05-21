@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
 import { deleteUploadedFile } from "@/lib/upload";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 
 // GET /api/admin/products/[id] - 获取产品详情
 // 强制动态渲染，禁止静态预渲染
@@ -51,7 +52,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("获取产品详情失败:", error);
+    apiConsole.error("获取产品详情失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取产品详情失败" } },
       { status: 500 }
@@ -118,7 +119,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    console.error("更新产品失败:", error);
+    apiConsole.error("更新产品失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "更新产品失败" } },
       { status: 500 }
@@ -295,7 +296,7 @@ export async function PUT(
       },
     });
   } catch (error) {
-    console.error("更新产品失败:", error);
+    apiConsole.error("更新产品失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
@@ -355,7 +356,7 @@ export async function DELETE(
       data: { message: "产品已删除" },
     });
   } catch (error) {
-    console.error("删除产品失败:", error);
+    apiConsole.error("删除产品失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "删除产品失败" } },
       { status: 500 }

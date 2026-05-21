@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword, passwordSchema } from "@/lib/password";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 请求参数验证 - 首次设置密码（需要验证码）
 const setPasswordSchema = z.object({
@@ -202,7 +203,7 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("[SetPassword] 异常:", error);
+    apiConsole.error("[SetPassword] 异常:", error);
     return NextResponse.json(
       {
         success: false,

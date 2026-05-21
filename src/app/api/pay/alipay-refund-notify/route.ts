@@ -9,6 +9,7 @@ import { OrderStatus } from "@/generated/prisma/client";
 import { formatKey } from "@/lib/crypto-utils";
 import { verifyWithRSA2, buildSignContent } from "@/lib/alipay";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 import {
   isNotificationProcessed,
   recordNotification,
@@ -58,11 +59,11 @@ export async function POST(request: NextRequest) {
     const signContent = buildSignContent(verifyParams);
 
     if (signType !== "RSA2") {
-      console.error(`[AlipayRefundNotify] 不支持的签名类型: ${tradeNo}`);
+      apiConsole.error(`[AlipayRefundNotify] 不支持的签名类型: ${tradeNo}`);
       return new NextResponse("fail", { status: 200 });
     }
     if (!verifyWithRSA2(signContent, sign, ALIPAY_CONFIG.alipayPublicKey)) {
-      console.error(`[AlipayRefundNotify] 签名验证失败: ${tradeNo}`);
+      apiConsole.error(`[AlipayRefundNotify] 签名验证失败: ${tradeNo}`);
       return new NextResponse("fail", { status: 200 });
     }
 
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
     // 退款金额上限校验
     const refundAmount = parseFloat(params.refund_amount || "0");
     if (refundAmount <= 0 || refundAmount > Number(order.payAmount)) {
-      console.error(`[AlipayRefundNotify] 退款金额异常: ${refundAmount}, 订单金额: ${order.payAmount}`);
+      apiConsole.error(`[AlipayRefundNotify] 退款金额异常: ${refundAmount}, 订单金额: ${order.payAmount}`);
       if (recordId) await markNotificationFailed(recordId, "REFUND_AMOUNT_INVALID");
       return new NextResponse("fail", { status: 200 });
     }
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
       error.message.includes("ECONNREFUSED") ||
       error.message.includes("Prisma")
     );
-    console.error("[AlipayRefundNotify] 异常:", error);
+    apiConsole.error("[AlipayRefundNotify] 异常:", error);
     // 系统错误返回 500，让支付宝重试；业务错误返回 200 + fail
     if (isSystemError) {
       return new NextResponse("system error", { status: 500 });

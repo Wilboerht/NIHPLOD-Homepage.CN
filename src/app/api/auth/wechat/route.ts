@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWechatOAuthUrl, getWechatMpOAuthUrl } from "@/lib/wechat";
 import crypto from "crypto";
+import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("[WechatAuth] 异常:", error);
+    apiConsole.error("[WechatAuth] 异常:", error);
     return NextResponse.json(
       {
         success: false,

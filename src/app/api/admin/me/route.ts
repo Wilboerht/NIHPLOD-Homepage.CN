@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
+import { apiConsole } from "@/lib/logger";
 
 // GET /api/admin/me - 获取当前登录的管理员信息
 // 强制动态渲染，禁止静态预渲染
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("获取用户信息失败:", error);
+    apiConsole.error("获取用户信息失败:", error);
     return NextResponse.json(
       {
         success: false,

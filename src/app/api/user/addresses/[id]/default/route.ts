@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
+import { apiConsole } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -49,7 +50,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, data: { message: "已设为默认地址" } });
   } catch (error) {
-    console.error("[SetDefaultAddress] 异常:", error);
+    apiConsole.error("[SetDefaultAddress] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

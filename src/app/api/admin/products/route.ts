@@ -5,6 +5,7 @@ import { verifyAuth } from "@/lib/auth";
 import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
+import { apiConsole } from "@/lib/logger";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("获取产品列表失败:", error);
+    apiConsole.error("获取产品列表失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
@@ -226,7 +227,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("创建产品失败:", error);
+    apiConsole.error("创建产品失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },

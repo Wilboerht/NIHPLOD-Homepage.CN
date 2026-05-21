@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[AdminOrders] 异常:", error);
+    apiConsole.error("[AdminOrders] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

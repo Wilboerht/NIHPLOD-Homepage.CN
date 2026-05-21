@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("批量操作失败:", error);
+    apiConsole.error("批量操作失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" } },

@@ -213,3 +213,37 @@ export function logError(
   errorLogger.error("An error occurred", errorInfo);
 }
 
+/**
+ * 兼容 console 风格的多参数日志接口
+ * 用于平滑迁移现有 console.error/console.warn 调用，无需改动调用方传参习惯
+ */
+export const apiConsole = {
+  error: (...args: unknown[]) => {
+    const msgParts: string[] = [];
+    const context: LogContext = {};
+
+    for (const arg of args) {
+      if (arg instanceof Error) {
+        context.errorName = arg.name;
+        context.errorMessage = arg.message;
+        context.stack = arg.stack?.split("\n").slice(0, 5).join("\n");
+      } else if (typeof arg === "object" && arg !== null && !Array.isArray(arg)) {
+        // 合并纯对象到 context
+        Object.assign(context, arg);
+      } else {
+        msgParts.push(String(arg));
+      }
+    }
+
+    apiLogger.error(msgParts.join(" "), Object.keys(context).length > 0 ? context : undefined);
+  },
+  warn: (...args: unknown[]) => {
+    const msg = args.map((a) => (a instanceof Error ? a.message : String(a))).join(" ");
+    apiLogger.warn(msg);
+  },
+  info: (...args: unknown[]) => {
+    const msg = args.map((a) => (a instanceof Error ? a.message : String(a))).join(" ");
+    apiLogger.info(msg);
+  },
+};
+

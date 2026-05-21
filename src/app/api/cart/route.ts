@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 添加购物车参数验证
 const addCartSchema = z.object({
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[GetCart] 异常:", error);
+    apiConsole.error("[GetCart] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
       data: { cartItem, message: "已添加到购物车" },
     });
   } catch (error) {
-    console.error("[AddToCart] 异常:", error);
+    apiConsole.error("[AddToCart] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

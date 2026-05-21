@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("获取分类夹详情失败:", error);
+    apiConsole.error("获取分类夹详情失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取分类夹详情失败" } },
       { status: 500 }
@@ -105,7 +106,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    console.error("更新分类夹失败:", error);
+    apiConsole.error("更新分类夹失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "更新分类夹失败" } },
       { status: 500 }
@@ -142,7 +143,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       data: { message: "分类夹已删除" },
     });
   } catch (error) {
-    console.error("删除分类夹失败:", error);
+    apiConsole.error("删除分类夹失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "删除分类夹失败" } },
       { status: 500 }

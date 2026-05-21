@@ -11,6 +11,7 @@ import { getCronTasksStatus, runCronTaskManually } from "@/lib/cron-tasks";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 只允许管理员访问（owner 和 admin）
 async function validateAdmin(request: NextRequest) {
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[Cron Admin API] 查询失败:", error);
+    apiConsole.error("[Cron Admin API] 查询失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "查询失败" } },
       { status: 500 }
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[Cron Admin API] 执行失败:", error);
+    apiConsole.error("[Cron Admin API] 执行失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "执行失败" } },
       { status: 500 }

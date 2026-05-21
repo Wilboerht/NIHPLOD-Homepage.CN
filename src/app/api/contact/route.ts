@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
@@ -88,12 +89,12 @@ export async function POST(request: NextRequest) {
       // 暂不支持向手机发送短信自动回复
     } catch (notifError) {
       // 通知类错误不影响主流程，仅记录
-      console.error("❌ [Contact API] Notification failed:", notifError);
+      apiConsole.error("❌ [Contact API] Notification failed:", notifError);
     }
 
     return NextResponse.json({ success: true, message: "感谢您的留言，我们会尽快回复！" });
   } catch (error) {
-    console.error("Contact form error:", error);
+    apiConsole.error("Contact form error:", error);
     return NextResponse.json(
       { error: "提交失败，请稍后重试" },
       { status: 500 }

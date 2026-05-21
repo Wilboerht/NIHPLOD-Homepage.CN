@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import { deleteUploadedFile } from "@/lib/upload";
 import prisma from "@/lib/prisma";
+import { apiConsole } from "@/lib/logger";
 
 // DELETE /api/upload/[...path] - 删除图片
 // 强制动态渲染，禁止静态预渲染
@@ -55,7 +56,7 @@ export async function DELETE(
       },
     });
   } catch (error) {
-    console.error("删除失败:", error);
+    apiConsole.error("删除失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "DELETE_ERROR", message: "删除失败" } },
       { status: 500 }

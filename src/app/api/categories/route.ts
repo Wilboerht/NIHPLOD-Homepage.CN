@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { apiConsole } from "@/lib/logger";
 
 // GET /api/categories - 获取分类列表
 // 强制动态渲染，禁止静态预渲染
@@ -21,7 +22,7 @@ export async function GET() {
       data: categories,
     });
   } catch (error) {
-    console.error("获取分类失败:", error);
+    apiConsole.error("获取分类失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "FETCH_ERROR", message: "获取分类失败" } },
       { status: 500 }

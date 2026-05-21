@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
+import { apiConsole } from "@/lib/logger";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("获取留言列表失败:", error);
+    apiConsole.error("获取留言列表失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误" } },

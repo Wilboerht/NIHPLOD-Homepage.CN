@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
+import { apiConsole } from "@/lib/logger";
 import {
   processAndSaveImage,
   validateUploadServer,
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       data: result,
     });
   } catch (error) {
-    console.error("[Upload] 上传失败:", error);
+    apiConsole.error("[Upload] 上传失败:", error);
     const isDev = process.env.NODE_ENV === "development";
     return NextResponse.json(
       { success: false, error: { code: "UPLOAD_ERROR", message: isDev ? (error instanceof Error ? error.message : "上传失败") : "上传失败，请稍后重试" } },

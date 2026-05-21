@@ -10,6 +10,7 @@ import { withRole } from "@/lib/auth";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 const createSchema = z.object({
   email: z.string().email(),
@@ -80,7 +81,7 @@ export const GET = withRole(["owner"], async (request) => {
       },
     });
   } catch (error) {
-    console.error("[AdminAdmins] GET 异常:", error);
+    apiConsole.error("[AdminAdmins] GET 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
@@ -125,7 +126,7 @@ export const POST = withRole(["owner"], async (request, admin) => {
 
     return NextResponse.json({ success: true, data: newAdmin });
   } catch (error) {
-    console.error("[AdminAdmins] POST 异常:", error);
+    apiConsole.error("[AdminAdmins] POST 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
@@ -176,7 +177,7 @@ export const PUT = withRole(["owner"], async (request, admin) => {
 
     return NextResponse.json({ success: true, data: updatedAdmin });
   } catch (error) {
-    console.error("[AdminAdmins] PUT 异常:", error);
+    apiConsole.error("[AdminAdmins] PUT 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

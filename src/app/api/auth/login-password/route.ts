@@ -21,6 +21,7 @@ import {
 } from "@/lib/auth-security";
 import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 请求参数验证
 const loginSchema = z.object({
@@ -189,7 +190,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("[LoginPassword] 异常:", error);
+    apiConsole.error("[LoginPassword] 异常:", error);
     return NextResponse.json(
       {
         success: false,

@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 const RequestSchema = z.object({
   latitude: z.number().min(-90).max(90),
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
       error: { message: "无法识别您的位置，请手动选择" },
     });
   } catch (error) {
-    console.error("Reverse geocoding error:", error);
+    apiConsole.error("Reverse geocoding error:", error);
     return NextResponse.json(
       { success: false, error: { message: "地理编码失败" } },
       { status: 500 }

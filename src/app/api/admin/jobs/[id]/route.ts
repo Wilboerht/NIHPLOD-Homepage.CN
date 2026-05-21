@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { apiConsole } from "@/lib/logger";
 
 // 职位类型
 const JOB_TYPES = ["fulltime", "parttime", "intern"] as const;
@@ -61,7 +62,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("获取职位详情失败:", error);
+    apiConsole.error("获取职位详情失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取职位详情失败" } },
       { status: 500 }
@@ -126,7 +127,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    console.error("更新职位失败:", error);
+    apiConsole.error("更新职位失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" } },
@@ -176,7 +177,7 @@ export async function DELETE(
       data: { message: "职位已删除" },
     });
   } catch (error) {
-    console.error("删除职位失败:", error);
+    apiConsole.error("删除职位失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "删除职位失败" } },
       { status: 500 }

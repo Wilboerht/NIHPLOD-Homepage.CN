@@ -6,6 +6,7 @@ import { AdminLoginSchema } from "@/schemas/api";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 
 // 管理员账户级防爆破配置
 const ADMIN_MAX_ATTEMPTS = 5;
@@ -56,7 +57,7 @@ async function recordAdminAttempt(
     });
   } catch (error) {
     // 记录到日志但不阻断登录流程，确保防爆破机制故障时可被察觉
-    console.error("[Login] 记录登录尝试失败:", error);
+    apiConsole.error("[Login] 记录登录尝试失败:", error);
   }
 }
 
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("登录失败:", error);
+    apiConsole.error("登录失败:", error);
     return NextResponse.json(
       {
         success: false,

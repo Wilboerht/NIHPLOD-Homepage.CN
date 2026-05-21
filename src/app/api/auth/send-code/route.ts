@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { sendLoginCode, generateVerifyCode } from "@/lib/sms";
 import { z } from "zod";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 
 // 请求参数验证
 const sendCodeSchema = z.object({
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
     const smsResult = await sendLoginCode(phone, code);
 
     if (!smsResult.success) {
-      console.error("[SendCode] 短信发送失败:", smsResult.error);
+      apiConsole.error("[SendCode] 短信发送失败:", smsResult.error);
       return NextResponse.json(
         {
           success: false,
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[SendCode] 异常:", error);
+    apiConsole.error("[SendCode] 异常:", error);
     return NextResponse.json(
       {
         success: false,

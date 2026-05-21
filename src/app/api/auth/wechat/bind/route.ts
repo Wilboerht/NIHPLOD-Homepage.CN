@@ -14,6 +14,7 @@ if (!jwtSecret) {
 const secret = new TextEncoder().encode(jwtSecret);
 
 import { passwordSchema } from "@/lib/password";
+import { apiConsole } from "@/lib/logger";
 
 /**
  * 微信绑定表单
@@ -264,7 +265,7 @@ export async function POST(request: NextRequest) {
 
         return response;
     } catch (error) {
-        console.error("[WechatBind] Error:", error);
+        apiConsole.error("[WechatBind] Error:", error);
         return NextResponse.json(
             { 
                 success: false, 

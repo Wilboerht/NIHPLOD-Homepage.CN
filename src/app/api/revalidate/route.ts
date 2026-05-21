@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 const revalidateSchema = z.object({
   paths: z.array(z.string().min(1, "路径不能为空")).min(1, "至少提供一个路径"),
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       paths,
     });
   } catch (error) {
-    console.error("重新验证失败:", error);
+    apiConsole.error("重新验证失败:", error);
     return NextResponse.json(
       { success: false, error: "刷新缓存失败" },
       { status: 500 }

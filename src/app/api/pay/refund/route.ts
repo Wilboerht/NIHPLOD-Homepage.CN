@@ -13,6 +13,7 @@ import { apiError, apiSuccess, ErrorCode } from "@/lib/api-response";
 import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { OrderStatus } from "@/generated/prisma/client";
+import { apiConsole } from "@/lib/logger";
 
 // 退款参数验证
 const refundSchema = z.object({
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
       "退款申请已提交"
     );
   } catch (error: unknown) {
-    console.error("退款接口错误:", error);
+    apiConsole.error("退款接口错误:", error);
     return apiError(ErrorCode.INTERNAL_ERROR);
   }
 }

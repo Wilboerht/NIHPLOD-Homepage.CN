@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 创建分类夹 Schema
 const CreateFolderSchema = z.object({
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error("获取分类夹列表失败:", error);
+    apiConsole.error("获取分类夹列表失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取分类夹列表失败" } },
       { status: 500 }
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("创建分类夹失败:", error);
+    apiConsole.error("创建分类夹失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "创建分类夹失败" } },
       { status: 500 }

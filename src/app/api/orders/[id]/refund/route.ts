@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { applyRefund, cancelRefund } from "@/lib/refund";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
-    console.error("[ApplyRefund] 异常:", error);
+    apiConsole.error("[ApplyRefund] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
@@ -92,7 +93,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       data: { message: "退款申请已取消" },
     });
   } catch (error) {
-    console.error("[CancelRefund] 异常:", error);
+    apiConsole.error("[CancelRefund] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

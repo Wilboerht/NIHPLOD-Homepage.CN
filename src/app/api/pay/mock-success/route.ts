@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 const mockSuccessSchema = z.object({
   orderId: z.string().min(1, "订单ID不能为空"),
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[MockPay] 异常:", error);
+    apiConsole.error("[MockPay] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

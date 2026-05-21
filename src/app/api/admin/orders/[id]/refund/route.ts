@@ -8,6 +8,7 @@ import { verifyAuth } from "@/lib/auth";
 import { processRefund } from "@/lib/refund";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     if (!auditSuccess) {
-      console.error("[AdminRefund] 审计日志写入失败，业务操作已执行");
+      apiConsole.error("[AdminRefund] 审计日志写入失败，业务操作已执行");
     }
 
     revalidateTag("admin-stats");
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
-    console.error("[AdminRefund] 异常:", error);
+    apiConsole.error("[AdminRefund] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

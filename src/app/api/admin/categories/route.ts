@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 分类验证 Schema
 const CategorySchema = z.object({
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error("获取分类列表失败:", error);
+    apiConsole.error("获取分类列表失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取分类列表失败" } },
       { status: 500 }
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
       data: category,
     });
   } catch (error) {
-    console.error("创建分类失败:", error);
+    apiConsole.error("创建分类失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },

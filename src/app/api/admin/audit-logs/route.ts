@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import { listAuditLogs } from "@/lib/audit";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    console.error("[AuditLogs] GET 异常:", error);
+    apiConsole.error("[AuditLogs] GET 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "查询失败" } },
       { status: 500 }

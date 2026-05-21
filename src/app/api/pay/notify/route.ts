@@ -10,6 +10,7 @@ import {
   markNotificationSuccess,
 } from "@/lib/notification-idempotency";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     // 3. 先验签 + 处理（验签失败会抛异常，不会创建数据库记录）
     const result = await handlePaymentNotify(headers, rawBody);
     if (!result.success) {
-      console.error("[PayNotify] 处理失败:", result.message);
+      apiConsole.error("[PayNotify] 处理失败:", result.message);
       return NextResponse.json({ code: "FAIL", message: result.message }, { status: 400 });
     }
 
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     // v3 成功应答：HTTP 200, JSON 格式
     return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
   } catch (error: unknown) {
-    console.error("[PayNotify] 异常:", error);
+    apiConsole.error("[PayNotify] 异常:", error);
     return NextResponse.json({ code: "FAIL", message: "系统错误" }, { status: 500 });
   }
 }

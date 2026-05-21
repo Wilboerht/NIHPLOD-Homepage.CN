@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
+import { apiConsole } from "@/lib/logger";
 
 // 更新参数验证
 const updateSchema = z.object({
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
       data: { user },
     });
   } catch (error) {
-    console.error("[GetProfile] 异常:", error);
+    apiConsole.error("[GetProfile] 异常:", error);
     return NextResponse.json(
       {
         success: false,
@@ -139,7 +140,7 @@ export async function PUT(request: NextRequest) {
       data: { user },
     });
   } catch (error) {
-    console.error("[UpdateProfile] 异常:", error);
+    apiConsole.error("[UpdateProfile] 异常:", error);
     return NextResponse.json(
       {
         success: false,
@@ -204,7 +205,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[UploadAvatar] 异常:", error);
+    apiConsole.error("[UploadAvatar] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "头像上传失败" } },
       { status: 500 }

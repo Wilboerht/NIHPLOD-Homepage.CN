@@ -10,6 +10,7 @@ import { z } from "zod";
 import { logError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 
 // 创建订单参数验证
 const createOrderSchema = z.object({
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[GetOrders] Error Details:", error);
+    apiConsole.error("[GetOrders] Error Details:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "获取订单失败" } },
       { status: 500 }

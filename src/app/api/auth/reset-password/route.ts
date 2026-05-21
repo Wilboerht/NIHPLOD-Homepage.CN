@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 请求参数验证
 const resetPasswordSchema = z.object({
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
       data: { message: "密码重置成功，请使用新密码登录" },
     });
   } catch (error) {
-    console.error("[ResetPassword] 异常:", error);
+    apiConsole.error("[ResetPassword] 异常:", error);
     return NextResponse.json(
       {
         success: false,

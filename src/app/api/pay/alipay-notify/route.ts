@@ -10,6 +10,7 @@ import {
   markNotificationSuccess,
 } from "@/lib/notification-idempotency";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     // 2. 先验签 + 处理（验签失败会返回 fail，不会创建数据库记录）
     const result = await handleAlipayNotify(params);
     if (!result.success) {
-      console.error("[AlipayNotify] 处理失败:", result.message);
+      apiConsole.error("[AlipayNotify] 处理失败:", result.message);
       return new NextResponse("fail", { status: 200 });
     }
 
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse("success", { status: 200 });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[AlipayNotify] 异常:", error);
+    apiConsole.error("[AlipayNotify] 异常:", error);
     // 区分系统错误和业务错误：系统错误返回 500 让支付宝重试
     const isSystemError = errorMessage.includes("connection") || errorMessage.includes("timeout") || errorMessage.includes("Prisma");
     if (isSystemError) {

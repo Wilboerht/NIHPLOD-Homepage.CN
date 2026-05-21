@@ -14,6 +14,7 @@ import { saveRefreshToken } from "@/lib/auth-security";
 import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 import { hashPassword, passwordSchema } from "@/lib/password";
+import { apiConsole } from "@/lib/logger";
 
 // 请求参数验证
 const registerSchema = z.object({
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("[Register] 异常:", error);
+    apiConsole.error("[Register] 异常:", error);
     return NextResponse.json(
       {
         success: false,

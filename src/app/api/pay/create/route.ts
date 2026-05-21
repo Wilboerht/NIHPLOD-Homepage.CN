@@ -10,6 +10,7 @@ import { createAlipayPayment } from "@/lib/alipay";
 import { isPaymentMethodEnabled } from "@/lib/payment-config";
 import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 创建支付参数验证
 const createPaySchema = z.object({
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error("[CreatePay] 异常:", error);
+    apiConsole.error("[CreatePay] 异常:", error);
     // 异常时尝试回滚 CAS 锁，防止订单永久停留在 PAYING 状态
     try {
       await prisma.order.updateMany({
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
         data: { status: "PENDING" },
       });
     } catch (rollbackError) {
-      console.error("[CreatePay] 回滚 CAS 锁失败:", rollbackError);
+      apiConsole.error("[CreatePay] 回滚 CAS 锁失败:", rollbackError);
     }
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },

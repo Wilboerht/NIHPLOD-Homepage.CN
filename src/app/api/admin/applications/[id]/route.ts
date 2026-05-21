@@ -3,6 +3,7 @@ import { verifyAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { deleteUploadedFile } from "@/lib/upload";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, data: application });
   } catch (error) {
-    console.error("获取申请详情失败:", error);
+    apiConsole.error("获取申请详情失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "获取失败" } },
       { status: 500 }
@@ -122,7 +123,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, data: application });
   } catch (error) {
-    console.error("更新申请失败:", error);
+    apiConsole.error("更新申请失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "更新失败" } },
       { status: 500 }
@@ -157,7 +158,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, message: "删除成功" });
   } catch (error) {
-    console.error("删除申请失败:", error);
+    apiConsole.error("删除申请失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "SERVER_ERROR", message: "删除失败" } },
       { status: 500 }

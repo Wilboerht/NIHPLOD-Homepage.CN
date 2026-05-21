@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
+import { apiConsole } from "@/lib/logger";
 
 // 排序更新 Schema
 const OrderUpdateSchema = z.object({
@@ -50,7 +51,7 @@ export async function PUT(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("更新排序失败:", error);
+    apiConsole.error("更新排序失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import { USER_COOKIE_NAME, USER_COOKIE_OPTIONS } from "@/types/auth";
+import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("[Logout] 异常:", error);
+    apiConsole.error("[Logout] 异常:", error);
     return NextResponse.json(
       {
         success: false,

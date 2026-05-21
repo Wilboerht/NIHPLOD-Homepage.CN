@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
+import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -251,7 +252,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[CheckoutData] 异常:", error);
+    apiConsole.error("[CheckoutData] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
