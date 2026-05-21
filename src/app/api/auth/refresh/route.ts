@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await saveRefreshToken(payload.id, newRefreshToken, refreshTokenExpiresAt);
 
-    console.log(`[RefreshToken] Token 已刷新并轮换: ${payload.phone.slice(0, 3)}****${payload.phone.slice(-4)}`);
+    if (process.env.NODE_ENV === "development") console.log(`[RefreshToken] Token 已刷新并轮换: ${payload.phone.slice(0, 3)}****${payload.phone.slice(-4)}`);
 
     // 4. 构建响应（返回新的双 Token）
     const response = NextResponse.json({

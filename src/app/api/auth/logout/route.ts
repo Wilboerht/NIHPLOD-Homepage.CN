@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     if (user) {
       // 撤销所有 Refresh Token（使用户的所有 token 失效）
       await revokeRefreshToken(user.id);
-      console.log(`[Logout] 用户已登出: ${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`);
+      if (process.env.NODE_ENV === "development") console.log(`[Logout] 用户已登出: ${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`);
     }
 
     const response = NextResponse.json({

@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     );
     await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
 
-    console.log(`[LoginPassword] 用户登录成功: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    if (process.env.NODE_ENV === "development") console.log(`[LoginPassword] 用户登录成功: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
 
     // 11. 构建响应
     const response = NextResponse.json({

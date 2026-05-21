@@ -6,6 +6,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateUploadSignature } from "@/lib/ali-oss";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { verifyAuth, verifyUserAuth } from "@/lib/auth";
+import { z } from "zod";
+
+const signSchema = z.object({
+  filename: z.string().min(1, "文件名不能为空").max(255, "文件名过长"),
+  type: z.string().min(1, "文件类型不能为空").max(100, "文件类型过长"),
+});
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -26,11 +32,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "请求过于频繁" }, { status: 429 });
         }
 
-        const { filename, type } = await request.json();
-
-        if (!filename || !type) {
-            return NextResponse.json({ error: "Missing filename or type" }, { status: 400 });
+        const body = await request.json();
+        const parsed = signSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json({ error: "参数错误", details: parsed.error.issues }, { status: 400 });
         }
+        const { filename, type } = parsed.data;
 
         // 校验文件扩展名（普通用户只能上传图片和 PDF，视频仅限管理员）
         const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf"];

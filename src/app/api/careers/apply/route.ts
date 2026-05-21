@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       );
     }
-    console.log("🚀 [Apply API] Received request");
+    if (process.env.NODE_ENV === "development") console.log("🚀 [Apply API] Received request");
     const formData = await request.formData();
-    console.log("📄 [Apply API] FormData parsed");
+    if (process.env.NODE_ENV === "development") console.log("📄 [Apply API] FormData parsed");
 
     // 获取表单字段
     const jobId = formData.get("jobId") as string;
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const phone = formData.get("phone") as string;
     const resumeFile = formData.get("resume") as File | null;
 
-    console.log(`📝 [Apply API] Fields: JobId=${jobId}, Name=${name}, File=${resumeFile?.name}, Size=${resumeFile?.size}, Type=${resumeFile?.type}`);
+    if (process.env.NODE_ENV === "development") console.log(`📝 [Apply API] Fields: JobId=${jobId}, Name=${name}, File=${resumeFile?.name}, Size=${resumeFile?.size}, Type=${resumeFile?.type}`);
 
     // 验证表单数据
     const result = ApplyFormSchema.safeParse({
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
-      console.log("❌ [Apply API] Validation failed", result.error.flatten().fieldErrors);
+      if (process.env.NODE_ENV === "development") console.log("❌ [Apply API] Validation failed", result.error.flatten().fieldErrors);
       return NextResponse.json(
         { error: "表单验证失败", details: result.error.flatten().fieldErrors },
         { status: 400 }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     // 验证简历文件
     if (!resumeFile) {
-      console.log("❌ [Apply API] No resume file");
+      if (process.env.NODE_ENV === "development") console.log("❌ [Apply API] No resume file");
       return NextResponse.json(
         { error: "请上传简历文件" },
         { status: 400 }
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     // Magic bytes 校验真实文件类型（防止 MIME 伪造）
     const fileTypeResult = await fileTypeFromBuffer(fileBuffer);
     if (!fileTypeResult || fileTypeResult.mime !== "application/pdf") {
-      console.log("❌ [Apply API] Invalid file type (magic bytes):", fileTypeResult?.mime);
+      if (process.env.NODE_ENV === "development") console.log("❌ [Apply API] Invalid file type (magic bytes):", fileTypeResult?.mime);
       return NextResponse.json(
         { error: "仅支持 PDF 格式的简历" },
         { status: 400 }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     // 检查文件大小
     if (resumeFile.size > MAX_FILE_SIZE) {
-      console.log("❌ [Apply API] File too large:", resumeFile.size);
+      if (process.env.NODE_ENV === "development") console.log("❌ [Apply API] File too large:", resumeFile.size);
       return NextResponse.json(
         { error: "简历文件大小不能超过 10MB" },
         { status: 400 }
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证职位是否存在且处于招聘状态
-    console.log("🔍 [Apply API] Looking up job:", jobId);
+    if (process.env.NODE_ENV === "development") console.log("🔍 [Apply API] Looking up job:", jobId);
     const job = await prisma.job.findFirst({
       where: {
         id: jobId,
@@ -102,13 +102,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!job) {
-      console.log("❌ [Apply API] Job not found or not published");
+      if (process.env.NODE_ENV === "development") console.log("❌ [Apply API] Job not found or not published");
       return NextResponse.json(
         { error: "该职位不存在或已关闭招聘" },
         { status: 400 }
       );
     }
-    console.log("✅ [Apply API] Job found:", job.title);
+    if (process.env.NODE_ENV === "development") console.log("✅ [Apply API] Job found:", job.title);
 
     // 上传文件到存储 (自动处理 Local/Supabase)
     const uploadResult = await uploadFile(
@@ -118,10 +118,10 @@ export async function POST(request: NextRequest) {
       "resumes"
     );
 
-    console.log("✅ [Apply API] File uploaded:", uploadResult.url);
+    if (process.env.NODE_ENV === "development") console.log("✅ [Apply API] File uploaded:", uploadResult.url);
 
     // 保存申请记录到数据库
-    console.log("💾 [Apply API] Creating DB record");
+    if (process.env.NODE_ENV === "development") console.log("💾 [Apply API] Creating DB record");
     await prisma.jobApplication.create({
       data: {
         jobId,
@@ -130,10 +130,10 @@ export async function POST(request: NextRequest) {
         resumePath: uploadResult.url,
       },
     });
-    console.log("✅ [Apply API] DB record created");
+    if (process.env.NODE_ENV === "development") console.log("✅ [Apply API] DB record created");
 
     // 发送通知
-    console.log("📢 [Apply API] Sending notifications");
+    if (process.env.NODE_ENV === "development") console.log("📢 [Apply API] Sending notifications");
     try {
       // 发送企业微信群机器人通知 (强制路由至招聘群)
       const wecomMsg = formatJobApplicationToWecom({
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       });
       const result = await sendWecomNotification(wecomMsg, "job");
       if (result.success) {
-        console.log("✅ [Apply API] WeCom bot notification sent to recruitment group");
+        if (process.env.NODE_ENV === "development") console.log("✅ [Apply API] WeCom bot notification sent to recruitment group");
       } else {
         console.error("❌ [Apply API] WeCom notification failed:", result.error);
       }

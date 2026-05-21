@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const tradeNo = params.out_trade_no;
     const refundStatus = params.refund_status;
 
-    console.log(`[AlipayRefundNotify] 收到退款回调: ${tradeNo}, 状态: ${refundStatus}`);
+    if (process.env.NODE_ENV === "development") console.log(`[AlipayRefundNotify] 收到退款回调: ${tradeNo}, 状态: ${refundStatus}`);
 
     // 验证签名
     const sign = params.sign;
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     // 幂等性检查：验签通过后再检查
     const idempotencyCheck = await isNotificationProcessed("alipay_refund", notifyId);
     if (idempotencyCheck.processed) {
-      console.log(`[AlipayRefundNotify] 退款通知已处理: ${notifyId}`);
+      if (process.env.NODE_ENV === "development") console.log(`[AlipayRefundNotify] 退款通知已处理: ${notifyId}`);
       return new NextResponse("success", { status: 200 });
     }
 
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     // 检查订单是否已退款
     if (order.status === OrderStatus.REFUNDED) {
-      console.log(`[AlipayRefundNotify] 订单已退款: ${tradeNo}`);
+      if (process.env.NODE_ENV === "development") console.log(`[AlipayRefundNotify] 订单已退款: ${tradeNo}`);
       if (recordId) await markNotificationSuccess(recordId);
       return new NextResponse("success", { status: 200 });
     }
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       data: { adminNote: newAdminNote },
     });
 
-    console.log(`[AlipayRefundNotify] 订单退款成功: ${tradeNo}`);
+    if (process.env.NODE_ENV === "development") console.log(`[AlipayRefundNotify] 订单退款成功: ${tradeNo}`);
     if (recordId) await markNotificationSuccess(recordId);
 
     // 支付宝要求返回 "success" 字符串

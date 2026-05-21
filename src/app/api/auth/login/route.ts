@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     // 8. 清除失败登录记录（成功登录后重置）
     await clearLoginAttempts(phone);
 
-    console.log(`[Login] 用户登录成功: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    if (process.env.NODE_ENV === "development") console.log(`[Login] 用户登录成功: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
 
     // 9. 签发 Access Token（短期，15分钟）
     const accessToken = await signUserToken({

@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 
     // 用户拒绝授权
     if (error) {
-      console.log("[WechatCallback] 用户拒绝授权:", error);
+      if (process.env.NODE_ENV === "development") console.log("[WechatCallback] 用户拒绝授权:", error);
       const response = NextResponse.json(
         {
           success: false,
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     // 获取用户信息
     const wechatUser = await getWechatUserInfo(tokenData.accessToken, tokenData.openid);
 
-    console.log("[WechatCallback] 微信用户:", {
+    if (process.env.NODE_ENV === "development") console.log("[WechatCallback] 微信用户:", {
       openid: wechatUser.openid,
       nickname: wechatUser.nickname,
       unionid: wechatUser.unionid,
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
         phone: user.phone,
       });
 
-      console.log(`[WechatCallback] 用户登录: ${user.nickname || wechatUser.nickname}`);
+      if (process.env.NODE_ENV === "development") console.log(`[WechatCallback] 用户登录: ${user.nickname || wechatUser.nickname}`);
 
       // 保存 Refresh Token 到数据库（统一使用 saveRefreshToken，自动清理旧 Token）
       const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
       .setExpirationTime("1h")
       .sign(secret);
 
-    console.log("[WechatCallback] 新用户，需要绑定手机号");
+    if (process.env.NODE_ENV === "development") console.log("[WechatCallback] 新用户，需要绑定手机号");
 
     const response = NextResponse.json({
       success: true,

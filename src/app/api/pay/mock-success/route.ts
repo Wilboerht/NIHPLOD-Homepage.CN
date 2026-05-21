@@ -6,6 +6,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
+import { z } from "zod";
+
+const mockSuccessSchema = z.object({
+  orderId: z.string().min(1, "订单ID不能为空"),
+});
 
 
 
@@ -32,14 +37,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { orderId } = body;
-
-    if (!orderId) {
+    const parsed = mockSuccessSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "订单ID不能为空" } },
+        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误", details: parsed.error.issues } },
         { status: 400 }
       );
     }
+    const { orderId } = parsed.data;
 
     // 验证订单归属
     const order = await prisma.order.findFirst({
@@ -112,7 +117,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log(`[MockPay] 模拟支付成功: ${order.orderNo}`);
+    if (process.env.NODE_ENV === "development") console.log(`[MockPay] 模拟支付成功: ${order.orderNo}`);
 
     return NextResponse.json({
       success: true,

@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { deleteUploadedFile } from "@/lib/upload";
+import { z } from "zod";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
+
+const patchSchema = z.object({
+  status: z.enum(["pending", "reviewed", "interviewed", "rejected", "hired"]).optional(),
+  notes: z.string().max(5000, "备注最多5000字符").optional(),
+  folderId: z.string().min(1).optional().nullable(),
+});
 
 // GET /api/admin/applications/[id] - 获取单个申请详情
 // 强制动态渲染，禁止静态预渲染
@@ -68,16 +75,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const { status, notes, folderId } = body;
-
-    // 验证状态值
-    const validStatuses = ["pending", "reviewed", "interviewed", "rejected", "hired"];
-    if (status && !validStatuses.includes(status)) {
+    const parsed = patchSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_STATUS", message: "无效的状态值" } },
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues } },
         { status: 400 }
       );
     }
+    const { status, notes, folderId } = parsed.data;
 
     // 验证分类夹是否存在
     if (folderId && folderId !== null) {

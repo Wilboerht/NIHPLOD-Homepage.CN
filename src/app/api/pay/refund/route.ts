@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     // 部分退款提示
     if (actualRefundAmount < Number(order.payAmount)) {
-      console.log(`[Refund] 部分退款申请: 订单 ${order.orderNo}, 申请 ${actualRefundAmount}, 订单总额 ${order.payAmount}`);
+      if (process.env.NODE_ENV === "development") console.log(`[Refund] 部分退款申请: 订单 ${order.orderNo}, 申请 ${actualRefundAmount}, 订单总额 ${order.payAmount}`);
     }
 
     // 更新订单状态为 REFUNDING（等待管理员审批）

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { verifyAuth } from "@/lib/auth";
+import { z } from "zod";
+
+const revalidateSchema = z.object({
+  paths: z.array(z.string().min(1, "路径不能为空")).min(1, "至少提供一个路径"),
+});
 
 /**
  * POST /api/revalidate - 按需重新验证缓存
@@ -21,14 +26,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { paths } = body;
-
-    if (!paths || !Array.isArray(paths)) {
+    const parsed = revalidateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: "请提供要刷新的路径数组" },
+        { success: false, error: "参数错误", details: parsed.error.issues },
         { status: 400 }
       );
     }
+    const { paths } = parsed.data;
 
     // 重新验证指定路径（白名单校验）
     const ALLOWED_PATHS = ["/", "/about", "/products", "/services", "/guide", "/careers", "/contact", "/faq", "/terms", "/privacy"];

@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         // 如果未提供密码，自动生成强密码
         if (!password && allowAutoPassword) {
             password = generateSecurePassword(24);
-            console.log(`[WechatBind] 为用户 ${phone} 自动生成密码`);
+            if (process.env.NODE_ENV === "development") console.log(`[WechatBind] 为用户 ${phone} 自动生成密码`);
         } else if (!password) {
             return NextResponse.json(
                 { 

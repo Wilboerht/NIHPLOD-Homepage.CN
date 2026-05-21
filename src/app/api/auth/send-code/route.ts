@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[SendCode] 验证码已发送: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    if (process.env.NODE_ENV === "development") console.log(`[SendCode] 验证码已发送: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
 
     return NextResponse.json({
       success: true,

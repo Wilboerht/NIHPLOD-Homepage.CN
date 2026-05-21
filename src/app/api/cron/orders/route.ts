@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log("[Cron] 开始执行订单定时任务...");
+    if (process.env.NODE_ENV === "development") console.log("[Cron] 开始执行订单定时任务...");
 
     // 1. 30分钟未支付自动取消 (时间可以调整)
     const cancelResult = await autoCancelExpiredOrders(30);

@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`[Register] 新用户注册: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    if (process.env.NODE_ENV === "development") console.log(`[Register] 新用户注册: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
 
     // 3. 签发 Access Token（短期，15分钟）
     const accessToken = await signUserToken({

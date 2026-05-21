@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       // 密码变更后撤销该用户所有 Refresh Token，强制所有设备重新登录
       await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
 
-      console.log(`[SetPassword] 用户修改密码: ${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`);
+      if (process.env.NODE_ENV === "development") console.log(`[SetPassword] 用户修改密码: ${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`);
 
       return NextResponse.json({
         success: true,
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
         data: { password: hashedPassword },
       });
 
-      console.log(`[SetPassword] 用户设置密码: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+      if (process.env.NODE_ENV === "development") console.log(`[SetPassword] 用户设置密码: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
 
       return NextResponse.json({
         success: true,

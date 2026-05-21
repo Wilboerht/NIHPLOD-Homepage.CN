@@ -38,6 +38,15 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // 抑制 file-type 包的已知构建警告（动态依赖表达式，不影响运行时）
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      { module: /file-type/ },
+    ];
+    return config;
+  },
+
   // 优化: 将大型服务端依赖外部化，避免打包进每个 serverless function
   experimental: {
     serverComponentsExternalPackages: [
