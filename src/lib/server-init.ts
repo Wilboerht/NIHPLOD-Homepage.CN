@@ -1,3 +1,4 @@
+import { apiConsole } from "@/lib/logger";
 /**
  * Next.js 应用启动初始化
  * 在服务器启动时执行一次性初始化任务
@@ -30,7 +31,7 @@ export async function initializeApp(): Promise<void> {
     const { initializeCronTasks } = await import("./cron-tasks");
     initializeCronTasks();
   } catch (error) {
-    console.error("初始化定时任务失败:", error);
+    apiConsole.error("初始化定时任务失败:", error);
   }
 
   _initialized = true;
@@ -48,7 +49,7 @@ export async function initializeApp(): Promise<void> {
         const { stopCronTasks } = await import("./cron-tasks");
         stopCronTasks();
       } catch (error) {
-        console.error("关闭定时任务失败:", error);
+        apiConsole.error("关闭定时任务失败:", error);
       }
       process.exit(0);
     });
@@ -59,7 +60,7 @@ export async function initializeApp(): Promise<void> {
         const { stopCronTasks } = await import("./cron-tasks");
         stopCronTasks();
       } catch (error) {
-        console.error("关闭定时任务失败:", error);
+        apiConsole.error("关闭定时任务失败:", error);
       }
       process.exit(0);
     });

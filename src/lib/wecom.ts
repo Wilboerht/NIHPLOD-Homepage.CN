@@ -1,3 +1,4 @@
+import { apiConsole } from "@/lib/logger";
 /**
  * 企业微信机器人通知工具
  */
@@ -59,12 +60,12 @@ export async function sendWecomNotification(
     if (data.errcode === 0) {
       return { success: true };
     } else {
-      console.error("企业微信通知发送失败:", data.errmsg);
+      apiConsole.error("企业微信通知发送失败:", data.errmsg);
       return { success: false, error: data.errmsg };
     }
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error("企业微信通知请求异常:", error);
+    apiConsole.error("企业微信通知请求异常:", error);
     const errorMsg = error instanceof Error 
       ? (error.name === 'AbortError' ? '请求超时 (10s)' : error.message) 
       : String(error);

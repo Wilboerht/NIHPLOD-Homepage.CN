@@ -4,6 +4,7 @@
  * 写入失败时不阻断主流程，仅记录日志
  */
 import { prisma } from "./prisma";
+import { apiConsole } from "@/lib/logger";
 
 interface TransactionRecord {
   orderId: string;
@@ -36,6 +37,6 @@ export async function recordTransaction(data: TransactionRecord): Promise<void> 
     });
   } catch (error) {
     // 表不存在或数据库异常时不阻断主流程
-    console.error("[Transaction] 记录交易流水失败:", error);
+    apiConsole.error("[Transaction] 记录交易流水失败:", error);
   }
 }

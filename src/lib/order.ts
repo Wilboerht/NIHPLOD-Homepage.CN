@@ -6,6 +6,7 @@ import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { ensureMoneyPrecision } from "./money";
 import { randomInt } from "./random";
+import { apiConsole } from "@/lib/logger";
 
 /**
  * 生成订单号
@@ -261,7 +262,7 @@ export async function createOrder(
     return { success: true, ...result };
   } catch (error) {
     const message = error instanceof Error ? error.message : "订单创建失败";
-    console.error("[Order] 创建失败:", message);
+    apiConsole.error("[Order] 创建失败:", message);
     return { success: false, error: message };
   }
 }
@@ -323,7 +324,7 @@ export async function cancelOrder(
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "取消失败";
-    console.error("[Order] 取消失败:", message);
+    apiConsole.error("[Order] 取消失败:", message);
     return { success: false, error: message };
   }
 }
@@ -393,14 +394,14 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
         });
         canceledCount++;
       } catch (err) {
-        console.error(`[Order] 自动取消订单 ${order.id} 失败:`, err);
+        apiConsole.error(`[Order] 自动取消订单 ${order.id} 失败:`, err);
       }
     }
 
     console.log(`[Order] 系统自动取消了 ${canceledCount} 个超时订单`);
     return { success: true, canceledCount };
   } catch (error) {
-    console.error("[Order] 自动取消超时订单出错:", error);
+    apiConsole.error("[Order] 自动取消超时订单出错:", error);
     return { success: false, canceledCount: 0, error: String(error) };
   }
 }
@@ -430,7 +431,7 @@ export async function autoCompleteShippedOrders(days = 15): Promise<{ success: b
     console.log(`[Order] 系统自动完成了 ${result.count} 个发货超期订单`);
     return { success: true, completedCount: result.count };
   } catch (error) {
-    console.error("[Order] 自动完成已发货订单出错:", error);
+    apiConsole.error("[Order] 自动完成已发货订单出错:", error);
     return { success: false, completedCount: 0, error: String(error) };
   }
 }

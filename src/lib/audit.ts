@@ -5,6 +5,7 @@
 import { prisma } from "./prisma";
 import { getClientIP } from "./ratelimit";
 import { Prisma } from "@/generated/prisma/client";
+import { apiConsole } from "@/lib/logger";
 
 export type AuditAction =
   | "login"
@@ -76,7 +77,7 @@ export async function createAuditLog(input: AuditLogInput): Promise<boolean> {
     return true;
   } catch (error) {
     // 审计日志写入失败不应静默忽略，至少记录到 console 并返回失败
-    console.error("[AuditLog] 写入失败:", error);
+    apiConsole.error("[AuditLog] 写入失败:", error);
     return false;
   }
 }

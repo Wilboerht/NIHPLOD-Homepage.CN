@@ -3,6 +3,7 @@
  * 用于生成直传签名和处理 OSS 相关操作
  */
 import OSS from "ali-oss";
+import { apiConsole } from "@/lib/logger";
 
 // OSS 配置检查
 const ossConfig = {
@@ -103,7 +104,7 @@ export async function uploadToOSS(buffer: Buffer, objectName: string, type: stri
             name: result.name,
         };
     } catch (error) {
-        console.error("OSS Upload Error:", error);
+        apiConsole.error("OSS Upload Error:", error);
         throw error;
     }
 }
@@ -137,7 +138,7 @@ export async function deleteOSSFiles(urls: string[]) {
         await ossClient.deleteMulti(names);
         console.log("Deleted OSS files:", names);
     } catch (e) {
-        console.error("Failed to delete OSS files:", e);
+        apiConsole.error("Failed to delete OSS files:", e);
     }
 }
 

@@ -228,7 +228,7 @@ export function StoryContent() {
 
                   {/* 移动端内容区域 - 垂直滚动 */}
                   {/* 页面主标题 - SEO用，视觉上隐藏 */}
-                  <h1 className="sr-only">关于 NIHPLOD 旎柏——源自摩纳哥的高端护肤品牌</h1>
+                  <h1 className="sr-only">关于 NIHPLOD 旎柏</h1>
 
                   {/* Main Content Area */}
                   <div className="flex-1 overflow-y-auto flex flex-col relative z-20 px-[8%] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">

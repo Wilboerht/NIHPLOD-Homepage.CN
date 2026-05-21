@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!product) {
     return {
-      title: "产品未找到 | NIHPLOD 旎柏",
+      title: "产品未找到",
     };
   }
 
@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   ];
 
   return {
-    title: `${product.name} | NIHPLOD 旎柏`,
+    title: product.name,
     description: enhancedDescription,
     keywords: productKeywords,
     openGraph: {

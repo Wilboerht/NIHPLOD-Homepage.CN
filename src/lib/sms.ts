@@ -14,6 +14,7 @@ import crypto from "crypto";
 import { randomInt } from "./random";
 import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
+import { apiConsole } from "@/lib/logger";
 
 export type SMSTemplate = "LOGIN_CODE";
 
@@ -75,7 +76,7 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
   const signName = process.env.SMS_SIGN_NAME;
 
   if (!accessKeyId || !accessKeySecret || !signName) {
-    console.error("[Aliyun SMS] 缺少配置");
+    apiConsole.error("[Aliyun SMS] 缺少配置");
     return { success: false, error: "短信服务未配置" };
   }
 
@@ -124,11 +125,11 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
       console.log("[Aliyun SMS] 发送成功:", result.BizId);
       return { success: true, messageId: result.BizId };
     } else {
-      console.error("[Aliyun SMS] 发送失败:", result);
+      apiConsole.error("[Aliyun SMS] 发送失败:", result);
       return { success: false, error: result.Message || "短信发送失败" };
     }
   } catch (error) {
-    console.error("[Aliyun SMS] 发送异常:", error);
+    apiConsole.error("[Aliyun SMS] 发送异常:", error);
     return { success: false, error: "短信发送失败" };
   }
 }
@@ -185,7 +186,7 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
   const signName = process.env.TENCENT_SMS_SIGN_NAME;
 
   if (!secretId || !secretKey || !appId || !signName) {
-    console.error("[Tencent SMS] 缺少配置");
+    apiConsole.error("[Tencent SMS] 缺少配置");
     return { success: false, error: "腾讯云短信服务未配置" };
   }
 
@@ -225,14 +226,14 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
       console.log("[Tencent SMS] 发送成功:", res.SendStatusSet[0].SerialNo);
       return { success: true, messageId: res.SendStatusSet[0].SerialNo };
     } else {
-      console.error("[Tencent SMS] 发送失败:", res.SendStatusSet?.[0]);
+      apiConsole.error("[Tencent SMS] 发送失败:", res.SendStatusSet?.[0]);
       return {
         success: false,
         error: res.SendStatusSet?.[0]?.Message || "发送失败"
       };
     }
   } catch (error: unknown) {
-    console.error("[Tencent SMS] 发送异常:", error);
+    apiConsole.error("[Tencent SMS] 发送异常:", error);
     const message = error instanceof Error ? error.message : String(error);
     return { success: false, error: message || "短信发送异常" };
   }

@@ -6,6 +6,7 @@
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
 import { autoExpireUserCoupons } from "./coupon";
+import { apiConsole } from "@/lib/logger";
 
 interface ScheduledTask {
   name: string;
@@ -24,7 +25,7 @@ const tasks: ScheduledTask[] = [
         const result = await autoCancelExpiredOrders(30);
         console.log(`[Cron] 订单取消完成: ${result.canceledCount} 个订单被取消`);
       } catch (error) {
-        console.error("[Cron] 订单取消任务失败:", error);
+        apiConsole.error("[Cron] 订单取消任务失败:", error);
       }
     },
   },
@@ -37,7 +38,7 @@ const tasks: ScheduledTask[] = [
         const result = await autoCompleteShippedOrders(15);
         console.log(`[Cron] 订单完成处理: ${result.completedCount} 个订单自动完成`);
       } catch (error) {
-        console.error("[Cron] 订单完成任务失败:", error);
+        apiConsole.error("[Cron] 订单完成任务失败:", error);
       }
     },
   },
@@ -50,7 +51,7 @@ const tasks: ScheduledTask[] = [
         const result = await autoExpireUserCoupons();
         console.log(`[Cron] 优惠券过期清理完成: ${result.expiredCount} 张优惠券被标记为过期`);
       } catch (error) {
-        console.error("[Cron] 优惠券过期清理任务失败:", error);
+        apiConsole.error("[Cron] 优惠券过期清理任务失败:", error);
       }
     },
   },
@@ -92,7 +93,7 @@ export function initializeCronTasks(): void {
       scheduledTasks.push(job);
       console.log(`[Cron] ✓ 任务已注册: ${task.name} (${task.cronExpression})`);
     } catch (error) {
-      console.error(`[Cron] ✗ 任务注册失败: ${task.name}`, error);
+      apiConsole.error(`[Cron] ✗ 任务注册失败: ${task.name}`, error);
     }
   }
 

@@ -5,6 +5,7 @@
  */
 
 import { createHash } from "crypto";
+import { apiConsole } from "@/lib/logger";
 
 const SF_API_URL = "https://sfapi.sf-express.com/routeService";
 
@@ -114,7 +115,7 @@ export async function querySFExpressRoute(trackingNo: string): Promise<SFLogisti
 
     return { success: true, traces: traces.reverse() };
   } catch (error) {
-    console.error("[SFExpress] 查询失败:", error);
+    apiConsole.error("[SFExpress] 查询失败:", error);
     return { success: false, error: "物流查询异常" };
   }
 }

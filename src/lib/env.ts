@@ -1,3 +1,4 @@
+import { apiConsole } from "@/lib/logger";
 /**
  * 环境变量配置
  * 集中管理和验证环境变量
@@ -62,7 +63,7 @@ export function validateEnv(): { valid: boolean; missing: string[]; errors: stri
   }
 
   if (errors.length > 0 && isProd) {
-    console.error("[EnvValidation] 环境变量校验失败:", errors);
+    apiConsole.error("[EnvValidation] 环境变量校验失败:", errors);
   }
 
   return {

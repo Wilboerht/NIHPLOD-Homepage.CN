@@ -3,6 +3,7 @@
  * 用于 Storage 文件存储
  */
 import { createClient } from "@supabase/supabase-js";
+import { apiConsole } from "@/lib/logger";
 
 // Supabase 配置
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -63,7 +64,7 @@ export async function uploadToStorage(
     });
 
   if (error) {
-    console.error("Supabase Storage 上传失败:", error);
+    apiConsole.error("Supabase Storage 上传失败:", error);
     return { url: "", error: new Error(error.message) };
   }
 
@@ -85,7 +86,7 @@ export async function deleteFromStorage(
     .remove(paths);
 
   if (error) {
-    console.error("Supabase Storage 删除失败:", error);
+    apiConsole.error("Supabase Storage 删除失败:", error);
     return { error: new Error(error.message) };
   }
 

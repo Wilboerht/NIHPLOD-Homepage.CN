@@ -5,6 +5,7 @@
 import { prisma } from "./prisma";
 import { NextRequest } from "next/server";
 import { createHash } from "crypto";
+import { apiConsole } from "@/lib/logger";
 
 // ============================================
 // 防爆破配置
@@ -150,7 +151,7 @@ export async function checkAccountLockout(
 
     return { locked: false, remainingMinutes: 0 };
   } catch (error) {
-    console.error("[CheckAccountLockout] 检查错误:", error);
+    apiConsole.error("[CheckAccountLockout] 检查错误:", error);
     // fail-closed：数据库异常时默认锁定 15 分钟，防止攻击者利用故障绕过防爆破
     return { locked: true, remainingMinutes: 15 };
   }
@@ -189,7 +190,7 @@ export async function getLoginAttemptStats(
       lastAttempt: attempts.length > 0 ? attempts[0].createdAt : null,
     };
   } catch (error) {
-    console.error("[GetLoginAttemptStats] 获取统计错误:", error);
+    apiConsole.error("[GetLoginAttemptStats] 获取统计错误:", error);
     return {
       totalAttempts: 0,
       successCount: 0,
@@ -208,7 +209,7 @@ export async function clearLoginAttempts(phone: string): Promise<void> {
       where: { phone },
     });
   } catch (error) {
-    console.error("[ClearLoginAttempts] 清除失败:", error);
+    apiConsole.error("[ClearLoginAttempts] 清除失败:", error);
     // 不抛出异常
   }
 }
@@ -253,7 +254,7 @@ export async function saveRefreshToken(
       }),
     ]);
   } catch (error) {
-    console.error("[SaveRefreshToken] 保存失败:", error);
+    apiConsole.error("[SaveRefreshToken] 保存失败:", error);
     throw error;
   }
 }
@@ -279,7 +280,7 @@ export async function validateAndRefreshToken(
 
     return refreshToken !== null;
   } catch (error) {
-    console.error("[ValidateAndRefreshToken] 验证失败:", error);
+    apiConsole.error("[ValidateAndRefreshToken] 验证失败:", error);
     return false;
   }
 }
@@ -317,7 +318,7 @@ export async function revokeRefreshToken(
       });
     }
   } catch (error) {
-    console.error("[RevokeRefreshToken] 撤销失败:", error);
+    apiConsole.error("[RevokeRefreshToken] 撤销失败:", error);
     // 不抛出异常
   }
 }
@@ -335,7 +336,7 @@ export async function cleanupExpiredRefreshTokens(): Promise<number> {
     console.log(`[CleanupExpiredRefreshTokens] 清理了 ${result.count} 个过期 token`);
     return result.count;
   } catch (error) {
-    console.error("[CleanupExpiredRefreshTokens] 清理失败:", error);
+    apiConsole.error("[CleanupExpiredRefreshTokens] 清理失败:", error);
     return 0;
   }
 }

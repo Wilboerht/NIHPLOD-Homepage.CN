@@ -4,6 +4,7 @@ import { join, resolve } from "path";
 import { randomUUID } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
 import { uploadToStorage, deleteFromStorage, extractStoragePath } from "./supabase";
+import { apiConsole } from "@/lib/logger";
 import { 
   isOSSConfigured, 
   uploadToOSS, 
@@ -369,7 +370,7 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
       const relativePath = url.replace(/^\//, "");
       // 严格拒绝任何包含路径遍历的 URL
       if (relativePath.includes("..")) {
-        console.error("[DeleteFile] 路径包含非法字符:", relativePath);
+        apiConsole.error("[DeleteFile] 路径包含非法字符:", relativePath);
         return false;
       }
       const filepath = resolve(join(process.cwd(), "public", relativePath));
@@ -377,7 +378,7 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
 
       // 路径越界检查
       if (!filepath.startsWith(publicDir)) {
-        console.error("[DeleteFile] 路径越界:", filepath);
+        apiConsole.error("[DeleteFile] 路径越界:", filepath);
         return false;
       }
 
@@ -389,7 +390,7 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
 
     return false;
   } catch (error) {
-    console.error("删除文件失败:", error);
+    apiConsole.error("删除文件失败:", error);
     return false;
   }
 }

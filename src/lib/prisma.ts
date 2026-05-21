@@ -7,6 +7,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import fs from "fs";
+import { apiConsole } from "@/lib/logger";
 
 // 全局类型扩展
 const globalForPrisma = globalThis as unknown as {
@@ -69,7 +70,7 @@ if (process.env.NEXT_PHASE !== "phase-production-build" && typeof process !== "u
       await prisma.$disconnect();
       await pool.end();
     } catch (e) {
-      console.error("[Prisma] 关闭连接池失败:", e);
+      apiConsole.error("[Prisma] 关闭连接池失败:", e);
     }
   };
 

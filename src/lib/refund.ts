@@ -4,6 +4,7 @@ import { applyWechatRefund, generateRefundNo } from "./wechat-pay";
 import { refundAlipayOrder } from "./alipay";
 import { ensureMoneyPrecision } from "./money";
 import { recordTransaction } from "./transaction";
+import { apiConsole } from "@/lib/logger";
 
 /**
  * 简单的 HTML 转义，防止存储型 XSS
@@ -137,7 +138,7 @@ export async function applyRefund(
     console.log(`[Refund] 退款申请: ${order.orderNo}`);
     return { success: true };
   } catch (error) {
-    console.error("[Refund] 申请失败:", error);
+    apiConsole.error("[Refund] 申请失败:", error);
     return { success: false, error: "申请失败" };
   }
 }
@@ -191,7 +192,7 @@ export async function processRefund(
         );
 
         if (!refundRes.success) {
-          console.error(`[Refund] 微信退款失败: ${refundRes.error}`);
+          apiConsole.error(`[Refund] 微信退款失败: ${refundRes.error}`);
           return { success: false, error: `微信退款失败: ${refundRes.error}` };
         }
 
@@ -221,7 +222,7 @@ export async function processRefund(
         );
 
         if (!refundRes.success) {
-          console.error(`[Refund] 支付宝退款失败: ${refundRes.error}`);
+          apiConsole.error(`[Refund] 支付宝退款失败: ${refundRes.error}`);
           return { success: false, error: `支付宝退款失败: ${refundRes.error}` };
         }
 
@@ -232,7 +233,7 @@ export async function processRefund(
         try {
           await finalizeRefund(orderId, refundNo, refundAmount);
         } catch (finalizeError) {
-          console.error(`[Refund] finalizeRefund 失败:`, finalizeError);
+          apiConsole.error(`[Refund] finalizeRefund 失败:`, finalizeError);
           return { success: false, error: "退款已到账，但系统状态更新失败，请联系技术团队" };
         }
       }
@@ -276,7 +277,7 @@ export async function processRefund(
 
     return { success: true };
   } catch (error) {
-    console.error("[Refund] 处理失败:", error);
+    apiConsole.error("[Refund] 处理失败:", error);
     return { success: false, error: "处理失败" };
   }
 }
@@ -315,7 +316,7 @@ export async function cancelRefund(
     console.log(`[Refund] 取消退款: ${order.orderNo}`);
     return { success: true };
   } catch (error) {
-    console.error("[Refund] 取消失败:", error);
+    apiConsole.error("[Refund] 取消失败:", error);
     return { success: false, error: "操作失败" };
   }
 }

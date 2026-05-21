@@ -8,6 +8,7 @@ import { Wechatpay, Rsa, Formatter, Aes } from "wechatpay-axios-plugin";
 import { yuanToFen, moneyStrictEqual } from "./money";
 import { formatKey, validateKeyFormat } from "./crypto-utils";
 import { recordTransaction } from "./transaction";
+import { apiConsole } from "@/lib/logger";
 
 
 
@@ -35,7 +36,7 @@ function getWxPay() {
     ];
     for (const check of keyChecks) {
       if (!check.valid) {
-        console.error(`[WechatPay] ${check.error}`);
+        apiConsole.error(`[WechatPay] ${check.error}`);
       }
     }
 
@@ -163,7 +164,7 @@ export async function createPayment(
   } catch (error) {
     const err = error as { response?: { data?: { message?: string } }; message?: string };
     const errorMsg = err.response?.data?.message || err.message || "未知错误";
-    console.error(`[WechatPay] 下单失败 (${orderId}):`, err.message || "未知错误");
+    apiConsole.error(`[WechatPay] 下单失败 (${orderId}):`, err.message || "未知错误");
     return { success: false, error: errorMsg };
   }
 }
@@ -320,7 +321,7 @@ export async function handlePaymentNotify(
     return { success: true, transactionId, amount: totalFee };
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
-    console.error("[WechatPay] 处理支付通知失败:", message);
+    apiConsole.error("[WechatPay] 处理支付通知失败:", message);
     // 对外返回模糊错误，避免信息泄露
     return { success: false, message: "PROCESSING_FAILED" };
   }
@@ -354,7 +355,7 @@ export async function applyWechatRefund(
   } catch (error) {
     const err = error as { response?: { data?: { message?: string } }; message?: string };
     const detail = err.response?.data;
-    console.error("[WechatPay] 申请退款失败:", detail || err.message);
+    apiConsole.error("[WechatPay] 申请退款失败:", detail || err.message);
     return { success: false, error: detail?.message || "退款申请失败" };
   }
 }
@@ -386,7 +387,7 @@ export async function handleRefundNotify(
       // 退款金额校验：不能超过订单实付金额
       const refundAmount = (data.amount?.refund || 0) / 100;
       if (refundAmount <= 0 || refundAmount > Number(order.payAmount)) {
-        console.error(`[WechatPay] 退款金额异常: ${refundAmount}, 订单金额: ${order.payAmount}`);
+        apiConsole.error(`[WechatPay] 退款金额异常: ${refundAmount}, 订单金额: ${order.payAmount}`);
         return { success: false, message: "REFUND_AMOUNT_INVALID" };
       }
 
@@ -411,7 +412,7 @@ export async function handleRefundNotify(
     return { success: true, refundId: data.refund_id, refundAmount: data.amount?.refund };
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
-    console.error("[WechatPay] 处理退款通知失败:", message);
+    apiConsole.error("[WechatPay] 处理退款通知失败:", message);
     return { success: false, message: message };
   }
 }

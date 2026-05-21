@@ -3,6 +3,7 @@
  * 防止重复处理相同的支付通知
  */
 import { prisma } from "./prisma";
+import { apiConsole } from "@/lib/logger";
 
 export interface PaymentNotificationRecord {
   id: string;
@@ -72,7 +73,7 @@ export async function isNotificationProcessed(
       message: record.errorMessage || "通知处理失败",
     };
   } catch (error) {
-    console.error("[Notification Idempotency] 检查失败:", error);
+    apiConsole.error("[Notification Idempotency] 检查失败:", error);
     // 发生错误时返回 false，允许再次处理
     return { processed: false };
   }
@@ -113,7 +114,7 @@ export async function recordNotification(
       return { success: false, error: "Concurrent processing" };
     }
 
-    console.error("[Notification] 记录失败:", error);
+    apiConsole.error("[Notification] 记录失败:", error);
     return { success: false, error: String(error) };
   }
 }
@@ -133,7 +134,7 @@ export async function markNotificationSuccess(recordId: string): Promise<boolean
     });
     return true;
   } catch (error) {
-    console.error("[Notification] 标记成功失败:", error);
+    apiConsole.error("[Notification] 标记成功失败:", error);
     return false;
   }
 }
@@ -158,7 +159,7 @@ export async function markNotificationFailed(
     });
     return true;
   } catch (error) {
-    console.error("[Notification] 标记失败失败:", error);
+    apiConsole.error("[Notification] 标记失败失败:", error);
     return false;
   }
 }
@@ -192,7 +193,7 @@ export async function healStuckNotifications(timeoutMinutes: number = 5): Promis
     }
     return result.count;
   } catch (error) {
-    console.error("[Notification] 修复卡住记录失败:", error);
+    apiConsole.error("[Notification] 修复卡住记录失败:", error);
     return 0;
   }
 }
@@ -219,7 +220,7 @@ export async function cleanupOldNotifications(daysOld: number = 30): Promise<num
     console.log(`[Notification] 清理了 ${result.count} 条过期通知记录`);
     return result.count;
   } catch (error) {
-    console.error("[Notification] 清理失败:", error);
+    apiConsole.error("[Notification] 清理失败:", error);
     return 0;
   }
 }

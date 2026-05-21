@@ -9,6 +9,7 @@ import { formatMoney, moneyStrictEqual } from "./money";
 import { formatKey, validateKeyFormat } from "./crypto-utils";
 import { fetchWithTimeout } from "./fetch-utils";
 import { recordTransaction } from "./transaction";
+import { apiConsole } from "@/lib/logger";
 
 // 支付宝配置（延迟校验）
 const ALIPAY_CONFIG = {
@@ -31,7 +32,7 @@ function validateAlipayKeys(): void {
     "ALIPAY_PRIVATE_KEY"
   );
   if (!privateKeyCheck.valid) {
-    console.error(`[Alipay] 密钥配置错误: ${privateKeyCheck.error}`);
+    apiConsole.error(`[Alipay] 密钥配置错误: ${privateKeyCheck.error}`);
   }
 
   const publicKeyCheck = validateKeyFormat(
@@ -40,7 +41,7 @@ function validateAlipayKeys(): void {
     "ALIPAY_PUBLIC_KEY"
   );
   if (!publicKeyCheck.valid) {
-    console.error(`[Alipay] 密钥配置错误: ${publicKeyCheck.error}`);
+    apiConsole.error(`[Alipay] 密钥配置错误: ${publicKeyCheck.error}`);
   }
 }
 // 模块加载时执行一次校验
@@ -208,7 +209,7 @@ export async function createAlipayPayment(orderId: string): Promise<{
 
     return { success: true, payUrl };
   } catch (error) {
-    console.error("[Alipay] 创建支付失败:", error);
+    apiConsole.error("[Alipay] 创建支付失败:", error);
     return { success: false, error: "支付创建失败" };
   }
 }
@@ -225,7 +226,7 @@ export async function handleAlipayNotify(
     const signType = params.sign_type;
 
     if (!sign || !signType) {
-      console.error("[Alipay] 缺少签名参数");
+      apiConsole.error("[Alipay] 缺少签名参数");
       return { success: false, message: "缺少签名参数" };
     }
 
@@ -237,11 +238,11 @@ export async function handleAlipayNotify(
     const signContent = buildSignContent(verifyParams);
 
     if (signType !== "RSA2") {
-      console.error("[Alipay] 不支持的签名类型");
+      apiConsole.error("[Alipay] 不支持的签名类型");
       return { success: false, message: "不支持的签名类型" };
     }
     if (!verifyWithRSA2(signContent, sign, ALIPAY_CONFIG.alipayPublicKey)) {
-      console.error("[Alipay] 签名验证失败");
+      apiConsole.error("[Alipay] 签名验证失败");
       return { success: false, message: "签名验证失败" };
     }
 
@@ -350,7 +351,7 @@ export async function handleAlipayNotify(
     console.log(`[Alipay] 订单支付成功: ${orderNo}`);
     return { success: true };
   } catch (error) {
-    console.error("[Alipay] 处理回调失败:", error);
+    apiConsole.error("[Alipay] 处理回调失败:", error);
     return { success: false, message: "处理失败" };
   }
 }
@@ -421,11 +422,11 @@ export async function refundAlipayOrder(
           ALIPAY_CONFIG.alipayPublicKey
         );
         if (!verified) {
-          console.error("[Alipay] 退款响应签名验证失败");
+          apiConsole.error("[Alipay] 退款响应签名验证失败");
           return { success: false, error: "退款响应签名验证失败" };
         }
       } else {
-        console.error("[Alipay] 无法提取退款响应内容用于验签");
+        apiConsole.error("[Alipay] 无法提取退款响应内容用于验签");
         return { success: false, error: "退款响应格式异常" };
       }
     } else {
@@ -438,11 +439,11 @@ export async function refundAlipayOrder(
       return { success: true };
     } else {
       const errorMsg = response?.sub_msg || response?.msg || "退款失败";
-      console.error("[Alipay] 退款失败:", response);
+      apiConsole.error("[Alipay] 退款失败:", response);
       return { success: false, error: errorMsg };
     }
   } catch (e) {
-    console.error("[Alipay] 退款异常:", e);
+    apiConsole.error("[Alipay] 退款异常:", e);
     return { success: false, error: "Alipay Refund API Error" };
   }
 }
@@ -474,7 +475,7 @@ export async function applyAlipayRefund(data: {
       };
     }
   } catch (e) {
-    console.error("[Alipay] 申请退款异常:", e);
+    apiConsole.error("[Alipay] 申请退款异常:", e);
     return { success: false, error: "Alipay Refund API Error" };
   }
 }

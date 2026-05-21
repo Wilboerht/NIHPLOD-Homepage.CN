@@ -7,6 +7,7 @@ import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { LOGISTICS_COMPANIES } from "./logistics-constants";
 import { querySFExpressRoute } from "./sf-express";
+import { apiConsole } from "@/lib/logger";
 
 // 重新导出常量以保持兼容性
 export { LOGISTICS_COMPANIES } from "./logistics-constants";
@@ -74,7 +75,7 @@ export async function shipOrder(
     console.log(`[Logistics] 订单发货: ${order.orderNo} - ${logisticsCompany} ${trackingNo}`);
     return { success: true };
   } catch (error) {
-    console.error("[Logistics] 发货失败:", error);
+    apiConsole.error("[Logistics] 发货失败:", error);
     return { success: false, error: "发货失败" };
   }
 }
@@ -187,7 +188,7 @@ export async function confirmReceipt(
     console.log(`[Logistics] 确认收货: ${order.orderNo}`);
     return { success: true };
   } catch (error) {
-    console.error("[Logistics] 确认收货失败:", error);
+    apiConsole.error("[Logistics] 确认收货失败:", error);
     return { success: false, error: "操作失败" };
   }
 }
