@@ -461,8 +461,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               {/* 矿物纹理 - 极淡 */}
               <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
-              {/* 上方：产品图片区域 —— 填满卡片宽度，4:5 比例匹配产品图 */}
-              <div className="relative z-10 w-full aspect-[4/5] overflow-hidden bg-[#F0EDE1]">
+              {/* 上方：产品图片区域 —— 正方形容器，图片填满 */}
+              <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#F0EDE1]">
                 {/* 容量标签 */}
                 {product.capacity && (
                   <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
