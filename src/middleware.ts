@@ -30,17 +30,7 @@ const SENSITIVE_API_PREFIXES = [
   "/api/admin/", // 统一拦截所有 /api/admin/ 下的接口，实现严格的全范围防护
 ];
 
-// 2. 混合 API: GET 公开，写操作 (POST/PUT/DELETE) 需鉴权
-const _HYBRID_API_PREFIXES = [
-  "/api/categories",
-  "/api/products",
-  "/api/pages",
-  "/api/media", // 注意：上传文件通常是 POST，查询文件是 GET
-  "/api/jobs",
-  "/api/application-folders",
-];
-
-// 3. 完全公开 API: 任何方法都写放行 (这些路由内部会使用 verifyUserAuth 鉴权或白名单机制)
+// 2. 完全公开 API: 任何方法都写放行 (这些路由内部会使用 verifyUserAuth 鉴权或白名单机制)
 const PUBLIC_API_PREFIXES = [
   "/api/admin/login",  // 登录接口
   "/api/contact",      // 用户留言

@@ -147,8 +147,8 @@ export async function rateLimit(
  *
  * 在反向代理架构中（Vercel/Nginx），X-Forwarded-For 格式为：
  *   client, proxy1, proxy2, ..., lastProxy
- * 前面的 IP 可能被客户端伪造，最后一个是由最靠近服务器的可信代理追加的，
- * 因此取最后一个 IP作为真实来源。
+ * 默认取第一个 IP 作为客户端真实地址（需配合可信代理层保证首部不被伪造）。
+ * 可通过 TRUST_PROXY_HOPS 环境变量控制取第 N 个 IP（如经过 2 层代理则设为 2）。
  */
 export function getClientIP(request: Request): string {
   const headers = request.headers;
@@ -162,8 +162,12 @@ export function getClientIP(request: Request): string {
   if (trustProxy) {
     const forwardedFor = headers.get("x-forwarded-for");
     if (forwardedFor) {
-      const ips = forwardedFor.split(",").map((ip) => ip.trim());
-      return ips[ips.length - 1] || ips[0] || "unknown";
+      const ips = forwardedFor.split(",").map((ip) => ip.trim()).filter(Boolean);
+      // 取第一个 IP 作为客户端真实地址（Vercel/Nginx 标准行为）
+      // 如果部署在多层反向代理后且需要取特定层级，可通过 TRUST_PROXY_HOPS 环境变量控制
+      const hops = parseInt(process.env.TRUST_PROXY_HOPS || "1", 10);
+      const idx = Math.min(hops - 1, ips.length - 1);
+      return ips[idx] || "unknown";
     }
 
     const realIP = headers.get("x-real-ip");

@@ -45,8 +45,6 @@ const nextConfig = {
       '@prisma/client',
       'prisma',
       'tencentcloud-sdk-nodejs',
-      'pdfmake',
-      'jspdf',
     ],
     optimizePackageImports: [
       'lucide-react',

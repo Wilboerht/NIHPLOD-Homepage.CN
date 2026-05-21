@@ -61,4 +61,20 @@ export const prisma =
 globalForPrisma.prisma = prisma;
 globalForPrisma.pool = pool;
 
+// 非构建阶段注册优雅关闭钩子，确保连接池正确释放
+if (process.env.NEXT_PHASE !== "phase-production-build" && typeof process !== "undefined") {
+  const gracefulShutdown = async (signal: string) => {
+    console.log(`[Prisma] 收到 ${signal}，关闭连接池...`);
+    try {
+      await prisma.$disconnect();
+      await pool.end();
+    } catch (e) {
+      console.error("[Prisma] 关闭连接池失败:", e);
+    }
+  };
+
+  process.once("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.once("SIGINT", () => gracefulShutdown("SIGINT"));
+}
+
 export default prisma;
