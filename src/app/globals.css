@@ -772,10 +772,9 @@
   .home-container .btn-primary::after {
     content: '';
     position: absolute;
-    inset: -2px;
+    inset: 0;
     border-radius: 99px;
-    border: 0.5px solid rgba(168, 159, 145, 0.2);
-    z-index: -1;
+    box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.25);
     animation: ripple-line 4s ease-out infinite;
   }
 
@@ -789,15 +788,13 @@
 
   @keyframes ripple-line {
     0% {
-      transform: scale(1);
-      opacity: 0;
+      box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.25);
     }
     10% {
-      opacity: 0.3;
+      box-shadow: 0 0 0 4px rgba(168, 159, 145, 0.15);
     }
     100% {
-      transform: scale(1.35);
-      opacity: 0;
+      box-shadow: 0 0 0 12px rgba(168, 159, 145, 0);
     }
   }
 
@@ -854,10 +851,9 @@
   .home-container .btn-primary::after {
     content: '';
     position: absolute;
-    inset: -2px;
+    inset: 0;
     border-radius: 99px;
-    border: 0.5px solid rgba(168, 159, 145, 0.2);
-    z-index: -1;
+    box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.25);
     animation: ripple-line 4s ease-out infinite;
   }
 
