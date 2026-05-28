@@ -264,9 +264,9 @@ export function FAQContent() {
                                     </div>
 
                                     {/* Footer Info */}
-                                    <div className="shrink-0 flex flex-col items-center justify-center py-6 sm:pt-4 sm:pb-2 sm:gap-2">
-                                        <p className="text-[10px] leading-[13px] tracking-[0.12em] text-center text-[rgba(123,114,108,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
-                                            &copy; {new Date().getFullYear()} NIHPLOD. ALL RIGHTS RESERVED.
+                                    <div className="flex flex-col items-center justify-center pt-3 pb-1 sm:shrink-0 sm:gap-2 sm:pt-4 sm:pb-2">
+                                        <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] sm:text-[12px] sm:font-light sm:tracking-widest sm:text-center sm:text-brand-charcoal/60" style={{ fontFamily: "'Futura', sans-serif" }}>
+                                            &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                                         </p>
                                     </div>
                                 </div>
