@@ -16,7 +16,7 @@ const navItems: { id: SectionId; label: string }[] = [
   { id: "story", label: "品牌故事" },
   { id: "mission", label: "公司使命" },
   { id: "philosophy", label: "品牌哲学" },
-  { id: "awards", label: "媒体及获奖" },
+  { id: "awards", label: "媒体&获奖" },
 ];
 
 const Watermark = () => (
@@ -193,9 +193,9 @@ export function StoryContent() {
                     </Link>
                   </header>
 
-                  {/* Navigation - Fixed below Header - Optimized Pill Style */}
+                  {/* Navigation - Mobile Tab Bar */}
                   <div className="px-4 pb-2 relative z-40 shrink-0">
-                    <nav className="flex items-center p-1 bg-[#F0EDE1] rounded-full">
+                    <nav className="flex h-[37px] items-center rounded-full bg-[#F0EDE1] p-[4px]">
                       {navItems.map((item) => {
                         const isActive = activeSection === item.id;
                         return (
@@ -206,12 +206,17 @@ export function StoryContent() {
                               setActiveSection(item.id);
                               contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            className={cn(
-                              "relative flex-1 h-[28px] flex items-center justify-center px-1 sm:px-2 transition-colors duration-500 rounded-full",
-                              isActive ? "bg-[#F8F7F3] text-[#00263E]" : "text-[rgba(0,38,62,0.5)]"
-                            )}
+                            className="relative flex flex-1 items-center justify-center"
+                            style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                           >
-                            <span className="relative z-10 text-[11px] sm:text-[13px] font-normal leading-[20px] whitespace-nowrap" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                            <span
+                              className={cn(
+                                "text-[15px] font-normal leading-[20px] transition-all duration-300",
+                                isActive
+                                  ? "rounded-full bg-white px-3 py-1 text-[#00263E] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                                  : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                              )}
+                            >
                               {item.label}
                             </span>
                           </button>
