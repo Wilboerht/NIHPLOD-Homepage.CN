@@ -16,7 +16,7 @@ const navItems: { id: SectionId; label: string }[] = [
   { id: "story", label: "品牌故事" },
   { id: "mission", label: "公司使命" },
   { id: "philosophy", label: "品牌哲学" },
-  { id: "awards", label: "媒体&获奖" },
+  { id: "awards", label: "奖项报导" },
 ];
 
 const Watermark = () => (
@@ -211,9 +211,9 @@ export function StoryContent() {
                           >
                             <span
                               className={cn(
-                                "text-[15px] font-normal leading-[20px] transition-all duration-300",
+                                "text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
                                 isActive
-                                  ? "rounded-full bg-white px-3 py-1 text-[#00263E] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                                  ? "rounded-full bg-white px-2 py-[3px] text-[#00263E] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
                                   : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
                               )}
                             >
