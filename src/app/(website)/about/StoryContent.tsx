@@ -98,9 +98,9 @@ export function StoryContent() {
     <>
       {/* 背景已移至 layout.tsx 实现无缝切换 */}
 
-      {/* 内容区域容器 - 紧贴顶部，使用 framer-motion 统一控制动画 */}
+      {/* 内容区域容器 - 使用 framer-motion 统一控制动画 */}
       <m.div
-        className="safe-area-content !top-0 !pointer-events-none"
+        className="safe-area-content !pointer-events-none"
         transition={{
           duration: 0.8,
           ease: [0.22, 1, 0.36, 1]
