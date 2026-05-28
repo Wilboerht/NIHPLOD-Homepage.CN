@@ -7,14 +7,12 @@ import { Link } from "next-view-transitions";
 import { ChevronRight } from "lucide-react";
 
 /**
- * Graphite Kinetic Grid 全局背景组件
+ * Kinetic Grid 全局背景组件
  * 
  * 特点：
- * - 深色背景 (#0a0a0a) + 微点阵图案
- * - 强调色 (#00263e 深蓝)
+ * - 米白背景 (#F0EDE1) + 微点阵图案
  * - Bento Grid 便当盒卡片布局（左侧大卡片 + 右侧3x2小卡片）
  * - 鼠标跟随的3D透视倾斜效果
- * - Neo-Brutalism 风格阴影
  */
 export function KineticBackground() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -129,7 +127,7 @@ export function KineticBackground() {
                     <div className="kinetic-desc" style={{ fontSize: '13px', lineHeight: '1.5', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400, opacity: 0.8 }}>美丽不该复杂<br />专注美好生活</div>
                 </div>
 
-                {/* Row 1, Col 3-4: 合并后的宽图片卡 */}
+                {/* Row 1, Col 3-4: 官方指南宽图片卡 */}
                 <div
                     ref={(el) => addCellRef(el, 2)}
                     className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer"
@@ -137,8 +135,8 @@ export function KineticBackground() {
                 >
                     <Link href="/guide" className="absolute inset-0 z-20" aria-label="官方指南" />
                     <Image
-                        src="/images/kinetic-cat.webp"
-                        alt="Cat Aesthetic"
+                        src="/images/kinetic-guide.webp"
+                        alt="官方指南"
                         fill
                         className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
                         sizes="(max-width: 600px) 100vw, 50vw"

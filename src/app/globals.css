@@ -1750,23 +1750,23 @@
       display: none !important;
     }
 
-    .kinetic-cell-boxes {
+    .kinetic-cell-less {
       order: 1;
+      grid-column: span 2;
+    }
+
+    .kinetic-cell-boxes {
+      order: 3;
       grid-column: span 1;
     }
 
     .kinetic-cell-login {
-      order: 2;
+      order: 4;
       grid-column: span 1;
     }
 
-    .kinetic-cell-less {
-      order: 3;
-      grid-column: span 2;
-    }
-
     .kinetic-cell-skin {
-      order: 4;
+      order: 5;
       grid-column: span 2;
     }
   }
