@@ -334,8 +334,8 @@ export function StoryContent() {
                           <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                         </div>
 
-                        <div className="flex flex-col justify-center pb-6">
-                          <div className="grid grid-cols-2 gap-3 px-1">
+                        <div className="flex flex-col justify-center pb-6 px-6">
+                          <div className="grid grid-cols-2 gap-3">
                             {[
                               { num: "01", title: "更珍贵的产品", desc: "通过采集优质原材料，结合前沿科技力量，不断更新与进步。" },
                               { num: "02", title: "更优越的体验", desc: "严选供应渠道，极致专员服务，力求专业、舒适与满意。" },
@@ -369,7 +369,7 @@ export function StoryContent() {
                           </h2>
                           <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                         </div>
-                        <div className="mb-6">
+                        <div className="mb-6 px-6">
                           {/* 奖项列表 - Mobile List 1 col - Improved Readability */}
                           <div className="flex flex-col gap-4">
                             {AWARDS_DATA.map((award, idx) => (
