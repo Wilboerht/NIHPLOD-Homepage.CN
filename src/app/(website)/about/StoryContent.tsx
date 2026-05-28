@@ -210,7 +210,7 @@ export function StoryContent() {
                               isActive ? "bg-[#F8F7F3] text-[#00263E]" : "text-[rgba(0,38,62,0.5)]"
                             )}
                           >
-                            <span className="relative z-10 text-[14px] font-normal leading-[21px]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                            <span className="relative z-10 text-[13px] font-normal leading-[20px]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               {item.label}
                             </span>
                           </button>
@@ -236,7 +236,7 @@ export function StoryContent() {
                           transition={{ duration: 0.6, ease: "easeOut" }}
                           className="relative pt-10 pb-10"
                         >
-                          <div className="flex justify-center mb-10">
+                          <div className="flex flex-col items-center mb-10">
                             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               品牌故事
                             </h2>
@@ -297,7 +297,7 @@ export function StoryContent() {
                           transition={{ duration: 0.6, ease: "easeOut" }}
                           className="relative pt-10 pb-10"
                         >
-                          <div className="flex justify-center mb-10">
+                          <div className="flex flex-col items-center mb-10">
                             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               公司使命
                             </h2>
@@ -351,7 +351,7 @@ export function StoryContent() {
                           transition={{ duration: 0.6, ease: "easeOut" }}
                           className="flex-1 flex flex-col pt-10"
                         >
-                          <div className="flex justify-center mb-10 shrink-0">
+                          <div className="flex flex-col items-center mb-10 shrink-0">
                             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               品牌哲学
                             </h2>
@@ -394,7 +394,7 @@ export function StoryContent() {
                           transition={{ duration: 0.6, ease: "easeOut" }}
                           className="pt-10 pb-10"
                         >
-                          <div className="flex justify-center mb-10">
+                          <div className="flex flex-col items-center mb-10">
                             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               媒体及获奖
                             </h2>
