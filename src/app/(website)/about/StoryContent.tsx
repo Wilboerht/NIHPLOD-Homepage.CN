@@ -28,19 +28,9 @@ const Watermark = () => (
         backgroundImage: 'url(/images/watermark.webp)',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        backgroundSize: '160% auto', // 为了更好地匹配内容，轻微调小尺寸
+        backgroundSize: '160% auto',
       }}
     />
-    {/* 移动端水印 */}
-    <div className="block md:hidden absolute inset-0">
-      <Image
-        src="/images/watermark-mobile.svg"
-        alt=""
-        fill
-        className="opacity-[0.20]"
-        style={{ objectFit: 'cover' }}
-      />
-    </div>
   </>
 );
 
@@ -182,7 +172,7 @@ export function StoryContent() {
                   {/* Header - Mobile */}
                   <div className="flex h-20 shrink-0 items-center justify-center relative z-50">
                     <Link href="/" className="flex items-center justify-center mt-1">
-                      <div className="relative h-[26px] w-[124px]">
+                      <div className="relative h-[28px] w-[132px]">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="NIHPLOD Logo"
@@ -297,12 +287,12 @@ export function StoryContent() {
                         </div>
 
                         <div className="mb-6 flex flex-col items-center">
-                          <div className="relative my-6 h-[400px] md:h-[600px] w-full md:max-w-[600px] overflow-hidden border border-[#00263e]/10 shadow-sm bg-white/20">
+                          <div className="relative my-6 aspect-[3/4] w-full overflow-hidden border border-[#00263e]/10 shadow-sm bg-white/20">
                             <Image
                               src="/images/story/mission-image.webp?v=2"
                               alt="Mission"
                               fill
-                              className="object-contain"
+                              className="object-cover"
                             />
                           </div>
                           <div className="px-2">
