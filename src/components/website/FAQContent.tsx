@@ -176,47 +176,51 @@ export function FAQContent() {
                                     <div className="texture-overlay absolute inset-0 z-[-1]" />
                                 </div>
 
-                                <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4 sm:px-10 lg:px-[15%] xl:px-[20%]">
+                                <div className="flex-1 flex flex-col overflow-hidden pb-4 sm:px-10 lg:px-[15%] xl:px-[20%]">
 
-                                    {/* Page Title */}
-                                    <div className="flex justify-center mb-10 mt-6 sm:mt-12">
+                                    {/* Page Title - Mobile */}
+                                    <div className="flex flex-col items-center px-4 mb-6 mt-6 sm:hidden">
+                                        <h1 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                            常见问题
+                                        </h1>
+                                        <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                                    </div>
+
+                                    {/* Page Title - Desktop */}
+                                    <div className="hidden sm:flex justify-center mb-10 mt-12">
                                         <h1 className="relative inline-block text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
                                             常见问题
                                         </h1>
                                     </div>
 
-                                    {/* Scrollable Question List - Minimalist Design */}
-                                    <div className="flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                        <div className="max-w-4xl mx-auto">
+                                    {/* Scrollable Question List */}
+                                    <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                        <div className="flex flex-col gap-6 sm:gap-0 max-w-4xl mx-auto">
                                             {FAQS.map((faq, index) => (
                                                 <div
                                                     key={index}
                                                     className={cn(
-                                                        "group transition-all duration-500 ease-out",
-                                                        // Unified list style (aligned with PC)
-                                                        "border-b border-brand-charcoal/10 overflow-visible",
-                                                        // Interactive States
+                                                        "sm:group sm:transition-all sm:duration-500 sm:ease-out sm:border-b sm:border-brand-charcoal/10 sm:overflow-visible",
                                                         openIndex === index
-                                                            ? "bg-white/40"
-                                                            : "hover:bg-white/20"
+                                                            ? "rounded-lg bg-[#F0EDE1] p-6 sm:rounded-none sm:bg-white/40 sm:p-0"
+                                                            : "rounded-lg border-[1.5px] border-[#F0EDE1] p-6 sm:rounded-none sm:border-0 sm:border-b sm:border-brand-charcoal/10 sm:p-0 sm:hover:bg-white/20"
                                                     )}
                                                 >
-
                                                     <button
                                                         onClick={() => toggleFAQ(index)}
-                                                        className="w-full flex items-start sm:items-center justify-between py-5 px-4 sm:py-6 sm:px-6 text-left relative z-10 gap-4"
+                                                        className="w-full flex items-center justify-between text-left gap-4 sm:py-5 sm:px-4 lg:py-6 lg:px-6"
                                                     >
                                                         <span className={cn(
-                                                            "flex-1 text-[15px] sm:text-[16px] font-normal tracking-wide text-brand-charcoal/80 transition-colors duration-300 leading-snug sm:leading-normal",
-                                                            openIndex === index ? "text-brand-charcoal font-medium" : "group-hover:text-brand-charcoal"
-                                                        )}>
+                                                            "flex-1 text-[16px] font-normal leading-[24px] text-[#00263E] transition-colors duration-300 sm:text-[15px] lg:text-[16px] sm:tracking-wide sm:leading-snug lg:leading-normal",
+                                                            openIndex === index ? "sm:text-brand-charcoal sm:font-medium" : "sm:group-hover:text-brand-charcoal"
+                                                        )} style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                             {faq.question}
                                                         </span>
                                                         <span className={cn(
-                                                            "shrink-0 mt-0.5 sm:mt-0 p-1.5 -mr-1.5 rounded-full text-brand-charcoal/30 transition-all duration-500",
-                                                            openIndex === index ? "rotate-45 text-brand-charcoal/60 bg-brand-charcoal/5" : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
+                                                            "shrink-0 transition-all duration-500 sm:p-1.5 sm:-mr-1.5 sm:rounded-full sm:text-brand-charcoal/30",
+                                                            openIndex === index ? "rotate-45 text-[#00263E]/60 sm:text-brand-charcoal/60 sm:bg-brand-charcoal/5" : "text-[#00263E]/30 sm:group-hover:text-brand-charcoal/50 sm:group-hover:bg-brand-charcoal/[0.03]"
                                                         )}>
-                                                            <Plus className="w-5 h-5 sm:w-5 sm:h-5 stroke-[1.5]" />
+                                                            <Plus className="w-6 h-6 sm:w-5 sm:h-5 stroke-[1.5]" />
                                                         </span>
                                                     </button>
                                                     <AnimatePresence>
@@ -228,7 +232,7 @@ export function FAQContent() {
                                                                 transition={{ duration: 0.3, ease: "easeInOut" }}
                                                                 className="overflow-hidden"
                                                             >
-                                                                <div className="pb-6 pl-4 pr-4 sm:pb-8 sm:pl-6 sm:pr-12 text-brand-charcoal/60 leading-[1.7] sm:leading-[1.8] font-light text-[14px] sm:text-[15px] tracking-wide">
+                                                                <div className="mt-3 border-l border-[#00263E] pl-4 text-[14px] font-light leading-[21px] text-[#00263E] sm:pb-8 sm:pl-6 sm:pr-12 sm:text-brand-charcoal/60 sm:leading-[1.7] lg:leading-[1.8] sm:text-[14px] lg:text-[15px] sm:tracking-wide sm:border-0 sm:pl-4 sm:mt-0" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                                     {faq.answer}
                                                                 </div>
                                                             </m.div>
@@ -236,35 +240,34 @@ export function FAQContent() {
                                                     </AnimatePresence>
                                                 </div>
                                             ))}
-
-
                                         </div>
 
-                                        {/* Contact Support Section - Standalone Footer */}
-                                        <div className="mt-8 sm:mt-12 mb-8 flex flex-col items-center justify-center text-center">
-                                            <div className="mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/60">
-                                                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.2} />
+                                        {/* Contact Support Section */}
+                                        <div className="mt-8 sm:mt-12 mb-8 flex flex-col items-center justify-center text-center sm:px-4">
+                                            <div className="hidden sm:mb-4 sm:flex h-10 w-10 lg:h-12 lg:w-12 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/60">
+                                                <MessageCircle className="w-5 h-5 lg:w-6 lg:h-6" strokeWidth={1.2} />
                                             </div>
-                                            <h3 className="mb-2 text-[15px] sm:text-[17px] font-normal tracking-wide text-brand-charcoal/90">
+                                            <h3 className="hidden sm:block sm:mb-2 sm:text-[15px] lg:text-[17px] sm:font-normal sm:tracking-wide sm:text-brand-charcoal/90">
                                                 没有找到想要的答案？
                                             </h3>
-                                            <p className="mb-6 text-[13px] sm:text-sm font-light tracking-wide text-brand-charcoal/50">
+                                            <p className="hidden sm:block sm:mb-6 sm:text-[13px] lg:text-sm sm:font-light sm:tracking-wide sm:text-brand-charcoal/50">
                                                 我们的支持团队随时候命，为您解答任何疑问。
                                             </p>
                                             <button
                                                 onClick={() => openContact("support")}
-                                                className="group flex items-center gap-2 rounded-full border border-brand-charcoal/10 bg-white/60 px-6 py-2.5 text-sm font-medium tracking-widest text-brand-charcoal/80 transition-all hover:bg-brand-gold/15 hover:text-[#8B7355] hover:border-[#8B7355]/30 hover:backdrop-blur-md hover:shadow-lg active:scale-95"
+                                                className="mt-6 sm:mt-0 flex items-center gap-2 rounded-full bg-[#F0EDE1] px-7 py-3 text-[14px] font-medium tracking-[0.2em] text-[#7B726C] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:text-sm sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:bg-brand-gold/15 sm:hover:text-[#8B7355] sm:hover:border-[#8B7355]/30 sm:hover:backdrop-blur-md sm:hover:shadow-lg sm:active:scale-95"
+                                                style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                                             >
                                                 <span>联系我们</span>
-                                                <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
+                                                <ArrowRight size={14} className="sm:transition-transform sm:group-hover:translate-x-0.5" />
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* Footer Info - Fixed */}
-                                    <div className="shrink-0 flex flex-col items-center justify-center gap-2 pt-4 pb-2">
-                                        <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-center text-brand-charcoal/60">
-                                            &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                                    {/* Footer Info */}
+                                    <div className="shrink-0 flex flex-col items-center justify-center py-6 sm:pt-4 sm:pb-2 sm:gap-2">
+                                        <p className="text-[10px] leading-[13px] tracking-[0.12em] text-center text-[rgba(123,114,108,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
+                                            &copy; {new Date().getFullYear()} NIHPLOD. ALL RIGHTS RESERVED.
                                         </p>
                                     </div>
                                 </div>
