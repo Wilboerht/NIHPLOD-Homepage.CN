@@ -220,16 +220,16 @@ export function FAQContent() {
                                                 >
                                                     <button
                                                         onClick={() => toggleFAQ(index)}
-                                                        className="w-full flex items-center justify-between text-left gap-4 py-5 px-4 lg:py-6 lg:px-6"
+                                                        className="w-full flex items-start justify-between text-left gap-4 py-5 px-4 lg:py-6 lg:px-6"
                                                     >
                                                         <span className={cn(
-                                                            "flex-1 text-[14px] font-normal tracking-wide leading-snug lg:leading-normal text-[#00263E] transition-colors duration-300",
+                                                            "flex-1 text-[14px] lg:text-[16px] font-normal tracking-wide leading-snug lg:leading-normal text-[#00263E] transition-colors duration-300",
                                                             openIndex === index ? "text-brand-charcoal font-medium" : "group-hover:text-brand-charcoal"
                                                         )} style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                             {faq.question}
                                                         </span>
                                                         <span className={cn(
-                                                            "shrink-0 transition-all duration-500 p-1.5 -mr-1.5 rounded-full text-brand-charcoal/30",
+                                                            "shrink-0 transition-all duration-500 p-1.5 -mr-1.5 mt-0.5 rounded-full text-brand-charcoal/30",
                                                             openIndex === index ? "rotate-45 text-brand-charcoal/80 bg-brand-charcoal/10" : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
                                                         )}>
                                                             <Plus className="w-5 h-5 stroke-[1.5]" />
