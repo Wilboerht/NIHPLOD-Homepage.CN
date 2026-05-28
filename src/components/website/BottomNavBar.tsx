@@ -131,7 +131,7 @@ export function BottomNavBar() {
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                                    className="absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-[20px] bg-[#F8F7F3]/95 p-2 shadow-2xl backdrop-blur-xl pointer-events-auto lg:hidden border border-brand-gold/10"
+                                    className="absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-2xl bg-[#F8F7F3] p-2 pointer-events-auto lg:hidden"
                                 >
                                     <div className="flex flex-col gap-1.5">
                                         {otherNavItems.map((item) => {
@@ -143,12 +143,12 @@ export function BottomNavBar() {
                                                     onClick={() => setIsNavMenuOpen(false)}
                                                     className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/20 bg-transparent"
                                                 >
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gold/5 shadow-inner">
-                                                        <Icon className="h-5 w-5 text-brand-gold" />
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F0EDE1]">
+                                                        <Icon className="h-5 w-5 text-[#B5AC88]" />
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-semibold tracking-wide text-brand-charcoal">{item.label}</span>
-                                                        <span className="font-serif text-[10px] uppercase tracking-widest text-brand-gold/50">{item.labelEn}</span>
+                                                        <span className="text-[14px] font-medium leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>{item.label}</span>
+                                                        <span className="text-[10px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.5)]">{item.labelEn}</span>
                                                     </div>
                                                 </Link>
                                             );
