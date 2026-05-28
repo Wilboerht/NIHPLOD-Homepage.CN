@@ -542,7 +542,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           className="h-full pointer-events-none"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="flex h-full flex-col items-center pointer-events-none">
+          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
             {/* 主内容区域 - 抽屉 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
@@ -737,7 +737,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
+              className="group -mt-[1px] relative z-30 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 lg:px-14 lg:py-3.5 pointer-events-auto"
             >
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
