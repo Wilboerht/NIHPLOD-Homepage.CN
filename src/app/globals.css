@@ -739,6 +739,8 @@
     font-size: 1rem;
     /* 小屏保持 16px 基准 */
     line-height: 1.7;
+    letter-spacing: 0.05em;
+    /* 字间距收紧 */
     padding: 0 12px;
   }
 
