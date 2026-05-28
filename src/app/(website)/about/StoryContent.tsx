@@ -181,7 +181,7 @@ export function StoryContent() {
 
                   {/* Header - Mobile */}
                   <div className="flex h-20 shrink-0 items-center justify-center relative z-50">
-                    <Link href="/" className="flex items-center justify-center">
+                    <Link href="/" className="flex items-center justify-center mt-1">
                       <div className="relative h-[26px] w-[124px]">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
