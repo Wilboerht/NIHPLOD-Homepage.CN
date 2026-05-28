@@ -181,17 +181,16 @@ export function StoryContent() {
                   />
 
                   {/* Header - Fixed Top - Matching Products Style */}
-                  <header className="flex shrink-0 items-center justify-center py-[30px] relative z-50">
+                  <header className="flex flex-col items-center justify-center py-[30px] gap-[10px] relative z-50">
                     <Link href="/">
-                      <div className="relative h-[28px] w-[95px]">
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD Logo"
-                          fill
-                          className="object-contain"
-                          priority
-                        />
-                      </div>
+                      <Image
+                        src="/images/NIHPLOD-logo.svg"
+                        alt="NIHPLOD Logo"
+                        width={95}
+                        height={28}
+                        className="object-contain"
+                        priority
+                      />
                     </Link>
                   </header>
 
