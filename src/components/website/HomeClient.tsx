@@ -474,7 +474,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-30 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 shadow-[0_2px_8px_-2px_rgba(44,44,44,0.05)] transition-shadow hover:shadow-[0_4px_12px_-2px_rgba(44,44,44,0.08)] lg:px-14 lg:py-3.5 overflow-hidden pointer-events-auto"
+              className="group -mt-[1px] relative z-30 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 shadow-[0_6px_8px_-4px_rgba(44,44,44,0.08)] transition-shadow hover:shadow-[0_8px_12px_-4px_rgba(44,44,44,0.1)] lg:px-14 lg:py-3.5 overflow-hidden pointer-events-auto"
             >
               {/* 矿物纹理覆盖层 - 使用与抽屉相同的 texture-overlay 类 */}
               <div className="texture-overlay absolute inset-0" />
