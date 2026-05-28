@@ -344,15 +344,13 @@ export function StoryContent() {
                             ].map((item) => (
                               <div
                                 key={item.num}
-                                className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-white/40 p-5 transition-all duration-300 hover:bg-white/60"
+                                className="flex flex-col justify-center rounded-lg bg-[#F0EDE1] p-4 gap-2"
                               >
-                                {/* Content */}
-                                <div className="relative z-10 flex h-full flex-col">
-                                  <h3 className="mb-3 text-[15px] font-medium tracking-wide text-[#00263e]">{item.title}</h3>
-                                  <p className="text-[13px] font-light leading-[1.75] tracking-wide text-[#00263e]/70 text-justify">
-                                    {item.desc}
-                                  </p>
-                                </div>
+                                <span className="text-[10px] font-light text-[#00263e]/30">{item.num}</span>
+                                <h3 className="text-[14px] font-normal leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>{item.title}</h3>
+                                <p className="text-[14px] font-light leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                  {item.desc}
+                                </p>
                               </div>
                             ))}
                           </div>
