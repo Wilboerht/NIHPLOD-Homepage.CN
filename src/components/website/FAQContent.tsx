@@ -192,6 +192,7 @@ export function FAQContent() {
                                             <div
                                                 onClick={() => openContact("support")}
                                                 className="flex h-[37px] w-full items-center justify-center bg-[#F0EDE1] mb-7 cursor-pointer active:scale-[0.98] active:bg-[#E8E4D8] transition-all"
+                                                style={{ clipPath: 'polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%)' }}
                                             >
                                                 <span className="text-[12px] font-normal tracking-wide text-[#7B726C]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                     遇到任何问题请联系我们的客户服务团队
