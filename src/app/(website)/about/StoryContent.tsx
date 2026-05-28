@@ -232,45 +232,46 @@ export function StoryContent() {
                           <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                         </div>
 
-                        {/* 第一个内容块 */}
-
-                        <div className="mb-6">
-                          <span className="block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
-                            来自大自然的神奇修复力
-                          </span>
-                          <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                            海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
-                          </p>
-                          <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
-                            <Image
-                              src="/images/story/dolphin-ocean.webp"
-                              alt="Dolphin Skin"
-                              width={600}
-                              height={400}
-                              className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
-                            />
+                        <div className="px-6">
+                          {/* 第一个内容块 */}
+                          <div className="mb-6">
+                            <span className="block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
+                              来自大自然的神奇修复力
+                            </span>
+                            <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+                              海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
+                            </p>
+                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
+                              <Image
+                                src="/images/story/dolphin-ocean.webp"
+                                alt="Dolphin Skin"
+                                width={600}
+                                height={400}
+                                className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                              />
+                            </div>
                           </div>
-                        </div>
 
-                        {/* 第二个内容块 */}
-                        <div className="mb-6">
-                          <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
-                            2008 | 摩纳哥 | 联合实验室公司
-                          </span>
-                          <span className="mt-4 block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
-                            前沿科技赋能精简护理
-                          </span>
-                          <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                            创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
-                          </p>
-                          <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
-                            <Image
-                              src="/images/story/lab-research.webp"
-                              alt="Science"
-                              width={600}
-                              height={400}
-                              className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
-                            />
+                          {/* 第二个内容块 */}
+                          <div className="mb-6">
+                            <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
+                              2008 | 摩纳哥 | 联合实验室公司
+                            </span>
+                            <span className="mt-4 block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
+                              前沿科技赋能精简护理
+                            </span>
+                            <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+                              创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
+                            </p>
+                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
+                              <Image
+                                src="/images/story/lab-research.webp"
+                                alt="Science"
+                                width={600}
+                                height={400}
+                                className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                              />
+                            </div>
                           </div>
                         </div>
                       </section>
@@ -298,11 +299,11 @@ export function StoryContent() {
                           </div>
 
                           <div className="flex flex-col gap-2.5">
-                            <p className="text-[14px] font-light leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                            <p className="text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                               旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                             </p>
-                            <p className="text-[14px] leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif", fontWeight: 350 }}>
-                              将逆转时光的不可能，<br />慢慢变得「有可能」。
+                            <p className="text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+                              将逆转时光的不可能，慢慢变得「有可能」。
                             </p>
                           </div>
 
