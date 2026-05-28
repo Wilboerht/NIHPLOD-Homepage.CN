@@ -1126,8 +1126,8 @@
   top: 46%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 85vw;
-  max-width: 1100px;
+  width: 75vw;
+  max-width: 950px;
   display: grid;
   /* 4列布局：左侧大卡片 + 右侧3列小卡片 */
   grid-template-columns: 1.2fr repeat(3, 1fr);
@@ -1690,8 +1690,8 @@
     /* 治本方案：由于平板端是 2列x4行 结构，总高度约为宽度的 2 倍 */
     /* 我们将宽度限制在视口高度的 32% (32vh)，则总高度约为 64vh， */
     /* 这能完美避开顶部 15vh 和底部 15vh 的 UI 遮挡区域，实现全设备自适应。 */
-    width: min(86vw, 32vh);
-    max-width: 480px;
+    width: min(80vw, 28vh);
+    max-width: 420px;
     gap: min(12px, 1.5vw);
     top: 48%;
   }
@@ -1739,8 +1739,8 @@
   @media (max-width: 819px) {
     .kinetic-container {
       /* 针对精简 4 卡片布局，宽度可以放宽到 40vh，总高度约为 60vh */
-      width: min(86vw, 40vh);
-      max-width: 450px;
+      width: min(80vw, 36vh);
+      max-width: 400px;
       gap: 14px;
       top: 49%;
     }
