@@ -170,7 +170,7 @@ export function StoryContent() {
                   />
 
                   {/* Header - Mobile */}
-                  <div className="flex h-20 shrink-0 items-center justify-center relative z-50">
+                  <div className="flex h-[88px] shrink-0 items-center justify-center relative z-50">
                     <Link href="/" className="flex items-center justify-center mt-1">
                       <div className="relative h-[28px] w-[100px]">
                         <Image
@@ -224,8 +224,8 @@ export function StoryContent() {
                   <div ref={contentRef} className="flex-1 overflow-y-auto flex flex-col relative z-20 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {/* 移动端 Section 1: 品牌故事 */}
                     {activeSection === "story" && (
-                      <section className="relative pt-10 pb-4">
-                        <div className="flex flex-col items-center mb-10">
+                      <section className="relative pt-7 pb-4">
+                        <div className="flex flex-col items-center mb-7">
                           <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                             品牌故事
                           </h2>
@@ -279,8 +279,8 @@ export function StoryContent() {
 
                     {/* 移动端 Section 2: 公司使命 */}
                     {activeSection === "mission" && (
-                      <section className="relative pt-10 pb-4">
-                        <div className="flex flex-col items-center mb-10">
+                      <section className="relative pt-7 pb-4">
+                        <div className="flex flex-col items-center mb-7">
                           <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                             公司使命
                           </h2>
@@ -326,8 +326,8 @@ export function StoryContent() {
 
                     {/* 移动端 Section 3: 品牌哲学 */}
                     {activeSection === "philosophy" && (
-                      <section className="relative pt-10 pb-4">
-                        <div className="flex flex-col items-center mb-10 shrink-0">
+                      <section className="relative pt-7 pb-4">
+                        <div className="flex flex-col items-center mb-7 shrink-0">
                           <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                             品牌哲学
                           </h2>
@@ -360,8 +360,8 @@ export function StoryContent() {
 
                     {/* 移动端 Section 4: 媒体获奖 */}
                     {activeSection === "awards" && (
-                      <section className="relative pt-10 pb-4">
-                        <div className="flex flex-col items-center mb-10">
+                      <section className="relative pt-7 pb-4">
+                        <div className="flex flex-col items-center mb-7">
                           <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                             媒体及获奖
                           </h2>

@@ -160,7 +160,7 @@ export function FAQContent() {
                                 )}
                             >
                                 {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
-                                <div className="sticky top-0 z-50 flex h-20 sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F8F7F3]/95 sm:bg-[#F8F7F3]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
+                                <div className="sticky top-0 z-50 flex h-[88px] sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F8F7F3]/95 sm:bg-[#F8F7F3]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
                                     <Link href="/" className="flex items-center justify-center mt-1">
                                         <div className="relative h-[28px] w-[100px] sm:h-8 sm:w-[132px]">
                                             <Image
@@ -179,7 +179,7 @@ export function FAQContent() {
                                 <div className="flex-1 flex flex-col overflow-hidden pb-4 sm:px-10 lg:px-[15%] xl:px-[20%]">
 
                                     {/* Page Title - Mobile */}
-                                    <div className="flex flex-col items-center px-4 mb-6 mt-6 sm:hidden">
+                                    <div className="flex flex-col items-start px-4 mb-7 sm:hidden">
                                         <h1 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                             常见问题
                                         </h1>
