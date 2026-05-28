@@ -180,18 +180,19 @@ export function StoryContent() {
                   />
 
                   {/* Header - Mobile */}
-                  <header className="flex flex-col justify-center items-center pt-[30px] pb-[10px] gap-[10px] relative z-50">
-                    <Link href="/">
-                      <Image
-                        src="/images/NIHPLOD-logo.svg"
-                        alt="NIHPLOD Logo"
-                        width={95}
-                        height={28}
-                        className="object-contain"
-                        priority
-                      />
+                  <div className="flex h-20 shrink-0 items-center justify-center relative z-50">
+                    <Link href="/" className="flex items-center justify-center">
+                      <div className="relative h-[26px] w-[124px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
                     </Link>
-                  </header>
+                  </div>
 
                   {/* Navigation - Mobile Tab Bar */}
                   <div className="px-4 relative z-40 shrink-0">
