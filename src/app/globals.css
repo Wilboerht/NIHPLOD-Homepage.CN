@@ -969,6 +969,7 @@
     min-width: 0;
     max-width: none;
     opacity: 0.15;
+    filter: none;
     z-index: 0;
   }
 }
