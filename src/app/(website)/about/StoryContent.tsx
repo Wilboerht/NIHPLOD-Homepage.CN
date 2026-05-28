@@ -181,9 +181,9 @@ export function StoryContent() {
                   />
 
                   {/* Header - Fixed Top - Matching Products Style */}
-                  <header className="flex h-20 shrink-0 items-center justify-center pt-8 px-6 relative z-50">
+                  <header className="flex shrink-0 items-center justify-center py-[30px] relative z-50">
                     <Link href="/">
-                      <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                      <div className="relative h-[28px] w-[95px]">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="NIHPLOD Logo"
@@ -196,8 +196,8 @@ export function StoryContent() {
                   </header>
 
                   {/* Navigation - Fixed below Header - Optimized Pill Style */}
-                  <div className="px-6 py-2 relative z-40 shrink-0">
-                    <nav className="flex h-10 items-center justify-between p-1 bg-[#00263e]/[0.03] rounded-full border border-[#00263e]/5 backdrop-blur-sm">
+                  <div className="px-4 pb-2 relative z-40 shrink-0">
+                    <nav className="flex items-center justify-between p-1 bg-[#F0EDE1] rounded-full">
                       {navItems.map((item) => {
                         const isActive = activeSection === item.id;
                         return (
@@ -206,20 +206,13 @@ export function StoryContent() {
                             type="button"
                             onClick={() => setActiveSection(item.id)}
                             className={cn(
-                              "relative flex-1 h-full flex items-center justify-center transition-colors duration-500",
-                              isActive ? "text-[#8B7355]" : "text-[#00263e]/40"
+                              "relative h-[29px] flex items-center justify-center px-2 transition-colors duration-500 rounded-full",
+                              isActive ? "bg-[#F8F7F3] text-[#00263E]" : "text-[rgba(0,38,62,0.5)]"
                             )}
                           >
-                            <span className="relative z-10 text-[12px] font-medium tracking-widest whitespace-nowrap">
+                            <span className="relative z-10 text-[14px] font-normal leading-[21px]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               {item.label}
                             </span>
-                            {isActive && (
-                              <m.div
-                                layoutId="activeTabMobilePill"
-                                className="absolute inset-0 bg-brand-gold/15 border border-[#8b7355]/30 backdrop-blur-[4px] rounded-full shadow-[0_2px_10px_-3px_rgba(0,0,0,0.02)]"
-                                transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}
-                              />
-                            )}
                           </button>
                         );
                       })}
@@ -231,7 +224,7 @@ export function StoryContent() {
                   <h1 className="sr-only">关于 NIHPLOD 旎柏</h1>
 
                   {/* Main Content Area */}
-                  <div className="flex-1 overflow-y-auto flex flex-col relative z-20 px-[8%] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="flex-1 overflow-y-auto flex flex-col relative z-20 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <AnimatePresence mode="wait">
                       {/* 移动端 Section 1: 品牌故事 */}
                       {activeSection === "story" && (
@@ -244,9 +237,10 @@ export function StoryContent() {
                           className="relative pt-10 pb-10"
                         >
                           <div className="flex justify-center mb-10">
-                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
+                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               品牌故事
                             </h2>
+                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
 
                           {/* 第一个内容块 */}
@@ -304,9 +298,10 @@ export function StoryContent() {
                           className="relative pt-10 pb-10"
                         >
                           <div className="flex justify-center mb-10">
-                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
+                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               公司使命
                             </h2>
+                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
 
                           <div className="mb-12 flex flex-col items-center">
@@ -357,9 +352,10 @@ export function StoryContent() {
                           className="flex-1 flex flex-col pt-10"
                         >
                           <div className="flex justify-center mb-10 shrink-0">
-                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
+                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               品牌哲学
                             </h2>
+                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
 
                           <div className="flex-1 flex flex-col justify-center pb-12">
@@ -399,9 +395,10 @@ export function StoryContent() {
                           className="pt-10 pb-10"
                         >
                           <div className="flex justify-center mb-10">
-                            <h2 className="relative inline-block font-sans text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
+                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               媒体及获奖
                             </h2>
+                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
                           <div className="mb-12">
                             {/* 奖项列表 - Mobile List 1 col - Improved Readability */}
@@ -444,8 +441,8 @@ export function StoryContent() {
                   </div>
 
                   {/* Mobile Footer Copyright */}
-                  <div className="flex flex-col items-center justify-center pt-4 pb-1">
-                    <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60">
+                  <div className="flex flex-col items-center justify-center pt-6 pb-1">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>
