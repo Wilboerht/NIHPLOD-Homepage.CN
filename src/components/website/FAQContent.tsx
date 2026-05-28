@@ -255,7 +255,7 @@ export function FAQContent() {
                                         </div>
 
                                         {/* Contact Support Section */}
-                                        <div className="mt-8 sm:mt-12 mb-8 flex flex-col items-center justify-center text-center sm:px-4">
+                                        <div className="mt-7 sm:mt-12 mb-7 flex flex-col items-center justify-center text-center sm:px-4">
                                             <div className="hidden sm:mb-4 sm:flex h-10 w-10 lg:h-12 lg:w-12 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/60">
                                                 <MessageCircle className="w-5 h-5 lg:w-6 lg:h-6" strokeWidth={1.2} />
                                             </div>
@@ -267,7 +267,7 @@ export function FAQContent() {
                                             </p>
                                             <button
                                                 onClick={() => openContact("support")}
-                                                className="mt-6 sm:mt-0 flex items-center gap-2 rounded-full bg-[#F0EDE1] px-7 py-3 text-[14px] font-medium tracking-[0.2em] text-[#7B726C] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:text-sm sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:bg-brand-gold/15 sm:hover:text-[#8B7355] sm:hover:border-[#8B7355]/30 sm:hover:backdrop-blur-md sm:hover:shadow-lg sm:active:scale-95"
+                                                className="flex items-center gap-2 rounded-full bg-[#F0EDE1] px-7 py-3 text-[14px] lg:text-[16px] font-medium tracking-[0.2em] text-[#7B726C] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:bg-brand-gold/15 sm:hover:text-[#8B7355] sm:hover:border-[#8B7355]/30 sm:hover:backdrop-blur-md sm:hover:shadow-lg sm:active:scale-95"
                                                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                                             >
                                                 <span>联系我们</span>
