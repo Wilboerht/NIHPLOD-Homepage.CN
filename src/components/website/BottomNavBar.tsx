@@ -161,7 +161,7 @@ export function BottomNavBar() {
                             className={cn(
                                 "flex items-center justify-between pointer-events-auto",
                                 // Mobile: compact rounded design
-                                "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
+                                "rounded-2xl bg-[#F8F7F3] px-4 py-4",
                                 // Desktop: dock-style design from reference
                                 "lg:rounded-[20px] lg:bg-[#F8F7F3] lg:px-10 lg:py-0 lg:h-[100px]",
                                 "lg:shadow-[0_20px_50px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.8)]",
@@ -176,15 +176,15 @@ export function BottomNavBar() {
                                 className="group flex items-center gap-2 transition-opacity active:opacity-70 lg:hidden"
                             >
                                 {/* 图标容器 */}
-                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-gold/10">
-                                    <PrimaryIcon className="h-6 w-6 text-brand-gold" />
+                                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#F0EDE1]">
+                                    <PrimaryIcon className="h-6 w-6 text-[#B5AC88]" />
                                 </div>
                                 {/* 文字 */}
                                 <div className="flex flex-col">
-                                    <span className="text-sm font-semibold text-brand-charcoal">
+                                    <span className="text-[14px] font-medium leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                         {primaryNav.label}
                                     </span>
-                                    <span className="font-serif text-[10px] uppercase tracking-wide text-brand-gold/70">
+                                    <span className="text-[10px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.5)]">
                                         {primaryNav.labelEn}
                                     </span>
                                 </div>
@@ -225,7 +225,7 @@ export function BottomNavBar() {
                             <button
                                 type="button"
                                 onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
-                                className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-beige/30 transition-colors active:bg-brand-beige/50 lg:hidden"
+                                className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#F0EDE1] transition-colors active:bg-[#E8E4D8] lg:hidden"
                                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
                             >
                                 <AnimatePresence mode="wait" initial={false}>
@@ -237,7 +237,7 @@ export function BottomNavBar() {
                                             exit={{ opacity: 0, rotate: 90 }}
                                             transition={{ duration: 0.15 }}
                                         >
-                                            <X className="h-5 w-5 text-brand-charcoal" />
+                                            <X className="h-5 w-5 text-[#B5AC88]" />
                                         </m.div>
                                     ) : (
                                         <m.div
@@ -247,7 +247,7 @@ export function BottomNavBar() {
                                             exit={{ opacity: 0, rotate: -90 }}
                                             transition={{ duration: 0.15 }}
                                         >
-                                            <Menu className="h-5 w-5 text-brand-charcoal" />
+                                            <Menu className="h-5 w-5 text-[#B5AC88]" />
                                         </m.div>
                                     )}
                                 </AnimatePresence>
