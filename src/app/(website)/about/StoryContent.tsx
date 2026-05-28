@@ -100,7 +100,7 @@ export function StoryContent() {
 
       {/* 内容区域容器 - 使用 framer-motion 统一控制动画 */}
       <m.div
-        className="safe-area-content !pointer-events-none"
+        className="safe-area-content !-top-[1px] !pointer-events-none"
         transition={{
           duration: 0.8,
           ease: [0.22, 1, 0.36, 1]
@@ -179,8 +179,8 @@ export function StoryContent() {
                     }}
                   />
 
-                  {/* Header - Fixed Top - Matching Products Style */}
-                  <header className="flex flex-col items-center justify-center py-[30px] gap-[10px] relative z-50">
+                  {/* Header - Mobile */}
+                  <header className="flex flex-col justify-center items-center pt-[30px] pb-[10px] gap-[10px] relative z-50">
                     <Link href="/">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
