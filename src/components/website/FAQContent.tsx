@@ -178,8 +178,8 @@ export function FAQContent() {
 
                                 <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4 sm:px-10 lg:px-[15%] xl:px-[20%]">
 
-                                    {/* Page Title - Fixed */}
-                                    <div className="shrink-0 flex justify-center mb-10 mt-6 sm:mt-12">
+                                    {/* Page Title */}
+                                    <div className="flex justify-center mb-10 mt-6 sm:mt-12">
                                         <h1 className="relative inline-block text-[24px] font-normal uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:h-px after:w-[60%] after:bg-[#00263e]/20">
                                             常见问题
                                         </h1>
