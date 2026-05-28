@@ -234,7 +234,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="relative pt-10 pb-10"
+                          className="relative pt-10 pb-4"
                         >
                           <div className="flex flex-col items-center mb-10">
                             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
@@ -264,7 +264,7 @@ export function StoryContent() {
                           </div>
 
                           {/* 第二个内容块 */}
-                          <div className="mb-12">
+                          <div className="mb-6">
                             <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
                               2008 | 摩纳哥 | 联合实验室公司
                             </span>
@@ -295,7 +295,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="relative pt-10 pb-10"
+                          className="relative pt-10 pb-4"
                         >
                           <div className="flex flex-col items-center mb-10">
                             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
@@ -304,7 +304,7 @@ export function StoryContent() {
                             <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
 
-                          <div className="mb-12 flex flex-col items-center">
+                          <div className="mb-6 flex flex-col items-center">
                             <div className="relative my-6 h-[400px] md:h-[600px] w-full md:max-w-[600px] overflow-hidden border border-[#00263e]/10 shadow-sm bg-white/20">
                               <Image
                                 src="/images/story/mission-image.webp?v=2"
@@ -358,7 +358,7 @@ export function StoryContent() {
                             <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
 
-                          <div className="flex-1 flex flex-col justify-center pb-12">
+                          <div className="flex-1 flex flex-col justify-center pb-6">
                             <div className="grid grid-cols-2 gap-3 px-1">
                               {[
                                 { num: "01", title: "更珍贵的产品", desc: "通过采集优质原材料，结合前沿科技力量，不断更新与进步。" },
@@ -392,7 +392,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="pt-10 pb-10"
+                          className="pt-10 pb-4"
                         >
                           <div className="flex flex-col items-center mb-10">
                             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
@@ -400,7 +400,7 @@ export function StoryContent() {
                             </h2>
                             <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
-                          <div className="mb-12">
+                          <div className="mb-6">
                             {/* 奖项列表 - Mobile List 1 col - Improved Readability */}
                             <div className="flex flex-col gap-4">
                               {AWARDS_DATA.map((award, idx) => (
@@ -441,7 +441,7 @@ export function StoryContent() {
                   </div>
 
                   {/* Mobile Footer Copyright */}
-                  <div className="flex flex-col items-center justify-center pt-6 pb-1">
+                  <div className="flex flex-col items-center justify-center pt-3 pb-1">
                     <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
