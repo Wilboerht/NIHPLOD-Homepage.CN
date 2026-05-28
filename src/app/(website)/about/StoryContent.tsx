@@ -368,31 +368,32 @@ export function StoryContent() {
                           <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                         </div>
                         <div className="mb-6 px-6">
-                          {/* 奖项列表 - Mobile List 1 col - Improved Readability */}
+                          {/* 奖项列表 */}
                           <div className="flex flex-col gap-4">
                             {AWARDS_DATA.map((award, idx) => (
                               <div
                                 key={idx}
-                                className="flex flex-col bg-[#F8F7F3] border border-[#00263e]/10 p-6 rounded-sm shadow-[0_4px_20px_-10px_rgba(0,38,62,0.1)]"
+                                className="flex flex-col border-[1.5px] border-[#F0EDE1]"
                               >
                                 {/* Award Image */}
-                                <div className="relative aspect-[16/9] w-full overflow-hidden mb-6 bg-white/30 rounded-sm">
+                                <div className="relative w-full overflow-hidden">
                                   <Image
                                     src={award.image}
                                     alt={award.title}
-                                    fill
-                                    className="object-contain p-4"
+                                    width={600}
+                                    height={400}
+                                    className="w-full h-auto object-contain"
                                   />
                                 </div>
 
-                                <div className="flex flex-col items-center gap-2 text-center">
-                                  <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#00263e]/50">
+                                <div className="flex flex-col items-center p-6 gap-2 text-center">
+                                  <span className="text-[14px] font-normal leading-[21px] text-[#00263e]/50" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                     {award.org}
                                   </span>
-                                  <h3 className="text-[16px] font-normal leading-snug tracking-wide text-[#00263e] px-4">
+                                  <h3 className="text-[18px] font-normal leading-[27px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                     {award.title}
                                   </h3>
-                                  <span className="text-[10px] font-light tracking-[0.2em] text-[#00263e]/40">
+                                  <span className="text-[14px] font-light leading-[21px] text-[#00263e]/50" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                     {award.year}
                                   </span>
                                 </div>
