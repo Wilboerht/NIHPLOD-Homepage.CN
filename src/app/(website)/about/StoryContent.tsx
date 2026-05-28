@@ -344,7 +344,7 @@ export function StoryContent() {
                             ].map((item) => (
                               <div
                                 key={item.num}
-                                className="flex flex-col justify-center rounded-lg bg-[#F0EDE1] p-4 gap-2"
+                                className="flex flex-col justify-start rounded-lg bg-[#F0EDE1] p-4 gap-2"
                               >
                                 <span className="text-[10px] font-light text-[#00263e]/30">{item.num}</span>
                                 <h3 className="text-[14px] font-normal leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>{item.title}</h3>
