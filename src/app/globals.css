@@ -745,7 +745,8 @@
   }
 
   .home-container .btn-primary {
-    width: 121px;
+    width: auto;
+    min-width: 121px;
     height: 45px;
     padding: 12px 28px;
     display: flex;
@@ -761,6 +762,7 @@
     box-shadow: none;
     position: relative;
     overflow: visible;
+    white-space: nowrap;
   }
 
   .home-container .btn-primary::before {
@@ -816,7 +818,8 @@
   }
 
   .home-container .btn-primary {
-    width: 121px;
+    width: auto;
+    min-width: 121px;
     height: 45px;
     padding: 12px 28px;
     display: flex;
@@ -832,6 +835,7 @@
     box-shadow: none;
     position: relative;
     overflow: visible;
+    white-space: nowrap;
   }
 
   .home-container .btn-primary::before {
