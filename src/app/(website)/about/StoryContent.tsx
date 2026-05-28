@@ -164,7 +164,6 @@ export function StoryContent() {
               </AnimatePresence>
 
               <div
-                ref={contentRef}
                 className={cn(
                   "relative z-10 flex h-full flex-col overflow-hidden pb-3",
                   !isExpanded && "hidden"
@@ -196,20 +195,23 @@ export function StoryContent() {
 
                   {/* Navigation - Fixed below Header - Optimized Pill Style */}
                   <div className="px-4 pb-2 relative z-40 shrink-0">
-                    <nav className="flex items-center justify-between p-1 bg-[#F0EDE1] rounded-full">
+                    <nav className="flex items-center p-1 bg-[#F0EDE1] rounded-full">
                       {navItems.map((item) => {
                         const isActive = activeSection === item.id;
                         return (
                           <button
                             key={item.id}
                             type="button"
-                            onClick={() => setActiveSection(item.id)}
+                            onClick={() => {
+                              setActiveSection(item.id);
+                              contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
                             className={cn(
-                              "relative h-[26px] flex items-center justify-center px-2 transition-colors duration-500 rounded-full",
+                              "relative flex-1 h-[28px] flex items-center justify-center px-1 sm:px-2 transition-colors duration-500 rounded-full",
                               isActive ? "bg-[#F8F7F3] text-[#00263E]" : "text-[rgba(0,38,62,0.5)]"
                             )}
                           >
-                            <span className="relative z-10 text-[13px] font-normal leading-[20px]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                            <span className="relative z-10 text-[11px] sm:text-[13px] font-normal leading-[20px] whitespace-nowrap" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               {item.label}
                             </span>
                           </button>
@@ -223,220 +225,188 @@ export function StoryContent() {
                   <h1 className="sr-only">关于 NIHPLOD 旎柏</h1>
 
                   {/* Main Content Area */}
-                  <div className="flex-1 overflow-y-auto flex flex-col relative z-20 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    <AnimatePresence mode="wait">
-                      {/* 移动端 Section 1: 品牌故事 */}
-                      {activeSection === "story" && (
-                        <m.section
-                          key="story-mobile"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="relative pt-10 pb-4"
-                        >
-                          <div className="flex flex-col items-center mb-10">
-                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                              品牌故事
-                            </h2>
-                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                  <div ref={contentRef} className="flex-1 overflow-y-auto flex flex-col relative z-20 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {/* 移动端 Section 1: 品牌故事 */}
+                    {activeSection === "story" && (
+                      <section className="relative pt-10 pb-4">
+                        <div className="flex flex-col items-center mb-10">
+                          <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                            品牌故事
+                          </h2>
+                          <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                        </div>
+
+                        {/* 第一个内容块 */}
+
+                        <div className="mb-6">
+                          <span className="block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
+                            来自大自然的神奇修复力
+                          </span>
+                          <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+                            海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
+                          </p>
+                          <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
+                            <Image
+                              src="/images/story/dolphin-ocean.webp"
+                              alt="Dolphin Skin"
+                              width={600}
+                              height={400}
+                              className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                            />
                           </div>
+                        </div>
 
-                          {/* 第一个内容块 */}
+                        {/* 第二个内容块 */}
+                        <div className="mb-6">
+                          <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
+                            2008 | 摩纳哥 | 联合实验室公司
+                          </span>
+                          <span className="mt-4 block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
+                            前沿科技赋能精简护理
+                          </span>
+                          <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+                            创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
+                          </p>
+                          <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
+                            <Image
+                              src="/images/story/lab-research.webp"
+                              alt="Science"
+                              width={600}
+                              height={400}
+                              className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                            />
+                          </div>
+                        </div>
+                      </section>
+                    )}
 
-                          <div className="mb-6">
-                            <span className="block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
-                              来自大自然的神奇修复力
-                            </span>
-                            <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                              海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
+                    {/* 移动端 Section 2: 公司使命 */}
+                    {activeSection === "mission" && (
+                      <section className="relative pt-10 pb-4">
+                        <div className="flex flex-col items-center mb-10">
+                          <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                            公司使命
+                          </h2>
+                          <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                        </div>
+
+                        <div className="mb-6 flex flex-col items-center">
+                          <div className="relative my-6 h-[400px] md:h-[600px] w-full md:max-w-[600px] overflow-hidden border border-[#00263e]/10 shadow-sm bg-white/20">
+                            <Image
+                              src="/images/story/mission-image.webp?v=2"
+                              alt="Mission"
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                          <div className="px-2">
+                            <p className="mt-8 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+                              旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                             </p>
-                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
-                              <Image
-                                src="/images/story/dolphin-ocean.webp"
-                                alt="Dolphin Skin"
-                                width={600}
-                                height={400}
-                                className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
-                              />
-                            </div>
-                          </div>
-
-                          {/* 第二个内容块 */}
-                          <div className="mb-6">
-                            <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
-                              2008 | 摩纳哥 | 联合实验室公司
+                            <span className="mt-6 block text-[14px] font-normal leading-[1.6] tracking-wide text-[#00263e]">
+                              将逆转时光的不可能，<br />慢慢变得「有可能」。
                             </span>
-                            <span className="mt-4 block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
-                              前沿科技赋能精简护理
+                          </div>
+
+                          {/* CEO 签名 */}
+                          <div className="mt-12 w-full text-right">
+                            <span className="mb-2 block text-[9px] uppercase tracking-[0.15em] opacity-40">
+                              首席执行官
                             </span>
-                            <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                              创始人 Dr. Stefan 博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
-                            </p>
-                            <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
+                            <div className="flex justify-end mt-1">
                               <Image
-                                src="/images/story/lab-research.webp"
-                                alt="Science"
-                                width={600}
-                                height={400}
-                                className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                                src="/images/story/mission-decoration.svg"
+                                alt="John Morrell"
+                                width={100}
+                                height={28}
+                                className="opacity-80"
                               />
                             </div>
                           </div>
-                        </m.section>
-                      )}
+                        </div>
+                      </section>
+                    )}
 
-                      {/* 移动端 Section 2: 公司使命 */}
-                      {activeSection === "mission" && (
-                        <m.section
-                          key="mission-mobile"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="relative pt-10 pb-4"
-                        >
-                          <div className="flex flex-col items-center mb-10">
-                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                              公司使命
-                            </h2>
-                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
-                          </div>
+                    {/* 移动端 Section 3: 品牌哲学 */}
+                    {activeSection === "philosophy" && (
+                      <section className="relative pt-10 pb-4">
+                        <div className="flex flex-col items-center mb-10 shrink-0">
+                          <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                            品牌哲学
+                          </h2>
+                          <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                        </div>
 
-                          <div className="mb-6 flex flex-col items-center">
-                            <div className="relative my-6 h-[400px] md:h-[600px] w-full md:max-w-[600px] overflow-hidden border border-[#00263e]/10 shadow-sm bg-white/20">
-                              <Image
-                                src="/images/story/mission-image.webp?v=2"
-                                alt="Mission"
-                                fill
-                                className="object-contain"
-                              />
-                            </div>
-                            <div className="px-2">
-                              <p className="mt-8 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                                旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
-                              </p>
-                              <span className="mt-6 block text-[14px] font-normal leading-[1.6] tracking-wide text-[#00263e]">
-                                将逆转时光的不可能，<br />慢慢变得「有可能」。
-                              </span>
-                            </div>
-
-                            {/* CEO 签名 */}
-                            <div className="mt-12 w-full text-right">
-                              <span className="mb-2 block text-[9px] uppercase tracking-[0.15em] opacity-40">
-                                首席执行官
-                              </span>
-                              <div className="flex justify-end mt-1">
-                                <Image
-                                  src="/images/story/mission-decoration.svg"
-                                  alt="John Morrell"
-                                  width={100}
-                                  height={28}
-                                  className="opacity-80"
-                                />
+                        <div className="flex flex-col justify-center pb-6">
+                          <div className="grid grid-cols-2 gap-3 px-1">
+                            {[
+                              { num: "01", title: "更珍贵的产品", desc: "通过采集优质原材料，结合前沿科技力量，不断更新与进步。" },
+                              { num: "02", title: "更优越的体验", desc: "严选供应渠道，极致专员服务，力求专业、舒适与满意。" },
+                              { num: "03", title: "更积极的方式", desc: "倡导健康心态，通过合理的膳食及平衡心理面对每一天。" },
+                              { num: "04", title: "更艰巨的责任", desc: "将产品销售额的 2% 捐赠给全球慈善及非营利组织。" },
+                            ].map((item) => (
+                              <div
+                                key={item.num}
+                                className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-white/40 p-5 transition-all duration-300 hover:bg-white/60"
+                              >
+                                {/* Content */}
+                                <div className="relative z-10 flex h-full flex-col">
+                                  <h3 className="mb-3 text-[15px] font-medium tracking-wide text-[#00263e]">{item.title}</h3>
+                                  <p className="text-[13px] font-light leading-[1.75] tracking-wide text-[#00263e]/70 text-justify">
+                                    {item.desc}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
+                            ))}
                           </div>
-                        </m.section>
-                      )}
+                        </div>
+                      </section>
+                    )}
 
-                      {/* 移动端 Section 3: 品牌哲学 */}
-                      {activeSection === "philosophy" && (
-                        <m.section
-                          key="philosophy-mobile"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="flex-1 flex flex-col pt-10"
-                        >
-                          <div className="flex flex-col items-center mb-10 shrink-0">
-                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                              品牌哲学
-                            </h2>
-                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
-                          </div>
-
-                          <div className="flex-1 flex flex-col justify-center pb-6">
-                            <div className="grid grid-cols-2 gap-3 px-1">
-                              {[
-                                { num: "01", title: "更珍贵的产品", desc: "通过采集优质原材料，结合前沿科技力量，不断更新与进步。" },
-                                { num: "02", title: "更优越的体验", desc: "严选供应渠道，极致专员服务，力求专业、舒适与满意。" },
-                                { num: "03", title: "更积极的方式", desc: "倡导健康心态，通过合理的膳食及平衡心理面对每一天。" },
-                                { num: "04", title: "更艰巨的责任", desc: "将产品销售额的 2% 捐赠给全球慈善及非营利组织。" },
-                              ].map((item) => (
-                                <div
-                                  key={item.num}
-                                  className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-white/40 p-5 transition-all duration-300 hover:bg-white/60"
-                                >
-                                  {/* Content */}
-                                  <div className="relative z-10 flex h-full flex-col">
-                                    <h3 className="mb-3 text-[15px] font-medium tracking-wide text-[#00263e]">{item.title}</h3>
-                                    <p className="text-[13px] font-light leading-[1.75] tracking-wide text-[#00263e]/70 text-justify">
-                                      {item.desc}
-                                    </p>
-                                  </div>
+                    {/* 移动端 Section 4: 媒体获奖 */}
+                    {activeSection === "awards" && (
+                      <section className="relative pt-10 pb-4">
+                        <div className="flex flex-col items-center mb-10">
+                          <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                            媒体及获奖
+                          </h2>
+                          <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                        </div>
+                        <div className="mb-6">
+                          {/* 奖项列表 - Mobile List 1 col - Improved Readability */}
+                          <div className="flex flex-col gap-4">
+                            {AWARDS_DATA.map((award, idx) => (
+                              <div
+                                key={idx}
+                                className="flex flex-col bg-[#F8F7F3] border border-[#00263e]/10 p-6 rounded-sm shadow-[0_4px_20px_-10px_rgba(0,38,62,0.1)]"
+                              >
+                                {/* Award Image */}
+                                <div className="relative aspect-[16/9] w-full overflow-hidden mb-6 bg-white/30 rounded-sm">
+                                  <Image
+                                    src={award.image}
+                                    alt={award.title}
+                                    fill
+                                    className="object-contain p-4"
+                                  />
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        </m.section>
-                      )}
 
-                      {/* 移动端 Section 4: 媒体获奖 */}
-                      {activeSection === "awards" && (
-                        <m.section
-                          key="awards-mobile"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="pt-10 pb-4"
-                        >
-                          <div className="flex flex-col items-center mb-10">
-                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                              媒体及获奖
-                            </h2>
-                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
-                          </div>
-                          <div className="mb-6">
-                            {/* 奖项列表 - Mobile List 1 col - Improved Readability */}
-                            <div className="flex flex-col gap-4">
-                              {AWARDS_DATA.map((award, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex flex-col bg-[#F8F7F3] border border-[#00263e]/10 p-6 rounded-sm shadow-[0_4px_20px_-10px_rgba(0,38,62,0.1)]"
-                                >
-                                  {/* Award Image */}
-                                  <div className="relative aspect-[16/9] w-full overflow-hidden mb-6 bg-white/30 rounded-sm">
-                                    <Image
-                                      src={award.image}
-                                      alt={award.title}
-                                      fill
-                                      className="object-contain p-4"
-                                    />
-                                  </div>
-
-                                  <div className="flex flex-col items-center gap-2 text-center">
-                                    <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#00263e]/50">
-                                      {award.org}
-                                    </span>
-                                    <h3 className="text-[16px] font-normal leading-snug tracking-wide text-[#00263e] px-4">
-                                      {award.title}
-                                    </h3>
-                                    <span className="text-[10px] font-light tracking-[0.2em] text-[#00263e]/40">
-                                      {award.year}
-                                    </span>
-                                  </div>
+                                <div className="flex flex-col items-center gap-2 text-center">
+                                  <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#00263e]/50">
+                                    {award.org}
+                                  </span>
+                                  <h3 className="text-[16px] font-normal leading-snug tracking-wide text-[#00263e] px-4">
+                                    {award.title}
+                                  </h3>
+                                  <span className="text-[10px] font-light tracking-[0.2em] text-[#00263e]/40">
+                                    {award.year}
+                                  </span>
                                 </div>
-                              ))}
-                            </div>
+                              </div>
+                            ))}
                           </div>
-                        </m.section>
-                      )}
-                    </AnimatePresence>
-
-
+                        </div>
+                      </section>
+                    )}
                   </div>
 
                   {/* Mobile Footer Copyright */}
