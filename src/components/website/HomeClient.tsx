@@ -270,7 +270,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
           className="h-full pointer-events-none"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[2px_2px_4px_rgba(123,114,108,0.3)]">
+          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_4px_rgba(123,114,108,0.3)]">
             {/* 主内容区域 - 抽屉 - z-20 Ensure it sits on top of the button */}
             <m.div
               className="relative z-20 w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
