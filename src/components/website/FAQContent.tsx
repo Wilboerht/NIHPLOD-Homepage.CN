@@ -244,7 +244,7 @@ export function FAQContent() {
                                                                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                                                                 style={{ overflow: "hidden" }}
                                                             >
-                                                                <div className="pb-8 pl-6 pr-6 lg:pr-12 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-[1.7] lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                                                <div className="pb-8 pl-6 pr-6 lg:pr-12 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-snug lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                                     {faq.answer}
                                                                 </div>
                                                             </m.div>
