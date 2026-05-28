@@ -191,7 +191,7 @@ export function FAQContent() {
                                         <div className="flex flex-col items-center mb-7 sm:hidden">
                                             <div
                                                 onClick={() => openContact("support")}
-                                                className="flex h-[37px] w-full items-center justify-center rounded-full bg-[#F0EDE1] px-4 mb-7 cursor-pointer active:scale-[0.98] active:bg-[#E8E4D8] transition-all"
+                                                className="flex h-[37px] w-full items-center justify-center bg-[#F0EDE1] mb-7 cursor-pointer active:scale-[0.98] active:bg-[#E8E4D8] transition-all"
                                             >
                                                 <span className="text-[12px] font-normal tracking-wide text-[#7B726C]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                     遇到任何问题请联系我们的客户服务团队
@@ -203,32 +203,32 @@ export function FAQContent() {
                                             </h1>
                                             <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                                         </div>
-                                        <div className="flex flex-col gap-6 sm:gap-0 max-w-4xl mx-auto">
+                                        <div className="flex flex-col gap-0 max-w-4xl mx-auto">
                                             {FAQS.map((faq, index) => (
                                                 <div
                                                     key={index}
                                                     className={cn(
-                                                        "sm:group sm:transition-all sm:duration-500 sm:ease-out sm:border-b sm:border-brand-charcoal/10 sm:overflow-visible",
+                                                        "group transition-all duration-500 ease-out border-b border-brand-charcoal/10 overflow-visible",
                                                         openIndex === index
-                                                            ? "rounded-lg bg-[#F0EDE1] p-6 sm:rounded-none sm:bg-white/40 sm:p-0"
-                                                            : "rounded-lg border-[1.5px] border-[#F0EDE1] p-6 sm:rounded-none sm:border-0 sm:border-b sm:border-brand-charcoal/10 sm:p-0 sm:hover:bg-white/20"
+                                                            ? "bg-white/40"
+                                                            : "hover:bg-white/20"
                                                     )}
                                                 >
                                                     <button
                                                         onClick={() => toggleFAQ(index)}
-                                                        className="w-full flex items-center justify-between text-left gap-4 sm:py-5 sm:px-4 lg:py-6 lg:px-6"
+                                                        className="w-full flex items-center justify-between text-left gap-4 py-5 px-4 lg:py-6 lg:px-6"
                                                     >
                                                         <span className={cn(
-                                                            "flex-1 text-[16px] font-normal leading-[24px] text-[#00263E] transition-colors duration-300 sm:text-[15px] lg:text-[16px] sm:tracking-wide sm:leading-snug lg:leading-normal",
-                                                            openIndex === index ? "sm:text-brand-charcoal sm:font-medium" : "sm:group-hover:text-brand-charcoal"
+                                                            "flex-1 text-[14px] font-normal tracking-wide leading-snug lg:leading-normal text-[#00263E] transition-colors duration-300",
+                                                            openIndex === index ? "text-brand-charcoal font-medium" : "group-hover:text-brand-charcoal"
                                                         )} style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                             {faq.question}
                                                         </span>
                                                         <span className={cn(
-                                                            "shrink-0 transition-all duration-500 sm:p-1.5 sm:-mr-1.5 sm:rounded-full sm:text-brand-charcoal/30",
-                                                            openIndex === index ? "rotate-45 text-[#00263E]/60 sm:text-brand-charcoal/60 sm:bg-brand-charcoal/5" : "text-[#00263E]/30 sm:group-hover:text-brand-charcoal/50 sm:group-hover:bg-brand-charcoal/[0.03]"
+                                                            "shrink-0 transition-all duration-500 p-1.5 -mr-1.5 rounded-full text-brand-charcoal/30",
+                                                            openIndex === index ? "rotate-45 text-brand-charcoal/60 bg-brand-charcoal/5" : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
                                                         )}>
-                                                            <Plus className="w-6 h-6 sm:w-5 sm:h-5 stroke-[1.5]" />
+                                                            <Plus className="w-5 h-5 stroke-[1.5]" />
                                                         </span>
                                                     </button>
                                                     <AnimatePresence>
@@ -240,7 +240,7 @@ export function FAQContent() {
                                                                 transition={{ duration: 0.3, ease: "easeInOut" }}
                                                                 className="overflow-hidden"
                                                             >
-                                                                <div className="mt-3 border-l border-[#00263E] pl-4 text-[14px] font-light leading-[21px] text-[#00263E] sm:pb-8 sm:pl-6 sm:pr-12 sm:text-brand-charcoal/60 sm:leading-[1.7] lg:leading-[1.8] sm:text-[14px] lg:text-[15px] sm:tracking-wide sm:border-0 sm:pl-4 sm:mt-0" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                                                <div className="pb-8 pl-6 pr-12 text-[14px] lg:text-[15px] font-light text-brand-charcoal/60 leading-[1.7] lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                                     {faq.answer}
                                                                 </div>
                                                             </m.div>
