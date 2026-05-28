@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Plus, MessageCircle, ArrowRight } from "lucide-react";
+import { ChevronDown, Plus, MessageCircle, ArrowRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -189,6 +189,12 @@ export function FAQContent() {
                                     <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                         {/* Page Title - Mobile */}
                                         <div className="flex flex-col items-center mb-7 sm:hidden">
+                                            <div className="flex h-[37px] w-full items-center justify-center rounded-full bg-[#F0EDE1] px-4 mb-7">
+                                                <span className="text-[12px] font-normal tracking-wide text-[#7B726C]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                                    遇到任何问题请联系我们的客户服务团队
+                                                </span>
+                                                <ChevronRight className="w-4 h-4 text-[#7B726C]" />
+                                            </div>
                                             <h1 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                 常见问题
                                             </h1>
