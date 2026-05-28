@@ -390,7 +390,7 @@ export function StoryContent() {
                                   <span className="text-[14px] font-normal leading-[21px] text-[#00263e]/50" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                     {award.org}
                                   </span>
-                                  <h3 className="text-[18px] font-normal leading-[27px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                  <h3 className="text-[16px] font-normal leading-[24px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                     {award.title}
                                   </h3>
                                   <span className="text-[14px] font-light leading-[21px] text-[#00263e]/50" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
