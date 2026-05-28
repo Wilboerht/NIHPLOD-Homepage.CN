@@ -87,7 +87,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       >
         <div className="flex h-full flex-col items-center pointer-events-none">
           {/* 主内容卡片容器 */}
-          <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#F0EDE1] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
+          <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#F8F7F3] lg:rounded-3xl pointer-events-auto relative shadow-2xl shadow-black/5">
             {/* 矿物纹理叠加层 */}
             <div
               className="pointer-events-none absolute inset-0 z-0 opacity-[0.04]"
@@ -243,7 +243,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           {/* 返回首页按钮 */}
           <Link
             href="/"
-            className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#F0EDE1] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3 pointer-events-auto"
+            className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#F8F7F3] px-10 py-2.5 shadow-sm lg:px-14 lg:py-3 pointer-events-auto"
           >
             <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
             <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回首页</span>

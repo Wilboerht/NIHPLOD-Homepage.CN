@@ -409,7 +409,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
    * 移动端展示组件 - 三行错落橱窗
    */
   const MobileShowcase = () => (
-    <div className="flex h-full flex-col overflow-hidden bg-[#F0EDE1]">
+    <div className="flex h-full flex-col overflow-hidden bg-[#F8F7F3]">
       {/* 顶部 Logo - 保持与首页一致的呼吸感 */}
       <header className="flex h-20 shrink-0 items-center justify-center pt-8">
         <Link href="/">
@@ -462,7 +462,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
               {/* 上方：产品图片区域 —— 正方形容器，图片填满 */}
-              <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#F0EDE1]">
+              <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#F8F7F3]">
                 {/* 容量标签 */}
                 {product.capacity && (
                   <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
@@ -545,7 +545,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           <div className="flex h-full flex-col items-center pointer-events-none">
             {/* 主内容区域 - 抽屉 */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl pointer-events-auto"
+              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
               style={{ willChange: "flex-grow, height" }}
               initial={{ height: 0, flexGrow: 0 }}
               animate={{
@@ -737,7 +737,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
             >
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
@@ -764,7 +764,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] flex flex-col bg-[#F0EDE1]/95 backdrop-blur-xl lg:hidden"
+            className="fixed inset-0 z-[100] flex flex-col bg-[#F8F7F3]/95 backdrop-blur-xl lg:hidden"
           >
             {/* 顶层背景纹理 - 同首页 */}
             <div
@@ -826,7 +826,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           setIsCategoryMenuOpen(false);
                         }
                       }}
-                      className="group flex w-full flex-row items-center justify-center gap-4 rounded-2xl bg-[#F0EDE1]/60 py-6 px-4 transition-all active:scale-95 active:bg-[#F0EDE1]"
+                      className="group flex w-full flex-row items-center justify-center gap-4 rounded-2xl bg-[#F8F7F3]/60 py-6 px-4 transition-all active:scale-95 active:bg-[#F8F7F3]"
                     >
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center text-[#00263E] opacity-90 transition-transform group-active:scale-110">
                         {CATEGORY_ICONS[cat.name]}

@@ -120,7 +120,7 @@ export function StoryContent() {
           <div className="flex h-full flex-col items-center pointer-events-none">
             {/* 主内容区域 - 使用 about us.html 风格 */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl pointer-events-auto"
+              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
               style={{ willChange: "flex-grow" }}
               initial={{ flexGrow: 0, flexBasis: 0 }}
               animate={{
@@ -409,7 +409,7 @@ export function StoryContent() {
                               {AWARDS_DATA.map((award, idx) => (
                                 <div
                                   key={idx}
-                                  className="flex flex-col bg-[#F0EDE1] border border-[#00263e]/10 p-6 rounded-sm shadow-[0_4px_20px_-10px_rgba(0,38,62,0.1)]"
+                                  className="flex flex-col bg-[#F8F7F3] border border-[#00263e]/10 p-6 rounded-sm shadow-[0_4px_20px_-10px_rgba(0,38,62,0.1)]"
                                 >
                                   {/* Award Image */}
                                   <div className="relative aspect-[16/9] w-full overflow-hidden mb-6 bg-white/30 rounded-sm">
@@ -534,7 +534,7 @@ export function StoryContent() {
                         >
                           {/* 左侧图片区域 */}
                           <div className="relative flex h-full flex-col justify-center gap-4">
-                            <div className="relative h-44 w-[70%] self-start overflow-hidden bg-[#F0EDE1] md:h-56 lg:h-64">
+                            <div className="relative h-44 w-[70%] self-start overflow-hidden bg-[#F8F7F3] md:h-56 lg:h-64">
                               <Image
                                 src="/images/story/dolphin-ocean.webp"
                                 alt="大自然"
@@ -542,7 +542,7 @@ export function StoryContent() {
                                 className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
                               />
                             </div>
-                            <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#F0EDE1] bg-[#F0EDE1] lg:-mt-14 lg:h-80">
+                            <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#F8F7F3] bg-[#F8F7F3] lg:-mt-14 lg:h-80">
                               <Image
                                 src="/images/story/lab-research.webp"
                                 alt="科技"
@@ -591,7 +591,7 @@ export function StoryContent() {
                             </div>
 
                             {/* 右侧悬浮卡片 - 减小高度并叠层 */}
-                            <div className="relative z-10 -ml-12 md:-ml-16 lg:-ml-24 flex h-[460px] md:h-[500px] flex-1 flex-col justify-between bg-[#F0EDE1] p-8 md:p-10 lg:p-14 shadow-[20px_20px_60px_rgba(0,0,0,0.1)]">
+                            <div className="relative z-10 -ml-12 md:-ml-16 lg:-ml-24 flex h-[460px] md:h-[500px] flex-1 flex-col justify-between bg-[#F8F7F3] p-8 md:p-10 lg:p-14 shadow-[20px_20px_60px_rgba(0,0,0,0.1)]">
                               <div>
                                 <span className="mb-3 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
                                   公司使命
@@ -641,7 +641,7 @@ export function StoryContent() {
                           ].map((item, idx) => (
                             <div
                               key={idx}
-                              className="flex h-full flex-col justify-between bg-[#F0EDE1] p-8 transition-all duration-300 hover:-translate-y-1 hover:bg-[#F0EDE1] hover:shadow-lg lg:p-10"
+                              className="flex h-full flex-col justify-between bg-[#F8F7F3] p-8 transition-all duration-300 hover:-translate-y-1 hover:bg-[#F8F7F3] hover:shadow-lg lg:p-10"
                             >
                               <span className="text-6xl font-thin text-[#00263e]/10">{item.num}</span>
                               <div>
@@ -671,7 +671,7 @@ export function StoryContent() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                                className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/15 bg-[#F0EDE1]/50 p-6 transition-all duration-500 hover:border-[#00263e]/40 lg:p-8 xl:p-10"
+                                className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/15 bg-[#F8F7F3]/50 p-6 transition-all duration-500 hover:border-[#00263e]/40 lg:p-8 xl:p-10"
                               >
                                 {/* 悬浮显示的背景图 */}
                                 <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
@@ -681,7 +681,7 @@ export function StoryContent() {
                                     fill
                                     className="object-cover transition-transform duration-700 group-hover:scale-110"
                                   />
-                                  <div className="absolute inset-0 bg-[#F0EDE1]/80 mix-blend-multiply" />
+                                  <div className="absolute inset-0 bg-[#F8F7F3]/80 mix-blend-multiply" />
                                 </div>
 
                                 {/* 默认显示的文字内容 */}
@@ -746,7 +746,7 @@ export function StoryContent() {
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
             >
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0 rounded-b-2xl" />

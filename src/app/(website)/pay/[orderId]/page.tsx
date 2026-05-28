@@ -42,7 +42,7 @@ export default async function PayPage({ params }: PayPageProps) {
   }
 
   return (
-    <div className="min-h-dvh bg-[#F0EDE1] flex flex-col">
+    <div className="min-h-dvh bg-[#F8F7F3] flex flex-col">
       {/* 支付内容 - 自动打开模态框 */}
       <PayContent orderId={orderId} />
     </div>

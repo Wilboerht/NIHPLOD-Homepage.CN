@@ -1101,7 +1101,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
           <div className="flex h-full flex-col items-center pointer-events-none">
             {/* 主内容区域 - 三层级布局 */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl pointer-events-auto"
+              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
               style={{ willChange: "flex-grow" }}
               initial={{ flexGrow: 0, flexBasis: 0 }}
               animate={{
@@ -1126,7 +1126,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 !isExpanded && "hidden"
               )}>
                 {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
-                <div className="flex h-full flex-col sm:hidden bg-[#F0EDE1]">
+                <div className="flex h-full flex-col sm:hidden bg-[#F8F7F3]">
                   {/* 移动端 Header */}
                   <header className="relative flex h-20 shrink-0 items-center justify-center px-6 z-30">
                     <AnimatePresence>
@@ -1593,7 +1593,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   {/* 图片展示区 + 胶囊定位容器 */}
                                   <div className="relative mb-5 sm:mb-7">
                                     {/* 步骤胶囊 - 挂在卡片顶部正中间 */}
-                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-[#00263E] border border-[#00263E]/20 whitespace-nowrap shadow-sm">
+                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F8F7F3] px-4 py-1 text-[10px] font-medium tracking-widest text-[#00263E] border border-[#00263E]/20 whitespace-nowrap shadow-sm">
                                       步骤 {String(index + 1).padStart(2, "0")}
                                     </div>
                                     {/* 图片展示区 - 极简白背景 */}
@@ -2279,9 +2279,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     {/* 底部 Logo 栏 - 无限滚动 */}
                                     <div className="pt-8 border-t border-brand-charcoal/10 mb-6 overflow-hidden relative">
                                       {/* 左侧渐变遮罩 */}
-                                      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#F0EDE1] to-transparent z-10 pointer-events-none" />
+                                      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#F8F7F3] to-transparent z-10 pointer-events-none" />
                                       {/* 右侧渐变遮罩 */}
-                                      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#F0EDE1] to-transparent z-10 pointer-events-none" />
+                                      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#F8F7F3] to-transparent z-10 pointer-events-none" />
 
                                       {/* 滚动容器 */}
                                       <div className="flex items-center animate-marquee hover:[animation-play-state:paused]">
@@ -2363,7 +2363,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           className="relative w-[320px] flex-none group"
                                         >
                                           {/* 步骤序号 */}
-                                          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
+                                          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F8F7F3] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
                                             步骤 {String(index + 1).padStart(2, "0")}
                                           </div>
 
@@ -2431,7 +2431,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                 }}
                                               >
                                                 {/* 步骤序号 */}
-                                                <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F0EDE1] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
+                                                <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F8F7F3] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
                                                   步骤 {String(actualIndex + 1).padStart(2, "0")}
                                                 </div>
 
@@ -2516,7 +2516,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 setIsExpanded(newState);
                 setDrawerOpen(newState);
               }}
-              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
+              className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
             >
               {/* 矿物纹理覆盖层 */}
               <div className="texture-overlay absolute inset-0 rounded-b-2xl" />

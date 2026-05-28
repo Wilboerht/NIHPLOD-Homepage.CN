@@ -224,7 +224,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
             onClick={onClose}
           >
             <m.div
-              className="relative flex w-full max-w-6xl h-full flex-col overflow-hidden rounded-none bg-[#F0EDE1] shadow-2xl lg:h-[700px] lg:rounded-3xl lg:flex-row"
+              className="relative flex w-full max-w-6xl h-full flex-col overflow-hidden rounded-none bg-[#F8F7F3] shadow-2xl lg:h-[700px] lg:rounded-3xl lg:flex-row"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}

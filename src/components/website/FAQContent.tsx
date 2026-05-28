@@ -136,7 +136,7 @@ export function FAQContent() {
                     <div className="flex h-full flex-col items-center">
                         {/* Drawer Content */}
                         <m.div
-                            className="relative w-full overflow-hidden rounded-b-2xl bg-[#F0EDE1] lg:rounded-b-3xl pointer-events-auto"
+                            className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
                             style={{ willChange: "flex-grow" }}
                             initial={{ flexGrow: 0, flexBasis: 0 }}
                             animate={{
@@ -160,7 +160,7 @@ export function FAQContent() {
                                 )}
                             >
                                 {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
-                                <div className="sticky top-0 z-50 flex h-20 sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F0EDE1]/95 sm:bg-[#F0EDE1]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
+                                <div className="sticky top-0 z-50 flex h-20 sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F8F7F3]/95 sm:bg-[#F8F7F3]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
                                     <Link href="/" className="flex items-center justify-center">
                                         <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
                                             <Image
@@ -279,7 +279,7 @@ export function FAQContent() {
                                 setIsExpanded(newState);
                                 setDrawerOpen(newState);
                             }}
-                            className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F0EDE1] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
+                            className="group -mt-[1px] relative z-10 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 shadow-sm transition-shadow hover:shadow-md lg:px-14 lg:py-3.5 pointer-events-auto"
                         >
                             <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
                             <m.div

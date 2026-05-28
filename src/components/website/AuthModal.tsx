@@ -247,7 +247,7 @@ function LoginModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-[#F0EDE1] md:bg-black/40 md:backdrop-blur-sm"
+            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40 md:backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -784,7 +784,7 @@ function RegisterModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-[#F0EDE1] md:bg-black/40 md:backdrop-blur-sm"
+            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40 md:backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -1282,7 +1282,7 @@ function ForgotPasswordModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-[#F0EDE1] md:bg-black/40 md:backdrop-blur-sm"
+            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40 md:backdrop-blur-sm"
             onClick={onClose}
           />
 

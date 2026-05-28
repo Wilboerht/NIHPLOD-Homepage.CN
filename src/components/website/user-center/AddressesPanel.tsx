@@ -128,7 +128,7 @@ export function AddressesPanel() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex-1 flex flex-col items-center justify-center pb-28 text-center"
           >
-            <div className="w-16 h-16 rounded-full bg-[#F0EDE1]/60 backdrop-blur-sm border border-stone-200/60 flex items-center justify-center mb-5">
+            <div className="w-16 h-16 rounded-full bg-[#F8F7F3]/60 backdrop-blur-sm border border-stone-200/60 flex items-center justify-center mb-5">
               <MapPin className="w-6 h-6 text-stone-300" />
             </div>
             <p className="text-stone-400 text-sm tracking-wider">暂无收货地址</p>
@@ -220,7 +220,7 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
         <button
           type="button"
           onClick={() => !disabled && setOpen(!open)}
-          className={`w-full px-4 py-3 bg-[#F0EDE1]/40 backdrop-blur-sm border rounded-xl text-left flex items-center justify-between transition-all text-base ${disabled
+          className={`w-full px-4 py-3 bg-[#F8F7F3]/40 backdrop-blur-sm border rounded-xl text-left flex items-center justify-between transition-all text-base ${disabled
             ? "border-transparent text-stone-300 cursor-not-allowed"
             : open
               ? "border-stone-400 ring-4 ring-stone-100 text-stone-800"
@@ -248,7 +248,7 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute z-50 top-full left-0 right-0 mt-2 bg-[#F0EDE1]/95 backdrop-blur-xl border border-stone-200/60 rounded-xl shadow-lg max-h-60 overflow-y-auto overflow-x-hidden p-1.5 scrollbar-hide"
+                className="absolute z-50 top-full left-0 right-0 mt-2 bg-[#F8F7F3]/95 backdrop-blur-xl border border-stone-200/60 rounded-xl shadow-lg max-h-60 overflow-y-auto overflow-x-hidden p-1.5 scrollbar-hide"
               >
                 {options.length === 0 ? (
                   <div className="px-4 py-8 text-stone-400 text-sm text-center font-medium italic">暂无可选数据</div>
@@ -260,7 +260,7 @@ function RegionSelect({ label, value, onChange, options, placeholder, disabled, 
                         type="button"
                         onClick={() => { onChange(opt.label); setOpen(false); }}
                         className={`w-full px-4 py-2.5 text-left text-[14px] rounded-lg transition-all flex items-center justify-between group ${opt.label === value
-                          ? "bg-[#F0EDE1]/40 text-stone-800 font-medium"
+                          ? "bg-[#F8F7F3]/40 text-stone-800 font-medium"
                           : "text-stone-500 hover:bg-stone-50 hover:text-stone-800"
                           }`}
                       >
@@ -356,7 +356,7 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-4 py-3 bg-[#F0EDE1]/40 backdrop-blur-sm border border-stone-200/60 rounded-xl text-stone-800 font-medium placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors"
+                className="w-full px-4 py-3 bg-[#F8F7F3]/40 backdrop-blur-sm border border-stone-200/60 rounded-xl text-stone-800 font-medium placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors"
                 placeholder="请输入姓名"
                 required
               />
@@ -367,7 +367,7 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
                 type="tel"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })}
-                className="w-full px-4 py-3 bg-[#F0EDE1]/40 backdrop-blur-sm border border-stone-200/60 rounded-xl text-stone-800 font-medium placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors"
+                className="w-full px-4 py-3 bg-[#F8F7F3]/40 backdrop-blur-sm border border-stone-200/60 rounded-xl text-stone-800 font-medium placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors"
                 placeholder="收货人手机号"
                 required
               />
@@ -385,7 +385,7 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
             <textarea
               value={form.detail}
               onChange={(e) => setForm({ ...form, detail: e.target.value })}
-              className="w-full px-4 py-3 bg-[#F0EDE1]/40 backdrop-blur-sm border border-stone-200/60 rounded-xl text-stone-800 font-medium placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors resize-none"
+              className="w-full px-4 py-3 bg-[#F8F7F3]/40 backdrop-blur-sm border border-stone-200/60 rounded-xl text-stone-800 font-medium placeholder:text-stone-300 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100 transition-all transition-colors resize-none"
               rows={3}
               placeholder="街道、门牌号等详细信息"
               required

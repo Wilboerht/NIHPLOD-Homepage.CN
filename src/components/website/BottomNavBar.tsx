@@ -131,7 +131,7 @@ export function BottomNavBar() {
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                                    className="absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-[20px] bg-[#F0EDE1]/95 p-2 shadow-2xl backdrop-blur-xl pointer-events-auto lg:hidden border border-brand-gold/10"
+                                    className="absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-[20px] bg-[#F8F7F3]/95 p-2 shadow-2xl backdrop-blur-xl pointer-events-auto lg:hidden border border-brand-gold/10"
                                 >
                                     <div className="flex flex-col gap-1.5">
                                         {otherNavItems.map((item) => {
@@ -163,7 +163,7 @@ export function BottomNavBar() {
                                 // Mobile: compact rounded design
                                 "rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg backdrop-blur-md",
                                 // Desktop: dock-style design from reference
-                                "lg:rounded-[20px] lg:bg-[#F0EDE1] lg:px-10 lg:py-0 lg:h-[100px]",
+                                "lg:rounded-[20px] lg:bg-[#F8F7F3] lg:px-10 lg:py-0 lg:h-[100px]",
                                 "lg:shadow-[0_20px_50px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.8)]",
                                 "lg:backdrop-blur-none"
                             )}

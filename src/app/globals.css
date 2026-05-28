@@ -12,7 +12,7 @@
 }
 
 :root {
-  --background: #F0EDE1;
+  --background: #F8F7F3;
   --foreground: #2c2c2c;
 }
 
@@ -72,7 +72,7 @@
     position: fixed;
     inset: 0;
     z-index: -1;
-    background-color: #F0EDE1;
+    background-color: #F8F7F3;
   }
 
   /* 全屏背景容器 - 带边距和圆角 */
@@ -520,7 +520,7 @@
 /* ========== 首页专用样式 ========== */
 
 .home-container {
-  --home-bg: #F0EDE1;
+  --home-bg: #F8F7F3;
   --home-text: #3A3530;
   --home-morandi: #A89F91;
   --home-dark: #6B655E;
@@ -1369,7 +1369,7 @@
 /* ========== 登录卡片样式 ========== */
 
 .kinetic-login-cell {
-  background: #F0EDE1;
+  background: #F8F7F3;
   justify-content: center;
   align-items: flex-start;
   border: none;

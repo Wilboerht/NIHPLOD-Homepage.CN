@@ -289,7 +289,7 @@ export function ContactModal() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={closeContact}
-                        className="absolute inset-0 bg-[#F0EDE1] md:bg-slate-900/40 md:backdrop-blur-md"
+                        className="absolute inset-0 bg-[#F8F7F3] md:bg-slate-900/40 md:backdrop-blur-md"
                     />
 
                     {/* 弹窗主体 - 双列布局 */}
@@ -298,7 +298,7 @@ export function ContactModal() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 10 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="relative w-full h-full md:w-full md:max-w-[880px] md:h-[600px] rounded-none md:rounded-[2.5rem] bg-transparent md:bg-[#F0EDE1] shadow-none md:shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row max-h-none overflow-hidden"
+                        className="relative w-full h-full md:w-full md:max-w-[880px] md:h-[600px] rounded-none md:rounded-[2.5rem] bg-transparent md:bg-[#F8F7F3] shadow-none md:shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row max-h-none overflow-hidden"
                     >
                         {/* 左侧：表单区域 */}
                         <div className="flex flex-1 flex-col overflow-y-auto md:p-10 h-full justify-center md:justify-start">
@@ -633,7 +633,7 @@ export function ContactModal() {
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: 8, scale: 0.98 }}
                                                         transition={{ duration: 0.2, ease: "easeOut" }}
-                                                        className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[#C8C4BC]/40 bg-[#F0EDE1] shadow-[0_16px_40px_-10px_rgba(107,95,71,0.18)]"
+                                                        className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[#C8C4BC]/40 bg-[#F8F7F3] shadow-[0_16px_40px_-10px_rgba(107,95,71,0.18)]"
                                                     >
                                                         {messageTypes.filter(t => t.value !== "").map((type, index) => {
                                                             const Icon = type.icon;
@@ -657,8 +657,8 @@ export function ContactModal() {
                                                                         isSelected
                                                                             ? "bg-[#8B7355]/[0.08] text-[#8B7355]"
                                                                             : isHighlighted
-                                                                                ? "bg-[#F0EDE1]/60 text-brand-charcoal"
-                                                                                : "text-brand-charcoal/80 hover:bg-[#F0EDE1]/40",
+                                                                                ? "bg-[#F8F7F3]/60 text-brand-charcoal"
+                                                                                : "text-brand-charcoal/80 hover:bg-[#F8F7F3]/40",
                                                                         index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-[#E8E4DA]/80"
                                                                     )}
                                                                 >
