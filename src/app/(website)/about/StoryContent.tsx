@@ -194,7 +194,7 @@ export function StoryContent() {
                   </header>
 
                   {/* Navigation - Mobile Tab Bar */}
-                  <div className="px-4 pb-2 relative z-40 shrink-0">
+                  <div className="px-4 relative z-40 shrink-0">
                     <nav className="flex h-[37px] items-center rounded-full bg-[#F0EDE1] p-[4px]">
                       {navItems.map((item) => {
                         const isActive = activeSection === item.id;
