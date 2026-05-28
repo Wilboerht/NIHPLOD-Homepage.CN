@@ -172,7 +172,7 @@ export function StoryContent() {
                   {/* Header - Mobile */}
                   <div className="flex h-20 shrink-0 items-center justify-center relative z-50">
                     <Link href="/" className="flex items-center justify-center mt-1">
-                      <div className="relative h-[28px] w-[132px]">
+                      <div className="relative h-[28px] w-[100px]">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="NIHPLOD Logo"
@@ -286,38 +286,38 @@ export function StoryContent() {
                           <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                         </div>
 
-                        <div className="mb-6 flex flex-col items-center">
-                          <div className="relative my-6 aspect-[3/4] w-full overflow-hidden border border-[#00263e]/10 shadow-sm bg-white/20">
+                        <div className="flex flex-col px-6 gap-4">
+                          <div className="relative w-full overflow-hidden border border-[#00263e]/10 shadow-sm bg-white/20">
                             <Image
                               src="/images/story/mission-image.webp?v=2"
                               alt="Mission"
-                              fill
-                              className="object-cover"
+                              width={600}
+                              height={800}
+                              className="w-full h-auto object-contain"
                             />
                           </div>
-                          <div className="px-2">
-                            <p className="mt-8 text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+
+                          <div className="flex flex-col gap-2.5">
+                            <p className="text-[14px] font-light leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                             </p>
-                            <span className="mt-6 block text-[14px] font-normal leading-[1.6] tracking-wide text-[#00263e]">
+                            <p className="text-[14px] leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif", fontWeight: 350 }}>
                               将逆转时光的不可能，<br />慢慢变得「有可能」。
-                            </span>
+                            </p>
                           </div>
 
                           {/* CEO 签名 */}
-                          <div className="mt-12 w-full text-right">
-                            <span className="mb-2 block text-[9px] uppercase tracking-[0.15em] opacity-40">
+                          <div className="flex flex-col items-end gap-2.5">
+                            <span className="text-[10px] leading-[15px] text-[#00263e]/50" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                               首席执行官
                             </span>
-                            <div className="flex justify-end mt-1">
-                              <Image
-                                src="/images/story/mission-decoration.svg"
-                                alt="John Morrell"
-                                width={100}
-                                height={28}
-                                className="opacity-80"
-                              />
-                            </div>
+                            <Image
+                              src="/images/story/mission-decoration.svg"
+                              alt="John Morrell"
+                              width={85}
+                              height={22}
+                              className="opacity-80"
+                            />
                           </div>
                         </div>
                       </section>
