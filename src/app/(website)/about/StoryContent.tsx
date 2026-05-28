@@ -206,7 +206,7 @@ export function StoryContent() {
                             type="button"
                             onClick={() => setActiveSection(item.id)}
                             className={cn(
-                              "relative h-[29px] flex items-center justify-center px-2 transition-colors duration-500 rounded-full",
+                              "relative h-[26px] flex items-center justify-center px-2 transition-colors duration-500 rounded-full",
                               isActive ? "bg-[#F8F7F3] text-[#00263E]" : "text-[rgba(0,38,62,0.5)]"
                             )}
                           >
