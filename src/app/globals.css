@@ -743,26 +743,58 @@
   }
 
   .home-container .btn-primary {
-    width: auto;
-    height: 46px;
-    padding: 0 28px;
-    background-color: rgba(201, 168, 108, 0.08);
-    color: #8B7355;
-    border: 1px solid rgba(139, 115, 85, 0.35);
-    box-shadow: none;
+    width: 121px;
+    height: 45px;
+    padding: 12px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(153.44deg, #D7CEBF -38.02%, #FCF9F2 47.77%, #D7CEBF 114.49%);
+    color: #7B726C;
     font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    border-radius: 99px;
+    border: none;
+    box-shadow: none;
+    position: relative;
+    overflow: visible;
+  }
+
+  .home-container .btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 99px;
+    background: linear-gradient(153.44deg, #D7CEBF -38.02%, #FCF9F2 47.77%, #D7CEBF 114.49%);
+    opacity: 0;
+    z-index: -1;
+    filter: blur(8px);
+    animation: ripple-outer 2.5s ease-out infinite;
   }
 
   .home-container .btn-primary:hover {
-    background-color: rgba(201, 168, 108, 0.14);
-    border-color: rgba(139, 115, 85, 0.55);
-    transform: none;
-    box-shadow: none;
-    color: #6d5a42;
+    filter: brightness(1.03);
+  }
+
+  @keyframes ripple-outer {
+    0% {
+      transform: scale(0.95);
+      opacity: 0.35;
+    }
+    100% {
+      transform: scale(1.15);
+      opacity: 0;
+    }
   }
 
   .home-container .btn-secondary {
     width: 160px;
+  }
+
+  /* 移动端隐藏首页波浪背景 */
+  .home-container .wave-container {
+    display: none;
   }
 }
 
@@ -782,22 +814,38 @@
   }
 
   .home-container .btn-primary {
-    width: auto;
-    height: 44px;
-    padding: 0 24px;
-    background-color: rgba(201, 168, 108, 0.08);
-    color: #8B7355;
-    border: 1px solid rgba(139, 115, 85, 0.35);
-    box-shadow: none;
+    width: 121px;
+    height: 45px;
+    padding: 12px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(153.44deg, #D7CEBF -38.02%, #FCF9F2 47.77%, #D7CEBF 114.49%);
+    color: #7B726C;
     font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    border-radius: 99px;
+    border: none;
+    box-shadow: none;
+    position: relative;
+    overflow: visible;
+  }
+
+  .home-container .btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 99px;
+    background: linear-gradient(153.44deg, #D7CEBF -38.02%, #FCF9F2 47.77%, #D7CEBF 114.49%);
+    opacity: 0;
+    z-index: -1;
+    filter: blur(8px);
+    animation: ripple-outer 2.5s ease-out infinite;
   }
 
   .home-container .btn-primary:hover {
-    background-color: rgba(201, 168, 108, 0.14);
-    border-color: rgba(139, 115, 85, 0.55);
-    transform: none;
-    box-shadow: none;
-    color: #6d5a42;
+    filter: brightness(1.03);
   }
 }
 

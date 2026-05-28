@@ -219,6 +219,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
   // 鼠标视差效果
   useEffect(() => {
+    // 移动端禁用鼠标视差
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!isExpanded) return; // 只在展开时启用视差
 
