@@ -212,9 +212,9 @@ export function FAQContent() {
                                                 <div
                                                     key={index}
                                                     className={cn(
-                                                        "group transition-all duration-500 ease-out border-b border-brand-charcoal/10 overflow-visible",
+                                                        "group transition-all duration-500 ease-out border-b border-brand-charcoal/10 overflow-visible border-l-[1.5px] border-l-transparent",
                                                         openIndex === index
-                                                            ? "bg-white/40"
+                                                            ? "bg-[#F0EDE1]/40 border-l-[#B5AC88]"
                                                             : "hover:bg-white/20"
                                                     )}
                                                 >
@@ -230,7 +230,7 @@ export function FAQContent() {
                                                         </span>
                                                         <span className={cn(
                                                             "shrink-0 transition-all duration-500 p-1.5 -mr-1.5 rounded-full text-brand-charcoal/30",
-                                                            openIndex === index ? "rotate-45 text-brand-charcoal/60 bg-brand-charcoal/5" : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
+                                                            openIndex === index ? "rotate-45 text-brand-charcoal/80 bg-brand-charcoal/10" : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
                                                         )}>
                                                             <Plus className="w-5 h-5 stroke-[1.5]" />
                                                         </span>
@@ -241,10 +241,10 @@ export function FAQContent() {
                                                                 initial={{ height: 0, opacity: 0 }}
                                                                 animate={{ height: "auto", opacity: 1 }}
                                                                 exit={{ height: 0, opacity: 0 }}
-                                                                transition={{ duration: 0.3, ease: "easeInOut" }}
-                                                                className="overflow-hidden"
+                                                                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                                                                style={{ overflow: "hidden" }}
                                                             >
-                                                                <div className="pb-8 pl-6 pr-12 text-[14px] lg:text-[15px] font-light text-brand-charcoal/60 leading-[1.7] lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                                                <div className="pb-8 pl-6 pr-6 lg:pr-12 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-[1.7] lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                                     {faq.answer}
                                                                 </div>
                                                             </m.div>
