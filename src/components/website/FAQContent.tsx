@@ -212,11 +212,11 @@ export function FAQContent() {
                                                 <div
                                                     key={index}
                                                     className={cn(
-                                                        "group transition-all duration-500 ease-out",
+                                                        "group transition-colors duration-500 ease-out",
                                                         "rounded-lg p-4 mb-3 sm:rounded-none sm:p-0 sm:mb-0 sm:border-b sm:border-brand-charcoal/10 sm:overflow-visible sm:border-l-[1.5px] sm:border-l-transparent",
                                                         openIndex === index
                                                             ? "bg-[#F0EDE1] sm:bg-[#F0EDE1]/40 sm:border-l-[#B5AC88]"
-                                                            : "border-[1.5px] border-[#F0EDE1] sm:border-0 sm:hover:bg-white/20"
+                                                            : "ring-[1.5px] ring-inset ring-[#F0EDE1] sm:ring-0 sm:hover:bg-white/20"
                                                     )}
                                                 >
                                                     <button
@@ -239,14 +239,16 @@ export function FAQContent() {
                                                     <AnimatePresence>
                                                         {openIndex === index && (
                                                             <m.div
-                                                                initial={{ height: 0, opacity: 0 }}
-                                                                animate={{ height: "auto", opacity: 1 }}
-                                                                exit={{ height: 0, opacity: 0 }}
+                                                                initial={{ gridTemplateRows: "0fr", opacity: 0 }}
+                                                                animate={{ gridTemplateRows: "1fr", opacity: 1 }}
+                                                                exit={{ gridTemplateRows: "0fr", opacity: 0 }}
                                                                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                                                                style={{ overflow: "hidden" }}
+                                                                style={{ display: "grid" }}
                                                             >
-                                                                <div className="pb-4 pl-4 pr-4 border-l border-brand-charcoal/20 sm:pb-8 sm:pl-6 sm:pr-6 lg:pr-12 sm:border-l-0 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-snug lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                                                                    {faq.answer}
+                                                                <div style={{ overflow: "hidden" }}>
+                                                                    <div className="pb-4 pl-4 pr-4 border-l border-brand-charcoal/20 sm:pb-8 sm:pl-6 sm:pr-6 lg:pr-12 sm:border-l-0 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-snug lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                                                        {faq.answer}
+                                                                    </div>
                                                                 </div>
                                                             </m.div>
                                                         )}
