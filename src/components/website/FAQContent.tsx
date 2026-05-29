@@ -186,7 +186,7 @@ export function FAQContent() {
                                     </div>
 
                                     {/* Scrollable Question List */}
-                                    <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                    <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-pb-6">
                                         {/* Page Title - Mobile */}
                                         <div className="flex flex-col items-center mb-7 sm:hidden">
                                             <div
@@ -245,7 +245,7 @@ export function FAQContent() {
                                                                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                                                                 style={{ overflow: "hidden" }}
                                                             >
-                                                                <div className="pb-4 pl-4 pr-0 border-l border-brand-charcoal/20 sm:pb-8 sm:pl-6 sm:pr-6 lg:pr-12 sm:border-l-0 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-snug lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                                                <div className="pb-4 pl-4 pr-4 border-l border-brand-charcoal/20 sm:pb-8 sm:pl-6 sm:pr-6 lg:pr-12 sm:border-l-0 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-snug lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                                     {faq.answer}
                                                                 </div>
                                                             </m.div>
