@@ -91,6 +91,9 @@ export function BottomNavBar() {
     // 当抽屉展开、登录弹窗、用户中心面板或联系我们弹窗激活时，隐藏导航栏
     const isVisible = !isDrawerOpen && !activeModal && !userCenterOpen && !contactOpen;
 
+    // 服务入口页面在移动端隐藏底部导航栏（实现全屏效果）
+    const isServicesPage = pathname === '/services';
+
     return (
         <>
             {/* 移动端菜单遮罩层 */}
@@ -120,7 +123,10 @@ export function BottomNavBar() {
                             duration: 0.6,
                             ease: [0.22, 1, 0.36, 1]
                         }}
-                        className="fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pointer-events-none pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]"
+                        className={cn(
+                            "fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pointer-events-none pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
+                            isServicesPage && "max-lg:hidden"
+                        )}
                         role="banner"
                     >
                         {/* 移动端弹出菜单 - 嵌套在 header 内以实现 Dock 对齐 */}
