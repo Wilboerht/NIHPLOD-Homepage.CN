@@ -207,20 +207,21 @@ export function FAQContent() {
                                             </h1>
                                             <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                                         </div>
-                                        <div className="flex flex-col gap-0 max-w-4xl mx-auto">
+                                        <div className="flex flex-col gap-3 sm:gap-0 max-w-4xl mx-auto">
                                             {FAQS.map((faq, index) => (
                                                 <div
                                                     key={index}
                                                     className={cn(
-                                                        "group transition-all duration-500 ease-out border-b border-brand-charcoal/10 overflow-visible border-l-[1.5px] border-l-transparent",
+                                                        "group transition-all duration-500 ease-out",
+                                                        "rounded-lg p-4 mb-3 sm:rounded-none sm:p-0 sm:mb-0 sm:border-b sm:border-brand-charcoal/10 sm:overflow-visible sm:border-l-[1.5px] sm:border-l-transparent",
                                                         openIndex === index
-                                                            ? "bg-[#F0EDE1]/40 border-l-[#B5AC88]"
-                                                            : "hover:bg-white/20"
+                                                            ? "bg-[#F0EDE1] sm:bg-[#F0EDE1]/40 sm:border-l-[#B5AC88]"
+                                                            : "border-[1.5px] border-[#F0EDE1] sm:border-0 sm:hover:bg-white/20"
                                                     )}
                                                 >
                                                     <button
                                                         onClick={() => toggleFAQ(index)}
-                                                        className="w-full flex items-start justify-between text-left gap-4 py-5 px-4 lg:py-6 lg:px-6"
+                                                        className="w-full flex items-center justify-between text-left gap-4 py-0 px-0 sm:py-5 sm:px-4 lg:py-6 lg:px-6"
                                                     >
                                                         <span className={cn(
                                                             "flex-1 text-[14px] lg:text-[16px] font-normal tracking-wide leading-snug lg:leading-normal text-[#00263E] transition-colors duration-300",
@@ -229,8 +230,8 @@ export function FAQContent() {
                                                             {faq.question}
                                                         </span>
                                                         <span className={cn(
-                                                            "shrink-0 transition-all duration-500 p-1.5 -mr-1.5 mt-0.5 rounded-full text-brand-charcoal/30",
-                                                            openIndex === index ? "rotate-45 text-brand-charcoal/80 bg-brand-charcoal/10" : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
+                                                            "shrink-0 transition-all duration-500 p-1.5 -mr-1.5 text-brand-charcoal/30 sm:rounded-full",
+                                                            openIndex === index ? "rotate-45 text-brand-charcoal/80 sm:bg-brand-charcoal/10" : "group-hover:text-brand-charcoal/50 sm:group-hover:bg-brand-charcoal/[0.03]"
                                                         )}>
                                                             <Plus className="w-5 h-5 stroke-[1.5]" />
                                                         </span>
@@ -244,7 +245,7 @@ export function FAQContent() {
                                                                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                                                                 style={{ overflow: "hidden" }}
                                                             >
-                                                                <div className="pb-8 pl-6 pr-6 lg:pr-12 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-snug lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                                                <div className="pb-4 pl-4 pr-0 border-l border-brand-charcoal/20 sm:pb-8 sm:pl-6 sm:pr-6 lg:pr-12 sm:border-l-0 text-[14px] lg:text-[15px] font-light text-brand-charcoal/70 leading-snug lg:leading-[1.8] tracking-wide" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                                     {faq.answer}
                                                                 </div>
                                                             </m.div>
