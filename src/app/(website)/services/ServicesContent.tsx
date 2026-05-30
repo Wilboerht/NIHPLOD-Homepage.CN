@@ -232,7 +232,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
               {/* 标题区 */}
               <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4">
-                <div className="space-y-2">
+                <div>
                   <m.h1
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -242,12 +242,12 @@ export function ServicesContent({ content }: ServicesContentProps) {
                     {pageTitle.zh}
                   </m.h1>
                   {/* 装饰短横线 - 仅移动端 */}
-                  <div className="lg:hidden mx-auto w-[70px] h-[1.5px] bg-[#00263E]" />
+                  <div className="lg:hidden mx-auto w-[70px] h-[1.5px] bg-[#00263E] max-lg:mt-2" />
                   <m.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
-                    className="mx-auto max-w-lg text-sm font-light sm:text-base leading-relaxed text-[#00263E] lg:text-brand-charcoal/60"
+                    className="mx-auto max-w-lg text-sm font-light sm:text-base leading-relaxed text-[#00263E] lg:text-brand-charcoal/60 max-lg:mt-[34px]"
                   >
                     <span className="hidden lg:inline">NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验</span>
                     <span className="lg:hidden">NIHPLOD 旎柏以卓越品质与全方位服务<br />为您呈献逆转时光的奢华体验</span>
