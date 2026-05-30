@@ -197,8 +197,8 @@ export function FAQContent() {
                                                     clipPath: 'polygon(0 0, 3% 20%, 0 40%, 4% 50%, 0 60%, 3% 80%, 0 100%, 100% 100%, 97% 80%, 100% 60%, 96% 50%, 100% 40%, 97% 20%, 100% 0)'
                                                 }}
                                             >
-                                                <span className="text-[12px] font-normal tracking-wide text-[#7B726C]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                                                    遇到任何问题请联系我们的客户服务团队
+                                                <span className="text-[13px] md:text-[12px] font-normal tracking-wide text-[#7B726C]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                                                    需要帮助？联系我们
                                                 </span>
                                                 <ChevronRight className="w-4 h-4 text-[#7B726C]" />
                                             </div>

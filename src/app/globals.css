@@ -953,7 +953,6 @@
   width: auto;
   min-width: 150vw;
   height: auto;
-  filter: grayscale(1) brightness(0.6);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1863,7 +1862,7 @@
 
 .kinetic-cell-yellow {
   /* Apple Liquid Glass Effect */
-  background: linear-gradient(135deg, rgba(250, 231, 171, 0.12) 0%, rgba(250, 231, 171, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(235, 200, 125, 0.52) 0%, rgba(235, 200, 125, 0.32) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: none;
@@ -1898,7 +1897,7 @@
 
 .kinetic-cell-orange {
   /* Apple Liquid Glass Effect */
-  background: linear-gradient(135deg, rgba(225, 186, 161, 0.12) 0%, rgba(225, 186, 161, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(225, 186, 161, 0.42) 0%, rgba(225, 186, 161, 0.24) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: none;
