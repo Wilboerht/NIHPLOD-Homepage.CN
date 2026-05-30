@@ -28,12 +28,17 @@ export function TermsContent({ content }: TermsContentProps) {
 
   // 确保章节按逻辑顺序排列
   const sectionOrder: TermsTabId[] = ["general", "product", "responsibility", "dispute"];
-  const sections = sectionOrder.map(id => ({
-    id,
-    title: tabsContent?.[id]?.title || id,
-    content: tabsContent?.[id]?.content || [],
-    index: sectionOrder.indexOf(id) + 1
-  }));
+  const sections = sectionOrder
+    .map(id => ({
+      id,
+      title: tabsContent?.[id]?.title || id,
+      content: tabsContent?.[id]?.content || [],
+      index: sectionOrder.indexOf(id) + 1
+    }))
+    .filter(s => s.content.length > 0);
+
+  // 是否显示目录导航（多个章节时显示）
+  const showSidebar = sections.length > 1;
 
   // 引用滚动容器
   const mainRef = useRef<HTMLElement>(null);
@@ -167,59 +172,64 @@ export function TermsContent({ content }: TermsContentProps) {
             {/* 布局：目录导航 + 条款内容 */}
             <div className="flex flex-1 overflow-hidden relative mx-auto w-full max-w-7xl">
 
-              {/* 左侧导航 - 更加精致的排版 */}
-              <aside className="hidden w-48 flex-shrink-0 border-r border-brand-charcoal/5 lg:flex flex-col items-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <nav className="space-y-6 w-full px-6 pt-4">
-                  <div className="flex items-center gap-3 px-2 opacity-80">
-                    <p className="text-sm font-bold text-brand-charcoal">
-                      目录
-                    </p>
-                  </div>
+              {/* 左侧导航 - 多个章节时显示 */}
+              {showSidebar && (
+                <aside className="hidden w-48 flex-shrink-0 border-r border-brand-charcoal/5 lg:flex flex-col items-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <nav className="space-y-6 w-full px-6 pt-4">
+                    <div className="flex items-center gap-3 px-2 opacity-80">
+                      <p className="text-sm font-bold text-brand-charcoal">
+                        目录
+                      </p>
+                    </div>
 
-                  <div className="flex flex-col space-y-1">
-                    {sections.map((section) => (
-                      <button
-                        key={section.id}
-                        onClick={() => scrollToSection(section.id)}
-                        className={cn(
-                          "group relative flex w-full items-center py-3 px-2 text-left transition-all duration-300 rounded-lg hover:bg-brand-charcoal/5",
-                          activeSection === section.id
-                            ? "text-brand-charcoal"
-                            : "text-brand-charcoal/60"
-                        )}
-                      >
-                        <span className={cn(
-                          "text-sm tabular-nums transition-all duration-300 mr-2 font-medium",
-                          activeSection === section.id ? "opacity-100 font-semibold" : "opacity-60 group-hover:opacity-100"
-                        )}>
-                          0{section.index}
-                        </span>
-                        <span className={cn(
-                          "text-sm font-medium transition-all duration-300",
-                          activeSection === section.id ? "font-bold translate-x-1" : "group-hover:translate-x-1"
-                        )}>
-                          {section.title}
-                        </span>
+                    <div className="flex flex-col space-y-1">
+                      {sections.map((section) => (
+                        <button
+                          key={section.id}
+                          onClick={() => scrollToSection(section.id)}
+                          className={cn(
+                            "group relative flex w-full items-center py-3 px-2 text-left transition-all duration-300 rounded-lg hover:bg-brand-charcoal/5",
+                            activeSection === section.id
+                              ? "text-brand-charcoal"
+                              : "text-brand-charcoal/60"
+                          )}
+                        >
+                          <span className={cn(
+                            "text-sm tabular-nums transition-all duration-300 mr-2 font-medium",
+                            activeSection === section.id ? "opacity-100 font-semibold" : "opacity-60 group-hover:opacity-100"
+                          )}>
+                            0{section.index}
+                          </span>
+                          <span className={cn(
+                            "text-sm font-medium transition-all duration-300",
+                            activeSection === section.id ? "font-bold translate-x-1" : "group-hover:translate-x-1"
+                          )}>
+                            {section.title}
+                          </span>
 
-                        {/* 激活状态指示点 - 调整位置 */}
-                        {activeSection === section.id && (
-                          <m.div
-                            layoutId="active-dot"
-                            className="absolute right-2 h-1 w-1 rounded-full bg-brand-gold"
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                          />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </nav>
-              </aside>
+                          {/* 激活状态指示点 */}
+                          {activeSection === section.id && (
+                            <m.div
+                              layoutId="active-dot"
+                              className="absolute right-2 h-1 w-1 rounded-full bg-brand-gold"
+                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </nav>
+                </aside>
+              )}
 
-              {/* 右侧内容区域 - 极简主义排版 */}
+              {/* 内容区域 */}
               <main
                 ref={mainRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                className={cn(
+                  "flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+                  !showSidebar && "lg:border-l lg:border-brand-charcoal/5"
+                )}
               >
                 <div className="max-w-6xl px-6 lg:px-12">
                   <div className="space-y-24">
@@ -242,8 +252,8 @@ export function TermsContent({ content }: TermsContentProps) {
                                     const trimmed = line.trim();
                                     if (!trimmed) return <div key={lIdx} className="h-2" />;
 
-                                    // 条款内标题 (一、二、...)
-                                    if (/^[一二三四五六七八九十0-9]+[、.]/.test(trimmed)) {
+                                    // 条款标题 (1. 2. 一、二、...)
+                                    if (/^[（(]?[一二三四五六七八九十0-9]+[)）]?[、.\s]/.test(trimmed)) {
                                       return (
                                         <h3 key={lIdx} className="pt-4 font-serif text-lg font-bold text-gray-900">
                                           {formatText(trimmed)}
@@ -251,12 +261,15 @@ export function TermsContent({ content }: TermsContentProps) {
                                       );
                                     }
 
-                                    // 列表项 (•)
-                                    if (trimmed.startsWith('•')) {
+                                    // 子列表项 ((1) (2) • -)
+                                    if (/^[（(][0-9]+[）)]/.test(trimmed) || trimmed.startsWith('•') || /^\-[\s]/.test(trimmed)) {
+                                      const clean = trimmed.startsWith('•') || trimmed.startsWith('-')
+                                        ? trimmed.substring(1).trim()
+                                        : trimmed;
                                       return (
                                         <div key={lIdx} className="flex gap-3 text-sm leading-relaxed text-gray-700">
                                           <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-gold/60" />
-                                          <p className="flex-1 opacity-90">{formatText(trimmed.substring(1).trim())}</p>
+                                          <p className="flex-1 opacity-90">{formatText(clean)}</p>
                                         </div>
                                       );
                                     }
