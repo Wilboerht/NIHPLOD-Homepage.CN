@@ -176,7 +176,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             {/* 手机端背景水印 */}
             <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
               <Image
-                src="/images/N-web.svg"
+                src="/images/watermark-mobile.svg"
                 alt=""
                 fill
                 className="object-cover opacity-75 blur-[7.5px]"
