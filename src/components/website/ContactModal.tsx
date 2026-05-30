@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { X, Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown, ChevronLeft } from "lucide-react";
+import { X, Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown, ChevronLeft, ArrowRight } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -544,8 +544,8 @@ export function ContactModal() {
                                 </form>
                             </div>
 
-                            {/* === 手机端极简表单 === */}
-                            <div className="md:hidden flex-1 flex flex-col px-6 pt-0 pb-4 relative z-10">
+                            {/* === 手机端表单 === */}
+                            <div className="md:hidden flex-1 flex flex-col px-6 pt-0 pb-8 relative z-10">
                                 {/* 手机端顶部栏 */}
                                 <div className="relative flex-shrink-0 h-[88px] w-full flex items-center justify-center">
                                     <button
@@ -589,43 +589,61 @@ export function ContactModal() {
                                     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                                         {/* 蜜罐字段 */}
                                         <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
-                                        
-                                        {/* 称呼 */}
-                                        <div>
-                                            <input
-                                                type="text"
-                                                name="name"
-                                                value={formData.name}
-                                                onChange={handleChange}
-                                                maxLength={50}
-                                                className={cn(
-                                                    "block w-full bg-transparent border-0 border-b border-[#00263E]/25 rounded-none py-3 px-0 text-base tracking-wide text-[#00263E] placeholder:text-[#00263E]/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-[#00263E]/60 transition-colors",
-                                                    errors.name && "border-red-400 focus:border-red-400"
-                                                )}
-                                                placeholder="您的称呼"
-                                            />
-                                            {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+
+                                        {/* 标题区域 */}
+                                        <div className="text-center pt-6 pb-4">
+                                            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">联系我们</h2>
+                                            <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                                            <p className="mt-[34px] text-[14px] font-light leading-[1.8] tracking-wide text-[#00263E]/90">
+                                                还有其他问题？<br />期待与您的每一次交流
+                                            </p>
                                         </div>
 
-                                        {/* 手机号 */}
-                                        <div>
-                                            <input
-                                                type="tel"
-                                                name="phone"
-                                                value={formData.phone}
-                                                onChange={handleChange}
-                                                maxLength={11}
-                                                className={cn(
-                                                    "block w-full bg-transparent border-0 border-b border-[#00263E]/25 rounded-none py-3 px-0 text-base tracking-wide text-[#00263E] placeholder:text-[#00263E]/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-[#00263E]/60 transition-colors",
-                                                    errors.phone && "border-red-400 focus:border-red-400"
-                                                )}
-                                                placeholder="您的手机号"
-                                            />
-                                            {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+                                        {/* 称呼 + 手机号 并排 */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-[13px] font-medium tracking-wide text-[#00263E] mb-1.5">
+                                                    称呼<span className="text-red-400">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="name"
+                                                    value={formData.name}
+                                                    onChange={handleChange}
+                                                    maxLength={50}
+                                                    className={cn(
+                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[#00263E]/35 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        errors.name && "ring-1 ring-red-400 focus:ring-red-400"
+                                                    )}
+                                                    placeholder="请输入称呼"
+                                                />
+                                                {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+                                            </div>
+                                            <div>
+                                                <label className="block text-[13px] font-medium tracking-wide text-[#00263E] mb-1.5">
+                                                    手机号<span className="text-red-400">*</span>
+                                                </label>
+                                                <input
+                                                    type="tel"
+                                                    name="phone"
+                                                    value={formData.phone}
+                                                    onChange={handleChange}
+                                                    maxLength={11}
+                                                    className={cn(
+                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[#00263E]/35 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        errors.phone && "ring-1 ring-red-400 focus:ring-red-400"
+                                                    )}
+                                                    placeholder="请输入手机号"
+                                                />
+                                                {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+                                            </div>
                                         </div>
 
                                         {/* 留言类型 */}
                                         <div ref={typeDropdownRef} className="relative">
+                                            <label className="block text-[13px] font-medium tracking-wide text-[#00263E] mb-1.5">
+                                                留言类型<span className="text-red-400">*</span>
+                                            </label>
                                             <button
                                                 ref={mobileTypeTriggerRef}
                                                 type="button"
@@ -633,16 +651,16 @@ export function ContactModal() {
                                                 aria-expanded={isTypeDropdownOpen}
                                                 onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                                                 className={cn(
-                                                    "flex w-full items-center justify-between border-0 border-b bg-transparent py-3 px-0 text-left text-base tracking-wide outline-none transition-colors",
-                                                    !formData.type ? "text-[#00263E]/40 border-[#00263E]/25" : "text-[#00263E] border-[#00263E]/25",
-                                                    errors.type && "border-red-400"
+                                                    "flex w-full items-center justify-between rounded-lg bg-[#F8F7F3] py-3 px-3 text-left text-[14px] tracking-wide outline-none transition-all",
+                                                    !formData.type ? "text-[#00263E]/40" : "text-[#00263E]",
+                                                    errors.type && "ring-1 ring-red-400"
                                                 )}
                                             >
                                                 <span>
                                                     {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
                                                 </span>
                                                 <ChevronDown className={cn(
-                                                    "h-4 w-4 text-brand-charcoal/40 transition-transform duration-200",
+                                                    "h-4 w-4 text-[#00263E]/40 transition-transform duration-200 shrink-0 ml-2",
                                                     isTypeDropdownOpen && "rotate-180"
                                                 )} />
                                             </button>
@@ -705,6 +723,9 @@ export function ContactModal() {
                                         {/* 留言内容 或 申请入驻地址 */}
                                         {formData.type === "application" ? (
                                             <div>
+                                                <label className="block text-[13px] font-medium tracking-wide text-[#00263E] mb-1.5">
+                                                    所在城市<span className="text-red-400">*</span>
+                                                </label>
                                                 <input
                                                     type="text"
                                                     name="location"
@@ -712,8 +733,8 @@ export function ContactModal() {
                                                     onChange={handleChange}
                                                     maxLength={100}
                                                     className={cn(
-                                                        "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors",
-                                                        errors.location && "border-red-400 focus:border-red-400"
+                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[#00263E]/35 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        errors.location && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="您的所在城市（如：上海、北京）"
                                                 />
@@ -721,6 +742,9 @@ export function ContactModal() {
                                             </div>
                                         ) : (
                                             <div>
+                                                <label className="block text-[13px] font-medium tracking-wide text-[#00263E] mb-1.5">
+                                                    留言内容<span className="text-red-400">*</span>
+                                                </label>
                                                 <textarea
                                                     name="content"
                                                     value={formData.content}
@@ -728,8 +752,8 @@ export function ContactModal() {
                                                     rows={3}
                                                     maxLength={2000}
                                                     className={cn(
-                                                        "block w-full resize-none bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors",
-                                                        errors.content && "border-red-400 focus:border-red-400"
+                                                        "block w-full resize-none rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[#00263E]/35 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        errors.content && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="请输入您的具体需求或建议..."
                                                 />
@@ -741,7 +765,7 @@ export function ContactModal() {
                                         <button
                                             type="submit"
                                             disabled={status === "loading"}
-                                            className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-[#00263E] border border-[#00263E]/25 hover:bg-[#00263E]/[0.03] active:scale-[0.98] transition-all disabled:opacity-40 mt-2"
+                                            className="mx-auto mt-2 flex items-center justify-center gap-2 rounded-full bg-[#F8F7F3] px-8 py-3 text-[14px] font-medium tracking-[0.15em] text-[#00263E] shadow-sm hover:shadow-md active:scale-[0.98] transition-all disabled:opacity-40"
                                         >
                                             {status === "loading" ? (
                                                 <span className="flex items-center justify-center gap-2">
@@ -749,20 +773,12 @@ export function ContactModal() {
                                                     正在提交...
                                                 </span>
                                             ) : (
-                                                "提交"
+                                                <>
+                                                    提交
+                                                    <ArrowRight className="h-4 w-4" />
+                                                </>
                                             )}
                                         </button>
-
-                                        {/* 关闭按钮 */}
-                                        <div className="flex justify-center pt-2">
-                                            <button
-                                                type="button"
-                                                onClick={closeContact}
-                                                className="flex h-9 w-9 items-center justify-center rounded-full border border-[#00263E]/15 text-[#00263E]/40 hover:border-[#00263E]/30 hover:text-[#00263E]/70 hover:bg-[#00263E]/[0.03] transition-all"
-                                            >
-                                                <X className="h-4 w-4" strokeWidth={1.5} />
-                                            </button>
-                                        </div>
                                     </form>
                                 )}
                             </div>
