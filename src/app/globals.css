@@ -65,6 +65,13 @@
     max-width: none;
   }
 
+  /* 覆盖 inline style 设置 position 的元素（DevTools 注入的 overlay 等） */
+  [style*="position:"],
+  [style*="position:"]::before,
+  [style*="position:"]::after {
+    max-width: none;
+  }
+
   /* ========== 全屏背景安全区域处理 ========== */
 
   /* 底层背景 - 与内容区域颜色一致 */
