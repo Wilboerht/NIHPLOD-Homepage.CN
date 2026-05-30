@@ -241,7 +241,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
               </div>
 
               {/* 内容区域 */}
-              <main className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <main className="flex-1 overflow-y-auto scroll-smooth overscroll-contain [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="mx-auto max-w-4xl h-full min-h-0 flex flex-col justify-center">
 
                   <div className="flex flex-col items-center w-full">
