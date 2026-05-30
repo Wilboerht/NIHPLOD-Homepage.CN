@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
-import { ChevronLeft, Home, ScanFace, ShieldCheck } from "lucide-react";
+import { ChevronLeft, Home, ScanFace, ShieldCheck, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ServicesPageContent, ServiceDetail as CMSServiceDetail } from "@/types/page-content";
 
@@ -107,7 +107,7 @@ const ServiceCard = ({
       onMouseEnter={() => !isDisabled && setIsHovered(true)}
       onMouseLeave={() => !isDisabled && setIsHovered(false)}
       className={cn(
-        "group relative flex flex-col items-center justify-center gap-2 p-4 transition-all duration-500 sm:gap-4 sm:p-8 md:p-10",
+        "group relative flex flex-col items-center justify-center gap-2 p-0 transition-all duration-500 sm:gap-4 sm:p-8 md:p-10",
         isDisabled ? "cursor-not-allowed opacity-30 grayscale" : "hover:bg-white/50"
       )}
       initial={{ opacity: 0, y: 15 }}
@@ -115,16 +115,16 @@ const ServiceCard = ({
       transition={{ duration: 0.4, delay: 0.15 + index * 0.06, ease: "easeOut" }}
       whileTap={isDisabled ? undefined : { scale: 0.98 }}
     >
-      <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28">
+      <div className="flex h-12 w-12 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28">
         {/* PC 端图标 */}
         <Icon className="hidden lg:block h-10 w-10 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22" isHovered={isHovered} />
         {/* 移动端深色图标 */}
-        <Icon className="lg:hidden h-10 w-10 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22" isHovered={isHovered} color={mobileIconColor} />
+        <Icon className="lg:hidden h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22" isHovered={isHovered} color={mobileIconColor} />
       </div>
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-2">
         <span className={cn(
           "text-xs font-medium transition-colors duration-300 sm:text-sm md:text-base lg:text-lg",
-          isHovered ? "text-brand-charcoal" : "max-lg:text-brand-charcoal text-brand-charcoal/70"
+          isHovered ? "text-brand-charcoal" : "max-lg:text-[#00263E] text-brand-charcoal/70"
         )}>
           {service.label}
         </span>
@@ -173,25 +173,40 @@ export function ServicesContent({ content }: ServicesContentProps) {
         <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)] max-lg:drop-shadow-none">
           {/* 主内容卡片容器 */}
           <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#F0EDE1] lg:bg-[#F8F7F3] pointer-events-auto relative">
+            {/* 手机端背景水印 */}
+            <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
+              <Image
+                src="/images/N-web.svg"
+                alt=""
+                fill
+                className="object-cover opacity-75 blur-[7.5px]"
+                priority
+              />
+            </div>
             <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
-              {/* 顶栏 / Logo 区 */}
-              <header className="flex-shrink-0 px-4 pt-8 pb-6 sm:pt-10 sm:pb-8 lg:pt-12 lg:pb-10">
-                <div className="flex items-center">
-                  {/* Logo - 移动端居中，与 /about 一致 */}
-                  <div className="lg:hidden flex-1 flex justify-center">
-                    <Link href="/" className="flex items-center justify-center mt-1">
-                      <div className="relative h-[28px] w-[100px]">
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD Logo"
-                          fill
-                          className="object-contain"
-                          priority
-                        />
-                      </div>
-                    </Link>
+              {/* 手机端顶部栏 - 按设计稿 */}
+              <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center pointer-events-auto">
+                {/* 返回按钮 */}
+                <Link href="/" className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-8 py-[10px]">
+                  <ArrowLeft className="h-6 w-6 text-[#00263E]" />
+                </Link>
+                {/* Logo */}
+                <Link href="/" className="flex items-center justify-center py-[30px]">
+                  <div className="relative h-[28px] w-[95px]">
+                    <Image
+                      src="/images/NIHPLOD-logo.svg"
+                      alt="NIHPLOD Logo"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
                   </div>
+                </Link>
+              </div>
 
+              {/* 顶栏 / Logo 区 - 仅桌面端 */}
+              <header className="hidden lg:block flex-shrink-0 px-4 pt-8 pb-6 sm:pt-10 sm:pb-8 lg:pt-12 lg:pb-10">
+                <div className="flex items-center">
                   {/* Logo - 桌面端居中 */}
                   <div className="hidden lg:flex flex-1 justify-center">
                     <m.div
@@ -216,23 +231,23 @@ export function ServicesContent({ content }: ServicesContentProps) {
               <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
 
               {/* 标题区 */}
-              <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8">
-                <div className="space-y-4 lg:space-y-2">
+              <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8 max-lg:px-0 max-lg:py-4">
+                <div className="space-y-2">
                   <m.h1
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="font-serif text-[26px] text-brand-charcoal sm:text-[32px] tracking-widest"
+                    className="font-serif text-[24px] font-medium text-[#00263E] sm:text-[32px] tracking-[0.2em] lg:text-brand-charcoal"
                   >
                     {pageTitle.zh}
                   </m.h1>
                   {/* 装饰短横线 - 仅移动端 */}
-                  <div className="lg:hidden mx-auto w-12 h-[1px] bg-brand-charcoal/30" />
+                  <div className="lg:hidden mx-auto w-[70px] h-[1.5px] bg-[#00263E]" />
                   <m.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
-                    className="mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-brand-charcoal/60"
+                    className="mx-auto max-w-lg text-sm font-light sm:text-base leading-relaxed text-[#00263E] lg:text-brand-charcoal/60"
                   >
                     <span className="hidden lg:inline">NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验</span>
                     <span className="lg:hidden">NIHPLOD 旎柏以卓越品质与全方位服务<br />为您呈献逆转时光的奢华体验</span>
@@ -246,7 +261,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
                   <div className="flex flex-col items-center w-full">
                     {/* 服务卡片列表 - 调整网格布局以适应4个卡片 */}
-                    <div className="grid w-full grid-cols-2 gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl px-4 pb-12">
+                    <div className="grid w-full grid-cols-2 gap-y-24 gap-x-[120px] sm:gap-8 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl px-8">
                       {services.map((service, index) => (
                         <ServiceCard
                           key={service.id}
@@ -264,8 +279,8 @@ export function ServicesContent({ content }: ServicesContentProps) {
               </main>
 
               {/* 底部版权信息 */}
-              <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 border-t border-brand-charcoal/5 mx-6 lg:mx-12 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
-                <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 uppercase">
+              <div className="mt-auto pt-8 sm:pt-6 lg:pt-8 border-t border-brand-charcoal/5 mx-6 lg:mx-12 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 max-lg:border-0">
+                <p className="text-[10px] sm:text-[12px] font-medium tracking-[0.12em] text-[#7B726C]/30 uppercase max-lg:font-medium">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
                 <div className="hidden sm:block h-3 w-[1px] bg-brand-charcoal/20"></div>
