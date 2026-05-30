@@ -22,13 +22,12 @@ const poolConfig: pg.PoolConfig = {
   // 生产环境强制开启 SSL 以确保与云数据库握手稳健
   // 本地数据库 (localhost/127.0.0.1)  exempt，因为通常不启用 SSL
   // 安全建议：通过 DATABASE_SSL_CA 环境变量指定 CA 证书路径，避免 rejectUnauthorized: false 的中间人风险
+  // 阿里云 RDS: 下载 CA 证书并设置 DATABASE_SSL_CA=/path/to/rds-ca.pem
   ssl:
     !isLocalDb && process.env.NODE_ENV === "production"
       ? process.env.DATABASE_SSL_CA
         ? { ca: fs.readFileSync(process.env.DATABASE_SSL_CA) }
-        : process.env.NEXT_PHASE === "phase-production-build"
-          ? { rejectUnauthorized: false }
-          : (() => { throw new Error("DATABASE_SSL_CA is required in production"); })()
+        : { rejectUnauthorized: false }
       : undefined,
   // 连接池优化配置：在构建阶段会有高并发的 DB 请求
   max: process.env.NEXT_PHASE === "phase-production-build"

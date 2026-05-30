@@ -22,6 +22,9 @@ function getAutoStorageMode(): "oss" | "local" {
     if (mode === "oss" || mode === "local") {
       return mode;
     }
+    // 非法值（如旧的 "supabase"）fallback 到 local
+    console.warn(`[Upload] 未知的 STORAGE_MODE: ${mode}，回退到 local`);
+    return "local";
   }
 
   // 1. 优先检查 OSS
