@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { X, Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown } from "lucide-react";
+import { X, Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown, ChevronLeft } from "lucide-react";
+import { Link } from "next-view-transitions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks";
@@ -289,7 +290,7 @@ export function ContactModal() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={closeContact}
-                        className="absolute inset-0 bg-[#F8F7F3] md:bg-slate-900/40 md:backdrop-blur-md"
+                        className="absolute inset-0 bg-[#F0EDE1] md:bg-slate-900/40 md:backdrop-blur-md"
                     />
 
                     {/* 弹窗主体 - 双列布局 */}
@@ -300,6 +301,16 @@ export function ContactModal() {
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
                         className="relative w-full h-full md:w-full md:max-w-[880px] md:h-[600px] rounded-none md:rounded-[2.5rem] bg-transparent md:bg-[#F8F7F3] shadow-none md:shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row max-h-none overflow-hidden"
                     >
+                        {/* 手机端背景水印 */}
+                        <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
+                            <Image
+                                src="/images/watermark-mobile.svg"
+                                alt=""
+                                fill
+                                className="object-cover opacity-75 blur-[7.5px]"
+                                priority
+                            />
+                        </div>
                         {/* 左侧：表单区域 */}
                         <div className="flex flex-1 flex-col overflow-y-auto md:p-10 h-full justify-center md:justify-start">
                             
@@ -534,15 +545,27 @@ export function ContactModal() {
                             </div>
 
                             {/* === 手机端极简表单 === */}
-                            <div className="md:hidden flex-1 flex flex-col justify-center px-6 pt-6 pb-4">
-                                <Image
-                                    src="/images/NIHPLOD-logo.svg"
-                                    width={120}
-                                    className="object-contain h-auto w-[140px] mb-12"
-                                    height={48}
-                                    priority
-                                    alt="NIHPLOD"
-                                />
+                            <div className="md:hidden flex-1 flex flex-col justify-center px-6 pt-6 pb-4 relative z-10">
+                                {/* 手机端顶部栏 */}
+                                <div className="relative flex-shrink-0 h-[88px] w-full flex items-center justify-center mb-8">
+                                    <button
+                                        onClick={closeContact}
+                                        className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-2 py-[10px]"
+                                    >
+                                        <ChevronLeft className="h-6 w-6 text-[#00263E]" />
+                                    </button>
+                                    <Link href="/" className="flex items-center justify-center py-[30px]">
+                                        <div className="relative h-[28px] w-[100px]">
+                                            <Image
+                                                src="/images/NIHPLOD-logo.svg"
+                                                alt="NIHPLOD Logo"
+                                                fill
+                                                className="object-contain"
+                                                priority
+                                            />
+                                        </div>
+                                    </Link>
+                                </div>
 
                                 {status === "success" ? (
                                     <div className="flex flex-col items-center justify-center">
@@ -576,7 +599,7 @@ export function ContactModal() {
                                                 onChange={handleChange}
                                                 maxLength={50}
                                                 className={cn(
-                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                    "block w-full bg-transparent border-0 border-b border-[#00263E]/25 rounded-none py-3 px-0 text-base tracking-wide text-[#00263E] placeholder:text-[#00263E]/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-[#00263E]/60 transition-colors",
                                                     errors.name && "border-red-400 focus:border-red-400"
                                                 )}
                                                 placeholder="您的称呼"
@@ -593,7 +616,7 @@ export function ContactModal() {
                                                 onChange={handleChange}
                                                 maxLength={11}
                                                 className={cn(
-                                                    "block w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-brand-gold/60 transition-colors",
+                                                    "block w-full bg-transparent border-0 border-b border-[#00263E]/25 rounded-none py-3 px-0 text-base tracking-wide text-[#00263E] placeholder:text-[#00263E]/40 placeholder:text-base placeholder:tracking-wide focus:outline-none focus:border-[#00263E]/60 transition-colors",
                                                     errors.phone && "border-red-400 focus:border-red-400"
                                                 )}
                                                 placeholder="您的手机号"
@@ -611,7 +634,7 @@ export function ContactModal() {
                                                 onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                                                 className={cn(
                                                     "flex w-full items-center justify-between border-0 border-b bg-transparent py-3 px-0 text-left text-base tracking-wide outline-none transition-colors",
-                                                    !formData.type ? "text-brand-charcoal/40 border-brand-charcoal/25" : "text-brand-charcoal border-brand-charcoal/25",
+                                                    !formData.type ? "text-[#00263E]/40 border-[#00263E]/25" : "text-[#00263E] border-[#00263E]/25",
                                                     errors.type && "border-red-400"
                                                 )}
                                             >
@@ -633,7 +656,7 @@ export function ContactModal() {
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: 8, scale: 0.98 }}
                                                         transition={{ duration: 0.2, ease: "easeOut" }}
-                                                        className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[#C8C4BC]/40 bg-[#F8F7F3] shadow-[0_16px_40px_-10px_rgba(107,95,71,0.18)]"
+                                                        className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[#C8C4BC]/40 bg-[#F0EDE1] shadow-[0_16px_40px_-10px_rgba(107,95,71,0.18)]"
                                                     >
                                                         {messageTypes.filter(t => t.value !== "").map((type, index) => {
                                                             const Icon = type.icon;
@@ -655,20 +678,20 @@ export function ContactModal() {
                                                                     className={cn(
                                                                         "flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] transition-all",
                                                                         isSelected
-                                                                            ? "bg-[#8B7355]/[0.08] text-[#8B7355]"
+                                                                            ? "bg-[#00263E]/[0.08] text-[#00263E]"
                                                                             : isHighlighted
-                                                                                ? "bg-[#F8F7F3]/60 text-brand-charcoal"
-                                                                                : "text-brand-charcoal/80 hover:bg-[#F8F7F3]/40",
+                                                                                ? "bg-[#F0EDE1]/60 text-[#00263E]"
+                                                                                : "text-[#00263E]/80 hover:bg-[#F0EDE1]/40",
                                                                         index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-[#E8E4DA]/80"
                                                                     )}
                                                                 >
                                                                     <Icon className={cn(
                                                                         "h-[18px] w-[18px] shrink-0 transition-colors",
-                                                                        isSelected ? "text-[#8B7355]" : "text-brand-charcoal/30"
+                                                                        isSelected ? "text-[#00263E]" : "text-[#00263E]/30"
                                                                     )} />
                                                                     <span className="flex-1">{type.label}</span>
                                                                     {isSelected && (
-                                                                        <CheckCircle className="ml-auto h-[18px] w-[18px] text-[#8B7355]" />
+                                                                        <CheckCircle className="ml-auto h-[18px] w-[18px] text-[#00263E]" />
                                                                     )}
                                                                 </button>
                                                             );
@@ -718,7 +741,7 @@ export function ContactModal() {
                                         <button
                                             type="submit"
                                             disabled={status === "loading"}
-                                            className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40 mt-2"
+                                            className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-[#00263E] border border-[#00263E]/25 hover:bg-[#00263E]/[0.03] active:scale-[0.98] transition-all disabled:opacity-40 mt-2"
                                         >
                                             {status === "loading" ? (
                                                 <span className="flex items-center justify-center gap-2">
@@ -735,7 +758,7 @@ export function ContactModal() {
                                             <button
                                                 type="button"
                                                 onClick={closeContact}
-                                                className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/15 text-brand-charcoal/40 hover:border-brand-charcoal/30 hover:text-brand-charcoal/70 hover:bg-brand-charcoal/[0.03] transition-all"
+                                                className="flex h-9 w-9 items-center justify-center rounded-full border border-[#00263E]/15 text-[#00263E]/40 hover:border-[#00263E]/30 hover:text-[#00263E]/70 hover:bg-[#00263E]/[0.03] transition-all"
                                             >
                                                 <X className="h-4 w-4" strokeWidth={1.5} />
                                             </button>
