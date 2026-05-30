@@ -192,7 +192,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                 </Link>
                 {/* Logo */}
                 <Link href="/" className="flex items-center justify-center py-[30px]">
-                  <div className="relative h-[28px] w-[95px]">
+                  <div className="relative h-[28px] w-[100px]">
                     <Image
                       src="/images/NIHPLOD-logo.svg"
                       alt="NIHPLOD Logo"
@@ -237,7 +237,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="font-serif text-[24px] font-medium text-[#00263E] sm:text-[32px] tracking-[0.2em] lg:text-brand-charcoal"
+                    className="text-[24px] font-medium text-[#00263E] sm:text-[32px] tracking-[0.2em] lg:text-brand-charcoal"
                   >
                     {pageTitle.zh}
                   </m.h1>
