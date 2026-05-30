@@ -545,12 +545,12 @@ export function ContactModal() {
                             </div>
 
                             {/* === 手机端极简表单 === */}
-                            <div className="md:hidden flex-1 flex flex-col justify-center px-6 pt-6 pb-4 relative z-10">
+                            <div className="md:hidden flex-1 flex flex-col px-6 pt-0 pb-4 relative z-10">
                                 {/* 手机端顶部栏 */}
-                                <div className="relative flex-shrink-0 h-[88px] w-full flex items-center justify-center mb-8">
+                                <div className="relative flex-shrink-0 h-[88px] w-full flex items-center justify-center">
                                     <button
                                         onClick={closeContact}
-                                        className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-2 py-[10px]"
+                                        className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-8 py-[10px]"
                                     >
                                         <ChevronLeft className="h-6 w-6 text-[#00263E]" />
                                     </button>
