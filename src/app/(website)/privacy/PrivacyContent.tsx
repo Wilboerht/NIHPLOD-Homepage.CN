@@ -191,7 +191,8 @@ export function PrivacyContent() {
                 {/* 装饰短横线 - 仅移动端 */}
                 <div className="lg:hidden mx-auto w-[70px] h-[1.5px] bg-[#00263E] max-lg:mt-2" />
                 <p className="mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[14px] max-lg:font-light max-lg:leading-[1.8] max-lg:tracking-wide max-lg:text-[#00263E]/90 max-lg:mt-[34px]">
-                  {description}
+                  <span className="hidden lg:inline">{description}</span>
+                  <span className="lg:hidden">我们重视并尊重您的隐私，<br />了解我们如何收集、使用和保护您的个人信息</span>
                 </p>
               </div>
             </div>
