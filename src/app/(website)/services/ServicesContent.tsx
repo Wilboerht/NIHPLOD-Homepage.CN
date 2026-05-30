@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
-import { ChevronLeft, Home, ScanFace, ShieldCheck, ArrowLeft } from "lucide-react";
+import { ChevronLeft, Home, ScanFace, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ServicesPageContent, ServiceDetail as CMSServiceDetail } from "@/types/page-content";
 
@@ -188,7 +188,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
               <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center pointer-events-auto">
                 {/* 返回按钮 */}
                 <Link href="/" className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-8 py-[10px]">
-                  <ArrowLeft className="h-6 w-6 text-[#00263E]" />
+                  <ChevronLeft className="h-6 w-6 text-[#00263E]" />
                 </Link>
                 {/* Logo */}
                 <Link href="/" className="flex items-center justify-center py-[30px]">
