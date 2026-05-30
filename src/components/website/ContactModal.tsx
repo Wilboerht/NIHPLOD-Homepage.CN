@@ -568,7 +568,7 @@ export function ContactModal() {
                                 </div>
 
                                 {status === "success" ? (
-                                    <div className="flex flex-col items-center justify-center">
+                                    <div className="flex flex-col items-center justify-center flex-1">
                                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#8B7355]/10">
                                             <m.div
                                                 initial={{ scale: 0 }}
@@ -781,6 +781,13 @@ export function ContactModal() {
                                         </button>
                                     </form>
                                 )}
+
+                                {/* Footer */}
+                                <div className="mt-auto pt-8 pb-0 text-center">
+                                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                                        &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
