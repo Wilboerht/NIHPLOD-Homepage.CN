@@ -261,7 +261,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
                   <div className="flex flex-col items-center w-full">
                     {/* 服务卡片列表 - 调整网格布局以适应4个卡片 */}
-                    <div className="grid w-full grid-cols-2 gap-y-[75px] gap-x-[75px] sm:gap-8 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl px-8">
+                    <div className="grid w-full grid-cols-2 gap-y-[75px] gap-x-[65px] sm:gap-8 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl px-8">
                       {services.map((service, index) => (
                         <ServiceCard
                           key={service.id}
