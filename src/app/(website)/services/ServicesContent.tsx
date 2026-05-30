@@ -177,19 +177,23 @@ export function ServicesContent({ content }: ServicesContentProps) {
               {/* 顶栏 / Logo 区 */}
               <header className="flex-shrink-0 px-4 pt-8 pb-6 sm:pt-10 sm:pb-8 lg:pt-12 lg:pb-10">
                 <div className="flex items-center">
-                  {/* 返回按钮 - 仅移动端 */}
-                  <Link
-                    href="/"
-                    className="lg:hidden flex items-center justify-center w-10 h-10 -ml-2 text-brand-charcoal/70 hover:text-brand-gold transition-colors shrink-0"
-                  >
-                    <ChevronLeft className="h-6 w-6" />
-                  </Link>
+                  {/* Logo - 移动端居中，与 /about 一致 */}
+                  <div className="lg:hidden flex-1 flex justify-center">
+                    <Link href="/" className="flex items-center justify-center mt-1">
+                      <div className="relative h-[28px] w-[100px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
+                    </Link>
+                  </div>
 
-                  {/* 占位，保持 Logo 居中 */}
-                  <div className="lg:hidden w-10 shrink-0" />
-
-                  {/* Logo 保持在中间 */}
-                  <div className="flex-1 flex justify-center">
+                  {/* Logo - 桌面端居中 */}
+                  <div className="hidden lg:flex flex-1 justify-center">
                     <m.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -205,9 +209,6 @@ export function ServicesContent({ content }: ServicesContentProps) {
                       </div>
                     </m.div>
                   </div>
-
-                  {/* 右侧占位，保持对称 */}
-                  <div className="lg:hidden w-[72px] shrink-0" />
                 </div>
               </header>
 
