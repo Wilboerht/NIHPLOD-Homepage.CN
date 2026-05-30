@@ -586,7 +586,7 @@ export function ContactModal() {
                                         </p>
                                     </div>
                                 ) : (
-                                    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                                    <form onSubmit={handleSubmit} className="flex flex-col flex-1">
                                         {/* 蜜罐字段 */}
                                         <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
 
@@ -599,7 +599,9 @@ export function ContactModal() {
                                             </p>
                                         </div>
 
-                                        {/* 称呼 + 手机号 并排 */}
+                                        {/* 表单字段容器 */}
+                                        <div className="px-4 flex flex-col gap-5 my-auto">
+                                            {/* 称呼 + 手机号 并排 */}
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-[13px] font-medium tracking-wide text-[#00263E] mb-1.5">
@@ -761,24 +763,25 @@ export function ContactModal() {
                                             </div>
                                         )}
 
-                                        {/* 提交按钮 */}
-                                        <button
-                                            type="submit"
-                                            disabled={status === "loading"}
-                                            className="mx-auto mt-2 flex items-center justify-center gap-2 rounded-full bg-[#F8F7F3] px-8 py-3 text-[14px] font-medium tracking-[0.15em] text-[#00263E] shadow-sm hover:shadow-md active:scale-[0.98] transition-all disabled:opacity-40"
-                                        >
-                                            {status === "loading" ? (
-                                                <span className="flex items-center justify-center gap-2">
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                    正在提交...
-                                                </span>
-                                            ) : (
-                                                <>
-                                                    提交
-                                                    <ArrowRight className="h-4 w-4" />
-                                                </>
-                                            )}
-                                        </button>
+                                            {/* 提交按钮 */}
+                                            <button
+                                                type="submit"
+                                                disabled={status === "loading"}
+                                                className="mx-auto mt-2 flex items-center justify-center gap-2 rounded-full bg-[#F8F7F3] px-8 py-3 text-[14px] font-medium tracking-[0.15em] text-[#00263E] shadow-sm hover:shadow-md active:scale-[0.98] transition-all disabled:opacity-40"
+                                            >
+                                                {status === "loading" ? (
+                                                    <span className="flex items-center justify-center gap-2">
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                        正在提交...
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        提交
+                                                        <ArrowRight className="h-4 w-4" />
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </form>
                                 )}
 
