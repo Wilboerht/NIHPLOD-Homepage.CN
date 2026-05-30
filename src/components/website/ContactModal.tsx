@@ -545,7 +545,7 @@ export function ContactModal() {
                             </div>
 
                             {/* === 手机端表单 === */}
-                            <div className="md:hidden flex-1 flex flex-col px-6 pt-0 pb-8 relative z-10">
+                            <div className="md:hidden flex-1 flex flex-col px-4 pt-4 pb-4 relative z-10">
                                 {/* 手机端顶部栏 */}
                                 <div className="relative flex-shrink-0 h-[88px] w-full flex items-center justify-center">
                                     <button
@@ -591,7 +591,7 @@ export function ContactModal() {
                                         <input type="text" name="website" value={formData.website} onChange={handleChange} autoComplete="off" tabIndex={-1} className="absolute left-[-9999px] top-0 h-0 w-0 opacity-0" aria-hidden="true" />
 
                                         {/* 标题区域 */}
-                                        <div className="text-center pt-6 pb-4">
+                                        <div className="text-center pt-[6px] pb-4">
                                             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">联系我们</h2>
                                             <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                                             <p className="mt-[34px] text-[14px] font-light leading-[1.8] tracking-wide text-[#00263E]/90">
@@ -783,7 +783,7 @@ export function ContactModal() {
                                 )}
 
                                 {/* Footer */}
-                                <div className="mt-auto pt-8 pb-0 text-center">
+                                <div className="mt-auto pt-4 pb-0 text-center mx-6">
                                     <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
                                         &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                                     </p>
