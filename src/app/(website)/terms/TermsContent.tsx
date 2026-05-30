@@ -283,7 +283,7 @@ export function TermsContent({ content }: TermsContentProps) {
             </div>
 
             {/* 底部版权信息 - 固定在卡片底部 */}
-            <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12 max-lg:border-0 max-lg:pt-4">
+            <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12 max-lg:border-0 max-lg:pt-4">
               <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#7B726C]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>

@@ -279,7 +279,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
               </main>
 
               {/* 底部版权信息 */}
-              <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 border-t border-brand-charcoal/5 mx-6 lg:mx-12 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 max-lg:border-0">
+              <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 border-t border-brand-charcoal/5 mx-6 lg:mx-12 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 max-lg:border-0">
                 <p className="text-[10px] sm:text-[12px] font-medium tracking-[0.12em] text-[#7B726C]/30 uppercase max-lg:font-medium">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
