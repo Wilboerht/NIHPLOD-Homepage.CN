@@ -3,7 +3,6 @@ import { existsSync, mkdirSync, unlinkSync } from "fs";
 import { join, resolve } from "path";
 import { randomUUID } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
-import { uploadToStorage, deleteFromStorage, extractStoragePath } from "./supabase";
 import { apiConsole } from "@/lib/logger";
 import { 
   isOSSConfigured, 
@@ -13,13 +12,16 @@ import {
 } from "./ali-oss";
 
 /**
- * 智能存储模式检测 (优先级: OSS > Local > Supabase)
+ * 智能存储模式检测 (优先级: OSS > Local)
  * 允许通过环境变量强制指定，否则采用自动降级策略
  */
-function getAutoStorageMode(): "oss" | "local" | "supabase" {
+function getAutoStorageMode(): "oss" | "local" {
   // 如果手动指定了模式，优先遵循
   if (process.env.STORAGE_MODE) {
-    return process.env.STORAGE_MODE as "oss" | "local" | "supabase";
+    const mode = process.env.STORAGE_MODE;
+    if (mode === "oss" || mode === "local") {
+      return mode;
+    }
   }
 
   // 1. 优先检查 OSS
@@ -27,8 +29,7 @@ function getAutoStorageMode(): "oss" | "local" | "supabase" {
     return "oss";
   }
 
-  // 2. 云服务器环境下，通常优先本地存储 (如果为了脱离 Supabase)
-  // 这里设为默认 fallback 到 local，除非明确需要 supabase
+  // 2. 默认 fallback 到 local
   return "local";
 }
 
@@ -191,20 +192,12 @@ export async function generateSizedImage(
     const objectName = `${folder}/${size}/${filename}`;
     const result = await uploadToOSS(processedBuffer, objectName, "image/webp");
     url = result.url;
-  } else if (storageMode === "local") {
+  } else {
     // 优先级 2: 本地存储
     const uploadDir = ensureUploadDir(`${folder}/${size}`);
     const filepath = join(uploadDir, filename);
     await sharp(processedBuffer).toFile(filepath);
     url = `/uploads/${folder}/${size}/${filename}`;
-  } else {
-    // 优先级 3: Supabase (降级或旧有配置)
-    const storagePath = `${folder}/${size}/${filename}`;
-    const result = await uploadToStorage(processedBuffer, storagePath, "image/webp");
-    if (result.error) {
-      throw result.error;
-    }
-    url = result.url;
   }
 
   return { url, width, height };
@@ -261,20 +254,12 @@ export async function processAndSaveImage(
     const objectName = `${folder}/${filename}`;
     const result = await uploadToOSS(processedImage, objectName, "image/webp");
     url = result.url;
-  } else if (storageMode === "local") {
+  } else {
     // 优先级 2: 本地存储
     const uploadDir = ensureUploadDir(folder);
     const filepath = join(uploadDir, filename);
     await sharp(processedImage).toFile(filepath);
     url = `/uploads/${folder}/${filename}`;
-  } else {
-    // 优先级 3: Supabase
-    const storagePath = `${folder}/${filename}`;
-    const result = await uploadToStorage(processedImage, storagePath, "image/webp");
-    if (result.error) {
-      throw result.error;
-    }
-    url = result.url;
   }
 
   // 生成模糊占位符
@@ -324,21 +309,13 @@ export async function uploadFile(
     const objectName = `${folder}/${filename}`;
     const result = await uploadToOSS(buffer, objectName, mimeType);
     url = result.url;
-  } else if (storageMode === "local") {
+  } else {
     // 优先级 2: 本地存储
     const uploadDir = ensureUploadDir(folder);
     const filepath = join(uploadDir, filename);
     const fs = await import("fs/promises");
     await fs.writeFile(filepath, buffer);
     url = `/uploads/${folder}/${filename}`;
-  } else {
-    // 优先级 3: Supabase
-    const storagePath = `${folder}/${filename}`;
-    const result = await uploadToStorage(buffer, storagePath, mimeType);
-    if (result.error) {
-      throw result.error;
-    }
-    url = result.url;
   }
 
   return {
@@ -354,14 +331,7 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
     // 自动识别存储类型 (根据 URL 特征)
     const ossDomain = getOSSPublicDomain();
     
-    if (url.includes("supabase.co") || url.includes("/storage/v1/object/public/")) {
-      // 识别为 Supabase
-      const storagePath = extractStoragePath(url);
-      if (storagePath) {
-        const { error } = await deleteFromStorage([storagePath]);
-        return !error;
-      }
-    } else if (url.includes("aliyuncs.com") || url.includes(ossDomain)) {
+    if (url.includes("aliyuncs.com") || url.includes(ossDomain)) {
       // 识别为 OSS
       await deleteOSSFiles([url]);
       return true;
@@ -431,4 +401,3 @@ export function validateUploadServer(
 
   return { valid: true };
 }
-

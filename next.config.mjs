@@ -25,7 +25,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://*.amap.com blob:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
       // 收紧 img-src：禁止任意 https: 通配，只允许已知域名
-      "img-src 'self' data: blob: https://*.nihplod.cn https://*.supabase.co https://*.aliyuncs.com http://*.amap.com http://*.autonavi.com",
+      "img-src 'self' data: blob: https://*.nihplod.cn https://*.aliyuncs.com http://*.amap.com http://*.autonavi.com",
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' https://api.openai.com https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com",
       "worker-src 'self' blob:",
@@ -84,18 +84,6 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'zeeptwcbrwrllcwxeaer.supabase.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'gggmklbpdhsdwmmbkgzg.supabase.co',
       },
       {
         protocol: 'https',

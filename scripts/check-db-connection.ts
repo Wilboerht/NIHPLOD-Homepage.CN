@@ -21,8 +21,8 @@ async function main() {
 
     if (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) {
         console.warn('⚠️  警告: 检测到正在连接本地数据库！');
-    } else if (dbUrl.includes('supabase.com') || dbUrl.includes('aws')) {
-        console.log('✅ 检测到正在连接远程云数据库 (Supabase/AWS)');
+    } else if (dbUrl.includes('aws') || dbUrl.includes('rds')) {
+        console.log('✅ 检测到正在连接远程云数据库 (AWS/RDS)');
     }
 
     // 配置连接池和适配器

@@ -19,16 +19,16 @@ const globalForPrisma = globalThis as unknown as {
 const isLocalDb = process.env.DATABASE_URL?.includes("localhost") || process.env.DATABASE_URL?.includes("127.0.0.1");
 const poolConfig: pg.PoolConfig = {
   connectionString: process.env.DATABASE_URL,
-  // 生产环境强制开启 SSL 以确保与 Supabase/云数据库握手稳健
+  // 生产环境强制开启 SSL 以确保与云数据库握手稳健
   // 本地数据库 (localhost/127.0.0.1)  exempt，因为通常不启用 SSL
   // 安全建议：通过 DATABASE_SSL_CA 环境变量指定 CA 证书路径，避免 rejectUnauthorized: false 的中间人风险
   ssl:
-    !isLocalDb && (process.env.NODE_ENV === "production" || process.env.DATABASE_URL?.includes("supabase"))
+    !isLocalDb && process.env.NODE_ENV === "production"
       ? process.env.DATABASE_SSL_CA
         ? { ca: fs.readFileSync(process.env.DATABASE_SSL_CA) }
         : process.env.NEXT_PHASE === "phase-production-build"
           ? { rejectUnauthorized: false }
-          : (() => { throw new Error("DATABASE_SSL_CA is required in production or when using Supabase"); })()
+          : (() => { throw new Error("DATABASE_SSL_CA is required in production"); })()
       : undefined,
   // 连接池优化配置：在构建阶段会有高并发的 DB 请求
   max: process.env.NEXT_PHASE === "phase-production-build"
