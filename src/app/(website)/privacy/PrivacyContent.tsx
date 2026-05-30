@@ -183,7 +183,7 @@ export function PrivacyContent() {
             <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
 
             {/* 标题区 */}
-            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8 max-lg:px-0 max-lg:py-4">
+            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4">
               <div>
                 <h1 className="font-serif text-[26px] text-brand-charcoal sm:text-[32px] lg:text-brand-charcoal max-lg:text-[24px] max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E]">
                   {pageTitle.zh}
@@ -315,7 +315,7 @@ export function PrivacyContent() {
             </div>
 
             {/* 底部版权信息 - 固定在卡片底部 */}
-            <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12 max-lg:border-0 max-lg:pt-8">
+            <div className="mt-auto pt-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12 max-lg:border-0 max-lg:pt-4">
               <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#7B726C]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
@@ -323,10 +323,10 @@ export function PrivacyContent() {
           </div>
         </div>
 
-        {/* 返回上页按钮 */}
+        {/* 返回上页按钮 - 仅桌面端 */}
         <button
           onClick={() => typeof window !== "undefined" && window.history.back()}
-          className="group flex items-center justify-center gap-2 rounded-b-2xl bg-[#F8F7F3] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
+          className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#F8F7F3] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
         >
           <ArrowLeft className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
           <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回上页</span>
