@@ -247,7 +247,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
-                    className="mx-auto max-w-lg text-sm font-light sm:text-base leading-relaxed text-[#00263E] lg:text-brand-charcoal/60 max-lg:mt-[34px]"
+                    className="mx-auto max-w-lg text-sm font-light sm:text-base leading-[1.8] tracking-wide text-[#00263E]/90 lg:text-brand-charcoal/60 max-lg:mt-[34px]"
                   >
                     <span className="hidden lg:inline">NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验</span>
                     <span className="lg:hidden">NIHPLOD 旎柏以卓越品质与全方位服务<br />为您呈献逆转时光的奢华体验</span>
