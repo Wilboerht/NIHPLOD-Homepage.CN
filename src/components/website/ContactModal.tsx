@@ -283,7 +283,7 @@ export function ContactModal() {
     const content = (
         <AnimatePresence>
             {contactOpen && (
-                <div className="fixed inset-0 z-[10001] flex items-center justify-center pt-3 px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center md:pt-3 md:px-6 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                     {/* 遮罩 */}
                     <m.div
                         initial={{ opacity: 0 }}
