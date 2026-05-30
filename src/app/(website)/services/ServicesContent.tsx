@@ -231,7 +231,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
               <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
 
               {/* 标题区 */}
-              <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8 max-lg:px-0 max-lg:py-4">
+              <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4">
                 <div className="space-y-2">
                   <m.h1
                     initial={{ opacity: 0, y: 10 }}
