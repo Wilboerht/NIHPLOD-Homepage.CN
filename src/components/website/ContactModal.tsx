@@ -614,7 +614,7 @@ export function ContactModal() {
                                                     onChange={handleChange}
                                                     maxLength={50}
                                                     className={cn(
-                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[#00263E]/35 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
                                                         errors.name && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="请输入称呼"
@@ -632,7 +632,7 @@ export function ContactModal() {
                                                     onChange={handleChange}
                                                     maxLength={11}
                                                     className={cn(
-                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[#00263E]/35 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
                                                         errors.phone && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="请输入手机号"
@@ -654,7 +654,7 @@ export function ContactModal() {
                                                 onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                                                 className={cn(
                                                     "flex w-full items-center justify-between rounded-lg bg-[#F8F7F3] py-3 px-3 text-left text-[14px] tracking-wide outline-none transition-all",
-                                                    !formData.type ? "text-[#00263E]/40" : "text-[#00263E]",
+                                                    !formData.type ? "text-[13px] text-[#00263E]/50 font-light" : "text-[#00263E]",
                                                     errors.type && "ring-1 ring-red-400"
                                                 )}
                                             >
@@ -735,7 +735,7 @@ export function ContactModal() {
                                                     onChange={handleChange}
                                                     maxLength={100}
                                                     className={cn(
-                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[#00263E]/35 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
                                                         errors.location && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="您的所在城市（如：上海、北京）"
@@ -754,7 +754,7 @@ export function ContactModal() {
                                                     rows={3}
                                                     maxLength={2000}
                                                     className={cn(
-                                                        "block w-full resize-none rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[#00263E]/35 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        "block w-full resize-none rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
                                                         errors.content && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="请输入您的具体需求或建议..."
