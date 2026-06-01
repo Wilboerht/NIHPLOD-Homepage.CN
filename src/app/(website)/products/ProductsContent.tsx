@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronRight, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft, X } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn, formatPrice } from "@/lib/utils";
@@ -786,100 +786,111 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               />
             </div>
 
-            {/* 顶部标题与关闭 */}
-            <header className="flex h-24 shrink-0 items-center justify-center px-6 pt-6 relative z-20">
-              <div className="flex w-full max-w-[340px] items-center justify-between">
-                <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
-                  <Image
-                    src="/images/NIHPLOD-logo.svg"
-                    alt="NIHPLOD"
-                    fill
-                    className="object-contain"
-                    priority
-                  />
-                </div>
+            <div className="flex-1 flex flex-col px-4 pt-4 pb-4 relative z-10 overflow-hidden">
+              {/* 手机端顶部栏 */}
+              <div className="relative flex-shrink-0 h-[88px] w-full flex items-center justify-center">
                 <button
                   type="button"
                   onClick={() => setIsCategoryMenuOpen(false)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[0.5px] border-[#8B7355]/10 bg-white/40 backdrop-blur-[4px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all active:scale-95"
+                  className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
                 >
-                  <X className="h-5 w-5 text-[#8B7355]" strokeWidth={1.5} />
+                  <ChevronLeft className="h-6 w-6 text-[#00263E]" />
                 </button>
+                <Link href="/" className="flex items-center justify-center py-[30px]">
+                  <div className="relative h-[28px] w-[100px]">
+                    <Image
+                      src="/images/NIHPLOD-logo.svg"
+                      alt="NIHPLOD Logo"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                </Link>
               </div>
-            </header>
 
-            {/* 菜单内容 - 居中网格布局 */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 relative z-10 flex flex-col items-center">
-              <m.div
-                className="grid w-full max-w-[340px] grid-cols-2 gap-5"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  visible: { transition: { staggerChildren: 0.05 } }
-                }}
-              >
-                {categories.map((cat) => {
-                  const categoryProduct = products.find(p => p.categoryId === cat.id);
-                  return (
-                  <m.div
-                    key={cat.id}
-                    variants={{
-                      hidden: { opacity: 0, scale: 0.95 },
-                      visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }
-                    }}
-                    className="w-full"
-                  >
-                    <Link
-                      href={categoryProduct ? `/products/${categoryProduct.slug}` : '/products'}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (categoryProduct) {
-                          handleProductClick(categoryProduct);
-                          setIsCategoryMenuOpen(false);
-                        }
-                      }}
-                      className={cn(
-                        "group flex w-full flex-row items-center justify-center gap-4 rounded-2xl py-6 px-4 transition-all",
-                        categoryProduct
-                          ? "bg-[#F8F7F3]/60 active:scale-95 active:bg-[#F8F7F3]"
-                          : "bg-[#F8F7F3]/30 cursor-not-allowed opacity-60"
-                      )}
-                    >
-                      <div className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center text-[#00263E] opacity-90 transition-transform",
-                        categoryProduct && "group-active:scale-110"
-                      )}>
-                        {CATEGORY_ICONS[cat.name]}
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-base font-medium tracking-[0.1em] text-[#00263E]/90 whitespace-nowrap text-center">
-                          {cat.name}
-                        </span>
-                        {!categoryProduct && (
-                          <span className="text-[10px] text-[#00263E]/40 tracking-wider mt-0.5">敬请期待</span>
-                        )}
-                      </div>
-                    </Link>
-                  </m.div>
-                );})}
-              </m.div>
-              {/* 为底栏留出空间 */}
-              <div className="h-24 shrink-0" />
+              {/* 标题区域 */}
+              <div className="text-center pt-[6px] pb-9">
+                <h2
+                  className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
+                  style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                >
+                  全部产品
+                </h2>
+                <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+              </div>
+
+              {/* 分类列表容器 */}
+              <div className="flex-1 overflow-y-auto px-4">
+                <m.div
+                  className="grid w-full grid-cols-2 gap-5 my-auto"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    visible: { transition: { staggerChildren: 0.05 } }
+                  }}
+                >
+                  {categories.map((cat) => {
+                    const categoryProduct = products.find(p => p.categoryId === cat.id);
+                    return (
+                      <m.div
+                        key={cat.id}
+                        variants={{
+                          hidden: { opacity: 0, scale: 0.95 },
+                          visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }
+                        }}
+                        className="w-full"
+                      >
+                        <Link
+                          href={categoryProduct ? `/products/${categoryProduct.slug}` : '/products'}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (categoryProduct) {
+                              handleProductClick(categoryProduct);
+                              setIsCategoryMenuOpen(false);
+                            }
+                          }}
+                          className={cn(
+                            "group flex w-full flex-row items-center justify-center gap-4 rounded-2xl py-6 px-4 transition-all",
+                            categoryProduct
+                              ? "bg-[#F8F7F3]/60 active:scale-95 active:bg-[#F8F7F3]"
+                              : "bg-[#F8F7F3]/30 cursor-not-allowed opacity-60"
+                          )}
+                        >
+                          <div className={cn(
+                            "flex h-12 w-12 shrink-0 items-center justify-center text-[#00263E] opacity-90 transition-transform",
+                            categoryProduct && "group-active:scale-110"
+                          )}>
+                            {CATEGORY_ICONS[cat.name]}
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span
+                              className="text-[15px] font-medium tracking-[0.1em] text-[#00263E]/90 whitespace-nowrap text-center"
+                              style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                            >
+                              {cat.name}
+                            </span>
+                            {!categoryProduct && (
+                              <span className="text-[10px] text-[#00263E]/40 tracking-wider mt-0.5">敬请期待</span>
+                            )}
+                          </div>
+                        </Link>
+                      </m.div>
+                    );
+                  })}
+                </m.div>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-auto pt-4 pb-4 text-center mx-6">
+                <p
+                  className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase"
+                  style={{ fontFamily: "'Futura', sans-serif" }}
+                >
+                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                </p>
+              </div>
             </div>
-
-            {/* 固定底栏品牌标语 */}
-            <footer className="shrink-0 pb-6 pt-4 relative z-20 flex flex-col items-center">
-              <div className="h-px w-10 bg-[#8B7355]/15 mb-4" />
-              <Link
-                href="/about"
-                className="group flex flex-col items-center gap-2"
-              >
-                <span className="text-xs tracking-[0.25em] text-[#8B7355] font-light">
-                  探索 · 逆转时光的奥秘
-                </span>
-                <div className="h-px w-0 bg-[#8B7355]/40 transition-all duration-500 group-active:w-full" />
-              </Link>
-            </footer>
           </m.div>
         )}
       </AnimatePresence>
