@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn, formatPrice } from "@/lib/utils";
@@ -482,22 +482,18 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               <div className="relative z-10 flex flex-col px-6 py-4">
                 {/* 产品名称 + 箭头 */}
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-[16px] font-normal tracking-wide text-[#00263e] leading-snug line-clamp-1 text-left" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                    {product.name}
-                  </h3>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#00263E"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="shrink-0 opacity-60"
+                  <p
+                    className="text-[16px] font-normal tracking-wide text-[#00263e] leading-snug line-clamp-1 text-left"
+                    style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                    title={product.name}
                   >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
+                    {product.name}
+                  </p>
+                  <ChevronRight
+                    size={20}
+                    strokeWidth={1.5}
+                    className="shrink-0 opacity-60 text-[#00263e]"
+                  />
                 </div>
 
                 {/* 价格 */}
