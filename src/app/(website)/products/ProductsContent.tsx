@@ -461,7 +461,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       </div>
 
       {/* 产品区域 - 手机端卡片布局 */}
-      <div className="flex flex-1 flex-col gap-5 px-5 py-4 overflow-y-auto">
+      <div className="flex flex-1 flex-col gap-5 px-5 py-4 overflow-y-auto scrollbar-hide">
         {(activeTab === 'featured' ? featuredProducts : products).map((product, idx) => (
           <m.div
             key={product.id}
