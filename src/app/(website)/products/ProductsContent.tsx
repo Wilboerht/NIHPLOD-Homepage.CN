@@ -427,7 +427,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
       {/* 移动端标题与导航 - 左右布局 */}
       <div className="flex shrink-0 items-center justify-between px-6 pt-6 pb-3 relative z-10">
-        <h2 className="text-[22px] font-normal tracking-[0.2em] text-[#00263e] leading-none">
+        <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] leading-none" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
           当季热卖
         </h2>
         <m.button
@@ -482,7 +482,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               <div className="relative z-10 flex flex-col p-4">
                 {/* 产品名称 + 箭头 */}
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-[1.05rem] font-serif font-medium tracking-[0.02em] text-[#00263E] leading-snug line-clamp-1">
+                  <h3 className="text-[16px] font-normal tracking-wide text-[#00263e] leading-snug line-clamp-1" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                     {product.name}
                   </h3>
                   <svg
@@ -501,7 +501,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </div>
 
                 {/* 价格 */}
-                <p className="mt-1 text-[0.95rem] font-medium text-[#00263E]/80">
+                <p className="mt-1 text-[14px] font-light tracking-wide text-[#00263e]/90" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                   {formatPrice(product.price)}
                 </p>
               </div>
@@ -511,7 +511,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       </div>
       {/* 移动端版权信息 - 与指南页保持一致 */}
       <footer className="shrink-0 py-6 relative z-20 flex flex-col items-center">
-        <p className="text-[10px] font-light tracking-widest text-brand-charcoal/40 uppercase">
+        <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
         </p>
       </footer>
