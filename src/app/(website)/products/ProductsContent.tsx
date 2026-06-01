@@ -432,7 +432,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       </div>
 
       {/* 移动端标题 */}
-      <div className="flex flex-col items-center pt-2 pb-2 shrink-0">
+      <div className="flex flex-col items-center pt-2 pb-6 shrink-0">
         <h2
           className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center"
           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}

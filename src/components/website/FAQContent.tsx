@@ -188,7 +188,7 @@ export function FAQContent() {
                                     {/* Scrollable Question List */}
                                     <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-pb-6">
                                         {/* Page Title - Mobile */}
-                                        <div className="flex flex-col items-center pt-2 pb-2 mb-4 sm:hidden">
+                                        <div className="flex flex-col items-center pt-2 pb-2 mb-7 sm:hidden">
                                             <h1 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                 常见问题
                                             </h1>
