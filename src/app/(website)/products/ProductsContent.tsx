@@ -425,23 +425,27 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         </Link>
       </div>
 
-      {/* 移动端标题与导航 - 左右布局 */}
-      <div className="flex shrink-0 items-center justify-between px-6 pt-6 pb-3 relative z-10">
-        <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] leading-none" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-          当季热卖
-        </h2>
-        <m.button
-          type="button"
-          onClick={() => setIsCategoryMenuOpen(true)}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40 hover:text-brand-charcoal transition-all"
-        >
-          <div className="flex flex-col gap-1">
-            <div className="h-px w-4 bg-current opacity-40" />
-            <div className="h-px w-2 bg-current opacity-40 ml-auto" />
+      {/* 移动端标题 */}
+      <div className="px-4 relative z-40 shrink-0 pt-6 pb-3">
+        <div className="relative">
+          <div className="flex flex-col items-start mb-7">
+            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-left" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+              当季热卖
+            </h2>
+            <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
           </div>
-          <span className="leading-none">更多产品</span>
-        </m.button>
+          <button
+            type="button"
+            onClick={() => setIsCategoryMenuOpen(true)}
+            className="absolute top-2 right-0 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40 hover:text-brand-charcoal transition-all"
+          >
+            <div className="flex flex-col gap-1">
+              <div className="h-px w-4 bg-current opacity-40" />
+              <div className="h-px w-2 bg-current opacity-40 ml-auto" />
+            </div>
+            <span className="leading-none">更多产品</span>
+          </button>
+        </div>
       </div>
 
       {/* 三个主推产品区域 - 手机端卡片布局 */}
