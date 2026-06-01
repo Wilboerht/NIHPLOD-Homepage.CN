@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function CartDrawer() {
-    const { openCheckout } = useAuth();
+    const { user, openCheckout } = useAuth();
     const {
         isOpen,
         closeCart,
@@ -22,9 +22,11 @@ export function CartDrawer() {
     } = useCartStore();
 
     useEffect(() => {
-        // 初始化时获取购物车数据
-        fetchCart();
-    }, [fetchCart]);
+        // 仅在登录状态下获取购物车数据
+        if (user) {
+            fetchCart();
+        }
+    }, [fetchCart, user]);
 
     // 计算总价
     const totalPrice = items.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0);

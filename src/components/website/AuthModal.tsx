@@ -28,7 +28,7 @@ export function AuthModal() {
         onSwitchToRegister={switchToRegister}
         onSwitchToForgotPassword={switchToForgotPassword}
         onSuccess={async () => {
-          await refreshUser();
+          await refreshUser(true);
           openUserCenter();
         }}
       />
@@ -37,7 +37,7 @@ export function AuthModal() {
         onClose={closeModal}
         onSwitchToLogin={switchToLogin}
         onSuccess={async () => {
-          await refreshUser();
+          await refreshUser(true);
           openUserCenter();
         }}
       />
@@ -50,7 +50,7 @@ export function AuthModal() {
         isOpen={activeModal === "wechat-bind"}
         onClose={closeModal}
         onSuccess={async () => {
-          await refreshUser();
+          await refreshUser(true);
           openUserCenter();
         }}
       />

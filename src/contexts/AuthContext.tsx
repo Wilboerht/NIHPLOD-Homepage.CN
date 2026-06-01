@@ -52,7 +52,7 @@ interface AuthContextType {
   switchToRegister: () => void;
   switchToForgotPassword: () => void;
   switchToWechatBind: () => void;
-  refreshUser: () => Promise<void>;
+  refreshUser: (force?: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -152,12 +152,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setContactDefaultType(null);
   }, []);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (force?: boolean) => {
+    // 如果没有前端认证提示且非强制刷新，跳过请求（避免未登录用户产生 401）
+    if (!force && typeof window !== "undefined" && !localStorage.getItem("auth_hint")) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/user/profile");
+      if (res.status === 401) {
+        setUser(null);
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         setUser(data.data.user);
+        localStorage.setItem("auth_hint", "1");
       } else {
         setUser(null);
       }
@@ -173,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
       setUserCenterOpen(false);
+      localStorage.removeItem("auth_hint");
     } catch (error) {
       console.error("登出失败:", error);
     }
