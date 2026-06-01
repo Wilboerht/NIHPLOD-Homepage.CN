@@ -427,8 +427,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
       {/* 移动端标题 */}
       <div className="px-4 relative z-40 shrink-0 pt-6 pb-3">
-        <div className="relative">
-          <div className="flex flex-col items-start mb-7">
+        <div className="flex items-start justify-between mb-7">
+          <div className="flex flex-col items-start">
             <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-left" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
               当季热卖
             </h2>
@@ -437,13 +437,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           <button
             type="button"
             onClick={() => setIsCategoryMenuOpen(true)}
-            className="absolute top-2 right-0 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40 hover:text-brand-charcoal transition-all"
+            className="flex h-8 items-center gap-1 rounded-full border border-[#00263E]/10 bg-white/80 px-3.5 text-[12px] font-medium tracking-wide text-[#00263E] shadow-sm backdrop-blur-sm transition-all hover:bg-white hover:shadow active:scale-95"
+            style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
           >
-            <div className="flex flex-col gap-1">
-              <div className="h-px w-4 bg-current opacity-40" />
-              <div className="h-px w-2 bg-current opacity-40 ml-auto" />
-            </div>
-            <span className="leading-none">更多产品</span>
+            <span>更多产品</span>
+            <ChevronDown className="h-3.5 w-3.5 opacity-70" strokeWidth={1.5} />
           </button>
         </div>
       </div>
