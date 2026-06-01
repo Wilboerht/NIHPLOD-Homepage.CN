@@ -462,7 +462,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
               {/* 上方：产品图片区域 —— 正方形容器，图片填满 */}
-              <div className="relative z-10 w-[calc(100%-2rem)] mx-auto mt-4 aspect-square overflow-hidden bg-[#F8F7F3]">
+              <div className="relative z-10 w-[calc(100%-3rem)] mx-auto mt-4 aspect-square overflow-hidden bg-[#F8F7F3]">
                 {/* 容量标签 */}
                 {product.capacity && (
                   <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
@@ -479,10 +479,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               </div>
 
               {/* 下方：产品信息 */}
-              <div className="relative z-10 flex flex-col p-4">
+              <div className="relative z-10 flex flex-col px-6 py-4">
                 {/* 产品名称 + 箭头 */}
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-[16px] font-normal tracking-wide text-[#00263e] leading-snug line-clamp-1" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                  <h3 className="text-[16px] font-normal tracking-wide text-[#00263e] leading-snug line-clamp-1 text-left" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                     {product.name}
                   </h3>
                   <svg
@@ -501,7 +501,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </div>
 
                 {/* 价格 */}
-                <p className="mt-1 text-[14px] font-light tracking-wide text-[#00263e]/90" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                <p className="mt-1 text-[14px] font-light tracking-wide text-[#00263e]/90 text-left" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                   {formatPrice(product.price)}
                 </p>
               </div>
