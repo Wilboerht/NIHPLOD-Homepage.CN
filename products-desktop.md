@@ -1,0 +1,88 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic:
+      - generic:
+        - img "Watermark PC"
+      - generic [ref=e3]:
+        - generic [ref=e4]:
+          - link "了解产品" [ref=e5] [cursor=pointer]:
+            - /url: /products
+          - img "Brand Story" [ref=e6]
+          - generic:
+            - generic: 探索产品
+        - generic [ref=e7]:
+          - generic [ref=e8]:
+            - text: 更少步骤
+            - text: 更多呵护
+          - generic [ref=e9]:
+            - text: 美丽不该复杂
+            - text: 专注美好生活
+        - generic [ref=e10]:
+          - link "官方指南" [ref=e11] [cursor=pointer]:
+            - /url: /guide
+          - img "官方指南" [ref=e12]
+          - generic:
+            - generic: 官方指南
+        - generic [ref=e13]:
+          - link "关于旎柏" [ref=e14] [cursor=pointer]:
+            - /url: /about
+          - img "Product Desktop" [ref=e15]
+        - generic [ref=e16]:
+          - generic [ref=e17]: 逆转时光
+          - generic [ref=e18]: REVERSE TIME
+        - generic [ref=e20]:
+          - img "User Profile" [ref=e27]
+          - button "立即登录" [ref=e28] [cursor=pointer]:
+            - generic [ref=e29]: 立即登录
+            - img [ref=e30]
+    - main:
+      - generic:
+        - generic:
+          - generic:
+            - generic [ref=e40]:
+              - navigation [ref=e41]:
+                - link "Logo" [ref=e42] [cursor=pointer]:
+                  - /url: /
+                  - img "Logo" [ref=e44]
+                - generic [ref=e45]:
+                  - button "洁面" [ref=e46] [cursor=pointer]: 洁面
+                  - button "磨砂膏" [ref=e47] [cursor=pointer]: 磨砂膏
+                  - button "面膜" [ref=e48] [cursor=pointer]: 面膜
+                  - button "精华" [ref=e49] [cursor=pointer]: 精华
+                  - button "面霜" [ref=e50] [cursor=pointer]: 面霜
+                  - button "防晒" [ref=e51] [cursor=pointer]: 防晒
+                  - button "护手霜" [ref=e52] [cursor=pointer]: 护手霜
+                  - button "身体护理" [ref=e53] [cursor=pointer]: 身体护理
+                  - button "护理油" [ref=e54] [cursor=pointer]: 护理油
+                  - button "礼盒套装" [ref=e55] [cursor=pointer]: 礼盒套装
+              - generic [ref=e57]:
+                - generic [ref=e58]:
+                  - heading "当季热卖" [level=1] [ref=e60]
+                  - generic [ref=e61]:
+                    - link "净透温和洁面慕斯 净透温和洁面慕斯 100 ml" [ref=e62] [cursor=pointer]:
+                      - /url: /products/foam-cleanser
+                      - generic [ref=e63]:
+                        - img "净透温和洁面慕斯" [ref=e65]
+                        - generic [ref=e66]:
+                          - heading "净透温和洁面慕斯" [level=2] [ref=e67]
+                          - generic [ref=e68]: 100 ml
+                    - link "匀衡磨砂膏 匀衡磨砂膏 50 ml" [ref=e69] [cursor=pointer]:
+                      - /url: /products/face-scrub
+                      - generic [ref=e70]:
+                        - img "匀衡磨砂膏" [ref=e72]
+                        - generic [ref=e73]:
+                          - heading "匀衡磨砂膏" [level=2] [ref=e74]
+                          - generic [ref=e75]: 50 ml
+                    - link "臻奢赋活莱赛尔面膜 臻奢赋活莱赛尔面膜 30g × 4" [ref=e76] [cursor=pointer]:
+                      - /url: /products/face-mask
+                      - generic [ref=e77]:
+                        - img "臻奢赋活莱赛尔面膜" [ref=e79]
+                        - generic [ref=e80]:
+                          - heading "臻奢赋活莱赛尔面膜" [level=2] [ref=e81]
+                          - generic [ref=e82]: 30g × 4
+                - paragraph [ref=e84]: © 2026 NIHPLOD. All Rights Reserved.
+            - button [ref=e32] [cursor=pointer]:
+              - generic [ref=e33]:
+                - img [ref=e34]
+                - img [ref=e36]
+  - alert [ref=e85]

@@ -495,8 +495,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               </div>
 
               {/* 下方：产品信息 */}
-              <div className="relative z-10 flex items-center justify-between p-6">
-                <div className="flex flex-col gap-1">
+              <div className="relative z-10 flex items-center justify-between py-5 pl-5 pr-3">
+                <div className="flex flex-col items-start gap-1 max-w-fit">
                   <p
                     className="text-[16px] font-normal text-[#00263e] leading-[24px] line-clamp-1 text-left"
                     style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
