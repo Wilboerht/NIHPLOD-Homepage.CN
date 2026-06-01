@@ -448,7 +448,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           className="flex items-center gap-0.5 text-[13px] font-normal tracking-wide text-[#7B726C] transition-all active:scale-95"
           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
         >
-          全部分类
+          全部产品
           <ChevronRight size={14} strokeWidth={1.5} />
         </button>
       </div>
