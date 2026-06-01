@@ -468,7 +468,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
+            className="flex flex-col"
           >
+            {/* 卡片 - 只包含产品图片 */}
             <Link
               href={`/products/${product.slug}`}
               onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
@@ -477,8 +479,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               {/* 矿物纹理 - 极淡 */}
               <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
-              {/* 上方：产品图片区域 —— 正方形容器，图片填满 */}
-              <div className="relative z-10 w-[calc(100%-3rem)] mx-auto mt-4 aspect-square overflow-hidden bg-[#F8F7F3]">
+              {/* 产品图片区域 —— 正方形容器，图片填满 */}
+              <div className="relative z-10 w-[calc(100%-3rem)] mx-auto mt-4 mb-4 aspect-square overflow-hidden bg-[#F8F7F3]">
                 {/* 容量标签 */}
                 {product.capacity && (
                   <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
@@ -493,28 +495,32 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   priority={idx <= 1}
                 />
               </div>
-
-              {/* 下方：产品信息 */}
-              <div className="relative z-10 flex items-center justify-between py-5 pl-5 pr-3">
-                <div className="flex flex-col items-start gap-1 max-w-fit">
-                  <p
-                    className="text-[16px] font-normal text-[#00263e] leading-[24px] line-clamp-1 text-left"
-                    style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
-                    title={product.name}
-                  >
-                    {product.name}
-                  </p>
-                  <p className="text-[14px] font-light text-[#00263e]/90 text-left" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                    {formatPrice(product.price)}
-                  </p>
-                </div>
-                <ChevronRight
-                  size={20}
-                  strokeWidth={1.5}
-                  className="shrink-0 opacity-60 text-[#00263e]"
-                />
-              </div>
             </Link>
+
+            {/* 产品信息 - 放在卡片下方 */}
+            <button
+              type="button"
+              onClick={() => handleProductClick(product)}
+              className="flex w-full items-center justify-between pt-3 pb-1 text-left"
+            >
+              <div className="flex flex-col items-start gap-1 max-w-fit">
+                <p
+                  className="text-[16px] font-normal text-[#00263e] leading-[24px] line-clamp-1 text-left"
+                  style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                  title={product.name}
+                >
+                  {product.name}
+                </p>
+                <p className="text-[14px] font-light text-[#00263e]/90 text-left" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                  {formatPrice(product.price)}
+                </p>
+              </div>
+              <ChevronRight
+                size={20}
+                strokeWidth={1.5}
+                className="shrink-0 opacity-60 text-[#00263e]"
+              />
+            </button>
           </m.div>
         ))}
       </div>
