@@ -169,7 +169,9 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                     transition={{ delay: 0.2 }}
                     className="mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[14px] max-lg:font-light max-lg:leading-[1.8] max-lg:tracking-wide max-lg:text-[#00263E]/90 max-lg:mt-[34px]"
                   >
-                    {description}
+                    我们正在寻找那些希望将想法
+                    <br className="lg:hidden" />
+                    转化为创新体验和解决方案的人
                   </m.p>
                 </div>
               </div>
