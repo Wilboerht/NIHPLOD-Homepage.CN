@@ -5,6 +5,7 @@ import DOMPurify from "isomorphic-dompurify";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from "lucide-react";
+import { Link } from "next-view-transitions";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -202,7 +203,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] bg-[#F0EDE1] lg:bg-black/40 lg:backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -212,7 +213,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
             onClick={onClose}
           >
             <m.div
-              className="relative flex w-full max-w-6xl h-full flex-col overflow-hidden rounded-none bg-[#F8F7F3] shadow-2xl lg:h-[700px] lg:rounded-3xl lg:flex-row"
+              className="relative flex w-full max-w-6xl h-full flex-col overflow-hidden rounded-none bg-transparent lg:bg-[#F8F7F3] shadow-2xl lg:h-[700px] lg:rounded-3xl lg:flex-row"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -223,11 +224,22 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute right-4 top-4 z-[220] flex h-8 w-8 items-center justify-center text-2xl font-light text-[#00263E] transition-opacity hover:opacity-60 lg:right-6 lg:top-6"
+                className="absolute right-4 top-4 z-[220] hidden h-8 w-8 items-center justify-center text-2xl font-light text-[#00263E] transition-opacity hover:opacity-60 lg:flex lg:right-6 lg:top-6"
                 aria-label="关闭"
               >
                 &times;
               </button>
+
+              {/* 手机端背景水印 */}
+              <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
+                <Image
+                  src="/images/watermark-mobile.svg"
+                  alt=""
+                  fill
+                  className="object-cover opacity-75 blur-[7.5px]"
+                  priority
+                />
+              </div>
 
               {/* 左侧 - 产品图片区域 */}
               <div className="relative h-[45%] w-full flex-shrink-0 bg-white lg:h-full lg:w-[45%]">
@@ -299,15 +311,38 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               </div>
 
               {/* 右侧 - 产品信息区域 */}
-              <div className="flex-1 overflow-y-auto px-6 py-8 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] lg:px-10 lg:py-10">
-                <div className="max-w-none">
+              <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] lg:px-10 lg:py-10">
+                <div className="max-w-none flex flex-col h-full">
+                  {/* 手机端顶部栏 */}
+                  <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
+                    >
+                      <ChevronLeft className="h-6 w-6 text-[#00263E]" />
+                    </button>
+                    <Link href="/" className="flex items-center justify-center py-[30px]">
+                      <div className="relative h-[28px] w-[100px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
+                    </Link>
+                  </div>
+
                   {/* 基本信息 */}
-                  <section className="mb-6 lg:mb-8">
+                  <section className="mb-6 lg:mb-8 text-center lg:text-left">
                     {/* 删除了顶部分类标签 */}
-                    <h2 className="mb-3 text-2xl font-bold leading-tight text-[#00263E] lg:text-3xl">
+                    <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] lg:text-3xl lg:font-bold lg:tracking-normal">
                       {product.name}
                     </h2>
-                    <div className="mb-3 text-xs tracking-wide text-[#00263E]/50">
+                    <div className="lg:hidden mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                    <div className="mt-4 lg:mt-0 lg:mb-3 text-xs tracking-wide text-[#00263E]/50">
                       规格: {product.capacity || "N/A"} | 产地: 法国
                     </div>
                     <div className="text-lg font-medium text-[#00263E]">
@@ -318,14 +353,13 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   {/* 描述 */}
                   <section className="mb-8">
                     <div
-                      className="text-[15px] leading-[1.8] text-[#00263E]/70 text-justify"
+                      className="text-[14px] lg:text-[15px] font-light leading-[1.8] tracking-wide text-[#00263E]/90 text-center lg:text-justify"
                       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
                     />
                   </section>
 
-
                   {/* 小红书链接 */}
-                  <section className="mb-8">
+                  <section className="mb-8 text-center lg:text-left">
                     {(() => {
                       const keyword = `nihplod ${product.category.name}`;
                       const encodedKeyword = encodeURIComponent(keyword);
@@ -377,7 +411,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                               className="overflow-hidden"
                             >
                               <div
-                                className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
+                                className="pb-4 text-[14px] lg:text-[15px] leading-[1.8] text-[#00263E]/60"
                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.ingredients) }}
                               />
                             </m.div>
@@ -405,7 +439,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                               className="overflow-hidden"
                             >
                               <div
-                                className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
+                                className="pb-4 text-[14px] lg:text-[15px] leading-[1.8] text-[#00263E]/60"
                                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
                               />
                             </m.div>
@@ -418,7 +452,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     <div className="py-4">
                       <div className="mb-4 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
 
-                      <div className="flex flex-wrap gap-4 items-center">
+                      <div className="flex flex-wrap gap-4 items-center justify-center lg:justify-start">
                         {/* 官网购买按钮 + 气泡菜单 */}
                         {product.allowDirectBuy && product.stock !== undefined && (
                           <div className="relative" ref={purchaseMenuRef}>
@@ -463,6 +497,13 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                       </div>
                     </div>
                   </section>
+
+                  {/* 手机端页脚 */}
+                  <div className="lg:hidden mt-auto pt-4 pb-4 text-center mx-6">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
+                  </div>
                 </div>
               </div>
 
