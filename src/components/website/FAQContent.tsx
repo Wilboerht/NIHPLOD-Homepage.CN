@@ -188,20 +188,7 @@ export function FAQContent() {
                                     {/* Scrollable Question List */}
                                     <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-pb-6">
                                         {/* Page Title - Mobile */}
-                                        <div className="flex flex-col items-center mb-7 sm:hidden">
-                                            <div
-                                                onClick={() => openContact("support")}
-                                                className="flex h-[37px] w-full items-center justify-center mb-7 cursor-pointer active:scale-[0.98] transition-all"
-                                                style={{
-                                                    background: 'linear-gradient(90deg, #E8E4D8 0%, #F0EDE1 15%, #F5F3ED 50%, #F0EDE1 85%, #E8E4D8 100%)',
-                                                    clipPath: 'polygon(0 0, 3% 20%, 0 40%, 4% 50%, 0 60%, 3% 80%, 0 100%, 100% 100%, 97% 80%, 100% 60%, 96% 50%, 100% 40%, 97% 20%, 100% 0)'
-                                                }}
-                                            >
-                                                <span className="text-[13px] md:text-[12px] font-normal tracking-wide text-[#7B726C]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-                                                    需要帮助？联系我们
-                                                </span>
-                                                <ChevronRight className="w-4 h-4 text-[#7B726C]" />
-                                            </div>
+                                        <div className="flex flex-col items-center pt-2 pb-2 mb-4 sm:hidden">
                                             <h1 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                                                 常见问题
                                             </h1>
