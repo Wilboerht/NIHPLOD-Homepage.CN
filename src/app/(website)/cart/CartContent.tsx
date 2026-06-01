@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { trackEvent } from "@/lib/analytics";
+import { formatPrice } from "@/lib/utils";
 
 interface CartItem {
   id: string;
@@ -161,7 +162,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
               {item.variant && (
                 <p className="text-sm text-gray-500">{item.variant.name}</p>
               )}
-              <p className="text-pink-500 font-bold mt-1">¥{item.price.toFixed(2)}</p>
+              <p className="text-pink-500 font-bold mt-1">{formatPrice(item.price)}</p>
 
               {/* 数量控制 */}
               <div className="flex items-center gap-2 mt-2">
@@ -196,7 +197,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
           <p className="text-sm text-gray-500">
             已选 <span className="text-pink-500 font-bold">{totalCount}</span> 件
           </p>
-          <p className="text-lg font-bold text-pink-500">¥{totalPrice.toFixed(2)}</p>
+          <p className="text-lg font-bold text-pink-500">{formatPrice(totalPrice)}</p>
         </div>
         <button
           onClick={handleCheckout}

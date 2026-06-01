@@ -10,6 +10,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { X, MapPin, ChevronRight, ShoppingBag, FileText, Loader2, Check } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatPrice } from "@/lib/utils";
 
 interface CheckoutItem {
   productId: string;
@@ -357,7 +358,7 @@ export function CheckoutModal() {
                             )}
                             <div className="flex justify-between items-center mt-1">
                               <span className="text-sm text-[#A69374] font-medium">
-                                ¥{item.price.toFixed(2)}
+                                {formatPrice(item.price)}
                               </span>
                               <span className="text-xs text-[#A69B8C] bg-[#F8F7F3] px-2 py-0.5 rounded">
                                 x{item.quantity}
@@ -440,20 +441,20 @@ export function CheckoutModal() {
                   <div className="space-y-1 mb-3 text-sm">
                     <div className="flex justify-between text-[#8B8579]">
                       <span>商品小计</span>
-                      <span>¥{data.totalPrice.toFixed(2)}</span>
+                      <span>{formatPrice(data.totalPrice)}</span>
                     </div>
                     <div className="flex justify-between text-[#8B8579]">
                       <span>运费</span>
                       {data.shippingFee === 0 ? (
                         <span className="text-green-600">包邮</span>
                       ) : (
-                        <span>¥{data.shippingFee.toFixed(2)}</span>
+                        <span>{formatPrice(data.shippingFee)}</span>
                       )}
                     </div>
                     {discountAmount > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>优惠券优惠</span>
-                        <span>-¥{discountAmount.toFixed(2)}</span>
+                        <span>-{formatPrice(discountAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center pt-2 border-t border-[#E8E3DC]">
@@ -463,7 +464,7 @@ export function CheckoutModal() {
                       <div className="text-right">
                         <span className="text-sm text-[#8B8579]">合计：</span>
                         <span className="text-xl font-bold text-[#A69374]">
-                          ¥{finalTotal.toFixed(2)}
+                          {formatPrice(finalTotal)}
                         </span>
                       </div>
                     </div>

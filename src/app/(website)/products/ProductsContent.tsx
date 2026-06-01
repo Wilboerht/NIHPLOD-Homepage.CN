@@ -8,7 +8,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, X } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 
 interface Category {
@@ -502,7 +502,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
                 {/* 价格 */}
                 <p className="mt-1 text-[0.95rem] font-medium text-[#00263E]/80">
-                  ¥{product.price.toLocaleString()}
+                  {formatPrice(product.price)}
                 </p>
               </div>
             </Link>
@@ -826,14 +826,27 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           setIsCategoryMenuOpen(false);
                         }
                       }}
-                      className="group flex w-full flex-row items-center justify-center gap-4 rounded-2xl bg-[#F8F7F3]/60 py-6 px-4 transition-all active:scale-95 active:bg-[#F8F7F3]"
+                      className={cn(
+                        "group flex w-full flex-row items-center justify-center gap-4 rounded-2xl py-6 px-4 transition-all",
+                        categoryProduct
+                          ? "bg-[#F8F7F3]/60 active:scale-95 active:bg-[#F8F7F3]"
+                          : "bg-[#F8F7F3]/30 cursor-not-allowed opacity-60"
+                      )}
                     >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center text-[#00263E] opacity-90 transition-transform group-active:scale-110">
+                      <div className={cn(
+                        "flex h-12 w-12 shrink-0 items-center justify-center text-[#00263E] opacity-90 transition-transform",
+                        categoryProduct && "group-active:scale-110"
+                      )}>
                         {CATEGORY_ICONS[cat.name]}
                       </div>
-                      <span className="text-base font-medium tracking-[0.1em] text-[#00263E]/90 whitespace-nowrap text-center">
-                        {cat.name}
-                      </span>
+                      <div className="flex flex-col items-center">
+                        <span className="text-base font-medium tracking-[0.1em] text-[#00263E]/90 whitespace-nowrap text-center">
+                          {cat.name}
+                        </span>
+                        {!categoryProduct && (
+                          <span className="text-[10px] text-[#00263E]/40 tracking-wider mt-0.5">敬请期待</span>
+                        )}
+                      </div>
                     </Link>
                   </m.div>
                 );})}

@@ -5,7 +5,7 @@ import DOMPurify from "isomorphic-dompurify";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/store/cart";
@@ -48,18 +48,6 @@ interface ProductDrawerProps {
   onClose: () => void;
   /** 产品数据 */
   product: ProductData | null;
-}
-
-/**
- * 格式化价格
- */
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
 }
 
 /**
@@ -446,7 +434,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                             {purchaseMenuOpen && (
                               <div className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl bg-white p-3 shadow-xl ring-1 ring-black/5">
-                                <DrawerAddToCartButton productId={product.id} stock={product.stock!} onClose={onClose} compact />
+                                <DrawerAddToCartButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
                                 <div className="my-1.5 border-t border-[#00263E]/5" />
                                 <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
                               </div>
@@ -490,7 +478,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 /**
  * 加入购物车按钮（ProductDrawer 专用）
  */
-function DrawerAddToCartButton({ productId, stock, compact, onClose }: { productId: string; stock: number; compact?: boolean; onClose?: () => void }) {
+function DrawerAddToCartButton({ productId, stock, quantity, compact, onClose }: { productId: string; stock: number; quantity: number; compact?: boolean; onClose?: () => void }) {
   const [loading, setLoading] = useState(false);
   const { user, openLoginModal } = useAuth();
   const { success, error: showError } = useToast();
@@ -507,7 +495,7 @@ function DrawerAddToCartButton({ productId, stock, compact, onClose }: { product
     }
     setLoading(true);
     try {
-      const result = await addToCart(productId, 1);
+      const result = await addToCart(productId, quantity);
       if (result) {
         success("已加入购物车");
         onClose?.();

@@ -8,6 +8,7 @@ import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatPrice } from "@/lib/utils";
 
 export function CartDrawer() {
     const { user, openCheckout } = useAuth();
@@ -119,7 +120,7 @@ export function CartDrawer() {
                                                             {item.name}
                                                         </h3>
                                                         <p className="mt-1 text-sm font-medium text-brand-brown/80">
-                                                            ¥ {item.price.toLocaleString()}
+                                                            {formatPrice(item.price)}
                                                         </p>
                                                     </div>
                                                     <button
@@ -163,7 +164,7 @@ export function CartDrawer() {
                                 <div className="mb-4 flex items-center justify-between">
                                     <span className="text-base text-brand-brown/70">总计 (不含运费)</span>
                                     <span className="font-serif text-2xl font-bold text-brand-brown">
-                                        ¥{totalPrice.toLocaleString()}
+                                        {formatPrice(totalPrice)}
                                     </span>
                                 </div>
                                 <Button onClick={handleCheckout} className="w-full py-6 text-lg">

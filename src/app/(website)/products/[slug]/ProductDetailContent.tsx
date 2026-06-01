@@ -7,7 +7,7 @@ import { m } from "framer-motion";
 import { ChevronLeft, ExternalLink, ShoppingCart, Loader2 } from "lucide-react";
 import { ProductCard } from "@/components/website";
 import { fadeInUp, defaultTransition } from "@/lib/animations";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/store/cart";
@@ -60,18 +60,6 @@ interface ProductDetailContentProps {
 }
 
 type TabType = "description" | "ingredients" | "usage";
-
-/**
- * 格式化价格
- */
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
-}
 
 /**
  * 产品详情页内容组件
@@ -208,7 +196,7 @@ export function ProductDetailContent({
           {product.allowDirectBuy && (
             <>
               <QuantitySelector stock={product.stock} quantity={quantity} onChange={setQuantity} />
-              <AddToCartButton productId={product.id} stock={product.stock} />
+              <AddToCartButton productId={product.id} stock={product.stock} quantity={quantity} />
               <DirectBuyButton productId={product.id} stock={product.stock} quantity={quantity} />
             </>
           )}
@@ -322,7 +310,7 @@ export function ProductDetailContent({
 /**
  * 加入购物车按钮组件
  */
-function AddToCartButton({ productId, stock }: { productId: string; stock: number }) {
+function AddToCartButton({ productId, stock, quantity }: { productId: string; stock: number; quantity: number }) {
   const [loading, setLoading] = useState(false);
   const { user, openLoginModal } = useAuth();
   const { success, error: showError } = useToast();
@@ -341,7 +329,7 @@ function AddToCartButton({ productId, stock }: { productId: string; stock: numbe
 
     setLoading(true);
     try {
-      const result = await addToCart(productId, 1);
+      const result = await addToCart(productId, quantity);
       if (result) {
         success("已加入购物车");
       } else {
