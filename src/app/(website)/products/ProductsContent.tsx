@@ -372,6 +372,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
+  const [activeTab, setActiveTab] = useState<'featured' | 'all'>('featured');
+
+  const tabItems = [
+    { id: 'featured' as const, label: '当季热卖' },
+    { id: 'all' as const, label: '全部产品' },
+  ];
 
   // 挑选主推的3个产品 (这里默认取前三个，实际可根据后台标记筛选)
   const featuredProducts = products.slice(0, 3);
@@ -425,30 +431,38 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         </Link>
       </div>
 
-      {/* 移动端标题 */}
-      <div className="px-4 relative z-40 shrink-0 pt-6 pb-3">
-        <div className="flex items-start justify-between mb-7">
-          <div className="flex flex-col items-start">
-            <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-left" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
-              当季热卖
-            </h2>
-            <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsCategoryMenuOpen(true)}
-            className="flex h-8 items-center gap-1 rounded-full border border-[#00263E]/10 bg-white/80 px-3.5 text-[12px] font-medium tracking-wide text-[#00263E] shadow-sm backdrop-blur-sm transition-all hover:bg-white hover:shadow active:scale-95"
-            style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
-          >
-            <span>更多产品</span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-70" strokeWidth={1.5} />
-          </button>
-        </div>
+      {/* Navigation - Mobile Tab Bar */}
+      <div className="px-4 relative z-40 shrink-0">
+        <nav className="flex h-[37px] items-center rounded-full bg-[#F0EDE1] p-[4px]">
+          {tabItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className="relative flex flex-1 items-center justify-center"
+                style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+              >
+                <span
+                  className={cn(
+                    "text-[13px] leading-[20px] whitespace-nowrap transition-all duration-300",
+                    isActive
+                      ? "rounded-full bg-white px-3 py-1 text-[#00263E] font-medium shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
+                      : "px-3 py-1 text-[#7B726C]/60 hover:text-[#7B726C]/80 hover:bg-white/40"
+                  )}
+                >
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* 三个主推产品区域 - 手机端卡片布局 */}
+      {/* 产品区域 - 手机端卡片布局 */}
       <div className="flex flex-1 flex-col gap-5 px-5 py-4 overflow-y-auto">
-        {featuredProducts.map((product, idx) => (
+        {(activeTab === 'featured' ? featuredProducts : products).map((product, idx) => (
           <m.div
             key={product.id}
             initial={{ opacity: 0, y: 20 }}
