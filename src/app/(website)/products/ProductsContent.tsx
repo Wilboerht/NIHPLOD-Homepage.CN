@@ -431,33 +431,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         </Link>
       </div>
 
-      {/* Navigation - Mobile Tab Bar */}
-      <div className="px-4 relative z-40 shrink-0">
-        <nav className="flex h-[37px] items-center rounded-full bg-[#F0EDE1] p-[4px]">
-          {tabItems.map((item) => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveTab(item.id)}
-                className="relative flex flex-1 items-center justify-center"
-                style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
-              >
-                <span
-                  className={cn(
-                    "text-[13px] leading-[20px] whitespace-nowrap transition-all duration-300",
-                    isActive
-                      ? "rounded-full bg-white px-3 py-1 text-[#00263E] font-medium shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
-                      : "px-3 py-1 text-[#7B726C]/60 hover:text-[#7B726C]/80 hover:bg-white/40"
-                  )}
-                >
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+      {/* 移动端标题 */}
+      <div className="flex flex-col items-center pt-2 pb-2 shrink-0">
+        <h2
+          className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center"
+          style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+        >
+          {activeTab === 'featured' ? '当季热卖' : '全部产品'}
+        </h2>
+        <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
       </div>
 
       {/* 产品区域 - 手机端卡片布局 */}
