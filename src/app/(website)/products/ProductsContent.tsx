@@ -773,15 +773,18 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] flex flex-col bg-[#F8F7F3]/95 backdrop-blur-xl lg:hidden"
+            className="fixed inset-0 z-[100] flex flex-col bg-[#F0EDE1] lg:hidden"
           >
-            {/* 顶层背景纹理 - 同首页 */}
-            <div
-              className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-              }}
-            />
+            {/* 手机端背景水印 - 同联系我们 */}
+            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+              <Image
+                src="/images/watermark-mobile.svg"
+                alt=""
+                fill
+                className="object-cover opacity-75 blur-[7.5px]"
+                priority
+              />
+            </div>
 
             {/* 顶部标题与关闭 */}
             <header className="flex h-24 shrink-0 items-center justify-center px-6 pt-6 relative z-20">
