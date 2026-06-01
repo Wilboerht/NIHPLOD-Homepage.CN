@@ -410,20 +410,20 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
    */
   const MobileShowcase = () => (
     <div className="flex h-full flex-col overflow-hidden bg-[#F8F7F3]">
-      {/* 顶部 Logo - 保持与首页一致的呼吸感 */}
-      <header className="flex h-20 shrink-0 items-center justify-center pt-8">
-        <Link href="/">
-          <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
+      {/* Header - Mobile */}
+      <div className="flex h-[88px] shrink-0 items-center justify-center relative z-50">
+        <Link href="/" className="flex items-center justify-center mt-1">
+          <div className="relative h-[28px] w-[100px]">
             <Image
               src="/images/NIHPLOD-logo.svg"
-              alt="Logo"
+              alt="NIHPLOD Logo"
               fill
               className="object-contain"
               priority
             />
           </div>
         </Link>
-      </header>
+      </div>
 
       {/* 移动端标题与导航 - 左右布局 */}
       <div className="flex shrink-0 items-center justify-between px-6 pt-6 pb-3 relative z-10">
