@@ -432,14 +432,26 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       </div>
 
       {/* 移动端标题 */}
-      <div className="flex flex-col items-center pt-2 pb-6 shrink-0">
-        <h2
-          className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center"
+      <div className="flex items-center justify-between px-5 pt-2 pb-6 shrink-0">
+        <div className="w-20" />
+        <div className="flex flex-col items-center">
+          <h2
+            className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] text-center"
+            style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+          >
+            {activeTab === 'featured' ? '当季热卖' : '全部产品'}
+          </h2>
+          <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsCategoryMenuOpen(true)}
+          className="flex w-20 items-center justify-end gap-0.5 text-[13px] font-normal tracking-wide text-[#7B726C] transition-all active:scale-95"
           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
         >
-          {activeTab === 'featured' ? '当季热卖' : '全部产品'}
-        </h2>
-        <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+          全部分类
+          <ChevronRight size={14} strokeWidth={1.5} />
+        </button>
       </div>
 
       {/* 产品区域 - 手机端卡片布局 */}
