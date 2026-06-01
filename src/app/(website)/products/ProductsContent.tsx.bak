@@ -522,7 +522,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         ))}
       </div>
       {/* 移动端版权信息 - 与指南页保持一致 */}
-      <footer className="shrink-0 pt-3 pb-1 relative z-20 flex flex-col items-center">
+      <footer className="shrink-0 py-6 relative z-20 flex flex-col items-center">
         <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
         </p>
@@ -543,7 +543,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
       {/* 内容区域容器 */}
       <m.div
-        className="safe-area-content !-top-[1px] !pointer-events-none"
+        className="safe-area-content !top-0 !pointer-events-none"
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       >
         {/* 主内容区域 + 展开按钮一体化 */}
@@ -558,11 +558,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             {/* 主内容区域 - 抽屉 */}
             <m.div
               className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
-              style={{ willChange: "flex-grow" }}
-              initial={{ flexGrow: 0, flexBasis: 0 }}
+              style={{ willChange: "flex-grow, height" }}
+              initial={{ height: 0, flexGrow: 0 }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
-                flexBasis: 0
+                height: !isExpanded ? 0 : "auto"
               }}
               transition={{
                 duration: 1.2,
@@ -599,9 +599,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               </AnimatePresence>
 
               {/* 内容区域 */}
-              <div className={cn("relative z-10 flex h-full flex-col overflow-hidden pb-3", !isExpanded && "hidden")}>
+              <div className={cn("relative z-10 flex h-full flex-col overflow-hidden", !isExpanded && "hidden")}>
                 {/* 移动端展示层 - 仅在移动端显示，一屏式布局 */}
-                <div className="relative flex h-full flex-col lg:hidden overflow-hidden">
+                <div className="flex h-full flex-col lg:hidden overflow-hidden">
                   <MobileShowcase />
                 </div>
 
@@ -744,7 +744,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
             {/* 展开/收起按钮 - 放在 m.div 外部作为兄弟元素 */}
             <button
-              type="button"
               onClick={() => {
                 const newState = !isExpanded;
                 setIsExpanded(newState);
