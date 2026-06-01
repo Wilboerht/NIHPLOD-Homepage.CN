@@ -117,7 +117,7 @@ export function TermsContent({ content }: TermsContentProps) {
               <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center pointer-events-auto">
                 <button
                   onClick={() => typeof window !== "undefined" && window.history.back()}
-                  className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-8 py-[10px]"
+                  className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
                 >
                   <ChevronLeft className="h-6 w-6 text-[#00263E]" />
                 </button>
