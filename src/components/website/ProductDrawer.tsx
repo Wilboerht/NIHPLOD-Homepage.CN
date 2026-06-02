@@ -4,6 +4,7 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import DOMPurify from "isomorphic-dompurify";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
+import { Link } from "next-view-transitions";
 import { ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -206,21 +207,18 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     <AnimatePresence>
       {isOpen && product && (
         <>
-          {/* 遮罩层 */}
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[200] bg-[#F0EDE1] lg:bg-black/40 lg:backdrop-blur-sm"
-            onClick={onClose}
-          />
-
-          {/* 遮罩层以及模态框容器合并点击事件 */}
           <div
-            className="fixed inset-0 z-[210] flex items-center justify-center p-0 lg:p-6"
+            className="fixed inset-0 z-[210] flex items-center justify-center lg:p-6"
             onClick={onClose}
           >
+            {/* 遮罩层 */}
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 bg-[#F0EDE1] lg:bg-black/40 lg:backdrop-blur-sm"
+            />
             <m.div
               className="relative flex w-full max-w-6xl h-full flex-col overflow-hidden rounded-none bg-transparent lg:bg-[#F8F7F3] shadow-2xl lg:h-[700px] lg:rounded-3xl lg:flex-row"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -250,17 +248,30 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                 />
               </div>
 
-              {/* 左侧 - 产品图片区域 */}
-              <div className="relative h-[50%] max-h-[45vh] w-[calc(100%-2rem)] flex-shrink-0 rounded-2xl overflow-hidden self-center mx-4 mt-4 lg:h-full lg:max-h-none lg:w-[45%] lg:rounded-none lg:mx-0 lg:mt-0 lg:self-auto">
-                {/* 手机端返回按钮 */}
+              {/* 手机端顶部栏 */}
+              <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="lg:hidden absolute left-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/10 text-white backdrop-blur-sm"
+                  className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
                 >
-                  <ChevronLeft className="h-5 w-5" strokeWidth={2} />
+                  <ChevronLeft className="h-6 w-6 text-[#00263E]" />
                 </button>
+                <Link href="/" className="flex items-center justify-center py-[30px]">
+                  <div className="relative h-[28px] w-[100px]">
+                    <Image
+                      src="/images/NIHPLOD-logo.svg"
+                      alt="NIHPLOD Logo"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                </Link>
+              </div>
 
+              {/* 左侧 - 产品图片区域 */}
+              <div className="relative h-[50%] max-h-[45vh] w-[calc(100%-2rem)] flex-shrink-0 rounded-2xl overflow-hidden self-center mx-4 lg:h-full lg:max-h-none lg:w-[45%] lg:rounded-none lg:mx-0 lg:self-auto">
                 <AnimatePresence mode="wait">
                   {product.images[currentImageIndex] ? (
                     <m.div
