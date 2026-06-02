@@ -89,7 +89,7 @@
     left: 3px;
     right: 3px;
     bottom: 3px;
-    z-index: 0;
+    z-index: 1;
     border-radius: 12px;
     overflow: hidden;
   }
