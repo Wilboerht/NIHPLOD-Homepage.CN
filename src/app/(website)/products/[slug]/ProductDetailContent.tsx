@@ -202,7 +202,7 @@ export function ProductDetailContent({
                             <div
                               key={index}
                               className={cn(
-                                "h-[2px] w-8 transition-all duration-300",
+                                "h-[2px] w-5 transition-all duration-300",
                                 currentImageIndex === index
                                   ? "bg-[#00263E]"
                                   : "bg-[#00263E]/20"
@@ -342,7 +342,8 @@ export function ProductDetailContent({
                                 href={link.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="transition-opacity hover:opacity-60"
+                                aria-label={`在${link.platform}购买`}
+                                className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 -m-2 transition-opacity hover:opacity-60"
                               >
                                 <PlatformIcon platform={link.platform} />
                               </a>
@@ -352,7 +353,8 @@ export function ProductDetailContent({
                               href={product.purchaseUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="transition-opacity hover:opacity-60"
+                              aria-label="在官网购买"
+                              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 -m-2 transition-opacity hover:opacity-60"
                             >
                               <PlatformIcon platform="官网" />
                             </a>
