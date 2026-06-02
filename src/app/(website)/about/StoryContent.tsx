@@ -254,7 +254,8 @@ export function StoryContent() {
 
                           {/* 第二个内容块 */}
                           <div className="mb-6">
-                            <span className="mb-2.5 inline-block border border-[#00263e] px-2 py-0.5 text-[10px]">
+                            <span className="mb-2.5 inline-flex items-center gap-1.5 text-[11px]">
+                              <Image src="/images/quote-icon.svg" alt="" width={32} height={32} className="w-8 h-8 opacity-30" />
                               2008 | 摩纳哥 | 联合实验室公司
                             </span>
                             <span className="mt-4 block text-[18px] font-normal leading-snug tracking-wide text-[#00263e]">
