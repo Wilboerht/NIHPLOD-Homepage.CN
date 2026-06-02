@@ -4,12 +4,14 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
+import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronRight, ChevronLeft, X } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn, formatPrice } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useIsMobile } from "@/hooks";
 
 interface Category {
   id: string;
@@ -368,6 +370,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
   const [activeTab, setActiveTab] = useState<'featured' | 'all'>('featured');
+  const isMobile = useIsMobile();
+  const router = useRouter();
 
   const tabItems = [
     { id: 'featured' as const, label: '当季热卖' },
@@ -379,6 +383,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
   // 打开产品详情
   const handleProductClick = (product: Product) => {
+    // 手机端直接跳转到产品详情页，不使用抽屉
+    if (isMobile) {
+      router.push(`/products/${product.slug}`);
+      return;
+    }
     const productData: ProductData = {
       id: product.id,
       name: product.name,
