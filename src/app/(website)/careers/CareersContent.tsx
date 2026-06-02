@@ -399,7 +399,7 @@ function JobCard({
     <m.button
       type="button"
       onClick={onClick}
-      className="group relative w-full text-left transition-colors duration-200 hover:bg-brand-charcoal/[0.02]"
+      className="group relative w-full text-left transition-colors duration-200 hover:bg-brand-charcoal/[0.02] max-lg:rounded-xl max-lg:bg-white/30"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
