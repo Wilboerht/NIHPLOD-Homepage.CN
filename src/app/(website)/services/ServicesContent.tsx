@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
-import { ChevronLeft, Home, ScanFace, ShieldCheck } from "lucide-react";
+import { ChevronLeft, Home, ScanFace, ShieldCheck, Crown, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ServicesPageContent, ServiceDetail as CMSServiceDetail } from "@/types/page-content";
 
@@ -16,9 +16,9 @@ const ICON_HOVER_COLOR = "#B8A47B"; // brand-gold
 const VipIcon = ({ className, isHovered, color: customColor }: { className?: string; isHovered?: boolean; color?: string }) => {
   const color = customColor || (isHovered ? ICON_HOVER_COLOR : ICON_COLOR);
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
-      <path d="M17.6455 3.83496C17.8543 3.85866 18.0468 3.96395 18.1797 4.12988L21.8838 8.75977C22.1211 9.0565 22.1171 9.47948 21.874 9.77148L12.6143 20.8828C12.4624 21.0648 12.2371 21.1708 12 21.1709C11.7627 21.1708 11.5367 21.0651 11.3848 20.8828L2.12598 9.77148C1.88275 9.47961 1.87819 9.0566 2.11523 8.75977L5.81934 4.12988L5.87988 4.0625C6.02881 3.91442 6.2319 3.83017 6.44434 3.83008H17.5557L17.6455 3.83496ZM17.0156 9.21094C16.7068 8.95371 16.2476 8.99602 15.9902 9.30469L11.999 14.0928L8.00977 9.30469C7.75249 8.99611 7.29317 8.95399 6.98438 9.21094C6.67567 9.46819 6.63365 9.92749 6.89062 10.2363L11.4404 15.6963C11.5787 15.8622 11.784 15.958 12 15.958C12.2158 15.9579 12.4204 15.862 12.5586 15.6963L17.1084 10.2363C17.3656 9.92749 17.3244 9.46825 17.0156 9.21094Z" fill={color} />
-    </svg>
+    <div className={cn("flex items-center justify-center transition-all duration-300", className)}>
+      <Crown stroke={color} strokeWidth="1.6" className="h-full w-full" />
+    </div>
   );
 };
 
@@ -34,12 +34,9 @@ const WebsiteIcon = ({ className, isHovered, color: customColor }: { className?:
 const InfluencerIcon = ({ className, isHovered, color: customColor }: { className?: string; isHovered?: boolean; color?: string }) => {
   const color = customColor || (isHovered ? ICON_HOVER_COLOR : ICON_COLOR);
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={cn(className, "transition-all duration-300")}>
-      <path d="M9.5 10C11.433 10 13 8.433 13 6.5C13 4.56701 11.433 3 9.5 3C7.567 3 6 4.56701 6 6.5C6 8.433 7.567 10 9.5 10Z" fill={color} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M16.304 3.5C17.3204 4.11245 18.0002 5.22685 18.0002 6.5C18.0002 7.77315 17.3204 8.88755 16.304 9.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 17.7573V20H17V17.7573C17 17.456 16.9366 17.155 16.7605 16.9105C15.9629 15.8034 13.7511 14 9.5 14C5.24886 14 3.03712 15.8034 2.23955 16.9105C2.06344 17.155 2 17.456 2 17.7573Z" fill={color} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M19.5 15.0781C20.6406 15.6602 21.3695 16.3685 21.7599 16.9102C21.9361 17.1546 21.9999 17.4564 21.9999 17.7576V20.0004H20" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div className={cn("flex items-center justify-center transition-all duration-300", className)}>
+      <Users stroke={color} strokeWidth="1.6" className="h-full w-full" />
+    </div>
   );
 };
 
