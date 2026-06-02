@@ -5,7 +5,6 @@ import DOMPurify from "isomorphic-dompurify";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from "lucide-react";
-import { Link } from "next-view-transitions";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -118,6 +117,15 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
   const [isMobile, setIsMobile] = useState(false);
   const [purchaseMenuOpen, setPurchaseMenuOpen] = useState(false);
   const purchaseMenuRef = useRef<HTMLDivElement>(null);
+  const mobileContentRef = useRef<HTMLDivElement>(null);
+
+  // 切换 Tab 时重置滚动位置
+  const handleTabChange = (tab: 'description' | 'ingredients' | 'usage') => {
+    setActiveTab(tab);
+    if (mobileContentRef.current) {
+      mobileContentRef.current.scrollTop = 0;
+    }
+  };
 
   // 点击外部关闭购买菜单
   useEffect(() => {
@@ -243,7 +251,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               </div>
 
               {/* 左侧 - 产品图片区域 */}
-              <div className="relative h-[50%] w-[calc(100%-2rem)] flex-shrink-0 rounded-2xl overflow-hidden self-center mx-4 mt-4 lg:h-full lg:w-[45%] lg:rounded-none lg:mx-0 lg:mt-0 lg:self-auto">
+              <div className="relative h-[50%] max-h-[45vh] w-[calc(100%-2rem)] flex-shrink-0 rounded-2xl overflow-hidden self-center mx-4 mt-4 lg:h-full lg:max-h-none lg:w-[45%] lg:rounded-none lg:mx-0 lg:mt-0 lg:self-auto">
                 {/* 手机端返回按钮 */}
                 <button
                   type="button"
@@ -487,7 +495,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                 </div>
 
                 {/* 手机端内容 */}
-                <div className="lg:hidden flex flex-col h-full overflow-y-auto px-5 pt-5 pb-4">
+                <div ref={mobileContentRef} className="lg:hidden flex flex-col h-full overflow-y-auto px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                   {/* 标题与规格 */}
                   <div className="flex items-start justify-between mb-1">
                     <h2 className="text-xl font-medium text-[#00263E]">{product.name}</h2>
@@ -504,7 +512,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   <div className="flex border-b border-[#00263E]/10 mb-4">
                     <button
                       type="button"
-                      onClick={() => setActiveTab('description')}
+                      onClick={() => handleTabChange('description')}
                       className={cn(
                         "flex-1 pb-2 text-[13px] transition-colors",
                         activeTab === 'description'
@@ -517,7 +525,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     {product.ingredients && (
                       <button
                         type="button"
-                        onClick={() => setActiveTab('ingredients')}
+                        onClick={() => handleTabChange('ingredients')}
                         className={cn(
                           "flex-1 pb-2 text-[13px] transition-colors",
                           activeTab === 'ingredients'
@@ -531,7 +539,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     {product.usage && (
                       <button
                         type="button"
-                        onClick={() => setActiveTab('usage')}
+                        onClick={() => handleTabChange('usage')}
                         className={cn(
                           "flex-1 pb-2 text-[13px] transition-colors",
                           activeTab === 'usage'
