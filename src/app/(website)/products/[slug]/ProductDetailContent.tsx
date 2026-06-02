@@ -310,7 +310,7 @@ export function ProductDetailContent({
                     </div>
 
                     {/* 购买按钮区域 */}
-                    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4">
+                    <div className="mx-auto max-w-2xl px-6 pb-3 max-lg:px-4">
                       <div className="flex flex-col gap-3">
                         {product.allowDirectBuy && (
                           <>
