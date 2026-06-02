@@ -199,21 +199,15 @@ export function ProductDetailContent({
                       {product.images.length > 0 && (
                         <div className="flex gap-2 justify-center">
                           {product.images.map((_, index) => (
-                            <button
+                            <div
                               key={index}
-                              type="button"
-                              onClick={() => setCurrentImageIndex(index)}
-                              className="p-0 border-0 bg-transparent cursor-pointer flex items-center justify-center"
-                            >
-                              <span
-                                className={cn(
-                                  "block h-[2px] w-8 transition-all duration-300",
-                                  currentImageIndex === index
-                                    ? "bg-[#00263E]"
-                                    : "bg-[#00263E]/20"
-                                )}
-                              />
-                            </button>
+                              className={cn(
+                                "h-[2px] w-8 transition-all duration-300",
+                                currentImageIndex === index
+                                  ? "bg-[#00263E]"
+                                  : "bg-[#00263E]/20"
+                              )}
+                            />
                           ))}
                         </div>
                       )}
