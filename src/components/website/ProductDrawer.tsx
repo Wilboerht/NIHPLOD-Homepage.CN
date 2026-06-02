@@ -507,7 +507,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                 </div>
 
                 {/* 手机端内容 */}
-                <div ref={mobileContentRef} className="lg:hidden flex flex-col h-full overflow-y-auto px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <div ref={mobileContentRef} className="lg:hidden flex flex-col h-full overflow-y-auto px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {/* 标题与规格 */}
                   <div className="flex items-start justify-between mb-1">
                     <h2 className="text-xl font-medium text-[#00263E]">{product.name}</h2>
@@ -526,15 +526,19 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                       <button
                         type="button"
                         onClick={() => handleTabChange('description')}
-                        className="relative flex flex-1 items-center justify-center"
+                        className={cn(
+                          "relative flex flex-1 items-center justify-center text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
+                          activeTab === 'description'
+                            ? "text-[#00263E]"
+                            : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                        )}
                         style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                       >
                         <span
                           className={cn(
-                            "text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
                             activeTab === 'description'
-                              ? "rounded-full bg-white px-2 py-[3px] text-[#00263E] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-                              : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                              ? "rounded-full bg-white px-2 py-[3px] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                              : ""
                           )}
                         >
                           产品简介
@@ -544,15 +548,19 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         <button
                           type="button"
                           onClick={() => handleTabChange('ingredients')}
-                          className="relative flex flex-1 items-center justify-center"
+                          className={cn(
+                            "relative flex flex-1 items-center justify-center text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
+                            activeTab === 'ingredients'
+                              ? "text-[#00263E]"
+                              : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                          )}
                           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                         >
                           <span
                             className={cn(
-                              "text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
                               activeTab === 'ingredients'
-                                ? "rounded-full bg-white px-2 py-[3px] text-[#00263E] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-                                : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                                ? "rounded-full bg-white px-2 py-[3px] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                                : ""
                             )}
                           >
                             主要成分
@@ -563,15 +571,19 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         <button
                           type="button"
                           onClick={() => handleTabChange('usage')}
-                          className="relative flex flex-1 items-center justify-center"
+                          className={cn(
+                            "relative flex flex-1 items-center justify-center text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
+                            activeTab === 'usage'
+                              ? "text-[#00263E]"
+                              : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                          )}
                           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                         >
                           <span
                             className={cn(
-                              "text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
                               activeTab === 'usage'
-                                ? "rounded-full bg-white px-2 py-[3px] text-[#00263E] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-                                : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                                ? "rounded-full bg-white px-2 py-[3px] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                                : ""
                             )}
                           >
                             使用方法
