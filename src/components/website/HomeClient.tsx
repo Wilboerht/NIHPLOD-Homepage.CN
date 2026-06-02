@@ -270,23 +270,22 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
           className="h-full pointer-events-none"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
+          <div className="flex h-full flex-col items-center pointer-events-none md:drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
             {/* 主内容区域 - 抽屉 - z-20 Ensure it sits on top of the button */}
             <m.div
               className="relative z-20 w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
-              style={{ willChange: "flex-grow, height" }}
               initial={{ height: 0, flexGrow: 0 }}
               animate={{
                 flexGrow: isExpanded ? 1 : 0,
                 height: !isExpanded ? 0 : "auto"
               }}
               transition={{
-                duration: 1.2,
+                duration: 0.8,
                 ease: [0.22, 1, 0.36, 1],
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              <div className={cn("home-container relative h-full w-full transition-opacity duration-300", isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none")}>
+              <div className={cn("home-container relative h-full w-full transition-opacity duration-700", isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none")}>
                 {/* 矿物纹理覆盖层 - 支持微弱视差 */}
                 <div
                   ref={textureRef}
