@@ -197,7 +197,7 @@ export function ProductDetailContent({
 
                       {/* 图片指示器 */}
                       {product.images.length > 0 && (
-                        <div className="flex gap-2 justify-center">
+                        <div className="flex gap-2 justify-center mt-7">
                           {product.images.map((_, index) => (
                             <div
                               key={index}
