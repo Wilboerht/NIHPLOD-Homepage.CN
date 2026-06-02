@@ -6,7 +6,7 @@ import { Link } from "next-view-transitions";
 import { m } from "framer-motion";
 import {
   ChevronLeft,
-  ExternalLink,
+
   ShoppingCart,
   Loader2,
   Home,
@@ -75,7 +75,7 @@ export function ProductDetailContent({
   product,
   relatedProducts,
 }: ProductDetailContentProps) {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentImageIndex, _setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [quantity, setQuantity] = useState(1);
 

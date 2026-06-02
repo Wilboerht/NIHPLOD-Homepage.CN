@@ -74,7 +74,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
   // 合并默认内容和传入内容
   const title = content?.title || defaultContent.title;
-  const description = content?.description || defaultContent.description;
+  const _description = content?.description || defaultContent.description;
   const submitTip = content?.submitTip || defaultContent.submitTip;
   const contactEmail = content?.contactEmail || defaultContent.contactEmail;
 

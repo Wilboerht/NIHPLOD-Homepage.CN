@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronRight, ChevronLeft, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn, formatPrice } from "@/lib/utils";
@@ -369,11 +369,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
-  const [activeTab, setActiveTab] = useState<'featured' | 'all'>('featured');
+  const [activeTab, _setActiveTab] = useState<'featured' | 'all'>('featured');
   const isMobile = useIsMobile();
   const router = useRouter();
 
-  const tabItems = [
+  const _tabItems = [
     { id: 'featured' as const, label: '当季热卖' },
     { id: 'all' as const, label: '全部产品' },
   ];
