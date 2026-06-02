@@ -215,13 +215,13 @@ export function ProductDetailContent({
 
                     {/* 产品信息 */}
                     <m.div
-                      className="mx-auto max-w-2xl px-6 py-8 max-lg:px-4"
+                      className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
                     >
                       {/* 产品名称 + 容量 */}
-                      <div className="mt-4 flex items-end justify-between">
+                      <div className="flex items-end justify-between">
                         <h1 className="font-serif text-[20px] sm:text-[24px] lg:text-[28px] text-brand-charcoal max-lg:text-[#00263E] max-lg:font-medium max-lg:tracking-[0.2em]">
                           {product.name}
                         </h1>
