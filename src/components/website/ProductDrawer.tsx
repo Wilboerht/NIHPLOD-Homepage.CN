@@ -181,6 +181,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
       setCurrentImageIndex(0);
       setOpenAccordion(null);
       setPurchaseMenuOpen(false);
+      setActiveTab('description');
     }
   }, [isOpen]);
 
@@ -593,17 +594,25 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         })()}
                       </>
                     )}
-                    {activeTab === 'ingredients' && product.ingredients && (
-                      <div
-                        className="text-[13px] leading-[1.8] text-[#00263E]/70"
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.ingredients) }}
-                      />
+                    {activeTab === 'ingredients' && (
+                      product.ingredients ? (
+                        <div
+                          className="text-[13px] leading-[1.8] text-[#00263E]/70"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.ingredients) }}
+                        />
+                      ) : (
+                        <p className="py-4 text-[13px] text-[#00263E]/40">暂无成分信息</p>
+                      )
                     )}
-                    {activeTab === 'usage' && product.usage && (
-                      <div
-                        className="text-[13px] leading-[1.8] text-[#00263E]/70"
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
-                      />
+                    {activeTab === 'usage' && (
+                      product.usage ? (
+                        <div
+                          className="text-[13px] leading-[1.8] text-[#00263E]/70"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
+                        />
+                      ) : (
+                        <p className="py-4 text-[13px] text-[#00263E]/40">暂无使用方法</p>
+                      )
                     )}
                   </div>
 
