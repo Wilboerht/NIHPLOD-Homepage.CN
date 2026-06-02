@@ -55,7 +55,7 @@ interface ProductDrawerProps {
  * 平台图标组件
  * 每个平台 Logo 的视觉重量不同，需要单独调整大小以保持视觉平衡
  */
-function PlatformIcon({ platform }: { platform: string }) {
+export function PlatformIcon({ platform }: { platform: string }) {
   const p = platform.trim();
   if (p.includes("天猫") || p.toLowerCase().includes("tmall")) {
     return (

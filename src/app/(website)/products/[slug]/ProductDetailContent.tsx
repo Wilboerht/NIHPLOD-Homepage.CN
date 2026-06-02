@@ -11,7 +11,7 @@ import {
   Loader2,
   Home,
 } from "lucide-react";
-import { ProductCard } from "@/components/website";
+import { ProductCard, PlatformIcon } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -332,52 +332,38 @@ export function ProductDetailContent({
                           </>
                         )}
 
-                        {/* 外部购买链接 - 多平台优先 */}
-                        {product.purchaseLinks &&
-                        product.purchaseLinks.length > 0 ? (
-                          product.purchaseLinks.map((link) => (
+                        {/* 外部购买链接 - 图标形式 */}
+                        <div className="flex flex-wrap gap-4 items-center justify-center">
+                          {product.purchaseLinks &&
+                          product.purchaseLinks.length > 0 ? (
+                            product.purchaseLinks.map((link) => (
+                              <a
+                                key={link.id}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="transition-opacity hover:opacity-60"
+                              >
+                                <PlatformIcon platform={link.platform} />
+                              </a>
+                            ))
+                          ) : product.purchaseUrl ? (
                             <a
-                              key={link.id}
-                              href={link.url}
+                              href={product.purchaseUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className={cn(
-                                "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
-                                product.allowDirectBuy
-                                  ? "border border-brand-gold text-brand-gold hover:bg-brand-gold/10"
-                                  : "bg-brand-gold text-white hover:bg-brand-gold/90"
-                              )}
+                              className="transition-opacity hover:opacity-60"
                             >
-                              <span>{link.platform}</span>
-                              <ExternalLink className="h-4 w-4" />
+                              <PlatformIcon platform="官网" />
                             </a>
-                          ))
-                        ) : product.purchaseUrl ? (
-                          <a
-                            href={product.purchaseUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={cn(
-                              "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
-                              product.allowDirectBuy
-                                ? "border border-brand-gold text-brand-gold hover:bg-brand-gold/10"
-                                : "bg-brand-gold text-white hover:bg-brand-gold/90"
-                            )}
-                          >
-                            <span>
-                              {product.allowDirectBuy
-                                ? "其他购买渠道"
-                                : "立即购买"}
-                            </span>
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        ) : (
-                          !product.allowDirectBuy && (
-                            <span className="text-[14px] font-light text-[#00263e]/50">
-                              暂无购买链接
-                            </span>
-                          )
-                        )}
+                          ) : (
+                            !product.allowDirectBuy && (
+                              <span className="text-[14px] font-light text-[#00263e]/50">
+                                暂无购买链接
+                              </span>
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -631,3 +617,5 @@ function QuantitySelector({
     </div>
   );
 }
+
+
