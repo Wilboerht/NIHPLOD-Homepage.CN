@@ -253,8 +253,64 @@ export function ProductDetailContent({
 
                     </m.div>
 
-                    {/* 购买按钮区域 */}
+                    {/* Tab 区域 */}
                     <div className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4">
+                      {/* Tab 切换 */}
+                      <div className="border-b border-brand-beige">
+                        <div className="flex gap-6" role="tablist">
+                          {tabs.map((tab) => (
+                            <div
+                              key={tab.key}
+                              role="tab"
+                              aria-selected={activeTab === tab.key}
+                              onClick={() => setActiveTab(tab.key)}
+                              className={cn(
+                                "relative pb-3 text-[13px] font-normal transition-colors cursor-pointer",
+                                activeTab === tab.key
+                                  ? "text-brand-charcoal"
+                                  : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                              )}
+                            >
+                              {tab.label}
+                              {activeTab === tab.key && (
+                                <m.div
+                                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-gold"
+                                  layoutId="tab-indicator"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Tab 内容 */}
+                      <div className="mt-6">
+                        {tabs.map((tab) => (
+                          <div
+                            key={tab.key}
+                            className={cn(
+                              "transition-opacity duration-300",
+                              activeTab === tab.key
+                                ? "block opacity-100"
+                                : "hidden opacity-0"
+                            )}
+                          >
+                            {tabContent[tab.key] ? (
+                              <p className="whitespace-pre-line text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
+                                {tabContent[tab.key]}
+                              </p>
+                            ) : (
+                              <p className="text-[14px] font-light text-[#00263e]/40">
+                                暂无内容
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 购买按钮区域 */}
+                    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4">
                       <div className="flex flex-col gap-3">
                         {product.allowDirectBuy && (
                           <>
@@ -322,62 +378,6 @@ export function ProductDetailContent({
                             </span>
                           )
                         )}
-                      </div>
-                    </div>
-
-                    {/* Tab 区域 */}
-                    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4">
-                      {/* Tab 切换 */}
-                      <div className="mt-8 border-b border-brand-beige">
-                        <div className="flex gap-6" role="tablist">
-                          {tabs.map((tab) => (
-                            <div
-                              key={tab.key}
-                              role="tab"
-                              aria-selected={activeTab === tab.key}
-                              onClick={() => setActiveTab(tab.key)}
-                              className={cn(
-                                "relative pb-3 text-[13px] font-normal transition-colors cursor-pointer",
-                                activeTab === tab.key
-                                  ? "text-brand-charcoal"
-                                  : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                              )}
-                            >
-                              {tab.label}
-                              {activeTab === tab.key && (
-                                <m.div
-                                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-gold"
-                                  layoutId="tab-indicator"
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Tab 内容 */}
-                      <div className="mt-6">
-                        {tabs.map((tab) => (
-                          <div
-                            key={tab.key}
-                            className={cn(
-                              "transition-opacity duration-300",
-                              activeTab === tab.key
-                                ? "block opacity-100"
-                                : "hidden opacity-0"
-                            )}
-                          >
-                            {tabContent[tab.key] ? (
-                              <p className="whitespace-pre-line text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                                {tabContent[tab.key]}
-                              </p>
-                            ) : (
-                              <p className="text-[14px] font-light text-[#00263e]/40">
-                                暂无内容
-                              </p>
-                            )}
-                          </div>
-                        ))}
                       </div>
                     </div>
 
