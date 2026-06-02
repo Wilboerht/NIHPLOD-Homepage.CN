@@ -333,7 +333,7 @@ export function ProductDetailContent({
                         )}
 
                         {/* 外部购买链接 - 图标形式 */}
-                        <div className="flex flex-wrap gap-4 items-center justify-center">
+                        <div className="flex flex-wrap gap-4 items-center justify-start">
                           {product.purchaseLinks &&
                           product.purchaseLinks.length > 0 ? (
                             product.purchaseLinks.map((link) => (
