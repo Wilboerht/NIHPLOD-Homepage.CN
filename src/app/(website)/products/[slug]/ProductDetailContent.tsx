@@ -176,7 +176,7 @@ export function ProductDetailContent({
                 <main className="h-full overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <div className="pb-12">
                     {/* 图片轮播区域 + 指示器 */}
-                    <div className="m-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full max-w-4xl">
+                    <div className="mx-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full max-w-4xl">
                       <m.div
                         className="relative aspect-[3/4] bg-brand-beige/30 lg:aspect-[16/9] w-full rounded-2xl overflow-hidden"
                         initial={{ opacity: 0 }}
@@ -197,7 +197,7 @@ export function ProductDetailContent({
 
                       {/* 图片指示器 */}
                       {product.images.length > 0 && (
-                        <div className="flex gap-2 justify-center mt-3">
+                        <div className="flex gap-2 justify-center">
                           {product.images.map((_, index) => (
                             <button
                               key={index}
