@@ -193,35 +193,26 @@ export function ProductDetailContent({
                         />
                       )}
 
-                      {/* 缩略图列表 */}
-                      {product.images.length > 1 && (
-                        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
-                          {product.images.map((img, index) => (
-                            <button
-                              key={img.id}
-                              type="button"
-                              onClick={() => setCurrentImageIndex(index)}
-                              className={cn(
-                                "h-12 w-12 overflow-hidden rounded-lg border-2 transition-all",
-                                currentImageIndex === index
-                                  ? "border-brand-gold shadow-md"
-                                  : "border-white/50 opacity-70 hover:opacity-100"
-                              )}
-                            >
-                              <Image
-                                src={img.url}
-                                alt={
-                                  img.alt || `${product.name} - ${index + 1}`
-                                }
-                                width={48}
-                                height={48}
-                                className="h-full w-full object-cover"
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </m.div>
+
+                    {/* 图片指示器 */}
+                    {product.images.length > 0 && (
+                      <div className="flex gap-2 justify-center mt-4 px-4">
+                        {product.images.map((_, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setCurrentImageIndex(index)}
+                            className={cn(
+                              "h-[2px] w-10 transition-all duration-300",
+                              currentImageIndex === index
+                                ? "bg-[#00263E]"
+                                : "bg-[#00263E]/20"
+                            )}
+                          />
+                        ))}
+                      </div>
+                    )}
 
                     {/* 产品信息 */}
                     <m.div
