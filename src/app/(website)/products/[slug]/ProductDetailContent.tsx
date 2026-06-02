@@ -232,10 +232,15 @@ export function ProductDetailContent({
                         )}
                       </div>
 
-                      {/* 价格 */}
-                      <p className="mt-2 text-[18px] font-medium text-brand-charcoal max-lg:text-[#00263E]">
-                        {formatPrice(product.price)}
-                      </p>
+                      {/* 价格与产地 */}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-[18px] font-normal text-brand-charcoal max-lg:text-[#00263E]">
+                          {formatPrice(product.price)}
+                        </span>
+                        <span className="text-xs text-[#00263E]/50">
+                          产地：法国
+                        </span>
+                      </div>
 
                       {/* 功效标签 */}
                       {product.benefits.length > 0 && (
