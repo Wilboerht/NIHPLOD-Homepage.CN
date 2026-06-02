@@ -114,6 +114,7 @@ function PlatformIcon({ platform }: { platform: string }) {
 export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'description' | 'ingredients' | 'usage'>('description');
   const [isMobile, setIsMobile] = useState(false);
   const [purchaseMenuOpen, setPurchaseMenuOpen] = useState(false);
   const purchaseMenuRef = useRef<HTMLDivElement>(null);
@@ -242,7 +243,16 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               </div>
 
               {/* 左侧 - 产品图片区域 */}
-              <div className="relative h-[45%] w-full flex-shrink-0 bg-white lg:h-full lg:w-[45%]">
+              <div className="relative h-[50%] w-[calc(100%-2rem)] flex-shrink-0 rounded-2xl overflow-hidden self-center mx-4 mt-4 lg:h-full lg:w-[45%] lg:rounded-none lg:mx-0 lg:mt-0 lg:self-auto">
+                {/* 手机端返回按钮 */}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="lg:hidden absolute left-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/10 text-white backdrop-blur-sm"
+                >
+                  <ChevronLeft className="h-5 w-5" strokeWidth={2} />
+                </button>
+
                 <AnimatePresence mode="wait">
                   {product.images[currentImageIndex] ? (
                     <m.div
@@ -292,17 +302,17 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                 {/* 图片指示器 */}
                 {product.images.length > 1 && (
-                  <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 lg:bottom-6">
+                  <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 lg:bottom-6">
                     {product.images.map((_, index) => (
                       <button
                         key={index}
                         type="button"
                         onClick={() => setCurrentImageIndex(index)}
                         className={cn(
-                          "rounded-full transition-all duration-300 ease-out !min-h-0 !min-w-0 p-0",
+                          "h-[2px] rounded-full transition-all duration-300",
                           currentImageIndex === index
-                            ? "h-1.5 w-4 bg-[#00263E]/60"
-                            : "h-1.5 w-1.5 bg-[#00263E]/10 hover:bg-[#00263E]/30"
+                            ? "w-5 bg-white"
+                            : "w-2 bg-white/40"
                         )}
                       />
                     ))}
@@ -311,195 +321,313 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               </div>
 
               {/* 右侧 - 产品信息区域 */}
-              <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] lg:px-10 lg:py-10">
-                <div className="max-w-none flex flex-col h-full">
-                  {/* 手机端顶部栏 */}
-                  <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
-                    >
-                      <ChevronLeft className="h-6 w-6 text-[#00263E]" />
-                    </button>
-                    <Link href="/" className="flex items-center justify-center py-[30px]">
-                      <div className="relative h-[28px] w-[100px]">
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD Logo"
-                          fill
-                          className="object-contain"
-                          priority
-                        />
+              <div className="flex-1 overflow-hidden lg:overflow-y-auto lg:px-10 lg:py-10">
+                {/* PC 端内容 */}
+                <div className="hidden lg:block h-full">
+                  <div className="max-w-none">
+                    {/* 基本信息 */}
+                    <section className="mb-8">
+                      <h2 className="mb-3 text-2xl font-bold leading-tight text-[#00263E] lg:text-3xl">
+                        {product.name}
+                      </h2>
+                      <div className="mb-3 text-xs tracking-wide text-[#00263E]/50">
+                        规格: {product.capacity || "N/A"} | 产地: 法国
                       </div>
-                    </Link>
+                      <div className="text-lg font-medium text-[#00263E]">
+                        {formatPrice(product.price)}
+                      </div>
+                    </section>
+
+                    {/* 描述 */}
+                    <section className="mb-8">
+                      <div
+                        className="text-[15px] leading-[1.8] text-[#00263E]/70 text-justify"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
+                      />
+                    </section>
+
+                    {/* 小红书链接 */}
+                    <section className="mb-8">
+                      {(() => {
+                        const keyword = `nihplod ${product.category.name}`;
+                        const encodedKeyword = encodeURIComponent(keyword);
+                        const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
+                        const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
+
+                        return (
+                          <>
+                            <a
+                              href={isMobile ? schemeUrl : webUrl}
+                              target={isMobile ? undefined : "_blank"}
+                              rel="noopener noreferrer"
+                              className="group inline-flex items-center gap-2 text-[14px] text-[#00263E] transition-opacity hover:opacity-70"
+                            >
+                              <span>去小红书了解更多</span>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform group-hover:translate-x-1">
+                                <path d="M5 12h14" />
+                                <path d="m12 5 7 7-7 7" />
+                              </svg>
+                            </a>
+                            {isMobile && (
+                              <p className="mt-2 text-xs text-[#00263E]/40">
+                                若未唤起小红书App，请手动搜索「{keyword}」
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </section>
+
+                    {/* 折叠面板 */}
+                    <section className="border-t border-[#00263E]/10">
+                      {product.ingredients && (
+                        <div className="border-b border-[#00263E]/10">
+                          <button
+                            type="button"
+                            onClick={() => toggleAccordion("ingredients")}
+                            className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-[#00263E]"
+                          >
+                            <span>主要成分</span>
+                            <span className={cn("text-[18px] transition-transform duration-200", openAccordion === "ingredients" && "rotate-45")}>+</span>
+                          </button>
+                          <AnimatePresence>
+                            {openAccordion === "ingredients" && (
+                              <m.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div
+                                  className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
+                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.ingredients) }}
+                                />
+                              </m.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+
+                      {product.usage && (
+                        <div className="border-b border-[#00263E]/10">
+                          <button
+                            type="button"
+                            onClick={() => toggleAccordion("usage")}
+                            className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-[#00263E]"
+                          >
+                            <span>使用方法</span>
+                            <span className={cn("text-[18px] transition-transform duration-200", openAccordion === "usage" && "rotate-45")}>+</span>
+                          </button>
+                          <AnimatePresence>
+                            {openAccordion === "usage" && (
+                              <m.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div
+                                  className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
+                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
+                                />
+                              </m.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+
+                      {/* 官方旗舰店 */}
+                      <div className="py-4">
+                        <div className="mb-4 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
+
+                        <div className="flex flex-wrap gap-4 items-center">
+                          {product.allowDirectBuy && product.stock !== undefined && (
+                            <div className="relative" ref={purchaseMenuRef}>
+                              <button
+                                type="button"
+                                onClick={() => setPurchaseMenuOpen(!purchaseMenuOpen)}
+                                className="flex items-center gap-2 rounded-lg border border-brand-gold bg-transparent px-4 py-2 text-sm font-medium text-brand-gold transition-colors hover:bg-brand-gold/10"
+                              >
+                                <ShoppingBag className="h-4 w-4" />
+                                官网购买
+                                <span className={cn("ml-1 text-xs transition-transform", purchaseMenuOpen ? "rotate-180" : "")}>▼</span>
+                              </button>
+
+                              {purchaseMenuOpen && (
+                                <div className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl bg-white p-3 shadow-xl ring-1 ring-black/5">
+                                  <DrawerAddToCartButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
+                                  <div className="my-1.5 border-t border-[#00263E]/5" />
+                                  <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+                            product.purchaseLinks.map((link) => (
+                              <a
+                                key={link.id}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="transition-opacity hover:opacity-60"
+                              >
+                                <PlatformIcon platform={link.platform} />
+                              </a>
+                            ))
+                          ) : (
+                            !product.allowDirectBuy && (
+                              <span className="text-[14px] text-[#00263E]/50">暂无购买链接</span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                {/* 手机端内容 */}
+                <div className="lg:hidden flex flex-col h-full overflow-y-auto px-5 pt-5 pb-4">
+                  {/* 标题与规格 */}
+                  <div className="flex items-start justify-between mb-1">
+                    <h2 className="text-xl font-medium text-[#00263E]">{product.name}</h2>
+                    <span className="text-sm text-[#00263E]/60 mt-0.5">{product.capacity || 'N/A'}</span>
                   </div>
 
-                  {/* 基本信息 */}
-                  <section className="mb-6 lg:mb-8 text-center lg:text-left">
-                    {/* 删除了顶部分类标签 */}
-                    <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E] lg:text-3xl lg:font-bold lg:tracking-normal">
-                      {product.name}
-                    </h2>
-                    <div className="lg:hidden mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
-                    <div className="mt-4 lg:mt-0 lg:mb-3 text-xs tracking-wide text-[#00263E]/50">
-                      规格: {product.capacity || "N/A"} | 产地: 法国
-                    </div>
-                    <div className="text-lg font-medium text-[#00263E]">
-                      {formatPrice(product.price)}
-                    </div>
-                  </section>
+                  {/* 价格与产地 */}
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="text-lg font-medium text-[#00263E]">{formatPrice(product.price)}</span>
+                    <span className="text-xs text-[#00263E]/50">产地：法国</span>
+                  </div>
 
-                  {/* 描述 */}
-                  <section className="mb-8">
-                    <div
-                      className="text-[14px] lg:text-[15px] font-light leading-[1.8] tracking-wide text-[#00263E]/90 text-center lg:text-justify"
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
-                    />
-                  </section>
-
-                  {/* 小红书链接 */}
-                  <section className="mb-8 text-center lg:text-left">
-                    {(() => {
-                      const keyword = `nihplod ${product.category.name}`;
-                      const encodedKeyword = encodeURIComponent(keyword);
-                      const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
-                      const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
-
-                      return (
-                        <>
-                          <a
-                            href={isMobile ? schemeUrl : webUrl}
-                            target={isMobile ? undefined : "_blank"}
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center gap-2 text-[14px] text-[#00263E] transition-opacity hover:opacity-70"
-                          >
-                            <span>去小红书了解更多</span>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform group-hover:translate-x-1">
-                              <path d="M5 12h14" />
-                              <path d="m12 5 7 7-7 7" />
-                            </svg>
-                          </a>
-                          {isMobile && (
-                            <p className="mt-2 text-xs text-[#00263E]/40">
-                              若未唤起小红书App，请手动搜索「{keyword}」
-                            </p>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </section>
-
-                  {/* 折叠面板 */}
-                  <section className="border-t border-[#00263E]/10">
+                  {/* Tab 切换 */}
+                  <div className="flex border-b border-[#00263E]/10 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('description')}
+                      className={cn(
+                        "flex-1 pb-2 text-[13px] transition-colors",
+                        activeTab === 'description'
+                          ? "border-b-2 border-[#00263E] text-[#00263E] font-medium"
+                          : "text-[#00263E]/50"
+                      )}
+                    >
+                      产品简介
+                    </button>
                     {product.ingredients && (
-                      <div className="border-b border-[#00263E]/10">
-                        <button
-                          type="button"
-                          onClick={() => toggleAccordion("ingredients")}
-                          className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-[#00263E]"
-                        >
-                          <span>主要成分</span>
-                          <span className={cn("text-[18px] transition-transform duration-200", openAccordion === "ingredients" && "rotate-45")}>+</span>
-                        </button>
-                        <AnimatePresence>
-                          {openAccordion === "ingredients" && (
-                            <m.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              className="overflow-hidden"
-                            >
-                              <div
-                                className="pb-4 text-[14px] lg:text-[15px] leading-[1.8] text-[#00263E]/60"
-                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.ingredients) }}
-                              />
-                            </m.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('ingredients')}
+                        className={cn(
+                          "flex-1 pb-2 text-[13px] transition-colors",
+                          activeTab === 'ingredients'
+                            ? "border-b-2 border-[#00263E] text-[#00263E] font-medium"
+                            : "text-[#00263E]/50"
+                        )}
+                      >
+                        主要成分
+                      </button>
                     )}
-
                     {product.usage && (
-                      <div className="border-b border-[#00263E]/10">
-                        <button
-                          type="button"
-                          onClick={() => toggleAccordion("usage")}
-                          className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-[#00263E]"
-                        >
-                          <span>使用方法</span>
-                          <span className={cn("text-[18px] transition-transform duration-200", openAccordion === "usage" && "rotate-45")}>+</span>
-                        </button>
-                        <AnimatePresence>
-                          {openAccordion === "usage" && (
-                            <m.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              className="overflow-hidden"
-                            >
-                              <div
-                                className="pb-4 text-[14px] lg:text-[15px] leading-[1.8] text-[#00263E]/60"
-                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
-                              />
-                            </m.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('usage')}
+                        className={cn(
+                          "flex-1 pb-2 text-[13px] transition-colors",
+                          activeTab === 'usage'
+                            ? "border-b-2 border-[#00263E] text-[#00263E] font-medium"
+                            : "text-[#00263E]/50"
+                        )}
+                      >
+                        使用方法
+                      </button>
                     )}
+                  </div>
 
-                    {/* 官方旗舰店 */}
-                    <div className="py-4">
-                      <div className="mb-4 text-[15px] font-semibold text-[#00263E]">官方旗舰店</div>
-
-                      <div className="flex flex-wrap gap-4 items-center justify-center lg:justify-start">
-                        {/* 官网购买按钮 + 气泡菜单 */}
-                        {product.allowDirectBuy && product.stock !== undefined && (
-                          <div className="relative" ref={purchaseMenuRef}>
-                            <button
-                              type="button"
-                              onClick={() => setPurchaseMenuOpen(!purchaseMenuOpen)}
-                              className="flex items-center gap-2 rounded-lg border border-brand-gold bg-transparent px-4 py-2 text-sm font-medium text-brand-gold transition-colors hover:bg-brand-gold/10"
-                            >
-                              <ShoppingBag className="h-4 w-4" />
-                              官网购买
-                              <span className={cn("ml-1 text-xs transition-transform", purchaseMenuOpen ? "rotate-180" : "")}>▼</span>
-                            </button>
-
-                            {purchaseMenuOpen && (
-                              <div className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl bg-white p-3 shadow-xl ring-1 ring-black/5">
-                                <DrawerAddToCartButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
-                                <div className="my-1.5 border-t border-[#00263E]/5" />
-                                <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* 外部平台链接 */}
-                        {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
-                          product.purchaseLinks.map((link) => (
+                  {/* Tab 内容 */}
+                  <div className="flex-1">
+                    {activeTab === 'description' && (
+                      <>
+                        <div
+                          className="text-[13px] leading-[1.8] text-[#00263E]/70 mb-4"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
+                        />
+                        {(() => {
+                          const keyword = `nihplod ${product.category.name}`;
+                          const encodedKeyword = encodeURIComponent(keyword);
+                          const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
+                          const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
+                          return (
                             <a
-                              key={link.id}
-                              href={link.url}
-                              target="_blank"
+                              href={isMobile ? schemeUrl : webUrl}
+                              target={isMobile ? undefined : "_blank"}
                               rel="noopener noreferrer"
-                              className="transition-opacity hover:opacity-60"
+                              className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
                             >
-                              <PlatformIcon platform={link.platform} />
+                              <span>去小红书了解更多</span>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
+                                <path d="M5 12h14" />
+                                <path d="m12 5 7 7-7 7" />
+                              </svg>
                             </a>
-                          ))
-                        ) : (
-                          !product.allowDirectBuy && (
-                            <span className="text-[14px] text-[#00263E]/50">暂无购买链接</span>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </section>
+                          );
+                        })()}
+                      </>
+                    )}
+                    {activeTab === 'ingredients' && product.ingredients && (
+                      <div
+                        className="text-[13px] leading-[1.8] text-[#00263E]/70"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.ingredients) }}
+                      />
+                    )}
+                    {activeTab === 'usage' && product.usage && (
+                      <div
+                        className="text-[13px] leading-[1.8] text-[#00263E]/70"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
+                      />
+                    )}
+                  </div>
 
-                  {/* 手机端页脚 */}
-                  <div className="lg:hidden mt-auto pt-4 pb-4 text-center mx-6">
+                  {/* 购买渠道 */}
+                  <div className="mt-6">
+                    <div className="flex flex-wrap gap-2">
+                      {product.allowDirectBuy && product.stock !== undefined && (
+                        <div className="relative" ref={purchaseMenuRef}>
+                          <button
+                            type="button"
+                            onClick={() => setPurchaseMenuOpen(!purchaseMenuOpen)}
+                            className="flex items-center gap-1.5 rounded-full bg-[#F0EDE1] px-3 py-1.5 text-[12px] text-[#00263E]"
+                          >
+                            <span className="font-medium">NIHPLOD</span>
+                          </button>
+                          {purchaseMenuOpen && (
+                            <div className="absolute bottom-full left-0 mb-2 z-50 w-52 rounded-xl bg-white p-3 shadow-xl ring-1 ring-black/5">
+                              <DrawerAddToCartButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
+                              <div className="my-1.5 border-t border-[#00263E]/5" />
+                              <DrawerDirectBuyButton productId={product.id} stock={product.stock!} quantity={1} onClose={onClose} compact />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {product.purchaseLinks && product.purchaseLinks.length > 0 && (
+                        product.purchaseLinks.map((link) => (
+                          <a
+                            key={link.id}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 rounded-full bg-[#F0EDE1] px-3 py-1.5 text-[12px] text-[#00263E]"
+                          >
+                            <PlatformIcon platform={link.platform} />
+                            <span>{link.platform}</span>
+                          </a>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="mt-8 text-center">
                     <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
