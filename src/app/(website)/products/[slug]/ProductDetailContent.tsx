@@ -226,35 +226,30 @@ export function ProductDetailContent({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
                     >
-                      {/* 分类标签 */}
-                      <span className="inline-block rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-medium text-brand-gold">
-                        {product.category.name}
-                      </span>
-
-                      {/* 产品名称 */}
-                      <div className="mt-4">
-                        <h1 className="font-serif text-[24px] sm:text-[26px] lg:text-[28px] text-brand-charcoal max-lg:text-[#00263E] max-lg:font-medium max-lg:tracking-[0.1em]">
+                      {/* 产品名称 + 容量 */}
+                      <div className="mt-4 flex items-end justify-between">
+                        <h1 className="font-serif text-[20px] sm:text-[24px] lg:text-[28px] text-brand-charcoal max-lg:text-[#00263E] max-lg:font-medium max-lg:tracking-[0.2em]">
                           {product.name}
                         </h1>
                         {product.capacity && (
-                          <p className="mt-1 text-sm text-brand-charcoal/60 max-lg:text-[#00263E]/60">
+                          <span className="text-sm font-light text-[#00263E]/60 shrink-0 ml-3">
                             {product.capacity}
-                          </p>
+                          </span>
                         )}
                       </div>
 
                       {/* 价格 */}
-                      <p className="mt-4 text-2xl font-medium text-brand-charcoal max-lg:text-[#00263E]">
+                      <p className="mt-2 text-[18px] font-medium text-brand-charcoal max-lg:text-[#00263E]">
                         {formatPrice(product.price)}
                       </p>
 
                       {/* 功效标签 */}
                       {product.benefits.length > 0 && (
-                        <div className="mt-6 flex flex-wrap gap-2">
+                        <div className="mt-6 hidden lg:flex flex-wrap gap-2">
                           {product.benefits.map((benefit, index) => (
                             <span
                               key={index}
-                              className="rounded-full border border-brand-beige bg-brand-cream px-3 py-1 text-xs text-brand-charcoal"
+                              className="rounded-full border border-brand-beige bg-brand-cream px-3 py-1 text-[14px] font-light text-[#00263E]"
                             >
                               {benefit}
                             </span>
@@ -325,7 +320,7 @@ export function ProductDetailContent({
                           </a>
                         ) : (
                           !product.allowDirectBuy && (
-                            <span className="text-sm text-brand-charcoal/50">
+                            <span className="text-[14px] font-light text-[#00263e]/50">
                               暂无购买链接
                             </span>
                           )
@@ -341,7 +336,7 @@ export function ProductDetailContent({
                               type="button"
                               onClick={() => setActiveTab(tab.key)}
                               className={cn(
-                                "relative pb-3 text-sm transition-colors",
+                                "relative pb-3 text-[13px] font-normal transition-colors",
                                 activeTab === tab.key
                                   ? "text-brand-charcoal"
                                   : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
@@ -372,11 +367,11 @@ export function ProductDetailContent({
                             )}
                           >
                             {tabContent[tab.key] ? (
-                              <p className="whitespace-pre-line text-sm leading-relaxed text-brand-charcoal/70">
+                              <p className="whitespace-pre-line text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
                                 {tabContent[tab.key]}
                               </p>
                             ) : (
-                              <p className="text-sm text-brand-charcoal/40">
+                              <p className="text-[14px] font-light text-[#00263e]/40">
                                 暂无内容
                               </p>
                             )}
@@ -388,7 +383,7 @@ export function ProductDetailContent({
                     {/* 相关产品推荐 */}
                     {relatedProducts.length > 0 && (
                       <div className="mt-8 border-t border-brand-beige pt-8 max-w-4xl mx-auto w-full px-6 max-lg:px-4">
-                        <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:text-[#00263E]">
+                        <h2 className="mb-6 text-center font-serif text-xl max-lg:font-medium max-lg:tracking-[0.2em] text-brand-charcoal max-lg:text-[#00263E]">
                           相关推荐
                         </h2>
                         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
