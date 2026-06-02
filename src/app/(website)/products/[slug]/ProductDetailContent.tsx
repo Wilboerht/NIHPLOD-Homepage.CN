@@ -174,7 +174,7 @@ export function ProductDetailContent({
               {/* 内容区域 */}
               <div className="flex-1 relative min-h-0">
                 <main className="h-full overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <div className="pb-12">
+                  <div>
                     {/* 图片轮播区域 + 指示器 */}
                     <div className="mx-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full max-w-4xl">
                       <m.div
