@@ -177,7 +177,7 @@ export function ProductDetailContent({
                   <div className="pb-12">
                     {/* 图片轮播区域 */}
                     <m.div
-                      className="relative aspect-square bg-brand-beige/30 md:aspect-[4/3] lg:aspect-[16/9] max-w-4xl m-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full rounded-2xl overflow-hidden"
+                      className="relative aspect-[3/4] bg-brand-beige/30 lg:aspect-[16/9] max-w-4xl m-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full rounded-2xl overflow-hidden"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.4 }}
