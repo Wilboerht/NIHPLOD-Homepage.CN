@@ -34,6 +34,7 @@ interface Product {
   price: number;
   capacity: string | null;
   purchaseUrl: string | null;
+  purchaseLinks: { id: string; platform: string; url: string }[];
   category: Category;
   images: ProductImage[];
   ingredients: string | null;
@@ -201,8 +202,26 @@ export function ProductDetailContent({
             </>
           )}
 
-          {/* 外部购买链接 */}
-          {product.purchaseUrl && (
+          {/* 外部购买链接 - 多平台优先 */}
+          {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+            product.purchaseLinks.map((link) => (
+              <a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
+                  product.allowDirectBuy
+                    ? "border border-brand-gold text-brand-gold hover:bg-brand-gold/10"
+                    : "bg-brand-gold text-white hover:bg-brand-gold/90"
+                )}
+              >
+                <span>{link.platform}</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            ))
+          ) : product.purchaseUrl ? (
             <a
               href={product.purchaseUrl}
               target="_blank"
@@ -217,6 +236,8 @@ export function ProductDetailContent({
               <span>{product.allowDirectBuy ? "其他购买渠道" : "立即购买"}</span>
               <ExternalLink className="h-4 w-4" />
             </a>
+          ) : !product.allowDirectBuy && (
+            <span className="text-sm text-brand-charcoal/50">暂无购买链接</span>
           )}
         </div>
 
