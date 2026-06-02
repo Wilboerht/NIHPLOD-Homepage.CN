@@ -215,7 +215,7 @@ export function ProductDetailContent({
 
                     {/* 产品信息 */}
                     <m.div
-                      className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4"
+                      className="mx-auto max-w-2xl px-6 pt-7 pb-0 max-lg:px-4"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
@@ -251,8 +251,11 @@ export function ProductDetailContent({
                         </div>
                       )}
 
-                      {/* 购买按钮区域 */}
-                      <div className="mt-6 flex flex-col gap-3">
+                    </m.div>
+
+                    {/* 购买按钮区域 */}
+                    <div className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4">
+                      <div className="flex flex-col gap-3">
                         {product.allowDirectBuy && (
                           <>
                             <QuantitySelector
@@ -320,7 +323,10 @@ export function ProductDetailContent({
                           )
                         )}
                       </div>
+                    </div>
 
+                    {/* Tab 区域 */}
+                    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4">
                       {/* Tab 切换 */}
                       <div className="mt-8 border-b border-brand-beige">
                         <div className="flex gap-6">
@@ -372,7 +378,7 @@ export function ProductDetailContent({
                           </div>
                         ))}
                       </div>
-                    </m.div>
+                    </div>
 
                     {/* 相关产品推荐 */}
                     {relatedProducts.length > 0 && (
