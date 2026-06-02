@@ -175,44 +175,49 @@ export function ProductDetailContent({
               <div className="flex-1 relative min-h-0">
                 <main className="h-full overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <div className="pb-12">
-                    {/* 图片轮播区域 */}
-                    <m.div
-                      className="relative aspect-[3/4] bg-brand-beige/30 lg:aspect-[16/9] max-w-4xl m-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full rounded-2xl overflow-hidden"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.4 }}
-                    >
-                      {currentImage && (
-                        <Image
-                          src={currentImage.url}
-                          alt={currentImage.alt || product.name}
-                          fill
-                          priority
-                          className="object-cover"
-                          sizes="100vw"
-                        />
-                      )}
-
-                    </m.div>
-
-                    {/* 图片指示器 */}
-                    {product.images.length > 0 && (
-                      <div className="flex gap-2 justify-center mt-4 px-4">
-                        {product.images.map((_, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => setCurrentImageIndex(index)}
-                            className={cn(
-                              "h-[2px] w-10 transition-all duration-300",
-                              currentImageIndex === index
-                                ? "bg-[#00263E]"
-                                : "bg-[#00263E]/20"
-                            )}
+                    {/* 图片轮播区域 + 指示器 */}
+                    <div className="m-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full max-w-4xl">
+                      <m.div
+                        className="relative aspect-[3/4] bg-brand-beige/30 lg:aspect-[16/9] w-full rounded-2xl overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.4 }}
+                      >
+                        {currentImage && (
+                          <Image
+                            src={currentImage.url}
+                            alt={currentImage.alt || product.name}
+                            fill
+                            priority
+                            className="object-cover"
+                            sizes="100vw"
                           />
-                        ))}
-                      </div>
-                    )}
+                        )}
+                      </m.div>
+
+                      {/* 图片指示器 */}
+                      {product.images.length > 0 && (
+                        <div className="flex gap-2 justify-center mt-3">
+                          {product.images.map((_, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => setCurrentImageIndex(index)}
+                              className="p-0 border-0 bg-transparent cursor-pointer flex items-center justify-center"
+                            >
+                              <span
+                                className={cn(
+                                  "block h-[2px] w-8 transition-all duration-300",
+                                  currentImageIndex === index
+                                    ? "bg-[#00263E]"
+                                    : "bg-[#00263E]/20"
+                                )}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
                     {/* 产品信息 */}
                     <m.div
