@@ -594,7 +594,7 @@ export function StoryContent() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                          className="grid h-[calc(100%-3rem)] grid-cols-1 gap-px self-center bg-[#00263e]/10 md:grid-cols-2 lg:h-[calc(100%-4rem)] lg:grid-cols-4"
+                          className="grid h-full w-full grid-cols-1 gap-px self-stretch bg-[#00263e]/10 md:grid-cols-2 md:grid-rows-2 lg:grid-cols-4 lg:grid-rows-1"
                         >
                           {[
                             { num: "01", title: "更珍贵的产品", desc: "我们通过采集这个世上优质的原材料，结合前沿及有效的科技力量，不断更新和进步。" },
