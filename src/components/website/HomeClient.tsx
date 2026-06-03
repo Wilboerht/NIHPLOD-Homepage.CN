@@ -197,7 +197,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
   const textureRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLButtonElement>(null);
   const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
+  const [handleHeight, setHandleHeight] = useState(0);
   const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
   // const { openContact } = useAuth();
   // const router = useRouter();
@@ -244,6 +246,20 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
     return () => document.removeEventListener("mousemove", handleMouseMove);
   }, [isExpanded]);
 
+  useEffect(() => {
+    if (!handleRef.current || typeof ResizeObserver === "undefined") return;
+
+    const updateHandleHeight = () => {
+      setHandleHeight(handleRef.current?.offsetHeight ?? 0);
+    };
+
+    updateHandleHeight();
+    const observer = new ResizeObserver(updateHandleHeight);
+    observer.observe(handleRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
   const handleCollapse = () => {
     setIsExpanded(false);
     setDrawerOpen(false);
@@ -271,14 +287,21 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
-            {/* 主内容区域 - 抽屉 - z-20 Ensure it sits on top of the button */}
+            {/* 主内容区域 + 按钮一起移动 */}
             <m.div
-              className="relative z-20 w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
-              style={{ willChange: "flex-grow, height" }}
-              initial={{ height: 0, flexGrow: 0 }}
+              className="relative z-20 flex h-full w-full flex-col"
+              style={{ willChange: "transform" }}
+              initial={{
+                transform: handleHeight
+                  ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
+                  : "translate3d(0, -100%, 0)"
+              }}
               animate={{
-                flexGrow: isExpanded ? 1 : 0,
-                height: !isExpanded ? 0 : "auto"
+                transform: isExpanded
+                  ? "translate3d(0, 0, 0)"
+                  : handleHeight
+                    ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
+                    : "translate3d(0, -100%, 0)"
               }}
               transition={{
                 duration: 1.2,
@@ -286,7 +309,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              <div className={cn("home-container relative h-full w-full transition-opacity duration-300", isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none")}>
+              <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto">
+                <div className={cn("home-container relative h-full w-full transition-opacity duration-300", isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none")}>
                 {/* 矿物纹理覆盖层 - 支持微弱视差 */}
                 <div
                   ref={textureRef}
@@ -464,31 +488,33 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     </div>
                   </m.div>
                 </main>
+                </div>
               </div>
-            </m.div>
 
-            {/* 展开/收起按钮 */}
-            <button
-              onClick={() => {
-                const newState = !isExpanded;
-                setIsExpanded(newState);
-                setDrawerOpen(newState);
-              }}
-              className="group -mt-[1px] relative z-30 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 lg:px-14 lg:py-3.5 overflow-hidden pointer-events-auto"
-            >
-              {/* 矿物纹理覆盖层 - 使用与抽屉相同的 texture-overlay 类 */}
-              <div className="texture-overlay absolute inset-0" />
-              <m.div
-                className="relative z-10 flex flex-col items-center"
-                animate={{ rotate: isExpanded ? 180 : 0, scale: 1 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              {/* 展开/收起按钮 */}
+              <button
+                ref={handleRef}
+                onClick={() => {
+                  const newState = !isExpanded;
+                  setIsExpanded(newState);
+                  setDrawerOpen(newState);
+                }}
+                className="group -mt-[1px] relative z-30 flex w-[120px] self-center items-center justify-center rounded-b-2xl bg-[#F8F7F3] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
               >
-                <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-              </m.div>
-            </button>
+                {/* 矿物纹理覆盖层 - 使用与抽屉相同的 texture-overlay 类 */}
+                <div className="texture-overlay absolute inset-0" />
+                <m.div
+                  className="relative z-10 flex flex-col items-center"
+                  animate={{ rotate: isExpanded ? 180 : 0, scale: 1 }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                  <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                </m.div>
+              </button>
+            </m.div>
           </div>
         </m.div >
       </m.div >
