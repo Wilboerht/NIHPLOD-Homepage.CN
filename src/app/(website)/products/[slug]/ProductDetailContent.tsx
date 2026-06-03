@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
+import { useRouter } from "next/navigation";
 import { m } from "framer-motion";
 import {
   ChevronLeft,
@@ -75,6 +76,17 @@ export function ProductDetailContent({
   product,
   relatedProducts,
 }: ProductDetailContentProps) {
+  const router = useRouter();
+  const [shouldRender, setShouldRender] = useState(true);
+
+  useEffect(() => {
+    // PC 端禁止访问独立产品详情页，重定向到产品列表
+    if (typeof window !== "undefined" && window.innerWidth > 768) {
+      setShouldRender(false);
+      router.replace("/products");
+    }
+  }, [router]);
+
   const [currentImageIndex, _setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [quantity, setQuantity] = useState(1);
@@ -92,6 +104,8 @@ export function ProductDetailContent({
     ingredients: product.ingredients,
     usage: product.usage,
   };
+
+  if (!shouldRender) return null;
 
   return (
     <>

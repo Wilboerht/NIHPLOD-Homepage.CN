@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
 import { ChevronDown, Clock, Info, ChevronLeft, ChevronRight, Sun, Home, ShoppingBag, SoapDispenserDroplet, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -956,10 +957,17 @@ export function RitualContent({ products = [] }: RitualContentProps) {
     });
   };
 
+  const router = useRouter();
+
   // 打开产品详情弹窗
   const handleProductClick = (productName: string) => {
     const product = findProduct(productName);
     if (product) {
+      // 移动端直接跳转到产品详情页，不使用抽屉
+      if (typeof window !== "undefined" && window.innerWidth <= 768) {
+        router.push(`/products/${product.slug}`);
+        return;
+      }
       setSelectedProduct(product);
       setProductDrawerOpen(true);
     } else {
