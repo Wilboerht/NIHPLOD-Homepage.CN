@@ -110,7 +110,7 @@ export function ProductDetailContent({
                 src="/images/watermark-mobile.svg"
                 alt=""
                 fill
-                className="object-cover opacity-75 blur-[7.5px]"
+                className="object-cover"
                 priority
               />
             </div>

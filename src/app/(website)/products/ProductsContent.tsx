@@ -735,7 +735,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     src="/images/watermark-mobile.svg"
                     alt=""
                     fill
-                    className="opacity-[0.20]"
+                    className=""
                     style={{ objectFit: 'cover' }}
                   />
                 </div>
@@ -785,7 +785,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 src="/images/watermark-mobile.svg"
                 alt=""
                 fill
-                className="object-cover opacity-75 blur-[7.5px]"
+                className="object-cover"
                 priority
               />
             </div>

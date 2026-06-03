@@ -978,7 +978,7 @@
     transform: none; /* 移除任何偏移 */
     min-width: 0;
     max-width: none;
-    opacity: 0.6;
+    opacity: 1;
     filter: none;
     z-index: 0;
   }
