@@ -1207,7 +1207,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                   {/* 移动端内容区域 - 隐藏滚动条并移除多余 padding */}
                   <div className={cn(
-                    "flex-1 px-6 relative z-10 overflow-y-auto pb-10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+                    "flex-1 px-7 relative z-10 overflow-y-auto pb-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
                     currentLevel === 1 && "flex flex-col"
                   )}>
                     <AnimatePresence mode="wait">
