@@ -348,37 +348,7 @@ export function ProductDetailContent({
                     </div>
 
                     {/* 小红书链接 */}
-                    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4">
-                      {(() => {
-                        const keyword = `NIHPLOD ${product.category.name}`;
-                        const encodedKeyword = encodeURIComponent(keyword);
-                        const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
-                        const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
-                        const isMobileDevice = typeof window !== "undefined" && window.innerWidth <= 768;
-
-                        return (
-                          <>
-                            <a
-                              href={isMobileDevice ? schemeUrl : webUrl}
-                              target={isMobileDevice ? undefined : "_blank"}
-                              rel="noopener noreferrer"
-                              className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
-                            >
-                              <span>去小红书了解更多</span>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
-                                <path d="M5 12h14" />
-                                <path d="m12 5 7 7-7 7" />
-                              </svg>
-                            </a>
-                            {isMobileDevice && (
-                              <p className="mt-1 text-xs text-[#00263E]/40">
-                                若未唤起小红书App，请手动搜索「{keyword}」
-                              </p>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
+                    <XiaohongshuLink categoryName={product.category.name} />
 
                     {/* 购买按钮区域 */}
                     <div className="mx-auto max-w-2xl px-6 pb-3 max-lg:px-4">
@@ -496,6 +466,45 @@ export function ProductDetailContent({
         </div>
       </m.div>
     </>
+  );
+}
+
+/**
+ * 小红书链接组件
+ * 使用 useState + useEffect 避免 hydration mismatch
+ */
+function XiaohongshuLink({ categoryName }: { categoryName: string }) {
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+
+  useEffect(() => {
+    setIsMobileDevice(window.innerWidth <= 768);
+  }, []);
+
+  const keyword = `NIHPLOD ${categoryName}`;
+  const encodedKeyword = encodeURIComponent(keyword);
+  const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
+  const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
+
+  return (
+    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4">
+      <a
+        href={isMobileDevice ? schemeUrl : webUrl}
+        target={isMobileDevice ? undefined : "_blank"}
+        rel="noopener noreferrer"
+        className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
+      >
+        <span>去小红书了解更多</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
+          <path d="M5 12h14" />
+          <path d="m12 5 7 7-7 7" />
+        </svg>
+      </a>
+      {isMobileDevice && (
+        <p className="mt-1 text-xs text-[#00263E]/40">
+          若未唤起小红书App，请手动搜索「{keyword}」
+        </p>
+      )}
+    </div>
   );
 }
 

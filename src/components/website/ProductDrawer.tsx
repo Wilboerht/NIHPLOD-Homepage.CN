@@ -369,7 +369,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     {/* 小红书链接 */}
                     <section className="mb-8">
                       {(() => {
-                        const keyword = `nihplod ${product.category.name}`;
+                        const keyword = `NIHPLOD ${product.category.name}`;
                         const encodedKeyword = encodeURIComponent(keyword);
                         const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
                         const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
@@ -380,16 +380,16 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                               href={isMobile ? schemeUrl : webUrl}
                               target={isMobile ? undefined : "_blank"}
                               rel="noopener noreferrer"
-                              className="group inline-flex items-center gap-2 text-[14px] text-[#00263E] transition-opacity hover:opacity-70"
+                              className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
                             >
                               <span>去小红书了解更多</span>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform group-hover:translate-x-1">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
                                 <path d="M5 12h14" />
                                 <path d="m12 5 7 7-7 7" />
                               </svg>
                             </a>
                             {isMobile && (
-                              <p className="mt-2 text-xs text-[#00263E]/40">
+                              <p className="mt-1 text-xs text-[#00263E]/40">
                                 若未唤起小红书App，请手动搜索「{keyword}」
                               </p>
                             )}
@@ -602,23 +602,30 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
                         />
                         {(() => {
-                          const keyword = `nihplod ${product.category.name}`;
+                          const keyword = `NIHPLOD ${product.category.name}`;
                           const encodedKeyword = encodeURIComponent(keyword);
                           const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
                           const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
                           return (
-                            <a
-                              href={isMobile ? schemeUrl : webUrl}
-                              target={isMobile ? undefined : "_blank"}
-                              rel="noopener noreferrer"
-                              className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
-                            >
-                              <span>去小红书了解更多</span>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
-                                <path d="M5 12h14" />
-                                <path d="m12 5 7 7-7 7" />
-                              </svg>
-                            </a>
+                            <>
+                              <a
+                                href={isMobile ? schemeUrl : webUrl}
+                                target={isMobile ? undefined : "_blank"}
+                                rel="noopener noreferrer"
+                                className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
+                              >
+                                <span>去小红书了解更多</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
+                                  <path d="M5 12h14" />
+                                  <path d="m12 5 7 7-7 7" />
+                                </svg>
+                              </a>
+                              {isMobile && (
+                                <p className="mt-1 text-xs text-[#00263E]/40">
+                                  若未唤起小红书App，请手动搜索「{keyword}」
+                                </p>
+                              )}
+                            </>
                           );
                         })()}
                       </>
