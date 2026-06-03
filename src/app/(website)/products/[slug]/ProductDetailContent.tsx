@@ -233,7 +233,7 @@ export function ProductDetailContent({
                               type="button"
                               onClick={() => setCurrentImageIndex(index)}
                               className={cn(
-                                "h-[2px] w-5 p-0 border-none transition-all duration-300",
+                                "h-[2px] w-5 min-h-[2px] min-w-5 p-0 border-none transition-all duration-300",
                                 currentImageIndex === index
                                   ? "bg-[#00263E]"
                                   : "bg-[#00263E]/20"
