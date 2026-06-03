@@ -1187,10 +1187,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 1.05 }}
                           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                          className="flex flex-col min-h-full justify-center py-6"
+                          className="flex flex-col min-h-full justify-start pb-6"
                         >
-                          <div className="mb-8 text-center">
-                            <h1 className="text-3xl font-medium text-[#00263E] tracking-widest">护肤仪式指南</h1>
+                          <div className="flex flex-col items-center pt-2 pb-2 mb-7">
+                            <h1 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
+                              护肤仪式指南
+                            </h1>
+                            <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
 
                           <div className="grid grid-cols-2 gap-4 sm:gap-6">
