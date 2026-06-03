@@ -375,7 +375,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
 
                         return (
-                          <>
+                          <div className="flex flex-col gap-1">
                             <a
                               href={isMobile ? schemeUrl : webUrl}
                               target={isMobile ? undefined : "_blank"}
@@ -389,11 +389,11 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                               </svg>
                             </a>
                             {isMobile && (
-                              <p className="mt-1 text-xs text-[#00263E]/40">
+                              <p className="text-xs text-[#00263E]/40">
                                 若未唤起小红书App，请手动搜索「{keyword}」
                               </p>
                             )}
-                          </>
+                          </div>
                         );
                       })()}
                     </section>
@@ -607,7 +607,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                           const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
                           const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
                           return (
-                            <>
+                            <div className="flex flex-col gap-1">
                               <a
                                 href={isMobile ? schemeUrl : webUrl}
                                 target={isMobile ? undefined : "_blank"}
@@ -621,11 +621,11 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                 </svg>
                               </a>
                               {isMobile && (
-                                <p className="mt-1 text-xs text-[#00263E]/40">
+                                <p className="text-xs text-[#00263E]/40">
                                   若未唤起小红书App，请手动搜索「{keyword}」
                                 </p>
                               )}
-                            </>
+                            </div>
                           );
                         })()}
                       </>

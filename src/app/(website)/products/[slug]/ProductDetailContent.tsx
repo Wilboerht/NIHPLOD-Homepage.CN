@@ -486,7 +486,7 @@ function XiaohongshuLink({ categoryName }: { categoryName: string }) {
   const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
 
   return (
-    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4">
+    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4 flex flex-col gap-1">
       <a
         href={isMobileDevice ? schemeUrl : webUrl}
         target={isMobileDevice ? undefined : "_blank"}
@@ -500,7 +500,7 @@ function XiaohongshuLink({ categoryName }: { categoryName: string }) {
         </svg>
       </a>
       {isMobileDevice && (
-        <p className="mt-1 text-xs text-[#00263E]/40">
+        <p className="text-xs text-[#00263E]/40">
           若未唤起小红书App，请手动搜索「{keyword}」
         </p>
       )}
