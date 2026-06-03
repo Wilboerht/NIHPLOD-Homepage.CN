@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "next-view-transitions";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -246,7 +246,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
     return () => document.removeEventListener("mousemove", handleMouseMove);
   }, [isExpanded]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!handleRef.current || typeof ResizeObserver === "undefined") return;
 
     const updateHandleHeight = () => {
