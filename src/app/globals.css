@@ -953,7 +953,7 @@
 /* 全局背景水印 */
 .kinetic-watermark {
   position: absolute;
-  top: 50%;
+  top: 46%;
   left: 50%;
   transform: translate(-50%, -50%);
   opacity: 0.6;
@@ -1155,7 +1155,7 @@
 
 .kinetic-container {
   position: absolute;
-  top: 46%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 75vw;
