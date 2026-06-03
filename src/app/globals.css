@@ -763,7 +763,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(175deg, #D7CEBF -20%, #FCF9F2 50%, #D7CEBF 120%);
+    background: #E8E1CD;
     color: #7B726C;
     font-family: "Source Han Sans SC", "PingFang SC", sans-serif;
     font-size: 14px;
@@ -779,34 +779,8 @@
     white-space: nowrap;
   }
 
-  .home-container .btn-primary::before,
-  .home-container .btn-primary::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 99px;
-    box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.25);
-    animation: ripple-line 4s ease-out infinite;
-  }
-
-  .home-container .btn-primary::after {
-    animation-delay: 2s;
-  }
-
   .home-container .btn-primary:hover {
     filter: brightness(1.03);
-  }
-
-  @keyframes ripple-line {
-    0% {
-      box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.25);
-    }
-    10% {
-      box-shadow: 0 0 0 4px rgba(168, 159, 145, 0.15);
-    }
-    100% {
-      box-shadow: 0 0 0 12px rgba(168, 159, 145, 0);
-    }
   }
 
   .home-container .btn-secondary {
@@ -842,7 +816,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(175deg, #D7CEBF -20%, #FCF9F2 50%, #D7CEBF 120%);
+    background: #E8E1CD;
     color: #7B726C;
     font-family: "Source Han Sans SC", "PingFang SC", sans-serif;
     font-size: 14px;
@@ -856,20 +830,6 @@
     position: relative;
     overflow: visible;
     white-space: nowrap;
-  }
-
-  .home-container .btn-primary::before,
-  .home-container .btn-primary::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 99px;
-    box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.25);
-    animation: ripple-line 4s ease-out infinite;
-  }
-
-  .home-container .btn-primary::after {
-    animation-delay: 2s;
   }
 
   .home-container .btn-primary:hover {
