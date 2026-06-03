@@ -169,7 +169,7 @@ function MobileFooterMenu({ links, onExploreClick }: { links: { href: string; la
         type="button"
         onClick={() => setIsOpen(true)}
         whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-brand-charcoal/60 hover:text-brand-charcoal transition-all pointer-events-auto cursor-pointer relative z-[30]"
+        className="flex items-center gap-2 min-h-0 min-w-0 text-xs uppercase tracking-[0.2em] text-brand-charcoal/60 hover:text-brand-charcoal transition-all pointer-events-auto cursor-pointer relative z-[30]"
       >
         <div className="flex flex-col gap-1">
           <div className="h-px w-4 bg-current opacity-40" />
