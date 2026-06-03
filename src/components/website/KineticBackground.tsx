@@ -107,7 +107,7 @@ export function KineticBackground() {
                 {/* 移动端水印 - 竖版 SVG */}
                 <div className="block md:hidden absolute inset-0">
                     <Image
-                        src="/images/watermark-mobile.svg"
+                        src="/images/watermark-mobile.png"
                         alt="Watermark Mobile"
                         fill
                         priority
