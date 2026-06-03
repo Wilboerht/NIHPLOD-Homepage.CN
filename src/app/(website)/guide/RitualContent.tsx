@@ -1187,7 +1187,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 1.05 }}
                           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                          className="flex flex-col min-h-full justify-start pb-6"
+                          className="flex flex-col flex-1 justify-start"
                         >
                           <div className="flex flex-col items-center pt-2 pb-2 mb-7">
                             <h1 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
@@ -1196,7 +1196,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                          <div className="grid grid-cols-2 grid-rows-2 gap-4 flex-1">
                             {modules.map((module, index) => (
                               <m.button
                                 key={module.id}
@@ -1205,7 +1205,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1 }}
                                 onClick={() => selectModule(module.id)}
-                                className="relative aspect-[4/7.2] min-[400px]:aspect-[4/6.8] overflow-hidden rounded-[2rem] shadow-[0_8px_32px_-4px_rgba(0,38,62,0.06)] bg-white/60 backdrop-blur-md border border-[#00263E]/5 flex flex-col justify-end p-6 pb-8 text-left transition-all active:bg-white/80 active:scale-[0.98]"
+                                className="relative h-full overflow-hidden rounded-[2rem] shadow-[0_8px_32px_-4px_rgba(0,38,62,0.06)] bg-white/60 backdrop-blur-md border border-[#00263E]/5 flex flex-col justify-end p-5 pb-6 text-left transition-all active:bg-white/80 active:scale-[0.98]"
                               >
                                 <div className="relative z-10 flex flex-col">
                                   <div className="mb-4">
