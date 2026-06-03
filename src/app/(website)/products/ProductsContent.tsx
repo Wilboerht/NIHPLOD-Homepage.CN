@@ -825,7 +825,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               </div>
 
               {/* 分类列表容器 */}
-              <div className="flex-1 overflow-y-auto px-4">
+              <div className="flex-1 overflow-y-auto px-0">
                 <m.div
                   className="grid w-full grid-cols-2 gap-5 my-auto"
                   initial="hidden"
@@ -886,7 +886,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               </div>
 
               {/* Footer */}
-              <div className="mt-auto pt-4 pb-4 text-center mx-6">
+              <div className="mt-auto pt-4 pb-4 text-center px-4">
                 <p
                   className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase"
                   style={{ fontFamily: "'Futura', sans-serif" }}
