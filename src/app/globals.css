@@ -953,7 +953,7 @@
 /* 全局背景水印 */
 .kinetic-watermark {
   position: absolute;
-  top: 46%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   opacity: 0.6;
@@ -1083,7 +1083,7 @@
 /* 响应式调整 - 移动端减少光晕数量 */
 @media (max-width: 768px) {
   .kinetic-logo {
-    top: -44px;
+    top: -48px;
   }
 
   .kinetic-logo-image {
@@ -1134,7 +1134,7 @@
 /* 网格容器 */
 .kinetic-logo {
   position: absolute;
-  top: -52px;
+  top: -56px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -1725,13 +1725,13 @@
     width: min(80vw, 28vh);
     max-width: 420px;
     gap: min(12px, 1.5vw);
-    top: 48%;
+    top: 50%;
   }
 
   /* iPad Air (820px), Pro (834px+) 恢复展示 PC 的全量卡片 */
   @media (min-width: 820px) {
     .kinetic-container {
-      top: 48%;
+      top: 50%;
     }
 
     .kinetic-cell-steps,
@@ -1774,7 +1774,7 @@
       width: min(80vw, 36vh);
       max-width: 400px;
       gap: 14px;
-      top: 49%;
+      top: 51%;
     }
 
     .kinetic-cell-steps,
