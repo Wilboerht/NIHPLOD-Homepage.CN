@@ -1144,6 +1144,13 @@
   transition: opacity 0.4s ease;
 }
 
+/* PC 端单独加大 Logo 与便当盒间距 */
+@media (min-width: 769px) {
+  .kinetic-logo {
+    top: -92px;
+  }
+}
+
 .kinetic-logo:hover {
   opacity: 1;
 }
