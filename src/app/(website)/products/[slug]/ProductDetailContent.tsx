@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import DOMPurify from "isomorphic-dompurify";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { m } from "framer-motion";
@@ -315,9 +316,10 @@ export function ProductDetailContent({
                             )}
                           >
                             {tabContent[tab.key] ? (
-                              <p className="whitespace-pre-line text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify">
-                                {tabContent[tab.key]}
-                              </p>
+                              <div
+                                className="text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify"
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(tabContent[tab.key]!) }}
+                              />
                             ) : (
                               <p className="text-[14px] font-light text-[#00263e]/40">
                                 暂无内容
