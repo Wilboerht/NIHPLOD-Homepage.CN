@@ -7,6 +7,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
+import { XiaohongshuLink } from "@/components/website";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/store/cart";
@@ -115,7 +116,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'description' | 'ingredients' | 'usage'>('description');
-  const [isMobile, setIsMobile] = useState(false);
+
   const [purchaseMenuOpen, setPurchaseMenuOpen] = useState(false);
   const purchaseMenuRef = useRef<HTMLDivElement>(null);
   const mobileContentRef = useRef<HTMLDivElement>(null);
@@ -139,11 +140,6 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [purchaseMenuOpen]);
-
-  // 检测是否为移动端设备（用于决定小红书链接用 Scheme 唤起 App 还是 Web 链接）
-  useEffect(() => {
-    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-  }, []);
 
   // 手风琴切换
   const toggleAccordion = (id: string) => {
@@ -368,34 +364,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                     {/* 小红书链接 */}
                     <section className="mb-8">
-                      {(() => {
-                        const keyword = `NIHPLOD ${product.category.name}`;
-                        const encodedKeyword = encodeURIComponent(keyword);
-                        const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
-                        const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
-
-                        return (
-                          <div className="flex flex-col gap-1">
-                            <a
-                              href={isMobile ? schemeUrl : webUrl}
-                              target={isMobile ? undefined : "_blank"}
-                              rel="noopener noreferrer"
-                              className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
-                            >
-                              <span>去小红书了解更多</span>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
-                                <path d="M5 12h14" />
-                                <path d="m12 5 7 7-7 7" />
-                              </svg>
-                            </a>
-                            {isMobile && (
-                              <p className="text-xs text-[#00263E]/40">
-                                若未唤起小红书App，请手动搜索「{keyword}」
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      <XiaohongshuLink categoryName={product.category.name} />
                     </section>
 
                     {/* 折叠面板 */}
@@ -601,33 +570,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                           className="text-[13px] leading-[1.8] text-[#00263E]/70 mb-4"
                           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
                         />
-                        {(() => {
-                          const keyword = `NIHPLOD ${product.category.name}`;
-                          const encodedKeyword = encodeURIComponent(keyword);
-                          const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
-                          const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
-                          return (
-                            <div className="flex flex-col gap-1">
-                              <a
-                                href={isMobile ? schemeUrl : webUrl}
-                                target={isMobile ? undefined : "_blank"}
-                                rel="noopener noreferrer"
-                                className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
-                              >
-                                <span>去小红书了解更多</span>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
-                                  <path d="M5 12h14" />
-                                  <path d="m12 5 7 7-7 7" />
-                                </svg>
-                              </a>
-                              {isMobile && (
-                                <p className="text-xs text-[#00263E]/40">
-                                  若未唤起小红书App，请手动搜索「{keyword}」
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })()}
+                        <XiaohongshuLink categoryName={product.category.name} />
                       </>
                     )}
                     {activeTab === 'ingredients' && (

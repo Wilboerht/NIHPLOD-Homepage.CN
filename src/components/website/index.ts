@@ -25,3 +25,4 @@ export { RitualIcon, ContactIcon, HomeIcon, ShopIcon, StoryIcon, CartIcon, FAQIc
 export { BottomNavBar } from "./BottomNavBar";
 export { ContactModal } from "./ContactModal";
 export { KineticBackground } from "./KineticBackground";
+export { XiaohongshuLink } from "./XiaohongshuLink";
