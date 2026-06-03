@@ -777,7 +777,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] flex flex-col bg-[#F0EDE1] lg:hidden"
+            className="fixed inset-0 z-[100] flex flex-col bg-[#F0EDE1]/95 backdrop-blur-xl lg:hidden"
           >
             {/* 手机端背景水印 - 同联系我们 */}
             <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
