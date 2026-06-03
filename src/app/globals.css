@@ -1082,6 +1082,14 @@
 
 /* 响应式调整 - 移动端减少光晕数量 */
 @media (max-width: 768px) {
+  .kinetic-logo {
+    top: -44px;
+  }
+
+  .kinetic-logo-image {
+    height: 32px;
+  }
+
   .kinetic-glow-3 {
     display: none;
   }
@@ -1124,6 +1132,27 @@
 /* ========== Bento Grid 便当盒卡片布局 ========== */
 
 /* 网格容器 */
+.kinetic-logo {
+  position: absolute;
+  top: -52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: auto;
+  opacity: 0.85;
+  transition: opacity 0.4s ease;
+}
+
+.kinetic-logo:hover {
+  opacity: 1;
+}
+
+.kinetic-logo-image {
+  height: 40px;
+  width: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
 .kinetic-container {
   position: absolute;
   top: 46%;

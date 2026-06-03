@@ -118,6 +118,16 @@ export function KineticBackground() {
             </div>
 
             <div ref={containerRef} className="kinetic-container">
+                <Link href="/" className="kinetic-logo">
+                    <Image
+                        src="/images/NIHPLOD-logo.svg"
+                        alt="NIHPLOD"
+                        width={160}
+                        height={40}
+                        className="kinetic-logo-image"
+                        priority
+                    />
+                </Link>
                 {/* 左侧大卡片 - 跨两行 */}
                 <div
                     ref={(el) => addCellRef(el, 0)}
