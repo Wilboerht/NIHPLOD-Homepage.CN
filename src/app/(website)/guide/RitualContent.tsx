@@ -1329,7 +1329,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                               setCurrentStepIndex(0);
                                             }}
                                             className={cn(
-                                              "relative flex-1 flex items-center justify-center rounded-full py-2.5 transition-colors duration-300",
+                                              "relative flex-1 flex min-h-0 min-w-0 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
                                               isActive
                                                 ? "text-[#00263E] font-semibold"
                                                 : "text-[#00263E]/40 hover:text-[#00263E]/65"
@@ -1357,7 +1357,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                               key={scheme.id}
                                               onClick={() => selectScheme(scheme)}
                                               className={cn(
-                                                "relative flex-1 flex items-center justify-center rounded-full py-2.5 transition-colors duration-300",
+                                                "relative flex-1 flex min-h-0 min-w-0 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
                                                 isActive
                                                   ? "text-[#00263E] font-semibold"
                                                   : "text-[#00263E]/40 hover:text-[#00263E]/65"
