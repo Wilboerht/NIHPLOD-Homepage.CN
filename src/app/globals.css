@@ -783,6 +783,36 @@
     filter: brightness(1.03);
   }
 
+  .home-container .btn-primary::before,
+  .home-container .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 99px;
+    box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.35);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .home-container .btn-primary:active::before {
+    animation: sonar-pulse 0.8s ease-out;
+  }
+
+  .home-container .btn-primary:active::after {
+    animation: sonar-pulse 0.8s ease-out 0.2s;
+  }
+
+  @keyframes sonar-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.35);
+      opacity: 1;
+    }
+    100% {
+      box-shadow: 0 0 0 14px rgba(168, 159, 145, 0);
+      opacity: 0;
+    }
+  }
+
   .home-container .btn-secondary {
     width: 160px;
   }
@@ -834,6 +864,25 @@
 
   .home-container .btn-primary:hover {
     filter: brightness(1.03);
+  }
+
+  .home-container .btn-primary::before,
+  .home-container .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 99px;
+    box-shadow: 0 0 0 0 rgba(168, 159, 145, 0.35);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .home-container .btn-primary:active::before {
+    animation: sonar-pulse 0.8s ease-out;
+  }
+
+  .home-container .btn-primary:active::after {
+    animation: sonar-pulse 0.8s ease-out 0.2s;
   }
 }
 
