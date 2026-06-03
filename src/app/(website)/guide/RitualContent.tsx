@@ -1127,8 +1127,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
               )}>
                 {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
                 <div className="flex h-full flex-col sm:hidden bg-[#F8F7F3]">
-                  {/* 移动端 Header */}
-                  <header className="relative flex h-20 shrink-0 items-center justify-center px-6 z-30">
+                  {/* 移动端 Header - 完全按照 FAQ 顶部栏样式 */}
+                  <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-[#F8F7F3]/95 backdrop-blur-sm px-6 transition-all">
                     <AnimatePresence>
                       {currentLevel > 1 && (
                         <m.button
@@ -1158,8 +1158,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         </m.button>
                       )}
                     </AnimatePresence>
-                    <Link href="/" className="flex items-center justify-center">
-                      <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
+                    <Link href="/" className="flex items-center justify-center mt-1">
+                      <div className="relative h-[28px] w-[100px]">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="NIHPLOD"
@@ -1169,7 +1169,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         />
                       </div>
                     </Link>
-                  </header>
+                    {/* Texture Overlay for Header to match body */}
+                    <div className="texture-overlay absolute inset-0 z-[-1]" />
+                  </div>
 
                   {/* 移动端内容区域 - 隐藏滚动条并移除多余 padding */}
                   <div className={cn(
