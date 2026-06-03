@@ -329,7 +329,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         type="button"
                         onClick={() => setCurrentImageIndex(index)}
                         className={cn(
-                          "h-[2px] rounded-full transition-all duration-300",
+                          "h-[2px] rounded-full p-0 border-none transition-all duration-300",
                           currentImageIndex === index
                             ? "w-5 bg-white"
                             : "w-2 bg-white/40"

@@ -226,14 +226,14 @@ export function ProductDetailContent({
 
                       {/* 图片指示器 */}
                       {product.images.length > 1 && (
-                        <div className="flex gap-2 justify-center mt-7">
+                        <div className="flex items-center gap-2 justify-center mt-7">
                           {product.images.map((_, index) => (
                             <button
                               key={index}
                               type="button"
                               onClick={() => setCurrentImageIndex(index)}
                               className={cn(
-                                "h-[2px] w-5 transition-all duration-300",
+                                "h-[2px] w-5 p-0 border-none transition-all duration-300",
                                 currentImageIndex === index
                                   ? "bg-[#00263E]"
                                   : "bg-[#00263E]/20"
