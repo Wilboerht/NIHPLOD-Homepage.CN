@@ -855,19 +855,19 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             }
                           }}
                           className={cn(
-                            "group flex w-full flex-row items-center justify-center gap-4 rounded-2xl py-6 px-4 transition-all",
+                            "group grid w-full grid-cols-[48px_1fr] items-center gap-4 rounded-2xl py-6 px-4 transition-all",
                             categoryProduct
                               ? "bg-[#F8F7F3]/60 active:scale-95 active:bg-[#F8F7F3]"
                               : "bg-[#F8F7F3]/30 cursor-not-allowed opacity-60"
                           )}
                         >
                           <div className={cn(
-                            "flex h-12 w-12 shrink-0 items-center justify-center text-[#00263E] opacity-90 transition-transform",
+                            "flex h-12 w-12 items-center justify-center text-[#00263E] opacity-90 transition-transform",
                             categoryProduct && "group-active:scale-110"
                           )}>
                             {CATEGORY_ICONS[cat.name]}
                           </div>
-                          <div className="flex flex-col items-center">
+                          <div className="flex flex-col items-start">
                             <span
                               className="text-[15px] font-medium tracking-[0.1em] text-[#00263E]/90 whitespace-nowrap text-center"
                               style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
