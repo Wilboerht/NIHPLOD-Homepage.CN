@@ -825,7 +825,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               </div>
 
               {/* 分类列表容器 */}
-              <div className="flex-1 overflow-y-auto px-0">
+              <div className="flex-1 overflow-y-auto px-0 scrollbar-hide">
                 <m.div
                   className="grid w-full grid-cols-2 gap-5 my-auto"
                   initial="hidden"
