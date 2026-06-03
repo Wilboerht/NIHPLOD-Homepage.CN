@@ -1084,7 +1084,7 @@
 /* 响应式调整 - 移动端减少光晕数量 */
 @media (max-width: 768px) {
   .kinetic-logo {
-    top: -48px;
+    top: -38px;
   }
 
   .kinetic-logo-image {
@@ -1775,7 +1775,7 @@
       width: min(80vw, 36vh);
       max-width: 400px;
       gap: 14px;
-      top: 51%;
+      top: 53%;
     }
 
     .kinetic-cell-steps,
