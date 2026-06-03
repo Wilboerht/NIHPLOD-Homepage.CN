@@ -779,10 +779,6 @@
     white-space: nowrap;
   }
 
-  .home-container .btn-primary:hover {
-    filter: brightness(1.03);
-  }
-
   .home-container .btn-primary::before,
   .home-container .btn-primary::after {
     content: '';
@@ -860,10 +856,6 @@
     position: relative;
     overflow: visible;
     white-space: nowrap;
-  }
-
-  .home-container .btn-primary:hover {
-    filter: brightness(1.03);
   }
 
   .home-container .btn-primary::before,
@@ -1143,7 +1135,7 @@
 /* 网格容器 */
 .kinetic-logo {
   position: absolute;
-  top: -68px;
+  top: -76px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -1157,7 +1149,7 @@
 }
 
 .kinetic-logo-image {
-  height: 40px;
+  height: 48px;
   width: auto;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }

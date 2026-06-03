@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import DOMPurify from "isomorphic-dompurify";
 import { Link } from "next-view-transitions";
