@@ -1080,19 +1080,6 @@
   }
 }
 
-/* 微弱的扫描线效果 */
-.kinetic-background-wrapper::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(0deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 255, 255, 0.01) 2px,
-      rgba(255, 255, 255, 0.01) 4px);
-  pointer-events: none;
-}
-
 /* 响应式调整 - 移动端减少光晕数量 */
 @media (max-width: 768px) {
   .kinetic-glow-3 {
@@ -1103,6 +1090,12 @@
   .kinetic-glow-2 {
     filter: blur(60px);
     opacity: 0.1;
+  }
+
+  /* 移动端关闭卡片过渡动画，防止地址栏收缩时触发残影 */
+  .kinetic-cell,
+  .kinetic-cell-image {
+    transition: none !important;
   }
 }
 

@@ -16,6 +16,7 @@ import { ChevronRight } from "lucide-react";
  */
 export function KineticBackground() {
     const containerRef = useRef<HTMLDivElement>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
     const cellsRef = useRef<HTMLDivElement[]>([]);
     const { user, switchToLogin, openUserCenter } = useAuth();
 
@@ -71,8 +72,26 @@ export function KineticBackground() {
         switchToLogin();
     };
 
+    useEffect(() => {
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+
+        const updateHeight = () => {
+            const vv = window.visualViewport;
+            if (vv) {
+                wrapper.style.height = `${vv.height}px`;
+            }
+        };
+
+        updateHeight();
+        window.visualViewport?.addEventListener('resize', updateHeight);
+        return () => {
+            window.visualViewport?.removeEventListener('resize', updateHeight);
+        };
+    }, []);
+
     return (
-        <div className="kinetic-background-wrapper">
+        <div ref={wrapperRef} className="kinetic-background-wrapper">
             <div className="kinetic-bg-base" />
             <div className="kinetic-dot-pattern" />
             <div className="kinetic-watermark">
