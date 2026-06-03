@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import DOMPurify from "isomorphic-dompurify";
 import { Link } from "next-view-transitions";
@@ -88,9 +88,10 @@ export function ProductDetailContent({
     }
   }, [router]);
 
-  const [currentImageIndex, _setCurrentImageIndex] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [quantity, setQuantity] = useState(1);
+  const touchStartX = useRef(0);
 
   const currentImage = product.images[currentImageIndex];
 
@@ -193,10 +194,23 @@ export function ProductDetailContent({
                     {/* 图片轮播区域 + 指示器 */}
                     <div className="mx-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full max-w-4xl">
                       <m.div
-                        className="relative aspect-[3/4] bg-brand-beige/30 lg:aspect-[16/9] w-full rounded-2xl overflow-hidden"
+                        className="relative aspect-[3/4] bg-brand-beige/30 lg:aspect-[16/9] w-full rounded-2xl overflow-hidden touch-pan-y"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.4 }}
+                        onTouchStart={(e) => {
+                          touchStartX.current = e.changedTouches[0].screenX;
+                        }}
+                        onTouchEnd={(e) => {
+                          const endX = e.changedTouches[0].screenX;
+                          const diff = touchStartX.current - endX;
+                          const threshold = 50;
+                          if (diff > threshold && currentImageIndex < product.images.length - 1) {
+                            setCurrentImageIndex((prev) => prev + 1);
+                          } else if (diff < -threshold && currentImageIndex > 0) {
+                            setCurrentImageIndex((prev) => prev - 1);
+                          }
+                        }}
                       >
                         {currentImage && (
                           <Image
@@ -211,17 +225,20 @@ export function ProductDetailContent({
                       </m.div>
 
                       {/* 图片指示器 */}
-                      {product.images.length > 0 && (
+                      {product.images.length > 1 && (
                         <div className="flex gap-2 justify-center mt-7">
                           {product.images.map((_, index) => (
-                            <div
+                            <button
                               key={index}
+                              type="button"
+                              onClick={() => setCurrentImageIndex(index)}
                               className={cn(
                                 "h-[2px] w-5 transition-all duration-300",
                                 currentImageIndex === index
                                   ? "bg-[#00263E]"
                                   : "bg-[#00263E]/20"
                               )}
+                              aria-label={`查看第 ${index + 1} 张图片`}
                             />
                           ))}
                         </div>
@@ -328,6 +345,39 @@ export function ProductDetailContent({
                           </div>
                         ))}
                       </div>
+                    </div>
+
+                    {/* 小红书链接 */}
+                    <div className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4">
+                      {(() => {
+                        const keyword = `NIHPLOD ${product.category.name}`;
+                        const encodedKeyword = encodeURIComponent(keyword);
+                        const webUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodedKeyword}`;
+                        const schemeUrl = `xhsdiscover://search/result?keyword=${encodedKeyword}`;
+                        const isMobileDevice = typeof window !== "undefined" && window.innerWidth <= 768;
+
+                        return (
+                          <>
+                            <a
+                              href={isMobileDevice ? schemeUrl : webUrl}
+                              target={isMobileDevice ? undefined : "_blank"}
+                              rel="noopener noreferrer"
+                              className="group inline-flex items-center gap-1 text-[12px] text-[#00263E]/60 transition-opacity hover:opacity-70"
+                            >
+                              <span>去小红书了解更多</span>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 transition-transform group-hover:translate-x-1">
+                                <path d="M5 12h14" />
+                                <path d="m12 5 7 7-7 7" />
+                              </svg>
+                            </a>
+                            {isMobileDevice && (
+                              <p className="mt-1 text-xs text-[#00263E]/40">
+                                若未唤起小红书App，请手动搜索「{keyword}」
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* 购买按钮区域 */}
