@@ -25,7 +25,7 @@ export function XiaohongshuLink({ categoryName, className }: XiaohongshuLinkProp
         href={isMobileDevice ? schemeUrl : webUrl}
         target={isMobileDevice ? undefined : "_blank"}
         rel="noopener noreferrer"
-        className="group inline-flex items-center gap-1 text-[12px] leading-none text-[#00263E]/60 !transition-opacity hover:opacity-70 hover:!text-[#00263E]/60"
+        className="group inline-flex items-center gap-1 py-1 text-[12px] text-[#00263E]/60 !transition-opacity hover:opacity-70 hover:!text-[#00263E]/60"
       >
         <span>去小红书了解更多</span>
         <svg
