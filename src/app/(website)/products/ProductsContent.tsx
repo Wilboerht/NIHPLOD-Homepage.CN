@@ -855,7 +855,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             }
                           }}
                           className={cn(
-                            "group grid w-full grid-cols-[48px_1fr] items-center gap-4 rounded-2xl py-6 px-4 transition-all",
+                            "group grid w-full grid-cols-[48px_1fr] items-center gap-4 rounded-2xl py-6 px-6 transition-all",
                             categoryProduct
                               ? "bg-[#F8F7F3]/60 active:scale-95 active:bg-[#F8F7F3]"
                               : "bg-[#F8F7F3]/30 cursor-not-allowed opacity-60"
