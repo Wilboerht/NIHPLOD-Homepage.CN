@@ -300,8 +300,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
                 {/* 装饰线条 - 已移除 */}
 
-                {/* 波浪背景 */}
-                <div className="wave-container pointer-events-none absolute bottom-0 left-0 right-0 z-0">
+                {/* 波浪背景 - 仅桌面端渲染 */}
+                <div className="wave-container pointer-events-none absolute bottom-0 left-0 right-0 z-0 hidden lg:block">
                   <svg ref={wave1Ref} className="wave wave-1" viewBox="0 0 1200 120" preserveAspectRatio="none">
                     <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
                   </svg>
