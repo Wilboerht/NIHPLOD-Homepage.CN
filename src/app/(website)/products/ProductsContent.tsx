@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
@@ -344,6 +344,22 @@ export const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 export function ProductsContent({ categories, products }: ProductsContentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { isDrawerOpen, setDrawerOpen } = useLayout();
+  const handleRef = useRef<HTMLButtonElement>(null);
+  const [handleHeight, setHandleHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!handleRef.current || typeof ResizeObserver === "undefined") return;
+
+    const updateHandleHeight = () => {
+      setHandleHeight(handleRef.current?.offsetHeight ?? 0);
+    };
+
+    updateHandleHeight();
+    const observer = new ResizeObserver(updateHandleHeight);
+    observer.observe(handleRef.current);
+
+    return () => observer.disconnect();
+  }, []);
 
   // 监听 LayoutContext 中的 isDrawerOpen 变化，同步本地 isExpanded 状态
   // 解决：点击底部导航栏时，setDrawerOpen(true) 不会触发本地状态更新的问题
@@ -555,24 +571,31 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
-            {/* 主内容区域 - 抽屉 */}
+            {/* 主内容区域 + 按钮一起移动 */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
-              style={{ willChange: "flex-grow" }}
-              initial={{ flexGrow: 0, flexBasis: 0 }}
+              className="relative z-20 flex h-full w-full flex-col"
+              style={{ willChange: "transform" }}
+              initial={{
+                transform: handleHeight
+                  ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
+                  : "translate3d(0, -100%, 0)"
+              }}
               animate={{
-                flexGrow: isExpanded ? 1 : 0,
-                flexBasis: 0
+                transform: isExpanded
+                  ? "translate3d(0, 0, 0)"
+                  : handleHeight
+                    ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
+                    : "translate3d(0, -100%, 0)"
               }}
               transition={{
                 duration: 1.2,
                 ease: [0.22, 1, 0.36, 1],
-                // 展开时延迟0.4s等待导航栏收起（大幅重叠以消除视觉间隔）；收起时不延迟
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              {/* 矿物纹理覆盖层 */}
-              <div className="texture-overlay absolute inset-0" />
+              <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto">
+                {/* 矿物纹理覆盖层 */}
+                <div className="texture-overlay absolute inset-0" />
 
               {/* 装饰线条 */}
               <AnimatePresence>
@@ -598,8 +621,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 )}
               </AnimatePresence>
 
-              {/* 内容区域 */}
-              <div className={cn("relative z-10 flex h-full flex-col overflow-hidden pb-3", !isExpanded && "hidden")}>
+                {/* 内容区域 */}
+                <div className={cn("relative z-10 flex h-full flex-col overflow-hidden pb-3 transition-opacity duration-300", isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none")}>
                 {/* 移动端展示层 - 仅在移动端显示，一屏式布局 */}
                 <div className="relative flex h-full flex-col lg:hidden overflow-hidden">
                   <MobileShowcase />
@@ -717,43 +740,45 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   </div>
                 </div>
 
+                </div>
+
+                {/* PC 端水印 */}
+                <div className="pointer-events-none absolute inset-0 z-0 hidden md:flex items-center justify-center overflow-hidden">
+                  <Image
+                    src="/images/watermark.webp"
+                    alt=""
+                    width={2000}
+                    height={800}
+                    className="h-[120%] w-auto max-w-none opacity-[0.03]"
+                  />
+                </div>
               </div>
 
-              {/* PC 端水印 */}
-              <div className="pointer-events-none absolute inset-0 z-0 hidden md:flex items-center justify-center overflow-hidden">
-                <Image
-                  src="/images/watermark.webp"
-                  alt=""
-                  width={2000}
-                  height={800}
-                  className="h-[120%] w-auto max-w-none opacity-[0.03]"
-                />
-              </div>
-            </m.div>
-
-            {/* 展开/收起按钮 - 放在 m.div 外部作为兄弟元素 */}
-            <button
-              type="button"
-              onClick={() => {
-                const newState = !isExpanded;
-                setIsExpanded(newState);
-                setDrawerOpen(newState);
-              }}
-              className="group -mt-[1px] relative z-30 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 lg:px-14 lg:py-3.5 pointer-events-auto"
-            >
-              {/* 矿物纹理覆盖层 */}
-              <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
-              <m.div
-                className="relative z-10 flex flex-col items-center"
-                animate={{ rotate: isExpanded ? 180 : 0, scale: 1 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              {/* 展开/收起按钮 */}
+              <button
+                ref={handleRef}
+                type="button"
+                onClick={() => {
+                  const newState = !isExpanded;
+                  setIsExpanded(newState);
+                  setDrawerOpen(newState);
+                }}
+                className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#F8F7F3] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
               >
-                <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-              </m.div>
-            </button>
+                {/* 矿物纹理覆盖层 */}
+                <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
+                <m.div
+                  className="relative z-10 flex flex-col items-center"
+                  animate={{ rotate: isExpanded ? 180 : 0, scale: 1 }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                  <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                </m.div>
+              </button>
+            </m.div>
           </div>
         </m.div>
       </m.div>

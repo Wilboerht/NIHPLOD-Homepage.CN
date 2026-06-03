@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
@@ -89,6 +89,22 @@ export function FAQContent() {
     const [openIndex, setOpenIndex] = useState<number | null>(null);
     const { isDrawerOpen, setDrawerOpen } = useLayout();
     const { openContact } = useAuth();
+    const handleRef = useRef<HTMLButtonElement>(null);
+    const [handleHeight, setHandleHeight] = useState(0);
+
+    useLayoutEffect(() => {
+        if (!handleRef.current || typeof ResizeObserver === "undefined") return;
+
+        const updateHandleHeight = () => {
+            setHandleHeight(handleRef.current?.offsetHeight ?? 0);
+        };
+
+        updateHandleHeight();
+        const observer = new ResizeObserver(updateHandleHeight);
+        observer.observe(handleRef.current);
+
+        return () => observer.disconnect();
+    }, []);
 
     // Sync with LayoutContext
     useEffect(() => {
@@ -134,14 +150,21 @@ export function FAQContent() {
                     className="h-full pointer-events-none"
                 >
                     <div className="flex h-full flex-col items-center drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
-                        {/* Drawer Content */}
+                        {/* Drawer Content + Button */}
                         <m.div
-                            className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
-                            style={{ willChange: "flex-grow" }}
-                            initial={{ flexGrow: 0, flexBasis: 0 }}
+                            className="relative z-20 flex h-full w-full flex-col"
+                            style={{ willChange: "transform" }}
+                            initial={{
+                                transform: handleHeight
+                                    ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
+                                    : "translate3d(0, -100%, 0)"
+                            }}
                             animate={{
-                                flexGrow: isExpanded ? 1 : 0,
-                                flexBasis: 0
+                                transform: isExpanded
+                                    ? "translate3d(0, 0, 0)"
+                                    : handleHeight
+                                        ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
+                                        : "translate3d(0, -100%, 0)"
                             }}
                             transition={{
                                 duration: 1.2,
@@ -149,16 +172,17 @@ export function FAQContent() {
                                 delay: isExpanded ? 0.3 : 0
                             }}
                         >
-                            {/* Texture Overlay */}
-                            <div className="texture-overlay absolute inset-0" />
+                            <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto">
+                                {/* Texture Overlay */}
+                                <div className="texture-overlay absolute inset-0" />
 
-                            {/* Scrollable Content */}
-                            <div
-                                className={cn(
-                                    "relative z-10 flex h-full flex-col overflow-hidden",
-                                    !isExpanded && "hidden"
-                                )}
-                            >
+                                {/* Scrollable Content */}
+                                <div
+                                    className={cn(
+                                        "relative z-10 flex h-full flex-col overflow-hidden transition-opacity duration-300",
+                                        isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none"
+                                    )}
+                                >
                                 {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
                                 <div className="sticky top-0 z-50 flex h-[88px] sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F8F7F3]/95 sm:bg-[#F8F7F3]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
                                     <Link href="/" className="flex items-center justify-center mt-1">
@@ -274,17 +298,18 @@ export function FAQContent() {
                                     </div>
                                 </div>
                             </div>
-                        </m.div>
+                        </div>
 
                         {/* Collapse Button */}
                         <button
+                            ref={handleRef}
                             type="button"
                             onClick={() => {
                                 const newState = !isExpanded;
                                 setIsExpanded(newState);
                                 setDrawerOpen(newState);
                             }}
-                            className="group -mt-[1px] relative z-30 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 lg:px-14 lg:py-3.5 pointer-events-auto"
+                            className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#F8F7F3] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
                         >
                             <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
                             <m.div
@@ -301,6 +326,7 @@ export function FAQContent() {
                                 <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
                             </m.div>
                         </button>
+                    </m.div>
                     </div>
                 </m.div>
             </m.div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
@@ -57,6 +57,23 @@ const AWARDS_DATA = [
 export function StoryContent() {
   // 展开状态: false=完全收起(只剩按钮), true=完全展开(底部导航隐藏)
   const [isExpanded, setIsExpanded] = useState(false);
+  const handleRef = useRef<HTMLButtonElement>(null);
+  const [handleHeight, setHandleHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!handleRef.current || typeof ResizeObserver === "undefined") return;
+
+    const updateHandleHeight = () => {
+      setHandleHeight(handleRef.current?.offsetHeight ?? 0);
+    };
+
+    updateHandleHeight();
+    const observer = new ResizeObserver(updateHandleHeight);
+    observer.observe(handleRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
   const [activeSection, setActiveSection] = useState<SectionId>("story");
   const [currentAwardPage, setCurrentAwardPage] = useState(0);
 
@@ -108,39 +125,46 @@ export function StoryContent() {
         >
           {/* 主内容区域 + 按钮一体化容器 */}
           <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
-            {/* 主内容区域 - 使用 about us.html 风格 */}
+            {/* 主内容区域 + 按钮一起移动 */}
             <m.div
-              className="relative w-full overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto"
-              style={{ willChange: "flex-grow" }}
-              initial={{ flexGrow: 0, flexBasis: 0 }}
+              className="relative z-20 flex h-full w-full flex-col"
+              style={{ willChange: "transform" }}
+              initial={{
+                transform: handleHeight
+                  ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
+                  : "translate3d(0, -100%, 0)"
+              }}
               animate={{
-                flexGrow: isExpanded ? 1 : 0,
-                flexBasis: 0
+                transform: isExpanded
+                  ? "translate3d(0, 0, 0)"
+                  : handleHeight
+                    ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
+                    : "translate3d(0, -100%, 0)"
               }}
               transition={{
                 duration: 1.2,
                 ease: [0.22, 1, 0.36, 1],
-                // 展开时延迟0.4s等待导航栏收起（大幅重叠以消除视觉间隔）；收起时不延迟
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              {/* 矿物纹理覆盖层 */}
-              <div className="texture-overlay absolute inset-0" />
+              <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto">
+                {/* 矿物纹理覆盖层 */}
+                <div className="texture-overlay absolute inset-0" />
 
-              {/* 品牌故事和公司使命的水印背景 - 放置在此处可贯穿整个面板，不被上下导航遮挡 */}
-              <AnimatePresence>
-                {(activeSection === "story" || activeSection === "mission" || activeSection === "philosophy") && (
-                  <m.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
-                  >
-                    <Watermark />
-                  </m.div>
-                )}
-              </AnimatePresence>
+                {/* 品牌故事和公司使命的水印背景 - 放置在此处可贯穿整个面板，不被上下导航遮挡 */}
+                <AnimatePresence>
+                  {(activeSection === "story" || activeSection === "mission" || activeSection === "philosophy") && (
+                    <m.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.8 }}
+                      className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
+                    >
+                      <Watermark />
+                    </m.div>
+                  )}
+                </AnimatePresence>
 
               {/* 建筑风格装饰线条 - 渐变淡出 + 绘制动画 + 呼吸脉动 - 仅桌面端显示 */}
               <AnimatePresence>
@@ -153,12 +177,12 @@ export function StoryContent() {
                 )}
               </AnimatePresence>
 
-              <div
-                className={cn(
-                  "relative z-10 flex h-full flex-col overflow-hidden pb-3",
-                  !isExpanded && "hidden"
-                )}
-              >
+                <div
+                  className={cn(
+                    "relative z-10 flex h-full flex-col overflow-hidden pb-3 transition-opacity duration-300",
+                    isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none"
+                  )}
+                >
                 {/* ========== 移动端布局 - 参考 About us 移动端.html ========== */}
                 <div className="relative flex h-full flex-col overflow-hidden lg:hidden">
                   {/* Background Texture Overlay */}
@@ -698,35 +722,37 @@ export function StoryContent() {
                   </div>
                 </div>
 
+                </div>
               </div>
-            </m.div>
 
-            {/* 展开/收起按钮 - 两阶段切换：收起↔展开 */}
-            <button
-              type="button"
-              onClick={() => {
-                const newState = !isExpanded;
-                setIsExpanded(newState);
-                setDrawerOpen(newState);
-              }}
-              className="group -mt-[1px] relative z-30 flex items-center justify-center rounded-b-2xl bg-[#F8F7F3] px-10 py-3 lg:px-14 lg:py-3.5 pointer-events-auto"
-            >
-              {/* 矿物纹理覆盖层 */}
-              <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
-              <m.div
-                className="relative z-10 flex flex-col items-center"
-                animate={{
-                  rotate: isExpanded ? 180 : 0,
-                  scale: 1
+              {/* 展开/收起按钮 - 两阶段切换：收起↔展开 */}
+              <button
+                ref={handleRef}
+                type="button"
+                onClick={() => {
+                  const newState = !isExpanded;
+                  setIsExpanded(newState);
+                  setDrawerOpen(newState);
                 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#F8F7F3] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
               >
-                <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-              </m.div>
-            </button>
+                {/* 矿物纹理覆盖层 */}
+                <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
+                <m.div
+                  className="relative z-10 flex flex-col items-center"
+                  animate={{
+                    rotate: isExpanded ? 180 : 0,
+                    scale: 1
+                  }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                  <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
+                </m.div>
+              </button>
+            </m.div>
           </div>
         </m.div >
       </m.div >
