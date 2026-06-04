@@ -5,7 +5,7 @@
  */
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset, ChevronLeft, MessageSquare, ArrowLeftRight } from "lucide-react";
+import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset, ChevronLeft, ArrowLeftRight } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,7 +83,6 @@ function LoginModal({
   const [loading, setLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("password");
   const [agreed, setAgreed] = useState(false);
-  const [showPasswordHint, setShowPasswordHint] = useState(false);
   const toast = useToast();
 
   // 关闭时重置表单
@@ -95,7 +94,6 @@ function LoginModal({
       setLoading(false);
       setLoginMethod("password");
       setAgreed(false);
-      setShowPasswordHint(false);
     }
   }, [isOpen]);
 
