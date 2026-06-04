@@ -146,7 +146,7 @@ const privacyData: Record<string, SectionContent> = {
   ch14: {
     title: "十四、免责声明",
     content: [
-      "十四、免责声明\n\n免责声明：本隐私政策最终解释权归旎柏（上海）商贸有限公司所有。如您对本政策有任何疑问，请通过上述联系方式与我们联系。",
+      "十四、免责声明\n\n本隐私政策最终解释权归旎柏（上海）商贸有限公司所有。如您对本政策有任何疑问，请通过上述联系方式与我们联系。",
     ],
   },
 };
@@ -309,7 +309,7 @@ export function PrivacyContent() {
                 onScroll={handleScroll}
                 className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
-                <div className="max-w-6xl mx-auto px-6 lg:px-12">
+                <div className="max-w-7xl mx-auto px-6 lg:px-10">
                   <div className="space-y-7">
                     {sections.map((section) => (
                       <section
