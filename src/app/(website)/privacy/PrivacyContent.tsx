@@ -23,7 +23,7 @@ const privacyData: Record<string, SectionContent> = {
   ch1: {
     title: "一、个人信息处理者信息",
     content: [
-      "一、个人信息处理者信息\n\n待补充",
+      "一、个人信息处理者信息\n\n个人信息处理者是指决定个人信息处理目的和方式的实体。\n\n• 处理者名称：旎柏（上海）商贸有限公司\n\n• 注册地址：上海市普陀区信泰中心T3栋610室\n\n• 联系邮箱：service@nihplod.cn（一般咨询）；dpo@nihplod.cn（个人信息保护合规事务）\n\n• 联系页面：通过本网站「联系我们」页面提交您的问题\n\n• 邮寄地址：上海市普陀区信泰中心T3栋610室，收件人：个人信息保护负责人\n\n• 如您对本隐私政策有任何疑问，或希望行使您的个人信息权利，请通过上述方式与我们联系。我们将在收到您的权利行使请求后15个工作日内予以响应和处理。如情况复杂需要延长，我们将及时告知您并说明理由，延长期限不超过15个工作日。",
     ],
   },
   ch2: {
@@ -321,8 +321,7 @@ export function PrivacyContent() {
                                     if (trimmed === '《隐私政策》摘要') {
                                       return (
                                         <h3 key={lIdx} className="pt-4 lg:pt-8 font-serif text-xl lg:text-2xl font-bold lg:font-normal text-gray-900 break-words">
-                                          <span className="lg:hidden">{formatText(trimmed)}</span>
-                                          <span className="hidden lg:inline">{formatText('摘要')}</span>
+                                          {formatText('消费者隐私政策摘要')}
                                         </h3>
                                       );
                                     }
