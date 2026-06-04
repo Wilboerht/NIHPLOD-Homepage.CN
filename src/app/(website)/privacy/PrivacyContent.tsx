@@ -331,14 +331,14 @@ export function PrivacyContent() {
                                       return (
                                         <div key={lIdx} className="flex gap-3 text-sm leading-relaxed text-gray-700">
                                           <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-gold/60" />
-                                          <p className="flex-1 opacity-90">{formatText(trimmed.substring(1).trim())}</p>
+                                          <p className="flex-1 opacity-90 break-words">{formatText(trimmed.substring(1).trim())}</p>
                                         </div>
                                       );
                                     }
 
                                     // 普通段落
                                     return (
-                                      <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 text-justify">
+                                      <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 lg:text-justify break-words">
                                         {formatText(trimmed)}
                                       </p>
                                     );
