@@ -387,7 +387,7 @@ export function ProductDetailContent({
                               aria-selected={activeTab === tab.key}
                               onClick={() => setActiveTab(tab.key)}
                               className={cn(
-                                "relative pb-3 text-[16px] font-normal transition-colors cursor-pointer",
+                                "relative pb-3 text-[14px] font-normal transition-colors cursor-pointer",
                                 activeTab === tab.key
                                   ? "text-brand-charcoal"
                                   : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
