@@ -379,7 +379,7 @@ export function ProductDetailContent({
                     <div className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4">
                       {/* Tab 切换 */}
                       <div className="border-b border-brand-beige">
-                        <div className="flex justify-start gap-8" role="tablist">
+                        <div className="flex justify-center gap-8" role="tablist">
                           {tabs.map((tab) => (
                             <div
                               key={tab.key}
@@ -387,7 +387,7 @@ export function ProductDetailContent({
                               aria-selected={activeTab === tab.key}
                               onClick={() => setActiveTab(tab.key)}
                               className={cn(
-                                "relative pb-3 text-[14px] font-normal transition-colors cursor-pointer",
+                                "relative pb-3 text-[15px] font-normal transition-colors cursor-pointer",
                                 activeTab === tab.key
                                   ? "text-brand-charcoal"
                                   : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
