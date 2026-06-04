@@ -5,7 +5,7 @@
  */
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset, ChevronLeft } from "lucide-react";
+import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset, ChevronLeft, MessageSquare, ArrowLeftRight } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -351,13 +351,23 @@ function LoginModal({
                           />
                         </div>
 
-                        <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => { setLoginMethod("code"); }}
+                            className={`inline-flex h-7 min-h-0 items-center gap-1.5 text-xs tracking-wider transition-colors ${loginMethod === "code"
+                              ? "text-brand-charcoal"
+                              : "text-brand-charcoal/50 hover:text-brand-charcoal"
+                              }`}
+                          >
+                            <ArrowLeftRight className="h-3 w-3" strokeWidth={2} />
+                            验证码登录
+                          </button>
                           <button
                             type="button"
                             onClick={onSwitchToForgotPassword}
-                            className="self-end inline-flex h-7 min-h-0 items-center gap-1.5 text-xs tracking-wider text-brand-charcoal/50 hover:text-brand-charcoal transition-colors"
+                            className="inline-flex h-7 min-h-0 items-center text-xs tracking-wider text-brand-charcoal/50 hover:text-brand-charcoal transition-colors"
                           >
-                            <KeyRound className="h-3 w-3" strokeWidth={2} />
                             找回密码
                           </button>
                         </div>
@@ -370,7 +380,7 @@ function LoginModal({
                               onChange={(e) => setAgreed(e.target.checked)}
                               className="peer sr-only"
                             />
-                            <div className="h-4 w-4 rounded border border-brand-charcoal/25 bg-transparent transition-all peer-checked:bg-brand-gold peer-checked:border-brand-gold" />
+                            <div className="h-4 w-4 rounded border border-brand-charcoal/25 bg-transparent transition-all peer-checked:bg-[#00263e]/50 peer-checked:border-[#00263e]/50" />
                             <Check className="absolute inset-0 m-auto h-3 w-3 scale-0 text-white transition-transform peer-checked:scale-100" strokeWidth={3} />
                           </div>
                           <span className="text-xs text-brand-charcoal/50 tracking-wide">
@@ -1413,11 +1423,11 @@ function ForgotPasswordModal({
                           >
                             {loading ? "发送中..." : "找回密码"}
                           </button>
-                          <div className="text-center">
+                          <div className="flex flex-col gap-1">
                             <button
                               type="button"
                               onClick={onSwitchToLogin}
-                              className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
+                              className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                             >
                               返回登录
                             </button>
