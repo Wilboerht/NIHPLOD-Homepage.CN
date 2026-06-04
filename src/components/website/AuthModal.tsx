@@ -1451,86 +1451,88 @@ function ForgotPasswordModal({
                       </AnimatePresence>
 
                       {step === "form" && (
-                        <div className="w-full space-y-6">
-                          <div>
-                            <input
-                              type="tel"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              autoComplete="tel"
-                              value={phone}
-                              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                              placeholder="手机号"
-                              className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
-                            />
-                          </div>
-                          <div className="relative flex gap-2">
-                            <input
-                              type="text"
-                              value={code}
-                              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                              placeholder="验证码"
-                              className="flex-1 bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
-                            />
-                            <div className="flex flex-col gap-1">
-                              <button
-                                type="button"
-                                onClick={sendCode}
-                                disabled={countdown > 0 || phone.length !== 11}
-                                className="inline-flex h-12 min-h-0 items-center justify-center px-4 text-xs font-medium tracking-wider text-brand-charcoal/60 border border-brand-charcoal/25 disabled:opacity-30 transition-all"
-                              >
-                                {countdown > 0 ? `${countdown}s` : "获取验证码"}
-                              </button>
+                        <>
+                          <div className="w-full space-y-6">
+                            <div>
+                              <input
+                                type="tel"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                autoComplete="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                                placeholder="手机号"
+                                className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
+                              />
                             </div>
+                            <div className="relative flex gap-2">
+                              <input
+                                type="text"
+                                value={code}
+                                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                placeholder="验证码"
+                                className="flex-1 bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
+                              />
+                              <div className="flex flex-col gap-1">
+                                <button
+                                  type="button"
+                                  onClick={sendCode}
+                                  disabled={countdown > 0 || phone.length !== 11}
+                                  className="inline-flex h-12 min-h-0 items-center justify-center px-4 text-xs font-medium tracking-wider text-brand-charcoal/60 border border-brand-charcoal/25 disabled:opacity-30 transition-all"
+                                >
+                                  {countdown > 0 ? `${countdown}s` : "获取验证码"}
+                                </button>
+                              </div>
+                            </div>
+                            <div>
+                              <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setPassword(val);
+                                  if (val.length > 0) {
+                                    const hasUpper = /[A-Z]/.test(val);
+                                    const hasLower = /[a-z]/.test(val);
+                                    const hasDigit = /\d/.test(val);
+                                    setShowPasswordHint(val.length < 8 || !hasUpper || !hasLower || !hasDigit);
+                                  } else {
+                                    setShowPasswordHint(false);
+                                  }
+                                }}
+                                placeholder="新密码（至少8位）"
+                                maxLength={32}
+                                className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
+                              />
+                              {showPasswordHint && (
+                                <p className="mt-1.5 text-xs text-red-500">
+                                  *密码必须包含大写字母、小写字母、数字
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="确认新密码"
+                                maxLength={32}
+                                className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={verifyAndReset}
+                              disabled={loading || phone.length !== 11 || code.length !== 6 || password.length < 8}
+                              className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40"
+                            >
+                              <span className="relative z-10 flex items-center justify-center gap-2">
+                                {loading ? (
+                                  <div className="h-4 w-4 border-2 border-brand-charcoal/20 border-t-brand-charcoal rounded-full animate-spin" />
+                                ) : "确认重置"}
+                              </span>
+                            </button>
                           </div>
-                          <div>
-                            <input
-                              type="password"
-                              value={password}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setPassword(val);
-                                if (val.length > 0) {
-                                  const hasUpper = /[A-Z]/.test(val);
-                                  const hasLower = /[a-z]/.test(val);
-                                  const hasDigit = /\d/.test(val);
-                                  setShowPasswordHint(val.length < 8 || !hasUpper || !hasLower || !hasDigit);
-                                } else {
-                                  setShowPasswordHint(false);
-                                }
-                              }}
-                              placeholder="新密码（至少8位）"
-                              maxLength={32}
-                              className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
-                            />
-                            {showPasswordHint && (
-                              <p className="mt-1.5 text-xs text-red-500">
-                                *密码必须包含大写字母、小写字母、数字
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <input
-                              type="password"
-                              value={confirmPassword}
-                              onChange={(e) => setConfirmPassword(e.target.value)}
-                              placeholder="确认新密码"
-                              maxLength={32}
-                              className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={verifyAndReset}
-                            disabled={loading || phone.length !== 11 || code.length !== 6 || password.length < 8}
-                            className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40"
-                          >
-                            <span className="relative z-10 flex items-center justify-center gap-2">
-                              {loading ? (
-                                <div className="h-4 w-4 border-2 border-brand-charcoal/20 border-t-brand-charcoal rounded-full animate-spin" />
-                              ) : "确认重置"}
-                            </span>
-                          </button>
                           <div className="flex flex-col gap-1">
                             <button
                               type="button"
@@ -1540,7 +1542,7 @@ function ForgotPasswordModal({
                               手机号无法使用？
                             </button>
                           </div>
-                        </div>
+                        </>
                       )}
 
                       {step === "success" && (
