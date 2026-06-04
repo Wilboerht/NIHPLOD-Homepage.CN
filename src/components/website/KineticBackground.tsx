@@ -107,7 +107,7 @@ export function KineticBackground() {
                     {/* 米色遮罩层 */}
                     <div
                         className="absolute inset-0"
-                        style={{ backgroundColor: '#F0EDE1', opacity: 0.6, mixBlendMode: 'color' }}
+                        style={{ backgroundColor: '#F0EDE1', opacity: 0.9, mixBlendMode: 'color' }}
                     />
                 </div>
                 {/* 移动端水印 - 竖版 SVG */}
