@@ -1383,7 +1383,7 @@ function ForgotPasswordModal({
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-start">
+                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-center">
 
                     {/* ===== 手机端极简全屏找回密码 ===== */}
                     <div className="md:hidden flex flex-col gap-8">
