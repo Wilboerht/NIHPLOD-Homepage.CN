@@ -143,6 +143,12 @@ const privacyData: Record<string, SectionContent> = {
       "（四）您的个人信息处理者\n\n• 主要个人信息处理者：旎柏（上海）商贸有限公司（品牌名称：旎柏/NIHPLOD）\n\n• 联系地址：上海市普陀区信泰中心T3栋610室\n\n在特定业务场景或渠道中，如涉及关联公司或合作伙伴作为共同处理者的，我们将在该业务场景或渠道入口处另行公示具体的处理者信息。",
     ],
   },
+  ch14: {
+    title: "十四、免责声明",
+    content: [
+      "十四、免责声明\n\n免责声明：本隐私政策最终解释权归旎柏（上海）商贸有限公司所有。如您对本政策有任何疑问，请通过上述联系方式与我们联系。",
+    ],
+  },
 };
 
 export function PrivacyContent() {
@@ -153,7 +159,7 @@ export function PrivacyContent() {
   const description = "我们重视并尊重您的隐私，了解我们如何收集、使用和保护您的个人信息";
   const _lastUpdated = "2026年5月31日";
 
-  const sectionOrder = ["summary", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7", "ch8", "ch9", "ch10", "ch11", "ch12", "ch13"];
+  const sectionOrder = ["summary", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7", "ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14"];
   const sections = sectionOrder.map((id, index) => ({
     id,
     title: privacyData[id].title,
