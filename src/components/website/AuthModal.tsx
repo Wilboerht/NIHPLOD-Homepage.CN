@@ -340,36 +340,66 @@ function LoginModal({
                           />
                         </div>
 
-                        <div>
-                          <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="密码"
-                            maxLength={32}
-                            className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
-                          />
-                        </div>
+                        {/* 验证码输入 - 仅验证码登录时显示 */}
+                        {loginMethod === "code" && (
+                          <div className="relative flex gap-2 animate-fade-scale-in">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={code}
+                              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                              placeholder="验证码"
+                              className="flex-1 bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
+                            />
+                            <div className="flex flex-col gap-1">
+                              <button
+                                type="button"
+                                onClick={sendCode}
+                                disabled={countdown > 0 || phone.length !== 11}
+                                className="inline-flex h-12 min-h-0 items-center justify-center px-4 text-xs font-medium tracking-wider text-brand-charcoal/60 border border-brand-charcoal/25 disabled:opacity-30 transition-all"
+                              >
+                                {countdown > 0 ? `${countdown}s` : "获取验证码"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 密码输入 - 仅密码登录时显示 */}
+                        {loginMethod === "password" && (
+                          <div className="animate-fade-scale-in">
+                            <input
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="密码"
+                              maxLength={32}
+                              className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
+                            />
+                          </div>
+                        )}
 
                         <div className="flex items-center justify-between">
                           <button
                             type="button"
-                            onClick={() => { setLoginMethod("code"); }}
+                            onClick={() => { setLoginMethod(loginMethod === "password" ? "code" : "password"); }}
                             className={`inline-flex h-7 min-h-0 items-center gap-1.5 text-xs tracking-wider transition-colors ${loginMethod === "code"
                               ? "text-brand-charcoal"
                               : "text-brand-charcoal/50 hover:text-brand-charcoal"
                               }`}
                           >
                             <ArrowLeftRight className="h-3 w-3" strokeWidth={2} />
-                            验证码登录
+                            {loginMethod === "password" ? "验证码登录" : "密码登录"}
                           </button>
-                          <button
-                            type="button"
-                            onClick={onSwitchToForgotPassword}
-                            className="inline-flex h-7 min-h-0 items-center text-xs tracking-wider text-brand-charcoal/50 hover:text-brand-charcoal transition-colors"
-                          >
-                            找回密码
-                          </button>
+                          {loginMethod === "password" && (
+                            <button
+                              type="button"
+                              onClick={onSwitchToForgotPassword}
+                              className="inline-flex h-7 min-h-0 items-center text-xs tracking-wider text-brand-charcoal/50 hover:text-brand-charcoal transition-colors"
+                            >
+                              找回密码
+                            </button>
+                          )}
                         </div>
 
                         <label className="flex cursor-pointer items-center gap-2.5 group/agreement">
