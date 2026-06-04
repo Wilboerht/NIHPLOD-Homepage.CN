@@ -880,7 +880,7 @@ function RegisterModal({
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏注册 ===== */}
-                    <div className="md:hidden flex flex-col gap-8">
+                    <div className="md:hidden flex flex-col gap-10">
                       {/* 标题区域 */}
                       <div className="text-center pt-[6px] pb-4">
                         <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">注册会员</h2>
@@ -1429,7 +1429,7 @@ function ForgotPasswordModal({
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-center">
 
                     {/* ===== 手机端极简全屏找回密码 ===== */}
-                    <div className="md:hidden flex flex-col gap-8">
+                    <div className="md:hidden flex flex-col gap-10">
                       {/* 标题区域 */}
                       <div className="text-center pt-[6px] pb-4">
                         <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">找回密码</h2>
