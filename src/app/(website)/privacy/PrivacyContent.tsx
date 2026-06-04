@@ -212,11 +212,11 @@ export function PrivacyContent() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="safe-area-content !pointer-events-none max-lg:!inset-0"
+      className="safe-area-content !pointer-events-none max-lg:!inset-0 lg:static lg:w-full lg:h-screen lg:overflow-hidden lg:bg-[#F8F7F3]"
     >
-      <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
+      <div className="flex h-full flex-col items-center lg:items-stretch pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)] lg:drop-shadow-none">
         {/* 主内容卡片容器 */}
-        <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#F0EDE1] lg:bg-[#F8F7F3] pointer-events-auto relative">
+        <div className="w-full flex-1 overflow-hidden rounded-none bg-[#F0EDE1] lg:bg-transparent pointer-events-auto relative">
           {/* 手机端背景水印 */}
           <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
             <Image
@@ -272,8 +272,8 @@ export function PrivacyContent() {
             {/* 分割线 - 仅桌面端 */}
             <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
 
-            {/* 标题区 */}
-            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4">
+            {/* 标题区 - 仅移动端显示 */}
+            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4 lg:hidden">
               <div>
                 <h1 className="font-serif text-[26px] text-brand-charcoal sm:text-[32px] lg:text-brand-charcoal max-lg:text-[24px] max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E]">
                   {pageTitle.zh}
@@ -296,7 +296,7 @@ export function PrivacyContent() {
                 onScroll={handleScroll}
                 className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
-                <div className="max-w-6xl px-6 lg:px-12">
+                <div className="max-w-3xl px-6 lg:px-12">
                   <div className="space-y-7">
                     {sections.map((section) => (
                       <section
@@ -318,9 +318,16 @@ export function PrivacyContent() {
                                     if (!trimmed) return <div key={lIdx} className="h-2" />;
 
                                     // 条款内标题 (一、二、...)
-                                    if (/^[一二三四五六七八九十0-9]+[、.]/.test(trimmed) || trimmed === '《隐私政策》摘要') {
+                                    if (trimmed === '《隐私政策》摘要') {
                                       return (
-                                        <h3 key={lIdx} className="pt-4 font-serif text-lg font-bold text-gray-900 break-words">
+                                        <h3 key={lIdx} className="pt-4 lg:pt-8 font-serif text-xl lg:text-2xl font-bold lg:font-normal text-gray-900 break-words">
+                                          {formatText(trimmed)}
+                                        </h3>
+                                      );
+                                    }
+                                    if (/^[一二三四五六七八九十0-9]+[、.]/.test(trimmed)) {
+                                      return (
+                                        <h3 key={lIdx} className="pt-4 font-serif text-sm font-bold text-gray-900 break-words">
                                           {formatText(trimmed)}
                                         </h3>
                                       );
@@ -358,7 +365,7 @@ export function PrivacyContent() {
             </div>
 
             {/* 底部版权信息 - 固定在卡片底部 */}
-            <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12 max-lg:border-0 max-lg:pt-4">
+            <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center mx-6 lg:mx-0 max-lg:pt-4">
               <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#7B726C]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
@@ -366,14 +373,7 @@ export function PrivacyContent() {
           </div>
         </div>
 
-        {/* 返回上页按钮 - 仅桌面端 */}
-        <button
-          onClick={() => typeof window !== "undefined" && window.history.back()}
-          className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#F8F7F3] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
-        >
-          <ArrowLeft className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
-          <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回上页</span>
-        </button>
+        {/* 返回上页按钮 - 仅桌面端（已移除） */}
       </div>
     </m.div>
   );
