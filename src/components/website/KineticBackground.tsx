@@ -96,14 +96,20 @@ export function KineticBackground() {
             <div className="kinetic-dot-pattern" />
             <div className="kinetic-watermark">
                 {/* PC 端水印 */}
-                <Image
-                    src="/images/N-web.svg"
-                    alt="Watermark PC"
-                    width={2800}
-                    height={800}
-                    style={{ objectFit: 'contain' }}
-                    className="hidden md:block"
-                />
+                <div className="hidden md:block relative">
+                    <Image
+                        src="/images/N-web.svg"
+                        alt="Watermark PC"
+                        width={2800}
+                        height={800}
+                        style={{ objectFit: 'contain' }}
+                    />
+                    {/* 米色遮罩层 */}
+                    <div
+                        className="absolute inset-0"
+                        style={{ backgroundColor: '#F0EDE1', opacity: 0.6, mixBlendMode: 'color' }}
+                    />
+                </div>
                 {/* 移动端水印 - 竖版 SVG */}
                 <div className="block md:hidden absolute inset-0">
                     <Image
