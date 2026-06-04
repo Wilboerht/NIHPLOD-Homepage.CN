@@ -116,7 +116,7 @@ const ServiceCard = ({
         {/* PC 端图标 */}
         <Icon className="hidden lg:block h-10 w-10 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22" isHovered={isHovered} />
         {/* 移动端深色图标 */}
-        <Icon className="lg:hidden h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22" isHovered={isHovered} color={mobileIconColor} />
+        <Icon className="lg:hidden h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-22 lg:w-22" isHovered={isHovered} color={isDisabled && mobileIconColor ? `${mobileIconColor}80` : mobileIconColor} />
       </div>
       <div className="flex flex-col items-center gap-2">
         <span className={cn(
