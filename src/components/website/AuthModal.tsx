@@ -1362,13 +1362,24 @@ function ForgotPasswordModal({
                   </div>
 
                   {/* 手机端顶部栏 */}
-                  <div className="md:hidden flex-shrink-0 h-[56px] w-full flex items-center relative">
+                  <div className="md:hidden flex-shrink-0 h-[56px] w-full flex items-center justify-center relative">
                     <button
                       onClick={onClose}
                       className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
                     >
                       <ChevronLeft className="h-6 w-6 text-[#00263E]" />
                     </button>
+                    <Link href="/" className="flex items-center justify-center">
+                      <div className="relative h-[28px] w-[100px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
+                    </Link>
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
@@ -1376,16 +1387,6 @@ function ForgotPasswordModal({
 
                     {/* ===== 手机端极简全屏找回密码 ===== */}
                     <div className="md:hidden flex flex-col gap-8">
-                      <div className="flex justify-center">
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD Logo"
-                          width={140}
-                          height={56}
-                          className="object-contain h-auto w-[140px]"
-                          priority
-                        />
-                      </div>
 
                       {/* 错误提示 */}
                       <AnimatePresence>
