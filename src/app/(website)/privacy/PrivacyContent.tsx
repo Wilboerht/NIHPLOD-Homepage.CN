@@ -261,8 +261,15 @@ export function PrivacyContent() {
               <m.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="hidden lg:flex justify-center"
+                className="hidden lg:flex items-center justify-center relative"
               >
+                <button
+                  onClick={() => typeof window !== "undefined" && window.history.back()}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center px-4 py-[10px] text-[#00263E] hover:opacity-70 transition-opacity pointer-events-auto"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                  <span className="ml-1 text-sm">返回</span>
+                </button>
                 <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
