@@ -97,7 +97,7 @@ export function KineticBackground() {
             <div className="kinetic-watermark">
                 {/* PC 端水印 */}
                 <Image
-                    src="/images/watermark.webp"
+                    src="/images/N-web.svg"
                     alt="Watermark PC"
                     width={2800}
                     height={800}
