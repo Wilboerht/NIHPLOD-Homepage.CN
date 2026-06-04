@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { m } from "framer-motion";
-import { ArrowLeft, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { cn } from "@/lib/utils";
 import type { TermsPageContent, TermsTabId } from "@/types/page-content";
@@ -94,11 +94,11 @@ export function TermsContent({ content }: TermsContentProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="safe-area-content !pointer-events-none max-lg:!inset-0"
+      className="safe-area-content !pointer-events-none max-lg:!inset-0 lg:static lg:w-full lg:h-screen lg:overflow-hidden lg:bg-[#F8F7F3]"
     >
-      <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
+      <div className="flex h-full flex-col items-center lg:items-stretch pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)] lg:drop-shadow-none">
         {/* 主内容卡片容器 */}
-        <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#F0EDE1] lg:bg-[#F8F7F3] pointer-events-auto relative">
+        <div className="w-full flex-1 overflow-hidden rounded-none bg-[#F0EDE1] lg:bg-transparent pointer-events-auto relative">
           {/* 手机端背景水印 */}
           <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
             <Image
@@ -137,8 +137,15 @@ export function TermsContent({ content }: TermsContentProps) {
               <m.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="hidden lg:flex justify-center"
+                className="hidden lg:flex items-center justify-center relative"
               >
+                <button
+                  onClick={() => typeof window !== "undefined" && window.history.back()}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center px-4 py-[10px] text-[#00263E] hover:opacity-70 transition-opacity pointer-events-auto"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                  <span className="ml-1 text-sm">返回</span>
+                </button>
                 <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
@@ -154,8 +161,8 @@ export function TermsContent({ content }: TermsContentProps) {
             {/* 分割线 - 仅桌面端 */}
             <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
 
-            {/* 标题区 */}
-            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 lg:pt-10 lg:pb-8 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4">
+            {/* 标题区 - 仅移动端显示 */}
+            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4 lg:hidden">
               <div>
                 <h1 className="font-serif text-[26px] text-brand-charcoal sm:text-[32px] lg:text-brand-charcoal max-lg:text-[24px] max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E]">
                   {pageTitle.zh}
@@ -231,8 +238,8 @@ export function TermsContent({ content }: TermsContentProps) {
                   !showSidebar && "lg:border-l lg:border-brand-charcoal/5"
                 )}
               >
-                <div className="max-w-6xl px-6 lg:px-12">
-                  <div className="space-y-24">
+                <div className="max-w-7xl mx-auto px-6 lg:px-10">
+                  <div className="space-y-7">
                     {sections.map((section) => (
                       <section
                         key={section.id}
@@ -252,10 +259,19 @@ export function TermsContent({ content }: TermsContentProps) {
                                     const trimmed = line.trim();
                                     if (!trimmed) return <div key={lIdx} className="h-2" />;
 
+                                    // 大标题
+                                    if (trimmed === '《服务条款》摘要') {
+                                      return (
+                                        <h3 key={lIdx} className="pt-4 lg:pt-8 font-serif text-xl lg:text-2xl font-bold lg:font-normal text-gray-900 break-words">
+                                          {formatText('中国消费者服务条款')}
+                                        </h3>
+                                      );
+                                    }
+
                                     // 条款标题 (1. 2. 一、二、...)
                                     if (/^[（(]?[一二三四五六七八九十0-9]+[)）]?[、.\s]/.test(trimmed)) {
                                       return (
-                                        <h3 key={lIdx} className="pt-4 font-serif text-lg font-bold text-gray-900 break-words">
+                                        <h3 key={lIdx} className="pt-4 font-serif text-sm font-bold text-gray-900 break-words">
                                           {formatText(trimmed)}
                                         </h3>
                                       );
@@ -296,7 +312,7 @@ export function TermsContent({ content }: TermsContentProps) {
             </div>
 
             {/* 底部版权信息 - 固定在卡片底部 */}
-            <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12 max-lg:border-0 max-lg:pt-4">
+            <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center mx-6 lg:mx-0 max-lg:pt-4">
               <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#7B726C]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
@@ -304,14 +320,7 @@ export function TermsContent({ content }: TermsContentProps) {
           </div>
         </div>
 
-        {/* 返回上页按钮 - 仅桌面端 */}
-        <button
-          onClick={() => typeof window !== "undefined" && window.history.back()}
-          className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#F8F7F3] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
-        >
-          <ArrowLeft className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
-          <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回上页</span>
-        </button>
+        {/* 返回上页按钮 - 仅桌面端（已移除） */}
       </div>
     </m.div>
   );
