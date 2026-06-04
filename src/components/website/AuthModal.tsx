@@ -881,15 +881,10 @@ function RegisterModal({
 
                     {/* ===== 手机端极简全屏注册 ===== */}
                     <div className="md:hidden flex flex-col gap-8">
-                      <div className="flex justify-center">
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD Logo"
-                          width={140}
-                          height={56}
-                          className="object-contain h-auto w-[140px]"
-                          priority
-                        />
+                      {/* 标题区域 */}
+                      <div className="text-center pt-[6px] pb-4">
+                        <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">注册会员</h2>
+                        <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                       </div>
                       <form onSubmit={handleRegister} className="w-full space-y-6">
                         <div>
@@ -1435,6 +1430,11 @@ function ForgotPasswordModal({
 
                     {/* ===== 手机端极简全屏找回密码 ===== */}
                     <div className="md:hidden flex flex-col gap-8">
+                      {/* 标题区域 */}
+                      <div className="text-center pt-[6px] pb-4">
+                        <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">找回密码</h2>
+                        <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                      </div>
 
                       {/* 错误提示 */}
                       <AnimatePresence>
