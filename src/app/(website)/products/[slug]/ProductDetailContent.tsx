@@ -5,7 +5,7 @@ import Image from "next/image";
 import DOMPurify from "isomorphic-dompurify";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
-import { m } from "framer-motion";
+import { m, useMotionValue, animate } from "framer-motion";
 import {
   ChevronLeft,
 
@@ -91,9 +91,13 @@ export function ProductDetailContent({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [quantity, setQuantity] = useState(1);
-  const touchStartX = useRef(0);
-
-  const currentImage = product.images[currentImageIndex];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const x = useMotionValue(0);
+  const animationRef = useRef<any>(null);
+  const startXRef = useRef(0);
+  const startTimeRef = useRef(0);
+  const isDraggingRef = useRef(false);
 
   const tabs: { key: TabType; label: string }[] = [
     { key: "description", label: "产品描述" },
@@ -105,6 +109,89 @@ export function ProductDetailContent({
     description: product.description,
     ingredients: product.ingredients,
     usage: product.usage,
+  };
+
+  // 轮播容器宽度
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+    };
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
+
+  // 索引变化时吸附到目标位置
+  useEffect(() => {
+    if (containerWidth === 0) return;
+    if (animationRef.current) animationRef.current.stop();
+    animationRef.current = animate(x, -currentImageIndex * containerWidth, {
+      type: "spring",
+      stiffness: 300,
+      damping: 30,
+    });
+  }, [currentImageIndex, containerWidth, x]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (animationRef.current) animationRef.current.stop();
+    startXRef.current = e.touches[0].clientX;
+    startTimeRef.current = Date.now();
+    isDraggingRef.current = true;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingRef.current || containerWidth === 0) return;
+    const currentX = e.touches[0].clientX;
+    const diff = startXRef.current - currentX;
+
+    // 边界阻尼
+    let dampedDiff = diff;
+    if (currentImageIndex === 0 && diff < 0) {
+      dampedDiff = diff * 0.3;
+    } else if (currentImageIndex === product.images.length - 1 && diff > 0) {
+      dampedDiff = diff * 0.3;
+    }
+
+    x.set(-currentImageIndex * containerWidth - dampedDiff);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+
+    const endX = e.changedTouches[0].clientX;
+    const diff = startXRef.current - endX;
+    const duration = Date.now() - startTimeRef.current;
+    const velocity = Math.abs(diff) / Math.max(duration, 1);
+
+    const SWIPE_THRESHOLD = 50;
+    const VELOCITY_THRESHOLD = 0.5; // px/ms
+
+    let newIndex = currentImageIndex;
+
+    if (diff > SWIPE_THRESHOLD || (diff > 0 && velocity > VELOCITY_THRESHOLD)) {
+      if (currentImageIndex < product.images.length - 1) {
+        newIndex = currentImageIndex + 1;
+      }
+    } else if (diff < -SWIPE_THRESHOLD || (diff < 0 && velocity > VELOCITY_THRESHOLD)) {
+      if (currentImageIndex > 0) {
+        newIndex = currentImageIndex - 1;
+      }
+    }
+
+    if (newIndex !== currentImageIndex) {
+      setCurrentImageIndex(newIndex);
+    } else {
+      // 回弹
+      if (animationRef.current) animationRef.current.stop();
+      animationRef.current = animate(x, -currentImageIndex * containerWidth, {
+        type: "spring",
+        stiffness: 300,
+        damping: 30,
+      });
+    }
   };
 
   if (!shouldRender) return null;
@@ -193,36 +280,34 @@ export function ProductDetailContent({
                   <div>
                     {/* 图片轮播区域 + 指示器 */}
                     <div className="mx-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full max-w-4xl">
-                      <m.div
+                      <div
+                        ref={containerRef}
                         className="relative aspect-[3/4] bg-brand-beige/30 lg:aspect-[16/9] w-full rounded-2xl overflow-hidden touch-pan-y"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.4 }}
-                        onTouchStart={(e) => {
-                          touchStartX.current = e.changedTouches[0].screenX;
-                        }}
-                        onTouchEnd={(e) => {
-                          const endX = e.changedTouches[0].screenX;
-                          const diff = touchStartX.current - endX;
-                          const threshold = 50;
-                          if (diff > threshold && currentImageIndex < product.images.length - 1) {
-                            setCurrentImageIndex((prev) => prev + 1);
-                          } else if (diff < -threshold && currentImageIndex > 0) {
-                            setCurrentImageIndex((prev) => prev - 1);
-                          }
-                        }}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
                       >
-                        {currentImage && (
-                          <Image
-                            src={currentImage.url}
-                            alt={currentImage.alt || product.name}
-                            fill
-                            priority
-                            className="object-cover"
-                            sizes="100vw"
-                          />
-                        )}
-                      </m.div>
+                        <m.div
+                          className="flex h-full"
+                          style={{ x }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.4 }}
+                        >
+                          {product.images.map((img, index) => (
+                            <div key={img.id} className="relative h-full w-full flex-shrink-0">
+                              <Image
+                                src={img.url}
+                                alt={img.alt || product.name}
+                                fill
+                                priority={index === 0}
+                                className="object-cover"
+                                sizes="100vw"
+                              />
+                            </div>
+                          ))}
+                        </m.div>
+                      </div>
 
                       {/* 图片指示器 */}
                       {product.images.length > 1 && (
