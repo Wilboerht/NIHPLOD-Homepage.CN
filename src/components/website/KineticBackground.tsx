@@ -288,7 +288,7 @@ export function KineticBackground() {
                                 <button
                                     type="button"
                                     onClick={handleLoginClick}
-                                    className="w-full h-8 sm:h-10 min-h-0 min-w-0 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5 shrink-0"
+                                    className="w-full min-h-0 min-w-0 text-brand-charcoal/60 text-xs tracking-[0.1em] font-normal transition-colors duration-300 hover:text-brand-charcoal active:text-brand-charcoal/80 flex items-center justify-center gap-1 sm:gap-1.5 sm:h-10 sm:rounded-xl sm:bg-white/30 sm:backdrop-blur-sm sm:text-sm sm:tracking-[0.15em] sm:font-medium sm:hover:bg-white/50 sm:hover:shadow-sm sm:active:scale-[0.98]"
                                 >
                                     <span>立即登录</span>
                                     <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-0.5 opacity-70" />
