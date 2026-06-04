@@ -255,7 +255,7 @@ export function TermsContent({ content }: TermsContentProps) {
                                     // 条款标题 (1. 2. 一、二、...)
                                     if (/^[（(]?[一二三四五六七八九十0-9]+[)）]?[、.\s]/.test(trimmed)) {
                                       return (
-                                        <h3 key={lIdx} className="pt-4 font-serif text-lg font-bold text-gray-900">
+                                        <h3 key={lIdx} className="pt-4 font-serif text-lg font-bold text-gray-900 break-words">
                                           {formatText(trimmed)}
                                         </h3>
                                       );
@@ -267,16 +267,16 @@ export function TermsContent({ content }: TermsContentProps) {
                                         ? trimmed.substring(1).trim()
                                         : trimmed;
                                       return (
-                                        <div key={lIdx} className="flex gap-3 text-sm leading-relaxed text-gray-700">
+                                        <div key={lIdx} className="flex gap-3 text-sm leading-relaxed text-gray-700 min-w-0">
                                           <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-gold/60" />
-                                          <p className="flex-1 opacity-90">{formatText(clean)}</p>
+                                          <p className="flex-1 opacity-90 break-words min-w-0">{formatText(clean)}</p>
                                         </div>
                                       );
                                     }
 
                                     // 普通段落
                                     return (
-                                      <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 text-justify">
+                                      <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 lg:text-justify break-words">
                                         {formatText(trimmed)}
                                       </p>
                                     );
