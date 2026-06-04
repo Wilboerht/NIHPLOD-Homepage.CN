@@ -219,14 +219,14 @@ export function KineticBackground() {
                     <div className="kinetic-btn-group">
                         {user ? (
                             <>
-                                <div className="mb-0 sm:mb-2 flex flex-col items-center justify-center w-full group/avatar mt-0">
-                                    <div className="relative h-16 w-16 sm:h-24 sm:w-24 flex items-center justify-center">
+                                <div className="flex flex-col items-center justify-center w-full group/avatar">
+                                    <div className="relative h-14 w-14 sm:h-20 sm:w-20 flex items-center justify-center">
                                         {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
                                         <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
                                         <div className="absolute inset-[2px] sm:inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:group-hover/avatar:scale-90" />
 
                                         {/* 主图标容器 - 极简白润质感 */}
-                                        <div className="relative h-12 w-12 sm:h-20 sm:w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden cursor-pointer" onClick={(e) => {
+                                        <div className="relative h-10 w-10 sm:h-16 sm:w-16 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden cursor-pointer" onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             openUserCenter();
@@ -239,7 +239,7 @@ export function KineticBackground() {
                                                     className="object-cover"
                                                 />
                                             ) : (
-                                                <div className="relative h-6 w-6 sm:h-9 sm:w-9 opacity-50">
+                                                <div className="relative h-5 w-5 sm:h-7 sm:w-7 opacity-50">
                                                     <Image
                                                         src="/images/profile-icon.svg"
                                                         alt="User Profile"
@@ -258,7 +258,7 @@ export function KineticBackground() {
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
-                                    className="w-full py-2 sm:py-3 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5"
+                                    className="w-full h-8 sm:h-10 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5 shrink-0"
                                 >
                                     <span>进入会员中心</span>
                                     <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-0.5 opacity-70" />
@@ -266,15 +266,15 @@ export function KineticBackground() {
                             </>
                         ) : (
                             <>
-                                <div className="mb-0 sm:mb-2 flex flex-col items-center justify-center w-full group/avatar mt-0">
-                                    <div className="relative h-16 w-16 sm:h-24 sm:w-24 flex items-center justify-center">
+                                <div className="flex flex-col items-center justify-center w-full group/avatar">
+                                    <div className="relative h-14 w-14 sm:h-20 sm:w-20 flex items-center justify-center">
                                         {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
                                         <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
                                         <div className="absolute inset-[2px] sm:inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:group-hover/avatar:scale-90" />
 
                                         {/* 主图标容器 - 极简白润质感 */}
-                                        <div className="relative h-12 w-12 sm:h-20 sm:w-20 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden">
-                                            <div className="relative h-6 w-6 sm:h-9 sm:w-9 opacity-50">
+                                        <div className="relative h-10 w-10 sm:h-16 sm:w-16 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden">
+                                            <div className="relative h-5 w-5 sm:h-7 sm:w-7 opacity-50">
                                                 <Image
                                                     src="/images/profile-icon.svg"
                                                     alt="User Profile"
@@ -288,7 +288,7 @@ export function KineticBackground() {
                                 <button
                                     type="button"
                                     onClick={handleLoginClick}
-                                    className="w-full py-2 sm:py-3 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5"
+                                    className="w-full h-8 sm:h-10 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5 shrink-0"
                                 >
                                     <span>立即登录</span>
                                     <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-0.5 opacity-70" />
