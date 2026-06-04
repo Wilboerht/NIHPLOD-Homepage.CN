@@ -5,7 +5,8 @@
  */
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset } from "lucide-react";
+import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset, ChevronLeft } from "lucide-react";
+import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -300,21 +301,32 @@ function LoginModal({
                     </h2>
                   </div>
 
+                  {/* 手机端顶部栏 */}
+                  <div className="md:hidden flex-shrink-0 h-[88px] w-full flex items-center justify-center relative">
+                    <button
+                      onClick={onClose}
+                      className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
+                    >
+                      <ChevronLeft className="h-6 w-6 text-[#00263E]" />
+                    </button>
+                    <Link href="/" className="flex items-center justify-center py-[30px]">
+                      <div className="relative h-[28px] w-[100px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
+                    </Link>
+                  </div>
+
                   {/* 表单内容 - 可滚动 */}
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-center md:justify-start">
 
                     {/* ===== 手机端极简全屏登录 ===== */}
                     <div className="md:hidden flex-1 flex flex-col justify-center">
-                      <div className="mx-auto mb-12 flex justify-center">
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD Logo"
-                          width={120}
-                          className="object-contain h-auto w-[140px]"
-                          height={48}
-                          priority
-                        />
-                      </div>
                       <form onSubmit={handleLogin} className="space-y-6">
                         <div>
                           <input
@@ -394,15 +406,6 @@ function LoginModal({
                           className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                         >
                           还没有账户？联系我们
-                        </button>
-
-                        {/* 手机端关闭按钮 */}
-                        <button
-                          type="button"
-                          onClick={onClose}
-                          className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/15 text-brand-charcoal/40 hover:border-brand-charcoal/30 hover:text-brand-charcoal/70 hover:bg-brand-charcoal/[0.03] transition-all"
-                        >
-                          <X className="h-4 w-4" strokeWidth={1.5} />
                         </button>
                       </div>
                     </div>
@@ -837,21 +840,32 @@ function RegisterModal({
                     </h2>
                   </div>
 
+                  {/* 手机端顶部栏 */}
+                  <div className="md:hidden flex-shrink-0 h-[88px] w-full flex items-center justify-center relative">
+                    <button
+                      onClick={onClose}
+                      className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
+                    >
+                      <ChevronLeft className="h-6 w-6 text-[#00263E]" />
+                    </button>
+                    <Link href="/" className="flex items-center justify-center py-[30px]">
+                      <div className="relative h-[28px] w-[100px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
+                    </Link>
+                  </div>
+
                   {/* 表单内容 - 可滚动 */}
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-center md:justify-start">
 
                     {/* ===== 手机端极简全屏注册 ===== */}
                     <div className="md:hidden flex-1 flex flex-col justify-center">
-                      <div className="mx-auto mb-12 flex justify-center">
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD Logo"
-                          width={120}
-                          className="object-contain h-auto w-[140px]"
-                          height={48}
-                          priority
-                        />
-                      </div>
                       <form onSubmit={handleRegister} className="space-y-6">
                         <div>
                           <input
@@ -947,15 +961,6 @@ function RegisterModal({
                           className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                         >
                           已有账户？返回登录
-                        </button>
-
-                        {/* 手机端关闭按钮 */}
-                        <button
-                          type="button"
-                          onClick={onClose}
-                          className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/15 text-brand-charcoal/40 hover:border-brand-charcoal/30 hover:text-brand-charcoal/70 hover:bg-brand-charcoal/[0.03] transition-all"
-                        >
-                          <X className="h-4 w-4" strokeWidth={1.5} />
                         </button>
                       </div>
                     </div>
@@ -1335,21 +1340,32 @@ function ForgotPasswordModal({
                     </h2>
                   </div>
 
+                  {/* 手机端顶部栏 */}
+                  <div className="md:hidden flex-shrink-0 h-[88px] w-full flex items-center justify-center relative">
+                    <button
+                      onClick={onClose}
+                      className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
+                    >
+                      <ChevronLeft className="h-6 w-6 text-[#00263E]" />
+                    </button>
+                    <Link href="/" className="flex items-center justify-center py-[30px]">
+                      <div className="relative h-[28px] w-[100px]">
+                        <Image
+                          src="/images/NIHPLOD-logo.svg"
+                          alt="NIHPLOD Logo"
+                          fill
+                          className="object-contain"
+                          priority
+                        />
+                      </div>
+                    </Link>
+                  </div>
+
                   {/* 表单内容 - 可滚动 */}
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-center md:justify-start">
 
                     {/* ===== 手机端极简全屏找回密码 ===== */}
                     <div className="md:hidden flex-1 flex flex-col justify-center">
-                      <div className="mx-auto mb-12 flex justify-center">
-                        <Image
-                          src="/images/NIHPLOD-logo.svg"
-                          alt="NIHPLOD Logo"
-                          width={120}
-                          className="object-contain h-auto w-[140px]"
-                          height={48}
-                          priority
-                        />
-                      </div>
 
                       {/* 错误提示 */}
                       <AnimatePresence>
@@ -1498,14 +1514,6 @@ function ForgotPasswordModal({
                       )}
 
                       <div className="mt-8 flex flex-col items-center gap-4">
-                        {/* 手机端关闭按钮 */}
-                        <button
-                          type="button"
-                          onClick={onClose}
-                          className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-charcoal/15 text-brand-charcoal/40 hover:border-brand-charcoal/30 hover:text-brand-charcoal/70 hover:bg-brand-charcoal/[0.03] transition-all"
-                        >
-                          <X className="h-4 w-4" strokeWidth={1.5} />
-                        </button>
                       </div>
                     </div>
 
