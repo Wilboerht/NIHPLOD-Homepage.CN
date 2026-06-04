@@ -96,7 +96,7 @@ export function KineticBackground() {
             <div className="kinetic-dot-pattern" />
             <div className="kinetic-watermark">
                 {/* PC 端水印 */}
-                <div className="hidden md:block relative">
+                <div className="hidden md:block relative opacity-80">
                     <Image
                         src="/images/N-web.svg"
                         alt="Watermark PC"
