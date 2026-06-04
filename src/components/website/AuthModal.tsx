@@ -1431,7 +1431,7 @@ function ForgotPasswordModal({
                     {/* ===== 手机端极简全屏找回密码 ===== */}
                     <div className="md:hidden flex flex-col gap-10">
                       {/* 标题区域 */}
-                      <div className="text-center pt-[6px] pb-4">
+                      <div className="text-center">
                         <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">找回密码</h2>
                         <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                       </div>
