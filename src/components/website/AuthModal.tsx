@@ -1407,7 +1407,7 @@ function ForgotPasswordModal({
                   {/* 手机端顶部栏 */}
                   <div className="md:hidden flex-shrink-0 h-[56px] w-full flex items-center justify-center relative">
                     <button
-                      onClick={onClose}
+                      onClick={onSwitchToLogin}
                       className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
                     >
                       <ChevronLeft className="h-6 w-6 text-[#00263E]" />
@@ -1534,10 +1534,10 @@ function ForgotPasswordModal({
                           <div className="flex flex-col gap-1">
                             <button
                               type="button"
-                              onClick={onSwitchToLogin}
-                              className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
+                              onClick={() => { _openContact(); }}
+                              className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors underline underline-offset-4"
                             >
-                              返回登录
+                              手机号无法使用？
                             </button>
                           </div>
                         </div>
@@ -1676,10 +1676,10 @@ function ForgotPasswordModal({
                           <div className="pt-2 text-center">
                             <button
                               type="button"
-                              onClick={onSwitchToLogin}
-                              className="text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors"
+                              onClick={() => { _openContact(); }}
+                              className="text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors underline underline-offset-4"
                             >
-                              返回登录
+                              手机号无法使用？
                             </button>
                           </div>
                         </div>
