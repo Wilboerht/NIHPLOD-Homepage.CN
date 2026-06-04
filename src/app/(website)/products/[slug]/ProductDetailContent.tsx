@@ -379,7 +379,7 @@ export function ProductDetailContent({
                     <div className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4">
                       {/* Tab 切换 */}
                       <div className="border-b border-brand-beige">
-                        <div className="flex gap-6" role="tablist">
+                        <div className="flex justify-center gap-6" role="tablist">
                           {tabs.map((tab) => (
                             <div
                               key={tab.key}
@@ -396,7 +396,7 @@ export function ProductDetailContent({
                               {tab.label}
                               {activeTab === tab.key && (
                                 <m.div
-                                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-gold"
+                                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00263e]"
                                   layoutId="tab-indicator"
                                 />
                               )}
