@@ -265,25 +265,21 @@ export function TermsContent({ content }: TermsContentProps) {
                                       );
                                     }
 
+                                    // 子列表项 ((1) (2) • -) — 渲染为普通段落，不带圆点
+                                    if (/^[（(][0-9]+[）)]/.test(trimmed) || trimmed.startsWith('•') || /^\-[\s]/.test(trimmed)) {
+                                      return (
+                                        <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 lg:text-justify break-words">
+                                          {formatText(trimmed)}
+                                        </p>
+                                      );
+                                    }
+
                                     // 条款标题 (1. 2. 一、二、...)
-                                    if (/^[（(]?[一二三四五六七八九十0-9]+[)）]?[、.\s]/.test(trimmed)) {
+                                    if (/^[一二三四五六七八九十0-9]+[、.\s]/.test(trimmed)) {
                                       return (
                                         <h3 key={lIdx} className="pt-4 font-serif text-sm font-bold text-gray-900 break-words">
                                           {formatText(trimmed)}
                                         </h3>
-                                      );
-                                    }
-
-                                    // 子列表项 ((1) (2) • -)
-                                    if (/^[（(][0-9]+[）)]/.test(trimmed) || trimmed.startsWith('•') || /^\-[\s]/.test(trimmed)) {
-                                      const clean = trimmed.startsWith('•') || trimmed.startsWith('-')
-                                        ? trimmed.substring(1).trim()
-                                        : trimmed;
-                                      return (
-                                        <div key={lIdx} className="flex gap-3 text-sm leading-relaxed text-gray-700 min-w-0">
-                                          <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-gold/60" />
-                                          <p className="flex-1 opacity-90 break-words min-w-0">{formatText(clean)}</p>
-                                        </div>
                                       );
                                     }
 
