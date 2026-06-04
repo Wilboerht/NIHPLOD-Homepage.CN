@@ -321,7 +321,8 @@ export function PrivacyContent() {
                                     if (trimmed === '《隐私政策》摘要') {
                                       return (
                                         <h3 key={lIdx} className="pt-4 lg:pt-8 font-serif text-xl lg:text-2xl font-bold lg:font-normal text-gray-900 break-words">
-                                          {formatText(trimmed)}
+                                          <span className="lg:hidden">{formatText(trimmed)}</span>
+                                          <span className="hidden lg:inline">{formatText('摘要')}</span>
                                         </h3>
                                       );
                                     }
