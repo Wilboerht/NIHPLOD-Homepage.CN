@@ -83,6 +83,7 @@ function LoginModal({
   const [loading, setLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("password");
   const [agreed, setAgreed] = useState(false);
+  const [showPasswordHint, setShowPasswordHint] = useState(false);
   const toast = useToast();
 
   // 关闭时重置表单
@@ -94,6 +95,7 @@ function LoginModal({
       setLoading(false);
       setLoginMethod("password");
       setAgreed(false);
+      setShowPasswordHint(false);
     }
   }, [isOpen]);
 
@@ -669,6 +671,7 @@ function RegisterModal({
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [showPasswordHint, setShowPasswordHint] = useState(false);
   const toast = useToast();
 
   // 关闭时重置表单
@@ -680,6 +683,7 @@ function RegisterModal({
       setConfirmPassword("");
       setLoading(false);
       setAgreed(false);
+      setShowPasswordHint(false);
     }
   }, [isOpen]);
 
@@ -763,8 +767,15 @@ function RegisterModal({
       toast.error("请输入6位验证码");
       return;
     }
-    if (password.length < 6) {
-      toast.error("密码至少6位");
+    if (password.length < 8) {
+      toast.error("密码至少8位");
+      return;
+    }
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    if (!hasUpper || !hasLower || !hasDigit) {
+      toast.error("密码必须包含大写字母、小写字母、数字");
       return;
     }
     if (password !== confirmPassword) {
@@ -916,11 +927,27 @@ function RegisterModal({
                           <input
                             type="password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="密码（至少6位）"
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPassword(val);
+                              if (val.length > 0) {
+                                const hasUpper = /[A-Z]/.test(val);
+                                const hasLower = /[a-z]/.test(val);
+                                const hasDigit = /\d/.test(val);
+                                setShowPasswordHint(val.length < 8 || !hasUpper || !hasLower || !hasDigit);
+                              } else {
+                                setShowPasswordHint(false);
+                              }
+                            }}
+                            placeholder="密码（至少8位）"
                             maxLength={32}
                             className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
                           />
+                          {showPasswordHint && (
+                            <p className="mt-1.5 text-xs text-red-500">
+                              *密码必须包含大写字母、小写字母、数字
+                            </p>
+                          )}
                         </div>
 
                         <div>
@@ -1036,12 +1063,28 @@ function RegisterModal({
                             <input
                               type="password"
                               value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="密码（至少6位）"
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPassword(val);
+                                if (val.length > 0) {
+                                  const hasUpper = /[A-Z]/.test(val);
+                                  const hasLower = /[a-z]/.test(val);
+                                  const hasDigit = /\d/.test(val);
+                                  setShowPasswordHint(val.length < 8 || !hasUpper || !hasLower || !hasDigit);
+                                } else {
+                                  setShowPasswordHint(false);
+                                }
+                              }}
+                              placeholder="密码（至少8位）"
                               maxLength={32}
                               className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                             />
                           </div>
+                          {showPasswordHint && (
+                            <p className="mt-1.5 text-xs text-red-500 pl-1">
+                              *密码必须包含大写字母、小写字母、数字
+                            </p>
+                          )}
                         </div>
 
                         {/* 确认密码 */}
@@ -1171,16 +1214,18 @@ function ForgotPasswordModal({
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showPasswordHint, setShowPasswordHint] = useState(false);
 
   // 关闭时重置表单
   useEffect(() => {
     if (!isOpen) {
-      setStep("phone");
+      setStep("form");
       setPhone("");
       setCode("");
       setPassword("");
       setConfirmPassword("");
       setErrorMsg("");
+      setShowPasswordHint(false);
       setLoading(false);
     }
   }, [isOpen]);
@@ -1261,8 +1306,15 @@ function ForgotPasswordModal({
       setErrorMsg("请输入6位验证码");
       return;
     }
-    if (password.length < 6) {
-      setErrorMsg("密码至少6位");
+    if (password.length < 8) {
+      setErrorMsg("密码至少8位");
+      return;
+    }
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    if (!hasUpper || !hasLower || !hasDigit) {
+      setErrorMsg("密码必须包含大写字母、小写字母、数字");
       return;
     }
     if (password !== confirmPassword) {
@@ -1435,11 +1487,27 @@ function ForgotPasswordModal({
                             <input
                               type="password"
                               value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="新密码（至少6位）"
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPassword(val);
+                                if (val.length > 0) {
+                                  const hasUpper = /[A-Z]/.test(val);
+                                  const hasLower = /[a-z]/.test(val);
+                                  const hasDigit = /\d/.test(val);
+                                  setShowPasswordHint(val.length < 8 || !hasUpper || !hasLower || !hasDigit);
+                                } else {
+                                  setShowPasswordHint(false);
+                                }
+                              }}
+                              placeholder="新密码（至少8位）"
                               maxLength={32}
                               className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
                             />
+                            {showPasswordHint && (
+                              <p className="mt-1.5 text-xs text-red-500">
+                                *密码必须包含大写字母、小写字母、数字
+                              </p>
+                            )}
                           </div>
                           <div>
                             <input
@@ -1454,7 +1522,7 @@ function ForgotPasswordModal({
                           <button
                             type="button"
                             onClick={verifyAndReset}
-                            disabled={loading || phone.length !== 11 || code.length !== 6 || password.length < 6}
+                            disabled={loading || phone.length !== 11 || code.length !== 6 || password.length < 8}
                             className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40"
                           >
                             <span className="relative z-10 flex items-center justify-center gap-2">
@@ -1558,11 +1626,27 @@ function ForgotPasswordModal({
                             <input
                               type="password"
                               value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="新密码（至少6位）"
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPassword(val);
+                                if (val.length > 0) {
+                                  const hasUpper = /[A-Z]/.test(val);
+                                  const hasLower = /[a-z]/.test(val);
+                                  const hasDigit = /\d/.test(val);
+                                  setShowPasswordHint(val.length < 8 || !hasUpper || !hasLower || !hasDigit);
+                                } else {
+                                  setShowPasswordHint(false);
+                                }
+                              }}
+                              placeholder="新密码（至少8位）"
                               maxLength={32}
                               className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                             />
+                            {showPasswordHint && (
+                              <p className="mt-1.5 text-xs text-red-500 pl-1">
+                                *密码必须包含大写字母、小写字母、数字
+                              </p>
+                            )}
                           </div>
                           <div className="group relative">
                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
@@ -1580,7 +1664,7 @@ function ForgotPasswordModal({
                           <button
                             type="button"
                             onClick={verifyAndReset}
-                            disabled={loading || phone.length !== 11 || code.length !== 6 || password.length < 6}
+                            disabled={loading || phone.length !== 11 || code.length !== 6 || password.length < 8}
                             className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-4 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                           >
                             <span className="relative z-10 flex items-center justify-center gap-2">
