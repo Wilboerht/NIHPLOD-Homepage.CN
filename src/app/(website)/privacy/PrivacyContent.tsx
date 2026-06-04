@@ -80,12 +80,12 @@ const privacyData: Record<string, SectionContent> = {
     title: "八、设备权限管理",
     content: [
       "八、设备权限管理\n\n当您使用手机及其他设备与我们互动时，您可能需要通过开启设备权限提供给我们您的个人信息。您可以在您的设备上自主选择开启或关闭设备权限。拒绝授权不会影响您使用我们的基本服务，仅会导致对应功能无法使用。",
-      "位置权限\n\n（1）收集的个人信息：位置信息（包括精确位置和大致位置）\n（2）使用目的：查找附近门店；添加附近门店专属顾问的企业微信等相关功能\n（3）拒绝授权的后果：您将无法使用查找附近门店、添加门店顾问等功能，但不影响您浏览和购买商品\n（4）重要提示：精确地理位置信息属于敏感个人信息。我们仅在您主动使用查找附近门店、添加门店顾问等功能时获取您的精确位置，不会进行持续性后台定位。如您拒绝授权，您将无法使用上述功能，但不影响您浏览和购买商品。",
-      "相机权限\n\n（1）收集的个人信息：图片、视频信息\n（2）使用目的：扫描二维码；拍摄照片或视频（例如作为头像）；与客服沟通；发帖、评论、晒单；完成AI测肤顾问功能\n（3）拒绝授权的后果：您将无法使用扫码、拍照上传、AI测肤顾问等功能，但不影响您使用其他服务",
-      "相册权限\n\n（1）收集的个人信息：图片、视频信息\n（2）使用目的：读取相册：与客服沟通；上传图像（例如选择照片作为头像）；发帖、评论、晒单；选择面部照片用于AI测肤顾问功能；写入相册：保存图片（例如保存AI测肤报告结果图、保存商品图片等）。\n（3）拒绝授权的后果：您将无法从相册选择图片上传或保存图片到相册，但不影响您使用其他服务",
-      "麦克风权限\n\n（1）收集的个人信息：语音信息\n（2）使用目的：与客服沟通；发帖、评论；录制祝福语音等功能\n（3）拒绝授权的后果：您将无法使用语音输入、录制语音等功能，但不影响您使用文字沟通等其他服务",
-      "存储权限（文件读写）\n\n（1）收集的个人信息：本地文件\n（2）使用目的：保存图片/视频至本地相册、读取本地缓存以优化加载速度\n（3）拒绝授权的后果：您将无法保存图片到本地或使用部分需要本地缓存的功能",
-      "通知权限\n\n（1）收集的个人信息：无（仅用于向您设备推送通知）\n（2）使用目的：向您推送订单状态更新、活动提醒、营销信息（仅在获得您同意后进行）\n（3）拒绝授权的后果：您将无法接收推送通知，但不影响您使用我们的基本服务",
+      "位置权限\n\n收集的个人信息：位置信息（包括精确位置和大致位置）\n\n使用目的：查找附近门店；添加附近门店专属顾问的企业微信等相关功能\n\n拒绝授权的后果：您将无法使用查找附近门店、添加门店顾问等功能，但不影响您浏览和购买商品\n\n重要提示：精确地理位置信息属于敏感个人信息。我们仅在您主动使用查找附近门店、添加门店顾问等功能时获取您的精确位置，不会进行持续性后台定位。如您拒绝授权，您将无法使用上述功能，但不影响您浏览和购买商品。",
+      "相机权限\n\n收集的个人信息：图片、视频信息\n\n使用目的：扫描二维码；拍摄照片或视频（例如作为头像）；与客服沟通；发帖、评论、晒单；完成AI测肤顾问功能\n\n拒绝授权的后果：您将无法使用扫码、拍照上传、AI测肤顾问等功能，但不影响您使用其他服务",
+      "相册权限\n\n收集的个人信息：图片、视频信息\n\n使用目的：读取相册：与客服沟通；上传图像（例如选择照片作为头像）；发帖、评论、晒单；选择面部照片用于AI测肤顾问功能；写入相册：保存图片（例如保存AI测肤报告结果图、保存商品图片等）。\n\n拒绝授权的后果：您将无法从相册选择图片上传或保存图片到相册，但不影响您使用其他服务",
+      "麦克风权限\n\n收集的个人信息：语音信息\n\n使用目的：与客服沟通；发帖、评论；录制祝福语音等功能\n\n拒绝授权的后果：您将无法使用语音输入、录制语音等功能，但不影响您使用文字沟通等其他服务",
+      "存储权限（文件读写）\n\n收集的个人信息：本地文件\n\n使用目的：保存图片/视频至本地相册、读取本地缓存以优化加载速度\n\n拒绝授权的后果：您将无法保存图片到本地或使用部分需要本地缓存的功能",
+      "通知权限\n\n收集的个人信息：无（仅用于向您设备推送通知）\n\n使用目的：向您推送订单状态更新、活动提醒、营销信息（仅在获得您同意后进行）\n\n拒绝授权的后果：您将无法接收推送通知，但不影响您使用我们的基本服务",
     ],
   },
   ch9: {
@@ -150,6 +150,73 @@ const privacyData: Record<string, SectionContent> = {
   },
 };
 
+// 格式化文本：在中英文/数字之间添加空格
+const formatText = (text: string) => {
+  return text
+    .replace(/([\u4e00-\u9fa5])([A-Za-z0-9])/g, '$1 $2')
+    .replace(/([A-Za-z0-9])([\u4e00-\u9fa5])/g, '$1 $2');
+};
+
+// 表格字段标签
+const tableLabels = ['目的：', '收集的个人信息：', '重要提示：', '数据处理说明：', '法律依据：', '拒绝提供的后果：'];
+
+function isTableParagraph(text: string): boolean {
+  let count = 0;
+  for (const label of tableLabels) {
+    if (text.includes(label)) count++;
+  }
+  return count >= 2;
+}
+
+function TableRenderer({ text }: { text: string }) {
+  const lines = text.split(/\r?\n/);
+  const rows: { label: string; content: string }[] = [];
+  let title = '';
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // 二级标题
+    if (/^[（(][一二三四五六七八九十0-9]+[）)]/.test(trimmed)) {
+      title = trimmed;
+      continue;
+    }
+
+    // 表格行：标签：内容
+    const match = trimmed.match(/^(.+?)：(.*?)$/);
+    if (match) {
+      rows.push({ label: match[1], content: match[2] });
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {title && (
+        <h3 className="pt-4 font-serif text-sm font-bold text-gray-900 break-words">
+          {formatText(title)}
+        </h3>
+      )}
+      <div className="overflow-x-auto border border-black rounded-lg">
+        <table className="w-full text-sm border-collapse">
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-[#F8F7F3]/60' : 'bg-white'}>
+                <td className="w-36 p-3 font-bold text-gray-900 border-b border-r border-gray-200/60 align-top whitespace-nowrap">
+                  {formatText(row.label)}
+                </td>
+                <td className="p-3 text-gray-700 border-b border-gray-200/60 align-top leading-7">
+                  {formatText(row.content)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function PrivacyContent() {
   const [activeSection, setActiveSection] = useState<string>("summary");
   const mainRef = useRef<HTMLElement>(null);
@@ -165,13 +232,6 @@ export function PrivacyContent() {
     content: privacyData[id].content,
     index: index + 1
   }));
-
-  // 格式化文本：在中英文/数字之间添加空格
-  const formatText = (text: string) => {
-    return text
-      .replace(/([\u4e00-\u9fa5])([A-Za-z0-9])/g, '$1 $2')
-      .replace(/([A-Za-z0-9])([\u4e00-\u9fa5])/g, '$1 $2');
-  };
 
   // 处理滚动高亮
   const handleScroll = () => {
@@ -309,6 +369,11 @@ export function PrivacyContent() {
                             <p className="text-sm text-gray-500 italic">内容更新中...</p>
                           ) : (
                             section.content.map((paragraph, pIdx) => {
+                              // 表格段落用 TableRenderer 渲染
+                              if (isTableParagraph(paragraph)) {
+                                return <TableRenderer key={pIdx} text={paragraph} />;
+                              }
+
                               const lines = paragraph.split(/\r?\n/);
                               return (
                                 <div key={pIdx} className="space-y-2">
