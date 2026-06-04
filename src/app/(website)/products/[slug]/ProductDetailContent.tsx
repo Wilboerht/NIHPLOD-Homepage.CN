@@ -94,7 +94,7 @@ export function ProductDetailContent({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const x = useMotionValue(0);
-  const animationRef = useRef<any>(null);
+  const animationRef = useRef<ReturnType<typeof animate> | null>(null);
   const startXRef = useRef(0);
   const startTimeRef = useRef(0);
   const isDraggingRef = useRef(false);
