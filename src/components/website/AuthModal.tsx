@@ -315,8 +315,8 @@ function LoginModal({
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏登录 ===== */}
-                    <div className="md:hidden min-h-full flex flex-col justify-center">
-                      <div className="flex justify-center mb-10">
+                    <div className="md:hidden flex flex-col items-center gap-8">
+                      <div className="flex justify-center">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="NIHPLOD Logo"
@@ -326,7 +326,7 @@ function LoginModal({
                           priority
                         />
                       </div>
-                      <form onSubmit={handleLogin} className="space-y-6">
+                      <form onSubmit={handleLogin} className="w-full space-y-6">
                         <div>
                           <input
                             type="tel"
@@ -349,19 +349,20 @@ function LoginModal({
                             maxLength={32}
                             className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
                           />
-                          <div className="mt-3 text-right">
-                            <button
-                              type="button"
-                              onClick={onSwitchToForgotPassword}
-                              className="inline-flex items-center gap-1.5 text-xs tracking-wider text-brand-charcoal/50 hover:text-brand-charcoal transition-colors"
-                            >
-                              <KeyRound className="h-3 w-3" strokeWidth={2} />
-                              找回密码
-                            </button>
-                          </div>
                         </div>
 
-                        <label className="flex cursor-pointer items-center gap-2.5 pt-2 group/agreement">
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={onSwitchToForgotPassword}
+                            className="self-end inline-flex h-7 min-h-0 items-center gap-1.5 text-xs tracking-wider text-brand-charcoal/50 hover:text-brand-charcoal transition-colors"
+                          >
+                            <KeyRound className="h-3 w-3" strokeWidth={2} />
+                            找回密码
+                          </button>
+                        </div>
+
+                        <label className="flex cursor-pointer items-center gap-2.5 group/agreement">
                           <div className="relative flex-shrink-0">
                             <input
                               type="checkbox"
@@ -395,14 +396,14 @@ function LoginModal({
                         </div>
                       </form>
 
-                      <div className="mt-8 flex flex-col items-center gap-4">
+                      <div className="flex flex-col gap-1">
                         <button
                           type="button"
                           onClick={() => {
                             onClose();
                             _openContact();
                           }}
-                          className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
+                          className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                         >
                           还没有账户？联系我们
                         </button>
@@ -511,15 +512,13 @@ function LoginModal({
                               />
                             </div>
                             {/* 忘记密码链接 */}
-                            <div className="text-right h-4">
-                              <button
-                                type="button"
-                                onClick={onSwitchToForgotPassword}
-                                className="text-xs font-medium text-brand-charcoal/50 hover:text-brand-gold transition-colors"
-                              >
-                                找回密码
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={onSwitchToForgotPassword}
+                              className="self-end text-xs font-medium text-brand-charcoal/50 hover:text-brand-gold transition-colors"
+                            >
+                              找回密码
+                            </button>
                           </div>
                         )}
                       </div>
@@ -853,8 +852,8 @@ function RegisterModal({
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏注册 ===== */}
-                    <div className="md:hidden min-h-full flex flex-col justify-center">
-                      <div className="flex justify-center mb-10">
+                    <div className="md:hidden flex flex-col items-center gap-8">
+                      <div className="flex justify-center">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="NIHPLOD Logo"
@@ -864,7 +863,7 @@ function RegisterModal({
                           priority
                         />
                       </div>
-                      <form onSubmit={handleRegister} className="space-y-6">
+                      <form onSubmit={handleRegister} className="w-full space-y-6">
                         <div>
                           <input
                             type="tel"
@@ -952,11 +951,11 @@ function RegisterModal({
                         </div>
                       </form>
 
-                      <div className="mt-8 flex flex-col items-center gap-4">
+                      <div className="flex flex-col gap-1">
                         <button
                           type="button"
                           onClick={onSwitchToLogin}
-                          className="text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
+                          className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                         >
                           已有账户？返回登录
                         </button>
@@ -1352,8 +1351,8 @@ function ForgotPasswordModal({
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏找回密码 ===== */}
-                    <div className="md:hidden min-h-full flex flex-col justify-center">
-                      <div className="flex justify-center mb-10">
+                    <div className="md:hidden flex flex-col items-center gap-8">
+                      <div className="flex justify-center">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="NIHPLOD Logo"
@@ -1379,7 +1378,7 @@ function ForgotPasswordModal({
                       </AnimatePresence>
 
                       {step === "phone" && (
-                        <div className="space-y-6">
+                        <div className="w-full space-y-6">
                           <div>
                             <input
                               type="tel"
@@ -1413,7 +1412,7 @@ function ForgotPasswordModal({
                       )}
 
                       {step === "code" && (
-                        <div className="space-y-6">
+                        <div className="w-full space-y-6">
                           <p className="text-center text-sm text-brand-charcoal/60">
                             验证码已发送至 {phone.slice(0, 3)}****{phone.slice(-4)}
                           </p>
@@ -1456,7 +1455,7 @@ function ForgotPasswordModal({
                       )}
 
                       {step === "password" && (
-                        <div className="space-y-6">
+                        <div className="w-full space-y-6">
                           <div>
                             <input
                               type="password"
@@ -1493,7 +1492,7 @@ function ForgotPasswordModal({
                       )}
 
                       {step === "success" && (
-                        <div className="space-y-6 text-center">
+                        <div className="w-full space-y-6 text-center">
                           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
                             <CheckCircle2 className="h-8 w-8 text-emerald-600" />
                           </div>
@@ -1510,8 +1509,6 @@ function ForgotPasswordModal({
                         </div>
                       )}
 
-                      <div className="mt-8 flex flex-col items-center gap-4">
-                      </div>
                     </div>
 
                     {/* ===== PC端原有卡片布局 ===== */}
