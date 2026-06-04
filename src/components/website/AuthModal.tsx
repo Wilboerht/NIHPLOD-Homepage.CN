@@ -312,10 +312,10 @@ function LoginModal({
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-center md:justify-start">
+                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏登录 ===== */}
-                    <div className="md:hidden flex-1 flex flex-col justify-center">
+                    <div className="md:hidden min-h-full flex flex-col justify-center">
                       <div className="flex justify-center mb-10">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
@@ -850,10 +850,10 @@ function RegisterModal({
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-center md:justify-start">
+                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏注册 ===== */}
-                    <div className="md:hidden flex-1 flex flex-col justify-center">
+                    <div className="md:hidden min-h-full flex flex-col justify-center">
                       <div className="flex justify-center mb-10">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
@@ -1349,10 +1349,10 @@ function ForgotPasswordModal({
                   </div>
 
                   {/* 表单内容 - 可滚动 */}
-                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-center md:justify-start">
+                  <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏找回密码 ===== */}
-                    <div className="md:hidden flex-1 flex flex-col justify-center">
+                    <div className="md:hidden min-h-full flex flex-col justify-center">
                       <div className="flex justify-center mb-10">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
