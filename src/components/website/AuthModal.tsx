@@ -315,7 +315,7 @@ function LoginModal({
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏登录 ===== */}
-                    <div className="md:hidden flex flex-col items-center gap-8">
+                    <div className="md:hidden flex flex-col gap-8">
                       <div className="flex justify-center">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
@@ -579,6 +579,13 @@ function LoginModal({
                       */}
                     </form>
                     </div>{/* 关闭 PC端 hidden md:block */}
+                  </div>
+
+                  {/* 手机端页脚 */}
+                  <div className="md:hidden flex-shrink-0 pt-4 pb-4 text-center mx-6">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
                   </div>
 
                   {/* 底部导航 - 固定（PC端 only） */}
@@ -852,7 +859,7 @@ function RegisterModal({
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏注册 ===== */}
-                    <div className="md:hidden flex flex-col items-center gap-8">
+                    <div className="md:hidden flex flex-col gap-8">
                       <div className="flex justify-center">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
@@ -1078,6 +1085,13 @@ function RegisterModal({
                         </button>
                       </form>
                     </div>{/* 关闭 PC端 hidden md:block */}
+                  </div>
+
+                  {/* 手机端页脚 */}
+                  <div className="md:hidden flex-shrink-0 pt-4 pb-4 text-center mx-6">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
                   </div>
 
                   {/* 底部导航 - 固定（PC端 only） */}
@@ -1351,7 +1365,7 @@ function ForgotPasswordModal({
                   <div className="flex-1 overflow-y-auto px-6 md:px-10 pt-6 pb-6 md:pb-4 scrollbar-hide flex flex-col justify-start">
 
                     {/* ===== 手机端极简全屏找回密码 ===== */}
-                    <div className="md:hidden flex flex-col items-center gap-8">
+                    <div className="md:hidden flex flex-col gap-8">
                       <div className="flex justify-center">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
@@ -1676,6 +1690,13 @@ function ForgotPasswordModal({
                         </div>
                       )}
                     </div>{/* 关闭 PC端 hidden md:block */}
+                  </div>
+
+                  {/* 手机端页脚 */}
+                  <div className="md:hidden flex-shrink-0 pt-4 pb-4 text-center mx-6">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
                   </div>
 
                   {/* 底部导航 - 固定（PC端 only） */}
