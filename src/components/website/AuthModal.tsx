@@ -16,7 +16,7 @@ import { useIsMobile } from "@/hooks/useMediaQuery";
 type LoginMethod = "code" | "password";
 
 // 忘记密码步骤类型
-type ForgotPasswordStep = "phone" | "code" | "password" | "success";
+type ForgotPasswordStep = "phone" | "verify" | "success";
 
 export function AuthModal() {
   const { activeModal, closeModal, switchToLogin, switchToRegister, switchToForgotPassword, refreshUser, openUserCenter } = useAuth();
@@ -1247,7 +1247,7 @@ function ForgotPasswordModal({
         return;
       }
       setCountdown(60);
-      setStep("code");
+      setStep("verify");
     } catch {
       setErrorMsg("网络错误，请重试");
     } finally {
@@ -1255,18 +1255,12 @@ function ForgotPasswordModal({
     }
   };
 
-  // 验证验证码
-  const verifyCode = () => {
+  // 验证验证码并重置密码
+  const verifyAndReset = async () => {
     if (!/^\d{6}$/.test(code)) {
       setErrorMsg("请输入6位验证码");
       return;
     }
-    setErrorMsg("");
-    setStep("password");
-  };
-
-  // 重置密码
-  const resetPassword = async () => {
     if (password.length < 6) {
       setErrorMsg("密码至少6位");
       return;
@@ -1295,6 +1289,8 @@ function ForgotPasswordModal({
       setLoading(false);
     }
   };
+
+
 
 
 
@@ -1436,7 +1432,7 @@ function ForgotPasswordModal({
                         </div>
                       )}
 
-                      {step === "code" && (
+                      {step === "verify" && (
                         <div className="w-full space-y-6">
                           <p className="text-center text-sm text-brand-charcoal/60">
                             验证码已发送至 {phone.slice(0, 3)}****{phone.slice(-4)}
@@ -1450,37 +1446,6 @@ function ForgotPasswordModal({
                               className="flex-1 bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
                             />
                           </div>
-                          <div className="flex gap-3">
-                            <button
-                              type="button"
-                              onClick={() => setStep("phone")}
-                              className="flex-1 py-3 text-xs font-medium tracking-[0.2em] text-brand-charcoal/60 border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all"
-                            >
-                              返回
-                            </button>
-                            <button
-                              type="button"
-                              onClick={verifyCode}
-                              disabled={code.length !== 6}
-                              className="flex-1 py-3 text-xs font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40"
-                            >
-                              下一步
-                            </button>
-                          </div>
-                          <p className="text-center text-xs text-brand-charcoal/50 font-medium">
-                            {countdown > 0 ? (
-                              `${countdown}秒后可重新发送`
-                            ) : (
-                              <button type="button" onClick={sendCode} className="text-brand-gold hover:underline">
-                                重新发送验证码
-                              </button>
-                            )}
-                          </p>
-                        </div>
-                      )}
-
-                      {step === "password" && (
-                        <div className="w-full space-y-6">
                           <div>
                             <input
                               type="password"
@@ -1503,8 +1468,8 @@ function ForgotPasswordModal({
                           </div>
                           <button
                             type="button"
-                            onClick={resetPassword}
-                            disabled={loading || password.length < 6}
+                            onClick={verifyAndReset}
+                            disabled={loading || code.length !== 6 || password.length < 6}
                             className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40"
                           >
                             <span className="relative z-10 flex items-center justify-center gap-2">
@@ -1513,6 +1478,24 @@ function ForgotPasswordModal({
                               ) : "确认重置"}
                             </span>
                           </button>
+                          <p className="text-center text-xs text-brand-charcoal/50 font-medium">
+                            {countdown > 0 ? (
+                              `${countdown}秒后可重新发送`
+                            ) : (
+                              <button type="button" onClick={sendCode} className="text-brand-gold hover:underline">
+                                重新发送验证码
+                              </button>
+                            )}
+                          </p>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setStep("phone")}
+                              className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
+                            >
+                              返回上一步
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -1591,8 +1574,8 @@ function ForgotPasswordModal({
                         </div>
                       )}
 
-                      {/* 步骤 2: 输入验证码 */}
-                      {step === "code" && (
+                      {/* 步骤 2: 输入验证码 + 新密码 */}
+                      {step === "verify" && (
                         <div className="space-y-3">
                           <p className="text-center text-sm text-brand-charcoal/60">
                             验证码已发送至 {phone.slice(0, 3)}****{phone.slice(-4)}
@@ -1609,38 +1592,6 @@ function ForgotPasswordModal({
                               className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                             />
                           </div>
-                          <div className="flex gap-3">
-                            <button
-                              type="button"
-                              onClick={() => setStep("phone")}
-                              className="flex-1 rounded-xl bg-black/5 md:bg-white/10 border border-black/10 md:border-white/20 py-3 text-xs font-bold uppercase tracking-widest text-brand-charcoal/60 hover:bg-black/10 md:hover:bg-white/20 transition-all"
-                            >
-                              返回
-                            </button>
-                            <button
-                              type="button"
-                              onClick={verifyCode}
-                              disabled={code.length !== 6}
-                              className="flex-1 overflow-hidden rounded-xl bg-brand-gold py-4 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark active:scale-[0.98] disabled:opacity-50"
-                            >
-                              下一步
-                            </button>
-                          </div>
-                          <p className="text-center text-xs text-brand-charcoal/50 font-medium">
-                            {countdown > 0 ? (
-                              `${countdown}秒后可重新发送`
-                            ) : (
-                              <button type="button" onClick={sendCode} className="text-brand-gold hover:underline">
-                                重新发送验证码
-                              </button>
-                            )}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* 步骤 3: 设置新密码 */}
-                      {step === "password" && (
-                        <div className="space-y-3">
                           <div className="group relative">
                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                               <Lock className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
@@ -1669,8 +1620,8 @@ function ForgotPasswordModal({
                           </div>
                           <button
                             type="button"
-                            onClick={resetPassword}
-                            disabled={loading || password.length < 6}
+                            onClick={verifyAndReset}
+                            disabled={loading || code.length !== 6 || password.length < 6}
                             className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-4 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                           >
                             <span className="relative z-10 flex items-center justify-center gap-2">
@@ -1679,6 +1630,24 @@ function ForgotPasswordModal({
                               ) : "确认重置"}
                             </span>
                           </button>
+                          <p className="text-center text-xs text-brand-charcoal/50 font-medium">
+                            {countdown > 0 ? (
+                              `${countdown}秒后可重新发送`
+                            ) : (
+                              <button type="button" onClick={sendCode} className="text-brand-gold hover:underline">
+                                重新发送验证码
+                              </button>
+                            )}
+                          </p>
+                          <div className="pt-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setStep("phone")}
+                              className="text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors"
+                            >
+                              返回上一步
+                            </button>
+                          </div>
                         </div>
                       )}
 
