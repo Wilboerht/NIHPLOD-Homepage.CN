@@ -233,10 +233,7 @@ export function TermsContent({ content }: TermsContentProps) {
               <main
                 ref={mainRef}
                 onScroll={handleScroll}
-                className={cn(
-                  "flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
-                  !showSidebar && "lg:border-l lg:border-brand-charcoal/5"
-                )}
+                className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
                 <div className="max-w-7xl mx-auto px-6 lg:px-10">
                   <div className="space-y-7">

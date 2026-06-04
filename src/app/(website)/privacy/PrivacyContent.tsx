@@ -3,9 +3,8 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { m } from "framer-motion";
-import { ArrowLeft, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Link } from "next-view-transitions";
-import { cn } from "@/lib/utils";
 
 // 隐私政策内容数据
 interface SectionContent {
@@ -197,19 +196,6 @@ export function PrivacyContent() {
 
     if (currentId !== activeSection) {
       setActiveSection(currentId);
-    }
-  };
-
-  // 平滑滚动函数
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element && mainRef.current) {
-      // 计算元素相对于容器的位置
-      const top = element.offsetTop;
-      mainRef.current.scrollTo({
-        top: top,
-        behavior: "smooth"
-      });
     }
   };
 
