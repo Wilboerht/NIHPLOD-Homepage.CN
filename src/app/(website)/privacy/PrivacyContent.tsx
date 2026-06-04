@@ -290,55 +290,7 @@ export function PrivacyContent() {
             {/* 布局：目录导航 + 条款内容 */}
             <div className="flex flex-1 overflow-hidden relative mx-auto w-full max-w-7xl">
 
-              {/* 左侧导航 - 更加精致的排版 */}
-              <aside className="hidden w-48 flex-shrink-0 border-r border-brand-charcoal/5 lg:flex flex-col items-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <nav className="space-y-6 w-full px-6 pt-4">
-                  <div className="flex items-center gap-3 px-2 opacity-80">
-                    <p className="text-sm font-bold text-brand-charcoal">
-                      目录
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col space-y-1">
-                    {sections.map((section) => (
-                      <button
-                        key={section.id}
-                        onClick={() => scrollToSection(section.id)}
-                        className={cn(
-                          "group relative flex w-full items-center py-3 px-2 text-left transition-all duration-300 rounded-lg hover:bg-brand-charcoal/5",
-                          activeSection === section.id
-                            ? "text-brand-charcoal"
-                            : "text-brand-charcoal/60"
-                        )}
-                      >
-                        <span className={cn(
-                          "text-sm tabular-nums transition-all duration-300 mr-2 font-medium",
-                          activeSection === section.id ? "opacity-100 font-semibold" : "opacity-60 group-hover:opacity-100"
-                        )}>
-                          0{section.index}
-                        </span>
-                        <span className={cn(
-                          "text-sm font-medium transition-all duration-300",
-                          activeSection === section.id ? "font-bold translate-x-1" : "group-hover:translate-x-1"
-                        )}>
-                          {section.title}
-                        </span>
-
-                        {/* 激活状态指示点 - 调整位置 */}
-                        {activeSection === section.id && (
-                          <m.div
-                            layoutId="active-dot"
-                            className="absolute right-2 h-1 w-1 rounded-full bg-brand-gold"
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                          />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </nav>
-              </aside>
-
-              {/* 右侧内容区域 - 极简主义排版 */}
+              {/* 内容区域 */}
               <main
                 ref={mainRef}
                 onScroll={handleScroll}
