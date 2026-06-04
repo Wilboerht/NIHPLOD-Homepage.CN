@@ -258,7 +258,7 @@ export function KineticBackground() {
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
-                                    className="w-full h-8 sm:h-10 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5 shrink-0"
+                                    className="w-full h-8 sm:h-10 min-h-0 min-w-0 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5 shrink-0"
                                 >
                                     <span>进入会员中心</span>
                                     <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-0.5 opacity-70" />
@@ -288,7 +288,7 @@ export function KineticBackground() {
                                 <button
                                     type="button"
                                     onClick={handleLoginClick}
-                                    className="w-full h-8 sm:h-10 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5 shrink-0"
+                                    className="w-full h-8 sm:h-10 min-h-0 min-w-0 rounded-xl bg-white/30 backdrop-blur-sm text-brand-charcoal/90 text-xs sm:text-sm tracking-[0.1em] sm:tracking-[0.15em] font-medium transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] group flex items-center justify-center gap-1 sm:gap-1.5 shrink-0"
                                 >
                                     <span>立即登录</span>
                                     <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 group-hover:translate-x-0.5 opacity-70" />
