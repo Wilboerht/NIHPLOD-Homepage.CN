@@ -366,7 +366,7 @@ export function PrivacyContent() {
                                     if (!trimmed) return <div key={lIdx} className="h-2" />;
 
                                     // 条款内标题 (一、二、...)
-                                    if (/^[一二三四五六七八九十0-9]+[、.]/.test(trimmed)) {
+                                    if (/^[一二三四五六七八九十0-9]+[、.]/.test(trimmed) || trimmed === '《隐私政策》摘要') {
                                       return (
                                         <h3 key={lIdx} className="pt-4 font-serif text-lg font-bold text-gray-900 break-words">
                                           {formatText(trimmed)}
