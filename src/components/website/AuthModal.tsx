@@ -16,7 +16,7 @@ import { useIsMobile } from "@/hooks/useMediaQuery";
 type LoginMethod = "code" | "password";
 
 // 忘记密码步骤类型
-type ForgotPasswordStep = "phone" | "verify" | "success";
+type ForgotPasswordStep = "form" | "success";
 
 export function AuthModal() {
   const { activeModal, closeModal, switchToLogin, switchToRegister, switchToForgotPassword, refreshUser, openUserCenter } = useAuth();
@@ -1163,7 +1163,7 @@ function ForgotPasswordModal({
   onSwitchToLogin: () => void;
 }) {
   const { openContact: _openContact } = useAuth();
-  const [step, setStep] = useState<ForgotPasswordStep>("phone");
+  const [step, setStep] = useState<ForgotPasswordStep>("form");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -1247,7 +1247,7 @@ function ForgotPasswordModal({
         return;
       }
       setCountdown(60);
-      setStep("verify");
+      setStep("form");
     } catch {
       setErrorMsg("网络错误，请重试");
     } finally {
@@ -1398,7 +1398,7 @@ function ForgotPasswordModal({
                         )}
                       </AnimatePresence>
 
-                      {step === "phone" && (
+                      {step === "form" && (
                         <div className="w-full space-y-6">
                           <div>
                             <input
@@ -1412,39 +1412,24 @@ function ForgotPasswordModal({
                               className="w-full bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
                             />
                           </div>
-                          <button
-                            type="button"
-                            onClick={sendCode}
-                            disabled={loading || phone.length !== 11}
-                            className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40"
-                          >
-                            {loading ? "发送中..." : "找回密码"}
-                          </button>
-                          <div className="flex flex-col gap-1">
-                            <button
-                              type="button"
-                              onClick={onSwitchToLogin}
-                              className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
-                            >
-                              返回登录
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {step === "verify" && (
-                        <div className="w-full space-y-6">
-                          <p className="text-center text-sm text-brand-charcoal/60">
-                            验证码已发送至 {phone.slice(0, 3)}****{phone.slice(-4)}
-                          </p>
                           <div className="relative flex gap-2">
                             <input
                               type="text"
                               value={code}
                               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                              placeholder="6位验证码"
+                              placeholder="验证码"
                               className="flex-1 bg-transparent border-0 border-b border-brand-charcoal/25 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-brand-gold/60 transition-colors"
                             />
+                            <div className="flex flex-col gap-1">
+                              <button
+                                type="button"
+                                onClick={sendCode}
+                                disabled={countdown > 0 || phone.length !== 11}
+                                className="inline-flex h-12 min-h-0 items-center justify-center px-4 text-xs font-medium tracking-wider text-brand-charcoal/60 border border-brand-charcoal/25 disabled:opacity-30 transition-all"
+                              >
+                                {countdown > 0 ? `${countdown}s` : "获取验证码"}
+                              </button>
+                            </div>
                           </div>
                           <div>
                             <input
@@ -1469,7 +1454,7 @@ function ForgotPasswordModal({
                           <button
                             type="button"
                             onClick={verifyAndReset}
-                            disabled={loading || code.length !== 6 || password.length < 6}
+                            disabled={loading || phone.length !== 11 || code.length !== 6 || password.length < 6}
                             className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40"
                           >
                             <span className="relative z-10 flex items-center justify-center gap-2">
@@ -1478,22 +1463,13 @@ function ForgotPasswordModal({
                               ) : "确认重置"}
                             </span>
                           </button>
-                          <p className="text-center text-xs text-brand-charcoal/50 font-medium">
-                            {countdown > 0 ? (
-                              `${countdown}秒后可重新发送`
-                            ) : (
-                              <button type="button" onClick={sendCode} className="text-brand-gold hover:underline">
-                                重新发送验证码
-                              </button>
-                            )}
-                          </p>
                           <div className="flex flex-col gap-1">
                             <button
                               type="button"
-                              onClick={() => setStep("phone")}
+                              onClick={onSwitchToLogin}
                               className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                             >
-                              返回上一步
+                              返回登录
                             </button>
                           </div>
                         </div>
@@ -1536,7 +1512,7 @@ function ForgotPasswordModal({
                       </AnimatePresence>
 
                       {/* 步骤 1: 输入手机号 */}
-                      {step === "phone" && (
+                      {step === "form" && (
                         <div className="space-y-3">
                           <div className="group relative">
                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
@@ -1553,44 +1529,27 @@ function ForgotPasswordModal({
                               className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
                             />
                           </div>
-                          <button
-                            type="button"
-                            onClick={sendCode}
-                            disabled={loading || phone.length !== 11}
-                            className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-4 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                          >
-                            {loading ? "发送中..." : "找回密码"}
-                          </button>
-
-                          <div className="pt-4 text-center">
+                          <div className="group relative flex gap-2">
+                            <div className="relative flex-1">
+                              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                <Shield className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
+                              </div>
+                              <input
+                                type="text"
+                                value={code}
+                                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                placeholder="验证码"
+                                className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
+                              />
+                            </div>
                             <button
                               type="button"
-                              onClick={onSwitchToLogin}
-                              className="text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors"
+                              onClick={sendCode}
+                              disabled={countdown > 0 || phone.length !== 11}
+                              className="shrink-0 px-4 rounded-xl bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 text-[14px] font-semibold text-brand-gold transition-all hover:bg-black/10 md:hover:bg-white/40 disabled:opacity-30"
                             >
-                              返回登录
+                              {countdown > 0 ? `${countdown}s` : "获取验证码"}
                             </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 步骤 2: 输入验证码 + 新密码 */}
-                      {step === "verify" && (
-                        <div className="space-y-3">
-                          <p className="text-center text-sm text-brand-charcoal/60">
-                            验证码已发送至 {phone.slice(0, 3)}****{phone.slice(-4)}
-                          </p>
-                          <div className="group relative">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                              <Shield className="h-4 w-4 text-brand-charcoal/50 transition-colors group-focus-within:text-brand-charcoal stroke-[2px]" />
-                            </div>
-                            <input
-                              type="text"
-                              value={code}
-                              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                              placeholder="6位验证码"
-                              className="w-full bg-black/5 md:bg-white/20 border border-black/10 md:border-white/30 rounded-xl py-3.5 pl-11 pr-4 text-sm tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/50 focus:bg-black/10 md:focus:bg-white/40 focus:border-brand-gold/60 focus:outline-none transition-all"
-                            />
                           </div>
                           <div className="group relative">
                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
@@ -1621,7 +1580,7 @@ function ForgotPasswordModal({
                           <button
                             type="button"
                             onClick={verifyAndReset}
-                            disabled={loading || code.length !== 6 || password.length < 6}
+                            disabled={loading || phone.length !== 11 || code.length !== 6 || password.length < 6}
                             className="group relative w-full overflow-hidden rounded-xl bg-brand-gold py-4 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                           >
                             <span className="relative z-10 flex items-center justify-center gap-2">
@@ -1630,22 +1589,13 @@ function ForgotPasswordModal({
                               ) : "确认重置"}
                             </span>
                           </button>
-                          <p className="text-center text-xs text-brand-charcoal/50 font-medium">
-                            {countdown > 0 ? (
-                              `${countdown}秒后可重新发送`
-                            ) : (
-                              <button type="button" onClick={sendCode} className="text-brand-gold hover:underline">
-                                重新发送验证码
-                              </button>
-                            )}
-                          </p>
                           <div className="pt-2 text-center">
                             <button
                               type="button"
-                              onClick={() => setStep("phone")}
+                              onClick={onSwitchToLogin}
                               className="text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors"
                             >
-                              返回上一步
+                              返回登录
                             </button>
                           </div>
                         </div>
