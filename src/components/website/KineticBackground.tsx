@@ -219,7 +219,7 @@ export function KineticBackground() {
                     <div className="kinetic-btn-group">
                         {user ? (
                             <>
-                                <div className="flex flex-col items-center justify-center w-full group/avatar mb-2">
+                                <div className="flex flex-col items-center justify-center w-full group/avatar mb-3">
                                     <div className="relative h-14 w-14 sm:h-20 sm:w-20 flex items-center justify-center">
                                         {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
                                         <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
