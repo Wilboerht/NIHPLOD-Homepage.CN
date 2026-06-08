@@ -310,7 +310,7 @@ export default function AdminMessagesPage() {
                 <div
                   key={message.id}
                   className={cn(
-                    "flex items-start gap-4 px-6 py-4 transition-colors hover:bg-gray-50",
+                    "flex items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50",
                     !message.read && "bg-brand-gold/5"
                   )}
                 >
