@@ -52,7 +52,7 @@ export default function AdminMessagesPage() {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        pageSize: "10",
+        pageSize: "20",
       });
       if (search) params.set("search", search);
       if (statusFilter !== "all") params.set("status", statusFilter);
@@ -96,6 +96,9 @@ export default function AdminMessagesPage() {
       });
 
       if (!res.ok) throw new Error("操作失败");
+      setDetailMessage((prev) =>
+        prev && prev.id === message.id ? { ...prev, read: true } : prev
+      );
       fetchMessages();
     } catch {
       showError("标记失败");

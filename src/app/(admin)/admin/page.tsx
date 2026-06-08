@@ -167,7 +167,7 @@ export default function AdminDashboard() {
               {stats.recentMessages.map((message) => (
                 <Link
                   key={message.id}
-                  href={`/admin/messages/${message.id}`}
+                  href="/admin/messages"
                   className="block rounded-lg p-3 transition-colors hover:bg-gray-50"
                 >
                   <div className="flex items-start gap-3">

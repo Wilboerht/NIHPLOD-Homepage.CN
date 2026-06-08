@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
@@ -53,6 +54,8 @@ export async function POST(request: NextRequest) {
       unread: "标记为未读",
       delete: "删除",
     }[action];
+
+    revalidateTag("admin-stats");
 
     return NextResponse.json({
       success: true,
