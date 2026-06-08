@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 interface Message {
   id: string;
   name: string;
-  email: string;
+  phone: string;
   content: string;
   read: boolean;
   createdAt: string;
@@ -296,6 +296,7 @@ export default function AdminMessagesPage() {
                 className="h-4 w-4 rounded border-gray-300"
               />
               <span className="flex-1">留言内容</span>
+              <span className="hidden w-32 sm:block">联系方式</span>
               <span className="hidden w-32 md:block">时间</span>
               <span className="w-24">操作</span>
             </div>
@@ -353,7 +354,7 @@ export default function AdminMessagesPage() {
                             {message.name}
                           </span>
                           <span className="text-sm text-gray-400">
-                            {message.email}
+                            {message.phone}
                           </span>
                           {!message.read && (
                             <Badge variant="warning" size="sm">
@@ -366,6 +367,11 @@ export default function AdminMessagesPage() {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* 联系方式 */}
+                  <div className="hidden w-32 text-sm text-gray-500 sm:flex items-center">
+                    {message.phone}
                   </div>
 
                   {/* 时间 */}
@@ -439,12 +445,9 @@ export default function AdminMessagesPage() {
                     <Badge variant="warning" size="sm">未读</Badge>
                   )}
                 </div>
-                <a
-                  href={`mailto:${detailMessage.email}`}
-                  className="text-sm text-brand-gold hover:underline"
-                >
-                  {detailMessage.email}
-                </a>
+                <span className="text-sm text-gray-500">
+                  {detailMessage.phone}
+                </span>
               </div>
             </div>
 
@@ -469,13 +472,7 @@ export default function AdminMessagesPage() {
               >
                 {detailMessage.read ? "标记为未读" : "标记为已读"}
               </Button>
-              <Button
-                variant="outline"
-                leftIcon={<Mail className="h-4 w-4" />}
-                onClick={() => window.open(`mailto:${detailMessage.email}`)}
-              >
-                回复邮件
-              </Button>
+
             </div>
           </div>
         )}
