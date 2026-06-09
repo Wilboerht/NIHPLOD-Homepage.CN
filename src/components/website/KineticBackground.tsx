@@ -103,11 +103,7 @@ export function KineticBackground() {
                         width={2800}
                         height={800}
                         style={{ objectFit: 'contain' }}
-                    />
-                    {/* 米色遮罩层 */}
-                    <div
-                        className="absolute inset-0"
-                        style={{ backgroundColor: '#F0EDE1', opacity: 1, mixBlendMode: 'color' }}
+                        unoptimized
                     />
                 </div>
                 {/* 移动端水印 - 竖版 SVG */}
