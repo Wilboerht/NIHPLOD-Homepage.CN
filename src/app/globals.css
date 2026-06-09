@@ -957,7 +957,7 @@
   top: 46%;
   left: 50%;
   transform: translate(-50%, -50%);
-  opacity: 0.6;
+  opacity: 1;
   pointer-events: none;
   z-index: 1;
   /* 在背景基础层之上，但在网格容器之下 */
