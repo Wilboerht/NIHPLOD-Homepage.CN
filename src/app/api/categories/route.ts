@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
+      where: { visible: true },
       orderBy: { order: "asc" },
       include: {
         _count: {
@@ -28,12 +29,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
-
-// POST /api/categories - 创建分类（需要管理员权限）
-export async function POST() {
-  return NextResponse.json(
-    { success: false, error: { code: "NOT_IMPLEMENTED", message: "待实现" } },
-    { status: 501 }
-  );
 }

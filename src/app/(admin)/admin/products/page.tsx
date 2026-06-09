@@ -21,6 +21,9 @@ interface ProductItem {
   image: { id: string; url: string; alt: string | null } | null;
   featured: boolean;
   published: boolean;
+  salesCount: number;
+  stock: number;
+  allowDirectBuy: boolean;
   order: number;
   createdAt: string;
   updatedAt: string;

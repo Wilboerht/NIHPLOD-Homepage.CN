@@ -26,7 +26,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const user = await prisma.user.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        phone: true,
+        phoneVerified: true,
+        nickname: true,
+        avatar: true,
+        wechatOpenId: true,
+        wechatUnionId: true,
+        createdAt: true,
+        updatedAt: true,
         orders: {
           take: 10,
           orderBy: { createdAt: "desc" },

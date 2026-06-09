@@ -27,9 +27,18 @@ interface OrderDetail {
   recipientAddress: string;
   shippingCompany: string | null;
   trackingNo: string | null;
+  remark: string | null;
   adminNote: string | null;
+  paymentMethod: string | null;
+  paymentNo: string | null;
+  previousStatus: string | null;
+  refundStatus: string | null;
+  refundNo: string | null;
+  refundAmount: string | number | null;
+  refundTime: string | null;
+  receivedAt: string | null;
   user: { id: string; nickname: string | null; phone: string | null };
-  items: { id: string; productName: string; variantName: string | null; price: string | number; quantity: number }[];
+  items: { id: string; productName: string; productImage: string | null; price: string | number; quantity: number }[];
   userCoupon?: {
     id: string;
     coupon: {
@@ -42,6 +51,13 @@ interface OrderDetail {
   paymentTime: string | null;
   shippedAt: string | null;
 }
+
+const REFUND_STATUS_LABELS: Record<string, string> = {
+  PENDING: "退款待处理",
+  SUCCESS: "退款成功",
+  FAILED: "退款失败",
+  CLOSED: "退款关闭",
+};
 
 const STATUS_MAP: Record<string, { label: string; color: "default" | "warning" | "success" | "danger" | "primary" }> = {
   PENDING: { label: "待付款", color: "warning" },
@@ -67,6 +83,8 @@ export default function OrderDetailPage() {
   const [refundAction, setRefundAction] = useState<boolean | null>(null);
   const [refundRemark, setRefundRemark] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [editingAdminNote, setEditingAdminNote] = useState(false);
+  const [adminNoteInput, setAdminNoteInput] = useState("");
 
   useEffect(() => {
     apiGet<{ order: OrderDetail }>(`/api/admin/orders/${id}`)
@@ -123,6 +141,20 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleSaveAdminNote = async () => {
+    setActionLoading(true);
+    try {
+      await apiPost(`/api/admin/orders/${id}`, { adminNote: adminNoteInput.trim() || null });
+      success("管理备注已保存");
+      setEditingAdminNote(false);
+      await refreshOrder();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-gray-400">加载中...</div>;
   if (!order) return <div className="p-8 text-center text-gray-400">订单不存在</div>;
 
@@ -165,7 +197,24 @@ export default function OrderDetailPage() {
             <div className="flex justify-between"><dt className="text-gray-500">订单号</dt><dd>{order.orderNo}</dd></div>
             <div className="flex justify-between"><dt className="text-gray-500">下单时间</dt><dd>{new Date(order.createdAt).toLocaleString("zh-CN")}</dd></div>
             {order.paymentTime && <div className="flex justify-between"><dt className="text-gray-500">支付时间</dt><dd>{new Date(order.paymentTime).toLocaleString("zh-CN")}</dd></div>}
+            {order.receivedAt && <div className="flex justify-between"><dt className="text-gray-500">签收时间</dt><dd>{new Date(order.receivedAt).toLocaleString("zh-CN")}</dd></div>}
             <div className="flex justify-between"><dt className="text-gray-500">用户</dt><dd>{order.user.nickname || order.user.phone}</dd></div>
+            {order.paymentMethod && <div className="flex justify-between"><dt className="text-gray-500">支付方式</dt><dd>{order.paymentMethod === "wechat" ? "微信支付" : order.paymentMethod === "alipay" ? "支付宝" : order.paymentMethod}</dd></div>}
+            {order.paymentNo && <div className="flex justify-between"><dt className="text-gray-500">支付流水号</dt><dd className="font-mono text-xs">{order.paymentNo}</dd></div>}
+            {order.remark && (
+              <div className="pt-2 border-t">
+                <dt className="text-gray-500 mb-1">用户备注</dt>
+                <dd className="text-gray-700 bg-yellow-50 rounded-lg p-2">{order.remark}</dd>
+              </div>
+            )}
+            {order.refundStatus && (
+              <div className="pt-2 border-t">
+                <div className="flex justify-between"><dt className="text-gray-500">退款状态</dt><dd><Badge variant={order.refundStatus === "SUCCESS" ? "success" : order.refundStatus === "FAILED" ? "danger" : "warning"}>{REFUND_STATUS_LABELS[order.refundStatus] || order.refundStatus}</Badge></dd></div>
+                {order.refundNo && <div className="flex justify-between mt-1"><dt className="text-gray-500">退款单号</dt><dd className="font-mono text-xs">{order.refundNo}</dd></div>}
+                {order.refundAmount && <div className="flex justify-between mt-1"><dt className="text-gray-500">退款金额</dt><dd>¥{Number(order.refundAmount).toFixed(2)}</dd></div>}
+                {order.refundTime && <div className="flex justify-between mt-1"><dt className="text-gray-500">退款时间</dt><dd>{new Date(order.refundTime).toLocaleString("zh-CN")}</dd></div>}
+              </div>
+            )}
           </dl>
         </div>
 
@@ -176,6 +225,12 @@ export default function OrderDetailPage() {
             <div className="flex justify-between"><dt className="text-gray-500">收货人</dt><dd>{order.recipientName}</dd></div>
             <div className="flex justify-between"><dt className="text-gray-500">联系电话</dt><dd>{order.recipientPhone}</dd></div>
             <div><dt className="text-gray-500 mb-1">地址</dt><dd>{order.recipientAddress}</dd></div>
+            {order.shippingCompany && (
+              <div className="pt-2 border-t">
+                <div className="flex justify-between"><dt className="text-gray-500">物流公司</dt><dd>{order.shippingCompany}</dd></div>
+                {order.trackingNo && <div className="flex justify-between mt-1"><dt className="text-gray-500">快递单号</dt><dd className="font-mono">{order.trackingNo}</dd></div>}
+              </div>
+            )}
           </dl>
         </div>
       </div>
@@ -187,7 +242,6 @@ export default function OrderDetailPage() {
           <thead className="border-b text-left text-gray-500">
             <tr>
               <th className="pb-2">商品</th>
-              <th className="pb-2">规格</th>
               <th className="pb-2">单价</th>
               <th className="pb-2">数量</th>
               <th className="pb-2">小计</th>
@@ -197,7 +251,6 @@ export default function OrderDetailPage() {
             {order.items.map((item) => (
               <tr key={item.id}>
                 <td className="py-3">{item.productName}</td>
-                <td className="py-3 text-gray-500">{item.variantName || "-"}</td>
                 <td className="py-3">¥{Number(item.price).toFixed(2)}</td>
                 <td className="py-3">{item.quantity}</td>
                 <td className="py-3 text-pink-500">¥{(Number(item.price) * item.quantity).toFixed(2)}</td>
@@ -206,27 +259,60 @@ export default function OrderDetailPage() {
           </tbody>
           <tfoot className="border-t">
             <tr>
-              <td colSpan={4} className="py-3 text-right text-gray-500">商品总额</td>
+              <td colSpan={3} className="py-3 text-right text-gray-500">商品总额</td>
               <td className="py-3">¥{Number(order.totalAmount).toFixed(2)}</td>
             </tr>
             <tr>
-              <td colSpan={4} className="py-1 text-right text-gray-500">运费</td>
+              <td colSpan={3} className="py-1 text-right text-gray-500">运费</td>
               <td className="py-1">¥{Number(order.shippingFee).toFixed(2)}</td>
             </tr>
             {Number(order.discountAmount) > 0 && (
               <tr>
-                <td colSpan={4} className="py-1 text-right text-gray-500">
+                <td colSpan={3} className="py-1 text-right text-gray-500">
                   优惠 {order.userCoupon?.coupon.name ? `(${order.userCoupon.coupon.name})` : ""}
                 </td>
                 <td className="py-1 text-green-500">-¥{Number(order.discountAmount).toFixed(2)}</td>
               </tr>
             )}
             <tr>
-              <td colSpan={4} className="py-3 text-right font-medium">实付金额</td>
+              <td colSpan={3} className="py-3 text-right font-medium">实付金额</td>
               <td className="py-3 text-lg font-bold text-pink-500">¥{Number(order.payAmount).toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>
+      </div>
+
+      {/* 管理备注 */}
+      <div className="rounded-xl bg-white p-6 shadow-sm">
+        <h2 className="mb-4 font-medium">管理备注</h2>
+        {editingAdminNote ? (
+          <div className="space-y-3">
+            <textarea
+              value={adminNoteInput}
+              onChange={(e) => setAdminNoteInput(e.target.value)}
+              placeholder="输入内部备注信息..."
+              rows={3}
+              className="w-full rounded-lg border p-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setEditingAdminNote(false); setAdminNoteInput(order.adminNote || ""); }}>取消</Button>
+              <Button size="sm" onClick={handleSaveAdminNote} loading={actionLoading}>保存</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {order.adminNote ? (
+              <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{order.adminNote}</p>
+            ) : (
+              <p className="text-sm text-gray-400">暂无备注</p>
+            )}
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => { setAdminNoteInput(order.adminNote || ""); setEditingAdminNote(true); }}>
+                {order.adminNote ? "编辑备注" : "添加备注"}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 发货弹窗 - 使用 Portal 渲染到 body，确保遮罩覆盖整个视口 */}

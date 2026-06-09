@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           phone: true,
+          phoneVerified: true,
           nickname: true,
           avatar: true,
           createdAt: true,

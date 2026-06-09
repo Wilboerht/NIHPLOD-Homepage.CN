@@ -21,10 +21,20 @@ interface Message {
   id: string;
   name: string;
   phone: string;
+  type: string | null;
   content: string;
   read: boolean;
   createdAt: string;
 }
+
+const MESSAGE_TYPE_LABELS: Record<string, string> = {
+  consultation: "产品咨询",
+  cooperation: "商务合作",
+  feedback: "使用反馈",
+  complaint: "投诉建议",
+  application: "入驻申请",
+  other: "其他问题",
+};
 
 export default function AdminMessagesPage() {
   const { success, error: showError } = useToast();
@@ -359,6 +369,11 @@ export default function AdminMessagesPage() {
                           <span className="text-sm text-gray-400">
                             {message.phone}
                           </span>
+                          {message.type && (
+                            <Badge variant="secondary" size="sm">
+                              {MESSAGE_TYPE_LABELS[message.type] || message.type}
+                            </Badge>
+                          )}
                           {!message.read && (
                             <Badge variant="warning" size="sm">
                               未读
@@ -454,10 +469,17 @@ export default function AdminMessagesPage() {
               </div>
             </div>
 
-            {/* 时间 */}
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Clock className="h-4 w-4" />
-              {new Date(detailMessage.createdAt).toLocaleString("zh-CN")}
+            {/* 时间与类型 */}
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {new Date(detailMessage.createdAt).toLocaleString("zh-CN")}
+              </span>
+              {detailMessage.type && (
+                <Badge variant="secondary" size="sm">
+                  {MESSAGE_TYPE_LABELS[detailMessage.type] || detailMessage.type}
+                </Badge>
+              )}
             </div>
 
             {/* 留言内容 */}

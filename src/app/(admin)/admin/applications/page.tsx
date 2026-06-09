@@ -47,7 +47,6 @@ interface Application {
   jobId: string;
   name: string;
   phone: string;
-  email: string;
   resumePath: string;
   status: string;
   notes: string | null;
@@ -650,12 +649,6 @@ export default function AdminApplicationsPage() {
                     <User className="h-4 w-4" />
                     {detailApplication.phone}
                   </span>
-                  <a
-                    href={`mailto:${detailApplication.email}`}
-                    className="text-brand-gold hover:underline"
-                  >
-                    {detailApplication.email}
-                  </a>
                 </div>
               </div>
             </div>
