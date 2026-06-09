@@ -131,6 +131,7 @@ export default function AdminCouponsPage() {
                 totalLimit: modalCoupon.totalLimit !== null ? Number(modalCoupon.totalLimit) : null,
                 scopeType: modalCoupon.scopeType,
                 scopeIds: modalCoupon.scopeType === "ALL" ? [] : modalCoupon.scopeIds,
+                isActive: modalCoupon.isActive,
             };
 
             if (modalCoupon.daysValid) {
@@ -521,20 +522,31 @@ export default function AdminCouponsPage() {
                                     />
                                 </div>
                             </div>
-                            <div className="flex justify-end gap-3 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setModalCoupon(null)}
-                                    className="px-4 py-2 border rounded-md text-sm hover:bg-gray-50"
-                                >
-                                    取消
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-black text-white rounded-md text-sm hover:bg-black/90"
-                                >
-                                    保存
-                                </button>
+                            <div className="flex items-center justify-between border-t pt-4">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={modalCoupon.isActive}
+                                        onChange={(e) => setModalCoupon({ ...modalCoupon, isActive: e.target.checked })}
+                                        className="rounded border-gray-300"
+                                    />
+                                    <span>上架中</span>
+                                </label>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalCoupon(null)}
+                                        className="px-4 py-2 border rounded-md text-sm hover:bg-gray-50"
+                                    >
+                                        取消
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-black text-white rounded-md text-sm hover:bg-black/90"
+                                    >
+                                        保存
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>

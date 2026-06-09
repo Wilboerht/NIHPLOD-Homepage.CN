@@ -69,17 +69,20 @@ export const ProductQuerySchema = z.object({
 // 分类 Schema
 export const CategorySchema = z.object({
   name: z.string().min(1, "名称不能为空").max(50, "名称不能超过50个字符"),
+  nameEn: z.string().min(1, "英文名称不能为空").max(50, "英文名称不能超过50个字符"),
   slug: z
     .string()
     .min(1, "URL别名不能为空")
     .max(50, "URL别名不能超过50个字符")
     .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
   description: z.string().max(500, "描述不能超过500个字符").optional(),
+  icon: z.string().optional().nullable(),
   image: z.string().refine(
     (val) => !val || val.startsWith("/") || val.startsWith("http://") || val.startsWith("https://"),
     "请输入有效的图片URL（支持相对路径或完整URL）"
   ).optional(),
   order: z.number().int().min(0).default(0),
+  visible: z.boolean().default(true),
 });
 
 // 类型导出

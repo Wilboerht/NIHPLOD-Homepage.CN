@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { LOGISTICS_COMPANIES } from "@/lib/logistics-constants";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch } from "@/lib/api-client";
 
 interface OrderDetail {
   id: string;
@@ -144,7 +144,7 @@ export default function OrderDetailPage() {
   const handleSaveAdminNote = async () => {
     setActionLoading(true);
     try {
-      await apiPost(`/api/admin/orders/${id}`, { adminNote: adminNoteInput.trim() || null });
+      await apiPatch(`/api/admin/orders/${id}`, { adminNote: adminNoteInput.trim() || null });
       success("管理备注已保存");
       setEditingAdminNote(false);
       await refreshOrder();

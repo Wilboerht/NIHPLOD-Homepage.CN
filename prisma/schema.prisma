@@ -275,7 +275,6 @@ model Address {
   city        String                           // 市
   district    String                           // 区
   detail      String                           // 详细地址
-  postalCode  String?                          // 邮编
   isDefault   Boolean  @default(false)
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

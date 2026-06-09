@@ -140,6 +140,16 @@ const nextConfig = {
         destination: '/?contact=true',
         permanent: false,
       },
+      {
+        source: '/checkout',
+        destination: '/cart?openCheckout=1',
+        permanent: true,
+      },
+      {
+        source: '/admin/coupons/create',
+        destination: '/admin/coupons',
+        permanent: true,
+      },
       // 品牌名常见拼写错误重定向（帮助搜索引擎和用户找到正确页面）
       {
         source: '/niphlod',
