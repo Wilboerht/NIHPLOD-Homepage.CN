@@ -940,6 +940,12 @@
   pointer-events: none;
 }
 
+@media (min-width: 768px) {
+  .kinetic-bg-base {
+    background-image: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0, 0, 0, 0.04) 100%);
+  }
+}
+
 /* 点阵图案层 */
 .kinetic-dot-pattern {
   position: absolute;
