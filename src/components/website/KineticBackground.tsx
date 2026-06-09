@@ -96,7 +96,7 @@ export function KineticBackground() {
             <div className="kinetic-dot-pattern" />
             <div className="kinetic-watermark">
                 {/* PC 端水印 */}
-                <div className="hidden md:block relative opacity-40">
+                <div className="hidden md:block relative opacity-[0.65]">
                     <Image
                         src="/images/N-web.svg"
                         alt="Watermark PC"
@@ -137,7 +137,7 @@ export function KineticBackground() {
                 >
                     <Link href="/products" className="absolute inset-0 z-20" aria-label="了解产品" />
                     <Image
-                        src="https://wp-cdn.4ce.cn/v2/vmQtAla.jpeg"
+                        src="/images/kinetic-product-hero.jpeg"
                         alt="Brand Story"
                         fill
                         className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
