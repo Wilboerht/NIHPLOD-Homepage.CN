@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { X, Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown, ChevronLeft, ArrowRight } from "lucide-react";
+import { X, Send, CheckCircle, Loader2, MessageSquare, Briefcase, Building2, MessageCircle, AlertTriangle, HelpCircle, ChevronDown, ChevronLeft, ArrowRight } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +13,7 @@ import { useToast } from "@/hooks";
 // 图标映射
 const iconMap: Record<string, typeof HelpCircle> = {
     spa_reservation: MessageSquare,
-    application: Briefcase,
+    application: Building2,
     consultation: MessageSquare,
     cooperation: Briefcase,
     feedback: MessageCircle,
