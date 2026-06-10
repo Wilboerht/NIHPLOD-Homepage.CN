@@ -244,9 +244,9 @@ function LoginModal({
         <div className="fixed inset-x-0 top-0 z-[9999] flex items-center justify-center h-[100dvh] p-4 md:pt-4 md:px-4 md:pb-4">
           {/* 背景遮罩 */}
           <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.3 } }}
-            exit={{ opacity: 0, transition: { duration: isMobile ? 0.8 : 0.3 } }}
+            initial={isMobile ? { x: "100vw" } : { opacity: 0 }}
+            animate={isMobile ? { x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } } : { opacity: 1, transition: { duration: 0.3 } }}
+            exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, transition: { duration: 0.3 } }}
             className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
@@ -800,9 +800,9 @@ function RegisterModal({
         <div className="fixed inset-x-0 top-0 z-[9999] flex items-center justify-center h-[100dvh] p-4 md:pt-4 md:px-4 md:pb-4">
           {/* 背景遮罩 */}
           <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.3 } }}
-            exit={{ opacity: 0, transition: { duration: isMobile ? 0.8 : 0.3 } }}
+            initial={isMobile ? { x: "100vw" } : { opacity: 0 }}
+            animate={isMobile ? { x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } } : { opacity: 1, transition: { duration: 0.3 } }}
+            exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, transition: { duration: 0.3 } }}
             className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
@@ -1336,9 +1336,9 @@ function ForgotPasswordModal({
         <div className="fixed inset-x-0 top-0 z-[9999] flex items-center justify-center h-[100dvh] p-4 md:pt-4 md:px-4 md:pb-4">
           {/* 背景遮罩 */}
           <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.3 } }}
-            exit={{ opacity: 0, transition: { duration: isMobile ? 0.8 : 0.3 } }}
+            initial={isMobile ? { x: "100vw" } : { opacity: 0 }}
+            animate={isMobile ? { x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } } : { opacity: 1, transition: { duration: 0.3 } }}
+            exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, transition: { duration: 0.3 } }}
             className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
@@ -1890,9 +1890,9 @@ function WechatBindModal({
       {isOpen && (
         <div className="fixed inset-x-0 top-0 z-[9999] flex items-center justify-center h-[100dvh] p-4 md:pt-4 md:px-4 md:pb-4">
           <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.3 } }}
-            exit={{ opacity: 0, transition: { duration: isMobile ? 0.8 : 0.3 } }}
+            initial={isMobile ? { x: "100vw" } : { opacity: 0 }}
+            animate={isMobile ? { x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } } : { opacity: 1, transition: { duration: 0.3 } }}
+            exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, transition: { duration: 0.3 } }}
             className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
