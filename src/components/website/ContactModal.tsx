@@ -642,7 +642,7 @@ export function ContactModal() {
                                         </div>
 
                                         {/* 留言类型 */}
-                                        <div ref={typeDropdownRef} className="relative">
+                                        <div className="relative">
                                             <label className="block text-[13px] font-medium tracking-wide text-[#00263E] mb-1.5">
                                                 留言类型<span className="text-red-400">*</span>
                                             </label>
@@ -658,7 +658,15 @@ export function ContactModal() {
                                                     errors.type && "ring-1 ring-red-400"
                                                 )}
                                             >
-                                                <span>
+                                                <span className="flex items-center gap-2">
+                                                    {formData.type && (() => {
+                                                        const selected = messageTypes.find(t => t.value === formData.type);
+                                                        if (selected) {
+                                                            const Icon = selected.icon;
+                                                            return <Icon className="h-4 w-4 text-[#00263E]/60" />;
+                                                        }
+                                                        return null;
+                                                    })()}
                                                     {messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}
                                                 </span>
                                                 <ChevronDown className={cn(
@@ -666,61 +674,91 @@ export function ContactModal() {
                                                     isTypeDropdownOpen && "rotate-180"
                                                 )} />
                                             </button>
-
-                                            <AnimatePresence>
-                                                {isTypeDropdownOpen && (
-                                                    <m.div
-                                                        role="listbox"
-                                                        aria-label="留言类型"
-                                                        initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                                                        transition={{ duration: 0.2, ease: "easeOut" }}
-                                                        className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[#C8C4BC]/40 bg-[#F0EDE1] shadow-[0_16px_40px_-10px_rgba(107,95,71,0.18)]"
-                                                    >
-                                                        {messageTypes.filter(t => t.value !== "").map((type, index) => {
-                                                            const Icon = type.icon;
-                                                            const isSelected = formData.type === type.value;
-                                                            const isHighlighted = index === highlightedIndex;
-                                                            return (
-                                                                <button
-                                                                    key={type.value}
-                                                                    type="button"
-                                                                    role="option"
-                                                                    aria-selected={isSelected}
-                                                                    onClick={() => {
-                                                                        setFormData(prev => ({ ...prev, type: type.value }));
-                                                                        setIsTypeDropdownOpen(false);
-                                                                        if (errors.type) {
-                                                                            setErrors(prev => ({ ...prev, type: "" }));
-                                                                        }
-                                                                    }}
-                                                                    className={cn(
-                                                                        "flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] transition-all",
-                                                                        isSelected
-                                                                            ? "bg-[#00263E]/[0.08] text-[#00263E]"
-                                                                            : isHighlighted
-                                                                                ? "bg-[#F0EDE1]/60 text-[#00263E]"
-                                                                                : "text-[#00263E]/80 hover:bg-[#F0EDE1]/40",
-                                                                        index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-[#E8E4DA]/80"
-                                                                    )}
-                                                                >
-                                                                    <Icon className={cn(
-                                                                        "h-[18px] w-[18px] shrink-0 transition-colors",
-                                                                        isSelected ? "text-[#00263E]" : "text-[#00263E]/30"
-                                                                    )} />
-                                                                    <span className="flex-1">{type.label}</span>
-                                                                    {isSelected && (
-                                                                        <CheckCircle className="ml-auto h-[18px] w-[18px] text-[#00263E]" />
-                                                                    )}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </m.div>
-                                                )}
-                                            </AnimatePresence>
                                             {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
                                         </div>
+
+                                        {/* 移动端底部选择器 */}
+                                        <AnimatePresence>
+                                            {isTypeDropdownOpen && (
+                                                <m.div
+                                                    className="md:hidden fixed inset-0 z-[10002]"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                >
+                                                    {/* 遮罩 */}
+                                                    <m.div
+                                                        className="absolute inset-0 bg-black/25"
+                                                        onClick={() => setIsTypeDropdownOpen(false)}
+                                                    />
+                                                    {/* 底部面板 */}
+                                                    <m.div
+                                                        className="absolute bottom-0 left-0 right-0 bg-[#F8F7F3] rounded-t-[2rem] px-5 pt-5 pb-8 max-h-[70vh] flex flex-col"
+                                                        initial={{ y: "100%" }}
+                                                        animate={{ y: 0, transition: { type: "spring", damping: 25, stiffness: 300 } }}
+                                                        exit={{ y: "100%", transition: { type: "spring", damping: 25, stiffness: 300 } }}
+                                                    >
+                                                        {/* 拖动手柄 */}
+                                                        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-[#00263E]/15" />
+
+                                                        {/* 标题 */}
+                                                        <div className="mb-4 px-1">
+                                                            <h3 className="text-[18px] font-semibold tracking-wide text-[#00263E]">选择留言类型</h3>
+                                                            <p className="mt-1 text-[13px] text-[#00263E]/50">请选择您要咨询或反馈的内容类型</p>
+                                                        </div>
+
+                                                        {/* 选项列表 */}
+                                                        <div className="flex-1 overflow-y-auto space-y-2.5">
+                                                            {messageTypes.filter(t => t.value !== "").map((type) => {
+                                                                const Icon = type.icon;
+                                                                const isSelected = formData.type === type.value;
+                                                                return (
+                                                                    <button
+                                                                        key={type.value}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setFormData(prev => ({ ...prev, type: type.value }));
+                                                                            setIsTypeDropdownOpen(false);
+                                                                            if (errors.type) {
+                                                                                setErrors(prev => ({ ...prev, type: "" }));
+                                                                            }
+                                                                        }}
+                                                                        className={cn(
+                                                                            "flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-left transition-all active:scale-[0.98]",
+                                                                            isSelected
+                                                                                ? "bg-[#00263E] text-white shadow-md shadow-[#00263E]/20"
+                                                                                : "bg-white/70 text-[#00263E] active:bg-white"
+                                                                        )}
+                                                                    >
+                                                                        <div className={cn(
+                                                                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                                                                            isSelected ? "bg-white/20" : "bg-[#F8F7F3]"
+                                                                        )}>
+                                                                            <Icon className={cn(
+                                                                                "h-[18px] w-[18px]",
+                                                                                isSelected ? "text-white" : "text-[#00263E]/50"
+                                                                            )} />
+                                                                        </div>
+                                                                        <span className="flex-1 text-[15px] font-medium">{type.label}</span>
+                                                                        {isSelected && <CheckCircle className="h-5 w-5 text-white" />}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        {/* 取消按钮 */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setIsTypeDropdownOpen(false)}
+                                                            className="mt-5 w-full rounded-xl bg-white/80 py-3.5 text-[15px] font-medium text-[#00263E] active:bg-white active:scale-[0.98] transition-all"
+                                                        >
+                                                            取消
+                                                        </button>
+                                                    </m.div>
+                                                </m.div>
+                                            )}
+                                        </AnimatePresence>
 
                                         {/* 留言内容 或 申请入驻地址 */}
                                         {formData.type === "application" ? (
