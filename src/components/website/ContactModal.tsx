@@ -312,7 +312,7 @@ export function ContactModal() {
                             />
                         </div>
                         {/* 左侧：表单区域 */}
-                        <div className="flex flex-1 flex-col overflow-y-auto md:p-10 h-full justify-center md:justify-start">
+                        <div className="flex flex-1 flex-col overflow-y-auto scrollbar-hide md:p-10 h-full justify-center md:justify-start">
                             
                             {/* === PC 端表单 === */}
                             <div className="hidden md:flex md:flex-1 md:flex-col">
@@ -709,7 +709,7 @@ export function ContactModal() {
                                                         </div>
 
                                                         {/* 选项列表 */}
-                                                        <div className="flex-1 overflow-y-auto space-y-2.5">
+                                                        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2.5">
                                                             {messageTypes.filter(t => t.value !== "").map((type) => {
                                                                 const Icon = type.icon;
                                                                 const isSelected = formData.type === type.value;
@@ -727,21 +727,21 @@ export function ContactModal() {
                                                                         className={cn(
                                                                             "flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-left transition-all active:scale-[0.98]",
                                                                             isSelected
-                                                                                ? "bg-[#00263E] text-white shadow-md shadow-[#00263E]/20"
+                                                                                ? "bg-[#E8E4DA] text-[#00263E]"
                                                                                 : "bg-white/70 text-[#00263E] active:bg-white"
                                                                         )}
                                                                     >
                                                                         <div className={cn(
                                                                             "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                                                                            isSelected ? "bg-white/20" : "bg-[#F8F7F3]"
+                                                                            isSelected ? "bg-[#8B7355]/10" : "bg-[#F8F7F3]"
                                                                         )}>
                                                                             <Icon className={cn(
                                                                                 "h-[18px] w-[18px]",
-                                                                                isSelected ? "text-white" : "text-[#00263E]/50"
+                                                                                isSelected ? "text-[#8B7355]" : "text-[#00263E]/50"
                                                                             )} />
                                                                         </div>
                                                                         <span className="flex-1 text-[15px] font-medium">{type.label}</span>
-                                                                        {isSelected && <CheckCircle className="h-5 w-5 text-white" />}
+                                                                        {isSelected && <CheckCircle className="h-5 w-5 text-[#8B7355]" />}
                                                                     </button>
                                                                 );
                                                             })}

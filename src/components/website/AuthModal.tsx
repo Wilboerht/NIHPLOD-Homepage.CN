@@ -245,9 +245,8 @@ function LoginModal({
           {/* 背景遮罩 */}
           <m.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            animate={{ opacity: 1, transition: { duration: 0.3 } }}
+            exit={{ opacity: 0, transition: { duration: isMobile ? 0.8 : 0.3 } }}
             className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
@@ -802,9 +801,8 @@ function RegisterModal({
           {/* 背景遮罩 */}
           <m.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            animate={{ opacity: 1, transition: { duration: 0.3 } }}
+            exit={{ opacity: 0, transition: { duration: isMobile ? 0.8 : 0.3 } }}
             className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
@@ -1339,9 +1337,8 @@ function ForgotPasswordModal({
           {/* 背景遮罩 */}
           <m.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            animate={{ opacity: 1, transition: { duration: 0.3 } }}
+            exit={{ opacity: 0, transition: { duration: isMobile ? 0.8 : 0.3 } }}
             className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
@@ -1894,9 +1891,8 @@ function WechatBindModal({
         <div className="fixed inset-x-0 top-0 z-[9999] flex items-center justify-center h-[100dvh] p-4 md:pt-4 md:px-4 md:pb-4">
           <m.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            animate={{ opacity: 1, transition: { duration: 0.3 } }}
+            exit={{ opacity: 0, transition: { duration: isMobile ? 0.8 : 0.3 } }}
             className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
