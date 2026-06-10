@@ -248,7 +248,7 @@ function LoginModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 bg-black/20 backdrop-blur-md"
+            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
 
@@ -805,7 +805,7 @@ function RegisterModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 bg-black/20 backdrop-blur-md"
+            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
 
@@ -1342,7 +1342,7 @@ function ForgotPasswordModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 bg-black/20 backdrop-blur-md"
+            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
 
@@ -1897,7 +1897,7 @@ function WechatBindModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 bg-black/20 backdrop-blur-md"
+            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
             onClick={onClose}
           />
           <m.div
