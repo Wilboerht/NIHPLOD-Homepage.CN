@@ -67,6 +67,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 查询数据
+    // pendingCount 需要基于当前过滤条件（搜索、职位、分类夹）统计待处理数量，
+    // 避免与当前列表的过滤条件不一致导致数字矛盾。
     const [applications, total, pendingCount] = await Promise.all([
       prisma.jobApplication.findMany({
         where,
@@ -90,7 +92,7 @@ export async function GET(request: NextRequest) {
         take: pageSize,
       }),
       prisma.jobApplication.count({ where }),
-      prisma.jobApplication.count({ where: { status: "pending" } }),
+      prisma.jobApplication.count({ where: { ...where, status: "pending" } }),
     ]);
 
     return NextResponse.json({

@@ -144,17 +144,33 @@ export default function AdminApplicationsPage() {
       const res = await fetch(`/api/admin/applications?${params}`);
       const data = await res.json();
 
-      if (data.success) {
-        setApplications(data.data.items);
-        setTotal(data.data.pagination.total);
-        setPendingCount(data.data.pendingCount);
+      if (!res.ok || !data.success) {
+        const message = data?.error?.message || "获取简历列表失败";
+        if (res.status === 401) {
+          showError("登录已过期，请重新登录");
+          window.location.href = "/admin-login";
+          return;
+        }
+        showError(message);
+        setApplications([]);
+        setTotal(0);
+        setPendingCount(0);
+        return;
       }
+
+      setApplications(data.data.items);
+      setTotal(data.data.pagination.total);
+      setPendingCount(data.data.pendingCount);
     } catch (error) {
       console.error("获取申请列表失败:", error);
+      showError("网络异常，请刷新重试");
+      setApplications([]);
+      setTotal(0);
+      setPendingCount(0);
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, jobFilter, folderFilter]);
+  }, [page, search, statusFilter, jobFilter, folderFilter, showError]);
 
   useEffect(() => {
     fetchApplications();
@@ -463,7 +479,7 @@ export default function AdminApplicationsPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="搜索姓名、邮箱、手机号..."
+            placeholder="搜索姓名、手机号..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-9 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
