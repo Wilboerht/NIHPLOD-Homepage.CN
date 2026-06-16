@@ -8,10 +8,12 @@ import { apiConsole } from "@/lib/logger";
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
-  status: z.string().default("all"),
-  jobId: z.string().default(""),
-  folderId: z.string().default(""),
-  search: z.string().default(""),
+  // searchParams.get() 对不存在的参数返回 null，而 Zod .default() 只对 undefined 生效，
+  // 因此需要先把 null 转换为 undefined，再应用默认值。
+  status: z.preprocess((val) => (val === null ? undefined : val), z.string().default("all")),
+  jobId: z.preprocess((val) => (val === null ? undefined : val), z.string().default("")),
+  folderId: z.preprocess((val) => (val === null ? undefined : val), z.string().default("")),
+  search: z.preprocess((val) => (val === null ? undefined : val), z.string().default("")),
 });
 
 // GET /api/admin/applications - 获取简历申请列表
