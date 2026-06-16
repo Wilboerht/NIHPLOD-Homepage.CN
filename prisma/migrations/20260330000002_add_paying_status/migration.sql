@@ -1,2 +1,0 @@
--- AlterEnum
-ALTER TYPE "OrderStatus" ADD VALUE 'PAYING' AFTER 'PENDING';
