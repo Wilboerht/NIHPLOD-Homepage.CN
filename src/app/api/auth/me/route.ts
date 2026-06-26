@@ -92,3 +92,84 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * 更新当前用户信息 API
+ * PUT /api/auth/me
+ * 支持更新：nickname, avatar
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    // 验证用户 Token
+    const payload = await verifyUserAuth(request);
+
+    if (!payload) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "请先登录",
+          },
+        },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+
+    // 构建更新数据（只允许更新 nickname 和 avatar）
+    const updateData: Record<string, string> = {};
+    if (body.nickname !== undefined) updateData.nickname = body.nickname;
+    if (body.avatar !== undefined) updateData.avatar = body.avatar;
+    if (body.name !== undefined && body.nickname === undefined) updateData.nickname = body.name;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_PARAMS",
+            message: "没有可更新的字段",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const user = await prisma.user.update({
+      where: { id: payload.id },
+      data: updateData,
+      select: {
+        id: true,
+        phone: true,
+        nickname: true,
+        avatar: true,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          nickname: user.nickname,
+          avatar: user.avatar,
+        },
+      },
+    });
+  } catch (error) {
+    apiConsole.error("[PutMe] 异常:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "更新失败，请稍后重试",
+        },
+      },
+      { status: 500 }
+    );
+  }
+}
+
