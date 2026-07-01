@@ -9,7 +9,7 @@
  * <WechatShareProvider
  *   title="NIHPLOD 旎柏"
  *   desc="源自摩纳哥的高端护肤品牌"
- *   imgUrl="/images/og-image.jpg"
+ *   imgUrl="/images/og-image.png"
  * />
  * ```
  */
@@ -91,7 +91,7 @@ export function generateWechatMetadata(config: WechatShareConfig) {
         {
           url: config.imgUrl?.startsWith("http")
             ? config.imgUrl
-            : `${baseUrl}${config.imgUrl || "/images/og-image.jpg"}`,
+            : `${baseUrl}${config.imgUrl || "/images/og-image.png"}`,
           width: 1200,
           height: 630,
           alt: config.title,
@@ -107,7 +107,7 @@ export function generateWechatMetadata(config: WechatShareConfig) {
       images: [
         config.imgUrl?.startsWith("http")
           ? config.imgUrl
-          : `${baseUrl}${config.imgUrl || "/images/og-image.jpg"}`,
+          : `${baseUrl}${config.imgUrl || "/images/og-image.png"}`,
       ],
     },
   };

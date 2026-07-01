@@ -104,7 +104,7 @@ function loadWechatSDK(): Promise<void> {
  * const { isWechat, isReady, updateShare } = useWechatShare({
  *   title: "NIHPLOD 旎柏",
  *   desc: "源自摩纳哥的高端护肤品牌",
- *   imgUrl: "/images/og-image.jpg",
+ *   imgUrl: "/images/og-image.png",
  * });
  * ```
  */

@@ -229,7 +229,7 @@ export function clearWechatCache(): void {
  */
 export function getDefaultShareImage(): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-  return `${baseUrl}/images/og-image.jpg`;
+  return `${baseUrl}/images/og-image.png`;
 }
 
 /**
