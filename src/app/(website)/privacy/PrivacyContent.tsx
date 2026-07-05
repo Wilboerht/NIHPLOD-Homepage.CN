@@ -163,9 +163,9 @@ function isSectionHeading(text: string): boolean {
   return /^[一二三四五六七八九十0-9]+[、.\s]/.test(text);
 }
 
-/** 判断是否为子标题 ((一) (1) 等) */
+/** 判断是否为子标题 ((一) (二) 等，仅中文数字) */
 function isSubHeading(text: string): boolean {
-  return /^[（(][一二三四五六七八九十0-9]+[）)]/.test(text);
+  return /^[（(][一二三四五六七八九十]+[）)]/.test(text);
 }
 
 // ============================================
