@@ -167,39 +167,32 @@ export interface CareersPageContent {
 // ============================================
 // 隐私政策页面 (privacy)
 // ============================================
+
+// 隐私政策章节 ID
+export type PrivacySectionId =
+  | "summary"
+  | "ch1" | "ch2" | "ch3" | "ch4" | "ch5"
+  | "ch6" | "ch7" | "ch8" | "ch9" | "ch10"
+  | "ch11" | "ch12" | "ch13" | "ch14";
+
+// 隐私政策章节内容
+export interface PrivacySectionContent {
+  title: string;
+  content: string[];
+}
+
 export interface PrivacyPageContent {
   // 页面标题
-  title: {
-    en: string; // 英文标题 (PRIVACY POLICY)
-    zh: string; // 中文标题 (隐私政策)
+  pageTitle: {
+    en: string; // PRIVACY POLICY
+    zh: string; // 隐私政策
   };
   // 页面描述
   description: string;
   // 最后更新日期
   lastUpdated: string;
-  // 四个标签页内容
-  tabs: {
-    // 信息收集
-    collect: {
-      title: string;
-      content: string[]; // 每个元素是一个段落，支持换行符分隔小节
-    };
-    // 信息使用
-    use: {
-      title: string;
-      content: string[];
-    };
-    // 信息保护
-    protect: {
-      title: string;
-      content: string[];
-    };
-    // 您的权利
-    rights: {
-      title: string;
-      content: string[];
-    };
-  };
+  // 章节内容
+  sections: Record<PrivacySectionId, PrivacySectionContent>;
 }
 
 // ============================================
