@@ -1,12 +1,9 @@
-"use client";
+import TableOfContents from "@/components/ui/TableOfContents";
 
-import { useState, useRef } from "react";
-import Image from "next/image";
-import { m } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
-import { Link } from "next-view-transitions";
-
+// ============================================
 // 隐私政策内容数据
+// ============================================
+
 interface SectionContent {
   title: string;
   content: string[];
@@ -150,294 +147,175 @@ const privacyData: Record<string, SectionContent> = {
   },
 };
 
-// 格式化文本：在中英文/数字之间添加空格
-const formatText = (text: string) => {
+// ============================================
+// 工具函数
+// ============================================
+
+/** 在中英文/数字之间添加空格 */
+function formatText(text: string) {
   return text
-    .replace(/([\u4e00-\u9fa5])([A-Za-z0-9])/g, '$1 $2')
-    .replace(/([A-Za-z0-9])([\u4e00-\u9fa5])/g, '$1 $2');
-};
-
-// 表格字段标签
-const tableLabels = ['目的：', '收集的个人信息：', '重要提示：', '数据处理说明：', '法律依据：', '拒绝提供的后果：'];
-
-function isTableParagraph(text: string): boolean {
-  let count = 0;
-  for (const label of tableLabels) {
-    if (text.includes(label)) count++;
-  }
-  return count >= 2;
+    .replace(/([\u4e00-\u9fa5])([A-Za-z0-9])/g, "$1 $2")
+    .replace(/([A-Za-z0-9])([\u4e00-\u9fa5])/g, "$1 $2");
 }
 
-function TableRenderer({ text }: { text: string }) {
+/** 判断是否为主章节标题 (一、二、... 或 1. 2. ...) */
+function isSectionHeading(text: string): boolean {
+  return /^[一二三四五六七八九十0-9]+[、.\s]/.test(text);
+}
+
+/** 判断是否为子标题 ((一) (1) 等) */
+function isSubHeading(text: string): boolean {
+  return /^[（(][一二三四五六七八九十0-9]+[）)]/.test(text);
+}
+
+// ============================================
+// 构建章节列表
+// ============================================
+
+const sectionOrder = [
+  "summary", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
+  "ch7", "ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14",
+];
+
+const sections = sectionOrder.map((id, index) => ({
+  id,
+  title: `${index + 1}. ${privacyData[id].title}`,
+  rawTitle: privacyData[id].title,
+  content: privacyData[id].content,
+}));
+
+// ============================================
+// 内容渲染辅助组件
+// ============================================
+
+function ContentParagraph({ text }: { text: string }) {
   const lines = text.split(/\r?\n/);
-  const rows: { label: string; content: string }[] = [];
-  let title = '';
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // 二级标题
-    if (/^[（(][一二三四五六七八九十0-9]+[）)]/.test(trimmed)) {
-      title = trimmed;
-      continue;
-    }
-
-    // 表格行：标签：内容
-    const match = trimmed.match(/^(.+?)：(.*?)$/);
-    if (match) {
-      rows.push({ label: match[1], content: match[2] });
-    }
-  }
 
   return (
-    <div className="space-y-2">
-      {title && (
-        <h3 className="pt-4 font-serif text-sm font-bold text-gray-900 break-words">
-          {formatText(title)}
-        </h3>
-      )}
-      <div className="overflow-x-auto border border-black rounded-lg">
-        <table className="w-full text-sm border-collapse">
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i} className={i % 2 === 0 ? 'bg-[#F8F7F3]/60' : 'bg-white'}>
-                <td className="w-36 p-3 font-bold text-gray-900 border-b border-r border-gray-200/60 align-top whitespace-nowrap">
-                  {formatText(row.label)}
-                </td>
-                <td className="p-3 text-gray-700 border-b border-gray-200/60 align-top leading-7">
-                  {formatText(row.content)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <>
+      {lines.map((line, lIdx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={lIdx} className="h-3" />;
+
+        // 主章节标题
+        if (isSectionHeading(trimmed)) {
+          return (
+            <h3
+              key={lIdx}
+              className="text-lg font-medium text-zinc-900 mt-6 mb-3"
+            >
+              {formatText(trimmed)}
+            </h3>
+          );
+        }
+
+        // 子标题
+        if (isSubHeading(trimmed)) {
+          return (
+            <h4
+              key={lIdx}
+              className="text-base font-medium text-zinc-800 mt-4 mb-2"
+            >
+              {formatText(trimmed)}
+            </h4>
+          );
+        }
+
+        // 普通段落
+        return (
+          <p
+            key={lIdx}
+            className="text-zinc-600 leading-7"
+          >
+            {formatText(trimmed)}
+          </p>
+        );
+      })}
+    </>
   );
 }
 
+// ============================================
+// 主页面组件 (服务端组件, 无 "use client")
+// ============================================
+
 export function PrivacyContent() {
-  const [activeSection, setActiveSection] = useState<string>("summary");
-  const mainRef = useRef<HTMLElement>(null);
-
-  const pageTitle = { en: "PRIVACY POLICY", zh: "隐私政策" };
-  const description = "我们重视并尊重您的隐私，了解我们如何收集、使用和保护您的个人信息";
-  const _lastUpdated = "2026年5月31日";
-
-  const sectionOrder = ["summary", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7", "ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14"];
-  const sections = sectionOrder.map((id, index) => ({
-    id,
-    title: privacyData[id].title,
-    content: privacyData[id].content,
-    index: index + 1
-  }));
-
-  // 处理滚动高亮
-  const handleScroll = () => {
-    if (!mainRef.current) return;
-
-    const containerRect = mainRef.current.getBoundingClientRect();
-    const triggerPoint = containerRect.top + 120; // 触发线：距离容器顶部 120px
-
-    let currentId = sections[0].id;
-
-    for (const section of sections) {
-      const element = document.getElementById(section.id);
-      if (!element) continue;
-
-      const rect = element.getBoundingClientRect();
-      if (rect.top <= triggerPoint) {
-        currentId = section.id;
-      } else {
-        break;
-      }
-    }
-
-    if (currentId !== activeSection) {
-      setActiveSection(currentId);
-    }
-  };
-
   return (
-    <m.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-      className="safe-area-content !pointer-events-none max-lg:!inset-0 lg:static lg:w-full lg:h-screen lg:overflow-hidden lg:bg-[#F8F7F3]"
-    >
-      <div className="flex h-full flex-col items-center lg:items-stretch pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)] lg:drop-shadow-none">
-        {/* 主内容卡片容器 */}
-        <div className="w-full flex-1 overflow-hidden rounded-none bg-[#F0EDE1] lg:bg-transparent pointer-events-auto relative">
-          {/* 手机端背景水印 */}
-          <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
-            <Image
-              src="/images/watermark-mobile.png"
-              alt=""
-              fill
-              className="object-cover opacity-75 blur-[7.5px]"
-              priority
+    <div className="bg-white min-h-screen pt-24 pb-20">
+      {/* Header Section */}
+      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-16">
+        <div className="max-w-4xl">
+          <h1 className="text-4xl md:text-5xl font-normal text-zinc-900 mb-6">
+            隐私政策
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-500">
+            <p>生效日期：2026年5月31日</p>
+            <span
+              className="hidden sm:block w-1 h-1 rounded-full bg-zinc-300"
+              aria-hidden="true"
             />
+            <p>最后更新：2026年5月31日</p>
+          </div>
+          <p className="mt-6 text-zinc-500 leading-relaxed max-w-2xl">
+            我们重视并尊重您的隐私，了解我们如何收集、使用和保护您的个人信息。
+          </p>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
+        <div className="flex flex-col lg:flex-row gap-12 lg:gap-24">
+          {/* Mobile TOC - Dropdown */}
+          <div className="lg:hidden mb-4">
+            <TableOfContents sections={sections} />
           </div>
 
-          <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
-            {/* 顶栏 / Logo 区 */}
-            <header className="flex-shrink-0 text-center sm:px-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8">
-              {/* 手机端顶部栏 */}
-              <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center pointer-events-auto">
-                <button
-                  onClick={() => typeof window !== "undefined" && window.history.back()}
-                  className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
-                >
-                  <ChevronLeft className="h-6 w-6 text-[#00263E]" />
-                </button>
-                <Link href="/" className="flex items-center justify-center py-[30px]">
-                  <div className="relative h-[28px] w-[100px]">
-                    <Image
-                      src="/images/NIHPLOD-logo.svg"
-                      alt="NIHPLOD Logo"
-                      fill
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                </Link>
-              </div>
-              {/* Logo - 桌面端 */}
-              <m.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="hidden lg:flex items-center justify-center relative"
-              >
-                <button
-                  onClick={() => typeof window !== "undefined" && window.history.back()}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center px-4 py-[10px] text-[#00263E] hover:opacity-70 transition-opacity pointer-events-auto"
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                  <span className="ml-1 text-sm">返回</span>
-                </button>
-                <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
-                  <Image
-                    src="/images/NIHPLOD-logo.svg"
-                    alt="公司标志"
-                    fill
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-              </m.div>
-            </header>
-
-            {/* 分割线 - 仅桌面端 */}
-            <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
-
-            {/* 标题区 - 仅移动端显示 */}
-            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4 lg:hidden">
-              <div>
-                <h1 className="font-serif text-[26px] text-brand-charcoal sm:text-[32px] lg:text-brand-charcoal max-lg:text-[24px] max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E]">
-                  {pageTitle.zh}
-                </h1>
-                {/* 装饰短横线 - 仅移动端 */}
-                <div className="lg:hidden mx-auto w-[70px] h-[1.5px] bg-[#00263E] max-lg:mt-2" />
-                <p className="mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[14px] max-lg:font-light max-lg:leading-[1.8] max-lg:tracking-wide max-lg:text-[#00263E]/90 max-lg:mt-[34px]">
-                  <span className="hidden lg:inline">{description}</span>
-                  <span className="lg:hidden">我们重视并尊重您的隐私，<br />了解我们如何收集、使用和保护您的个人信息</span>
-                </p>
-              </div>
+          {/* Sticky Sidebar Navigation */}
+          <aside className="hidden lg:block w-72 shrink-0">
+            <div className="sticky top-32">
+              <nav className="flex flex-col space-y-1">
+                {sections.map((section) => (
+                  <a
+                    key={section.id}
+                    href={`#${section.id}`}
+                    className="group flex flex-col py-3 px-4 border-l border-zinc-200 hover:border-[#00263E] transition-all duration-200"
+                  >
+                    <span className="text-sm font-medium text-zinc-500 group-hover:text-zinc-900 transition-colors">
+                      {section.title}
+                    </span>
+                  </a>
+                ))}
+              </nav>
             </div>
+          </aside>
 
-            {/* 布局：目录导航 + 条款内容 */}
-            <div className="flex flex-1 overflow-hidden relative mx-auto w-full max-w-7xl">
-
-              {/* 内容区域 */}
-              <main
-                ref={mainRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          {/* Main Content */}
+          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16">
+            {sections.map((section) => (
+              <section
+                key={section.id}
+                id={section.id}
+                className="scroll-mt-32"
               >
-                <div className="max-w-7xl mx-auto px-6 lg:px-10">
-                  <div className="space-y-7">
-                    {sections.map((section) => (
-                      <section
-                        key={section.id}
-                        id={section.id}
-                        className="scroll-mt-24 group relative"
-                      >
-                        {/* 章节内容 */}
-                        <div className="space-y-4 pl-2 lg:pl-6">
-                          {(!section.content || section.content.length === 0) ? (
-                            <p className="text-sm text-gray-500 italic">内容更新中...</p>
-                          ) : (
-                            section.content.map((paragraph, pIdx) => {
-                              // 表格段落用 TableRenderer 渲染
-                              if (isTableParagraph(paragraph)) {
-                                return <TableRenderer key={pIdx} text={paragraph} />;
-                              }
-
-                              const lines = paragraph.split(/\r?\n/);
-                              return (
-                                <div key={pIdx} className="space-y-2">
-                                  {lines.map((line, lIdx) => {
-                                    const trimmed = line.trim();
-                                    if (!trimmed) return <div key={lIdx} className="h-2" />;
-
-                                    // 条款内标题 (一、二、...)
-                                    if (trimmed === '《隐私政策》摘要') {
-                                      return (
-                                        <h3 key={lIdx} className="pt-4 lg:pt-8 font-serif text-xl lg:text-2xl font-bold lg:font-normal text-gray-900 break-words">
-                                          {formatText('中国消费者隐私政策')}
-                                        </h3>
-                                      );
-                                    }
-                                    if (/^[一二三四五六七八九十0-9]+[、.]/.test(trimmed)) {
-                                      return (
-                                        <h3 key={lIdx} className="pt-4 font-serif text-sm font-bold text-gray-900 break-words">
-                                          {formatText(trimmed)}
-                                        </h3>
-                                      );
-                                    }
-
-                                    // 子列表项 ((1) (2) • -) — 渲染为普通段落，不带圆点
-                                    if (/^[（(][0-9]+[）)]/.test(trimmed) || trimmed.startsWith('•') || /^\-[\s]/.test(trimmed)) {
-                                      return (
-                                        <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 lg:text-justify break-words">
-                                          {formatText(trimmed)}
-                                        </p>
-                                      );
-                                    }
-
-                                    // 普通段落
-                                    return (
-                                      <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 lg:text-justify break-words">
-                                        {formatText(trimmed)}
-                                      </p>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-
-
+                <h2 className="text-2xl font-medium text-zinc-900 mb-6">
+                  {section.rawTitle}
+                </h2>
+                <div className="space-y-4">
+                  {section.content.map((paragraph, pIdx) => (
+                    <ContentParagraph key={pIdx} text={paragraph} />
+                  ))}
                 </div>
-              </main>
-            </div>
+              </section>
+            ))}
 
-            {/* 底部版权信息 - 固定在卡片底部 */}
-            <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center mx-6 lg:mx-0 max-lg:pt-4">
-              <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#7B726C]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
+            {/* Footer */}
+            <section className="pb-20 pt-8 border-t border-zinc-100">
+              <p className="text-xs text-zinc-400">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
-            </div>
-          </div>
+            </section>
+          </main>
         </div>
-
-        {/* 返回上页按钮 - 仅桌面端（已移除） */}
       </div>
-    </m.div>
+    </div>
   );
 }

@@ -1,321 +1,250 @@
-"use client";
-
-import { useState, useRef } from "react";
-import Image from "next/image";
-import { m } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
-import { Link } from "next-view-transitions";
-import { cn } from "@/lib/utils";
+import TableOfContents from "@/components/ui/TableOfContents";
+import Link from "next/link";
 import type { TermsPageContent, TermsTabId } from "@/types/page-content";
 
 interface TermsContentProps {
   content: TermsPageContent;
 }
 
-/**
- * 服务条款页面内容组件 - 2024 重构版
- * 改为单页长滚动布局 + 侧边目录导航
- */
-export function TermsContent({ content }: TermsContentProps) {
-  const [activeSection, setActiveSection] = useState<string>("general");
+// ============================================
+// 工具函数
+// ============================================
 
+/** 在中英文/数字之间添加空格 */
+function formatText(text: string) {
+  return text
+    .replace(/([\u4e00-\u9fa5])([A-Za-z0-9])/g, "$1 $2")
+    .replace(/([A-Za-z0-9])([\u4e00-\u9fa5])/g, "$1 $2");
+}
 
-  // 从 content 中获取数据
-  const pageTitle = content.pageTitle || { en: "TERMS OF SERVICE", zh: "服务条款" };
-  const description = content.description || "在使用我们的服务前，请仔细阅读以下条款。";
-  const _lastUpdated = content.lastUpdated || "2026年1月1日";
-  const tabsContent = content.tabs;
+/** 判断是否为章节标题 (1. 2. 一、二、...) */
+function isSectionHeading(text: string): boolean {
+  return /^[一二三四五六七八九十0-9]+[、.\s]/.test(text);
+}
 
-  // 确保章节按逻辑顺序排列
-  const sectionOrder: TermsTabId[] = ["general", "product", "responsibility", "dispute"];
-  const sections = sectionOrder
-    .map(id => ({
-      id,
-      title: tabsContent?.[id]?.title || id,
-      content: tabsContent?.[id]?.content || [],
-      index: sectionOrder.indexOf(id) + 1
-    }))
-    .filter(s => s.content.length > 0);
+/** 判断是否为子标题 ((一) (二) 等，仅中文数字) */
+function isSubHeading(text: string): boolean {
+  return /^[（(][一二三四五六七八九十]+[）)]/.test(text);
+}
 
-  // 是否显示目录导航（多个章节时显示）
-  const showSidebar = sections.length > 1;
+/** 判断是否为重要提示框 */
+function isHighlight(text: string): boolean {
+  return text.startsWith("【重要提示】");
+}
 
-  // 引用滚动容器
-  const mainRef = useRef<HTMLElement>(null);
+// ============================================
+// 内容段落渲染
+// ============================================
 
-  // 处理滚动高亮
-  const handleScroll = () => {
-    if (!mainRef.current) return;
-
-    const containerRect = mainRef.current.getBoundingClientRect();
-    const triggerPoint = containerRect.top + 120; // 触发线：距离容器顶部 120px
-
-    let currentId = sections[0].id;
-
-    for (const section of sections) {
-      const element = document.getElementById(section.id);
-      if (!element) continue;
-
-      const rect = element.getBoundingClientRect();
-      if (rect.top <= triggerPoint) {
-        currentId = section.id;
-      } else {
-        break;
-      }
-    }
-
-    if (currentId !== activeSection) {
-      setActiveSection(currentId);
-    }
-  };
-
-  // 平滑滚动函数
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element && mainRef.current) {
-      // 计算元素相对于容器的位置
-      const top = element.offsetTop;
-      mainRef.current.scrollTo({
-        top: top,
-        behavior: "smooth"
-      });
-    }
-  };
-
-  // 格式化文本：在中英文/数字之间添加空格
-  const formatText = (text: string) => {
-    return text
-      .replace(/([\u4e00-\u9fa5])([A-Za-z0-9])/g, '$1 $2')
-      .replace(/([A-Za-z0-9])([\u4e00-\u9fa5])/g, '$1 $2');
-  };
+function ContentParagraph({ text }: { text: string }) {
+  const lines = text.split(/\r?\n/);
 
   return (
-    <m.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-      className="safe-area-content !pointer-events-none max-lg:!inset-0 lg:static lg:w-full lg:h-screen lg:overflow-hidden lg:bg-[#F8F7F3]"
-    >
-      <div className="flex h-full flex-col items-center lg:items-stretch pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)] lg:drop-shadow-none">
-        {/* 主内容卡片容器 */}
-        <div className="w-full flex-1 overflow-hidden rounded-none bg-[#F0EDE1] lg:bg-transparent pointer-events-auto relative">
-          {/* 手机端背景水印 */}
-          <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
-            <Image
-              src="/images/watermark-mobile.png"
-              alt=""
-              fill
-              className="object-cover opacity-75 blur-[7.5px]"
-              priority
-            />
-          </div>
+    <>
+      {lines.map((line, lIdx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={lIdx} className="h-3" />;
 
-          <div className="flex h-full flex-col p-4 sm:p-6 lg:p-8">
-            {/* 顶栏 / Logo 区 */}
-            <header className="flex-shrink-0 text-center sm:px-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8">
-              {/* 手机端顶部栏 */}
-              <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center pointer-events-auto">
-                <button
-                  onClick={() => typeof window !== "undefined" && window.history.back()}
-                  className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
-                >
-                  <ChevronLeft className="h-6 w-6 text-[#00263E]" />
-                </button>
-                <Link href="/" className="flex items-center justify-center py-[30px]">
-                  <div className="relative h-[28px] w-[100px]">
-                    <Image
-                      src="/images/NIHPLOD-logo.svg"
-                      alt="NIHPLOD Logo"
-                      fill
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                </Link>
-              </div>
-              {/* Logo - 桌面端 */}
-              <m.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="hidden lg:flex items-center justify-center relative"
-              >
-                <button
-                  onClick={() => typeof window !== "undefined" && window.history.back()}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center px-4 py-[10px] text-[#00263E] hover:opacity-70 transition-opacity pointer-events-auto"
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                  <span className="ml-1 text-sm">返回</span>
-                </button>
-                <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
-                  <Image
-                    src="/images/NIHPLOD-logo.svg"
-                    alt="公司标志"
-                    fill
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-              </m.div>
-            </header>
+        // 特殊：大标题转换
+        if (trimmed === "《服务条款》摘要") {
+          return (
+            <h3
+              key={lIdx}
+              className="text-lg font-medium text-zinc-900 mt-6 mb-3"
+            >
+              中国消费者服务条款
+            </h3>
+          );
+        }
 
-            {/* 分割线 - 仅桌面端 */}
-            <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
-
-            {/* 标题区 - 仅移动端显示 */}
-            <div className="flex-shrink-0 px-4 pt-6 pb-4 text-center sm:pt-8 sm:pb-6 max-lg:px-0 max-lg:pt-[6px] max-lg:pb-4 lg:hidden">
-              <div>
-                <h1 className="font-serif text-[26px] text-brand-charcoal sm:text-[32px] lg:text-brand-charcoal max-lg:text-[24px] max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E]">
-                  {pageTitle.zh}
-                </h1>
-                {/* 装饰短横线 - 仅移动端 */}
-                <div className="lg:hidden mx-auto w-[70px] h-[1.5px] bg-[#00263E] max-lg:mt-2" />
-                <p className="mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[14px] max-lg:font-light max-lg:leading-[1.8] max-lg:tracking-wide max-lg:text-[#00263E]/90 max-lg:mt-[34px]">
-                  <span className="hidden lg:inline">{description}</span>
-                  <span className="lg:hidden">在使用我们的服务前，<br />请仔细阅读以下条款。</span>
-                </p>
-              </div>
+        // 重要提示框
+        if (isHighlight(trimmed)) {
+          return (
+            <div
+              key={lIdx}
+              className="text-sm bg-zinc-50 p-4 rounded-lg border border-zinc-100 text-zinc-600"
+            >
+              <strong className="font-bold text-zinc-900">重要提示：</strong>
+              <span>{trimmed.replace("【重要提示】", "")}</span>
             </div>
+          );
+        }
 
-            {/* 布局：目录导航 + 条款内容 */}
-            <div className="flex flex-1 overflow-hidden relative mx-auto w-full max-w-7xl">
+        // 章节标题
+        if (isSectionHeading(trimmed)) {
+          return (
+            <h3
+              key={lIdx}
+              className="text-lg font-medium text-zinc-900 mt-6 mb-3"
+            >
+              {formatText(trimmed)}
+            </h3>
+          );
+        }
 
-              {/* 左侧导航 - 多个章节时显示 */}
-              {showSidebar && (
-                <aside className="hidden w-48 flex-shrink-0 border-r border-brand-charcoal/5 lg:flex flex-col items-center overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <nav className="space-y-6 w-full px-6 pt-4">
-                    <div className="flex items-center gap-3 px-2 opacity-80">
-                      <p className="text-sm font-bold text-brand-charcoal">
-                        目录
-                      </p>
-                    </div>
+        // 子标题
+        if (isSubHeading(trimmed)) {
+          return (
+            <h4
+              key={lIdx}
+              className="text-base font-medium text-zinc-800 mt-4 mb-2"
+            >
+              {formatText(trimmed)}
+            </h4>
+          );
+        }
 
-                    <div className="flex flex-col space-y-1">
-                      {sections.map((section) => (
-                        <button
-                          key={section.id}
-                          onClick={() => scrollToSection(section.id)}
-                          className={cn(
-                            "group relative flex w-full items-center py-3 px-2 text-left transition-all duration-300 rounded-lg hover:bg-brand-charcoal/5",
-                            activeSection === section.id
-                              ? "text-brand-charcoal"
-                              : "text-brand-charcoal/60"
-                          )}
-                        >
-                          <span className={cn(
-                            "text-sm tabular-nums transition-all duration-300 mr-2 font-medium",
-                            activeSection === section.id ? "opacity-100 font-semibold" : "opacity-60 group-hover:opacity-100"
-                          )}>
-                            0{section.index}
-                          </span>
-                          <span className={cn(
-                            "text-sm font-medium transition-all duration-300",
-                            activeSection === section.id ? "font-bold translate-x-1" : "group-hover:translate-x-1"
-                          )}>
-                            {section.title}
-                          </span>
+        // 子列表项 ((1) (2) • -)
+        if (
+          /^[（(][0-9]+[）)]/.test(trimmed) ||
+          trimmed.startsWith("•") ||
+          /^\-[\s]/.test(trimmed)
+        ) {
+          return (
+            <p
+              key={lIdx}
+              className="text-sm leading-7 text-zinc-600"
+            >
+              {formatText(trimmed)}
+            </p>
+          );
+        }
 
-                          {/* 激活状态指示点 */}
-                          {activeSection === section.id && (
-                            <m.div
-                              layoutId="active-dot"
-                              className="absolute right-2 h-1 w-1 rounded-full bg-brand-gold"
-                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </nav>
-                </aside>
-              )}
-
-              {/* 内容区域 */}
-              <main
-                ref={mainRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-              >
-                <div className="max-w-7xl mx-auto px-6 lg:px-10">
-                  <div className="space-y-7">
-                    {sections.map((section) => (
-                      <section
-                        key={section.id}
-                        id={section.id}
-                        className="scroll-mt-24 group relative"
-                      >
-                        {/* 章节内容 */}
-                        <div className="space-y-4 pl-2 lg:pl-6">
-                          {(!section.content || section.content.length === 0) ? (
-                            <p className="text-sm text-gray-500 italic">内容更新中...</p>
-                          ) : (
-                            section.content.map((paragraph, pIdx) => {
-                              const lines = paragraph.split(/\r?\n/);
-                              return (
-                                <div key={pIdx} className="space-y-2">
-                                  {lines.map((line, lIdx) => {
-                                    const trimmed = line.trim();
-                                    if (!trimmed) return <div key={lIdx} className="h-2" />;
-
-                                    // 大标题
-                                    if (trimmed === '《服务条款》摘要') {
-                                      return (
-                                        <h3 key={lIdx} className="pt-4 lg:pt-8 font-serif text-xl lg:text-2xl font-bold lg:font-normal text-gray-900 break-words">
-                                          {formatText('中国消费者服务条款')}
-                                        </h3>
-                                      );
-                                    }
-
-                                    // 子列表项 ((1) (2) • -) — 渲染为普通段落，不带圆点
-                                    if (/^[（(][0-9]+[）)]/.test(trimmed) || trimmed.startsWith('•') || /^\-[\s]/.test(trimmed)) {
-                                      return (
-                                        <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 lg:text-justify break-words">
-                                          {formatText(trimmed)}
-                                        </p>
-                                      );
-                                    }
-
-                                    // 条款标题 (1. 2. 一、二、...)
-                                    if (/^[一二三四五六七八九十0-9]+[、.\s]/.test(trimmed)) {
-                                      return (
-                                        <h3 key={lIdx} className="pt-4 font-serif text-sm font-bold text-gray-900 break-words">
-                                          {formatText(trimmed)}
-                                        </h3>
-                                      );
-                                    }
-
-                                    // 普通段落
-                                    return (
-                                      <p key={lIdx} className="text-sm leading-7 text-gray-700 opacity-90 lg:text-justify break-words">
-                                        {formatText(trimmed)}
-                                      </p>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-
-
-                </div>
-              </main>
-            </div>
-
-            {/* 底部版权信息 - 固定在卡片底部 */}
-            <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center mx-6 lg:mx-0 max-lg:pt-4">
-              <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#7B726C]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
-                &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 返回上页按钮 - 仅桌面端（已移除） */}
-      </div>
-    </m.div>
+        // 普通段落
+        return (
+          <p key={lIdx} className="text-zinc-600 leading-7">
+            {formatText(trimmed)}
+          </p>
+        );
+      })}
+    </>
   );
 }
 
+// ============================================
+// 主页面组件 (服务端组件)
+// ============================================
+
+export function TermsContent({ content }: TermsContentProps) {
+  const pageTitle = content.pageTitle || {
+    en: "TERMS OF SERVICE",
+    zh: "服务条款",
+  };
+  const _lastUpdated = content.lastUpdated || "2022年08月11日";
+  const tabsContent = content.tabs;
+
+  // 确保章节按逻辑顺序排列
+  const sectionOrder: TermsTabId[] = [
+    "general",
+    "product",
+    "responsibility",
+    "dispute",
+  ];
+  const allSections = sectionOrder.map((id, index) => ({
+    id,
+    title: `${index + 1}. ${tabsContent?.[id]?.title || id}`,
+    rawTitle: tabsContent?.[id]?.title || id,
+    content: tabsContent?.[id]?.content || [],
+  }));
+
+  // 只显示有内容的章节
+  const sections = allSections.filter((s) => s.content.length > 0);
+
+  return (
+    <div className="bg-white min-h-screen pt-24 pb-20">
+      {/* Header Section */}
+      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-16">
+        <div className="max-w-4xl">
+          <h1 className="text-4xl md:text-5xl font-normal text-zinc-900 mb-6">
+            {pageTitle.zh}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-500">
+            <p>生效日期：{_lastUpdated}</p>
+            <span
+              className="hidden sm:block w-1 h-1 rounded-full bg-zinc-300"
+              aria-hidden="true"
+            />
+            <p>最后更新：{_lastUpdated}</p>
+          </div>
+          <p className="mt-6 text-zinc-500 leading-relaxed max-w-2xl">
+            {content.description ||
+              "在使用我们的服务前，请仔细阅读以下条款。"}
+          </p>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
+        <div className="flex flex-col lg:flex-row gap-12 lg:gap-24">
+          {/* Mobile TOC - Dropdown */}
+          <div className="lg:hidden mb-4">
+            <TableOfContents sections={sections} />
+          </div>
+
+          {/* Sticky Sidebar Navigation - 多个章节时显示 */}
+          {sections.length > 1 && (
+            <aside className="hidden lg:block w-72 shrink-0">
+              <div className="sticky top-32">
+                <nav className="flex flex-col space-y-1">
+                  {sections.map((section) => (
+                    <a
+                      key={section.id}
+                      href={`#${section.id}`}
+                      className="group flex flex-col py-3 px-4 border-l border-zinc-200 hover:border-[#00263E] transition-all duration-200"
+                    >
+                      <span className="text-sm font-medium text-zinc-500 group-hover:text-zinc-900 transition-colors">
+                        {section.title}
+                      </span>
+                    </a>
+                  ))}
+                </nav>
+              </div>
+            </aside>
+          )}
+
+          {/* Main Content */}
+          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16">
+            {sections.map((section) => (
+              <section
+                key={section.id}
+                id={section.id}
+                className="scroll-mt-32"
+              >
+                <h2 className="text-2xl font-medium text-zinc-900 mb-6">
+                  {section.rawTitle}
+                </h2>
+                <div className="space-y-4">
+                  {section.content.map((paragraph, pIdx) => (
+                    <ContentParagraph key={pIdx} text={paragraph} />
+                  ))}
+                </div>
+
+                {/* 隐私政策引用 - 仅在 general 章节 */}
+                {section.id === "general" && (
+                  <div className="mt-8 p-5 bg-zinc-50 rounded-xl border border-zinc-100">
+                    <p className="text-sm text-zinc-500 leading-relaxed">
+                      有关我们如何收集、使用和保护您的个人信息的详细说明，请参阅我们的{" "}
+                      <Link
+                        href="/privacy"
+                        className="text-[#00263E] underline decoration-zinc-300 underline-offset-4 hover:decoration-[#00263E] transition-all font-medium"
+                      >
+                        隐私政策
+                      </Link>
+                      。
+                    </p>
+                  </div>
+                )}
+              </section>
+            ))}
+
+            {/* Footer */}
+            <section className="pb-20 pt-8 border-t border-zinc-100">
+              <p className="text-xs text-zinc-400">
+                &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+              </p>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
