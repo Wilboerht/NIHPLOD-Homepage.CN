@@ -254,11 +254,11 @@ export function TermsContent({ content }: TermsContentProps) {
             ))}
 
             {/* Footer */}
-            <section className="pb-20 pt-8 border-t border-zinc-100">
+            <footer className="pb-20 pt-8 border-t border-zinc-100">
               <p className="text-xs text-zinc-400">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
-            </section>
+            </footer>
           </main>
         </div>
       </div>
