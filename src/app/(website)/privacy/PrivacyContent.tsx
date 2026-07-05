@@ -158,6 +158,11 @@ function formatText(text: string) {
     .replace(/([A-Za-z0-9])([\u4e00-\u9fa5])/g, "$1 $2");
 }
 
+/** 判断是否为子编号标题 (4.1, 5.2 等) */
+function isSubNumberedHeading(text: string): boolean {
+  return /^\d+\.\d+\s/.test(text);
+}
+
 /** 判断是否为主章节标题 (一、二、... 或 1. 2. ...) */
 function isSectionHeading(text: string): boolean {
   return /^[一二三四五六七八九十0-9]+[、.\s]/.test(text);
@@ -196,6 +201,30 @@ function ContentParagraph({ text }: { text: string }) {
       {lines.map((line, lIdx) => {
         const trimmed = line.trim();
         if (!trimmed) return <div key={lIdx} className="h-3" />;
+
+        // 特殊：大标题转换
+        if (trimmed === "《隐私政策》摘要") {
+          return (
+            <h3
+              key={lIdx}
+              className="text-lg font-medium text-zinc-900 mt-6 mb-3"
+            >
+              中国消费者隐私政策
+            </h3>
+          );
+        }
+
+        // 子编号标题 (4.1, 5.2 等)
+        if (isSubNumberedHeading(trimmed)) {
+          return (
+            <h4
+              key={lIdx}
+              className="text-base font-medium text-zinc-800 mt-4 mb-2"
+            >
+              {formatText(trimmed)}
+            </h4>
+          );
+        }
 
         // 主章节标题
         if (isSectionHeading(trimmed)) {
@@ -272,7 +301,7 @@ export function PrivacyContent() {
           {/* Sticky Sidebar Navigation */}
           <aside className="hidden lg:block w-72 shrink-0">
             <div className="sticky top-32">
-              <nav className="flex flex-col space-y-1">
+              <nav className="flex flex-col space-y-1" aria-label="隐私政策目录导航">
                 {sections.map((section) => (
                   <a
                     key={section.id}

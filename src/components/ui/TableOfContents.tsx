@@ -22,6 +22,7 @@ export default function TableOfContents({
       }}
       className="w-full p-3 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#00263E] appearance-none cursor-pointer"
       defaultValue=""
+      aria-label={label}
     >
       <option value="" disabled>
         {label}

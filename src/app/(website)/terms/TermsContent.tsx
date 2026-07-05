@@ -17,6 +17,11 @@ function formatText(text: string) {
     .replace(/([A-Za-z0-9])([\u4e00-\u9fa5])/g, "$1 $2");
 }
 
+/** 判断是否为子编号标题 (4.1, 5.2 等) */
+function isSubNumberedHeading(text: string): boolean {
+  return /^\d+\.\d+\s/.test(text);
+}
+
 /** 判断是否为章节标题 (1. 2. 一、二、...) */
 function isSectionHeading(text: string): boolean {
   return /^[一二三四五六七八九十0-9]+[、.\s]/.test(text);
@@ -67,6 +72,18 @@ function ContentParagraph({ text }: { text: string }) {
               <strong className="font-bold text-zinc-900">重要提示：</strong>
               <span>{trimmed.replace("【重要提示】", "")}</span>
             </div>
+          );
+        }
+
+        // 子编号标题 (4.1, 5.2 等)
+        if (isSubNumberedHeading(trimmed)) {
+          return (
+            <h4
+              key={lIdx}
+              className="text-base font-medium text-zinc-800 mt-4 mb-2"
+            >
+              {formatText(trimmed)}
+            </h4>
           );
         }
 
@@ -184,7 +201,7 @@ export function TermsContent({ content }: TermsContentProps) {
           {sections.length > 1 && (
             <aside className="hidden lg:block w-72 shrink-0">
               <div className="sticky top-32">
-                <nav className="flex flex-col space-y-1">
+                <nav className="flex flex-col space-y-1" aria-label="服务条款目录导航">
                   {sections.map((section) => (
                     <a
                       key={section.id}
