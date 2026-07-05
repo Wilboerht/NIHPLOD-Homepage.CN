@@ -182,10 +182,9 @@ const sectionOrder = [
   "ch7", "ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14",
 ];
 
-const sections = sectionOrder.map((id, index) => ({
+const sections = sectionOrder.map((id) => ({
   id,
-  title: `${index + 1}. ${privacyData[id].title}`,
-  rawTitle: privacyData[id].title,
+  title: privacyData[id].title,
   content: privacyData[id].content,
 }));
 
@@ -326,7 +325,7 @@ export function PrivacyContent() {
                 className="scroll-mt-32"
               >
                 <h2 className="text-2xl font-medium text-zinc-900 mb-6">
-                  {section.rawTitle}
+                  {section.title}
                 </h2>
                 <div className="space-y-4">
                   {section.content.map((paragraph, pIdx) => (

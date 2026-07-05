@@ -147,7 +147,7 @@ export function TermsContent({ content }: TermsContentProps) {
     en: "TERMS OF SERVICE",
     zh: "服务条款",
   };
-  const _lastUpdated = content.lastUpdated || "2022年08月11日";
+  const lastUpdated = content.lastUpdated || "2022年08月11日";
   const tabsContent = content.tabs;
 
   // 确保章节按逻辑顺序排列
@@ -176,12 +176,12 @@ export function TermsContent({ content }: TermsContentProps) {
             {pageTitle.zh}
           </h1>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-500">
-            <p>生效日期：{_lastUpdated}</p>
+            <p>生效日期：{lastUpdated}</p>
             <span
               className="hidden sm:block w-1 h-1 rounded-full bg-zinc-300"
               aria-hidden="true"
             />
-            <p>最后更新：{_lastUpdated}</p>
+            <p>最后更新：{lastUpdated}</p>
           </div>
           <p className="mt-6 text-zinc-500 leading-relaxed max-w-2xl">
             {content.description ||
