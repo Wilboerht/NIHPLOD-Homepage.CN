@@ -1,4 +1,5 @@
 import TableOfContents from "@/components/ui/TableOfContents";
+import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 import Link from "next/link";
 import type { TermsPageContent, TermsTabId } from "@/types/page-content";
 
@@ -199,23 +200,7 @@ export function TermsContent({ content }: TermsContentProps) {
 
           {/* Sticky Sidebar Navigation - 多个章节时显示 */}
           {sections.length > 1 && (
-            <aside className="hidden lg:block w-72 shrink-0">
-              <div className="sticky top-32">
-                <nav className="flex flex-col space-y-1" aria-label="服务条款目录导航">
-                  {sections.map((section) => (
-                    <a
-                      key={section.id}
-                      href={`#${section.id}`}
-                      className="group flex flex-col py-3 px-4 border-l border-zinc-200 hover:border-[#00263E] transition-all duration-200"
-                    >
-                      <span className="text-sm font-medium text-zinc-500 group-hover:text-zinc-900 transition-colors">
-                        {section.title}
-                      </span>
-                    </a>
-                  ))}
-                </nav>
-              </div>
-            </aside>
+            <ScrollSpySidebar sections={sections} label="服务条款目录导航" />
           )}
 
           {/* Main Content */}

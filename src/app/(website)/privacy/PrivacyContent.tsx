@@ -1,4 +1,5 @@
 import TableOfContents from "@/components/ui/TableOfContents";
+import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 
 // ============================================
 // 隐私政策内容数据
@@ -291,23 +292,7 @@ export function PrivacyContent() {
           </div>
 
           {/* Sticky Sidebar Navigation */}
-          <aside className="hidden lg:block w-72 shrink-0">
-            <div className="sticky top-32">
-              <nav className="flex flex-col space-y-1" aria-label="隐私政策目录导航">
-                {sections.map((section) => (
-                  <a
-                    key={section.id}
-                    href={`#${section.id}`}
-                    className="group flex flex-col py-3 px-4 border-l border-zinc-200 hover:border-[#00263E] transition-all duration-200"
-                  >
-                    <span className="text-sm font-medium text-zinc-500 group-hover:text-zinc-900 transition-colors">
-                      {section.title}
-                    </span>
-                  </a>
-                ))}
-              </nav>
-            </div>
-          </aside>
+          <ScrollSpySidebar sections={sections} label="隐私政策目录导航" />
 
           {/* Main Content */}
           <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16 font-songti">
