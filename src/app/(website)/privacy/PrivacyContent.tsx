@@ -266,7 +266,7 @@ export function PrivacyContent() {
   return (
     <div className="bg-white min-h-screen pt-16 md:pt-24 pb-0">
       {/* Breadcrumb */}
-      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
+      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-2 md:mb-4">
         <Breadcrumb
           items={[
             { label: "首页", href: "/" },
