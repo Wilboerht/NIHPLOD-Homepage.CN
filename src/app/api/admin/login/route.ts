@@ -17,7 +17,7 @@ async function checkAdminLockout(email: string): Promise<{ locked: boolean; rema
   const windowStart = new Date(Date.now() - ADMIN_WINDOW_MS);
   const failedAttempts = await prisma.loginAttempt.count({
     where: {
-      phone: email,
+      identifier: email,
       type: "admin",
       success: false,
       createdAt: { gte: windowStart },
@@ -26,7 +26,7 @@ async function checkAdminLockout(email: string): Promise<{ locked: boolean; rema
 
   if (failedAttempts >= ADMIN_MAX_ATTEMPTS) {
     const lastFailed = await prisma.loginAttempt.findFirst({
-      where: { phone: email, type: "admin", success: false },
+      where: { identifier: email, type: "admin", success: false },
       orderBy: { createdAt: "desc" },
     });
     if (lastFailed) {
@@ -48,7 +48,7 @@ async function recordAdminAttempt(
   try {
     await prisma.loginAttempt.create({
       data: {
-        phone: email,
+        identifier: email,
         type: "admin",
         success,
         ipAddress: getClientIP(request),

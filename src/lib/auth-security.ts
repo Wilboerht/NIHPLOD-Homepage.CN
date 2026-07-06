@@ -47,14 +47,14 @@ export function getUserAgent(request: NextRequest): string | null {
 
 /**
  * 记录登录尝试
- * @param phone 手机号
+ * @param identifier 登录标识（手机号或邮箱）
  * @param success 是否成功
  * @param request 请求对象
  * @param reason 失败原因
  * @param type 认证类型
  */
 export async function recordLoginAttempt(
-  phone: string,
+  identifier: string,
   success: boolean,
   request: NextRequest,
   reason?: string,
@@ -63,7 +63,7 @@ export async function recordLoginAttempt(
   try {
     await prisma.loginAttempt.create({
       data: {
-        phone,
+        identifier,
         type,
         success,
         reason: success ? null : reason,
@@ -74,18 +74,18 @@ export async function recordLoginAttempt(
   } catch (error) {
     // 使用结构化日志记录失败，不阻塞主流程
     const { logError } = await import("./logger");
-    logError("RecordLoginAttempt", error, { phone, success });
+    logError("RecordLoginAttempt", error, { identifier, success });
   }
 }
 
 /**
  * 检查账户是否被锁定（防爆破）
- * @param phone 手机号
+ * @param identifier 登录标识（手机号或邮箱）
  * @param config 防爆破配置
  * @returns { locked: boolean, remainingMinutes: number }
  */
 export async function checkAccountLockout(
-  phone: string,
+  identifier: string,
   config: BruteForceConfig = DEFAULT_BRUTE_FORCE_CONFIG
 ): Promise<{ locked: boolean; remainingMinutes: number }> {
   try {
@@ -96,7 +96,7 @@ export async function checkAccountLockout(
 
     const failedAttempts = await prisma.loginAttempt.count({
       where: {
-        phone,
+        identifier,
         success: false,
         createdAt: { gte: windowStart },
       },
@@ -106,7 +106,7 @@ export async function checkAccountLockout(
       // 账户已锁定，计算剩余锁定时间
       const lastFailedAttempt = await prisma.loginAttempt.findFirst({
         where: {
-          phone,
+          identifier,
           success: false,
         },
         orderBy: { createdAt: "desc" },
@@ -139,7 +139,7 @@ export async function checkAccountLockout(
  * 获取最近的登录尝试统计
  */
 export async function getLoginAttemptStats(
-  phone: string,
+  identifier: string,
   windowMinutes: number = 15
 ): Promise<{
   totalAttempts: number;
@@ -152,7 +152,7 @@ export async function getLoginAttemptStats(
 
     const attempts = await prisma.loginAttempt.findMany({
       where: {
-        phone,
+        identifier,
         createdAt: { gte: windowStart },
       },
       orderBy: { createdAt: "desc" },
@@ -181,10 +181,10 @@ export async function getLoginAttemptStats(
 /**
  * 清除特定用户的登录尝试记录（成功登录后清除）
  */
-export async function clearLoginAttempts(phone: string): Promise<void> {
+export async function clearLoginAttempts(identifier: string): Promise<void> {
   try {
     await prisma.loginAttempt.deleteMany({
-      where: { phone },
+      where: { identifier },
     });
   } catch (error) {
     apiConsole.error("[ClearLoginAttempts] 清除失败:", error);
