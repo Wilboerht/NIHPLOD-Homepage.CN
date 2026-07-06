@@ -264,7 +264,7 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
 
 export function PrivacyContent() {
   return (
-    <div className="bg-white min-h-screen pt-24 pb-0">
+    <div className="bg-white min-h-screen pt-16 md:pt-24 pb-0">
       {/* Breadcrumb */}
       <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
         <Breadcrumb
@@ -276,7 +276,7 @@ export function PrivacyContent() {
       </div>
 
       {/* Header Section */}
-      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-16">
+      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-8 md:mb-16">
         <div className="max-w-4xl">
           <h1 className="text-4xl md:text-5xl font-normal text-zinc-900 mb-6">
             隐私政策
@@ -328,7 +328,7 @@ export function PrivacyContent() {
       </div>
 
       {/* Page Footer */}
-      <footer className="mt-24 border-t border-zinc-100">
+      <footer className="mt-16 md:mt-24 border-t border-zinc-100">
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-8">
           <p className="text-xs text-zinc-400">
             &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司版权所有。

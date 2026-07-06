@@ -21,7 +21,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
   return (
     <nav
       aria-label="面包屑导航"
-      className={cn("py-4", className)}
+      className={cn("py-3 md:py-4", className)}
     >
       <ol className="flex items-center gap-1 overflow-x-auto whitespace-nowrap text-sm scrollbar-hide">
         {items.map((item, index) => {
