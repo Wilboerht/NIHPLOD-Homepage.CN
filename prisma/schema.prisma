@@ -230,11 +230,12 @@ model RefreshToken {
 /**
  * 登录尝试记录
  * 用于防止账户爆破和跟踪异常登录
+ * 覆盖 C端用户（password/sms）和管理员（admin）登录
  */
 model LoginAttempt {
   id        String   @id @default(cuid())
-  phone     String                             // 手机号
-  type      String   @default("password")      // password | sms
+  phone     String                             // 手机号或邮箱（管理员登录时存邮箱）
+  type      String   @default("password")      // password | sms | admin
   success   Boolean                            // 是否成功
   reason    String?                            // 失败原因（如：code_invalid、user_not_found 等）
   ipAddress String?                            // IP 地址

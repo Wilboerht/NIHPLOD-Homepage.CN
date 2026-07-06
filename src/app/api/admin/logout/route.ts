@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
 import { AUTH_COOKIE_NAME } from "@/types/auth";
 import { createAuditLog } from "@/lib/audit";
 
@@ -7,16 +7,7 @@ import { createAuditLog } from "@/lib/audit";
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
-  // 二次验证：确保调用者已登录（中间件已做一层拦截，路由层再确认）
-  const admin = await verifyAuth(request);
-  if (!admin) {
-    return NextResponse.json(
-      { success: false, error: { code: "UNAUTHORIZED", message: "未登录" } },
-      { status: 401 }
-    );
-  }
-
+export const POST = withAuth(async (request: NextRequest, admin) => {
   // 记录登出审计日志
   await createAuditLog({
     action: "logout",
@@ -42,4 +33,4 @@ export async function POST(request: NextRequest) {
   });
 
   return response;
-}
+});

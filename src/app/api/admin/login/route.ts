@@ -139,8 +139,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 登录成功，清除失败记录（可选：保留成功记录用于审计）
-    // 这里不复用 recordAdminAttempt 记录成功，因为 C 端登录审计需要单独处理
+    // 登录成功
+    // 记录成功登录尝试（用于审计和安全监控）
+    await recordAdminAttempt(email, true, request);
 
     // 生成 JWT token
     const token = await signToken({

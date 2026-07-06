@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyUserAuth } from "@/lib/auth";
+import { verifyUserAuth, withUserAuth } from "@/lib/auth";
 import { z } from "zod";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
@@ -16,29 +16,11 @@ const updateSchema = z.object({
   avatar: z.string().optional().or(z.literal("")), // 允许 URL、相对路径或 Base64
 });
 
-// GET - 获取用户资料
-// 强制动态渲染，禁止静态预渲染
+// GET - 获取用户资料（含统计）
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withUserAuth(async (request: NextRequest, payload) => {
   try {
-    // 验证用户身份
-    const payload = await verifyUserAuth(request);
-
-    if (!payload) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "UNAUTHORIZED",
-            message: "请先登录",
-          },
-        },
-        { status: 401 }
-      );
-    }
-
-    // 获取用户资料
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
       select: {
@@ -47,112 +29,73 @@ export async function GET(request: NextRequest) {
         nickname: true,
         avatar: true,
         createdAt: true,
+        _count: { select: { orders: true, addresses: true } },
       },
     });
 
     if (!user) {
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "USER_NOT_FOUND",
-            message: "用户不存在",
-          },
-        },
+        { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: { user },
+      data: {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          nickname: user.nickname,
+          avatar: user.avatar,
+          createdAt: user.createdAt,
+          stats: {
+            orderCount: user._count.orders,
+            addressCount: user._count.addresses,
+          },
+        },
+      },
     });
   } catch (error) {
     apiConsole.error("[GetProfile] 异常:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "服务器错误",
-        },
-      },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
     );
   }
-}
+});
 
 // PUT - 更新用户资料
-export async function PUT(request: NextRequest) {
+export const PUT = withUserAuth(async (request: NextRequest, payload) => {
   try {
-    // 验证用户身份
-    const payload = await verifyUserAuth(request);
-
-    if (!payload) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "UNAUTHORIZED",
-            message: "请先登录",
-          },
-        },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
-
-    // 参数验证
     const result = updateSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "INVALID_PARAMS",
-            message: result.error.issues[0]?.message || "参数错误",
-          },
-        },
+        { success: false, error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" } },
         { status: 400 }
       );
     }
 
     const { nickname, avatar } = result.data;
-
-    // 更新用户资料
     const user = await prisma.user.update({
       where: { id: payload.id },
       data: {
         ...(nickname !== undefined && { nickname: nickname || null }),
         ...(avatar !== undefined && { avatar: avatar || null }),
       },
-      select: {
-        id: true,
-        phone: true,
-        nickname: true,
-        avatar: true,
-      },
+      select: { id: true, phone: true, nickname: true, avatar: true },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { user },
-    });
+    return NextResponse.json({ success: true, data: { user } });
   } catch (error) {
     apiConsole.error("[UpdateProfile] 异常:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "服务器错误",
-        },
-      },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
     );
   }
-}
+});
 
 // POST - 上传头像 (直接存为本地文件或 OSS)
 export async function POST(request: NextRequest) {

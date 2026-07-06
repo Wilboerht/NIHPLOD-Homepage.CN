@@ -1,28 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 
 // GET /api/admin/me - 获取当前登录的管理员信息
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, admin) => {
   try {
-    const admin = await verifyAuth(request);
-
-    if (!admin) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "UNAUTHORIZED",
-            message: "未登录或登录已过期",
-          },
-        },
-        { status: 401 }
-      );
-    }
-
     return NextResponse.json({
       success: true,
       data: {
@@ -47,5 +32,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
