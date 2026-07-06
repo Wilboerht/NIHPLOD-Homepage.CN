@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const redirect = searchParams.get("redirect") || "/";
 
-    // 构建回调 URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    // 构建回调 URL（仅使用配置的 APP_URL，防止 Host 头注入）
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
     const callbackUrl = `${baseUrl}/api/auth/wechat/callback`;
 
     // 检测用户代理判断是否在微信内

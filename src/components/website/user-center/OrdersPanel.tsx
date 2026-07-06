@@ -35,10 +35,15 @@ interface Order {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   PENDING: { label: "待付款", color: "text-amber-800 bg-transparent border-amber-800/20" },
+  PAYING: { label: "支付中", color: "text-blue-800 bg-transparent border-blue-800/20" },
   PAID: { label: "已付款", color: "text-stone-800 bg-transparent border-stone-800/20" },
+  PROCESSING: { label: "处理中", color: "text-indigo-800 bg-transparent border-indigo-800/20" },
   SHIPPED: { label: "已发货", color: "text-emerald-800 bg-transparent border-emerald-800/20" },
+  DELIVERED: { label: "已签收", color: "text-teal-800 bg-transparent border-teal-800/20" },
   COMPLETED: { label: "已完成", color: "text-stone-800 bg-transparent border-stone-200/60" },
   CANCELLED: { label: "已取消", color: "text-stone-400 bg-transparent border-stone-200/60" },
+  REFUNDING: { label: "退款中", color: "text-orange-800 bg-transparent border-orange-800/20" },
+  REFUNDED: { label: "已退款", color: "text-rose-800 bg-transparent border-rose-800/20" },
 };
 
 const TABS = [

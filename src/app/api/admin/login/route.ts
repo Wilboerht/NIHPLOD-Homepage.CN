@@ -67,6 +67,19 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // 0. CSRF 保护：校验 Origin / Referer 头
+    const origin = request.headers.get("origin");
+    const referer = request.headers.get("referer");
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+    const isValidOrigin = origin && (origin === appUrl || origin.endsWith(".nihplod.cn"));
+    const isValidReferer = referer && referer.startsWith(appUrl);
+    if (!isValidOrigin && !isValidReferer) {
+      return NextResponse.json(
+        { success: false, error: { code: "CSRF_DETECTED", message: "请求来源不合法" } },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // 1. 先验证请求数据格式

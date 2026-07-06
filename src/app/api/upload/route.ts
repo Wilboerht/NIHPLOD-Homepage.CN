@@ -55,8 +55,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 安全清理文件名：移除路径遍历字符，仅保留安全字符
+    const safeName = file.name
+      .replace(/\\/g, "/")               // 统一分隔符
+      .replace(/^.*[\\/]/, "")           // 移除目录路径
+      .replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, "_") // 仅保留安全字符
+      .replace(/_{2,}/g, "_")            // 压缩连续下划线
+      .substring(0, 200);                 // 限制长度
+
     // 处理并保存图片
-    const result = await processAndSaveImage(buffer, file.name, folder);
+    const result = await processAndSaveImage(buffer, safeName || "upload", folder);
 
     return NextResponse.json({
       success: true,
