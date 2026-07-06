@@ -42,7 +42,7 @@ function isHighlight(text: string): boolean {
 // 内容段落渲染
 // ============================================
 
-function ContentParagraph({ text }: { text: string }) {
+function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: boolean }) {
   const lines = text.split(/\r?\n/);
 
   return (
@@ -51,16 +51,9 @@ function ContentParagraph({ text }: { text: string }) {
         const trimmed = line.trim();
         if (!trimmed) return null;
 
-        // 特殊：大标题转换
-        if (trimmed === "《服务条款》摘要") {
-          return (
-            <h3
-              key={lIdx}
-              className="text-xl font-medium text-zinc-900 mt-10 mb-2 font-sans tracking-wide"
-            >
-              中国消费者服务条款
-            </h3>
-          );
+        // 跳过首个段落中的重复章节标题（已由外层 h2 渲染）
+        if (isFirst && lIdx === 0 && isSectionHeading(trimmed)) {
+          return null;
         }
 
         // 重要提示框
@@ -149,24 +142,16 @@ export function TermsContent({ content }: TermsContentProps) {
     zh: "服务条款",
   };
   const lastUpdated = content.lastUpdated || "2022年08月11日";
-  const tabsContent = content.tabs;
+  const flatContent = content.tabs?.general?.content || [];
 
-  // 确保章节按逻辑顺序排列
-  const sectionOrder: TermsTabId[] = [
-    "general",
-    "product",
-    "responsibility",
-    "dispute",
-  ];
-  const allSections = sectionOrder.map((id, index) => ({
-    id,
-    title: `${index + 1}. ${tabsContent?.[id]?.title || id}`,
-    rawTitle: tabsContent?.[id]?.title || id,
-    content: tabsContent?.[id]?.content || [],
-  }));
-
-  // 只显示有内容的章节
-  const sections = allSections.filter((s) => s.content.length > 0);
+  // 将平铺内容拆分为独立章节（每条内容的第一行为标题）
+  const sections = flatContent.map((text, index) => {
+    const firstLine = text.split(/\r?\n/)[0].trim();
+    // 提取编号作为 ID：1. 隐私权 → terms-1，24. AI 测肤顾问 → terms-24
+    const numMatch = firstLine.match(/^(\d+)\./);
+    const id = numMatch ? `terms-${numMatch[1]}` : `terms-intro`;
+    return { id, title: firstLine, content: text };
+  });
 
   return (
     <div className="bg-white min-h-screen pt-24 pb-0">
@@ -203,23 +188,21 @@ export function TermsContent({ content }: TermsContentProps) {
 
           {/* Main Content */}
           <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16 font-songti">
-            {sections.map((section) => (
+            {sections.map((section, sIdx) => (
               <section
                 key={section.id}
                 id={section.id}
                 className="scroll-mt-32"
               >
                 <h2 className="text-2xl font-medium text-zinc-900 mb-8 font-sans tracking-wide">
-                  {section.rawTitle}
+                  {section.title}
                 </h2>
                 <div className="space-y-6">
-                  {section.content.map((paragraph, pIdx) => (
-                    <ContentParagraph key={pIdx} text={paragraph} />
-                  ))}
+                  <ContentParagraph text={section.content} isFirst />
                 </div>
 
-                {/* 隐私政策引用 - 仅在 general 章节 */}
-                {section.id === "general" && (
+                {/* 隐私政策引用 - 仅在第一个章节 */}
+                {sIdx === 1 && (
                   <div className="mt-8 p-5 bg-zinc-50 rounded-xl border border-zinc-100">
                     <p className="text-sm text-zinc-500 leading-relaxed">
                       有关我们如何收集、使用和保护您的个人信息的详细说明，请参阅我们的{" "}
