@@ -8,9 +8,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { signUserToken, signRefreshToken, getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
+import { signUserToken, signRefreshToken } from "@/lib/jwt";
 import {
-  USER_COOKIE_OPTIONS,
+  USER_ACCESS_COOKIE_OPTIONS,
+  USER_REFRESH_COOKIE_OPTIONS,
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
@@ -183,17 +184,12 @@ export async function POST(request: NextRequest) {
           avatar: user.avatar,
         },
         isNewUser: true,
-        accessTokenExpiresAt: getTokenExpiresAt(15), // 15分钟
-        refreshTokenExpiresAt: getRefreshTokenExpiresAt(), // 30天
       },
     });
 
     // 7. 设置 Cookies
-    response.cookies.set(USER_COOKIE_NAME, accessToken, USER_COOKIE_OPTIONS);
-    response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, {
-      ...USER_COOKIE_OPTIONS,
-      maxAge: 30 * 24 * 60 * 60, // 30天
-    });
+    response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
+    response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);
 
     return response;
   } catch (error) {

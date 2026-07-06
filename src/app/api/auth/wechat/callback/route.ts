@@ -13,6 +13,7 @@ import { signUserToken, signRefreshToken } from "@/lib/jwt";
 import { getWechatOAuthToken, getWechatUserInfo } from "@/lib/wechat";
 import {
   USER_ACCESS_COOKIE_OPTIONS,
+  USER_REFRESH_COOKIE_OPTIONS,
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
@@ -191,8 +192,6 @@ export async function GET(request: NextRequest) {
             nickname: user.nickname,
             avatar: user.avatar,
           },
-          accessToken,
-          accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).getTime() / 1000,
           isNewUser: false,
           bindingRequired: false,
         },
@@ -200,14 +199,8 @@ export async function GET(request: NextRequest) {
 
       // 设置 Access Token Cookie（15 分钟）
       response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
-      // 设置 Refresh Token Cookie（30 天）
-      response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" as const,
-        path: "/",
-        maxAge: 30 * 24 * 60 * 60,
-      });
+      // 设置 Refresh Token Cookie（30 天，使用统一配置 USER_REFRESH_COOKIE_OPTIONS）
+      response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);
       // 清除 CSRF nonce Cookie
       response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
 

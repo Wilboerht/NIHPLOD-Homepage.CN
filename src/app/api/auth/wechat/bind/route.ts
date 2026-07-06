@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { signUserToken, signRefreshToken } from "@/lib/jwt";
 import {
   USER_ACCESS_COOKIE_OPTIONS,
+  USER_REFRESH_COOKIE_OPTIONS,
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
@@ -127,8 +128,10 @@ export async function POST(request: NextRequest) {
         });
 
         // 如果未提供密码，自动生成强密码
+        let passwordGenerated = false;
         if (!password && allowAutoPassword) {
             password = generateSecurePassword(24);
+            passwordGenerated = true;
         } else if (!password) {
             return NextResponse.json(
                 { 
@@ -249,22 +252,17 @@ export async function POST(request: NextRequest) {
                     nickname: user.nickname, 
                     avatar: user.avatar,
                 },
-                accessToken,
-                accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).getTime() / 1000,
-                message: "绑定成功，已自动登录"
+                message: passwordGenerated
+                    ? "绑定成功，已自动登录。系统已为您生成安全密码，可在个人信息中修改"
+                    : "绑定成功，已自动登录",
+                passwordGenerated,
             }
         });
 
         // 设置 Access Token Cookie（15 分钟）
         response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
-        // 设置 Refresh Token Cookie（30 天）
-        response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax" as const,
-            path: "/",
-            maxAge: 30 * 24 * 60 * 60,
-        });
+        // 设置 Refresh Token Cookie（30 天，使用统一配置 USER_REFRESH_COOKIE_OPTIONS）
+        response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);
         // 清除临时绑定 token
         response.cookies.set("wechat_bind_token", "", { ...USER_ACCESS_COOKIE_OPTIONS, maxAge: 0 });
 
