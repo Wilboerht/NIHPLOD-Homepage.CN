@@ -71,23 +71,18 @@ export default function ScrollSpySidebar({
           aria-label={label}
         >
           {sections.map((section) => (
-            <a
+            <button
               key={section.id}
-              href={`#${section.id}`}
-              className={`group flex flex-col py-3 px-4 border-l transition-all duration-200 ${
+              type="button"
+              onClick={() => {
+                const el = document.getElementById(section.id);
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }}
+              className={`group flex flex-col py-3 px-4 border-l transition-all duration-200 text-left ${
                 activeId === section.id
                   ? "border-[#00263E]"
                   : "border-zinc-200 hover:border-[#00263E]"
               }`}
-              onClick={(e) => {
-                e.preventDefault();
-                const el = document.getElementById(section.id);
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth" });
-                  // 手动更新 URL hash 但不触发跳转
-                  history.replaceState(null, "", `#${section.id}`);
-                }
-              }}
             >
               <span
                 className={`text-sm font-medium transition-colors ${
@@ -98,7 +93,7 @@ export default function ScrollSpySidebar({
               >
                 {section.title}
               </span>
-            </a>
+            </button>
           ))}
         </nav>
       </div>

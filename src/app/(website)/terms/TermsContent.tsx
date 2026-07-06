@@ -198,10 +198,8 @@ export function TermsContent({ content }: TermsContentProps) {
             <TableOfContents sections={sections} />
           </div>
 
-          {/* Sticky Sidebar Navigation - 多个章节时显示 */}
-          {sections.length > 1 && (
-            <ScrollSpySidebar sections={sections} label="服务条款目录导航" />
-          )}
+          {/* Sticky Sidebar Navigation */}
+          <ScrollSpySidebar sections={sections} label="服务条款目录导航" />
 
           {/* Main Content */}
           <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16 font-songti">
