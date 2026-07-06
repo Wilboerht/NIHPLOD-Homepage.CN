@@ -169,7 +169,7 @@ export function TermsContent({ content }: TermsContentProps) {
   const sections = allSections.filter((s) => s.content.length > 0);
 
   return (
-    <div className="bg-white min-h-screen pt-24 pb-20">
+    <div className="bg-white min-h-screen pt-24 pb-0">
       {/* Header Section */}
       <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-16">
         <div className="max-w-4xl">
@@ -242,7 +242,7 @@ export function TermsContent({ content }: TermsContentProps) {
       </div>
 
       {/* Page Footer */}
-      <footer className="border-t border-zinc-100">
+      <footer className="mt-16 border-t border-zinc-100">
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-8">
           <p className="text-xs text-zinc-400">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
