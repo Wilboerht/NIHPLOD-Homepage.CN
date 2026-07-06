@@ -153,8 +153,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 安全清理文件名
+    const safeName = file.name
+      .replace(/\\/g, "/")
+      .replace(/^.*[\\/]/, "")
+      .replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, "_")
+      .replace(/_{2,}/g, "_")
+      .substring(0, 200);
+
     // 使用统一上传逻辑 (自动根据策略选择 OSS 或本地)
-    const result = await processAndSaveImage(buffer, file.name, "avatars");
+    const result = await processAndSaveImage(buffer, safeName || "avatar", "avatars");
 
     // 5. 更新数据库中的头像链接
     await prisma.user.update({

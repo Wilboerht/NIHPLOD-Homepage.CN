@@ -285,13 +285,15 @@ export async function cancelOrder(
         throw new Error("订单不存在");
       }
 
-      if (order.status !== OrderStatus.PENDING) {
+      // PAYING 订单也可以取消（用户发起支付后改变主意）
+      const cancellableStatuses: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.PAYING];
+      if (!cancellableStatuses.includes(order.status)) {
         throw new Error("该订单状态不可取消");
       }
 
-      // CAS 乐观锁：只有 PENDING 状态的订单才能被取消
+      // CAS 乐观锁：只有 PENDING 或 PAYING 状态的订单才能被取消
       const canceled = await tx.order.updateMany({
-        where: { id: orderId, status: OrderStatus.PENDING },
+        where: { id: orderId, status: { in: cancellableStatuses } },
         data: { status: OrderStatus.CANCELLED },
       });
       if (canceled.count === 0) {
