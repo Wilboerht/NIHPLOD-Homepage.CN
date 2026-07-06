@@ -6,7 +6,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendLoginCode, generateVerifyCode } from "@/lib/sms";
 import { z } from "zod";
-import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { rateLimit, getClientIP as getClientIPFromRateLimit } from "@/lib/ratelimit";
+import { getClientIP } from "@/lib/client-ip";
+import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
 
 // 请求参数验证
@@ -28,7 +30,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     // 1. 全局 IP 频率限制 (防止大规模短信轰炸)
-    const ip = getClientIP(request);
+    const ip = getClientIPFromRateLimit(request);
     const ipLimit = await rateLimit(ip, "form"); // 使用 form 级别的限制 (1分钟10次)
     if (!ipLimit.success) {
       return NextResponse.json(
@@ -141,7 +143,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (process.env.NODE_ENV === "development") console.log(`[SendCode] 验证码已发送: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    logAuthEvent("send_sms_code", {
+      identifier: phone,
+      success: true,
+      type,
+      ip: getClientIP(request),
+    });
 
     return NextResponse.json({
       success: true,

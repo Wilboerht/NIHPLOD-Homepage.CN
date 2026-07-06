@@ -48,8 +48,9 @@ const PUBLIC_API_PREFIXES = [
   "/api/coupons",
   "/api/coupons/public",
   "/api/revalidate",
-  // 子站内部 API（由路由层 INTERNAL_API_SECRET 鉴权，不走 admin_token）
+  // 子站内部 API（由路由层 INTERNAL_API_SECRET / 签名鉴权，不走 admin_token）
   "/api/internal/",
+  "/api/v1/internal/",
 ];
 
 /**

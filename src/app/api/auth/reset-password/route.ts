@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { logAuthEvent } from "@/lib/auth-logger";
+import { getClientIP } from "@/lib/client-ip";
 
 // 请求参数验证
 const resetPasswordSchema = z.object({
@@ -115,7 +117,12 @@ export async function POST(request: NextRequest) {
     // 密码重置后撤销该用户所有 Refresh Token，强制所有设备重新登录
     await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
 
-    if (process.env.NODE_ENV === "development") console.log(`[ResetPassword] 用户重置密码: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    logAuthEvent("user_reset_password", {
+      userId: user.id,
+      identifier: user.phone,
+      success: true,
+      ip: getClientIP(request),
+    });
 
     return NextResponse.json({
       success: true,

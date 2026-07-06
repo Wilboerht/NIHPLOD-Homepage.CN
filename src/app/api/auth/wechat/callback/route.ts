@@ -19,6 +19,8 @@ import {
 import { saveRefreshToken } from "@/lib/auth-security";
 import { SignJWT } from "jose";
 import { apiConsole } from "@/lib/logger";
+import { logAuthEvent } from "@/lib/auth-logger";
+import { getClientIP } from "@/lib/client-ip";
 
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret) {
@@ -87,7 +89,12 @@ export async function GET(request: NextRequest) {
 
     // 用户拒绝授权
     if (error) {
-      if (process.env.NODE_ENV === "development") console.log("[WechatCallback] 用户拒绝授权:", error);
+      logAuthEvent("user_login", {
+        success: false,
+        method: "wechat",
+        reason: "wechat_denied",
+        ip: getClientIP(request),
+      });
       const response = NextResponse.json(
         {
           success: false,
@@ -124,14 +131,14 @@ export async function GET(request: NextRequest) {
     // 获取用户信息
     const wechatUser = await getWechatUserInfo(tokenData.accessToken, tokenData.openid);
 
-    if (process.env.NODE_ENV === "development") {
-      const mask = (s?: string | null) => (s ? `${s.slice(0, 4)}****${s.slice(-4)}` : null);
-      console.log("[WechatCallback] 微信用户:", {
-        openid: mask(wechatUser.openid),
-        nickname: wechatUser.nickname,
-        unionid: mask(wechatUser.unionid),
-      });
-    }
+    logAuthEvent("wechat_bind", {
+      success: true,
+      step: "oauth_callback",
+      openid: wechatUser.openid ? `${wechatUser.openid.slice(0, 4)}****${wechatUser.openid.slice(-4)}` : undefined,
+      unionid: wechatUser.unionid ? `${wechatUser.unionid.slice(0, 4)}****${wechatUser.unionid.slice(-4)}` : undefined,
+      nickname: wechatUser.nickname,
+      ip: getClientIP(request),
+    });
 
     // 查找现有用户（优先通过 unionid，其次通过 openid）
     const user = await prisma.user.findFirst({
@@ -163,7 +170,13 @@ export async function GET(request: NextRequest) {
         phone: user.phone,
       });
 
-      if (process.env.NODE_ENV === "development") console.log(`[WechatCallback] 用户登录: ${user.nickname || wechatUser.nickname}`);
+      logAuthEvent("user_login", {
+        userId: user.id,
+        identifier: user.phone,
+        success: true,
+        method: "wechat",
+        ip: getClientIP(request),
+      });
 
       // 保存 Refresh Token 到数据库（统一使用 saveRefreshToken，自动清理旧 Token）
       const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -214,7 +227,11 @@ export async function GET(request: NextRequest) {
       .setExpirationTime("1h")
       .sign(secret);
 
-    if (process.env.NODE_ENV === "development") console.log("[WechatCallback] 新用户，需要绑定手机号");
+    logAuthEvent("wechat_bind", {
+      success: false,
+      reason: "binding_required",
+      ip: getClientIP(request),
+    });
 
     const response = NextResponse.json({
       success: true,

@@ -15,6 +15,8 @@ import {
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
 import { apiConsole } from "@/lib/logger";
+import { logAuthEvent } from "@/lib/auth-logger";
+import { getClientIP } from "@/lib/client-ip";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -27,7 +29,12 @@ export async function POST(request: NextRequest) {
     if (user) {
       // 撤销所有 Refresh Token（使用户的所有 token 失效）
       await revokeRefreshToken(user.id);
-      if (process.env.NODE_ENV === "development") console.log(`[Logout] 用户已登出: ${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`);
+      logAuthEvent("user_logout", {
+        userId: user.id,
+        identifier: user.phone,
+        success: true,
+        ip: getClientIP(request),
+      });
     }
 
     const response = NextResponse.json({

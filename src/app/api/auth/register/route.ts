@@ -16,6 +16,8 @@ import {
 } from "@/types/auth";
 import { saveRefreshToken } from "@/lib/auth-security";
 import { rateLimit } from "@/lib/ratelimit";
+import { getClientIP } from "@/lib/client-ip";
+import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { apiConsole } from "@/lib/logger";
@@ -145,7 +147,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (process.env.NODE_ENV === "development") console.log(`[Register] 新用户注册: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    logAuthEvent("user_register", {
+      userId: user.id,
+      identifier: user.phone,
+      success: true,
+      ip: getClientIP(request),
+    });
 
     // 3. 签发 Access Token（短期，15分钟）
     const accessToken = await signUserToken({

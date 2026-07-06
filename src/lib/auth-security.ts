@@ -7,6 +7,7 @@ import { NextRequest } from "next/server";
 import { createHash } from "crypto";
 import { apiConsole } from "@/lib/logger";
 import { getClientIP } from "./client-ip";
+import { logAuthEvent } from "./auth-logger";
 
 // ============================================
 // 防爆破配置
@@ -60,6 +61,9 @@ export async function recordLoginAttempt(
   reason?: string,
   type: "password" | "sms" = "password"
 ): Promise<void> {
+  const ip = getClientIP(request);
+  const ua = getUserAgent(request);
+
   try {
     await prisma.loginAttempt.create({
       data: {
@@ -67,9 +71,18 @@ export async function recordLoginAttempt(
         type,
         success,
         reason: success ? null : reason,
-        ipAddress: getClientIP(request),
-        userAgent: getUserAgent(request),
+        ipAddress: ip,
+        userAgent: ua,
       },
+    });
+
+    logAuthEvent("user_login", {
+      identifier,
+      success,
+      reason,
+      type,
+      ip,
+      ua,
     });
   } catch (error) {
     // 使用结构化日志记录失败，不阻塞主流程

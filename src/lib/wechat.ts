@@ -55,7 +55,7 @@ let jsApiTicketPromise: Promise<string> | null = null;
  * 有效期 7200 秒，需要缓存
  * 使用 Promise 锁防止并发刷新导致频率超限
  */
-async function getAccessToken(): Promise<string> {
+export async function getWechatAccessToken(): Promise<string> {
   const appId = process.env.WECHAT_APP_ID;
   const appSecret = process.env.WECHAT_APP_SECRET;
 
@@ -121,7 +121,7 @@ async function getJsApiTicket(): Promise<string> {
   jsApiTicketPromise = (async () => {
     try {
       // 先获取 Access Token
-      const accessToken = await getAccessToken();
+      const accessToken = await getWechatAccessToken();
 
       // 请求 JSApi Ticket
       const url = `https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=${accessToken}&type=jsapi`;

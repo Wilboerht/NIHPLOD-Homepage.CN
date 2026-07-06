@@ -4,6 +4,7 @@
  * PUT /api/user/profile - 更新用户资料
  */
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth, withUserAuth } from "@/lib/auth";
 import { z } from "zod";
@@ -16,13 +17,17 @@ const updateSchema = z.object({
   avatar: z.string().optional().or(z.literal("")), // 允许 URL、相对路径或 Base64
 });
 
-// GET - 获取用户资料（含统计）
-export const dynamic = 'force-dynamic';
+// 用户资料缓存标签（静态标签，资料更新时统一失效）
+const USER_PROFILE_TAG = "user-profile";
 
-export const GET = withUserAuth(async (request: NextRequest, payload) => {
-  try {
+/**
+ * 获取用户资料（带 Next.js 服务端缓存）
+ * 缓存 30 秒，用户资料更新时通过 revalidateTag 失效
+ */
+const getCachedUserProfile = unstable_cache(
+  async (userId: string) => {
     const user = await prisma.user.findUnique({
-      where: { id: payload.id },
+      where: { id: userId },
       select: {
         id: true,
         phone: true,
@@ -33,6 +38,31 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
       },
     });
 
+    if (!user) return null;
+
+    return {
+      id: user.id,
+      phone: user.phone,
+      nickname: user.nickname,
+      avatar: user.avatar,
+      createdAt: user.createdAt,
+      stats: {
+        orderCount: user._count.orders,
+        addressCount: user._count.addresses,
+      },
+    };
+  },
+  ["user-profile"],
+  { revalidate: 30, tags: [USER_PROFILE_TAG] }
+);
+
+// GET - 获取用户资料（含统计）
+export const dynamic = "force-dynamic";
+
+export const GET = withUserAuth(async (request: NextRequest, payload) => {
+  try {
+    const user = await getCachedUserProfile(payload.id);
+
     if (!user) {
       return NextResponse.json(
         { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
@@ -42,19 +72,7 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
 
     return NextResponse.json({
       success: true,
-      data: {
-        user: {
-          id: user.id,
-          phone: user.phone,
-          nickname: user.nickname,
-          avatar: user.avatar,
-          createdAt: user.createdAt,
-          stats: {
-            orderCount: user._count.orders,
-            addressCount: user._count.addresses,
-          },
-        },
-      },
+      data: { user },
     });
   } catch (error) {
     apiConsole.error("[GetProfile] 异常:", error);
@@ -86,6 +104,9 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       },
       select: { id: true, phone: true, nickname: true, avatar: true },
     });
+
+    // 资料变更后失效缓存
+    revalidateTag(USER_PROFILE_TAG);
 
     return NextResponse.json({ success: true, data: { user } });
   } catch (error) {
@@ -140,6 +161,9 @@ export async function POST(request: NextRequest) {
       where: { id: payload.id },
       data: { avatar: result.url },
     });
+
+    // 头像变更后失效缓存
+    revalidateTag(USER_PROFILE_TAG);
 
     return NextResponse.json({
       success: true,

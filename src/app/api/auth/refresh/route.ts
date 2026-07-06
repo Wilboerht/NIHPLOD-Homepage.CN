@@ -18,6 +18,8 @@ import {
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
 import { apiConsole } from "@/lib/logger";
+import { logAuthEvent } from "@/lib/auth-logger";
+import { getClientIP } from "@/lib/client-ip";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -28,6 +30,11 @@ export async function POST(request: NextRequest) {
     const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
 
     if (!refreshToken) {
+      logAuthEvent("user_refresh_token", {
+        success: false,
+        reason: "missing_refresh_token",
+        ip: getClientIP(request),
+      });
       return NextResponse.json(
         {
           success: false,
@@ -43,6 +50,11 @@ export async function POST(request: NextRequest) {
     // 2. 验证 Refresh Token JWT
     const payload = await verifyRefreshToken(refreshToken);
     if (!payload) {
+      logAuthEvent("user_refresh_token", {
+        success: false,
+        reason: "invalid_token",
+        ip: getClientIP(request),
+      });
       return NextResponse.json(
         {
           success: false,
@@ -58,6 +70,13 @@ export async function POST(request: NextRequest) {
     // 3. 检查 Refresh Token 是否在数据库中有效（未被撤销）
     const isValid = await validateAndRefreshToken(payload.id, refreshToken);
     if (!isValid) {
+      logAuthEvent("user_refresh_token", {
+        success: false,
+        reason: "token_revoked",
+        userId: payload.id,
+        identifier: payload.phone,
+        ip: getClientIP(request),
+      });
       return NextResponse.json(
         {
           success: false,
@@ -97,6 +116,13 @@ export async function POST(request: NextRequest) {
     // 6. 更新 Cookie 中的双 Token
     response.cookies.set(USER_COOKIE_NAME, newAccessToken, USER_ACCESS_COOKIE_OPTIONS);
     response.cookies.set(USER_REFRESH_COOKIE_NAME, newRefreshToken, USER_REFRESH_COOKIE_OPTIONS);
+
+    logAuthEvent("user_refresh_token", {
+      userId: payload.id,
+      identifier: payload.phone,
+      success: true,
+      ip: getClientIP(request),
+    });
 
     return response;
   } catch (error) {

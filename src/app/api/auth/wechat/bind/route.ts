@@ -19,6 +19,8 @@ const secret = new TextEncoder().encode(jwtSecret);
 
 import { passwordSchema } from "@/lib/password";
 import { apiConsole } from "@/lib/logger";
+import { logAuthEvent } from "@/lib/auth-logger";
+import { getClientIP } from "@/lib/client-ip";
 
 /**
  * 微信绑定表单
@@ -127,7 +129,6 @@ export async function POST(request: NextRequest) {
         // 如果未提供密码，自动生成强密码
         if (!password && allowAutoPassword) {
             password = generateSecurePassword(24);
-            if (process.env.NODE_ENV === "development") console.log(`[WechatBind] 为新用户自动生成密码: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
         } else if (!password) {
             return NextResponse.json(
                 { 
@@ -266,6 +267,13 @@ export async function POST(request: NextRequest) {
         });
         // 清除临时绑定 token
         response.cookies.set("wechat_bind_token", "", { ...USER_ACCESS_COOKIE_OPTIONS, maxAge: 0 });
+
+        logAuthEvent("wechat_bind", {
+            userId: user.id,
+            identifier: user.phone,
+            success: true,
+            ip: getClientIP(request),
+        });
 
         return response;
     } catch (error) {

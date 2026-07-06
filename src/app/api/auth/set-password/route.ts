@@ -9,6 +9,8 @@ import { hashPassword, verifyPassword, passwordSchema } from "@/lib/password";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { logAuthEvent } from "@/lib/auth-logger";
+import { getClientIP } from "@/lib/client-ip";
 
 // 请求参数验证 - 首次设置密码（需要验证码）
 const setPasswordSchema = z.object({
@@ -116,7 +118,13 @@ export async function POST(request: NextRequest) {
       // 密码变更后撤销该用户所有 Refresh Token，强制所有设备重新登录
       await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
 
-      if (process.env.NODE_ENV === "development") console.log(`[SetPassword] 用户修改密码: ${user.phone.slice(0, 3)}****${user.phone.slice(-4)}`);
+      logAuthEvent("user_set_password", {
+        userId: user.id,
+        identifier: user.phone,
+        success: true,
+        action: "change",
+        ip: getClientIP(request),
+      });
 
       return NextResponse.json({
         success: true,
@@ -195,7 +203,13 @@ export async function POST(request: NextRequest) {
         data: { password: hashedPassword },
       });
 
-      if (process.env.NODE_ENV === "development") console.log(`[SetPassword] 用户设置密码: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+      logAuthEvent("user_set_password", {
+        userId: user.id,
+        identifier: user.phone,
+        success: true,
+        action: "set",
+        ip: getClientIP(request),
+      });
 
       return NextResponse.json({
         success: true,

@@ -23,8 +23,10 @@ import {
   clearLoginAttempts,
 } from "@/lib/auth-security";
 import { rateLimit } from "@/lib/ratelimit";
+import { getClientIP } from "@/lib/client-ip";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { logAuthEvent } from "@/lib/auth-logger";
 
 // 请求参数验证
 const loginSchema = z.object({
@@ -172,7 +174,13 @@ export async function POST(request: NextRequest) {
     // 8. 清除失败登录记录（成功登录后重置）
     await clearLoginAttempts(phone);
 
-    if (process.env.NODE_ENV === "development") console.log(`[Login] 用户登录成功: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    logAuthEvent("user_login", {
+      userId: user.id,
+      identifier: user.phone,
+      success: true,
+      method: "sms",
+      ip: getClientIP(request),
+    });
 
     // 9. 签发 Access Token（短期，15分钟）
     const accessToken = await signUserToken({

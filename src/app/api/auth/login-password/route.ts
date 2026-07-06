@@ -24,6 +24,8 @@ import {
   clearLoginAttempts,
 } from "@/lib/auth-security";
 import { rateLimit } from "@/lib/ratelimit";
+import { getClientIP } from "@/lib/client-ip";
+import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -168,7 +170,13 @@ export async function POST(request: NextRequest) {
     );
     await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
 
-    if (process.env.NODE_ENV === "development") console.log(`[LoginPassword] 用户登录成功: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
+    logAuthEvent("user_login", {
+      userId: user.id,
+      identifier: user.phone,
+      success: true,
+      method: "password",
+      ip: getClientIP(request),
+    });
 
     // 11. 构建响应
     const response = NextResponse.json({
