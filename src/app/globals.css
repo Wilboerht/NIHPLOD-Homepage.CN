@@ -227,17 +227,6 @@
 
   /* 移动端触摸优化 */
   @media (hover: none) {
-
-    button,
-    a,
-    [role="button"] {
-      /* 确保触摸目标足够大 */
-      min-height: 44px;
-      min-width: 44px;
-      /* 防止被撑高后内容垂直偏移（iPad 等触屏设备） */
-      align-items: center;
-    }
-
     /* 禁用移动端的 hover 效果延迟 */
     * {
       -webkit-tap-highlight-color: transparent;

@@ -1,5 +1,6 @@
 import TableOfContents from "@/components/ui/TableOfContents";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 // ============================================
 // 隐私政策内容数据
@@ -264,6 +265,16 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
 export function PrivacyContent() {
   return (
     <div className="bg-white min-h-screen pt-24 pb-0">
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
+        <Breadcrumb
+          items={[
+            { label: "首页", href: "/" },
+            { label: "隐私政策" },
+          ]}
+        />
+      </div>
+
       {/* Header Section */}
       <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-16">
         <div className="max-w-4xl">

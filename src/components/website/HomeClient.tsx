@@ -431,7 +431,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       type="button"
                       onClick={handleCollapse}
                       whileTap={{ scale: 0.96 }}
-                      className="btn btn-primary"
+                      className="btn btn-primary min-h-0 min-w-0"
                     >
                       探索旎柏
                     </m.button>

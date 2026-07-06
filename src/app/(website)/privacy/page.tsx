@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { PrivacyContent } from "./PrivacyContent";
+import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
 // ISR: 隐私政策页面每天重新验证一次
 export const revalidate = 86400; // 24小时
@@ -22,5 +23,15 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  return <PrivacyContent />;
+  const breadcrumbs = [
+    { name: "首页", url: "/" },
+    { name: "隐私政策", url: "/privacy" },
+  ];
+
+  return (
+    <>
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <PrivacyContent />
+    </>
+  );
 }

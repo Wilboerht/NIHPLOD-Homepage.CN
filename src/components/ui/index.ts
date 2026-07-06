@@ -11,3 +11,4 @@ export { Skeleton, TextSkeleton, CardSkeleton, TableRowSkeleton } from "./Skelet
 export { Toast, ToastProvider, useToast } from "./Toast";
 export { TagInput } from "./TagInput";
 export { RichTextEditor } from "./RichTextEditor";
+export { Breadcrumb } from "./Breadcrumb";
