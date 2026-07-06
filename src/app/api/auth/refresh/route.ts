@@ -1,47 +1,46 @@
 /**
  * Token 刷新 API
  * POST /api/auth/refresh
- * 
+ *
  * 使用 Refresh Token 获取新的 Access Token
  * 当 Access Token 过期时调用此接口
+ *
+ * 安全说明：Refresh Token 必须从 httpOnly Cookie 中读取，
+ * 不再接受请求 body 中的 refreshToken 参数。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRefreshToken, signUserToken, signRefreshToken, getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
 import { validateAndRefreshToken, saveRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
-import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
-import { z } from "zod";
+import {
+  USER_ACCESS_COOKIE_OPTIONS,
+  USER_REFRESH_COOKIE_OPTIONS,
+  USER_COOKIE_NAME,
+  USER_REFRESH_COOKIE_NAME,
+} from "@/types/auth";
 import { apiConsole } from "@/lib/logger";
 
-// 请求参数验证
-const refreshSchema = z.object({
-  refreshToken: z.string().min(1, "refreshToken 不能为空"),
-});
-
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // 1. 从 httpOnly Cookie 中读取 Refresh Token
+    const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
 
-    // 参数验证
-    const result = refreshSchema.safeParse(body);
-    if (!result.success) {
+    if (!refreshToken) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "INVALID_PARAMS",
-            message: "缺少 refreshToken 参数",
+            code: "MISSING_REFRESH_TOKEN",
+            message: "未找到 Refresh Token，请重新登录",
           },
         },
-        { status: 400 }
+        { status: 401 }
       );
     }
 
-    const { refreshToken } = result.data;
-
-    // 1. 验证 Refresh Token JWT
+    // 2. 验证 Refresh Token JWT
     const payload = await verifyRefreshToken(refreshToken);
     if (!payload) {
       return NextResponse.json(
@@ -56,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 检查 Refresh Token 是否在数据库中有效（未被撤销）
+    // 3. 检查 Refresh Token 是否在数据库中有效（未被撤销）
     const isValid = await validateAndRefreshToken(payload.id, refreshToken);
     if (!isValid) {
       return NextResponse.json(
@@ -71,7 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Refresh Token Rotation：删除旧 Token，签发新双 Token
+    // 4. Refresh Token Rotation：删除旧 Token，签发新双 Token
     await revokeRefreshToken(payload.id, refreshToken);
 
     const newAccessToken = await signUserToken({
@@ -86,28 +85,18 @@ export async function POST(request: NextRequest) {
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await saveRefreshToken(payload.id, newRefreshToken, refreshTokenExpiresAt);
 
-    if (process.env.NODE_ENV === "development") console.log(`[RefreshToken] Token 已刷新并轮换: ${payload.phone.slice(0, 3)}****${payload.phone.slice(-4)}`);
-
-    // 4. 构建响应（返回新的双 Token）
+    // 5. 构建响应（不再在 body 中返回 Token，仅返回过期时间等元数据）
     const response = NextResponse.json({
       success: true,
       data: {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
         accessTokenExpiresAt: getTokenExpiresAt(15), // 15分钟
         refreshTokenExpiresAt: getRefreshTokenExpiresAt(), // 30天
       },
     });
 
-    // 5. 更新 Cookie 中的双 Token
+    // 6. 更新 Cookie 中的双 Token
     response.cookies.set(USER_COOKIE_NAME, newAccessToken, USER_ACCESS_COOKIE_OPTIONS);
-    response.cookies.set("user_refresh_token", newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
+    response.cookies.set(USER_REFRESH_COOKIE_NAME, newRefreshToken, USER_REFRESH_COOKIE_OPTIONS);
 
     return response;
   } catch (error) {

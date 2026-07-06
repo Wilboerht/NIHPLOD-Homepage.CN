@@ -11,7 +11,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signUserToken, signRefreshToken } from "@/lib/jwt";
 import { getWechatOAuthToken, getWechatUserInfo } from "@/lib/wechat";
-import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import {
+  USER_ACCESS_COOKIE_OPTIONS,
+  USER_COOKIE_NAME,
+  USER_REFRESH_COOKIE_NAME,
+} from "@/types/auth";
 import { saveRefreshToken } from "@/lib/auth-security";
 import { SignJWT } from "jose";
 import { apiConsole } from "@/lib/logger";
@@ -120,11 +124,14 @@ export async function GET(request: NextRequest) {
     // 获取用户信息
     const wechatUser = await getWechatUserInfo(tokenData.accessToken, tokenData.openid);
 
-    if (process.env.NODE_ENV === "development") console.log("[WechatCallback] 微信用户:", {
-      openid: wechatUser.openid,
-      nickname: wechatUser.nickname,
-      unionid: wechatUser.unionid,
-    });
+    if (process.env.NODE_ENV === "development") {
+      const mask = (s?: string | null) => (s ? `${s.slice(0, 4)}****${s.slice(-4)}` : null);
+      console.log("[WechatCallback] 微信用户:", {
+        openid: mask(wechatUser.openid),
+        nickname: wechatUser.nickname,
+        unionid: mask(wechatUser.unionid),
+      });
+    }
 
     // 查找现有用户（优先通过 unionid，其次通过 openid）
     const user = await prisma.user.findFirst({
@@ -181,7 +188,7 @@ export async function GET(request: NextRequest) {
       // 设置 Access Token Cookie（15 分钟）
       response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
       // 设置 Refresh Token Cookie（30 天）
-      response.cookies.set("user_refresh_token", refreshToken, {
+      response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax" as const,

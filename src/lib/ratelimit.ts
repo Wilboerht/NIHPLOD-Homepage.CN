@@ -3,6 +3,7 @@
  * 使用内存 LRU 缓存实现简单的 IP 限流
  */
 import { LRUCache } from "lru-cache";
+export { getClientIP } from "./client-ip";
 
 /** 速率限制配置 */
 export interface RateLimitOptions {
@@ -139,44 +140,6 @@ export async function rateLimit(
     reset,
     limit: opts.maxRequests,
   };
-}
-
-/**
- * 获取客户端 IP 地址
- * 支持代理环境
- *
- * 在反向代理架构中（Vercel/Nginx），X-Forwarded-For 格式为：
- *   client, proxy1, proxy2, ..., lastProxy
- * 默认取第一个 IP 作为客户端真实地址（需配合可信代理层保证首部不被伪造）。
- * 可通过 TRUST_PROXY_HOPS 环境变量控制取第 N 个 IP（如经过 2 层代理则设为 2）。
- */
-export function getClientIP(request: Request): string {
-  const headers = request.headers;
-
-  // 信任代理头的条件：显式设置 TRUST_PROXY=true / 开发环境 / Vercel 部署环境
-  const trustProxy =
-    process.env.TRUST_PROXY === "true" ||
-    process.env.NODE_ENV === "development" ||
-    process.env.VERCEL === "1";
-
-  if (trustProxy) {
-    const forwardedFor = headers.get("x-forwarded-for");
-    if (forwardedFor) {
-      const ips = forwardedFor.split(",").map((ip) => ip.trim()).filter(Boolean);
-      // 取第一个 IP 作为客户端真实地址（Vercel/Nginx 标准行为）
-      // 如果部署在多层反向代理后且需要取特定层级，可通过 TRUST_PROXY_HOPS 环境变量控制
-      const hops = parseInt(process.env.TRUST_PROXY_HOPS || "1", 10);
-      const idx = Math.min(hops - 1, ips.length - 1);
-      return ips[idx] || "unknown";
-    }
-
-    const realIP = headers.get("x-real-ip");
-    if (realIP) {
-      return realIP;
-    }
-  }
-
-  return "unknown";
 }
 
 /** 双重限流结果 */

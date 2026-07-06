@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signUserToken, signRefreshToken } from "@/lib/jwt";
-import { USER_ACCESS_COOKIE_OPTIONS, USER_COOKIE_NAME } from "@/types/auth";
+import {
+  USER_ACCESS_COOKIE_OPTIONS,
+  USER_COOKIE_NAME,
+  USER_REFRESH_COOKIE_NAME,
+} from "@/types/auth";
 import { saveRefreshToken } from "@/lib/auth-security";
 import { z } from "zod";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
         // 如果未提供密码，自动生成强密码
         if (!password && allowAutoPassword) {
             password = generateSecurePassword(24);
-            if (process.env.NODE_ENV === "development") console.log(`[WechatBind] 为用户 ${phone} 自动生成密码`);
+            if (process.env.NODE_ENV === "development") console.log(`[WechatBind] 为新用户自动生成密码: ${phone.slice(0, 3)}****${phone.slice(-4)}`);
         } else if (!password) {
             return NextResponse.json(
                 { 
@@ -253,7 +257,7 @@ export async function POST(request: NextRequest) {
         // 设置 Access Token Cookie（15 分钟）
         response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
         // 设置 Refresh Token Cookie（30 天）
-        response.cookies.set("user_refresh_token", refreshToken, {
+        response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax" as const,

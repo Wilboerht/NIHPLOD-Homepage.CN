@@ -4,8 +4,15 @@
  */
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
-import { verifyToken, verifyUserToken, type AdminJWTPayload, type UserJWTPayload } from "./jwt";
-import { AUTH_COOKIE_NAME, USER_COOKIE_NAME, type AdminUser, type UserInfo } from "@/types/auth";
+import { verifyToken, verifyUserToken } from "./jwt";
+import {
+  AUTH_COOKIE_NAME,
+  USER_COOKIE_NAME,
+  type AdminUser,
+  type UserInfo,
+  type AdminJWTPayload,
+  type UserJWTPayload,
+} from "@/types/auth";
 import { prisma } from "./prisma";
 
 // ============================================
@@ -37,8 +44,7 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
   };
 }
 
-// 兼容旧接口
-export const getCurrentUser = getCurrentAdmin;
+
 
 /**
  * 从请求中获取管理员 Token

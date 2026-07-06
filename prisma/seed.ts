@@ -7,6 +7,7 @@ import { PrismaClient } from "../src/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import bcrypt from "bcryptjs";
+import { parseSeedAdmins, validatePassword } from "./seed-admin-utils";
 
 // 加载环境变量
 config({ path: ".env.local" });
@@ -20,80 +21,29 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("🌱 开始初始化种子数据...\n");
 
-  // 1. 创建默认管理员（密码从环境变量读取）
-  const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD;
-  if (!seedAdminPassword) {
-    console.warn("⚠️ 未设置 SEED_ADMIN_PASSWORD 环境变量，跳过管理员创建");
-  } else {
-    const adminPasswordHash = await bcrypt.hash(seedAdminPassword, 12);
-
-    await prisma.admin.upsert({
-      where: { email: "hank.wang@nihplod.cn" },
-      update: {},
-      create: {
-        email: "hank.wang@nihplod.cn",
-        password: adminPasswordHash,
-        name: "Hank Wang",
-        role: "owner",
-      },
-    });
-
-    await prisma.admin.upsert({
-      where: { email: "kiki.wang@nihplod.cn" },
-      update: {},
-      create: {
-        email: "kiki.wang@nihplod.cn",
-        password: adminPasswordHash,
-        name: "Kiki Wang",
-        role: "admin",
-      },
-    });
-
-    await prisma.admin.upsert({
-      where: { email: "walter@nihplod.cn" },
-      update: {},
-      create: {
-        email: "walter@nihplod.cn",
-        password: adminPasswordHash,
-        name: "Walter",
-        role: "admin",
-      },
-    });
-
-    await prisma.admin.upsert({
-      where: { email: "grace.zhang@nihplod.cn" },
-      update: {},
-      create: {
-        email: "grace.zhang@nihplod.cn",
-        password: adminPasswordHash,
-        name: "Grace Zhang",
-        role: "admin",
-      },
-    });
-
-    await prisma.admin.upsert({
-      where: { email: "skye.cao@nihplod.cn" },
-      update: {},
-      create: {
-        email: "skye.cao@nihplod.cn",
-        password: adminPasswordHash,
-        name: "Skye Cao",
-        role: "admin",
-      },
-    });
-
-    await prisma.admin.upsert({
-      where: { email: "rosy.zhang@nihplod.cn" },
-      update: {},
-      create: {
-        email: "rosy.zhang@nihplod.cn",
-        password: adminPasswordHash,
-        name: "Rosy Zhang",
-        role: "admin",
-      },
-    });
-
-    console.log("✅ 管理员账号已创建（密码从环境变量读取）");
+  // 1. 创建管理员账号（所有凭证从环境变量读取，不再硬编码）
+  try {
+    const admins = parseSeedAdmins();
+    for (const admin of admins) {
+      validatePassword(admin.password);
+      const hashedPassword = await bcrypt.hash(admin.password, 12);
+      await prisma.admin.upsert({
+        where: { email: admin.email },
+        update: {},
+        create: {
+          email: admin.email,
+          password: hashedPassword,
+          name: admin.name,
+          role: admin.role,
+        },
+      });
+      console.log(`✅ 管理员已创建: ${admin.name} (${admin.email}) - role: ${admin.role}`);
+    }
+  } catch (error) {
+    console.warn(
+      "⚠️ 管理员创建跳过:",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 
   // 2. 创建产品分类（包含 SVG 图标）
@@ -562,13 +512,7 @@ async function main() {
 
   console.log("\n🎉 种子数据初始化完成！");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("管理员登录信息:");
-  console.log(" - hank.wang@nihplod.cn (owner)");
-  console.log(" - kiki.wang@nihplod.cn (admin)");
-  console.log(" - walter@nihplod.cn (admin)");
-  console.log(" - grace.zhang@nihplod.cn (admin)");
-  console.log(" - skye.cao@nihplod.cn (admin)");
-  console.log(" - rosy.zhang@nihplod.cn (admin)");
+  console.log("管理员账号信息请查看上方输出，密码已加密存储，不会输出明文。");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 

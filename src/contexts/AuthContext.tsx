@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import { fetchWithAuth, refreshAccessToken, UnauthorizedError } from "@/lib/fetch-with-auth";
 
 interface User {
   id: string;
@@ -54,6 +55,8 @@ interface AuthContextType {
   switchToWechatBind: () => void;
   refreshUser: (force?: boolean) => Promise<void>;
   logout: () => Promise<void>;
+  /** 带自动 Token 刷新的 fetch */
+  fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -160,11 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const res = await fetch("/api/user/profile");
-      if (res.status === 401) {
-        setUser(null);
-        return;
-      }
+      const res = await fetchWithAuth("/api/user/profile");
       const data = await res.json();
       if (data.success) {
         setUser(data.data.user);
@@ -172,7 +171,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedError) {
+        localStorage.removeItem("auth_hint");
+      }
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -194,6 +196,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
+
+  // 定时主动刷新 Access Token（每 14 分钟一次，Access Token 15 分钟过期）
+  useEffect(() => {
+    if (!user) return;
+
+    const intervalId = setInterval(() => {
+      refreshAccessToken().catch(() => {
+        // 静默处理：若刷新失败，下次请求 401 时会触发 logout
+      });
+    }, 14 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [user]);
 
   return (
     <AuthContext.Provider
@@ -232,6 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         switchToWechatBind,
         refreshUser,
         logout,
+        fetchWithAuth,
       }}
     >
       {children}

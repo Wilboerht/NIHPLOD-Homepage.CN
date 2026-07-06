@@ -1,10 +1,16 @@
 /**
  * 认证相关类型定义
  */
+import type { JWTPayload } from "jose";
 
 // ============================================
 // 管理员认证（后台管理）
 // ============================================
+
+/**
+ * 管理员角色
+ */
+export type AdminRole = "owner" | "admin";
 
 /**
  * 管理员用户信息
@@ -13,19 +19,17 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: AdminRole;
 }
 
 /**
  * JWT Token 载荷
  */
-export interface AdminJWTPayload {
+export interface AdminJWTPayload extends JWTPayload {
   id: string;
   email: string;
   name: string;
-  role: string;
-  iat?: number; // 签发时间
-  exp?: number; // 过期时间
+  role: AdminRole;
 }
 
 /**
@@ -62,12 +66,18 @@ export interface AuthSession {
 
 /**
  * Cookie 配置
+ *
+ * 使用 __Host- 前缀要求：
+ * - Secure 必须为 true
+ * - Path 必须为 "/"
+ * - 不能设置 Domain 属性
+ * - localhost 在浏览器中同样被视为安全上下文，开发环境可用
  */
-export const AUTH_COOKIE_NAME = "admin_token";
+export const AUTH_COOKIE_NAME = "__Host-admin_token";
 
 export const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: true,
   sameSite: "strict" as const,
   path: "/",
   maxAge: 7 * 24 * 60 * 60, // 7 天（秒）
@@ -90,12 +100,19 @@ export interface UserInfo {
 /**
  * C端用户 JWT 载荷
  */
-export interface UserJWTPayload {
+export interface UserJWTPayload extends JWTPayload {
   id: string;
   phone: string;
   type: "user"; // 区分管理员和普通用户
-  iat?: number;
-  exp?: number;
+}
+
+/**
+ * Refresh Token 载荷
+ */
+export interface RefreshTokenPayload extends JWTPayload {
+  id: string;
+  phone: string;
+  type: "refresh";
 }
 
 /**
@@ -133,13 +150,14 @@ export interface UserLoginResponse {
 /**
  * C端用户 Cookie 配置
  */
-export const USER_COOKIE_NAME = "user_token";
+export const USER_COOKIE_NAME = "__Host-user_token";
+export const USER_REFRESH_COOKIE_NAME = "__Host-user_refresh_token";
 
 // Access Token Cookie：15 分钟，与 JWT 过期时间一致
 export const USER_ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  secure: true,
+  sameSite: "strict" as const,
   path: "/",
   maxAge: 15 * 60, // 15 分钟（秒）
 };
@@ -147,8 +165,8 @@ export const USER_ACCESS_COOKIE_OPTIONS = {
 // Refresh Token Cookie：30 天
 export const USER_REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  secure: true,
+  sameSite: "strict" as const,
   path: "/",
   maxAge: 30 * 24 * 60 * 60, // 30 天（秒）
 };

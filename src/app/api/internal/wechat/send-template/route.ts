@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 // 内存热缓存
 let cachedAccessToken: string | null = null;
@@ -56,7 +57,17 @@ async function getWechatAccessToken(): Promise<string | null> {
 
 export async function POST(request: NextRequest) {
     try {
-        // 1. 认证校验
+        // 1. IP 速率限制（防止 secret 泄露后被滥用）
+        const ip = getClientIP(request);
+        const limitResult = await rateLimit(ip, "default", { maxRequests: 60, windowMs: 60 * 1000 });
+        if (!limitResult.success) {
+            return NextResponse.json(
+                { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" } },
+                { status: 429 }
+            );
+        }
+
+        // 2. 认证校验
         const secret = request.headers.get("x-internal-api-secret");
         const expectedSecret = process.env.INTERNAL_API_SECRET;
 
@@ -76,7 +87,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 2. 参数解析与校验
+        // 3. 参数解析与校验
         const body = await request.json();
         const { userId, score, primaryConcern, reportUrl } = body;
 
@@ -87,7 +98,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 3. 查询用户微信 OpenID
+        // 4. 查询用户微信 OpenID
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: { wechatOpenId: true, phone: true },
@@ -100,7 +111,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 4. 获取 AccessToken
+        // 5. 获取 AccessToken
         const accessToken = await getWechatAccessToken();
         if (!accessToken) {
             return NextResponse.json(
@@ -109,7 +120,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 5. 发送模板消息
+        // 6. 发送模板消息
         const templateId = process.env.WECHAT_TEMPLATE_ID;
         if (!templateId) {
             apiConsole.error("[WechatInternal] WECHAT_TEMPLATE_ID 未配置");

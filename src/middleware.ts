@@ -5,8 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-// Cookie 名称
-const AUTH_COOKIE_NAME = "admin_token";
+// Cookie 名称（必须与 src/types/auth.ts 中的 AUTH_COOKIE_NAME 保持一致）
+const AUTH_COOKIE_NAME = "__Host-admin_token";
 
 // JWT 密钥（懒加载，禁止硬编码回退）
 function getSecret(): Uint8Array {

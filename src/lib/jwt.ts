@@ -6,7 +6,13 @@
  * - Access Token：短期（15分钟），用于 API 请求
  * - Refresh Token：长期（30天），用于获取新 Access Token
  */
-import { SignJWT, jwtVerify, type JWTPayload as JoseJWTPayload } from "jose";
+import { SignJWT, jwtVerify } from "jose";
+import type {
+  AdminJWTPayload,
+  UserJWTPayload,
+  RefreshTokenPayload,
+  AdminRole,
+} from "@/types/auth";
 
 // JWT 密钥（从环境变量获取，禁止硬编码回退）
 function getSecret(): Uint8Array {
@@ -27,13 +33,6 @@ const refreshTokenExpiresIn = "30d";  // Refresh Token 30天
 // 管理员 Token
 // ============================================
 
-export interface AdminJWTPayload extends JoseJWTPayload {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-}
-
 /**
  * 签发管理员 JWT Token
  */
@@ -41,7 +40,7 @@ export async function signToken(payload: {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: AdminRole;
 }): Promise<string> {
   const token = await new SignJWT({ ...payload, type: "admin" as const })
     .setProtectedHeader({ alg: "HS256" })
@@ -68,25 +67,11 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
   }
 }
 
-// 兼容旧接口
-export const signJWT = signToken;
-export const verifyJWT = verifyToken;
+
 
 // ============================================
 // C端用户 Token（双 Token 策略）
 // ============================================
-
-export interface UserJWTPayload extends JoseJWTPayload {
-  id: string;
-  phone: string;
-  type: "user";
-}
-
-export interface RefreshTokenPayload extends JoseJWTPayload {
-  id: string;
-  phone: string;
-  type: "refresh";
-}
 
 /**
  * 签发用户 Access Token（短期，15分钟）
