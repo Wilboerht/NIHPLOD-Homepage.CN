@@ -10,12 +10,6 @@ interface SectionContent {
 }
 
 const privacyData: Record<string, SectionContent> = {
-  summary: {
-    title: "摘要",
-    content: [
-      "《隐私政策》摘要\n\n旎柏（上海）商贸有限公司（以下简称「我们」或「旎柏」）重视您的隐私保护。本摘要旨在简洁、清晰地向您说明我们如何收集、使用和保护您的个人信息。如您希望了解更多，请查阅下方完整隐私政策内容。",
-    ],
-  },
   ch1: {
     title: "一、个人信息处理者信息",
     content: [
@@ -184,7 +178,7 @@ function isSubHeading(text: string): boolean {
 // ============================================
 
 const sectionOrder = [
-  "summary", "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
+  "ch1", "ch2", "ch3", "ch4", "ch5", "ch6",
   "ch7", "ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "ch14",
 ];
 
@@ -210,18 +204,6 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
         // 跳过首个段落中的重复章节标题（已由外层 h2 渲染）
         if (isFirst && lIdx === 0 && isSectionHeading(trimmed)) {
           return null;
-        }
-
-        // 特殊：大标题转换
-        if (trimmed === "《隐私政策》摘要") {
-          return (
-            <h3
-              key={lIdx}
-              className="text-xl font-medium text-zinc-900 mt-10 mb-2 font-sans tracking-wide"
-            >
-              中国消费者隐私政策
-            </h3>
-          );
         }
 
         // 子编号标题 (4.1, 5.2 等)
