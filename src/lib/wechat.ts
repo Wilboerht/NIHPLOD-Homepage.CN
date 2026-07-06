@@ -217,14 +217,6 @@ export function isWechatBrowser(): boolean {
 }
 
 /**
- * 清除缓存 (用于调试)
- */
-export function clearWechatCache(): void {
-  cachedAccessToken = null;
-  cachedJsApiTicket = null;
-}
-
-/**
  * 获取默认分享图片 URL
  */
 export function getDefaultShareImage(): string {

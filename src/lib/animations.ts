@@ -14,39 +14,12 @@ export const fadeInUp: Variants = {
 };
 
 /**
- * 淡入下移动画
- */
-export const fadeInDown: Variants = {
-  initial: { opacity: 0, y: -20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 20 },
-};
-
-/**
  * 淡入动画
  */
 export const fadeIn: Variants = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
   exit: { opacity: 0 },
-};
-
-/**
- * 从左侧滑入
- */
-export const slideInLeft: Variants = {
-  initial: { opacity: 0, x: -50 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -50 },
-};
-
-/**
- * 从右侧滑入
- */
-export const slideInRight: Variants = {
-  initial: { opacity: 0, x: 50 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 50 },
 };
 
 /**

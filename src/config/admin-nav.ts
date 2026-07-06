@@ -41,7 +41,7 @@ export const adminNavItems: NavItem[] = [
 /**
  * 获取当前路径对应的导航项
  */
-export function getActiveNavItem(pathname: string): NavItem | undefined {
+function getActiveNavItem(pathname: string): NavItem | undefined {
   // 精确匹配仪表盘
   if (pathname === "/admin") {
     return adminNavItems[0];

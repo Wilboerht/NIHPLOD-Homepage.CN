@@ -6,5 +6,4 @@ export { ProductsTable } from "./ProductsTable";
 export { ImageUploader } from "./ImageUploader";
 export { ProductForm } from "./ProductForm";
 export { CategoryForm } from "./CategoryForm";
-export { SeoEditor } from "./SeoEditor";
 export { JobForm } from "./JobForm";

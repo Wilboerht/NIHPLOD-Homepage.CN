@@ -32,14 +32,7 @@ export function formatPrice(price: number): string {
 }
 
 /**
- * 截断文本
- */
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength) + "...";
-}
 
-/**
  * 检查当前路径是否匹配给定的 href
  * 支持精确匹配和 startsWith 匹配（排除首页 "/" 的误判）
  */

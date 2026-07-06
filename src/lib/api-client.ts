@@ -112,22 +112,8 @@ export function apiPost<T = unknown>(path: string, body?: Record<string, unknown
 }
 
 /**
- * 便捷方法：PUT 请求
- */
-export function apiPut<T = unknown>(path: string, body?: Record<string, unknown>): Promise<T> {
-  return apiRequest<T>(path, { method: "PUT", body });
-}
-
-/**
  * 便捷方法：PATCH 请求
  */
 export function apiPatch<T = unknown>(path: string, body?: Record<string, unknown>): Promise<T> {
   return apiRequest<T>(path, { method: "PATCH", body });
-}
-
-/**
- * 便捷方法：DELETE 请求
- */
-export function apiDelete<T = unknown>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
-  return apiRequest<T>(path, { method: "DELETE", params });
 }
