@@ -295,7 +295,7 @@ export function PrivacyContent() {
           <ScrollSpySidebar sections={sections} label="隐私政策目录导航" />
 
           {/* Main Content */}
-          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16 font-songti">
+          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16 font-songti break-words">
             {sections.map((section) => (
               <section
                 key={section.id}
