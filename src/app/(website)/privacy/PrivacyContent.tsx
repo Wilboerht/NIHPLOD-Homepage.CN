@@ -205,7 +205,7 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
     <>
       {lines.map((line, lIdx) => {
         const trimmed = line.trim();
-        if (!trimmed) return <div key={lIdx} className="h-3" />;
+        if (!trimmed) return null;
 
         // 跳过首个段落中的重复章节标题（已由外层 h2 渲染）
         if (isFirst && lIdx === 0 && isSectionHeading(trimmed)) {
@@ -217,7 +217,7 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
           return (
             <h3
               key={lIdx}
-              className="text-xl font-medium text-zinc-900 mt-8 mb-4 font-sans tracking-wide"
+              className="text-xl font-medium text-zinc-900 mt-10 mb-2 font-sans tracking-wide"
             >
               中国消费者隐私政策
             </h3>
@@ -229,7 +229,7 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
           return (
             <h4
               key={lIdx}
-              className="text-base font-medium text-zinc-800 mt-6 mb-3 font-sans"
+              className="text-base font-medium text-zinc-800 mt-8 mb-0 font-sans"
             >
               {formatText(trimmed)}
             </h4>
@@ -241,7 +241,7 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
           return (
             <h3
               key={lIdx}
-              className="text-xl font-medium text-zinc-900 mt-8 mb-4 font-sans tracking-wide"
+              className="text-xl font-medium text-zinc-900 mt-10 mb-2 font-sans tracking-wide"
             >
               {formatText(trimmed)}
             </h3>
@@ -253,7 +253,7 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
           return (
             <h4
               key={lIdx}
-              className="text-base font-medium text-zinc-800 mt-6 mb-3 font-sans"
+              className="text-base font-medium text-zinc-800 mt-8 mb-0 font-sans"
             >
               {formatText(trimmed)}
             </h4>
@@ -338,7 +338,7 @@ export function PrivacyContent() {
                 <h2 className="text-2xl font-medium text-zinc-900 mb-8 font-sans tracking-wide">
                   {section.title}
                 </h2>
-                <div className="space-y-5">
+                <div className="space-y-6">
                   {section.content.map((paragraph, pIdx) => (
                     <ContentParagraph key={pIdx} text={paragraph} isFirst={pIdx === 0} />
                   ))}
