@@ -1,7 +1,7 @@
 import TableOfContents from "@/components/ui/TableOfContents";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 import Link from "next/link";
-import type { TermsPageContent, TermsTabId } from "@/types/page-content";
+import type { TermsPageContent } from "@/types/page-content";
 
 interface TermsContentProps {
   content: TermsPageContent;
@@ -145,7 +145,7 @@ export function TermsContent({ content }: TermsContentProps) {
   const flatContent = content.tabs?.general?.content || [];
 
   // 将平铺内容拆分为独立章节（每条内容的第一行为标题）
-  const sections = flatContent.map((text, index) => {
+  const sections = flatContent.map((text) => {
     const firstLine = text.split(/\r?\n/)[0].trim();
     // 提取编号作为 ID：1. 隐私权 → terms-1，24. AI 测肤顾问 → terms-24
     const numMatch = firstLine.match(/^(\d+)\./);
