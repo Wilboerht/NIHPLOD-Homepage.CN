@@ -36,6 +36,14 @@ const config: Config = {
           "sans-serif",
         ],
         playfair: ["var(--font-playfair)", "serif"],
+        songti: [
+          "SimSun",
+          "宋体",
+          "Songti SC",
+          "Noto Serif CJK SC",
+          "Source Han Serif SC",
+          "serif",
+        ],
       },
       spacing: {
         xs: "8px",

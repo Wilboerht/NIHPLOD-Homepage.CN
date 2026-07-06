@@ -198,7 +198,7 @@ const sections = sectionOrder.map((id) => ({
 // 内容渲染辅助组件
 // ============================================
 
-function ContentParagraph({ text }: { text: string }) {
+function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: boolean }) {
   const lines = text.split(/\r?\n/);
 
   return (
@@ -207,12 +207,17 @@ function ContentParagraph({ text }: { text: string }) {
         const trimmed = line.trim();
         if (!trimmed) return <div key={lIdx} className="h-3" />;
 
+        // 跳过首个段落中的重复章节标题（已由外层 h2 渲染）
+        if (isFirst && lIdx === 0 && isSectionHeading(trimmed)) {
+          return null;
+        }
+
         // 特殊：大标题转换
         if (trimmed === "《隐私政策》摘要") {
           return (
             <h3
               key={lIdx}
-              className="text-lg font-medium text-zinc-900 mt-6 mb-3"
+              className="text-xl font-medium text-zinc-900 mt-8 mb-4 font-sans tracking-wide"
             >
               中国消费者隐私政策
             </h3>
@@ -224,7 +229,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <h4
               key={lIdx}
-              className="text-base font-medium text-zinc-800 mt-4 mb-2"
+              className="text-base font-medium text-zinc-800 mt-6 mb-3 font-sans"
             >
               {formatText(trimmed)}
             </h4>
@@ -236,7 +241,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <h3
               key={lIdx}
-              className="text-lg font-medium text-zinc-900 mt-6 mb-3"
+              className="text-xl font-medium text-zinc-900 mt-8 mb-4 font-sans tracking-wide"
             >
               {formatText(trimmed)}
             </h3>
@@ -248,7 +253,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <h4
               key={lIdx}
-              className="text-base font-medium text-zinc-800 mt-4 mb-2"
+              className="text-base font-medium text-zinc-800 mt-6 mb-3 font-sans"
             >
               {formatText(trimmed)}
             </h4>
@@ -259,7 +264,7 @@ function ContentParagraph({ text }: { text: string }) {
         return (
           <p
             key={lIdx}
-            className="text-zinc-600 leading-7"
+            className="text-zinc-600 leading-8"
           >
             {formatText(trimmed)}
           </p>
@@ -323,19 +328,19 @@ export function PrivacyContent() {
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16">
+          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16 font-songti">
             {sections.map((section) => (
               <section
                 key={section.id}
                 id={section.id}
                 className="scroll-mt-32"
               >
-                <h2 className="text-2xl font-medium text-zinc-900 mb-6">
+                <h2 className="text-2xl font-medium text-zinc-900 mb-8 font-sans tracking-wide">
                   {section.title}
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {section.content.map((paragraph, pIdx) => (
-                    <ContentParagraph key={pIdx} text={paragraph} />
+                    <ContentParagraph key={pIdx} text={paragraph} isFirst={pIdx === 0} />
                   ))}
                 </div>
               </section>

@@ -55,7 +55,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <h3
               key={lIdx}
-              className="text-lg font-medium text-zinc-900 mt-6 mb-3"
+              className="text-xl font-medium text-zinc-900 mt-8 mb-4 font-sans tracking-wide"
             >
               中国消费者服务条款
             </h3>
@@ -67,7 +67,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <div
               key={lIdx}
-              className="text-sm bg-zinc-50 p-4 rounded-lg border border-zinc-100 text-zinc-600"
+              className="text-sm bg-zinc-50 p-4 rounded-lg border border-zinc-100 text-zinc-600 leading-7"
             >
               <strong className="font-bold text-zinc-900">重要提示：</strong>
               <span>{trimmed.replace("【重要提示】", "")}</span>
@@ -80,7 +80,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <h4
               key={lIdx}
-              className="text-base font-medium text-zinc-800 mt-4 mb-2"
+              className="text-base font-medium text-zinc-800 mt-6 mb-3 font-sans"
             >
               {formatText(trimmed)}
             </h4>
@@ -92,7 +92,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <h3
               key={lIdx}
-              className="text-lg font-medium text-zinc-900 mt-6 mb-3"
+              className="text-xl font-medium text-zinc-900 mt-8 mb-4 font-sans tracking-wide"
             >
               {formatText(trimmed)}
             </h3>
@@ -104,7 +104,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <h4
               key={lIdx}
-              className="text-base font-medium text-zinc-800 mt-4 mb-2"
+              className="text-base font-medium text-zinc-800 mt-6 mb-3 font-sans"
             >
               {formatText(trimmed)}
             </h4>
@@ -120,7 +120,7 @@ function ContentParagraph({ text }: { text: string }) {
           return (
             <p
               key={lIdx}
-              className="text-sm leading-7 text-zinc-600"
+              className="text-sm leading-8 text-zinc-600"
             >
               {formatText(trimmed)}
             </p>
@@ -129,7 +129,7 @@ function ContentParagraph({ text }: { text: string }) {
 
         // 普通段落
         return (
-          <p key={lIdx} className="text-zinc-600 leading-7">
+          <p key={lIdx} className="text-zinc-600 leading-8">
             {formatText(trimmed)}
           </p>
         );
@@ -219,17 +219,17 @@ export function TermsContent({ content }: TermsContentProps) {
           )}
 
           {/* Main Content */}
-          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16">
+          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16 font-songti">
             {sections.map((section) => (
               <section
                 key={section.id}
                 id={section.id}
                 className="scroll-mt-32"
               >
-                <h2 className="text-2xl font-medium text-zinc-900 mb-6">
+                <h2 className="text-2xl font-medium text-zinc-900 mb-8 font-sans tracking-wide">
                   {section.rawTitle}
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {section.content.map((paragraph, pIdx) => (
                     <ContentParagraph key={pIdx} text={paragraph} />
                   ))}
