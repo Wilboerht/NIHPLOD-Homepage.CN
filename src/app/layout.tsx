@@ -99,8 +99,11 @@ export const metadata: Metadata = {
 
   // 验证
   verification: {
-    // google: "your-google-verification-code",
+    google: "",
     // yandex: "your-yandex-verification-code",
+    other: {
+      "baidu-site-verification": "codeva-Gp1L3OAokH",
+    },
   },
 
   // 其他
@@ -124,8 +127,8 @@ export default function RootLayout({
           <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           {/* iOS 状态栏样式 - 透明背景 */}
           <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-          {/* 百度站长平台验证 */}
-          <meta name="baidu-site-verification" content="codeva-Gp1L3OAokH" />
+          {/* 百度移动适配：声明页面适配移动端 */}
+          <meta name="applicable-device" content="pc,mobile" />
           {/* Schema.org 结构化数据 */}
           <OrganizationJsonLd />
           <WebSiteJsonLd />

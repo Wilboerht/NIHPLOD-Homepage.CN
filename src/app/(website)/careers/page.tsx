@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { CareersContent, Job } from "./CareersContent";
+import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
 // ISR: 招聘页面每小时重新验证一次
 export const revalidate = 3600; // 1小时
@@ -57,8 +58,14 @@ async function getJobs(): Promise<Job[]> {
 
 export default async function CareersPage() {
   const jobs = await getJobs();
+  const breadcrumbs = [
+    { name: "首页", url: "/" },
+    { name: "加入我们", url: "/careers" },
+  ];
+
   return (
     <>
+      <BreadcrumbJsonLd items={breadcrumbs} />
       {/* 预加载高德地图配置 */}
       <Script
         id="amap-security-config"

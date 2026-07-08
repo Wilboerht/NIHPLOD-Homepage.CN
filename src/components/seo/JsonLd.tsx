@@ -51,6 +51,8 @@ export function OrganizationJsonLd() {
       "https://weibo.com/nihplod",
       "https://www.xiaohongshu.com/user/nihplod",
       "https://nihplod.cn",
+      "https://weixin.qq.com/",
+      "https://www.douyin.com/",
     ],
     "contactPoint": {
       "@type": "ContactPoint",
@@ -127,6 +129,7 @@ export function ProductJsonLd({ product }: ProductJsonLdProps) {
     description: product.description,
     url: productUrl,
     image: product.images.map((img) => img.url),
+    sku: product.slug,
     brand: {
       "@type": "Brand",
       name: "NIHPLOD 旎柏",
@@ -143,6 +146,14 @@ export function ProductJsonLd({ product }: ProductJsonLdProps) {
       availability: "https://schema.org/InStock",
       seller: {
         "@id": `${baseUrl}/#organization`,
+      },
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "CN",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 7,
+        returnMethod: "https://schema.org/ReturnByMail",
+        returnFees: "https://schema.org/FreeReturn",
       },
     },
     // 产品规格

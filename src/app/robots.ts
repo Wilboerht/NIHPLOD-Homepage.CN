@@ -45,6 +45,18 @@ export default function robots(): MetadataRoute.Robots {
         crawlDelay: 1, // 爬取间隔 1 秒
       },
       {
+        // 百度渲染爬虫（抓取 JS 渲染后的页面）
+        userAgent: "Baiduspider-render",
+        allow: "/",
+        disallow: [
+          "/admin",
+          "/admin/*",
+          "/api/",
+          "/api/*",
+        ],
+        crawlDelay: 2, // 渲染抓取较耗资源，间隔稍长
+      },
+      {
         // 谷歌爬虫特殊规则
         userAgent: "Googlebot",
         allow: "/",

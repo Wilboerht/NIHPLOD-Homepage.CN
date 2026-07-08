@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { ServicesContent } from "./ServicesContent";
+import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import type { ServicesPageContent } from "@/types/page-content";
 
 // 默认内容（fallback）
@@ -61,6 +62,16 @@ export const metadata: Metadata = {
 };
 
 export default function ServicesPage() {
-  return <ServicesContent content={defaultContent} />;
+  const breadcrumbs = [
+    { name: "首页", url: "/" },
+    { name: "服务入口", url: "/services" },
+  ];
+
+  return (
+    <>
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <ServicesContent content={defaultContent} />
+    </>
+  );
 }
 

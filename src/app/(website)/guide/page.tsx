@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { RitualContent } from "./RitualContent";
+import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
 
 // ISR: 护肤仪式页面每60秒重新验证一次
@@ -76,6 +77,10 @@ async function getProducts() {
 }
 
 export default async function RitualPage() {
+  const breadcrumbs = [
+    { name: "首页", url: "/" },
+    { name: "护肤仪式与指南", url: "/guide" },
+  ];
 
 
   // 并行获取数据
@@ -85,5 +90,10 @@ export default async function RitualPage() {
 
   // 只有在页面已发布时才使用配置的背景图
 
-  return <RitualContent products={products} />;
+  return (
+    <>
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <RitualContent products={products} />
+    </>
+  );
 }

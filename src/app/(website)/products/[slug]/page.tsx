@@ -11,6 +11,9 @@ export const revalidate = 60;
 // 允许动态生成未预渲染的路由参数
 export const dynamicParams = true;
 
+// 基础 URL
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
+
 interface PageProps {
   params: { slug: string };
 }
@@ -72,20 +75,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     "脂质体护肤",
   ];
 
+  // OG 图片使用绝对 URL
+  const ogImageUrl = product.images[0]?.url
+    ? (product.images[0].url.startsWith("http") ? product.images[0].url : `${baseUrl}${product.images[0].url}`)
+    : `${baseUrl}/images/og-image.png`;
+
   return {
     title: product.name,
     description: enhancedDescription,
     keywords: productKeywords,
+    alternates: {
+      canonical: `/products/${slug}`,
+    },
     openGraph: {
       title: `${product.name} | NIHPLOD 旎柏`,
       description: enhancedDescription,
-      images: product.images[0]?.url ? [product.images[0].url] : ["/images/og-image.png"],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: product.name }],
     },
     twitter: {
       card: "summary",
       title: `${product.name} | NIHPLOD 旎柏`,
       description: enhancedDescription,
-      images: product.images[0]?.url ? [product.images[0].url] : ["/images/og-image.png"],
+      images: [ogImageUrl],
     },
   };
 }

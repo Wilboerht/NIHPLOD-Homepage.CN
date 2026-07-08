@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { StoryContent } from "./StoryContent";
+import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
 
 // ISR: 品牌故事页面每60秒重新验证一次
@@ -29,5 +30,15 @@ export const metadata: Metadata = {
 // ...
 
 export default async function StoryPage() {
-  return <StoryContent />;
+  const breadcrumbs = [
+    { name: "首页", url: "/" },
+    { name: "品牌故事", url: "/about" },
+  ];
+
+  return (
+    <>
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <StoryContent />
+    </>
+  );
 }

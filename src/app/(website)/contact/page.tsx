@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { ContactContent } from "./ContactContent";
+import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
 // ISR: 联系我们页面每天重新验证一次
 export const revalidate = 86400; // 24小时
@@ -22,5 +23,15 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
-  return <ContactContent content={undefined} />;
+  const breadcrumbs = [
+    { name: "首页", url: "/" },
+    { name: "联系我们", url: "/contact" },
+  ];
+
+  return (
+    <>
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <ContactContent content={undefined} />
+    </>
+  );
 }
