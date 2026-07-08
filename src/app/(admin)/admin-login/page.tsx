@@ -13,6 +13,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { apiPost, ApiError } from "@/lib/api-client";
 import { OrbitalIcons } from "@/components/ui/OrbitalIcons";
 
 interface FormErrors {
@@ -109,31 +110,17 @@ export default function LoginPage() {
       setIsLoading(true);
 
       try {
-        const response = await fetch("/api/admin/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password, totpCode }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          if (data.error?.code === "TOTP_REQUIRED") {
-            setTotpRequired(true);
-            setError("请输入二次验证码");
-            return;
-          }
-          setTotpRequired(false);
-          setError(data.error?.message || "登录失败，请稍后重试");
-          return;
-        }
-
+        await apiPost("/api/admin/login", { email, password, totpCode });
         router.push(redirectTo);
         router.refresh();
-      } catch {
-        setError("网络错误，请检查网络连接");
+      } catch (err) {
+        if (err instanceof ApiError && err.code === "TOTP_REQUIRED") {
+          setTotpRequired(true);
+          setError("请输入二次验证码");
+          return;
+        }
+        setTotpRequired(false);
+        setError(err instanceof Error ? err.message : "网络错误，请检查网络连接");
       } finally {
         setIsLoading(false);
       }

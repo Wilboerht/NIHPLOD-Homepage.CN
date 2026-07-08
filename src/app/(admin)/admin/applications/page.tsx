@@ -26,6 +26,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 
 interface Job {
   id: string;
@@ -101,11 +102,8 @@ export default function AdminApplicationsPage() {
   // 获取分类夹列表
   const fetchFolders = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/application-folders");
-      const data = await res.json();
-      if (data.success) {
-        setFolders(data.data);
-      }
+      const data = await apiGet<ApplicationFolder[]>("/api/admin/application-folders");
+      setFolders(data);
     } catch (error) {
       console.error("获取分类夹列表失败:", error);
     }
@@ -115,11 +113,8 @@ export default function AdminApplicationsPage() {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const res = await fetch("/api/admin/jobs?pageSize=100");
-        const data = await res.json();
-        if (data.success) {
-          setJobs(data.data.items);
-        }
+        const data = await apiGet<{ items: Job[] }>("/api/admin/jobs", { pageSize: 100 });
+        setJobs(data.items);
       } catch (error) {
         console.error("获取职位列表失败:", error);
       }
@@ -141,28 +136,21 @@ export default function AdminApplicationsPage() {
       if (jobFilter !== "all") params.set("jobId", jobFilter);
       if (folderFilter !== "all") params.set("folderId", folderFilter);
 
-      const res = await fetch(`/api/admin/applications?${params}`);
-      const data = await res.json();
+      const data = await apiGet<{ items: Application[]; pagination: { total: number }; pendingCount: number }>(
+        "/api/admin/applications",
+        Object.fromEntries(params.entries())
+      );
 
-      if (!res.ok || !data.success) {
-        const message = data?.error?.message || "获取简历列表失败";
-        if (res.status === 401) {
-          showError("登录已过期，请重新登录");
-          window.location.href = "/admin-login";
-          return;
-        }
-        showError(message);
-        setApplications([]);
-        setTotal(0);
-        setPendingCount(0);
-        return;
-      }
-
-      setApplications(data.data.items);
-      setTotal(data.data.pagination.total);
-      setPendingCount(data.data.pendingCount);
+      setApplications(data.items);
+      setTotal(data.pagination.total);
+      setPendingCount(data.pendingCount);
     } catch (error) {
       console.error("获取申请列表失败:", error);
+      if (error instanceof ApiError && error.status === 401) {
+        showError("登录已过期，请重新登录");
+        window.location.href = "/admin-login";
+        return;
+      }
       showError("网络异常，请刷新重试");
       setApplications([]);
       setTotal(0);
@@ -187,13 +175,7 @@ export default function AdminApplicationsPage() {
   // 更新状态
   const updateStatus = async (application: Application, newStatus: string) => {
     try {
-      const res = await fetch(`/api/admin/applications/${application.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!res.ok) throw new Error("操作失败");
+      await apiPatch(`/api/admin/applications/${application.id}`, { status: newStatus });
       success("状态已更新");
       fetchApplications();
       if (detailApplication?.id === application.id) {
@@ -209,13 +191,7 @@ export default function AdminApplicationsPage() {
     if (!detailApplication) return;
 
     try {
-      const res = await fetch(`/api/admin/applications/${detailApplication.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: editingNotes }),
-      });
-
-      if (!res.ok) throw new Error("操作失败");
+      await apiPatch(`/api/admin/applications/${detailApplication.id}`, { notes: editingNotes });
       success("备注已保存");
       setDetailApplication({ ...detailApplication, notes: editingNotes });
       fetchApplications();
@@ -230,12 +206,7 @@ export default function AdminApplicationsPage() {
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/applications/${deleteTarget.id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("删除失败");
-
+      await apiDelete(`/api/admin/applications/${deleteTarget.id}`);
       success("申请已删除");
       setDeleteTarget(null);
       fetchApplications();
@@ -294,18 +265,11 @@ export default function AdminApplicationsPage() {
 
     setSavingFolder(true);
     try {
-      const url = editingFolder
-        ? `/api/admin/application-folders/${editingFolder.id}`
-        : "/api/admin/application-folders";
-      const method = editingFolder ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(folderForm),
-      });
-
-      if (!res.ok) throw new Error("操作失败");
+      if (editingFolder) {
+        await apiPatch(`/api/admin/application-folders/${editingFolder.id}`, folderForm);
+      } else {
+        await apiPost("/api/admin/application-folders", folderForm);
+      }
       success(editingFolder ? "分类已更新" : "分类已创建");
       setShowFolderModal(false);
       fetchFolders();
@@ -322,11 +286,7 @@ export default function AdminApplicationsPage() {
 
     setDeletingFolder(true);
     try {
-      const res = await fetch(`/api/admin/application-folders/${deleteFolderTarget.id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("删除失败");
+      await apiDelete(`/api/admin/application-folders/${deleteFolderTarget.id}`);
       success("分类已删除");
       setDeleteFolderTarget(null);
       fetchFolders();
@@ -343,13 +303,7 @@ export default function AdminApplicationsPage() {
   // 更新申请的分类
   const updateApplicationFolder = async (application: Application, folderId: string | null) => {
     try {
-      const res = await fetch(`/api/admin/applications/${application.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderId }),
-      });
-
-      if (!res.ok) throw new Error("操作失败");
+      await apiPatch(`/api/admin/applications/${application.id}`, { folderId });
       success("分类已更新");
       fetchApplications();
       fetchFolders();

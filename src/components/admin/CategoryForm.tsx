@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { sanitizeSvg } from "@/lib/svg-utils";
+import { apiPost, apiPut } from "@/lib/api-client";
 import { Upload, X } from "lucide-react";
 
 // 分类类型
@@ -253,21 +254,10 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
 
     setSaving(true);
     try {
-      const url = isEdit
-        ? `/api/admin/categories/${category.id}`
-        : "/api/admin/categories";
-      const method = isEdit ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "保存失败");
+      if (isEdit) {
+        await apiPut(`/api/admin/categories/${category.id}`, formData);
+      } else {
+        await apiPost("/api/admin/categories", formData);
       }
 
       success(isEdit ? "分类已更新" : "分类已创建");

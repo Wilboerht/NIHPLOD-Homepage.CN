@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Shield, ShieldCheck, AlertTriangle, Copy, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { apiGet, apiPost } from "@/lib/api-client";
 
 interface TOTPSetupData {
   qrCode: string;
@@ -24,11 +25,8 @@ export default function TOTPSettingsPage() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await fetch("/api/admin/totp/status");
-        const data = await res.json();
-        if (data.success) {
-          setTotpEnabled(data.data.totpEnabled);
-        }
+        const data = await apiGet<{ totpEnabled: boolean }>("/api/admin/totp/status");
+        setTotpEnabled(data.totpEnabled);
       } catch {
         toast.error("获取二次验证状态失败");
       } finally {
@@ -43,13 +41,8 @@ export default function TOTPSettingsPage() {
   const startSetup = async () => {
     setProcessing(true);
     try {
-      const res = await fetch("/api/admin/totp/setup", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        setSetupData(data.data);
-      } else {
-        toast.error(data.error?.message || "初始化失败");
-      }
+      const data = await apiPost<TOTPSetupData>("/api/admin/totp/setup");
+      setSetupData(data);
     } catch {
       toast.error("初始化失败");
     } finally {
@@ -64,20 +57,11 @@ export default function TOTPSettingsPage() {
     }
     setProcessing(true);
     try {
-      const res = await fetch("/api/admin/totp/verify-setup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: verifyCode }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success("二次验证已启用");
-        setTotpEnabled(true);
-        setSetupData(null);
-        setVerifyCode("");
-      } else {
-        toast.error(data.error?.message || "验证失败");
-      }
+      await apiPost("/api/admin/totp/verify-setup", { code: verifyCode });
+      toast.success("二次验证已启用");
+      setTotpEnabled(true);
+      setSetupData(null);
+      setVerifyCode("");
     } catch {
       toast.error("验证失败");
     } finally {
@@ -92,19 +76,10 @@ export default function TOTPSettingsPage() {
     }
     setProcessing(true);
     try {
-      const res = await fetch("/api/admin/totp/disable", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: disablePassword }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success("二次验证已关闭");
-        setTotpEnabled(false);
-        setDisablePassword("");
-      } else {
-        toast.error(data.error?.message || "关闭失败");
-      }
+      await apiPost("/api/admin/totp/disable", { password: disablePassword });
+      toast.success("二次验证已关闭");
+      setTotpEnabled(false);
+      setDisablePassword("");
     } catch {
       toast.error("关闭失败");
     } finally {

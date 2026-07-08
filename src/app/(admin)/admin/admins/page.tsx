@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Search, RefreshCw, Pencil, Trash2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 
 interface AdminItem {
   id: string;
@@ -35,13 +36,9 @@ export default function AdminAdminsPage() {
   const fetchAdmins = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), search });
-      const res = await fetch(`/api/admin/admins?${params}`);
-      const data = await res.json();
-      if (data.success) {
-        setAdmins(data.data.admins);
-        setPagination(data.data.pagination);
-      }
+      const data = await apiGet<{ admins: AdminItem[]; pagination: typeof pagination }>("/api/admin/admins", { page, search });
+      setAdmins(data.admins);
+      setPagination(data.pagination);
     } catch {
       console.error("获取管理员失败");
     } finally {
@@ -77,28 +74,21 @@ export default function AdminAdminsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const url = "/api/admin/admins";
-      const method = editing ? "PUT" : "POST";
       const body = editing
-        ? { id: editing.id, ...form, ...(form.password ? {} : { password: undefined }) }
+        ? { id: editing.id, ...form }
         : form;
       if (editing && !form.password) delete (body as Record<string, unknown>).password;
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setShowModal(false);
-        fetchAdmins();
-        success(editing ? "更新成功" : "创建成功");
+      if (editing) {
+        await apiPut("/api/admin/admins", body);
       } else {
-        error(data.error?.message || "操作失败");
+        await apiPost("/api/admin/admins", body);
       }
-    } catch {
-      error("网络错误");
+      setShowModal(false);
+      fetchAdmins();
+      success(editing ? "更新成功" : "创建成功");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "网络错误");
     } finally {
       setSubmitting(false);
     }
@@ -107,16 +97,11 @@ export default function AdminAdminsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("确定删除该管理员吗？此操作不可撤销。")) return;
     try {
-      const res = await fetch(`/api/admin/admins/${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (data.success) {
-        fetchAdmins();
-        success("删除成功");
-      } else {
-        error(data.error?.message || "删除失败");
-      }
-    } catch {
-      error("网络错误");
+      await apiDelete(`/api/admin/admins/${id}`);
+      fetchAdmins();
+      success("删除成功");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "删除失败");
     }
   };
 

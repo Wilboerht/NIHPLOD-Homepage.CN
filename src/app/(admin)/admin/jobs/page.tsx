@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 
 interface Job {
   id: string;
@@ -57,20 +58,14 @@ export default function AdminJobsPage() {
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        pageSize: "10",
+      const data = await apiGet<{ items: Job[]; pagination: { total: number } }>("/api/admin/jobs", {
+        page,
+        pageSize: 10,
+        search,
+        status: statusFilter === "all" ? undefined : statusFilter,
       });
-      if (search) params.set("search", search);
-      if (statusFilter !== "all") params.set("status", statusFilter);
-
-      const res = await fetch(`/api/admin/jobs?${params}`);
-      const data = await res.json();
-
-      if (data.success) {
-        setJobs(data.data.items);
-        setTotal(data.data.pagination.total);
-      }
+      setJobs(data.items);
+      setTotal(data.pagination.total);
     } catch (error) {
       console.error("获取职位列表失败:", error);
     } finally {
@@ -93,14 +88,7 @@ export default function AdminJobsPage() {
   // 切换发布状态
   const togglePublish = async (job: Job) => {
     try {
-      const res = await fetch(`/api/admin/jobs/${job.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ published: !job.published }),
-      });
-
-      if (!res.ok) throw new Error("操作失败");
-
+      await apiPut(`/api/admin/jobs/${job.id}`, { published: !job.published });
       success(job.published ? "已取消发布" : "已发布");
       fetchJobs();
     } catch {
@@ -114,12 +102,7 @@ export default function AdminJobsPage() {
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/jobs/${deleteTarget.id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("删除失败");
-
+      await apiDelete(`/api/admin/jobs/${deleteTarget.id}`);
       success("职位已删除");
       setDeleteTarget(null);
       fetchJobs();
@@ -135,20 +118,12 @@ export default function AdminJobsPage() {
     if (selectedIds.size === 0) return;
 
     try {
-      const res = await fetch("/api/admin/jobs/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ids: Array.from(selectedIds),
-          action,
-        }),
+      const data = await apiPost<{ message: string }>("/api/admin/jobs/batch", {
+        ids: Array.from(selectedIds),
+        action,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error?.message || "操作失败");
-
-      success(data.data.message);
+      success(data.message);
       setSelectedIds(new Set());
       fetchJobs();
     } catch (error) {

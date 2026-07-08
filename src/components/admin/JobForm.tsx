@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
+import { apiPost, apiPatch } from "@/lib/api-client";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
@@ -315,26 +316,10 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
          }
       }
 
-      const url = isEdit ? `/api/admin/jobs/${jobId}` : "/api/admin/jobs";
-      const method = isEdit ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(finalData),
-      });
-
-      let data = {};
-      if (res.status !== 204) {
-        try {
-          data = await res.json();
-        } catch {
-          // body 为空，忽略解析错误
-        }
-      }
-
-      if (!res.ok) {
-        throw new Error((data as { error?: { message?: string } }).error?.message || "保存失败");
+      if (isEdit) {
+        await apiPatch(`/api/admin/jobs/${jobId}`, finalData);
+      } else {
+        await apiPost("/api/admin/jobs", finalData);
       }
 
       success(isEdit ? "职位已更新" : "职位已创建");

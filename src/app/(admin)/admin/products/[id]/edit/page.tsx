@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { apiGet } from "@/lib/api-client";
 
 interface Category {
   id: string;
@@ -59,21 +60,13 @@ export default function EditProductPage() {
   useEffect(() => {
     // 同时获取产品和分类
     Promise.all([
-      fetch(`/api/admin/products/${id}`).then((res) => res.json()),
-      fetch("/api/categories").then((res) => res.json()),
+      apiGet<ProductData>(`/api/admin/products/${id}`),
+      apiGet<Category[]>("/api/categories"),
     ])
-      .then(([productRes, categoriesRes]) => {
-        if (!productRes.success) {
-          setError(productRes.error?.message || "获取产品失败");
-          return;
-        }
-
-        if (categoriesRes.success) {
-          setCategories(categoriesRes.data);
-        }
+      .then(([data, categoriesData]) => {
+        setCategories(categoriesData);
 
         // 格式化产品数据
-        const data = productRes.data;
         setProduct({
           id: data.id,
           name: data.name,

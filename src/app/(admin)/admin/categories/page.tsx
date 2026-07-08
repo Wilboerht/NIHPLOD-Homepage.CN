@@ -9,6 +9,7 @@ import { CategoryForm } from "@/components/admin/CategoryForm";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { sanitizeSvg } from "@/lib/svg-utils";
+import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 
 // 分类类型
 interface Category {
@@ -42,11 +43,8 @@ export default function AdminCategoriesPage() {
   // 获取分类列表
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/categories");
-      const data = await res.json();
-      if (data.success) {
-        setCategories(data.data);
-      }
+      const data = await apiGet<Category[]>("/api/admin/categories");
+      setCategories(data);
     } catch (error) {
       console.error("获取分类失败:", error);
     } finally {
@@ -77,15 +75,7 @@ export default function AdminCategoriesPage() {
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/categories/${category.id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "删除失败");
-      }
-
+      await apiDelete(`/api/admin/categories/${category.id}`);
       success("分类已删除");
       fetchCategories();
     } catch (err) {
@@ -99,16 +89,7 @@ export default function AdminCategoriesPage() {
   // 切换前台可见性
   const handleToggleVisible = async (category: Category) => {
     try {
-      const res = await fetch(`/api/admin/categories/${category.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visible: !category.visible }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "更新失败");
-      }
+      await apiPut(`/api/admin/categories/${category.id}`, { visible: !category.visible });
 
       // 更新本地状态
       setCategories((prev) =>
@@ -155,17 +136,9 @@ export default function AdminCategoriesPage() {
 
     // 保存到服务器
     try {
-      const res = await fetch("/api/admin/categories/order", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
-        }),
+      await apiPut("/api/admin/categories/order", {
+        items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
       });
-
-      if (!res.ok) {
-        throw new Error("保存排序失败");
-      }
 
       success("排序已保存");
     } catch {

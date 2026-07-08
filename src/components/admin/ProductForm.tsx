@@ -12,6 +12,7 @@ import { TagInput } from "@/components/ui/TagInput";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { useToast } from "@/components/ui/Toast";
+import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema } from "@/schemas/product";
 
 // 图片类型
@@ -219,19 +220,10 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         formData.append("file", img.file);
         formData.append("folder", "products");
 
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error?.message || "图片上传失败");
-        }
+        const data = await apiPost<{ url: string }>("/api/upload", formData);
 
         uploaded.push({
-          url: data.data.url,
+          url: data.url,
           alt: img.alt,
           order: img.order,
         });
@@ -281,22 +273,10 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         published: publish ? true : formData.published,
       };
 
-      const url =
-        mode === "create"
-          ? "/api/admin/products"
-          : `/api/admin/products/${initialData?.id}`;
-      const method = mode === "create" ? "POST" : "PUT";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "保存失败");
+      if (mode === "create") {
+        await apiPost("/api/admin/products", payload);
+      } else {
+        await apiPut(`/api/admin/products/${initialData?.id}`, payload);
       }
 
       success(publish ? "产品已发布" : "产品已保存");

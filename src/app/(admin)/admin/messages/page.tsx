@@ -16,6 +16,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 
 interface Message {
   id: string;
@@ -60,21 +61,15 @@ export default function AdminMessagesPage() {
   const fetchMessages = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        pageSize: "20",
+      const data = await apiGet<{ items: Message[]; pagination: { total: number }; unreadCount: number }>("/api/admin/messages", {
+        page,
+        pageSize: 20,
+        search,
+        status: statusFilter === "all" ? undefined : statusFilter,
       });
-      if (search) params.set("search", search);
-      if (statusFilter !== "all") params.set("status", statusFilter);
-
-      const res = await fetch(`/api/admin/messages?${params}`);
-      const data = await res.json();
-
-      if (data.success) {
-        setMessages(data.data.items);
-        setTotal(data.data.pagination.total);
-        setUnreadCount(data.data.unreadCount);
-      }
+      setMessages(data.items);
+      setTotal(data.pagination.total);
+      setUnreadCount(data.unreadCount);
     } catch (error) {
       console.error("获取留言列表失败:", error);
     } finally {
@@ -99,13 +94,7 @@ export default function AdminMessagesPage() {
     if (message.read) return;
 
     try {
-      const res = await fetch(`/api/admin/messages/${message.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ read: true }),
-      });
-
-      if (!res.ok) throw new Error("操作失败");
+      await apiPatch(`/api/admin/messages/${message.id}`, { read: true });
       setDetailMessage((prev) =>
         prev && prev.id === message.id ? { ...prev, read: true } : prev
       );
@@ -126,13 +115,7 @@ export default function AdminMessagesPage() {
   // 切换已读状态
   const toggleRead = async (message: Message) => {
     try {
-      const res = await fetch(`/api/admin/messages/${message.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ read: !message.read }),
-      });
-
-      if (!res.ok) throw new Error("操作失败");
+      await apiPatch(`/api/admin/messages/${message.id}`, { read: !message.read });
       success(message.read ? "已标记为未读" : "已标记为已读");
       fetchMessages();
     } catch {
@@ -146,12 +129,7 @@ export default function AdminMessagesPage() {
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/messages/${deleteTarget.id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("删除失败");
-
+      await apiDelete(`/api/admin/messages/${deleteTarget.id}`);
       success("留言已删除");
       setDeleteTarget(null);
       fetchMessages();
@@ -167,20 +145,12 @@ export default function AdminMessagesPage() {
     if (selectedIds.size === 0) return;
 
     try {
-      const res = await fetch("/api/admin/messages/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ids: Array.from(selectedIds),
-          action,
-        }),
+      const data = await apiPost<{ message: string }>("/api/admin/messages/batch", {
+        ids: Array.from(selectedIds),
+        action,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error?.message || "操作失败");
-
-      success(data.data.message);
+      success(data.message);
       setSelectedIds(new Set());
       fetchMessages();
     } catch (error) {

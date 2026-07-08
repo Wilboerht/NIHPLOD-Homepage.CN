@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { adminNavItems, type NavItem } from "@/config/admin-nav";
 import { cn } from "@/lib/utils";
+import { apiPost } from "@/lib/api-client";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ export function Sidebar({
   // 处理登出
   const handleLogout = async () => {
     try {
-      await fetch("/api/admin/logout", { method: "POST" });
+      await apiPost("/api/admin/logout");
       router.push("/admin-login");
       router.refresh();
     } catch (error) {

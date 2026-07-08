@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { JobForm } from "@/components/admin/JobForm";
 import { useToast } from "@/components/ui/Toast";
+import { apiGet, ApiError } from "@/lib/api-client";
 
 interface JobData {
   id: string;
@@ -32,20 +33,15 @@ export default function EditJobPage() {
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const res = await fetch(`/api/admin/jobs/${jobId}`);
-        if (!res.ok) {
-          if (res.status === 404) {
-            showError("职位不存在");
-            router.push("/admin/jobs");
-            return;
-          }
-          throw new Error("获取职位失败");
-        }
-        const data = await res.json();
-        setJob(data.data);
+        const data = await apiGet<JobData>(`/api/admin/jobs/${jobId}`);
+        setJob(data);
       } catch (error) {
         console.error("获取职位失败:", error);
-        showError("获取职位失败");
+        if (error instanceof ApiError && error.status === 404) {
+          showError("职位不存在");
+        } else {
+          showError("获取职位失败");
+        }
         router.push("/admin/jobs");
       } finally {
         setLoading(false);

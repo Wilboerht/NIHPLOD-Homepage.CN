@@ -150,6 +150,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       select: { id: true, phone: true, status: true },
     });
 
+    // 冻结/封禁用户时立即撤销其所有 Refresh Token，强制下线
+    if (status !== "ACTIVE") {
+      await prisma.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
     await createAuditLog({
       action: "user_status_change",
       targetType: "user",

@@ -6,6 +6,7 @@ import { Menu, ChevronRight, LogOut, User } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { getBreadcrumbs } from "@/config/admin-nav";
 import { cn } from "@/lib/utils";
+import { apiPost } from "@/lib/api-client";
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -28,7 +29,7 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
   // 处理登出
   const handleLogout = async () => {
     try {
-      await fetch("/api/admin/logout", { method: "POST" });
+      await apiPost("/api/admin/logout");
       router.push("/admin-login");
       router.refresh();
     } catch (error) {

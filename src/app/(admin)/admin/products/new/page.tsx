@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { apiGet } from "@/lib/api-client";
 
 interface Category {
   id: string;
@@ -14,13 +15,8 @@ export default function NewProductPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setCategories(data.data);
-        }
-      })
+    apiGet<Category[]>("/api/categories")
+      .then((data) => setCategories(data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);

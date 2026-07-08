@@ -6,6 +6,7 @@ import { Sidebar, AdminHeader } from "@/components/admin";
 import { useSidebar } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { ToastProvider } from "@/components/ui/Toast";
+import { apiGet } from "@/lib/api-client";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -23,12 +24,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [userName, setUserName] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    fetch("/api/admin/me")
-      .then((res) => res.json())
+    apiGet<{ user: { role: string; name: string } }>("/api/admin/me")
       .then((data) => {
-        if (data.success && data.data?.user) {
-          setUserRole(data.data.user.role);
-          setUserName(data.data.user.name);
+        if (data.user) {
+          setUserRole(data.user.role);
+          setUserName(data.user.name);
         }
       })
       .catch(() => {

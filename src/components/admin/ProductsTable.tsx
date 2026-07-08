@@ -13,6 +13,7 @@ import { DataTable, Column } from "@/components/admin";
 import { Badge, DotBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 
 // 产品类型
 interface ProductItem {
@@ -91,14 +92,8 @@ export function ProductsTable({
   const handleTogglePublish = async (id: string, published: boolean) => {
     setActionLoading(id);
     try {
-      const res = await fetch(`/api/admin/products/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ published: !published }),
-      });
-      if (res.ok) {
-        onRefresh();
-      }
+      await apiPatch(`/api/admin/products/${id}`, { published: !published });
+      onRefresh();
     } catch (error) {
       console.error("操作失败:", error);
     } finally {
@@ -112,14 +107,10 @@ export function ProductsTable({
     setActionLoading("delete");
     try {
       if (batch) {
-        await fetch("/api/admin/products/batch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: selectedIds, action: "delete" }),
-        });
+        await apiPost("/api/admin/products/batch", { ids: selectedIds, action: "delete" });
         setSelectedIds([]);
       } else if (id) {
-        await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
+        await apiDelete(`/api/admin/products/${id}`);
       }
       onRefresh();
     } catch (error) {
@@ -134,11 +125,7 @@ export function ProductsTable({
   const handleBatchAction = async (action: "publish" | "unpublish") => {
     setActionLoading(action);
     try {
-      await fetch("/api/admin/products/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedIds, action }),
-      });
+      await apiPost("/api/admin/products/batch", { ids: selectedIds, action });
       setSelectedIds([]);
       onRefresh();
     } catch (error) {

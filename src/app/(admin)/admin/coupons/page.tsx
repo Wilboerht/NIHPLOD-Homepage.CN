@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Users, Pencil, Trash2, Power, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 
 const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -75,12 +76,9 @@ export default function AdminCouponsPage() {
     const fetchCoupons = useCallback(async (page = 1) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/coupons?page=${page}&pageSize=20`);
-            const data = await res.json();
-            if (data.success) {
-                setCoupons(data.data.coupons);
-                setPagination(data.data.pagination);
-            }
+            const data = await apiGet<{ coupons: Coupon[]; pagination: typeof pagination }>("/api/admin/coupons", { page, pageSize: 20 });
+            setCoupons(data.coupons);
+            setPagination(data.pagination);
         } finally {
             setLoading(false);
         }
@@ -89,30 +87,18 @@ export default function AdminCouponsPage() {
     useEffect(() => {
         fetchCoupons(1);
         // 加载品类列表（用于编辑弹窗的适用范围选择）
-        fetch("/api/admin/categories")
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.success) setCategories(data.data);
-            })
+        apiGet<{ id: string; name: string }[]>("/api/admin/categories")
+            .then((data) => setCategories(data))
             .catch(() => {});
     }, [fetchCoupons]);
 
     const handleToggleActive = async (id: string, current: boolean) => {
         try {
-            const res = await fetch(`/api/admin/coupons/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ isActive: !current }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                success(current ? "已下架" : "已上架");
-                fetchCoupons(pagination.page);
-            } else {
-                error(data.error?.message || "操作失败");
-            }
-        } catch {
-            error("操作失败");
+            await apiPatch(`/api/admin/coupons/${id}`, { isActive: !current });
+            success(current ? "已下架" : "已上架");
+            fetchCoupons(pagination.page);
+        } catch (err) {
+            error(err instanceof Error ? err.message : "操作失败");
         }
     };
 
@@ -144,40 +130,27 @@ export default function AdminCouponsPage() {
                 if (modalCoupon.endDate) payload.endDate = new Date(modalCoupon.endDate).toISOString();
             }
 
-            const url = modalMode === "create" ? "/api/admin/coupons" : `/api/admin/coupons/${modalCoupon.id}`;
-            const method = modalMode === "create" ? "POST" : "PATCH";
-
-            const res = await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            const data = await res.json();
-            if (data.success) {
-                success(modalMode === "create" ? "创建成功" : "编辑成功");
-                closeModal();
-                fetchCoupons(pagination.page);
+            if (modalMode === "create") {
+                await apiPost("/api/admin/coupons", payload);
             } else {
-                error(data.error?.message || (modalMode === "create" ? "创建失败" : "编辑失败"));
+                await apiPatch(`/api/admin/coupons/${modalCoupon.id}`, payload);
             }
-        } catch {
-            error(modalMode === "create" ? "创建失败" : "编辑失败");
+            success(modalMode === "create" ? "创建成功" : "编辑成功");
+            closeModal();
+            fetchCoupons(pagination.page);
+        } catch (err) {
+            error(err instanceof Error ? err.message : (modalMode === "create" ? "创建失败" : "编辑失败"));
         }
     };
 
     const handleDelete = async (id: string, name: string) => {
         if (!confirm(`确定要删除优惠券「${name}」吗？此操作不可恢复。`)) return;
         try {
-            const res = await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
-            const data = await res.json();
-            if (data.success) {
-                success("删除成功");
-                fetchCoupons(pagination.page);
-            } else {
-                error(data.error?.message || "删除失败");
-            }
-        } catch {
-            error("删除失败");
+            await apiDelete(`/api/admin/coupons/${id}`);
+            success("删除成功");
+            fetchCoupons(pagination.page);
+        } catch (err) {
+            error(err instanceof Error ? err.message : "删除失败");
         }
     };
 

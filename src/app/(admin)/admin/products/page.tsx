@@ -8,6 +8,7 @@ import { ProductsTable } from "@/components/admin";
 import { Button } from "@/components/ui/Button";
 import { Select, SelectOption } from "@/components/ui/Select";
 import { cn } from "@/lib/utils";
+import { apiGet } from "@/lib/api-client";
 
 // 产品类型
 interface ProductItem {
@@ -61,13 +62,8 @@ export default function AdminProductsPage() {
 
   // 获取分类列表
   useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setCategories(data.data);
-        }
-      })
+    apiGet<Category[]>("/api/categories")
+      .then((data) => setCategories(data))
       .catch(console.error);
   }, []);
 
@@ -82,13 +78,15 @@ export default function AdminProductsPage() {
       if (status && status !== "all") params.set("status", status);
       if (search) params.set("search", search);
 
-      const res = await fetch(`/api/admin/products?${params.toString()}`);
-      const data = await res.json();
-
-      if (data.success) {
-        setProducts(data.data.products);
-        setPagination(data.data.pagination);
-      }
+      const data = await apiGet<{ products: ProductItem[]; pagination: typeof pagination }>("/api/admin/products", {
+        page,
+        pageSize: 10,
+        categoryId,
+        status: status === "all" ? undefined : status,
+        search,
+      });
+      setProducts(data.products);
+      setPagination(data.pagination);
     } catch (error) {
       console.error("获取产品列表失败:", error);
     } finally {
