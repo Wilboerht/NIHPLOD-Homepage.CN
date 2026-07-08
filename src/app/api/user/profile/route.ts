@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth, withUserAuth } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
@@ -85,6 +86,10 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
 
 // PUT - 更新用户资料
 export const PUT = withUserAuth(async (request: NextRequest, payload) => {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const body = await request.json();
     const result = updateSchema.safeParse(body);
@@ -120,6 +125,10 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
 
 // POST - 上传头像 (直接存为本地文件或 OSS)
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     // 1. 验证身份
     const payload = await verifyUserAuth(request);

@@ -23,8 +23,9 @@ import {
   recordLoginAttempt,
   saveRefreshToken,
   clearLoginAttempts,
+  extractDeviceInfo,
 } from "@/lib/auth-security";
-import { rateLimit } from "@/lib/ratelimit";
+import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
     const { phone, password } = result.data;
 
     // 1. 项目级速率限制（防止滥用）
-    const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    const clientIP = getRateLimitClientIP(request);
     const ipLimit = await rateLimit(clientIP, "login");
     if (!ipLimit.success) {
       return NextResponse.json(
@@ -109,6 +110,22 @@ export async function POST(request: NextRequest) {
           },
         },
         { status: 400 }
+      );
+    }
+
+    // 3.1 检查账号状态
+    if (user.status !== "ACTIVE") {
+      const statusText = user.status === "SUSPENDED" ? "已被临时冻结" : "已被永久封禁";
+      await recordLoginAttempt(phone, false, request, `account_${user.status.toLowerCase()}`, "password");
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_DISABLED",
+            message: `账号${statusText}，请联系客服`,
+          },
+        },
+        { status: 403 }
       );
     }
 
@@ -169,7 +186,7 @@ export async function POST(request: NextRequest) {
     const refreshTokenExpiresAt = new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000
     );
-    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
+    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
     logAuthEvent("user_login", {
       userId: user.id,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
-import { AUTH_COOKIE_NAME } from "@/types/auth";
+import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { createAuditLog } from "@/lib/audit";
 
 // POST /api/admin/logout - 管理员登出
@@ -23,12 +23,9 @@ export const POST = withAuth(async (request: NextRequest, admin) => {
     message: "已成功登出",
   });
 
-  // 清除认证 Cookie
+  // 清除认证 Cookie（与设置时属性保持一致）
   response.cookies.set(AUTH_COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
+    ...COOKIE_OPTIONS,
     maxAge: 0, // 立即过期
   });
 

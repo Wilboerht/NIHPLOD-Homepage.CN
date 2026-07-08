@@ -7,7 +7,7 @@ import {
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
-import { saveRefreshToken } from "@/lib/auth-security";
+import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { z } from "zod";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
 import { jwtVerify } from "jose";
@@ -108,7 +108,8 @@ export async function POST(request: NextRequest) {
             orderBy: { createdAt: "desc" }
         });
 
-        if (!smsCode || smsCode.code !== code) {
+        const { verifyCode } = await import("@/lib/sms");
+        if (!smsCode || !verifyCode(phone, code, "register", smsCode.code, smsCode.codeHash)) {
             return NextResponse.json(
                 { 
                     success: false, 
@@ -241,7 +242,7 @@ export async function POST(request: NextRequest) {
 
         // 保存 Refresh Token 到数据库（统一使用 saveRefreshToken，自动清理旧 Token）
         const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
+        await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
         const response = NextResponse.json({
             success: true,

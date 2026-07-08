@@ -197,6 +197,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
+  // 预取 CSRF Token（如果用户可能已登录）
+  useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("auth_hint")) {
+      fetch("/api/auth/csrf", { credentials: "include" }).catch(() => {
+        // 忽略失败
+      });
+    }
+  }, []);
+
   // 定时主动刷新 Access Token（每 14 分钟一次，Access Token 15 分钟过期）
   useEffect(() => {
     if (!user) return;

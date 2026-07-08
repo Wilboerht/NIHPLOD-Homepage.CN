@@ -4,6 +4,7 @@ import { verifyPassword } from "@/lib/password";
 import { signToken } from "@/lib/jwt";
 import { AdminLoginSchema } from "@/schemas/api";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
+import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password } = result.data;
+    const { email, password, totpCode } = result.data;
 
     // 2. IP 级速率限制（零成本内存操作优先）
     const ip = getClientIP(request);
@@ -150,6 +151,54 @@ export async function POST(request: NextRequest) {
         },
         { status: 401 }
       );
+    }
+
+    // 3.5 TOTP 二次验证
+    if (admin.totpEnabled && admin.totpSecret) {
+      if (!totpCode || totpCode.length < 6) {
+        await recordAdminAttempt(email, false, request);
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "TOTP_REQUIRED", message: "请输入二次验证码" },
+            data: { totpRequired: true },
+          },
+          { status: 401 }
+        );
+      }
+
+      let totpValid = false;
+      try {
+        const secret = decryptTOTPSecret(admin.totpSecret);
+        totpValid = verifyTOTP(totpCode, secret);
+      } catch {
+        totpValid = false;
+      }
+
+      // 尝试备用码
+      if (!totpValid && admin.totpBackupCodes) {
+        const backupResult = verifyBackupCode(totpCode, admin.totpBackupCodes);
+        if (backupResult) {
+          totpValid = true;
+          // 更新备用码（移除已使用的）
+          await prisma.admin.update({
+            where: { id: admin.id },
+            data: { totpBackupCodes: JSON.stringify(backupResult.remainingCodes) },
+          });
+        }
+      }
+
+      if (!totpValid) {
+        await recordAdminAttempt(email, false, request);
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "TOTP_INVALID", message: "二次验证码错误" },
+            data: { totpRequired: true },
+          },
+          { status: 401 }
+        );
+      }
     }
 
     // 登录成功

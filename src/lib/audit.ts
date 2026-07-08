@@ -35,11 +35,18 @@ export type AuditAction =
   | "create_coupon"
   | "update_coupon"
   | "delete_coupon"
-  | "run_cron_task";
+  | "run_cron_task"
+  | "user_login"
+  | "user_logout"
+  | "user_register"
+  | "user_reset_password"
+  | "user_wechat_bind"
+  | "user_status_change";
 
 export type AuditTargetType =
   | "order"
   | "admin"
+  | "user"
   | "product"
   | "category"
   | "job"
@@ -53,7 +60,8 @@ interface AuditLogInput {
   targetType: AuditTargetType;
   targetId?: string;
   detail?: Record<string, unknown>;
-  adminId: string;
+  adminId?: string;
+  userId?: string;
   request?: Request;
 }
 
@@ -63,6 +71,11 @@ interface AuditLogInput {
  */
 export async function createAuditLog(input: AuditLogInput): Promise<boolean> {
   try {
+    // 在测试环境或 prisma 未完整初始化时，auditLog 可能不可用
+    if (!prisma.auditLog) {
+      return false;
+    }
+
     await prisma.auditLog.create({
       data: {
         action: input.action,
@@ -70,6 +83,7 @@ export async function createAuditLog(input: AuditLogInput): Promise<boolean> {
         targetId: input.targetId,
         detail: input.detail ? (input.detail as Prisma.InputJsonValue) : undefined,
         adminId: input.adminId,
+        userId: input.userId,
         ipAddress: input.request ? getClientIP(input.request) : null,
         userAgent: input.request?.headers.get("user-agent") ?? null,
       },

@@ -12,6 +12,41 @@
 
 import crypto from "crypto";
 import { randomInt } from "./random";
+
+/**
+ * 计算验证码哈希
+ * 使用 phone + code + type 组合，增加彩虹表攻击难度
+ */
+export function hashVerifyCode(phone: string, code: string, type: string): string {
+  return crypto.createHmac("sha256", process.env.JWT_SECRET || "default-secret")
+    .update(`${phone}:${code}:${type}`)
+    .digest("hex");
+}
+
+/**
+ * 安全地比较验证码
+ * 优先使用 codeHash，回退明文 code（兼容旧数据）
+ */
+export function verifyCode(
+  phone: string,
+  code: string,
+  type: string,
+  storedCode: string,
+  storedCodeHash?: string | null
+): boolean {
+  if (storedCodeHash) {
+    const expectedHash = hashVerifyCode(phone, code, type);
+    try {
+      const a = Buffer.from(storedCodeHash);
+      const b = Buffer.from(expectedHash);
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
+    } catch {
+      return false;
+    }
+  }
+  // 兼容旧数据：明文比较
+  return storedCode === code;
+}
 import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 import { apiConsole } from "@/lib/logger";

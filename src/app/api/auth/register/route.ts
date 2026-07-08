@@ -15,8 +15,8 @@ import {
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
-import { saveRefreshToken } from "@/lib/auth-security";
-import { rateLimit } from "@/lib/ratelimit";
+import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
@@ -40,7 +40,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     // 1. 项目级速率限制（防止垃圾注册）
-    const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    const clientIP = getRateLimitClientIP(request);
     const ipLimit = await rateLimit(clientIP, "form");
     if (!ipLimit.success) {
       return NextResponse.json(
@@ -116,8 +116,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证码校验
-    if (smsCode.code !== code) {
+    // 验证码校验（优先使用 codeHash，兼容明文 code）
+    const { verifyCode } = await import("@/lib/sms");
+    if (!verifyCode(phone, code, "register", smsCode.code, smsCode.codeHash)) {
       return NextResponse.json(
         {
           success: false,
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
     const refreshTokenExpiresAt = new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000
     );
-    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
+    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
     // 6. 构建响应
     const response = NextResponse.json({

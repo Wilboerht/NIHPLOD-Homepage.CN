@@ -10,7 +10,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRefreshToken, signUserToken, signRefreshToken, getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
-import { validateAndRefreshToken, saveRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
+import { validateAndRefreshToken, saveRefreshToken, revokeRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import { checkUserStatus } from "@/lib/auth";
 import {
   USER_ACCESS_COOKIE_OPTIONS,
   USER_REFRESH_COOKIE_OPTIONS,
@@ -67,7 +68,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 检查 Refresh Token 是否在数据库中有效（未被撤销）
+    // 3. 检查账号状态
+    const statusCheck = await checkUserStatus(payload.id);
+    if (!statusCheck.valid) {
+      logAuthEvent("user_refresh_token", {
+        success: false,
+        reason: `account_${statusCheck.status.toLowerCase()}`,
+        userId: payload.id,
+        identifier: payload.phone,
+        ip: getClientIP(request),
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_DISABLED",
+            message: statusCheck.reason || "账号已被禁用",
+          },
+        },
+        { status: 403 }
+      );
+    }
+
+    // 4. 检查 Refresh Token 是否在数据库中有效（未被撤销）
     const isValid = await validateAndRefreshToken(payload.id, refreshToken);
     if (!isValid) {
       logAuthEvent("user_refresh_token", {
@@ -89,7 +112,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Refresh Token Rotation：删除旧 Token，签发新双 Token
+    // 5. Refresh Token Rotation：删除旧 Token，签发新双 Token
     await revokeRefreshToken(payload.id, refreshToken);
 
     const newAccessToken = await signUserToken({
@@ -102,9 +125,9 @@ export async function POST(request: NextRequest) {
     });
 
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await saveRefreshToken(payload.id, newRefreshToken, refreshTokenExpiresAt);
+    await saveRefreshToken(payload.id, newRefreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
-    // 5. 构建响应（不再在 body 中返回 Token，仅返回过期时间等元数据）
+    // 6. 构建响应（不再在 body 中返回 Token，仅返回过期时间等元数据）
     const response = NextResponse.json({
       success: true,
       data: {
@@ -113,7 +136,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 6. 更新 Cookie 中的双 Token
+    // 7. 更新 Cookie 中的双 Token
     response.cookies.set(USER_COOKIE_NAME, newAccessToken, USER_ACCESS_COOKIE_OPTIONS);
     response.cookies.set(USER_REFRESH_COOKIE_NAME, newRefreshToken, USER_REFRESH_COOKIE_OPTIONS);
 

@@ -6,6 +6,7 @@
  */
 
 import { apiConsole } from "@/lib/logger";
+import { createAuditLog } from "./audit";
 
 export type AuthEventType =
   | "user_login"
@@ -83,5 +84,36 @@ export function logAuthEvent(
     apiConsole.info(`[AuthAudit] ${event}`, logPayload);
   } else {
     apiConsole.warn(`[AuthAudit] ${event} failed`, logPayload);
+  }
+
+  // 关键 C 端安全事件持久化到审计日志
+  const persistentEvents: AuthEventType[] = [
+    "user_login",
+    "user_logout",
+    "user_register",
+    "user_reset_password",
+    "wechat_bind",
+  ];
+
+  if (persistentEvents.includes(event)) {
+    const targetType = event === "wechat_bind" ? "user" : "system";
+    const targetId = context.userId;
+
+    createAuditLog({
+      action: event as
+        | "user_login"
+        | "user_logout"
+        | "user_register"
+        | "user_reset_password"
+        | "user_wechat_bind",
+      targetType,
+      targetId,
+      detail: logPayload,
+      userId: context.userId,
+      // 注意：auth-logger 通常在 API 路由中调用，但没有直接传入 request
+      // 调用方应在 detail 中包含 ip/ua，或后续重构为传入 request
+    }).catch((error) => {
+      apiConsole.error("[AuthAudit] 持久化审计日志失败:", error);
+    });
   }
 }

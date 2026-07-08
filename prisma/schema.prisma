@@ -178,17 +178,24 @@ model ContactMessage {
 // C端用户系统
 // ============================================
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
 model User {
-  id            String    @id @default(cuid())
-  phone         String    @unique              // 手机号（唯一）
-  phoneVerified Boolean   @default(false)      // 手机验证状态
-  password      String?                        // 密码（哈希后）
-  nickname      String?                        // 昵称
-  avatar        String?                        // 头像 URL
+  id            String     @id @default(cuid())
+  phone         String     @unique              // 手机号（唯一）
+  phoneVerified Boolean    @default(false)      // 手机验证状态
+  password      String?                         // 密码（哈希后）
+  nickname      String?                         // 昵称
+  avatar        String?                         // 头像 URL
+  status        UserStatus @default(ACTIVE)     // 账号状态
 
   // 微信登录
-  wechatOpenId  String?   @unique              // 微信 OpenID
-  wechatUnionId String?                        // 微信 UnionID
+  wechatOpenId  String?   @unique               // 微信 OpenID
+  wechatUnionId String?                         // 微信 UnionID
 
   // 关联
   addresses     Address[]
@@ -196,12 +203,14 @@ model User {
   cartItems     CartItem[]
   userCoupons   UserCoupon[]
   refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([phone])
   @@index([wechatOpenId])
+  @@index([status])
 }
 
 // ============================================
@@ -218,13 +227,21 @@ model RefreshToken {
   token     String   @db.Text                  // 加密后的 refresh token
   expiresAt DateTime                           // 过期时间
   revokedAt DateTime?                          // 撤销时间（已登出）
+
+  // 设备/会话信息
+  deviceName  String?  // 设备名称/浏览器摘要
+  deviceInfo  String?  // 原始 UA 摘要
+  ipAddress   String?  // 登录 IP
+  userAgent   String?  @db.Text
   
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   
   @@index([userId, expiresAt])
   @@index([token])
+  @@index([userId, revokedAt, expiresAt])
 }
 
 /**
@@ -290,6 +307,7 @@ model SmsCode {
   id        String   @id @default(cuid())
   phone     String
   code      String
+  codeHash  String?  // 验证码 SHA-256 哈希（安全存储，逐步替代明文 code）
   type      String   @default("login")         // login | bind | reset
   used      Boolean  @default(false)
   expiresAt DateTime
@@ -460,14 +478,32 @@ model AuditLog {
   detail    Json?    // 操作详情（变更前后数据快照等）
   ipAddress String?  // 操作者IP
   userAgent String?  @db.Text // 浏览器UA
-  adminId   String?  // 操作管理员ID
+  adminId   String?
+  userId    String?  // C 端用户事件使用
   admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
   @@index([action, createdAt(sort: Desc)])
   @@index([targetType, targetId])
   @@index([adminId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt])
+}
+
+// ============================================
+// 限流记录（支持多实例部署）
+// ============================================
+
+model RateLimitRecord {
+  id          String   @id @default(cuid())
+  key         String   // 如 "login:192.168.1.1"
+  windowStart DateTime
+  count       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key, windowStart])
 }
 
 // ============================================
@@ -480,13 +516,16 @@ enum AdminRole {
 }
 
 model Admin {
-  id        String    @id @default(cuid())
-  email     String    @unique // 登录邮箱
-  password  String    // 加密密码
-  name      String    // 显示名称
-  role      AdminRole @default(admin)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique // 登录邮箱
+  password        String    // 加密密码
+  name            String    // 显示名称
+  role            AdminRole @default(admin)
+  totpSecret      String?   // 加密后的 TOTP secret
+  totpEnabled     Boolean   @default(false)
+  totpBackupCodes String?   @db.Text // 加密存储的备用码 JSON 数组
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   auditLogs AuditLog[] // 审计日志关联
 }

@@ -4,6 +4,8 @@ import {
   checkAccountLockout,
   clearLoginAttempts,
   DEFAULT_BRUTE_FORCE_CONFIG,
+  saveRefreshToken,
+  extractDeviceInfo,
 } from "../auth-security";
 
 // 模拟 prisma 模块，避免连接真实数据库
@@ -16,9 +18,18 @@ vi.mock("../prisma", () => {
     deleteMany: vi.fn(),
   };
 
+  const mockRefreshToken = {
+    findMany: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    create: vi.fn(),
+  };
+
   return {
     prisma: {
       loginAttempt: mockLoginAttempt,
+      refreshToken: mockRefreshToken,
+      $transaction: vi.fn(),
     },
   };
 });
@@ -32,6 +43,16 @@ async function getMockLoginAttempt() {
     create: ReturnType<typeof vi.fn>;
     findMany: ReturnType<typeof vi.fn>;
     deleteMany: ReturnType<typeof vi.fn>;
+  };
+}
+
+async function getMockRefreshToken() {
+  const { prisma } = await import("../prisma");
+  return prisma.refreshToken as unknown as {
+    findMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -153,6 +174,78 @@ describe("auth-security", () => {
       expect(mock.deleteMany).toHaveBeenCalledWith({
         where: { identifier: "13800138000" },
       });
+    });
+  });
+
+  describe("saveRefreshToken", () => {
+    it("应创建新的 Refresh Token", async () => {
+      const { prisma } = await import("../prisma");
+      const mock = await getMockRefreshToken();
+      mock.findMany.mockResolvedValueOnce([]);
+      mock.create.mockResolvedValueOnce({ id: "rt-1" });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      await saveRefreshToken(
+        "user-1",
+        "token-1",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        { deviceName: "Test Device", ipAddress: "1.2.3.4", userAgent: "TestAgent" }
+      );
+
+      expect(mock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: "user-1",
+            deviceName: "Test Device",
+            ipAddress: "1.2.3.4",
+          }),
+        })
+      );
+    });
+
+    it("同一设备应更新旧 Token", async () => {
+      const { prisma } = await import("../prisma");
+      const mock = await getMockRefreshToken();
+      mock.findMany.mockResolvedValueOnce([
+        {
+          id: "rt-1",
+          deviceInfo: "TestAgent",
+          ipAddress: "1.2.3.4",
+          userAgent: "TestAgent",
+          createdAt: new Date(),
+        },
+      ]);
+      mock.update.mockResolvedValueOnce({ id: "rt-1" });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      await saveRefreshToken(
+        "user-1",
+        "token-2",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        { deviceName: "Test Device", ipAddress: "1.2.3.4", userAgent: "TestAgent" }
+      );
+
+      expect(mock.update).toHaveBeenCalled();
+      expect(mock.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("extractDeviceInfo", () => {
+    it("应提取设备和 IP 信息", () => {
+      process.env.TRUST_PROXY = "true";
+      const request = createMockRequest({
+        "x-forwarded-for": "1.2.3.4",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      });
+
+      const info = extractDeviceInfo(request);
+      expect(info.ipAddress).toBe("1.2.3.4");
+      expect(info.deviceName).toBe("Windows 浏览器");
+      expect(info.userAgent).toContain("Windows");
     });
   });
 });

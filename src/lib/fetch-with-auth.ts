@@ -16,6 +16,33 @@ export class UnauthorizedError extends Error {
 
 let refreshPromise: Promise<boolean> | null = null;
 
+/**
+ * 从 Cookie 中读取 CSRF Token
+ */
+function getCSRFTokenFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)__Host-csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * 获取 CSRF Token（从 Cookie 或服务器）
+ */
+async function ensureCSRFToken(): Promise<string | null> {
+  const existing = getCSRFTokenFromCookie();
+  if (existing) return existing;
+
+  try {
+    const res = await fetch("/api/auth/csrf", { credentials: "include" });
+    if (res.ok) {
+      return getCSRFTokenFromCookie();
+    }
+  } catch {
+    // 忽略 CSRF token 获取失败
+  }
+  return null;
+}
+
 async function doRefresh(): Promise<boolean> {
   try {
     const res = await fetch("/api/auth/refresh", {
@@ -54,8 +81,22 @@ export async function fetchWithAuth(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const isWriteOperation = method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
+
+  const headers = new Headers(init?.headers);
+
+  // 写操作自动附加 CSRF Token
+  if (isWriteOperation) {
+    const csrfToken = await ensureCSRFToken();
+    if (csrfToken) {
+      headers.set("X-CSRF-Token", csrfToken);
+    }
+  }
+
   const mergedInit: RequestInit = {
     ...init,
+    headers,
     credentials: init?.credentials ?? "include",
   };
 

@@ -18,6 +18,7 @@ import { OrbitalIcons } from "@/components/ui/OrbitalIcons";
 interface FormErrors {
   email?: string;
   password?: string;
+  totpCode?: string;
 }
 
 function validateEmail(email: string): boolean {
@@ -31,6 +32,8 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [totpRequired, setTotpRequired] = useState(false);
 
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
@@ -81,13 +84,17 @@ export default function LoginPage() {
 
     if (!password) {
       errors.password = "请输入密码";
-    } else if (password.length < 6) {
-      errors.password = "密码至少需要 6 位";
+    } else if (password.length < 8) {
+      errors.password = "密码至少需要 8 位";
+    }
+
+    if (totpRequired && totpCode.length !== 6) {
+      errors.totpCode = "请输入6位二次验证码";
     }
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [email, password]);
+  }, [email, password, totpRequired, totpCode]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -107,12 +114,18 @@ export default function LoginPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email, password, totpCode }),
         });
 
         const data = await response.json();
 
         if (!response.ok || !data.success) {
+          if (data.error?.code === "TOTP_REQUIRED") {
+            setTotpRequired(true);
+            setError("请输入二次验证码");
+            return;
+          }
+          setTotpRequired(false);
           setError(data.error?.message || "登录失败，请稍后重试");
           return;
         }
@@ -125,7 +138,7 @@ export default function LoginPage() {
         setIsLoading(false);
       }
     },
-    [email, password, redirectTo, router, validateForm]
+    [email, password, totpCode, redirectTo, router, validateForm]
   );
 
   const handleEmailChange = useCallback(
@@ -146,6 +159,17 @@ export default function LoginPage() {
       }
     },
     [fieldErrors.password]
+  );
+
+  const handleTOTPChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+      setTotpCode(value);
+      if (fieldErrors.totpCode) {
+        setFieldErrors((prev) => ({ ...prev, totpCode: undefined }));
+      }
+    },
+    [fieldErrors.totpCode]
   );
 
   return (
@@ -279,7 +303,7 @@ export default function LoginPage() {
                       required
                       autoComplete="current-password"
                       disabled={isLoading}
-                      minLength={6}
+                      minLength={8}
                       placeholder="密码"
                       aria-invalid={!!fieldErrors.password}
                       aria-describedby={fieldErrors.password ? "password-error" : undefined}
@@ -315,7 +339,43 @@ export default function LoginPage() {
                     </p>
                   </div>
 
-                      {/* 错误提示 */}
+                  {/* TOTP Code */}
+                  {totpRequired && (
+                    <div>
+                      <input
+                        id="totpCode"
+                        type="text"
+                        inputMode="numeric"
+                        value={totpCode}
+                        onChange={handleTOTPChange}
+                        required
+                        autoComplete="one-time-code"
+                        disabled={isLoading}
+                        maxLength={6}
+                        placeholder="二次验证码（6位数字）"
+                        aria-invalid={!!fieldErrors.totpCode}
+                        aria-describedby={fieldErrors.totpCode ? "totp-error" : undefined}
+                        className={cn(
+                          "block w-full rounded-xl border bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
+                          fieldErrors.totpCode
+                            ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
+                            : "border-slate-100 focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                        )}
+                      />
+                      <p
+                        id="totp-error"
+                        className={cn(
+                          "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
+                          fieldErrors.totpCode ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none h-0 mt-0"
+                        )}
+                      >
+                        <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                        <span>{fieldErrors.totpCode || ""}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 错误提示 */}
                   {error && (
                     <div
                       role="alert"

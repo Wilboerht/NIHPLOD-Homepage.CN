@@ -14,6 +14,7 @@ import {
   type UserJWTPayload,
 } from "@/types/auth";
 import { prisma } from "./prisma";
+import type { UserStatus } from "@/generated/prisma/client";
 
 // ============================================
 // 管理员认证
@@ -191,6 +192,30 @@ export function getUserTokenFromRequest(request: NextRequest): string | null {
 }
 
 /**
+ * 检查用户账号状态
+ */
+export async function checkUserStatus(userId: string): Promise<{ valid: boolean; status: UserStatus; reason?: string }> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { status: true },
+  });
+
+  if (!user) {
+    return { valid: false, status: "BANNED" as UserStatus, reason: "用户不存在" };
+  }
+
+  if (user.status === "SUSPENDED") {
+    return { valid: false, status: user.status, reason: "账号已被临时冻结" };
+  }
+
+  if (user.status === "BANNED") {
+    return { valid: false, status: user.status, reason: "账号已被永久封禁" };
+  }
+
+  return { valid: true, status: user.status };
+}
+
+/**
  * 验证请求中的用户认证信息
  */
 export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPayload | null> {
@@ -199,7 +224,18 @@ export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPaylo
     return null;
   }
 
-  return verifyUserToken(token);
+  const payload = await verifyUserToken(token);
+  if (!payload) {
+    return null;
+  }
+
+  // 校验账号状态
+  const statusCheck = await checkUserStatus(payload.id);
+  if (!statusCheck.valid) {
+    return null;
+  }
+
+  return payload;
 }
 
 /**
@@ -226,8 +262,13 @@ export async function getCurrentLoginUser(): Promise<UserInfo | null> {
       phone: true,
       nickname: true,
       avatar: true,
+      status: true,
     },
   });
+
+  if (!user || user.status !== "ACTIVE") {
+    return null;
+  }
 
   return user;
 }

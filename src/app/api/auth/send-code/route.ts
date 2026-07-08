@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendLoginCode, generateVerifyCode } from "@/lib/sms";
+import { sendLoginCode, generateVerifyCode, hashVerifyCode } from "@/lib/sms";
 import { z } from "zod";
 import { rateLimit, getClientIP as getClientIPFromRateLimit } from "@/lib/ratelimit";
 import { getClientIP } from "@/lib/client-ip";
@@ -115,12 +115,14 @@ export async function POST(request: NextRequest) {
     // 生成验证码
     const code = generateVerifyCode();
     const expiresAt = new Date(Date.now() + CODE_EXPIRE_MINUTES * 60 * 1000);
+    const codeHash = hashVerifyCode(phone, code, type);
 
-    // 保存验证码
+    // 保存验证码（同时存储明文 code 用于兼容，以及 codeHash 用于安全校验）
     await prisma.smsCode.create({
       data: {
         phone,
         code,
+        codeHash,
         type,
         expiresAt,
       },

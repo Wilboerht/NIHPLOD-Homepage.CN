@@ -22,8 +22,9 @@ import {
   recordLoginAttempt,
   saveRefreshToken,
   clearLoginAttempts,
+  extractDeviceInfo,
 } from "@/lib/auth-security";
-import { rateLimit } from "@/lib/ratelimit";
+import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { getClientIP } from "@/lib/client-ip";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     const { phone, code } = result.data;
 
     // 1. 项目级速率限制（防止滥用）
-    const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    const clientIP = getRateLimitClientIP(request);
     const ipLimit = await rateLimit(clientIP, "login");
     if (!ipLimit.success) {
       return NextResponse.json(
@@ -117,8 +118,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. 验证码校验
-    if (smsCode.code !== code) {
+    // 4. 验证码校验（优先使用 codeHash，兼容明文 code）
+    const { verifyCode } = await import("@/lib/sms");
+    if (!verifyCode(phone, code, "login", smsCode.code, smsCode.codeHash)) {
       // 记录失败尝试
       await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
 
@@ -161,6 +163,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 5.1 检查账号状态
+    if (user.status !== "ACTIVE") {
+      const statusText = user.status === "SUSPENDED" ? "已被临时冻结" : "已被永久封禁";
+      await recordLoginAttempt(phone, false, request, `account_${user.status.toLowerCase()}`, "sms");
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_DISABLED",
+            message: `账号${statusText}，请联系客服`,
+          },
+        },
+        { status: 403 }
+      );
+    }
+
     // 6. 更新手机验证状态
     if (!user.phoneVerified) {
       await prisma.user.update({
@@ -199,7 +217,7 @@ export async function POST(request: NextRequest) {
     const refreshTokenExpiresAt = new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000
     );
-    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
+    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
     // 12. 构建响应
     const response = NextResponse.json({

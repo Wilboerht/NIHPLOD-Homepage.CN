@@ -3,6 +3,7 @@
  * 使用内存 LRU 缓存实现简单的 IP 限流
  */
 import { LRUCache } from "lru-cache";
+import { rateLimitDB, cleanupRateLimitRecords } from "./ratelimit-db";
 export { getClientIP } from "./client-ip";
 
 /** 速率限制配置 */
@@ -98,6 +99,12 @@ export async function rateLimit(
   const preset = RATE_LIMIT_PRESETS[type] || DEFAULT_OPTIONS;
   const opts: RateLimitOptions = { ...preset, ...options };
 
+  // 数据库模式：支持多实例部署
+  if (process.env.RATE_LIMIT_STORAGE === "database") {
+    const dbKey = `${type}:${identifier}`;
+    return rateLimitDB(dbKey, opts);
+  }
+
   const now = Date.now();
   const cacheKey = `${type}:${identifier}`;
 
@@ -141,6 +148,8 @@ export async function rateLimit(
     limit: opts.maxRequests,
   };
 }
+
+export { cleanupRateLimitRecords };
 
 /** 双重限流结果 */
 export interface DualRateLimitResult extends RateLimitResult {

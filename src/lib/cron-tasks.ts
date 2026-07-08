@@ -6,6 +6,8 @@
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
 import { autoExpireUserCoupons } from "./coupon";
+import { cleanupExpiredRefreshTokens } from "./auth-security";
+import { cleanupRateLimitRecords } from "./ratelimit";
 import { apiConsole } from "@/lib/logger";
 
 interface ScheduledTask {
@@ -52,6 +54,32 @@ const tasks: ScheduledTask[] = [
         console.log(`[Cron] 优惠券过期清理完成: ${result.expiredCount} 张优惠券被标记为过期`);
       } catch (error) {
         apiConsole.error("[Cron] 优惠券过期清理任务失败:", error);
+      }
+    },
+  },
+  {
+    name: "Cleanup Expired Refresh Tokens",
+    cronExpression: "0 3 * * *", // 每天凌晨 3 点执行
+    handler: async () => {
+      try {
+        console.log("[Cron] 开始清理过期 Refresh Token...");
+        const count = await cleanupExpiredRefreshTokens();
+        console.log(`[Cron] 过期 Refresh Token 清理完成: ${count} 个`);
+      } catch (error) {
+        apiConsole.error("[Cron] 过期 Refresh Token 清理失败:", error);
+      }
+    },
+  },
+  {
+    name: "Cleanup Expired Rate Limit Records",
+    cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
+    handler: async () => {
+      try {
+        console.log("[Cron] 开始清理过期限流记录...");
+        const count = await cleanupRateLimitRecords();
+        console.log(`[Cron] 过期限流记录清理完成: ${count} 条`);
+      } catch (error) {
+        apiConsole.error("[Cron] 过期限流记录清理失败:", error);
       }
     },
   },

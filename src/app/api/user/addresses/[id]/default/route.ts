@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { apiConsole } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -13,6 +14,10 @@ type RouteContext = { params: Promise<{ id: string }> };
 export const dynamic = "force-dynamic";
 
 export async function PUT(request: NextRequest, context: RouteContext) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const payload = await verifyUserAuth(request);
     if (!payload) {

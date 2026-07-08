@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
           phoneVerified: true,
           nickname: true,
           avatar: true,
+          status: true,
           createdAt: true,
           _count: { select: { orders: true } },
         },

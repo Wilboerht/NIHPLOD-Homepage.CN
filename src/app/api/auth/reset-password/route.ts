@@ -10,6 +10,8 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 请求参数验证
 const resetPasswordSchema = z.object({
@@ -26,6 +28,10 @@ const resetPasswordSchema = z.object({
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const body = await request.json();
 
@@ -45,6 +51,21 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone, code, password } = result.data;
+
+    // 1. 账户级防爆破检查
+    const { locked, remainingMinutes } = await checkAccountLockout(phone);
+    if (locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_LOCKED",
+            message: `账户已被锁定，请在 ${remainingMinutes} 分钟后重试`,
+          },
+        },
+        { status: 429 }
+      );
+    }
 
     // 验证验证码
     const smsCode = await prisma.smsCode.findFirst({
@@ -70,7 +91,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (smsCode.code !== code) {
+    const { verifyCode } = await import("@/lib/sms");
+    if (!verifyCode(phone, code, "reset", smsCode.code, smsCode.codeHash)) {
+      await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
       return NextResponse.json(
         {
           success: false,
@@ -115,7 +138,13 @@ export async function POST(request: NextRequest) {
     });
 
     // 密码重置后撤销该用户所有 Refresh Token，强制所有设备重新登录
-    await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    // 清除失败记录
+    await clearLoginAttempts(phone);
 
     logAuthEvent("user_reset_password", {
       userId: user.id,

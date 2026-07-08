@@ -17,7 +17,7 @@ import {
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
-import { saveRefreshToken } from "@/lib/auth-security";
+import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { SignJWT } from "jose";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -33,14 +33,15 @@ const secret = new TextEncoder().encode(jwtSecret);
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // 获取重定向地址（从 state 解析或默认）并校验 CSRF nonce
+  let redirectUrl = "/";
+
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const state = searchParams.get("state");
     const error = searchParams.get("error");
 
-    // 获取重定向地址（从 state 解析或默认）并校验 CSRF nonce
-    let redirectUrl = "/";
     let loginType: "open" | "mp" = "open";
     const nonceCookie = request.cookies.get("wechat_oauth_nonce")?.value;
     let stateValid = false;
@@ -73,16 +74,9 @@ export async function GET(request: NextRequest) {
 
     // state 校验失败，拒绝处理
     if (!stateValid) {
-      const response = NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "INVALID_STATE",
-            message: "授权状态验证失败，请重试",
-          },
-          redirectUrl: "/",
-        },
-        { status: 400 }
+      const response = NextResponse.redirect(
+        new URL("/?wechat_auth=error&code=INVALID_STATE&message=" + encodeURIComponent("授权状态验证失败，请重试"), request.url),
+        302
       );
       response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
       return response;
@@ -96,31 +90,18 @@ export async function GET(request: NextRequest) {
         reason: "wechat_denied",
         ip: getClientIP(request),
       });
-      const response = NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "WECHAT_DENIED",
-            message: "您取消了微信授权"
-          },
-          redirectUrl
-        },
-        { status: 400 }
+      const response = NextResponse.redirect(
+        new URL(`${redirectUrl}?wechat_auth=error&code=WECHAT_DENIED&message=` + encodeURIComponent("您取消了微信授权"), request.url),
+        302
       );
       response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
       return response;
     }
 
     if (!code) {
-      const response = NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "MISSING_CODE",
-            message: "缺少授权码"
-          }
-        },
-        { status: 400 }
+      const response = NextResponse.redirect(
+        new URL(`${redirectUrl}?wechat_auth=error&code=MISSING_CODE&message=` + encodeURIComponent("缺少授权码"), request.url),
+        302
       );
       response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
       return response;
@@ -181,21 +162,12 @@ export async function GET(request: NextRequest) {
 
       // 保存 Refresh Token 到数据库（统一使用 saveRefreshToken，自动清理旧 Token）
       const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-      await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt);
+      await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
-      const response = NextResponse.json({
-        success: true,
-        data: {
-          user: {
-            id: user.id,
-            phone: user.phone,
-            nickname: user.nickname,
-            avatar: user.avatar,
-          },
-          isNewUser: false,
-          bindingRequired: false,
-        },
-      });
+      const response = NextResponse.redirect(
+        new URL(`${redirectUrl}?wechat_auth=success`, request.url),
+        302
+      );
 
       // 设置 Access Token Cookie（15 分钟）
       response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
@@ -226,19 +198,10 @@ export async function GET(request: NextRequest) {
       ip: getClientIP(request),
     });
 
-    const response = NextResponse.json({
-      success: true,
-      data: {
-        wechatInfo: {
-          openid: wechatUser.openid,
-          nickname: wechatUser.nickname,
-          avatar: wechatUser.headimgurl,
-        },
-        bindingRequired: true,
-        isNewUser: true,
-        message: "首次使用微信登录，请绑定手机号完成注册",
-      },
-    });
+    const response = NextResponse.redirect(
+      new URL(`${redirectUrl}?wechat_auth=binding_required`, request.url),
+      302
+    );
 
     // 设置临时绑定令牌
     response.cookies.set("wechat_bind_token", bindToken, {
@@ -251,16 +214,10 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     apiConsole.error("[WechatCallback] 异常:", error);
-    const isDev = process.env.NODE_ENV === "development";
-    const response = NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_ERROR",
-          message: isDev ? (error instanceof Error ? error.message : "服务器错误") : "服务器错误",
-        },
-      },
-      { status: 500 }
+    const message = process.env.NODE_ENV === "development" && error instanceof Error ? error.message : "服务器错误";
+    const response = NextResponse.redirect(
+      new URL(`${redirectUrl}?wechat_auth=error&code=INTERNAL_ERROR&message=` + encodeURIComponent(message), request.url),
+      302
     );
     response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
     return response;

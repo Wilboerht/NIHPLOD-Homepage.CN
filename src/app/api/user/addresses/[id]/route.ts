@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -62,6 +63,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 // 更新地址
 export async function PUT(request: NextRequest, context: RouteContext) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const payload = await verifyUserAuth(request);
     if (!payload) {
@@ -124,6 +129,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
 // 删除地址
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const payload = await verifyUserAuth(request);
     if (!payload) {

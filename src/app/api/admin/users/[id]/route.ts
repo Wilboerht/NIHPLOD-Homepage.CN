@@ -5,7 +5,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { z } from "zod";
+import type { UserStatus } from "@/generated/prisma/client";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -32,6 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         phoneVerified: true,
         nickname: true,
         avatar: true,
+        status: true,
         wechatOpenId: true,
         wechatUnionId: true,
         createdAt: true,
@@ -90,6 +94,74 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
   } catch (error) {
     apiConsole.error("[AdminUserDetail] 异常:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
+      { status: 500 }
+    );
+  }
+}
+
+const updateUserSchema = z.object({
+  status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"] as const),
+});
+
+// PATCH /api/admin/users/:id - 修改用户状态
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  try {
+    const admin = await verifyAuth(request);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await context.params;
+    const body = await request.json();
+    const result = updateUserSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+        { status: 400 }
+      );
+    }
+
+    const { status } = result.data;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, phone: true, status: true },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
+        { status: 404 }
+      );
+    }
+
+    if (user.status === status) {
+      return NextResponse.json({ success: true, data: { user } });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { status: status as UserStatus },
+      select: { id: true, phone: true, status: true },
+    });
+
+    await createAuditLog({
+      action: "user_status_change",
+      targetType: "user",
+      targetId: user.id,
+      detail: { previousStatus: user.status, newStatus: status, phone: user.phone },
+      adminId: admin.id,
+      request,
+    });
+
+    return NextResponse.json({ success: true, data: { user: updatedUser } });
+  } catch (error) {
+    apiConsole.error("[AdminUserUpdate] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

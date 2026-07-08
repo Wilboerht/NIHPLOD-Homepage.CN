@@ -220,30 +220,130 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+export interface DeviceInfo {
+  deviceName?: string;
+  deviceInfo?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+/**
+ * 生成设备指纹，用于识别同一设备
+ */
+/**
+ * 从请求中提取设备信息
+ */
+export function extractDeviceInfo(request: NextRequest): DeviceInfo {
+  const userAgent = request.headers.get("user-agent") || undefined;
+  const ipAddress = getClientIP(request);
+
+  // 简单的设备名称解析
+  let deviceName = "未知设备";
+  if (userAgent) {
+    if (userAgent.includes("Mobile")) {
+      deviceName = "手机浏览器";
+    } else if (userAgent.includes("Tablet")) {
+      deviceName = "平板浏览器";
+    } else if (userAgent.includes("Windows")) {
+      deviceName = "Windows 浏览器";
+    } else if (userAgent.includes("Mac")) {
+      deviceName = "Mac 浏览器";
+    } else if (userAgent.includes("Linux")) {
+      deviceName = "Linux 浏览器";
+    } else {
+      deviceName = "桌面浏览器";
+    }
+  }
+
+  return {
+    deviceName,
+    deviceInfo: userAgent?.slice(0, 200),
+    ipAddress,
+    userAgent,
+  };
+}
+
+function getDeviceFingerprint(info?: DeviceInfo): string {
+  if (!info) return "unknown";
+  const ua = info.userAgent || "";
+  const ip = info.ipAddress || "";
+  // 使用 UA 前 80 字符 + IP 生成指纹
+  return createHash("sha256")
+    .update(`${ua.slice(0, 80)}:${ip}`)
+    .digest("hex");
+}
+
 export async function saveRefreshToken(
   userId: string,
   token: string,
-  expiresAt: Date
+  expiresAt: Date,
+  deviceInfo?: DeviceInfo
 ): Promise<void> {
   try {
     const tokenHash = hashToken(token);
-    // 原子操作：删除旧 Token + 创建新 Token，防止并发产生多个有效 Token
-    await prisma.$transaction([
-      prisma.refreshToken.deleteMany({
+    const fingerprint = getDeviceFingerprint(deviceInfo);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. 查找同一设备的旧 Token（如果存在则更新，实现设备级复用）
+      const existingTokens = await tx.refreshToken.findMany({
         where: {
           userId,
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
-      }),
-      prisma.refreshToken.create({
-        data: {
-          userId,
-          token: tokenHash,
-          expiresAt,
-        },
-      }),
-    ]);
+        orderBy: { createdAt: "asc" },
+      });
+
+      const sameDeviceToken = existingTokens.find((t) => {
+        const existingFingerprint = getDeviceFingerprint({
+          deviceInfo: t.deviceInfo || undefined,
+          ipAddress: t.ipAddress || undefined,
+          userAgent: t.userAgent || undefined,
+        });
+        return existingFingerprint === fingerprint;
+      });
+
+      if (sameDeviceToken) {
+        // 更新同一设备的 Token
+        await tx.refreshToken.update({
+          where: { id: sameDeviceToken.id },
+          data: {
+            token: tokenHash,
+            expiresAt,
+            deviceName: deviceInfo?.deviceName ?? sameDeviceToken.deviceName,
+            deviceInfo: deviceInfo?.deviceInfo ?? sameDeviceToken.deviceInfo,
+            ipAddress: deviceInfo?.ipAddress ?? sameDeviceToken.ipAddress,
+            userAgent: deviceInfo?.userAgent ?? sameDeviceToken.userAgent,
+            revokedAt: null,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        // 2. 限制每个用户的最大设备数（例如 10 个），防止无限增长
+        const MAX_DEVICES = 10;
+        if (existingTokens.length >= MAX_DEVICES) {
+          // 撤销最早的 Token
+          const tokensToRevoke = existingTokens.slice(0, existingTokens.length - MAX_DEVICES + 1);
+          await tx.refreshToken.updateMany({
+            where: { id: { in: tokensToRevoke.map((t) => t.id) } },
+            data: { revokedAt: new Date() },
+          });
+        }
+
+        // 创建新 Token
+        await tx.refreshToken.create({
+          data: {
+            userId,
+            token: tokenHash,
+            expiresAt,
+            deviceName: deviceInfo?.deviceName,
+            deviceInfo: deviceInfo?.deviceInfo,
+            ipAddress: deviceInfo?.ipAddress,
+            userAgent: deviceInfo?.userAgent,
+          },
+        });
+      }
+    });
   } catch (error) {
     apiConsole.error("[SaveRefreshToken] 保存失败:", error);
     throw error;

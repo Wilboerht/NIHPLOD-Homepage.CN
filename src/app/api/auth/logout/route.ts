@@ -17,22 +17,38 @@ import {
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     // 验证用户身份
     const user = await verifyUserAuth(request);
-    
+    const body = await request.json().catch(() => ({}));
+    const allDevices = body.allDevices === true;
+
     if (user) {
-      // 撤销所有 Refresh Token（使用户的所有 token 失效）
-      await revokeRefreshToken(user.id);
+      const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
+
+      if (!allDevices && refreshToken) {
+        // 仅撤销当前设备的 Refresh Token
+        await revokeRefreshToken(user.id, refreshToken);
+      } else {
+        // 撤销所有 Refresh Token
+        await revokeRefreshToken(user.id);
+      }
+
       logAuthEvent("user_logout", {
         userId: user.id,
         identifier: user.phone,
         success: true,
+        allDevices,
         ip: getClientIP(request),
       });
     }

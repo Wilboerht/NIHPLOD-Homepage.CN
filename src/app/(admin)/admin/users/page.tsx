@@ -5,21 +5,47 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, RefreshCw, Eye, User, Loader2, MapPin, Ticket, Smartphone, MessageCircle } from "lucide-react";
+import {
+  Search,
+  RefreshCw,
+  Eye,
+  User,
+  Loader2,
+  MapPin,
+  Ticket,
+  Smartphone,
+  MessageCircle,
+  Shield,
+  Ban,
+  CheckCircle,
+  Lock,
+} from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
-import { apiGet } from "@/lib/api-client";
+import { apiGet, apiPatch } from "@/lib/api-client";
+
+type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
 
 interface UserItem {
   id: string;
   phone: string | null;
   nickname: string | null;
   avatar: string | null;
+  status: UserStatus;
   orderCount: number;
   createdAt: string;
 }
+
+const userStatusMap: Record<
+  UserStatus,
+  { label: string; variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline"; description: string }
+> = {
+  ACTIVE: { label: "正常", variant: "success", description: "账号可正常登录和使用" },
+  SUSPENDED: { label: "冻结", variant: "warning", description: "账号暂时无法登录，可解冻恢复" },
+  BANNED: { label: "封禁", variant: "danger", description: "账号永久封禁，不可恢复" },
+};
 
 interface UserDetail {
   id: string;
@@ -27,6 +53,7 @@ interface UserDetail {
   phoneVerified: boolean;
   nickname: string | null;
   avatar: string | null;
+  status: UserStatus;
   wechatOpenId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -87,6 +114,7 @@ export default function AdminUsersPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -107,6 +135,26 @@ export default function AdminUsersPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  const updateUserStatus = async (userId: string, status: UserStatus) => {
+    const target = userStatusMap[status];
+    if (!window.confirm(`确定要将该用户状态设置为「${target.label}」吗？${target.description}`)) {
+      return;
+    }
+    setStatusLoading(true);
+    try {
+      await apiPatch(`/api/admin/users/${userId}`, { status });
+      alert(`已设置用户状态为「${target.label}」`);
+      await fetchUsers();
+      if (detailUser?.id === userId) {
+        setDetailUser((prev) => (prev ? { ...prev, status } : prev));
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "状态修改失败");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   const updateParams = (newParams: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -179,6 +227,7 @@ export default function AdminUsersPage() {
             <tr>
               <th className="px-4 py-3">用户</th>
               <th className="px-4 py-3">手机号</th>
+              <th className="px-4 py-3">状态</th>
               <th className="px-4 py-3">订单数</th>
               <th className="px-4 py-3">注册时间</th>
               <th className="px-4 py-3">操作</th>
@@ -187,13 +236,13 @@ export default function AdminUsersPage() {
           <tbody className="divide-y">
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   加载中...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   暂无用户
                 </td>
               </tr>
@@ -220,6 +269,9 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">{user.phone || "-"}</td>
+                  <td className="px-4 py-3">
+                    <Badge variant={userStatusMap[user.status].variant}>{userStatusMap[user.status].label}</Badge>
+                  </td>
                   <td className="px-4 py-3">{user.orderCount}</td>
                   <td className="px-4 py-3 text-gray-400">{new Date(user.createdAt).toLocaleDateString("zh-CN")}</td>
                   <td className="px-4 py-3">
@@ -298,6 +350,17 @@ export default function AdminUsersPage() {
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between items-center">
                     <dt className="text-gray-500 flex items-center gap-1.5">
+                      <Shield className="h-3.5 w-3.5" />
+                      账号状态
+                    </dt>
+                    <dd>
+                      <Badge variant={userStatusMap[detailUser.status].variant}>
+                        {userStatusMap[detailUser.status].label}
+                      </Badge>
+                    </dd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <dt className="text-gray-500 flex items-center gap-1.5">
                       <Smartphone className="h-3.5 w-3.5" />
                       手机号
                     </dt>
@@ -330,6 +393,42 @@ export default function AdminUsersPage() {
                     <dd>{formatDate(detailUser.updatedAt)}</dd>
                   </div>
                 </dl>
+
+                <div className="mt-5 flex flex-wrap gap-2 border-t border-gray-200 pt-4">
+                  {detailUser.status !== "ACTIVE" && (
+                    <Button
+                      size="sm"
+                      leftIcon={<CheckCircle className="h-4 w-4" />}
+                      loading={statusLoading}
+                      onClick={() => updateUserStatus(detailUser.id, "ACTIVE")}
+                    >
+                      恢复正常
+                    </Button>
+                  )}
+                  {detailUser.status !== "SUSPENDED" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+                      leftIcon={<Lock className="h-4 w-4" />}
+                      loading={statusLoading}
+                      onClick={() => updateUserStatus(detailUser.id, "SUSPENDED")}
+                    >
+                      冻结账号
+                    </Button>
+                  )}
+                  {detailUser.status !== "BANNED" && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      leftIcon={<Ban className="h-4 w-4" />}
+                      loading={statusLoading}
+                      onClick={() => updateUserStatus(detailUser.id, "BANNED")}
+                    >
+                      封禁账号
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="rounded-xl bg-gray-50 p-5">
