@@ -9,6 +9,7 @@ import { useState, useRef } from "react";
 import { User, Camera, Loader2, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { apiPut, apiPost } from "@/lib/api-client";
 
 export function ProfilePanel() {
   const { user, refreshUser } = useAuth();
@@ -25,17 +26,7 @@ export function ProfilePanel() {
     if (!nickname.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname: nickname.trim() }),
-      });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error?.message || "保存失败");
-      }
-
+      await apiPut("/api/user/profile", { nickname: nickname.trim() });
       await refreshUser();
       setEditing(false);
       showSuccess("个人信息已更新");
@@ -82,20 +73,11 @@ export function ProfilePanel() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/user/profile", {
-        method: "POST",
-        body: formData,
-      });
+      await apiPost("/api/user/profile", formData);
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        // 更新成功后刷新用户信息
-        await refreshUser();
-        showSuccess("头像已更新");
-      } else {
-        throw new Error(data.error?.message || "上传头像失败");
-      }
+      // 更新成功后刷新用户信息
+      await refreshUser();
+      showSuccess("头像已更新");
     } catch (err) {
       console.error("头像上传失败:", err);
       const message = err instanceof Error ? err.message : "上传失败，请稍后重试";

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Ticket, Loader2, Check, Gift, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
 
 interface Coupon {
   id: string;
@@ -19,6 +20,7 @@ interface Coupon {
 }
 
 export function CouponsContent() {
+  const toast = useToast();
   const { user, openLoginModal } = useAuth();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,10 +84,10 @@ export function CouponsContent() {
       if (data.success) {
         setAcquiredIds((prev) => new Set(prev).add(coupon.id));
       } else {
-        alert(data.error || "领取失败");
+        toast.error(data.error || "领取失败");
       }
     } catch {
-      alert("领取失败，请重试");
+      toast.error("领取失败，请重试");
     } finally {
       setAcquiring(null);
     }

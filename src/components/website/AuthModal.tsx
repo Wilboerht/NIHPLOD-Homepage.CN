@@ -10,6 +10,7 @@ import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { apiPost } from "@/lib/api-client";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 
 // 登录方式类型
@@ -1308,19 +1309,10 @@ function ForgotPasswordModal({
     setLoading(true);
     setErrorMsg("");
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code, password, confirmPassword }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        setErrorMsg(data.error?.message || "重置失败");
-        return;
-      }
+      await apiPost("/api/auth/reset-password", { phone, code, password, confirmPassword });
       setStep("success");
-    } catch {
-      setErrorMsg("网络错误，请重试");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "网络错误，请重试");
     } finally {
       setLoading(false);
     }

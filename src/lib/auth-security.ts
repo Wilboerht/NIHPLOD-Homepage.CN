@@ -369,7 +369,15 @@ export async function validateAndRefreshToken(
       },
     });
 
-    return refreshToken !== null;
+    if (!refreshToken) return false;
+
+    // 校验账号状态，被冻结/封禁用户无法刷新 Token
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+
+    return user?.status === "ACTIVE";
   } catch (error) {
     apiConsole.error("[ValidateAndRefreshToken] 验证失败:", error);
     return false;

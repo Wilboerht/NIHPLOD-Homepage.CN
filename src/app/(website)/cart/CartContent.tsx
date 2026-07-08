@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
 import { trackEvent } from "@/lib/analytics";
 import { formatPrice } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ interface CartContentProps {
 
 export default function CartContent({ initialItems, autoOpenCheckout = false }: CartContentProps) {
   const router = useRouter();
+  const toast = useToast();
   const { user, openCheckout, openLoginModal } = useAuth();
   const [items, setItems] = useState(initialItems);
   const [loading, _setLoading] = useState(false);
@@ -106,7 +108,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
   // 去结算
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
-      alert("请选择商品");
+      toast.warning("请选择商品");
       return;
     }
     // 未登录先打开登录弹窗

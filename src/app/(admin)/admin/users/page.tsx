@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { apiGet, apiPatch } from "@/lib/api-client";
+import { useToast } from "@/components/ui/Toast";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
 
@@ -101,6 +102,7 @@ const orderStatusMap: Record<string, { label: string; variant: "default" | "prim
 export default function AdminUsersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
 
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,13 +146,13 @@ export default function AdminUsersPage() {
     setStatusLoading(true);
     try {
       await apiPatch(`/api/admin/users/${userId}`, { status });
-      alert(`已设置用户状态为「${target.label}」`);
+      toast.success(`已设置用户状态为「${target.label}」`);
       await fetchUsers();
       if (detailUser?.id === userId) {
         setDetailUser((prev) => (prev ? { ...prev, status } : prev));
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "状态修改失败");
+      toast.error(err instanceof Error ? err.message : "状态修改失败");
     } finally {
       setStatusLoading(false);
     }

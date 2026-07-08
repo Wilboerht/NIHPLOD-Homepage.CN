@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
 import { fetchWithAuth, refreshAccessToken, UnauthorizedError } from "@/lib/fetch-with-auth";
+import { apiPost } from "@/lib/api-client";
 
 interface User {
   id: string;
@@ -183,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await apiPost("/api/auth/logout");
       setUser(null);
       setUserCenterOpen(false);
       localStorage.removeItem("auth_hint");

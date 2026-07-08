@@ -5,6 +5,7 @@ import { MapPin, Edit3, Trash2, Loader2, Check, ChevronDown, Plus, ArrowLeft } f
 import cascaderOptions, { type CascaderOption } from "@pansy/china-division";
 import { m, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 
 interface Address {
   id: string;
@@ -31,9 +32,8 @@ export function AddressesPanel() {
   const fetchAddresses = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/user/addresses");
-      const data = await res.json();
-      if (data.success) setAddresses(data.data.addresses || []);
+      const data = await apiGet<{ addresses: Address[] }>("/api/user/addresses");
+      setAddresses(data.addresses || []);
     } catch (e) {
       console.error("获取地址失败:", e);
     } finally {
@@ -44,13 +44,7 @@ export function AddressesPanel() {
   const handleDelete = async (id: string) => {
     if (!confirm("确定删除此地址？")) return;
     try {
-      const res = await fetch(`/api/user/addresses/${id}`, { method: "DELETE" });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error?.message || "删除地址失败");
-      }
-
+      await apiDelete(`/api/user/addresses/${id}`);
       showSuccess("地址已删除");
       fetchAddresses();
     } catch (e) {
@@ -62,13 +56,7 @@ export function AddressesPanel() {
 
   const handleSetDefault = async (id: string) => {
     try {
-      const res = await fetch(`/api/user/addresses/${id}/default`, { method: "PUT" });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error?.message || "设置默认地址失败");
-      }
-
+      await apiPut(`/api/user/addresses/${id}/default`);
       showSuccess("已设为默认地址");
       fetchAddresses();
     } catch (e) {
@@ -312,13 +300,10 @@ function AddressForm({ address, onClose, onSuccess }: { address: Address | null;
     e.preventDefault();
     setSaving(true);
     try {
-      const url = address ? `/api/user/addresses/${address.id}` : "/api/user/addresses";
-      const method = address ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error?.message || "保存地址失败");
+      if (address) {
+        await apiPut(`/api/user/addresses/${address.id}`, form);
+      } else {
+        await apiPost("/api/user/addresses", form);
       }
 
       showSuccess(address ? "地址已更新" : "地址已添加");
