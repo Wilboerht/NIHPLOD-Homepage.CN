@@ -18,6 +18,21 @@ import {
 export const dynamic = 'force-dynamic';
 
 /**
+ * 校验重定向路径是否合法。
+ * 只允许相对路径或同域绝对路径，防止开放重定向攻击。
+ */
+function isAllowedRedirect(redirect: string, baseOrigin: string): boolean {
+  if (!redirect || redirect === "/") return true;
+  if (redirect.startsWith("//")) return false;
+  if (redirect.startsWith("/")) return true;
+  try {
+    return new URL(redirect).origin === baseOrigin;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 校验 callback base URL 是否合法。
  * 只允许官网自身或已配置的子站域名，防止开放重定向攻击。
  */
@@ -42,14 +57,17 @@ function isAllowedCallbackBase(callbackBase: string): boolean {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const redirect = searchParams.get("redirect") || "/";
+    const defaultBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 
     // 子站可通过 callback 参数指定授权完成后跳转到的域名
     const callbackParam = searchParams.get("callback");
-    const defaultBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
     const callbackBase = callbackParam && isAllowedCallbackBase(callbackParam)
       ? callbackParam.replace(/\/$/, "")
       : defaultBaseUrl;
+
+    // 校验 redirect，防止开放重定向
+    const rawRedirect = searchParams.get("redirect") || "/";
+    const redirect = isAllowedRedirect(rawRedirect, new URL(callbackBase).origin) ? rawRedirect : "/";
 
     // 微信 OAuth 回调地址固定为官网域名（由官网完成 code 换取 access_token）
     const oauthCallbackUrl = `${defaultBaseUrl}/api/auth/wechat/callback`;

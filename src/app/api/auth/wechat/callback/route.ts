@@ -41,10 +41,24 @@ export const dynamic = 'force-dynamic';
 function buildRedirectUrl(stateCallback: string | undefined, redirectPath: string): string {
   const defaultBase = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
   const base = stateCallback || defaultBase;
+
+  // 防御开放重定向：redirectPath 必须是相对路径或以 base 为根的绝对路径
+  if (!redirectPath || redirectPath === "/") {
+    return new URL("/", base).toString();
+  }
+  if (redirectPath.startsWith("//")) {
+    return new URL("/", base).toString();
+  }
+
   try {
-    return new URL(redirectPath, base).toString();
+    const resolved = new URL(redirectPath, base);
+    const baseOrigin = new URL(base).origin;
+    if (resolved.origin !== baseOrigin) {
+      return new URL("/", base).toString();
+    }
+    return resolved.toString();
   } catch {
-    return new URL("/", defaultBase).toString();
+    return new URL("/", base).toString();
   }
 }
 
@@ -269,7 +283,7 @@ export async function GET(request: NextRequest) {
     fallbackUrl.searchParams.set("code", "INTERNAL_ERROR");
     fallbackUrl.searchParams.set("message", encodeURIComponent(message));
     const response = NextResponse.redirect(fallbackUrl, 302);
-    response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
     return response;
   }
 }
