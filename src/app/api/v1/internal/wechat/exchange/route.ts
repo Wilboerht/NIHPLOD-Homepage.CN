@@ -39,6 +39,7 @@ import {
   signUserToken,
   signRefreshToken,
   verifyWechatExchangeToken,
+  markWechatExchangeTokenUsed,
 } from "@/lib/jwt";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
@@ -265,6 +266,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      markWechatExchangeTokenUsed(wechatExchangeToken);
       const result = await finalizeLogin(user, wechatInfo, passwordGenerated, request);
       return result;
     }
@@ -286,6 +288,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 9. 已绑定有效账户，直接登录
+    markWechatExchangeTokenUsed(wechatExchangeToken);
     const result = await finalizeLogin(oldWechatUser, wechatInfo, false, request);
     return result;
   } catch (error) {

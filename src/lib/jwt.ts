@@ -14,7 +14,9 @@
  * - 签发时设置 issuer / audience
  * - 验证时校验 type 与 audience
  */
+import { createHash } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
+import { LRUCache } from "lru-cache";
 import type {
   AdminJWTPayload,
   UserJWTPayload,
@@ -231,6 +233,31 @@ export async function signWechatBindToken(payload: Omit<WechatBindPayload, "type
 // 子站微信授权 Exchange Token（跨域场景）
 // ============================================
 
+/**
+ * 已兑换的 wechat_exchange_token 内存黑名单。
+ * 说明：
+ * - key 为 token 的 SHA256 hash；
+ * - TTL 15 分钟，超过 exchange token 本身的 10 分钟有效期；
+ * - 兑换成功后立即写入，防止 token 被重放兑换多次；
+ * - 多实例部署时不共享，建议后续迁移到 Redis 等分布式缓存。
+ */
+const usedWechatExchangeTokens = new LRUCache<string, number>({
+  max: 5000,
+  ttl: 15 * 60 * 1000,
+});
+
+function hashWechatExchangeToken(token: string): string {
+  return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+export function isWechatExchangeTokenUsed(token: string): boolean {
+  return usedWechatExchangeTokens.has(hashWechatExchangeToken(token));
+}
+
+export function markWechatExchangeTokenUsed(token: string): void {
+  usedWechatExchangeTokens.set(hashWechatExchangeToken(token), Date.now());
+}
+
 export interface WechatExchangePayload {
   type: "wechat_exchange";
   openid: string;
@@ -264,6 +291,9 @@ export async function verifyWechatExchangeToken(token: string): Promise<WechatEx
       audience: "wechat-exchange",
     });
     if ((payload as { type?: string }).type !== "wechat_exchange") {
+      return null;
+    }
+    if (isWechatExchangeTokenUsed(token)) {
       return null;
     }
     return payload as unknown as WechatExchangePayload;
