@@ -8,11 +8,11 @@ import { jwtVerify } from "jose";
 // Cookie 名称（必须与 src/types/auth.ts 中的 AUTH_COOKIE_NAME 保持一致）
 const AUTH_COOKIE_NAME = "admin_token";
 
-// JWT 密钥（懒加载，禁止硬编码回退）
+// JWT 密钥（与 src/lib/jwt.ts 保持一致：优先 JWT_ADMIN_SECRET，回退 JWT_SECRET）
 function getSecret(): Uint8Array {
-  const jwtSecret = process.env.JWT_SECRET;
+  const jwtSecret = process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET;
   if (!jwtSecret) {
-    throw new Error("[Middleware] JWT_SECRET 环境变量未设置，请配置后再启动应用");
+    throw new Error("[Middleware] JWT_SECRET / JWT_ADMIN_SECRET 环境变量未设置，请配置后再启动应用");
   }
   return new TextEncoder().encode(jwtSecret);
 }
