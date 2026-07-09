@@ -59,25 +59,25 @@ export default async function AdminDashboard() {
         <StatsCard
           title="产品数量"
           value={stats.products}
-          icon={Package}
+          icon={<Package className="h-6 w-6" />}
           description="全部产品"
         />
         <StatsCard
           title="分类数量"
           value={stats.categories}
-          icon={FolderTree}
+          icon={<FolderTree className="h-6 w-6" />}
           description="产品分类"
         />
         <StatsCard
           title="未读留言"
           value={stats.unreadMessages}
-          icon={MessageSquare}
+          icon={<MessageSquare className="h-6 w-6" />}
           description="待处理"
         />
         <StatsCard
           title="在招职位"
           value={stats.jobs}
-          icon={Briefcase}
+          icon={<Briefcase className="h-6 w-6" />}
           description="已发布"
         />
       </div>

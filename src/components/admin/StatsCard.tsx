@@ -1,12 +1,12 @@
 "use client";
 
-import { LucideIcon } from "lucide-react";
+import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface StatsCardProps {
   title: string;
   value: number | string;
-  icon: LucideIcon;
+  icon: ReactNode;
   description?: string;
   trend?: {
     value: number;
@@ -22,7 +22,7 @@ interface StatsCardProps {
 export function StatsCard({
   title,
   value,
-  icon: Icon,
+  icon,
   description,
   trend,
   className,
@@ -64,7 +64,7 @@ export function StatsCard({
             "bg-brand-gold/10 text-brand-gold"
           )}
         >
-          <Icon className="h-6 w-6" />
+          {icon}
         </div>
       </div>
     </div>
