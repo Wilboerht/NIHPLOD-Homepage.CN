@@ -126,12 +126,15 @@ export async function applyRefund(
       return { success: false, error: "该订单状态不支持退款" };
     }
 
+    // 退款原因限制为纯文本并做 HTML 转义，防止注入
+    const safeReason = escapeHtml(reason.trim()).slice(0, 500);
+
     await prisma.order.update({
       where: { id: orderId },
       data: {
         status: OrderStatus.REFUNDING,
         previousStatus: order.status, // 记录退款前状态
-        remark: order.remark ? `${order.remark}\n[退款申请] ${reason}` : `[退款申请] ${reason}`,
+        remark: order.remark ? `${order.remark}\n[退款申请] ${safeReason}` : `[退款申请] ${safeReason}`,
       },
     });
 

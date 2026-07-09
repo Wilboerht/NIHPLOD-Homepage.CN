@@ -350,6 +350,10 @@ export async function saveRefreshToken(
   }
 }
 
+export type RefreshTokenValidationResult =
+  | { valid: true }
+  | { valid: false; reason: "missing" | "revoked" | "expired" | "account_disabled" };
+
 /**
  * 验证并刷新 Token
  * 使用 refresh token 获取新的 access token
@@ -357,19 +361,24 @@ export async function saveRefreshToken(
 export async function validateAndRefreshToken(
   userId: string,
   token: string
-): Promise<boolean> {
+): Promise<RefreshTokenValidationResult> {
   try {
     const tokenHash = hashToken(token);
     const refreshToken = await prisma.refreshToken.findFirst({
       where: {
         userId,
         token: tokenHash,
-        revokedAt: null,
         expiresAt: { gt: new Date() },
       },
     });
 
-    if (!refreshToken) return false;
+    if (!refreshToken) {
+      return { valid: false, reason: "missing" };
+    }
+
+    if (refreshToken.revokedAt) {
+      return { valid: false, reason: "revoked" };
+    }
 
     // 校验账号状态，被冻结/封禁用户无法刷新 Token
     const user = await prisma.user.findUnique({
@@ -377,36 +386,43 @@ export async function validateAndRefreshToken(
       select: { status: true },
     });
 
-    return user?.status === "ACTIVE";
+    if (user?.status !== "ACTIVE") {
+      return { valid: false, reason: "account_disabled" };
+    }
+
+    return { valid: true };
   } catch (error) {
     apiConsole.error("[ValidateAndRefreshToken] 验证失败:", error);
-    return false;
+    return { valid: false, reason: "missing" };
   }
 }
 
 /**
  * 撤销 Refresh Token（登出时调用）
+ * 返回实际被撤销的记录数，便于调用方检测并发重用。
  */
 export async function revokeRefreshToken(
   userId: string,
   token?: string
-): Promise<void> {
+): Promise<number> {
   try {
     if (token) {
-      // 撤销特定 token（比对哈希值）
+      // 撤销特定 token（比对哈希值），仅撤销尚未撤销的，便于检测并发重用
       const tokenHash = hashToken(token);
-      await prisma.refreshToken.updateMany({
+      const result = await prisma.refreshToken.updateMany({
         where: {
           userId,
           token: tokenHash,
+          revokedAt: null,
         },
         data: {
           revokedAt: new Date(),
         },
       });
+      return result.count;
     } else {
       // 撤销用户所有有效 token
-      await prisma.refreshToken.updateMany({
+      const result = await prisma.refreshToken.updateMany({
         where: {
           userId,
           revokedAt: null,
@@ -415,10 +431,11 @@ export async function revokeRefreshToken(
           revokedAt: new Date(),
         },
       });
+      return result.count;
     }
   } catch (error) {
     apiConsole.error("[RevokeRefreshToken] 撤销失败:", error);
-    // 不抛出异常
+    return 0;
   }
 }
 

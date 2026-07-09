@@ -7,7 +7,14 @@ import { z } from "zod";
 export const ProductImageSchema = z.object({
   id: z.string().optional(), // 已有图片的 ID
   url: z.string().min(1, "图片URL不能为空").refine(
-    (val) => val.startsWith("/") || val.startsWith("http://") || val.startsWith("https://") || val.startsWith("blob:"),
+    (val) => {
+      const v = val.trim().toLowerCase();
+      return (
+        v.startsWith("/") ||
+        v.startsWith("http://") ||
+        v.startsWith("https://")
+      );
+    },
     "请输入有效的图片URL（支持相对路径或完整URL）"
   ),
   alt: z.string().max(200, "图片描述最多200个字符").optional().nullable(),
@@ -18,7 +25,13 @@ export const ProductImageSchema = z.object({
 export const PurchaseLinkSchema = z.object({
   id: z.string().optional(), // 已有链接的 ID
   platform: z.string().min(1, "平台名称不能为空").max(50, "平台名称不能超过50个字符"),
-  url: z.string().url("请输入有效的URL"),
+  url: z.string().url("请输入有效的URL").refine(
+    (val) => {
+      const v = val.trim().toLowerCase();
+      return v.startsWith("http://") || v.startsWith("https://");
+    },
+    "购买链接仅支持 http/https 协议"
+  ),
   order: z.number().int().min(0).default(0),
 });
 
@@ -78,7 +91,11 @@ export const CategorySchema = z.object({
   description: z.string().max(500, "描述不能超过500个字符").optional(),
   icon: z.string().optional().nullable(),
   image: z.string().refine(
-    (val) => !val || val.startsWith("/") || val.startsWith("http://") || val.startsWith("https://"),
+    (val) => {
+      if (!val) return true;
+      const v = val.trim().toLowerCase();
+      return v.startsWith("/") || v.startsWith("http://") || v.startsWith("https://");
+    },
     "请输入有效的图片URL（支持相对路径或完整URL）"
   ).optional(),
   order: z.number().int().min(0).default(0),

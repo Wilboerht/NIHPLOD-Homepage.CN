@@ -116,13 +116,23 @@ export async function POST(request: NextRequest) {
     }
     if (process.env.NODE_ENV === "development") console.log("✅ [Apply API] Job found:", job.title);
 
-    // 上传文件到存储 (自动处理 Local/Supabase)
+    // 上传文件到存储 (自动处理 Local/Supabase)，限制为 PDF
     const uploadResult = await uploadFile(
       fileBuffer,
       resumeFile.name,
       resumeFile.type,
-      "resumes"
+      "resumes",
+      ["application/pdf"]
     );
+
+    // 验证最终扩展名为 pdf
+    if (!uploadResult.filename.toLowerCase().endsWith(".pdf")) {
+      if (process.env.NODE_ENV === "development") console.log("❌ [Apply API] Uploaded file extension is not pdf");
+      return NextResponse.json(
+        { error: "简历文件格式异常" },
+        { status: 400 }
+      );
+    }
 
     if (process.env.NODE_ENV === "development") console.log("✅ [Apply API] File uploaded:", uploadResult.url);
 

@@ -6,11 +6,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { confirmReceipt } from "@/lib/logistics";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
@@ -23,6 +24,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const result = await confirmReceipt(id, payload.id);
 
@@ -47,4 +52,3 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 }
-

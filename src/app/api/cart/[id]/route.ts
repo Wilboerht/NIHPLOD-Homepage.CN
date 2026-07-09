@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,7 +19,7 @@ const updateSchema = z.object({
 
 // 更新购物车项
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
@@ -31,6 +32,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
 
     const result = updateSchema.safeParse(body);
@@ -100,6 +105,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     // 检查购物车项是否存在
     const existing = await prisma.cartItem.findFirst({
       where: { id, userId: payload.id },
@@ -126,4 +135,3 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     );
   }
 }
-

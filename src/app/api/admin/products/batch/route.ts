@@ -7,13 +7,13 @@ import { apiConsole } from "@/lib/logger";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
-  ids: z.array(z.string()).min(1, "请选择至少一个产品"),
+  ids: z.array(z.string().cuid()).min(1, "请选择至少一个产品").max(100, "一次最多操作 100 个产品"),
   action: z.enum(["publish", "unpublish", "delete"]),
 });
 
 // POST /api/admin/products/batch - 批量操作产品
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,7 +57,14 @@ export async function POST(request: NextRequest) {
         if (referencedItems.length > 0) {
           const referencedIds = referencedItems.map((i) => i.productId);
           return NextResponse.json(
-            { success: false, error: { code: "REFERENCED_PRODUCTS", message: "部分产品已被订单引用，无法删除", referencedIds } },
+            {
+              success: false,
+              error: {
+                code: "REFERENCED_PRODUCTS",
+                message: "部分产品已被订单引用，无法删除",
+                referencedIds,
+              },
+            },
             { status: 409 }
           );
         }
@@ -94,7 +101,10 @@ export async function POST(request: NextRequest) {
     apiConsole.error("批量操作失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -104,4 +114,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

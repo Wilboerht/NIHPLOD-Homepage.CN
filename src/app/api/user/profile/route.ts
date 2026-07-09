@@ -15,7 +15,15 @@ import { apiConsole } from "@/lib/logger";
 // 更新参数验证
 const updateSchema = z.object({
   nickname: z.string().max(20).optional(),
-  avatar: z.string().optional().or(z.literal("")), // 允许 URL、相对路径或 Base64
+  avatar: z
+    .union([
+      z
+        .string()
+        .url()
+        .regex(/^https?:\/\//),
+      z.literal(""),
+    ])
+    .optional(),
 });
 
 // 用户资料缓存标签（静态标签，资料更新时统一失效）
@@ -95,7 +103,10 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     const result = updateSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }
@@ -133,7 +144,10 @@ export async function POST(request: NextRequest) {
     // 1. 验证身份
     const payload = await verifyUserAuth(request);
     if (!payload) {
-      return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
+        { status: 401 }
+      );
     }
 
     // 2. 获取上传文件
@@ -141,13 +155,19 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ success: false, error: { code: "NO_FILE", message: "请选择要上传的头像" } }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: { code: "NO_FILE", message: "请选择要上传的头像" } },
+        { status: 400 }
+      );
     }
 
     // 3. 验证文件
     const validation = validateUploadServer(file.type, file.size);
     if (!validation.valid) {
-      return NextResponse.json({ success: false, error: { code: "INVALID_FILE", message: validation.error } }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FILE", message: validation.error } },
+        { status: 400 }
+      );
     }
 
     // 4. 读取内容并处理
@@ -157,7 +177,10 @@ export async function POST(request: NextRequest) {
     const fileTypeResult = await validateFileBuffer(buffer);
     if (!fileTypeResult.valid) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_FILE", message: fileTypeResult.error || "不支持的文件类型" } },
+        {
+          success: false,
+          error: { code: "INVALID_FILE", message: fileTypeResult.error || "不支持的文件类型" },
+        },
         { status: 400 }
       );
     }
@@ -196,4 +219,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

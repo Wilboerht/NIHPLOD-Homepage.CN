@@ -306,8 +306,7 @@ model Address {
 model SmsCode {
   id        String   @id @default(cuid())
   phone     String
-  code      String
-  codeHash  String?  // 验证码 SHA-256 哈希（安全存储，逐步替代明文 code）
+  codeHash  String   // 验证码 SHA-256 哈希
   type      String   @default("login")         // login | bind | reset
   used      Boolean  @default(false)
   expiresAt DateTime
@@ -515,19 +514,29 @@ enum AdminRole {
   admin
 }
 
+enum AdminStatus {
+  ACTIVE
+  DISABLED
+}
+
 model Admin {
-  id              String    @id @default(cuid())
-  email           String    @unique // 登录邮箱
-  password        String    // 加密密码
-  name            String    // 显示名称
-  role            AdminRole @default(admin)
-  totpSecret      String?   // 加密后的 TOTP secret
-  totpEnabled     Boolean   @default(false)
-  totpBackupCodes String?   @db.Text // 加密存储的备用码 JSON 数组
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id              String      @id @default(cuid())
+  email           String      @unique // 登录邮箱
+  password        String      // 加密密码
+  name            String      // 显示名称
+  role            AdminRole   @default(admin)
+  status          AdminStatus @default(ACTIVE) // 账号状态
+  deletedAt       DateTime?   // 软删除时间
+  totpSecret      String?     // 加密后的 TOTP secret
+  totpEnabled     Boolean     @default(false)
+  totpBackupCodes String?     @db.Text // 加密存储的备用码 JSON 数组
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   auditLogs AuditLog[] // 审计日志关联
+
+  @@index([status])
+  @@index([deletedAt])
 }
 
 // @deprecated 系统设置功能已移除，此表保留以避免迁移问题，后续可清理

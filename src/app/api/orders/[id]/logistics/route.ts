@@ -7,11 +7,12 @@ import { verifyUserAuth } from "@/lib/auth";
 import { queryLogistics } from "@/lib/logistics";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
@@ -24,6 +25,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     // 验证订单归属
     const order = await prisma.order.findFirst({
@@ -58,4 +63,3 @@ export async function GET(request: NextRequest, context: RouteContext) {
     );
   }
 }
-

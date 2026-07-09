@@ -22,18 +22,28 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
+      // TODO: 'unsafe-inline' 暂时保留。Next.js 与高德地图均依赖内联脚本，
+      // 完全移除需配合 middleware 实现 per-request nonce，当前未改造，故保留并加说明。
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://*.amap.com blob:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
-      // 收紧 img-src：禁止任意 https: 通配，只允许已知域名
-      "img-src 'self' data: blob: https://*.nihplod.cn https://*.aliyuncs.com http://*.amap.com http://*.autonavi.com",
+      // 收紧 img-src：禁止任意 https: 通配，只允许已知域名，并统一使用 https
+      "img-src 'self' data: blob: https://*.nihplod.cn https://*.aliyuncs.com https://*.amap.com https://*.autonavi.com",
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' https://api.openai.com https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com",
       "worker-src 'self' blob:",
+      "frame-ancestors 'self'",
+      "form-action 'self'",
+      "base-uri 'self'",
+      "upgrade-insecure-requests",
     ].join('; '),
   },
   {
     key: 'Strict-Transport-Security',
     value: 'max-age=63072000; includeSubDomains; preload',
+  },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
   },
 ];
 

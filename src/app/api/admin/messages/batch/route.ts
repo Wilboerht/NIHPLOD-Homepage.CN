@@ -7,13 +7,13 @@ import { apiConsole } from "@/lib/logger";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
-  ids: z.array(z.string()).min(1, "请选择至少一条留言"),
+  ids: z.array(z.string().cuid()).min(1, "请选择至少一条留言").max(100, "一次最多操作 100 条留言"),
   action: z.enum(["read", "unread", "delete"]),
 });
 
 // POST /api/admin/messages/batch - 批量操作留言
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
     apiConsole.error("批量操作失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }
@@ -78,4 +81,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

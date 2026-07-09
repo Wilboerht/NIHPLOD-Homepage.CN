@@ -6,17 +6,15 @@ import {
   USER_REFRESH_COOKIE_OPTIONS,
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
+  WECHAT_BIND_COOKIE_NAME,
+  WECHAT_BIND_COOKIE_OPTIONS,
 } from "@/types/auth";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { z } from "zod";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
-import { jwtVerify } from "jose";
+import { verifyWechatBindToken } from "@/lib/jwt";
 
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-    throw new Error("JWT_SECRET 未配置");
-}
-const secret = new TextEncoder().encode(jwtSecret);
+
 
 import { passwordSchema } from "@/lib/password";
 import { apiConsole } from "@/lib/logger";
@@ -63,7 +61,7 @@ export async function POST(request: NextRequest) {
         const { phone, code, allowAutoPassword } = result.data;
         let { password } = result.data;
 
-        const bindToken = request.cookies.get("wechat_bind_token")?.value;
+        const bindToken = request.cookies.get(WECHAT_BIND_COOKIE_NAME)?.value;
         if (!bindToken) {
             return NextResponse.json(
                 { 
@@ -85,12 +83,8 @@ export async function POST(request: NextRequest) {
             avatar?: string;
         }
 
-        let wechatInfo: WechatBindInfo;
-        try {
-            const { payload } = await jwtVerify(bindToken, secret);
-            if (payload.type !== "wechat_bind") throw new Error("Invalid token type");
-            wechatInfo = payload as unknown as WechatBindInfo;
-        } catch {
+        const wechatInfo = await verifyWechatBindToken(bindToken);
+        if (!wechatInfo) {
             return NextResponse.json(
                 { 
                     success: false, 
@@ -115,7 +109,7 @@ export async function POST(request: NextRequest) {
         });
 
         const { verifyCode } = await import("@/lib/sms");
-        if (!smsCode || !verifyCode(phone, code, "register", smsCode.code, smsCode.codeHash)) {
+        if (!smsCode || !verifyCode(phone, code, "register", smsCode.codeHash)) {
             return NextResponse.json(
                 { 
                     success: false, 
@@ -280,7 +274,7 @@ export async function POST(request: NextRequest) {
         // 设置 Refresh Token Cookie（30 天，使用统一配置 USER_REFRESH_COOKIE_OPTIONS）
         response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);
         // 清除临时绑定 token
-        response.cookies.set("wechat_bind_token", "", { ...USER_ACCESS_COOKIE_OPTIONS, maxAge: 0 });
+        response.cookies.set(WECHAT_BIND_COOKIE_NAME, "", { ...WECHAT_BIND_COOKIE_OPTIONS, maxAge: 0 });
 
         logAuthEvent("wechat_bind", {
             userId: user.id,

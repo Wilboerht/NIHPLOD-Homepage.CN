@@ -9,35 +9,48 @@ import { createOrder } from "@/lib/order";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { OrderStatus } from "@/generated/prisma/client";
 import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
 // 创建订单参数验证
-const createOrderSchema = z.object({
-  addressId: z.string().optional(),
-  recipient: z.object({
-    name: z.string(),
-    phone: z.string(),
-    address: z.string(),
-  }).optional(),
-  items: z.array(z.object({
-    productId: z.string(),
-    quantity: z.number().int().min(1).max(99),
-  })).min(1, "请选择商品").max(50, "单次最多结算50件商品")
-    .refine((items) => {
-      const ids = items.map(i => i.productId);
-      return ids.length === new Set(ids).size;
-    }, { message: "商品不能重复", path: ["items"] }),
-  remark: z.string().max(200).optional(),
-  userCouponId: z.string().optional(),
-  source: z.enum(["cart", "direct_buy"]).optional(),
-}).refine(data => data.addressId || data.recipient, {
-  message: "请提供收货地址ID或完整的收货信息",
-  path: ["addressId"], // Error path
-});
+const createOrderSchema = z
+  .object({
+    addressId: z.string().optional(),
+    recipient: z
+      .object({
+        name: z.string(),
+        phone: z.string(),
+        address: z.string(),
+      })
+      .optional(),
+    items: z
+      .array(
+        z.object({
+          productId: z.string(),
+          quantity: z.number().int().min(1).max(99),
+        })
+      )
+      .min(1, "请选择商品")
+      .max(50, "单次最多结算50件商品")
+      .refine(
+        (items) => {
+          const ids = items.map((i) => i.productId);
+          return ids.length === new Set(ids).size;
+        },
+        { message: "商品不能重复", path: ["items"] }
+      ),
+    remark: z.string().max(200).optional(),
+    userCouponId: z.string().optional(),
+    source: z.enum(["cart", "direct_buy"]).optional(),
+  })
+  .refine((data) => data.addressId || data.recipient, {
+    message: "请提供收货地址ID或完整的收货信息",
+    path: ["addressId"], // Error path
+  });
 
 // 强制动态渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // 获取订单列表（支持分页）
 export async function GET(request: NextRequest) {
@@ -52,17 +65,42 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status") as import("@/generated/prisma/client").OrderStatus | null | 'all';
 
-    // 分页参数（默认第1页，每页10条）
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get("pageSize") || "10", 10)));
+    const querySchema = z.object({
+      status: z.enum(["all", ...Object.values(OrderStatus)] as [string, ...string[]]).optional(),
+      page: z.coerce.number().int().min(1).default(1),
+      pageSize: z.coerce.number().int().min(1).max(50).default(10),
+    });
+
+    let queryParams;
+    try {
+      queryParams = querySchema.parse({
+        status: searchParams.get("status") || undefined,
+        page: searchParams.get("page") || undefined,
+        pageSize: searchParams.get("pageSize") || undefined,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "INVALID_PARAMS", message: "参数错误", details: error.issues },
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
+
+    const { status, page, pageSize } = queryParams;
     const skip = (page - 1) * pageSize;
 
     // 定义订单状态过滤条件
-    const whereClause: import("@/generated/prisma/client").Prisma.OrderWhereInput = { userId: payload.id };
+    const whereClause: import("@/generated/prisma/client").Prisma.OrderWhereInput = {
+      userId: payload.id,
+    };
     if (status && status !== "all") {
-      whereClause.status = status;
+      whereClause.status = status as OrderStatus;
     }
 
     // 并行查询数据和总数
@@ -72,8 +110,8 @@ export async function GET(request: NextRequest) {
         include: {
           items: true,
           userCoupon: {
-            include: { coupon: true }
-          }
+            include: { coupon: true },
+          },
         },
         orderBy: {
           createdAt: "desc",
@@ -127,7 +165,10 @@ export async function POST(request: NextRequest) {
     );
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { success: false, error: { code: "RATE_LIMITED", message: "创建订单过于频繁，请稍后再试" } },
+        {
+          success: false,
+          error: { code: "RATE_LIMITED", message: "创建订单过于频繁，请稍后再试" },
+        },
         { status: 429 }
       );
     }
@@ -137,7 +178,10 @@ export async function POST(request: NextRequest) {
     const result = createOrderSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }
@@ -169,7 +213,12 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logError("CreateOrder", error, { body: await request.clone().text().catch(() => "unreadable") });
+    logError("CreateOrder", error, {
+      body: await request
+        .clone()
+        .text()
+        .catch(() => "unreadable"),
+    });
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

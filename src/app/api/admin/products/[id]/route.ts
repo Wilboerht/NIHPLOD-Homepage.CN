@@ -5,18 +5,26 @@ import { verifyAuth } from "@/lib/auth";
 import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
+import { sanitizeHtml } from "@/lib/html-sanitize";
 import { deleteUploadedFile } from "@/lib/upload";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
+
+// PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
+const patchProductSchema = z
+  .object({
+    published: z.boolean().optional(),
+    featured: z.boolean().optional(),
+    order: z.number().int().min(0).optional(),
+  })
+  .strict();
 
 // GET /api/admin/products/[id] - 获取产品详情
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -27,6 +35,10 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const product = await prisma.product.findUnique({
       where: { id },
@@ -61,10 +73,7 @@ export async function GET(
 }
 
 // PATCH /api/admin/products/[id] - 更新产品部分字段
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -75,7 +84,23 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
+
+    const parsed = patchProductSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues },
+        },
+        { status: 400 }
+      );
+    }
+    const validated = parsed.data;
 
     // 检查产品是否存在
     const existing = await prisma.product.findUnique({ where: { id } });
@@ -86,15 +111,10 @@ export async function PATCH(
       );
     }
 
-    // 只允许更新特定字段
-    const allowedFields = ["published", "featured", "order"];
     const updateData: Record<string, unknown> = {};
-
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
-    }
+    if (validated.published !== undefined) updateData.published = validated.published;
+    if (validated.featured !== undefined) updateData.featured = validated.featured;
+    if (validated.order !== undefined) updateData.order = validated.order;
 
     const product = await prisma.product.update({
       where: { id },
@@ -128,10 +148,7 @@ export async function PATCH(
 }
 
 // PUT /api/admin/products/[id] - 完整更新产品
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -142,8 +159,20 @@ export async function PUT(
     }
 
     const { id } = await params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
     const validated = ProductSchema.parse(body);
+
+    // 对 HTML 字段入库前消毒
+    const sanitized = {
+      ...validated,
+      description: sanitizeHtml(validated.description),
+      ingredients: sanitizeHtml(validated.ingredients),
+      usage: sanitizeHtml(validated.usage),
+    };
 
     // 检查产品是否存在
     const existing = await prisma.product.findUnique({ where: { id } });
@@ -210,13 +239,13 @@ export async function PUT(
           name: validated.name,
           nameEn: validated.nameEn,
           slug: validated.slug,
-          description: validated.description,
-          price: validated.price,
-          capacity: validated.capacity,
-          purchaseUrl: validated.purchaseUrl,
-          ingredients: validated.ingredients,
-          usage: validated.usage,
-          benefits: validated.benefits || [],
+          description: sanitized.description,
+          price: sanitized.price,
+          capacity: sanitized.capacity,
+          purchaseUrl: sanitized.purchaseUrl,
+          ingredients: sanitized.ingredients,
+          usage: sanitized.usage,
+          benefits: sanitized.benefits || [],
           order: validated.order,
           featured: validated.featured,
           published: validated.published,
@@ -228,7 +257,7 @@ export async function PUT(
       });
 
       // 处理图片：更新已有 + 创建新的
-      for (const img of validated.images) {
+      for (const img of sanitized.images) {
         if (img.id && existingImageIds.includes(img.id)) {
           // 更新已有图片
           await tx.image.update({
@@ -249,7 +278,7 @@ export async function PUT(
       }
 
       // 处理购买链接：更新已有 + 创建新的
-      for (const link of validated.purchaseLinks || []) {
+      for (const link of sanitized.purchaseLinks || []) {
         if (link.id && existingLinkIds.includes(link.id)) {
           // 更新已有链接
           await tx.purchaseLink.update({
@@ -299,7 +328,10 @@ export async function PUT(
     apiConsole.error("更新产品失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -325,6 +357,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     // 检查产品是否存在
     const existing = await prisma.product.findUnique({
@@ -363,4 +399,3 @@ export async function DELETE(
     );
   }
 }
-

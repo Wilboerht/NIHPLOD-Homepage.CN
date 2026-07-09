@@ -4,18 +4,18 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
-import { listAuditLogs } from "@/lib/audit";
+import { listAuditLogs, AUDIT_ACTIONS, AUDIT_TARGET_TYPES } from "@/lib/audit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
-  action: z.string().optional(),
-  targetType: z.string().optional(),
-  adminId: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  action: z.enum(AUDIT_ACTIONS).optional(),
+  targetType: z.enum(AUDIT_TARGET_TYPES).optional(),
+  adminId: z.string().cuid().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
 });
 
 export const dynamic = "force-dynamic";

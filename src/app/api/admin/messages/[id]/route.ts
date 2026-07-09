@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 // 更新留言 Schema
 const UpdateSchema = z.object({
@@ -12,12 +13,9 @@ const UpdateSchema = z.object({
 
 // GET /api/admin/messages/[id] - 获取留言详情
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -28,6 +26,10 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const message = await prisma.contactMessage.findUnique({
       where: { id },
@@ -57,10 +59,7 @@ export async function GET(
 }
 
 // PATCH /api/admin/messages/[id] - 更新留言（标记已读）
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -71,6 +70,10 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
     const validated = UpdateSchema.parse(body);
 
@@ -131,6 +134,10 @@ export async function DELETE(
 
     const { id } = await params;
 
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     // 检查是否存在
     const existing = await prisma.contactMessage.findUnique({ where: { id } });
     if (!existing) {
@@ -157,4 +164,3 @@ export async function DELETE(
     );
   }
 }
-

@@ -13,6 +13,7 @@ import {
   USER_COOKIE_NAME,
   USER_COOKIE_OPTIONS,
   USER_REFRESH_COOKIE_NAME,
+  USER_REFRESH_COOKIE_OPTIONS,
 } from "@/types/auth";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       maxAge: 0, // 立即过期
     });
     response.cookies.set(USER_REFRESH_COOKIE_NAME, "", {
-      ...USER_COOKIE_OPTIONS,
+      ...USER_REFRESH_COOKIE_OPTIONS,
       maxAge: 0,
     });
 

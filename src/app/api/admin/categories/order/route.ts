@@ -6,17 +6,20 @@ import { apiConsole } from "@/lib/logger";
 
 // 排序更新 Schema
 const OrderUpdateSchema = z.object({
-  items: z.array(
-    z.object({
-      id: z.string(),
-      order: z.number().int().min(0),
-    })
-  ).min(1, "请提供至少一个分类"),
+  items: z
+    .array(
+      z.object({
+        id: z.string().cuid(),
+        order: z.number().int().min(0),
+      })
+    )
+    .min(1, "请提供至少一个分类")
+    .max(200, "一次最多更新 200 个分类"),
 });
 
 // PUT /api/admin/categories/order - 更新分类排序
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function PUT(request: NextRequest) {
   try {
@@ -52,7 +55,10 @@ export async function PUT(request: NextRequest) {
     apiConsole.error("更新排序失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -62,4 +68,3 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-

@@ -122,11 +122,10 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + CODE_EXPIRE_MINUTES * 60 * 1000);
     const codeHash = hashVerifyCode(phone, code, type);
 
-    // 保存验证码（同时存储明文 code 用于兼容，以及 codeHash 用于安全校验）
+    // 保存验证码哈希（不再存储明文）
     await prisma.smsCode.create({
       data: {
         phone,
-        code,
         codeHash,
         type,
         expiresAt,

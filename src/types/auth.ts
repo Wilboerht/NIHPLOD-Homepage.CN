@@ -75,12 +75,43 @@ export interface AuthSession {
  */
 export const AUTH_COOKIE_NAME = "__Host-admin_token";
 
+function parseDurationToSeconds(duration: string): number {
+  const match = duration.match(/^(\d+)([smhd])$/);
+  if (!match) return 24 * 60 * 60; // 非法格式默认 1 天
+  const value = parseInt(match[1], 10);
+  const unit = match[2] as "s" | "m" | "h" | "d";
+  const multipliers = { s: 1, m: 60, h: 3600, d: 86400 };
+  return value * multipliers[unit];
+}
+
+const adminExpiresIn = process.env.JWT_EXPIRES_IN || "1d";
+
 export const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
   sameSite: "strict" as const,
   path: "/",
-  maxAge: 7 * 24 * 60 * 60, // 7 天（秒）
+  maxAge: parseDurationToSeconds(adminExpiresIn), // 与 JWT 过期时间保持一致，默认 1 天
+};
+
+// 微信 OAuth 防 CSRF nonce Cookie
+export const WECHAT_NONCE_COOKIE_NAME = "__Host-wechat_oauth_nonce";
+export const WECHAT_NONCE_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "strict" as const,
+  path: "/",
+  maxAge: 10 * 60, // 10 分钟
+};
+
+// 微信绑定临时 Token Cookie
+export const WECHAT_BIND_COOKIE_NAME = "__Host-wechat_bind_token";
+export const WECHAT_BIND_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "strict" as const,
+  path: "/",
+  maxAge: 60 * 60, // 1 小时
 };
 
 // ============================================

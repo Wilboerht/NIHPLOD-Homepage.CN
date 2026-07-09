@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 // 分类更新 Schema
 const CategoryUpdateSchema = z.object({
@@ -22,12 +23,9 @@ const CategoryUpdateSchema = z.object({
 
 // GET /api/admin/categories/[id] - 获取分类详情
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -38,6 +36,10 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const category = await prisma.category.findUnique({
       where: { id },
@@ -72,10 +74,7 @@ export async function GET(
 }
 
 // PUT /api/admin/categories/[id] - 更新分类
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -86,6 +85,10 @@ export async function PUT(
     }
 
     const { id } = await params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
     const validated = CategoryUpdateSchema.parse(body);
 
@@ -126,7 +129,10 @@ export async function PUT(
     apiConsole.error("更新分类失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -152,6 +158,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     // 使用事务原子性检查并删除
     try {
@@ -214,4 +224,3 @@ export async function DELETE(
     );
   }
 }
-

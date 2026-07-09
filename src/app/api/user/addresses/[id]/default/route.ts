@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -28,6 +29,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const existing = await prisma.address.findFirst({
       where: { id, userId: payload.id },

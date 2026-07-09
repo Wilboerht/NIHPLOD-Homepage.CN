@@ -28,6 +28,21 @@ export const isOSSConfigured = () => {
 // 注意：这个实例只在服务端使用，不要在客户端代码中导入
 let ossClient: OSS | null = null;
 
+// 安全 MIME 类型映射（根据扩展名重新计算，不直接使用客户端传入的 type）
+const SAFE_MIME_MAP: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    pdf: "application/pdf",
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+};
+
+const ALLOWED_OSS_TYPES = Object.values(SAFE_MIME_MAP);
+const BLOCKED_CONTENT_TYPES = ["text/html", "application/javascript", "application/xhtml+xml"];
+
 if (isOSSConfigured()) {
     ossClient = new OSS({
         region: ossConfig.region!,
@@ -58,11 +73,18 @@ export async function generateUploadSignature(filename: string, type: string) {
     }
 
     // 校验并提取文件扩展名
-    const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf", "mp4", "mov"];
     const ext = filename.split(".").pop()?.toLowerCase() || "";
-    if (!ALLOWED_EXTS.includes(ext)) {
+    if (!SAFE_MIME_MAP[ext]) {
         throw new Error(`不支持的文件扩展名: ${ext}`);
     }
+
+    // 对客户端传入的 type 做白名单校验，并禁止可执行类型
+    if (!ALLOWED_OSS_TYPES.includes(type) || BLOCKED_CONTENT_TYPES.includes(type)) {
+        throw new Error(`不支持的文件类型: ${type}`);
+    }
+
+    // 根据扩展名重新计算安全的 MIME，不使用客户端传入的 type 作为最终 Content-Type
+    const safeType = SAFE_MIME_MAP[ext];
 
     // 生成随机文件路径: uploads/日期/随机ID.ext
     const date = new Date().toISOString().split("T")[0];
@@ -70,11 +92,11 @@ export async function generateUploadSignature(filename: string, type: string) {
     const objectName = `uploads/${date}/${randomId}.${ext}`;
 
     // 生成签名 URL，有效期 15 分钟 (900秒)
-    // 允许 PUT 方法上传
+    // 允许 PUT 方法上传，Content-Type 由服务端决定
     const url = ossClient.signatureUrl(objectName, {
         method: "PUT",
         expires: 900,
-        "Content-Type": type,
+        "Content-Type": safeType,
     });
 
     const publicUrl = `${getOSSPublicDomain()}/${objectName}`;
@@ -82,7 +104,8 @@ export async function generateUploadSignature(filename: string, type: string) {
     return {
         uploadUrl: url,
         publicUrl: publicUrl,
-        objectName: objectName
+        objectName: objectName,
+        contentType: safeType,
     };
 }
 

@@ -11,11 +11,11 @@ import { apiConsole } from "@/lib/logger";
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
-  search: z.string().nullish(),
+  search: z.string().max(100).nullish(),
 });
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,4 +89,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

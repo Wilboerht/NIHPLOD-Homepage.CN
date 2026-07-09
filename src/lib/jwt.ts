@@ -1,10 +1,18 @@
 /**
  * JWT 工具
  * 使用 jose 库实现 JWT 签名和验证
- * 
+ *
  * Token 策略：
- * - Access Token：短期（15分钟），用于 API 请求
- * - Refresh Token：长期（30天），用于获取新 Access Token
+ * - Admin Access Token：短期（默认 1 天），用于管理后台 API
+ * - User Access Token：短期（15分钟），用于 C 端 API
+ * - User Refresh Token：长期（30天），用于刷新双 Token
+ * - Wechat Bind Token：短期（1小时），仅用于微信绑定流程
+ *
+ * 安全增强：
+ * - 不同类型的 Token 使用不同 Secret（可独立轮换）
+ * - 启动时校验 Secret 最小长度
+ * - 签发时设置 issuer / audience
+ * - 验证时校验 type 与 audience
  */
 import { SignJWT, jwtVerify } from "jose";
 import type {
@@ -14,20 +22,55 @@ import type {
   AdminRole,
 } from "@/types/auth";
 
-// JWT 密钥（从环境变量获取，禁止硬编码回退）
-function getSecret(): Uint8Array {
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret) {
-    throw new Error("[JWT] JWT_SECRET 环境变量未设置，请配置后再启动应用");
+const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+const MIN_SECRET_LENGTH = 32;
+
+function validateSecret(name: string, value: string | undefined): string {
+  if (!value) {
+    throw new Error(`[JWT] ${name} 环境变量未设置，请配置后再启动应用`);
   }
-  return new TextEncoder().encode(jwtSecret);
+  if (value.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      `[JWT] ${name} 长度必须不少于 ${MIN_SECRET_LENGTH} 个字符，当前 ${value.length} 个字符`
+    );
+  }
+  return value;
 }
 
+// 各类型 Token 的 Secret：支持独立配置，未配置时回退到 JWT_SECRET 以保持兼容
+const adminSecret = new TextEncoder().encode(
+  validateSecret("JWT_ADMIN_SECRET", process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET)
+);
+const accessSecret = new TextEncoder().encode(
+  validateSecret("JWT_ACCESS_SECRET", process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET)
+);
+const refreshSecret = new TextEncoder().encode(
+  validateSecret("JWT_REFRESH_SECRET", process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET)
+);
+const wechatBindSecret = new TextEncoder().encode(
+  validateSecret(
+    "JWT_WECHAT_BIND_SECRET",
+    process.env.JWT_WECHAT_BIND_SECRET || process.env.JWT_SECRET
+  )
+);
+
 // JWT 过期时间
-const adminExpiresIn = process.env.JWT_EXPIRES_IN || "7d";
+const adminExpiresInRaw = process.env.JWT_EXPIRES_IN || "1d";
+if (!/^\d+[smhd]$/.test(adminExpiresInRaw)) {
+  throw new Error(
+    `[JWT] JWT_EXPIRES_IN 格式非法：${adminExpiresInRaw}，应为数字+单位（如 1d、12h、60m、3600s）`
+  );
+}
+const adminExpiresIn = adminExpiresInRaw;
+
 // C端用户 Token 时间
-const accessTokenExpiresIn = "15m";   // Access Token 15分钟
-const refreshTokenExpiresIn = "30d";  // Refresh Token 30天
+const accessTokenExpiresIn = "15m"; // Access Token 15分钟
+const refreshTokenExpiresIn = "30d"; // Refresh Token 30天
+const wechatBindExpiresIn = "1h"; // 微信绑定临时 Token 1小时
+
+function encodeSecret(secret: Uint8Array): Uint8Array {
+  return secret;
+}
 
 // ============================================
 // 管理员 Token
@@ -45,8 +88,10 @@ export async function signToken(payload: {
   const token = await new SignJWT({ ...payload, type: "admin" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience("admin")
     .setExpirationTime(adminExpiresIn)
-    .sign(getSecret());
+    .sign(encodeSecret(adminSecret));
 
   return token;
 }
@@ -56,7 +101,10 @@ export async function signToken(payload: {
  */
 export async function verifyToken(token: string): Promise<AdminJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, encodeSecret(adminSecret), {
+      issuer: ISSUER,
+      audience: "admin",
+    });
     // 确保是管理员 token，防止用户 token 被用于访问 admin API
     if ((payload as AdminJWTPayload & { type?: string }).type !== "admin") {
       return null;
@@ -66,8 +114,6 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
     return null;
   }
 }
-
-
 
 // ============================================
 // C端用户 Token（双 Token 策略）
@@ -83,8 +129,10 @@ export async function signUserToken(payload: {
   const token = await new SignJWT({ ...payload, type: "user" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience("user")
     .setExpirationTime(accessTokenExpiresIn)
-    .sign(getSecret());
+    .sign(encodeSecret(accessSecret));
 
   return token;
 }
@@ -94,7 +142,10 @@ export async function signUserToken(payload: {
  */
 export async function verifyUserToken(token: string): Promise<UserJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, encodeSecret(accessSecret), {
+      issuer: ISSUER,
+      audience: "user",
+    });
     // 确保是用户 token
     if ((payload as UserJWTPayload).type !== "user") {
       return null;
@@ -107,7 +158,6 @@ export async function verifyUserToken(token: string): Promise<UserJWTPayload | n
 
 /**
  * 签发用户 Refresh Token（长期，30天）
- * 用于在 Access Token 过期后获取新的 Access Token
  */
 export async function signRefreshToken(payload: {
   id: string;
@@ -116,8 +166,10 @@ export async function signRefreshToken(payload: {
   const token = await new SignJWT({ ...payload, type: "refresh" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience("refresh")
     .setExpirationTime(refreshTokenExpiresIn)
-    .sign(getSecret());
+    .sign(encodeSecret(refreshSecret));
 
   return token;
 }
@@ -127,12 +179,60 @@ export async function signRefreshToken(payload: {
  */
 export async function verifyRefreshToken(token: string): Promise<RefreshTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, encodeSecret(refreshSecret), {
+      issuer: ISSUER,
+      audience: "refresh",
+    });
     // 确保是 refresh token
     if ((payload as RefreshTokenPayload).type !== "refresh") {
       return null;
     }
     return payload as RefreshTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================
+// 微信绑定临时 Token
+// ============================================
+
+export interface WechatBindPayload {
+  type: "wechat_bind";
+  openid: string;
+  unionid?: string;
+  nickname?: string;
+  avatar?: string;
+}
+
+/**
+ * 签发微信绑定临时 Token（1小时）
+ */
+export async function signWechatBindToken(payload: Omit<WechatBindPayload, "type">): Promise<string> {
+  const token = await new SignJWT({ ...payload, type: "wechat_bind" as const })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience("wechat-bind")
+    .setExpirationTime(wechatBindExpiresIn)
+    .sign(encodeSecret(wechatBindSecret));
+
+  return token;
+}
+
+/**
+ * 验证微信绑定临时 Token
+ */
+export async function verifyWechatBindToken(token: string): Promise<WechatBindPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, encodeSecret(wechatBindSecret), {
+      issuer: ISSUER,
+      audience: "wechat-bind",
+    });
+    if ((payload as { type?: string }).type !== "wechat_bind") {
+      return null;
+    }
+    return payload as unknown as WechatBindPayload;
   } catch {
     return null;
   }

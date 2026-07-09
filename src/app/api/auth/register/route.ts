@@ -1,7 +1,7 @@
 /**
  * 用户注册 API
  * POST /api/auth/register
- * 
+ *
  * 安全增强：
  * - 请求速率限制（防垃圾注册）
  * - 双Token机制（Access Token + Refresh Token）
@@ -25,18 +25,20 @@ import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 请求参数验证
-const registerSchema = z.object({
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  code: z.string().length(6, "验证码为6位数字"),
-  password: passwordSchema,
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "两次密码不一致",
-  path: ["confirmPassword"],
-});
+const registerSchema = z
+  .object({
+    phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
+    code: z.string().regex(/^\d{6}$/, "验证码为6位数字"),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "两次密码不一致",
+    path: ["confirmPassword"],
+  });
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -123,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // 验证码校验（优先使用 codeHash，兼容明文 code）
     const { verifyCode } = await import("@/lib/sms");
-    if (!verifyCode(phone, code, "register", smsCode.code, smsCode.codeHash)) {
+    if (!verifyCode(phone, code, "register", smsCode.codeHash)) {
       return NextResponse.json(
         {
           success: false,
@@ -174,10 +176,13 @@ export async function POST(request: NextRequest) {
     });
 
     // 5. 保存 Refresh Token 到数据库
-    const refreshTokenExpiresAt = new Date(
-      Date.now() + 30 * 24 * 60 * 60 * 1000
+    const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await saveRefreshToken(
+      user.id,
+      refreshToken,
+      refreshTokenExpiresAt,
+      extractDeviceInfo(request)
     );
-    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
     // 6. 构建响应
     const response = NextResponse.json({
@@ -212,4 +217,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

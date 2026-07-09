@@ -137,6 +137,15 @@ export async function POST(request: NextRequest) {
       where: { email },
     });
 
+    // 账号已被禁用或软删除
+    if (admin && (admin.status !== "ACTIVE" || admin.deletedAt !== null)) {
+      await recordAdminAttempt(email, false, request);
+      return NextResponse.json(
+        { success: false, error: { code: "ACCOUNT_DISABLED", message: "账号已被禁用" } },
+        { status: 403 }
+      );
+    }
+
     // 使用恒定时间比较防御时序攻击：无论用户是否存在都执行一次 bcrypt
     const targetHash = admin ? admin.password : "$2a$12$dummy.hash.to.prevent.timing.attacks.on.nonexistent.users";
     const isPasswordValid = await verifyPassword(password, targetHash);

@@ -15,11 +15,20 @@ import {
   type UserJWTPayload,
 } from "@/types/auth";
 import { prisma } from "./prisma";
-import type { UserStatus } from "@/generated/prisma/client";
+import type { UserStatus, AdminStatus } from "@/generated/prisma/client";
+
+const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 // ============================================
 // 管理员认证
 // ============================================
+
+/**
+ * 检查管理员账号是否有效
+ */
+function isAdminActive(status: AdminStatus, deletedAt: Date | null): boolean {
+  return status === "ACTIVE" && deletedAt === null;
+}
 
 /**
  * 从 Cookie 中获取当前登录管理员
@@ -38,11 +47,21 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
     return null;
   }
 
+  // 校验管理员是否仍存在且未被禁用/删除
+  const admin = await prisma.admin.findUnique({
+    where: { id: payload.id },
+    select: { id: true, email: true, name: true, role: true, status: true, deletedAt: true },
+  });
+
+  if (!admin || !isAdminActive(admin.status, admin.deletedAt)) {
+    return null;
+  }
+
   return {
-    id: payload.id,
-    email: payload.email,
-    name: payload.name,
-    role: payload.role,
+    id: admin.id,
+    email: admin.email,
+    name: admin.name,
+    role: admin.role,
   };
 }
 
@@ -88,13 +107,13 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
     return null;
   }
 
-  // 验证管理员是否仍存在且未被禁用
+  // 验证管理员是否仍存在且未被禁用/删除
   const admin = await prisma.admin.findUnique({
     where: { id: payload.id },
-    select: { id: true, email: true, name: true, role: true },
+    select: { id: true, email: true, name: true, role: true, status: true, deletedAt: true },
   });
 
-  if (!admin) {
+  if (!admin || !isAdminActive(admin.status, admin.deletedAt)) {
     return null;
   }
 
@@ -111,8 +130,6 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
  * 包装 API 处理函数，自动验证认证
  * 支持 Next.js App Router Route Context
  */
-const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
-
 export function withAuth<T extends NextRequest, C = unknown, R extends Response = Response>(
   handler: (request: T, admin: AdminJWTPayload, context: C) => Promise<R>
 ): (request: T, context: C) => Promise<R> {

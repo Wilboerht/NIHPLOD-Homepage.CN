@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { deleteUploadedFile } from "@/lib/upload";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -17,7 +18,7 @@ const patchSchema = z.object({
 
 // GET /api/admin/applications/[id] - 获取单个申请详情
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -30,6 +31,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const application = await prisma.jobApplication.findUnique({
       where: { id },
@@ -75,11 +80,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues },
+        },
         { status: 400 }
       );
     }
@@ -144,6 +156,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
 
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     // 先获取申请记录以删除关联的简历文件
     const application = await prisma.jobApplication.findUnique({
       where: { id },
@@ -165,4 +181,3 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 }
-

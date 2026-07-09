@@ -3,7 +3,9 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 // 职位类型
 const JOB_TYPES = ["fulltime", "parttime", "intern"] as const;
@@ -20,17 +22,14 @@ const UpdateJobSchema = z.object({
   longitude: z.number().optional().nullable(),
   latitude: z.number().optional().nullable(),
   published: z.boolean().optional(),
-  order: z.number().optional(),
+  order: z.number().int().min(0).optional(),
 });
 
 // GET /api/admin/jobs/[id] - 获取职位详情
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -41,6 +40,10 @@ export async function GET(
     }
 
     const { id } = await params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const job = await prisma.job.findUnique({
       where: { id },
@@ -71,10 +74,7 @@ export async function GET(
 }
 
 // PATCH /api/admin/jobs/[id] - 更新职位
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -85,8 +85,19 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
     const validated = UpdateJobSchema.parse(body);
+
+    // 对 HTML 字段入库前消毒
+    const sanitized: typeof validated = {
+      ...validated,
+      description: sanitizeHtml(validated.description),
+      requirements: sanitizeHtml(validated.requirements),
+    };
 
     // 检查是否存在
     const existing = await prisma.job.findUnique({ where: { id } });
@@ -101,17 +112,17 @@ export async function PATCH(
     const job = await prisma.job.update({
       where: { id },
       data: {
-        ...(validated.title !== undefined && { title: validated.title }),
-        ...(validated.titleEn !== undefined && { titleEn: validated.titleEn }),
-        ...(validated.location !== undefined && { location: validated.location }),
-        ...(validated.type !== undefined && { type: validated.type }),
-        ...(validated.description !== undefined && { description: validated.description }),
-        ...(validated.requirements !== undefined && { requirements: validated.requirements }),
-        ...(validated.salary !== undefined && { salary: validated.salary }),
-        ...(validated.longitude !== undefined && { longitude: validated.longitude }),
-        ...(validated.latitude !== undefined && { latitude: validated.latitude }),
-        ...(validated.published !== undefined && { published: validated.published }),
-        ...(validated.order !== undefined && { order: validated.order }),
+        ...(sanitized.title !== undefined && { title: sanitized.title }),
+        ...(sanitized.titleEn !== undefined && { titleEn: sanitized.titleEn }),
+        ...(sanitized.location !== undefined && { location: sanitized.location }),
+        ...(sanitized.type !== undefined && { type: sanitized.type }),
+        ...(sanitized.description !== undefined && { description: sanitized.description }),
+        ...(sanitized.requirements !== undefined && { requirements: sanitized.requirements }),
+        ...(sanitized.salary !== undefined && { salary: sanitized.salary }),
+        ...(sanitized.longitude !== undefined && { longitude: sanitized.longitude }),
+        ...(sanitized.latitude !== undefined && { latitude: sanitized.latitude }),
+        ...(sanitized.published !== undefined && { published: sanitized.published }),
+        ...(sanitized.order !== undefined && { order: sanitized.order }),
       },
     });
 
@@ -130,7 +141,10 @@ export async function PATCH(
     apiConsole.error("更新职位失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }
@@ -156,6 +170,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     // 检查是否存在
     const existing = await prisma.job.findUnique({ where: { id } });

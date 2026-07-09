@@ -6,6 +6,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWechatOAuthUrl, getWechatMpOAuthUrl } from "@/lib/wechat";
 import crypto from "crypto";
 import { apiConsole } from "@/lib/logger";
+import {
+  WECHAT_NONCE_COOKIE_NAME,
+  WECHAT_NONCE_COOKIE_OPTIONS,
+} from "@/types/auth";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -47,13 +51,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 将 nonce 写入短期 Cookie，用于回调时校验 CSRF
-    response.cookies.set("wechat_oauth_nonce", nonce, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-      path: "/",
-      maxAge: 10 * 60, // 10 分钟
-    });
+    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, nonce, WECHAT_NONCE_COOKIE_OPTIONS);
 
     return response;
   } catch (error) {

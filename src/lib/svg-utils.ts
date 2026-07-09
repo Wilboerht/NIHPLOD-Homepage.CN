@@ -28,11 +28,12 @@ export function sanitizeSvg(svg: string | null | undefined): string {
   // ADD_TAGS: [] 确保不额外添加标签；FORBID_ATTR 禁用事件属性
   cleaned = DOMPurify.sanitize(cleaned, {
     USE_PROFILES: { svg: true },
-    ADD_TAGS: ["use"],
+    ADD_TAGS: [],
+    FORBID_TAGS: ["foreignObject", "use"],
     FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onstart"],
-    // 允许 data URI 图片，但禁止 javascript: 伪协议
+    // 禁止 data URI 图片，仅允许 http/https/mailto/tel 协议
     ALLOWED_URI_REGEXP:
-      /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|xxx):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+      /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
 
   return cleaned;

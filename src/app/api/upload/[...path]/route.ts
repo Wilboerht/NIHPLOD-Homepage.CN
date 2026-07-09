@@ -3,6 +3,7 @@ import { verifyAuth } from "@/lib/auth";
 import { deleteUploadedFile } from "@/lib/upload";
 import prisma from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // DELETE /api/upload/[...path] - 删除图片
 // 强制动态渲染，禁止静态预渲染
@@ -12,6 +13,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     // 验证认证
     const admin = await verifyAuth(request);

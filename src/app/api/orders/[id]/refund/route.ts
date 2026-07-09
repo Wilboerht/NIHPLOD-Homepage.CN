@@ -8,6 +8,7 @@ import { verifyUserAuth } from "@/lib/auth";
 import { applyRefund, cancelRefund } from "@/lib/refund";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -17,7 +18,7 @@ const refundSchema = z.object({
 
 // 申请退款
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
@@ -30,12 +31,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
 
     const result = refundSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }
@@ -79,6 +87,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const result = await cancelRefund(id, payload.id);
 
     if (!result.success) {
@@ -100,4 +112,3 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     );
   }
 }
-

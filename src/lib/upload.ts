@@ -54,6 +54,44 @@ export const uploadConfig = {
   maxHeight: 2000, // 最大高度
 };
 
+// MIME 到安全扩展名的映射（服务端上传强制使用）
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "application/pdf": "pdf",
+};
+
+// 安全字符白名单
+const FILENAME_SAFE_REGEX = /^[a-zA-Z0-9._-]+$/;
+const PATH_SAFE_REGEX = /^[a-zA-Z0-9._/-]+$/;
+const FOLDER_SAFE_REGEX = /^[a-zA-Z0-9_-]+$/;
+
+/**
+ * 校验 folder 白名单
+ */
+export function validateFolder(folder: string): { valid: boolean; error?: string } {
+  if (!FOLDER_SAFE_REGEX.test(folder)) {
+    return { valid: false, error: "folder 只能包含字母、数字、下划线和连字符" };
+  }
+  return { valid: true };
+}
+
+/**
+ * 校验文件名安全字符
+ */
+export function validateFilename(filename: string): boolean {
+  return FILENAME_SAFE_REGEX.test(filename);
+}
+
+/**
+ * 获取 MIME 类型对应的安全扩展名
+ */
+export function getSafeExtension(mimeType: string): string | null {
+  return MIME_TO_EXT[mimeType] || null;
+}
+
 // 图片尺寸配置
 export const imageSizes = {
   thumbnail: { width: 400, height: 400, quality: 80 },   // 缩略图
@@ -159,6 +197,11 @@ export async function generateSizedImage(
   size: ImageSizeKey,
   folder: string = "images"
 ): Promise<{ url: string; width: number; height: number }> {
+  const folderCheck = validateFolder(folder);
+  if (!folderCheck.valid) {
+    throw new Error(folderCheck.error);
+  }
+
   const config = imageSizes[size];
   const filename = generateFilename();
 
@@ -219,6 +262,11 @@ export async function processAndSaveImage(
     generateBlur?: boolean;
   } = {}
 ): Promise<UploadResult> {
+  const folderCheck = validateFolder(folder);
+  if (!folderCheck.valid) {
+    throw new Error(folderCheck.error);
+  }
+
   const { generateThumbnail = true, generateBlur = true } = options;
 
   const filename = generateFilename();
@@ -293,17 +341,36 @@ export async function processAndSaveImage(
 
 /**
  * 上传文件（不做处理，适用于 PDF 等非图片文件）
+ * 注意：扩展名由 mimeType 从白名单映射决定，不会使用用户传入的 originalName
  */
 export async function uploadFile(
   buffer: Buffer,
-  originalName: string,
+  _originalName: string,
   mimeType: string,
-  folder: string = "files"
+  folder: string = "files",
+  allowedTypes: string[] = uploadConfig.allowedTypes
 ): Promise<{ url: string; filename: string; size: number }> {
-  const ext = originalName.split(".").pop()?.toLowerCase() || "bin";
+  const folderCheck = validateFolder(folder);
+  if (!folderCheck.valid) {
+    throw new Error(folderCheck.error);
+  }
+
+  if (!allowedTypes.includes(mimeType)) {
+    throw new Error(`不支持的文件类型: ${mimeType}`);
+  }
+
+  const safeExt = getSafeExtension(mimeType);
+  if (!safeExt) {
+    throw new Error(`无法确定安全扩展名: ${mimeType}`);
+  }
+
   const timestamp = Date.now();
   const uuid = randomUUID();
-  const filename = `${timestamp}-${uuid}.${ext}`;
+  const filename = `${timestamp}-${uuid}.${safeExt}`;
+
+  if (!validateFilename(filename)) {
+    throw new Error("生成的文件名包含非法字符");
+  }
 
   let url: string;
 
@@ -333,21 +400,40 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
   try {
     // 自动识别存储类型 (根据 URL 特征)
     const ossDomain = getOSSPublicDomain();
-    
+
     if (url.includes("aliyuncs.com") || url.includes(ossDomain)) {
       // 识别为 OSS
       await deleteOSSFiles([url]);
       return true;
     } else if (url.startsWith("/uploads/")) {
-      // 识别为本地存储
-      const relativePath = url.replace(/^\//, "");
-      // 严格拒绝任何包含路径遍历的 URL
-      if (relativePath.includes("..")) {
-        apiConsole.error("[DeleteFile] 路径包含非法字符:", relativePath);
+      // 识别为本地存储，先进行 URL 解码（防止 %2e%2e 编码绕过）
+      let decodedUrl: string;
+      try {
+        decodedUrl = decodeURIComponent(url);
+      } catch {
+        apiConsole.error("[DeleteFile] URL 解码失败:", url);
         return false;
       }
-      const filepath = resolve(join(process.cwd(), "public", relativePath));
+
+      // 白名单字符检查
+      if (!PATH_SAFE_REGEX.test(decodedUrl)) {
+        apiConsole.error("[DeleteFile] 路径包含非法字符:", decodedUrl);
+        return false;
+      }
+
+      const relativePath = decodedUrl.replace(/^\//, "");
+      const segments = relativePath.split("/");
+
+      // 严格拒绝任何包含路径遍历的段
+      for (const segment of segments) {
+        if (segment === ".." || segment === ".") {
+          apiConsole.error("[DeleteFile] 路径包含非法段:", segment);
+          return false;
+        }
+      }
+
       const publicDir = resolve(join(process.cwd(), "public"));
+      const filepath = resolve(join(publicDir, relativePath));
 
       // 路径越界检查
       if (!filepath.startsWith(publicDir)) {

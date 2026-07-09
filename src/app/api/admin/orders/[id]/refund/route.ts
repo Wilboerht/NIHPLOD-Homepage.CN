@@ -9,6 +9,7 @@ import { processRefund } from "@/lib/refund";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,7 +19,7 @@ const refundSchema = z.object({
 });
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
@@ -31,6 +32,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
 
     const result = refundSchema.safeParse(body);
@@ -70,7 +75,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       success: true,
-      data: { 
+      data: {
         message: approved ? "退款已批准" : "退款已拒绝",
       },
     });
@@ -82,4 +87,3 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 }
-

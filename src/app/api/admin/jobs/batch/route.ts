@@ -7,13 +7,13 @@ import { apiConsole } from "@/lib/logger";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
-  ids: z.array(z.string()).min(1),
+  ids: z.array(z.string().cuid()).min(1).max(100, "一次最多操作 100 个职位"),
   action: z.enum(["publish", "unpublish", "delete"]),
 });
 
 // POST /api/admin/jobs/batch - 批量操作
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +51,14 @@ export async function POST(request: NextRequest) {
       if (referencedApps.length > 0) {
         const referencedIds = referencedApps.map((a) => a.jobId);
         return NextResponse.json(
-          { success: false, error: { code: "REFERENCED_JOBS", message: "部分职位存在申请记录，无法删除", referencedIds } },
+          {
+            success: false,
+            error: {
+              code: "REFERENCED_JOBS",
+              message: "部分职位存在申请记录，无法删除",
+              referencedIds,
+            },
+          },
           { status: 409 }
         );
       }

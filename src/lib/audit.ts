@@ -55,6 +55,56 @@ export type AuditTargetType =
   | "coupon"
   | "system";
 
+export const AUDIT_ACTIONS = [
+  "login",
+  "logout",
+  "ship_order",
+  "refund_approve",
+  "refund_reject",
+  "create_admin",
+  "update_admin",
+  "delete_admin",
+  "create_product",
+  "update_product",
+  "delete_product",
+  "batch_product",
+  "create_category",
+  "update_category",
+  "delete_category",
+  "create_job",
+  "update_job",
+  "delete_job",
+  "batch_job",
+  "update_application",
+  "delete_application",
+  "update_message",
+  "delete_message",
+  "batch_message",
+  "create_coupon",
+  "update_coupon",
+  "delete_coupon",
+  "run_cron_task",
+  "user_login",
+  "user_logout",
+  "user_register",
+  "user_reset_password",
+  "user_wechat_bind",
+  "user_status_change",
+] as const;
+
+export const AUDIT_TARGET_TYPES = [
+  "order",
+  "admin",
+  "user",
+  "product",
+  "category",
+  "job",
+  "message",
+  "application",
+  "coupon",
+  "system",
+] as const;
+
 interface AuditLogInput {
   action: AuditAction;
   targetType: AuditTargetType;

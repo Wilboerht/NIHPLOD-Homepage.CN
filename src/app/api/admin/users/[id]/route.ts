@@ -9,11 +9,12 @@ import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
 import type { UserStatus } from "@/generated/prisma/client";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
@@ -26,6 +27,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -117,6 +122,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
     const result = updateUserSchema.safeParse(body);
     if (!result.success) {
@@ -176,4 +185,3 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
   }
 }
-

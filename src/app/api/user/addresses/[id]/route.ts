@@ -10,13 +10,17 @@ import { verifyUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // 地址参数验证
 const updateSchema = z.object({
   name: z.string().min(1).max(20).optional(),
-  phone: z.string().regex(/^1[3-9]\d{9}$/).optional(),
+  phone: z
+    .string()
+    .regex(/^1[3-9]\d{9}$/)
+    .optional(),
   province: z.string().min(1).optional(),
   city: z.string().min(1).optional(),
   district: z.string().min(1).optional(),
@@ -26,7 +30,7 @@ const updateSchema = z.object({
 
 // 获取地址详情
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
@@ -39,6 +43,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
     const address = await prisma.address.findFirst({
       where: { id, userId: payload.id },
@@ -77,12 +85,19 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
 
     const result = updateSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }
@@ -144,6 +159,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     // 检查地址是否存在且属于当前用户
     const existing = await prisma.address.findFirst({
       where: { id, userId: payload.id },
@@ -181,4 +200,3 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     );
   }
 }
-

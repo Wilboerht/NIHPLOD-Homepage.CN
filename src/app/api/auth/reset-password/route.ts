@@ -15,18 +15,20 @@ import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 请求参数验证
-const resetPasswordSchema = z.object({
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  code: z.string().length(6, "验证码为6位数字"),
-  password: passwordSchema,
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "两次密码不一致",
-  path: ["confirmPassword"],
-});
+const resetPasswordSchema = z
+  .object({
+    phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
+    code: z.string().regex(/^\d{6}$/, "验证码为6位数字"),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "两次密码不一致",
+    path: ["confirmPassword"],
+  });
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -93,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { verifyCode } = await import("@/lib/sms");
-    if (!verifyCode(phone, code, "reset", smsCode.code, smsCode.codeHash)) {
+    if (!verifyCode(phone, code, "reset", smsCode.codeHash)) {
       await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
       return NextResponse.json(
         {
@@ -191,4 +193,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

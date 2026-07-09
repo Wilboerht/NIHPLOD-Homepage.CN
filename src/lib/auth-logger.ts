@@ -13,6 +13,7 @@ export type AuthEventType =
   | "user_logout"
   | "user_register"
   | "user_refresh_token"
+  | "refresh_token_reuse_detected"
   | "user_reset_password"
   | "user_set_password"
   | "send_sms_code"
@@ -29,7 +30,7 @@ interface AuthLogContext {
   adminId?: string;
   ip?: string;
   ua?: string | null;
-  success: boolean;
+  success?: boolean;
   reason?: string;
   type?: string;
   project?: string;

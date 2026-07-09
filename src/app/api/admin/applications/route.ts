@@ -5,20 +5,32 @@ import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
+const folderIdSchema = z.union([z.literal("uncategorized"), z.string().cuid()]);
+
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
-  // searchParams.get() 对不存在的参数返回 null，而 Zod .default() 只对 undefined 生效，
-  // 因此需要先把 null 转换为 undefined，再应用默认值。
-  status: z.preprocess((val) => (val === null ? undefined : val), z.string().default("all")),
-  jobId: z.preprocess((val) => (val === null ? undefined : val), z.string().default("")),
-  folderId: z.preprocess((val) => (val === null ? undefined : val), z.string().default("")),
-  search: z.preprocess((val) => (val === null ? undefined : val), z.string().default("")),
+  status: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    z.enum(["all", "pending", "reviewed", "interviewed", "rejected", "hired"]).default("all")
+  ),
+  jobId: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    z.string().cuid().optional()
+  ),
+  folderId: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    folderIdSchema.optional()
+  ),
+  search: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    z.string().max(100).optional()
+  ),
 });
 
 // GET /api/admin/applications - 获取简历申请列表
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {

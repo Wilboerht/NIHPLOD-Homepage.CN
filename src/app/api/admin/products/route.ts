@@ -5,6 +5,7 @@ import { verifyAuth } from "@/lib/auth";
 import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
+import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 
 // 查询参数 Schema
@@ -152,6 +153,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = ProductSchema.parse(body);
 
+    // 对 HTML 字段入库前消毒
+    const sanitized = {
+      ...validated,
+      description: sanitizeHtml(validated.description),
+      ingredients: sanitizeHtml(validated.ingredients),
+      usage: sanitizeHtml(validated.usage),
+    };
+
     // 检查 slug 是否重复
     const existingSlug = await prisma.product.findUnique({
       where: { slug: validated.slug },
@@ -180,13 +189,13 @@ export async function POST(request: NextRequest) {
         name: validated.name,
         nameEn: validated.nameEn,
         slug: validated.slug,
-        description: validated.description,
-        price: validated.price,
-        capacity: validated.capacity,
-        purchaseUrl: validated.purchaseUrl,
-        ingredients: validated.ingredients,
-        usage: validated.usage,
-        benefits: validated.benefits || [],
+        description: sanitized.description,
+        price: sanitized.price,
+        capacity: sanitized.capacity,
+        purchaseUrl: sanitized.purchaseUrl,
+        ingredients: sanitized.ingredients,
+        usage: sanitized.usage,
+        benefits: sanitized.benefits || [],
         order: validated.order,
         featured: validated.featured,
         published: validated.published,
@@ -195,15 +204,15 @@ export async function POST(request: NextRequest) {
         stock: validated.stock,
         geoFaqs: toInputJson(validated.geoFaqs),
         images: {
-          create: validated.images.map((img, index) => ({
+          create: sanitized.images.map((img, index) => ({
             url: img.url,
             alt: img.alt,
             order: img.order ?? index,
           })),
         },
-        purchaseLinks: validated.purchaseLinks?.length
+        purchaseLinks: sanitized.purchaseLinks?.length
           ? {
-            create: validated.purchaseLinks.map((link, index) => ({
+            create: sanitized.purchaseLinks.map((link, index) => ({
               platform: link.platform,
               url: link.url,
               order: link.order ?? index,

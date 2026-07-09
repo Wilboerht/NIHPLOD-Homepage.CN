@@ -16,19 +16,19 @@ import {
   USER_REFRESH_COOKIE_OPTIONS,
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
+  WECHAT_NONCE_COOKIE_NAME,
+  WECHAT_NONCE_COOKIE_OPTIONS,
+  WECHAT_BIND_COOKIE_NAME,
+  WECHAT_BIND_COOKIE_OPTIONS,
 } from "@/types/auth";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
-import { SignJWT } from "jose";
+import { signWechatBindToken } from "@/lib/jwt";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { checkUserStatus } from "@/lib/auth";
 
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET 未配置");
-}
-const secret = new TextEncoder().encode(jwtSecret);
+
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get("error");
 
     let loginType: "open" | "mp" = "open";
-    const nonceCookie = request.cookies.get("wechat_oauth_nonce")?.value;
+    const nonceCookie = request.cookies.get(WECHAT_NONCE_COOKIE_NAME)?.value;
     let stateValid = false;
 
     if (state) {
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
         new URL("/?wechat_auth=error&code=INVALID_STATE&message=" + encodeURIComponent("授权状态验证失败，请重试"), request.url),
         302
       );
-      response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
       return response;
     }
 
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
         new URL(`${redirectUrl}?wechat_auth=error&code=WECHAT_DENIED&message=` + encodeURIComponent("您取消了微信授权"), request.url),
         302
       );
-      response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
       return response;
     }
 
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         new URL(`${redirectUrl}?wechat_auth=error&code=MISSING_CODE&message=` + encodeURIComponent("缺少授权码"), request.url),
         302
       );
-      response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
       return response;
     }
 
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
           new URL(`${redirectUrl}?wechat_auth=error&code=ACCOUNT_DISABLED&message=` + encodeURIComponent(statusCheck.reason || "账号状态异常"), request.url),
           302
         );
-        response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+        response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
         return response;
       }
 
@@ -186,23 +186,18 @@ export async function GET(request: NextRequest) {
       // 设置 Refresh Token Cookie（30 天，使用统一配置 USER_REFRESH_COOKIE_OPTIONS）
       response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);
       // 清除 CSRF nonce Cookie
-      response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
 
       return response;
     }
 
     // 情况2：完全新用户 → 返回绑定令牌，需要手动绑定
-    const bindToken = await new SignJWT({
-      type: "wechat_bind",
+    const bindToken = await signWechatBindToken({
       openid: wechatUser.openid,
       unionid: wechatUser.unionid,
       nickname: wechatUser.nickname,
-      avatar: wechatUser.headimgurl
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("1h")
-      .sign(secret);
+      avatar: wechatUser.headimgurl,
+    });
 
     logAuthEvent("wechat_bind", {
       success: false,
@@ -216,12 +211,9 @@ export async function GET(request: NextRequest) {
     );
 
     // 设置临时绑定令牌
-    response.cookies.set("wechat_bind_token", bindToken, {
-      ...USER_ACCESS_COOKIE_OPTIONS,
-      maxAge: 60 * 60, // 1小时过期
-    });
+    response.cookies.set(WECHAT_BIND_COOKIE_NAME, bindToken, WECHAT_BIND_COOKIE_OPTIONS);
     // 清除 CSRF nonce Cookie
-    response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
 
     return response;
   } catch (error) {

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import {
   processAndSaveImage,
   validateUploadServer,
   validateFileBuffer,
+  validateFolder,
 } from "@/lib/upload";
 
 // POST /api/upload - 上传图片
@@ -12,6 +14,10 @@ import {
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     // 验证认证
     const admin = await verifyAuth(request);
@@ -27,9 +33,28 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File | null;
     const folder = (formData.get("folder") as string) || "images";
 
+    // folder 白名单校验
+    const folderCheck = validateFolder(folder);
+    if (!folderCheck.valid) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FOLDER", message: folderCheck.error } },
+        { status: 400 }
+      );
+    }
+
     if (!file) {
       return NextResponse.json(
         { success: false, error: { code: "NO_FILE", message: "请选择要上传的文件" } },
+        { status: 400 }
+      );
+    }
+
+    // 验证扩展名白名单
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const allowedExts = ["jpg", "jpeg", "png", "webp", "gif", "pdf"];
+    if (!allowedExts.includes(ext)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FILE_EXT", message: "不支持的文件扩展名" } },
         { status: 400 }
       );
     }

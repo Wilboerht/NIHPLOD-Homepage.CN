@@ -31,21 +31,19 @@ export function verifyCode(
   phone: string,
   code: string,
   type: string,
-  storedCode: string,
-  storedCodeHash?: string | null
+  storedCodeHash: string
 ): boolean {
-  if (storedCodeHash) {
-    const expectedHash = hashVerifyCode(phone, code, type);
-    try {
-      const a = Buffer.from(storedCodeHash);
-      const b = Buffer.from(expectedHash);
-      return a.length === b.length && crypto.timingSafeEqual(a, b);
-    } catch {
-      return false;
-    }
+  if (!storedCodeHash) {
+    return false;
   }
-  // 兼容旧数据：明文比较
-  return storedCode === code;
+  const expectedHash = hashVerifyCode(phone, code, type);
+  try {
+    const a = Buffer.from(storedCodeHash);
+    const b = Buffer.from(expectedHash);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";

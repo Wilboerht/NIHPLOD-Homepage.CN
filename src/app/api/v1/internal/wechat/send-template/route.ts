@@ -29,7 +29,19 @@ import {
   hashRequestBody,
 } from "@/lib/internal-api";
 import { sendWechatTemplateMessage } from "@/lib/wechat-template";
+import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+
+const sendTemplateSchema = z.object({
+  userId: z.string().cuid(),
+  score: z.number(),
+  primaryConcern: z.string().min(1).max(100),
+  reportUrl: z
+    .string()
+    .url()
+    .max(500)
+    .regex(/^https?:\/\//, "报告链接必须以 http:// 或 https:// 开头"),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -107,20 +119,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId, score, primaryConcern, reportUrl } = body;
-
-    if (
-      !userId ||
-      typeof userId !== "string" ||
-      typeof score !== "number" ||
-      typeof primaryConcern !== "string" ||
-      typeof reportUrl !== "string"
-    ) {
+    const parsed = sendTemplateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "缺少必要参数或类型错误" } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: "参数错误", details: parsed.error.issues },
+        },
         { status: 400 }
       );
     }
+
+    const { userId, score, primaryConcern, reportUrl } = parsed.data;
 
     // 5. 执行业务逻辑
     const result = await sendWechatTemplateMessage({ userId, score, primaryConcern, reportUrl });

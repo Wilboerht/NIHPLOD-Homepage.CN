@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // 4. 验证码校验（优先使用 codeHash，兼容明文 code）
     const { verifyCode } = await import("@/lib/sms");
-    if (!verifyCode(phone, code, "login", smsCode.code, smsCode.codeHash)) {
+    if (!verifyCode(phone, code, "login", smsCode.codeHash)) {
       // 记录失败尝试
       await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
 

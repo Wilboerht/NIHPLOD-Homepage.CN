@@ -12,14 +12,26 @@ import { apiConsole } from "@/lib/logger";
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
-  status: z.string().nullish(),
-  search: z.string().nullish(),
-  startDate: z.string().nullish(),
-  endDate: z.string().nullish(),
+  status: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    z.enum(["all", ...Object.values(OrderStatus)] as [string, ...string[]]).default("all")
+  ),
+  search: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    z.string().max(100).optional()
+  ),
+  startDate: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    z.coerce.date().optional()
+  ),
+  endDate: z.preprocess(
+    (val) => (val === null || val === "" ? undefined : val),
+    z.coerce.date().optional()
+  ),
 });
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -107,4 +119,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

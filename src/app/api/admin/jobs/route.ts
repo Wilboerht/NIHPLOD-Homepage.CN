@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 
 // 职位类型
@@ -24,7 +25,7 @@ const CreateJobSchema = z.object({
 
 // GET /api/admin/jobs - 获取职位列表
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,10 +38,17 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "10");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "10", 10)));
     const status = searchParams.get("status"); // published, draft, all
     const search = searchParams.get("search");
+
+    if (search && search.length > 100) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "搜索关键词过长" } },
+        { status: 400 }
+      );
+    }
 
     // 构建查询条件
     const where: Record<string, unknown> = {};
@@ -109,6 +117,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = CreateJobSchema.parse(body);
 
+    // 对 HTML 字段入库前消毒
+    const sanitized = {
+      ...validated,
+      description: sanitizeHtml(validated.description),
+      requirements: sanitizeHtml(validated.requirements),
+    };
+
     // 获取最大排序值
     const maxOrder = await prisma.job.aggregate({
       _max: { order: true },
@@ -117,11 +132,11 @@ export async function POST(request: NextRequest) {
     // 创建职位
     const job = await prisma.job.create({
       data: {
-        ...validated,
-        salary: validated.salary || null,
-        longitude: validated.longitude || null,
-        latitude: validated.latitude || null,
-        published: validated.published ?? false,
+        ...sanitized,
+        salary: sanitized.salary || null,
+        longitude: sanitized.longitude || null,
+        latitude: sanitized.latitude || null,
+        published: sanitized.published ?? false,
         order: (maxOrder._max.order || 0) + 1,
       },
     });
@@ -141,7 +156,10 @@ export async function POST(request: NextRequest) {
     apiConsole.error("创建职位失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }

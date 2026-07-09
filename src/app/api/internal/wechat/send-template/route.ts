@@ -11,7 +11,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { getInternalApiKeys } from "@/lib/internal-api";
 import { sendWechatTemplateMessage } from "@/lib/wechat-template";
+import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+
+const sendTemplateSchema = z.object({
+  userId: z.string().cuid(),
+  score: z.number(),
+  primaryConcern: z.string().min(1).max(100),
+  reportUrl: z
+    .string()
+    .url()
+    .max(500)
+    .regex(/^https?:\/\//, "报告链接必须以 http:// 或 https:// 开头"),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -42,28 +54,29 @@ export async function POST(request: NextRequest) {
 
     // 3. 参数解析与校验
     const body = await request.json();
-    const { userId, score, primaryConcern, reportUrl } = body;
 
-    if (!userId || typeof score !== "number" || !primaryConcern || !reportUrl) {
+    const parsed = sendTemplateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "缺少必要参数" } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: "参数错误", details: parsed.error.issues },
+        },
         { status: 400 }
       );
     }
+
+    const { userId, score, primaryConcern, reportUrl } = parsed.data;
 
     // 4. 执行业务逻辑
     const result = await sendWechatTemplateMessage({ userId, score, primaryConcern, reportUrl });
 
     if (!result.success) {
       const statusCode =
-        result.error?.code === "WECHAT_TOKEN_ERROR" ||
-        result.error?.code === "WECHAT_API_ERROR"
+        result.error?.code === "WECHAT_TOKEN_ERROR" || result.error?.code === "WECHAT_API_ERROR"
           ? 502
           : 500;
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: statusCode }
-      );
+      return NextResponse.json({ success: false, error: result.error }, { status: statusCode });
     }
 
     return NextResponse.json({

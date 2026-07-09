@@ -1,7 +1,7 @@
 /**
  * 获取结算数据 API
  * GET /api/checkout/data
- * 
+ *
  * 支持两种模式：
  * 1. 购物车结算：不传参数，从 CartItem 表读取
  * 2. 直接购买：传 ?productIds=id1,id2，从 Product 表直接读取（不依赖购物车）
@@ -9,15 +9,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);
-    
+
     if (!payload) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
@@ -33,18 +34,47 @@ export async function GET(request: NextRequest) {
 
     if (productIdsParam) {
       // ========== 直接购买模式：从 Product 表读取 ==========
-      const productIds = productIdsParam.split(",").filter(Boolean);
-      // 解析数量参数（与 productIds 一一对应，默认 1）
-      const quantities = quantitiesParam
-        ? quantitiesParam.split(",").map((q) => Math.max(1, parseInt(q.trim(), 10) || 1))
-        : productIds.map(() => 1);
+      const rawProductIds = productIdsParam.split(",").filter(Boolean);
 
-      if (productIds.length === 0) {
+      if (rawProductIds.length === 0) {
         return NextResponse.json(
           { success: false, error: { code: "EMPTY_CART", message: "没有可结算的商品" } },
           { status: 400 }
         );
       }
+
+      if (rawProductIds.length > 50) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "TOO_MANY_PRODUCTS", message: "一次最多结算 50 件商品" },
+          },
+          { status: 400 }
+        );
+      }
+
+      if (rawProductIds.some((id) => !validateCUID(id))) {
+        return invalidIdResponse();
+      }
+
+      const quantities = quantitiesParam
+        ? quantitiesParam.split(",").map((q) => parseInt(q.trim(), 10))
+        : rawProductIds.map(() => 1);
+
+      if (
+        quantities.length !== rawProductIds.length ||
+        quantities.some((q) => Number.isNaN(q) || q < 1 || q > 99)
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "INVALID_QUANTITY", message: "数量必须为 1-99 的整数" },
+          },
+          { status: 400 }
+        );
+      }
+
+      const productIds = rawProductIds;
 
       const products = await prisma.product.findMany({
         where: {
@@ -77,7 +107,13 @@ export async function GET(request: NextRequest) {
         const qty = qtyMap.get(product.id) || 1;
         if (product.stock < qty) {
           return NextResponse.json(
-            { success: false, error: { code: "INSUFFICIENT_STOCK", message: `${product.name} 库存不足（剩余 ${product.stock} 件）` } },
+            {
+              success: false,
+              error: {
+                code: "INSUFFICIENT_STOCK",
+                message: `${product.name} 库存不足（剩余 ${product.stock} 件）`,
+              },
+            },
             { status: 400 }
           );
         }

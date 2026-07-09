@@ -20,7 +20,7 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
-  id: z.string(),
+  id: z.string().cuid(),
   email: z.string().email().optional(),
   name: z.string().min(1).optional(),
   role: z.enum(["owner", "admin"]).optional(),
@@ -30,10 +30,10 @@ const updateSchema = z.object({
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
-  search: z.string().nullish(),
+  search: z.string().max(100).nullish(),
 });
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // GET - 列表
 export const GET = withRole(["owner"], async (request) => {
@@ -95,7 +95,7 @@ export const POST = withRole(["owner"], async (request, admin) => {
     const body = await request.json();
     const data = createSchema.parse(body);
 
-    const existing = await prisma.admin.findUnique({ where: { email: data.email } });
+    const existing = await prisma.admin.findUnique({ where: { email: data.email }, select: { id: true } });
     if (existing) {
       return NextResponse.json(
         { success: false, error: { code: "DUPLICATE_EMAIL", message: "该邮箱已被使用" } },
@@ -144,6 +144,7 @@ export const PUT = withRole(["owner"], async (request, admin) => {
     if (data.email) {
       const existing = await prisma.admin.findFirst({
         where: { email: data.email, id: { not: data.id } },
+        select: { id: true },
       });
       if (existing) {
         return NextResponse.json(
