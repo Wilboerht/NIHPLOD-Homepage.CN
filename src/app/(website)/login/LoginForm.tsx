@@ -85,7 +85,9 @@ export default function LoginForm({ redirectUrl, error }: LoginFormProps) {
   // 微信登录
   const handleWechatLogin = async () => {
     try {
-      const res = await fetch(`/api/auth/wechat?redirect=${encodeURIComponent(redirectUrl || "/")}`);
+      const res = await fetch(`/api/auth/wechat?redirect=${encodeURIComponent(redirectUrl || "/")}`, {
+        headers: { Accept: "application/json" },
+      });
       const data = await res.json();
 
       if (data.success) {

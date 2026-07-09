@@ -195,6 +195,26 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      // 子站场景：通过 URL 传递一次性 exchange token，由子站完成本地 Cookie/session 写入
+      if (stateCallback && isSubsiteCallback(stateCallback)) {
+        const exchangeToken = await signWechatExchangeToken({
+          openid: wechatUser.openid,
+          unionid: wechatUser.unionid,
+          nickname: wechatUser.nickname,
+          avatar: wechatUser.headimgurl,
+        });
+
+        const subsiteRedirect = new URL(baseRedirectUrl);
+        subsiteRedirect.searchParams.set("wechat_auth", "success");
+        subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
+
+        const response = NextResponse.redirect(subsiteRedirect, 302);
+        // 清除 CSRF nonce Cookie
+        response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+        return response;
+      }
+
+      // 官网场景：直接设置 Cookie 登录
       // 签发 Token（使用新的双 Token 机制）
       const accessToken = await signUserToken({
         id: user.id,

@@ -99,7 +99,7 @@ export const WECHAT_NONCE_COOKIE_NAME = "__Host-wechat_oauth_nonce";
 export const WECHAT_NONCE_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
-  sameSite: "strict" as const,
+  sameSite: "lax" as const,
   path: "/",
   maxAge: 10 * 60, // 10 分钟
 };

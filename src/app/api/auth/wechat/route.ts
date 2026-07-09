@@ -91,17 +91,28 @@ export async function GET(request: NextRequest) {
       authUrl = getWechatOAuthUrl(oauthCallbackUrl, state);
     }
 
-    const response = NextResponse.json({
-      success: true,
-      data: {
-        authUrl,
-        isWechat,
-      },
-    });
+    // 判断是否显式请求 JSON（官网前端 fetch 需要 JSON）。
+    // 当没有显式要求 JSON 时，默认视为浏览器直接访问，302 跳转到微信授权页。
+    const mode = searchParams.get("mode");
+    const acceptHeader = request.headers.get("accept") || "";
+    const wantsJson = mode === "json" || acceptHeader.includes("application/json");
 
     // 将 nonce 写入短期 Cookie，用于回调时校验 CSRF
-    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, nonce, WECHAT_NONCE_COOKIE_OPTIONS);
+    if (wantsJson) {
+      const response = NextResponse.json({
+        success: true,
+        data: {
+          authUrl,
+          isWechat,
+        },
+      });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, nonce, WECHAT_NONCE_COOKIE_OPTIONS);
+      return response;
+    }
 
+    // 浏览器直接跳转模式（子站 302 过来或用户直接打开）：直接 302 到微信授权页
+    const response = NextResponse.redirect(authUrl, 302);
+    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, nonce, WECHAT_NONCE_COOKIE_OPTIONS);
     return response;
   } catch (error) {
     apiConsole.error("[WechatAuth] 异常:", error);

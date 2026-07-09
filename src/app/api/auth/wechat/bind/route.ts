@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { signUserToken, signRefreshToken } from "@/lib/jwt";
 import {
   USER_ACCESS_COOKIE_OPTIONS,
   USER_REFRESH_COOKIE_OPTIONS,
@@ -9,19 +7,14 @@ import {
   WECHAT_BIND_COOKIE_NAME,
   WECHAT_BIND_COOKIE_OPTIONS,
 } from "@/types/auth";
-import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { z } from "zod";
-import { hashPassword, generateSecurePassword } from "@/lib/password";
-import { verifyWechatBindToken } from "@/lib/jwt";
-
-
-
 import { passwordSchema } from "@/lib/password";
+import { verifyWechatBindToken } from "@/lib/jwt";
+import { resolveWechatBinding } from "@/lib/wechat-binding";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { checkUserStatus } from "@/lib/auth";
 
 /**
  * 微信绑定表单
@@ -58,8 +51,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { phone, code, allowAutoPassword } = result.data;
-        let { password } = result.data;
+        const { phone, code, password, allowAutoPassword } = result.data;
 
         const bindToken = request.cookies.get(WECHAT_BIND_COOKIE_NAME)?.value;
         if (!bindToken) {
@@ -90,174 +82,29 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 验证短信验证码
-        const smsCode = await prisma.smsCode.findFirst({
-            where: { 
-                phone, 
-                type: "register", 
-                used: false, 
-                expiresAt: { gte: new Date() } 
-            },
-            orderBy: { createdAt: "desc" }
+        const bindingResult = await resolveWechatBinding({
+            phone,
+            code,
+            password,
+            allowAutoPassword,
+            wechatInfo,
+            request,
         });
 
-        const { verifyCode } = await import("@/lib/sms");
-        if (!smsCode || !verifyCode(phone, code, "register", smsCode.codeHash)) {
+        if (!bindingResult.success) {
             return NextResponse.json(
-                { 
-                    success: false, 
-                    error: { 
-                        code: "INVALID_CODE",
-                        message: "验证码错误或已过期" 
-                    } 
-                }, 
-                { status: 400 }
+                { success: false, error: { code: bindingResult.code, message: bindingResult.message } },
+                { status: bindingResult.code === "ACCOUNT_DISABLED" ? 403 : 400 }
             );
         }
 
-        // 标记验证码为已使用
-        await prisma.smsCode.update({ 
-            where: { id: smsCode.id }, 
-            data: { used: true } 
-        });
-
-        // 如果未提供密码，自动生成强密码
-        let passwordGenerated = false;
-        if (!password && allowAutoPassword) {
-            password = generateSecurePassword(24);
-            passwordGenerated = true;
-        } else if (!password) {
-            return NextResponse.json(
-                { 
-                    success: false, 
-                    error: { 
-                        code: "PASSWORD_REQUIRED",
-                        message: "请提供密码或允许自动生成密码" 
-                    } 
-                }, 
-                { status: 400 }
-            );
-        }
-
-        const hashedPassword = await hashPassword(password);
-
-        // 检查是否有现有的微信用户账户
-        const oldWechatUser = await prisma.user.findFirst({
-            where: wechatInfo.unionid
-                ? { OR: [{ wechatUnionId: wechatInfo.unionid }, { wechatOpenId: wechatInfo.openid }] }
-                : { wechatOpenId: wechatInfo.openid }
-        });
-
-        // 检查该手机号是否已注册
-        let user = await prisma.user.findUnique({ where: { phone } });
-
-        // 处理账户冲突的情况
-        if (oldWechatUser) {
-            if (oldWechatUser.phone.startsWith("wx_")) {
-                if (user && user.id !== oldWechatUser.id) {
-                    // 旧的临时账户存在，且新手机号也有账户
-                    // 清理旧的临时账户，防止重复
-                    await prisma.user.update({
-                        where: { id: oldWechatUser.id },
-                        data: {
-                            wechatOpenId: `unbound_${oldWechatUser.id}_${wechatInfo.openid}`,
-                            wechatUnionId: oldWechatUser.wechatUnionId 
-                                ? `unbound_${oldWechatUser.id}_${oldWechatUser.wechatUnionId}` 
-                                : null
-                        }
-                    });
-                } else if (!user) {
-                    // 旧的临时账户存在，升级为真实账户
-                    user = await prisma.user.update({
-                        where: { id: oldWechatUser.id },
-                        data: {
-                            phone,
-                            phoneVerified: true,
-                            password: hashedPassword,
-                            nickname: oldWechatUser.nickname?.startsWith("wx_") 
-                                ? (wechatInfo.nickname || `用户_${phone.slice(-4)}`) 
-                                : (oldWechatUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`),
-                            avatar: oldWechatUser.avatar || wechatInfo.avatar || null,
-                        }
-                    });
-                }
-            } else if (user && user.id !== oldWechatUser.id) {
-                // 微信已绑定到另一个账户！
-                return NextResponse.json(
-                    { 
-                        success: false, 
-                        error: { 
-                            code: "WECHAT_ALREADY_BOUND",
-                            message: "此微信已绑定其他账号，请使用绑定的手机号登录" 
-                        } 
-                    }, 
-                    { status: 400 }
-                );
-            }
-        }
-
-        if (user && (!oldWechatUser || (oldWechatUser.phone.startsWith("wx_") && user.id !== oldWechatUser.id))) {
-            // 更新现有用户，添加微信信息
-            user = await prisma.user.update({
-                where: { id: user.id },
-                data: {
-                    wechatOpenId: wechatInfo.openid,
-                    wechatUnionId: wechatInfo.unionid || user.wechatUnionId,
-                    password: hashedPassword,
-                    nickname: user.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-                    avatar: user.avatar || wechatInfo.avatar || null,
-                }
-            });
-        } else if (!user) {
-            // 完全新用户
-            user = await prisma.user.create({
-                data: {
-                    phone,
-                    password: hashedPassword,
-                    phoneVerified: true,
-                    nickname: wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-                    avatar: wechatInfo.avatar || null,
-                    wechatOpenId: wechatInfo.openid,
-                    wechatUnionId: wechatInfo.unionid || null,
-                }
-            });
-        }
-
-        // 校验账号状态（绑定后自动登录）
-        const statusCheck = await checkUserStatus(user.id);
-        if (!statusCheck.valid) {
-            return NextResponse.json(
-                { success: false, error: { code: "ACCOUNT_DISABLED", message: statusCheck.reason || "账号状态异常" } },
-                { status: 403 }
-            );
-        }
-
-        // 签发新的 Token（使用双 Token 机制）
-        const accessToken = await signUserToken({ 
-            id: user.id, 
-            phone: user.phone 
-        });
-        const refreshToken = await signRefreshToken({ 
-            id: user.id, 
-            phone: user.phone 
-        });
-
-        // 保存 Refresh Token 到数据库（统一使用 saveRefreshToken，自动清理旧 Token）
-        const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
+        const { user, accessToken, refreshToken, passwordGenerated, message } = bindingResult.data;
 
         const response = NextResponse.json({
             success: true,
-            data: { 
-                user: { 
-                    id: user.id, 
-                    phone: user.phone, 
-                    nickname: user.nickname, 
-                    avatar: user.avatar,
-                },
-                message: passwordGenerated
-                    ? "绑定成功，已自动登录。系统已为您生成安全密码，可在个人信息中修改"
-                    : "绑定成功，已自动登录",
+            data: {
+                user,
+                message,
                 passwordGenerated,
             }
         });

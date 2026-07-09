@@ -43,7 +43,8 @@ import {
 } from "@/lib/jwt";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
-import { hashPassword, passwordSchema, generateSecurePassword } from "@/lib/password";
+import { passwordSchema } from "@/lib/password";
+import { resolveWechatBinding } from "@/lib/wechat-binding";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -143,8 +144,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { wechatExchangeToken, phone, code, allowAutoPassword } = parsed.data;
-    let { password } = parsed.data;
+    const { wechatExchangeToken, phone, code, password, allowAutoPassword } = parsed.data;
 
     // 5. 验证 exchange token
     const wechatInfo = await verifyWechatExchangeToken(wechatExchangeToken);
@@ -164,111 +164,30 @@ export async function POST(request: NextRequest) {
 
     // 7. 如果提供了手机号和验证码，执行绑定流程
     if (phone && code) {
-      const smsCode = await prisma.smsCode.findFirst({
-        where: {
-          phone,
-          type: "register",
-          used: false,
-          expiresAt: { gte: new Date() },
-        },
-        orderBy: { createdAt: "desc" },
+      const bindingResult = await resolveWechatBinding({
+        phone,
+        code,
+        password,
+        allowAutoPassword,
+        wechatInfo,
+        request,
       });
 
-      const { verifyCode } = await import("@/lib/sms");
-      if (!smsCode || !verifyCode(phone, code, "register", smsCode.codeHash)) {
+      if (!bindingResult.success) {
         return NextResponse.json(
-          { success: false, error: { code: "INVALID_CODE", message: "验证码错误或已过期" } },
-          { status: 400 }
+          { success: false, error: { code: bindingResult.code, message: bindingResult.message } },
+          { status: bindingResult.code === "ACCOUNT_DISABLED" ? 403 : 400 }
         );
-      }
-
-      await prisma.smsCode.update({
-        where: { id: smsCode.id },
-        data: { used: true },
-      });
-
-      // 未提供密码时自动生成
-      let passwordGenerated = false;
-      if (!password && allowAutoPassword) {
-        password = generateSecurePassword(24);
-        passwordGenerated = true;
-      } else if (!password) {
-        return NextResponse.json(
-          { success: false, error: { code: "PASSWORD_REQUIRED", message: "请提供密码或允许自动生成密码" } },
-          { status: 400 }
-        );
-      }
-
-      const hashedPassword = await hashPassword(password);
-
-      // 检查该手机号是否已注册
-      let user = await prisma.user.findUnique({ where: { phone } });
-
-      // 处理账户冲突与绑定
-      if (oldWechatUser) {
-        if (oldWechatUser.phone.startsWith("wx_")) {
-          if (user && user.id !== oldWechatUser.id) {
-            // 旧临时账户与新手机号账户冲突，清理旧账户
-            await prisma.user.update({
-              where: { id: oldWechatUser.id },
-              data: {
-                wechatOpenId: `unbound_${oldWechatUser.id}_${wechatInfo.openid}`,
-                wechatUnionId: oldWechatUser.wechatUnionId
-                  ? `unbound_${oldWechatUser.id}_${oldWechatUser.wechatUnionId}`
-                  : null,
-              },
-            });
-          } else if (!user) {
-            // 旧临时账户升级为真实账户
-            user = await prisma.user.update({
-              where: { id: oldWechatUser.id },
-              data: {
-                phone,
-                phoneVerified: true,
-                password: hashedPassword,
-                nickname: oldWechatUser.nickname?.startsWith("wx_")
-                  ? wechatInfo.nickname || `用户_${phone.slice(-4)}`
-                  : oldWechatUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-                avatar: oldWechatUser.avatar || wechatInfo.avatar || null,
-              },
-            });
-          }
-        } else if (user && user.id !== oldWechatUser.id) {
-          return NextResponse.json(
-            { success: false, error: { code: "WECHAT_ALREADY_BOUND", message: "此微信已绑定其他账号，请使用绑定的手机号登录" } },
-            { status: 400 }
-          );
-        }
-      }
-
-      if (user && (!oldWechatUser || (oldWechatUser.phone.startsWith("wx_") && user.id !== oldWechatUser.id))) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            wechatOpenId: wechatInfo.openid,
-            wechatUnionId: wechatInfo.unionid || user.wechatUnionId,
-            password: hashedPassword,
-            nickname: user.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-            avatar: user.avatar || wechatInfo.avatar || null,
-          },
-        });
-      } else if (!user) {
-        user = await prisma.user.create({
-          data: {
-            phone,
-            password: hashedPassword,
-            phoneVerified: true,
-            nickname: wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-            avatar: wechatInfo.avatar || null,
-            wechatOpenId: wechatInfo.openid,
-            wechatUnionId: wechatInfo.unionid || null,
-          },
-        });
       }
 
       markWechatExchangeTokenUsed(wechatExchangeToken);
-      const result = await finalizeLogin(user, wechatInfo, passwordGenerated, request);
-      return result;
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...bindingResult.data,
+          bindingRequired: false,
+        },
+      });
     }
 
     // 8. 未提供手机号：检查该微信是否已绑定有效账户
@@ -288,8 +207,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 9. 已绑定有效账户，直接登录
-    markWechatExchangeTokenUsed(wechatExchangeToken);
-    const result = await finalizeLogin(oldWechatUser, wechatInfo, false, request);
+    const result = await finalizeLogin(oldWechatUser, wechatInfo, false, request, wechatExchangeToken);
     return result;
   } catch (error) {
     apiConsole.error("[InternalApiV1] 异常:", error);
@@ -314,7 +232,8 @@ async function finalizeLogin(
     avatar?: string;
   },
   passwordGenerated: boolean,
-  request: NextRequest
+  request: NextRequest,
+  exchangeToken?: string
 ) {
   // 校验账号状态
   const statusCheck = await checkUserStatus(user.id);
@@ -349,6 +268,10 @@ async function finalizeLogin(
     method: "wechat",
     ip: "internal-api",
   });
+
+  if (exchangeToken) {
+    markWechatExchangeTokenUsed(exchangeToken);
+  }
 
   return NextResponse.json({
     success: true,
