@@ -89,7 +89,7 @@ const adminExpiresIn = process.env.JWT_EXPIRES_IN || "1d";
 export const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
-  sameSite: "strict" as const,
+  sameSite: "lax" as const,
   path: "/",
   maxAge: parseDurationToSeconds(adminExpiresIn), // 与 JWT 过期时间保持一致，默认 1 天
 };
