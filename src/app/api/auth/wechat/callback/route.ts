@@ -22,6 +22,7 @@ import { SignJWT } from "jose";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { checkUserStatus } from "@/lib/auth";
 
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret) {
@@ -131,6 +132,17 @@ export async function GET(request: NextRequest) {
 
     // 情况1：已有账户且已绑定微信 → 直接登录
     if (user && !user.phone.startsWith("wx_")) {
+      // 先校验账号状态，避免冻结/封禁用户通过微信直接登录
+      const statusCheck = await checkUserStatus(user.id);
+      if (!statusCheck.valid) {
+        const response = NextResponse.redirect(
+          new URL(`${redirectUrl}?wechat_auth=error&code=ACCOUNT_DISABLED&message=` + encodeURIComponent(statusCheck.reason || "账号状态异常"), request.url),
+          302
+        );
+        response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
+        return response;
+      }
+
       // 更新微信信息
       await prisma.user.update({
         where: { id: user.id },

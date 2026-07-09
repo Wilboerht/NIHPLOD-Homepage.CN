@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { CareersPageContent } from "@/types/page-content";
 import DOMPurify from "isomorphic-dompurify";
+import { apiPost, ApiError } from "@/lib/api-client";
 
 // 职位类型
 export interface Job {
@@ -593,30 +594,24 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
       formDataToSend.append("phone", formData.phone);
       formDataToSend.append("resume", resumeFile);
 
-      const response = await fetch("/api/careers/apply", {
-        method: "POST",
-        body: formDataToSend,
-      });
+      await apiPost("/api/careers/apply", formDataToSend);
 
-      const result = await response.json();
-
-      if (response.ok) {
-        setSubmitStatus("success");
-        setTimeout(() => {
-          onClose();
-        }, 2000);
-      } else {
-        setSubmitStatus("error");
-        if (result.details) {
-          const firstFieldError = Object.values(result.details).flat()[0] as string;
-          setErrorMessage(firstFieldError || result.error || "投递失败，请稍后重试");
-        } else {
-          setErrorMessage(result.error || "投递失败，请稍后重试");
-        }
-      }
-    } catch {
+      setSubmitStatus("success");
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    } catch (error) {
       setSubmitStatus("error");
-      setErrorMessage("网络错误，请稍后重试");
+      if (error instanceof ApiError) {
+        if (error.details) {
+          const firstFieldError = Object.values(error.details).flat()[0] as string;
+          setErrorMessage(firstFieldError || error.message || "投递失败，请稍后重试");
+        } else {
+          setErrorMessage(error.message || "投递失败，请稍后重试");
+        }
+      } else {
+        setErrorMessage("网络错误，请稍后重试");
+      }
     } finally {
       setIsSubmitting(false);
     }

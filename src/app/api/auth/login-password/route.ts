@@ -30,6 +30,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 请求参数验证
 const loginSchema = z.object({
@@ -41,6 +42,10 @@ const loginSchema = z.object({
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const body = await request.json();
 

@@ -11,6 +11,7 @@ import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
+import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 请求参数验证
@@ -115,18 +116,37 @@ export async function POST(request: NextRequest) {
     // 查找用户
     const user = await prisma.user.findUnique({
       where: { phone },
+      select: { id: true, phone: true, status: true },
     });
 
     if (!user) {
+      // 使用通用错误，避免泄露手机号是否注册
+      await recordLoginAttempt(phone, false, request, "user_not_found", "sms");
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "USER_NOT_FOUND",
-            message: "该手机号未注册",
+            code: "RESET_FAILED",
+            message: "重置失败，请检查手机号和验证码",
           },
         },
         { status: 400 }
+      );
+    }
+
+    // 校验账号状态
+    const statusCheck = await checkUserStatus(user.id);
+    if (!statusCheck.valid) {
+      await recordLoginAttempt(phone, false, request, "account_disabled", "sms");
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_DISABLED",
+            message: statusCheck.reason,
+          },
+        },
+        { status: 403 }
       );
     }
 

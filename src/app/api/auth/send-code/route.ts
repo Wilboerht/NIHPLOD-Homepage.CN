@@ -10,6 +10,7 @@ import { rateLimit, getClientIP as getClientIPFromRateLimit } from "@/lib/rateli
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 请求参数验证
 const sendCodeSchema = z.object({
@@ -28,6 +29,10 @@ const MAX_SEND_PER_HOUR = 5;
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     // 1. 全局 IP 频率限制 (防止大规模短信轰炸)
     const ip = getClientIPFromRateLimit(request);

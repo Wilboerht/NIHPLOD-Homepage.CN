@@ -10,6 +10,7 @@ import { X, CreditCard, Loader2, Clock, Check, AlertCircle } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { isWechatBrowser } from "@/lib/wechat";
+import { apiPost, ApiError } from "@/lib/api-client";
 
 // 纹理背景 - 与 CheckoutModal 保持一致的透明度
 const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`;
@@ -115,25 +116,17 @@ export default function PayModal() {
         payload.tradeType = inWechat ? "JSAPI" : isMobile ? "MWEB" : "NATIVE";
       }
 
-      const res = await fetch("/api/pay/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      const data = await apiPost("/api/pay/create", payload) as {
+        payType: string;
+        payUrl?: string;
+        payParams?: unknown;
+        mwebUrl?: string;
+        codeUrl?: string;
+      };
 
-      if (!data.success) {
-        setError(data.error?.message || "支付失败");
-        return;
-      }
-
-      if (data.data.payType === "mock") {
+      if (data.payType === "mock") {
         if (confirm("开发环境：模拟支付成功？")) {
-          await fetch("/api/pay/mock-success", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId: order.id }),
-          });
+          await apiPost("/api/pay/mock-success", { orderId: order.id });
           closePay();
           // 支付成功后打开用户中心订单详情
           openUserCenter("orders", order.id);
@@ -141,13 +134,13 @@ export default function PayModal() {
         return;
       }
 
-      if (data.data.payType === "alipay") {
-        window.location.href = data.data.payUrl;
+      if (data.payType === "alipay") {
+        window.location.href = data.payUrl || "";
         return;
       }
 
-      if (data.data.payParams && typeof WeixinJSBridge !== "undefined") {
-        WeixinJSBridge.invoke("getBrandWCPayRequest", data.data.payParams, (r: { err_msg: string }) => {
+      if (data.payParams && typeof WeixinJSBridge !== "undefined") {
+        WeixinJSBridge.invoke("getBrandWCPayRequest", data.payParams, (r: { err_msg: string }) => {
           if (r.err_msg === "get_brand_wcpay_request:ok") {
             closePay();
             // 支付成功后打开用户中心订单详情
@@ -159,20 +152,24 @@ export default function PayModal() {
           }
         });
       } else {
-        if (data.data.mwebUrl) {
-          window.location.href = data.data.mwebUrl;
+        if (data.mwebUrl) {
+          window.location.href = data.mwebUrl;
           return;
         }
 
-        if (data.data.codeUrl) {
+        if (data.codeUrl) {
           setError("请使用微信扫码支付（当前设备不支持微信内直接唤起）");
           return;
         }
 
         setError("请在微信中打开支付");
       }
-    } catch {
-      setError("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setError(error.message);
+      } else {
+        setError("网络错误，请重试");
+      }
     } finally {
       setSubmitting(false);
     }

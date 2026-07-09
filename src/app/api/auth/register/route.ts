@@ -22,6 +22,7 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 请求参数验证
 const registerSchema = z.object({
@@ -38,6 +39,10 @@ const registerSchema = z.object({
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     // 1. 项目级速率限制（防止垃圾注册）
     const clientIP = getRateLimitClientIP(request);

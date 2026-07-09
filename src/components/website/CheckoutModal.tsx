@@ -11,6 +11,7 @@ import { X, MapPin, ChevronRight, ShoppingBag, FileText, Loader2, Check } from "
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/utils";
+import { apiPost, ApiError } from "@/lib/api-client";
 
 interface CheckoutItem {
   productId: string;
@@ -148,33 +149,27 @@ export function CheckoutModal() {
     setError("");
 
     try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          addressId: selectedAddressId,
-          items: data.items.map((i) => ({
-            productId: i.productId,
-            variantId: i.variantId || undefined,
-            quantity: i.quantity,
-          })),
-          remark: remark || undefined,
-          userCouponId: selectedCouponId || undefined,
-          source: checkoutSelectedProductIds && checkoutSelectedProductIds.length > 0 ? "direct_buy" : "cart",
-        }),
+      const result = await apiPost<{ orderId: string }>("/api/orders", {
+        addressId: selectedAddressId,
+        items: data.items.map((i) => ({
+          productId: i.productId,
+          variantId: i.variantId || undefined,
+          quantity: i.quantity,
+        })),
+        remark: remark || undefined,
+        userCouponId: selectedCouponId || undefined,
+        source: checkoutSelectedProductIds && checkoutSelectedProductIds.length > 0 ? "direct_buy" : "cart",
       });
 
-      const result = await res.json();
-
-      if (result.success) {
-        closeCheckout();
-        // 直接打开支付模态框，而不是跳转页面
-        openPay(result.data.orderId);
+      closeCheckout();
+      // 直接打开支付模态框，而不是跳转页面
+      openPay(result.orderId);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setError(error.message);
       } else {
-        setError(result.error?.message || "提交失败");
+        setError("网络错误，请重试");
       }
-    } catch {
-      setError("网络错误，请重试");
     } finally {
       setSubmitting(false);
     }

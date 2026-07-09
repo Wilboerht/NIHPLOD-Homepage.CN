@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { apiPut, apiDelete } from "@/lib/api-client";
 import { trackEvent } from "@/lib/analytics";
 import { formatPrice } from "@/lib/utils";
 
@@ -79,11 +80,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
     if (quantity < 1) return;
     
     try {
-      await fetch(`/api/cart/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity }),
-      });
+      await apiPut(`/api/cart/${id}`, { quantity });
       setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity } : i)));
     } catch (e) {
       console.error("更新数量失败:", e);
@@ -93,7 +90,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
   // 删除商品
   const removeItem = async (id: string) => {
     try {
-      await fetch(`/api/cart/${id}`, { method: "DELETE" });
+      await apiDelete(`/api/cart/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
     } catch (e) {
       console.error("删除失败:", e);

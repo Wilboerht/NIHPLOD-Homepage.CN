@@ -9,6 +9,7 @@ import { Link } from "next-view-transitions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks";
+import { apiPost, ApiError } from "@/lib/api-client";
 
 // 图标映射
 const iconMap: Record<string, typeof HelpCircle> = {
@@ -247,27 +248,21 @@ export function ContactModal() {
         }
 
         try {
-            const response = await fetch("/api/contact", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(submitData),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                setStatus("success");
-                toastSuccess(data.message || "留言已提交");
-                setFormData({ name: "", phone: "", type: "", content: "", location: "", website: "" });
-                // 延迟关闭
-                setTimeout(() => {
-                    closeContact();
-                }, 2000);
-            } else {
-                setStatus("error");
-                toastError(data.error || "提交失败，请稍后重试");
-            }
-        } catch {
+            const data = await apiPost<{ message?: string }>("/api/contact", submitData);
+            setStatus("success");
+            toastSuccess(data.message || "留言已提交");
+            setFormData({ name: "", phone: "", type: "", content: "", location: "", website: "" });
+            // 延迟关闭
+            setTimeout(() => {
+                closeContact();
+            }, 2000);
+        } catch (error) {
             setStatus("error");
-            toastError("网络错误，请检查您的网络连接");
+            if (error instanceof ApiError) {
+                toastError(error.message);
+            } else {
+                toastError("网络错误，请检查您的网络连接");
+            }
         }
     };
 

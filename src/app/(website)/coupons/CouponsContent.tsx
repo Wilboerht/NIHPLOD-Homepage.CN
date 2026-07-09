@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Ticket, Loader2, Check, Gift, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { apiPost, ApiError } from "@/lib/api-client";
 
 interface Coupon {
   id: string;
@@ -72,22 +73,17 @@ export function CouponsContent() {
 
     setAcquiring(coupon.id);
     try {
-      const res = await fetch("/api/coupons/acquire", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          couponId: coupon.id,
-          ...(coupon.code && { code: coupon.code }),
-        }),
+      await apiPost("/api/coupons/acquire", {
+        couponId: coupon.id,
+        ...(coupon.code && { code: coupon.code }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setAcquiredIds((prev) => new Set(prev).add(coupon.id));
+      setAcquiredIds((prev) => new Set(prev).add(coupon.id));
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
       } else {
-        toast.error(data.error || "领取失败");
+        toast.error("领取失败，请重试");
       }
-    } catch {
-      toast.error("领取失败，请重试");
     } finally {
       setAcquiring(null);
     }

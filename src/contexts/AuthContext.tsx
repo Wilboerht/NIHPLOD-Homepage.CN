@@ -56,8 +56,6 @@ interface AuthContextType {
   switchToWechatBind: () => void;
   refreshUser: (force?: boolean) => Promise<void>;
   logout: () => Promise<void>;
-  /** 带自动 Token 刷新的 fetch */
-  fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -257,7 +255,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         switchToWechatBind,
         refreshUser,
         logout,
-        fetchWithAuth,
       }}
     >
       {children}

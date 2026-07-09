@@ -1,5 +1,6 @@
 
 import { create } from "zustand";
+import { apiPost, apiPut, apiDelete } from "@/lib/api-client";
 
 export interface CartItem {
     id: string;
@@ -87,19 +88,10 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     addToCart: async (productId: string, quantity: number) => {
         try {
-            const res = await fetch("/api/cart", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ productId, quantity }),
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                await get().fetchCart();
-                set({ isOpen: true }); // Auto open cart on add
-                return true;
-            }
-            return false;
+            await apiPost("/api/cart", { productId, quantity });
+            await get().fetchCart();
+            set({ isOpen: true }); // Auto open cart on add
+            return true;
         } catch (error) {
             console.error("Add to cart error:", error);
             return false;
@@ -108,16 +100,9 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     updateQuantity: async (itemId: string, quantity: number) => {
         try {
-            const res = await fetch(`/api/cart/${itemId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ quantity }),
-            });
-            if (res.ok) {
-                await get().fetchCart();
-                return true;
-            }
-            return false;
+            await apiPut(`/api/cart/${itemId}`, { quantity });
+            await get().fetchCart();
+            return true;
         } catch (error) {
             console.error("Update cart error:", error);
             return false;
@@ -126,14 +111,9 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     removeItem: async (itemId: string) => {
         try {
-            const res = await fetch(`/api/cart/${itemId}`, {
-                method: "DELETE",
-            });
-            if (res.ok) {
-                await get().fetchCart();
-                return true;
-            }
-            return false;
+            await apiDelete(`/api/cart/${itemId}`);
+            await get().fetchCart();
+            return true;
         } catch (error) {
             console.error("Remove cart item error:", error);
             return false;

@@ -22,6 +22,8 @@ import { passwordSchema } from "@/lib/password";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { checkUserStatus } from "@/lib/auth";
 
 /**
  * 微信绑定表单
@@ -37,6 +39,10 @@ const bindSchema = z.object({
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+    if (!validateCSRFToken(request)) {
+        return csrfForbiddenResponse();
+    }
+
     try {
         const body = await request.json();
 
@@ -228,6 +234,15 @@ export async function POST(request: NextRequest) {
                     wechatUnionId: wechatInfo.unionid || null,
                 }
             });
+        }
+
+        // 校验账号状态（绑定后自动登录）
+        const statusCheck = await checkUserStatus(user.id);
+        if (!statusCheck.valid) {
+            return NextResponse.json(
+                { success: false, error: { code: "ACCOUNT_DISABLED", message: statusCheck.reason || "账号状态异常" } },
+                { status: 403 }
+            );
         }
 
         // 签发新的 Token（使用双 Token 机制）

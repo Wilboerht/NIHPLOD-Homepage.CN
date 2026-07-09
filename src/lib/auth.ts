@@ -5,6 +5,7 @@
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 import { verifyToken, verifyUserToken } from "./jwt";
+import { validateCSRFToken, csrfForbiddenResponse } from "./csrf";
 import {
   AUTH_COOKIE_NAME,
   USER_COOKIE_NAME,
@@ -69,9 +70,14 @@ export function getTokenFromRequest(request: NextRequest): string | null {
 
 /**
  * 验证请求中的管理员认证信息
- * 用于 API 路由
+ * 用于 API 路由；对非安全方法自动校验 CSRF Token。
  */
 export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload | null> {
+  const method = request.method?.toUpperCase() ?? "";
+  if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
+    return null;
+  }
+
   const token = getTokenFromRequest(request);
   if (!token) {
     return null;
@@ -105,10 +111,17 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
  * 包装 API 处理函数，自动验证认证
  * 支持 Next.js App Router Route Context
  */
+const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
 export function withAuth<T extends NextRequest, C = unknown, R extends Response = Response>(
   handler: (request: T, admin: AdminJWTPayload, context: C) => Promise<R>
 ): (request: T, context: C) => Promise<R> {
   return async (request: T, context: C) => {
+    const method = request.method?.toUpperCase() ?? "";
+    if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
+      return csrfForbiddenResponse() as unknown as R;
+    }
+
     const admin = await verifyAuth(request);
 
     if (!admin) {
@@ -217,8 +230,14 @@ export async function checkUserStatus(userId: string): Promise<{ valid: boolean;
 
 /**
  * 验证请求中的用户认证信息
+ * 对非安全方法（POST/PUT/PATCH/DELETE）自动校验 CSRF Token。
  */
 export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPayload | null> {
+  const method = request.method?.toUpperCase() ?? "";
+  if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
+    return null;
+  }
+
   const token = getUserTokenFromRequest(request);
   if (!token) {
     return null;
@@ -280,6 +299,11 @@ export function withUserAuth<T extends NextRequest>(
   handler: (request: T, user: UserJWTPayload) => Promise<Response>
 ): (request: T) => Promise<Response> {
   return async (request: T) => {
+    const method = request.method?.toUpperCase() ?? "";
+    if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const user = await verifyUserAuth(request);
 
     if (!user) {

@@ -6,6 +6,7 @@ import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom"
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { fileTypeFromBuffer } from "file-type";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 表单验证 schema
 const ApplyFormSchema = z.object({
@@ -23,6 +24,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     // 速率限制检查
     const ip = getClientIP(request);

@@ -7,6 +7,7 @@ import { Home, Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCirc
 import { cn } from "@/lib/utils";
 import type { ContactPageContent } from "@/types/page-content";
 import { useToast } from "@/hooks";
+import { apiPost, ApiError } from "@/lib/api-client";
 
 type FormStatus = "idle" | "loading" | "success" | "error";
 
@@ -128,28 +129,22 @@ export function ContactContent({ content }: ContactContentProps) {
     if (!validateForm()) return;
     setStatus("loading");
     try {
-      const response = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          name: formData.name.trim(),
-          phone: formData.phone.trim(),
-          content: formData.content.trim(),
-        }),
+      const data = await apiPost<{ message?: string }>("/api/contact", {
+        ...formData,
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        content: formData.content.trim(),
       });
-      const data = await response.json();
-      if (response.ok) {
-        setStatus("success");
-        toastSuccess(data.message || "留言已提交");
-        setFormData({ name: "", phone: "", type: "", content: "", website: "" });
-      } else {
-        setStatus("error");
-        toastError(data.error || "提交失败，请稍后重试");
-      }
-    } catch {
+      setStatus("success");
+      toastSuccess(data.message || "留言已提交");
+      setFormData({ name: "", phone: "", type: "", content: "", website: "" });
+    } catch (error) {
       setStatus("error");
-      toastError("网络错误，请检查您的网络连接");
+      if (error instanceof ApiError) {
+        toastError(error.message);
+      } else {
+        toastError("网络错误，请检查您的网络连接");
+      }
     }
   };
 

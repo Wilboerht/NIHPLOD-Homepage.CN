@@ -5,6 +5,7 @@
  */
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { apiPost, ApiError } from "@/lib/api-client";
 
 interface LoginFormProps {
   redirectUrl?: string;
@@ -35,23 +36,15 @@ export default function LoginForm({ redirectUrl, error }: LoginFormProps) {
     }
 
     try {
-      const res = await fetch("/api/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, type: "login" }),
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        setErrorMsg(data.error?.message || "发送失败");
-        return;
-      }
-
+      await apiPost("/api/auth/send-code", { phone, type: "login" });
       setCountdown(60);
       setErrorMsg("");
-    } catch {
-      setErrorMsg("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg("网络错误，请重试");
+      }
     }
   };
 
@@ -73,24 +66,17 @@ export default function LoginForm({ redirectUrl, error }: LoginFormProps) {
     setErrorMsg("");
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code }),
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        setErrorMsg(data.error?.message || "登录失败");
-        return;
-      }
+      await apiPost("/api/auth/login", { phone, code });
 
       // 登录成功，跳转
       router.push(redirectUrl || "/");
       router.refresh();
-    } catch {
-      setErrorMsg("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg("网络错误，请重试");
+      }
     } finally {
       setLoading(false);
     }

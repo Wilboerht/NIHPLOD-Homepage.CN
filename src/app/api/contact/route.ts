@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
@@ -22,6 +23,10 @@ const ContactFormSchema = z.object({
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     // 速率限制检查
     const ip = getClientIP(request);

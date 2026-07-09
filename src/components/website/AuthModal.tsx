@@ -10,7 +10,7 @@ import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
-import { apiPost } from "@/lib/api-client";
+import { apiPost, ApiError } from "@/lib/api-client";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 
 // 登录方式类型
@@ -147,19 +147,14 @@ function LoginModal({
       return;
     }
     try {
-      const res = await fetch("/api/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, type: "login" }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        toast.error(data.error?.message || "发送失败");
-        return;
-      }
+      await apiPost("/api/auth/send-code", { phone, type: "login" });
       setCountdown(60);
-    } catch {
-      toast.error("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error("网络错误，请重试");
+      }
     }
   };
 
@@ -175,20 +170,15 @@ function LoginModal({
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        toast.error(data.error?.message || "登录失败");
-        return;
-      }
+      await apiPost("/api/auth/login", { phone, code });
       await onSuccess();
       onClose();
-    } catch {
-      toast.error("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error("网络错误，请重试");
+      }
     } finally {
       setLoading(false);
     }
@@ -206,20 +196,15 @@ function LoginModal({
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        toast.error(data.error?.message || "登录失败");
-        return;
-      }
+      await apiPost("/api/auth/login-password", { phone, password });
       await onSuccess();
       onClose();
-    } catch {
-      toast.error("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error("网络错误，请重试");
+      }
     } finally {
       setLoading(false);
     }
@@ -728,19 +713,14 @@ function RegisterModal({
       return;
     }
     try {
-      const res = await fetch("/api/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, type: "register" }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        toast.error(data.error?.message || "发送失败");
-        return;
-      }
+      await apiPost("/api/auth/send-code", { phone, type: "register" });
       setCountdown(60);
-    } catch {
-      toast.error("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error("网络错误，请重试");
+      }
     }
   };
 
@@ -776,20 +756,15 @@ function RegisterModal({
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code, password, confirmPassword }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        toast.error(data.error?.message || "注册失败");
-        return;
-      }
+      await apiPost("/api/auth/register", { phone, code, password, confirmPassword });
       await onSuccess();
       onClose();
-    } catch {
-      toast.error("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error("网络错误，请重试");
+      }
     } finally {
       setLoading(false);
     }
@@ -1266,20 +1241,15 @@ function ForgotPasswordModal({
     setLoading(true);
     setErrorMsg("");
     try {
-      const res = await fetch("/api/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, type: "reset" }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        setErrorMsg(data.error?.message || "发送失败");
-        return;
-      }
+      await apiPost("/api/auth/send-code", { phone, type: "reset" });
       setCountdown(60);
       setStep("form");
-    } catch {
-      setErrorMsg("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg("网络错误，请重试");
+      }
     } finally {
       setLoading(false);
     }
@@ -1816,20 +1786,15 @@ function WechatBindModal({
       return;
     }
     try {
-      const res = await fetch("/api/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, type: "register" }), // use register type for bind verification
-      });
-      const data = await res.json();
-      if (!data.success) {
-        setErrorMsg(data.error?.message || "发送失败");
-        return;
-      }
+      await apiPost("/api/auth/send-code", { phone, type: "register" }); // use register type for bind verification
       setCountdown(60);
       setErrorMsg("");
-    } catch {
-      setErrorMsg("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg("网络错误，请重试");
+      }
     }
   };
 
@@ -1855,23 +1820,18 @@ function WechatBindModal({
     setLoading(true);
     setErrorMsg("");
     try {
-      const res = await fetch("/api/auth/wechat/bind", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code, password }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        setErrorMsg(data.error?.message || "绑定失败");
-        return;
-      }
+      await apiPost("/api/auth/wechat/bind", { phone, code, password });
       await onSuccess();
       // clean window location to remove ?login=wechat_bind
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
       onClose();
-    } catch {
-      setErrorMsg("网络错误，请重试");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg("网络错误，请重试");
+      }
     } finally {
       setLoading(false);
     }
