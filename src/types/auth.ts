@@ -73,7 +73,7 @@ export interface AuthSession {
  * - 不能设置 Domain 属性
  * - localhost 在浏览器中同样被视为安全上下文，开发环境可用
  */
-export const AUTH_COOKIE_NAME = "__Host-admin_token";
+export const AUTH_COOKIE_NAME = "admin_token";
 
 function parseDurationToSeconds(duration: string): number {
   const match = duration.match(/^(\d+)([smhd])$/);
