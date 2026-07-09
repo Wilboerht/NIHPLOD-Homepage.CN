@@ -76,13 +76,6 @@ export async function POST(request: NextRequest) {
         }
 
         // 验证绑定 token
-        interface WechatBindInfo {
-            openid: string;
-            unionid?: string;
-            nickname?: string;
-            avatar?: string;
-        }
-
         const wechatInfo = await verifyWechatBindToken(bindToken);
         if (!wechatInfo) {
             return NextResponse.json(
