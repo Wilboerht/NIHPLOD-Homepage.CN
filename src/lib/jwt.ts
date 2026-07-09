@@ -53,6 +53,12 @@ const wechatBindSecret = new TextEncoder().encode(
     process.env.JWT_WECHAT_BIND_SECRET || process.env.JWT_SECRET
   )
 );
+const wechatExchangeSecret = new TextEncoder().encode(
+  validateSecret(
+    "JWT_WECHAT_EXCHANGE_SECRET",
+    process.env.JWT_WECHAT_EXCHANGE_SECRET || process.env.JWT_SECRET
+  )
+);
 
 // JWT 过期时间
 const adminExpiresInRaw = process.env.JWT_EXPIRES_IN || "1d";
@@ -67,6 +73,7 @@ const adminExpiresIn = adminExpiresInRaw;
 const accessTokenExpiresIn = "15m"; // Access Token 15分钟
 const refreshTokenExpiresIn = "30d"; // Refresh Token 30天
 const wechatBindExpiresIn = "1h"; // 微信绑定临时 Token 1小时
+const wechatExchangeExpiresIn = "10m"; // 子站微信 exchange Token 10分钟
 
 function encodeSecret(secret: Uint8Array): Uint8Array {
   return secret;
@@ -218,6 +225,51 @@ export async function signWechatBindToken(payload: Omit<WechatBindPayload, "type
     .sign(encodeSecret(wechatBindSecret));
 
   return token;
+}
+
+// ============================================
+// 子站微信授权 Exchange Token（跨域场景）
+// ============================================
+
+export interface WechatExchangePayload {
+  type: "wechat_exchange";
+  openid: string;
+  unionid?: string;
+  nickname?: string;
+  avatar?: string;
+}
+
+/**
+ * 签发微信授权 exchange token（短期，用于跨子站传递微信授权信息）
+ */
+export async function signWechatExchangeToken(payload: Omit<WechatExchangePayload, "type">): Promise<string> {
+  const token = await new SignJWT({ ...payload, type: "wechat_exchange" as const })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience("wechat-exchange")
+    .setExpirationTime(wechatExchangeExpiresIn)
+    .sign(encodeSecret(wechatExchangeSecret));
+
+  return token;
+}
+
+/**
+ * 验证微信授权 exchange token
+ */
+export async function verifyWechatExchangeToken(token: string): Promise<WechatExchangePayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, encodeSecret(wechatExchangeSecret), {
+      issuer: ISSUER,
+      audience: "wechat-exchange",
+    });
+    if ((payload as { type?: string }).type !== "wechat_exchange") {
+      return null;
+    }
+    return payload as unknown as WechatExchangePayload;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -6,6 +6,9 @@
  * 1. 已有账户 + 已绑定微信 → 直接登录
  * 2. 已有账户 + 未绑定微信 → 自动绑定并登录
  * 3. 完全新用户 → 返回绑定令牌，需要手动绑定
+ *
+ * 子站场景：授权完成后重定向到子站，并通过 URL 传递一次性 exchange token，
+ * 避免 __Host- Cookie 无法跨域的问题。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -22,20 +25,45 @@ import {
   WECHAT_BIND_COOKIE_OPTIONS,
 } from "@/types/auth";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
-import { signWechatBindToken } from "@/lib/jwt";
+import { signWechatBindToken, signWechatExchangeToken } from "@/lib/jwt";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { checkUserStatus } from "@/lib/auth";
 
-
-
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
+
+/**
+ * 构造最终重定向 URL。
+ * 优先使用 state 中指定的 callback base，未指定则回退到官网默认域名。
+ */
+function buildRedirectUrl(stateCallback: string | undefined, redirectPath: string): string {
+  const defaultBase = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+  const base = stateCallback || defaultBase;
+  try {
+    return new URL(redirectPath, base).toString();
+  } catch {
+    return new URL("/", defaultBase).toString();
+  }
+}
+
+/**
+ * 判断 callback base 是否为子站域名。
+ */
+function isSubsiteCallback(callbackBase: string): boolean {
+  const defaultBase = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+  try {
+    return new URL(callbackBase).origin !== new URL(defaultBase).origin;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(request: NextRequest) {
   // 获取重定向地址（从 state 解析或默认）并校验 CSRF nonce
   let redirectUrl = "/";
+  let stateCallback: string | undefined;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -56,17 +84,10 @@ export async function GET(request: NextRequest) {
           loginType = stateData.type === "mp" ? "mp" : "open";
         }
         if (stateData.redirect) {
-          const url = stateData.redirect;
-          // 严格校验重定向目标：只允许相对路径，禁止协议和外部域名
-          const base = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
-          try {
-            const resolved = new URL(url, base);
-            if (resolved.origin === new URL(base).origin) {
-              redirectUrl = url;
-            }
-          } catch {
-            // URL 解析失败，保持默认根路径
-          }
+          redirectUrl = stateData.redirect;
+        }
+        if (stateData.callback) {
+          stateCallback = stateData.callback;
         }
       } catch {
         // state 解析失败，使用默认值
@@ -75,13 +96,16 @@ export async function GET(request: NextRequest) {
 
     // state 校验失败，拒绝处理
     if (!stateValid) {
+      const targetUrl = buildRedirectUrl(stateCallback, redirectUrl);
       const response = NextResponse.redirect(
-        new URL("/?wechat_auth=error&code=INVALID_STATE&message=" + encodeURIComponent("授权状态验证失败，请重试"), request.url),
+        new URL(`${targetUrl}?wechat_auth=error&code=INVALID_STATE&message=` + encodeURIComponent("授权状态验证失败，请重试"), targetUrl),
         302
       );
       response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
       return response;
     }
+
+    const baseRedirectUrl = buildRedirectUrl(stateCallback, redirectUrl);
 
     // 用户拒绝授权
     if (error) {
@@ -92,7 +116,7 @@ export async function GET(request: NextRequest) {
         ip: getClientIP(request),
       });
       const response = NextResponse.redirect(
-        new URL(`${redirectUrl}?wechat_auth=error&code=WECHAT_DENIED&message=` + encodeURIComponent("您取消了微信授权"), request.url),
+        new URL(`${baseRedirectUrl}?wechat_auth=error&code=WECHAT_DENIED&message=` + encodeURIComponent("您取消了微信授权"), baseRedirectUrl),
         302
       );
       response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
@@ -101,7 +125,7 @@ export async function GET(request: NextRequest) {
 
     if (!code) {
       const response = NextResponse.redirect(
-        new URL(`${redirectUrl}?wechat_auth=error&code=MISSING_CODE&message=` + encodeURIComponent("缺少授权码"), request.url),
+        new URL(`${baseRedirectUrl}?wechat_auth=error&code=MISSING_CODE&message=` + encodeURIComponent("缺少授权码"), baseRedirectUrl),
         302
       );
       response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
@@ -136,7 +160,7 @@ export async function GET(request: NextRequest) {
       const statusCheck = await checkUserStatus(user.id);
       if (!statusCheck.valid) {
         const response = NextResponse.redirect(
-          new URL(`${redirectUrl}?wechat_auth=error&code=ACCOUNT_DISABLED&message=` + encodeURIComponent(statusCheck.reason || "账号状态异常"), request.url),
+          new URL(`${baseRedirectUrl}?wechat_auth=error&code=ACCOUNT_DISABLED&message=` + encodeURIComponent(statusCheck.reason || "账号状态异常"), baseRedirectUrl),
           302
         );
         response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
@@ -177,7 +201,7 @@ export async function GET(request: NextRequest) {
       await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
       const response = NextResponse.redirect(
-        new URL(`${redirectUrl}?wechat_auth=success`, request.url),
+        new URL(`${baseRedirectUrl}?wechat_auth=success`, baseRedirectUrl),
         302
       );
 
@@ -192,6 +216,31 @@ export async function GET(request: NextRequest) {
     }
 
     // 情况2：完全新用户 → 返回绑定令牌，需要手动绑定
+    logAuthEvent("wechat_bind", {
+      success: false,
+      reason: "binding_required",
+      ip: getClientIP(request),
+    });
+
+    // 子站场景：通过 URL 传递一次性 exchange token，避免 __Host- Cookie 无法跨域
+    if (stateCallback && isSubsiteCallback(stateCallback)) {
+      const exchangeToken = await signWechatExchangeToken({
+        openid: wechatUser.openid,
+        unionid: wechatUser.unionid,
+        nickname: wechatUser.nickname,
+        avatar: wechatUser.headimgurl,
+      });
+
+      const subsiteRedirect = new URL(`${baseRedirectUrl}?wechat_auth=binding_required`, baseRedirectUrl);
+      subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
+
+      const response = NextResponse.redirect(subsiteRedirect, 302);
+      // 清除 CSRF nonce Cookie
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+      return response;
+    }
+
+    // 官网场景：保持 Cookie 方式
     const bindToken = await signWechatBindToken({
       openid: wechatUser.openid,
       unionid: wechatUser.unionid,
@@ -199,14 +248,8 @@ export async function GET(request: NextRequest) {
       avatar: wechatUser.headimgurl,
     });
 
-    logAuthEvent("wechat_bind", {
-      success: false,
-      reason: "binding_required",
-      ip: getClientIP(request),
-    });
-
     const response = NextResponse.redirect(
-      new URL(`${redirectUrl}?wechat_auth=binding_required`, request.url),
+      new URL(`${baseRedirectUrl}?wechat_auth=binding_required`, baseRedirectUrl),
       302
     );
 
@@ -219,12 +262,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     apiConsole.error("[WechatCallback] 异常:", error);
     const message = process.env.NODE_ENV === "development" && error instanceof Error ? error.message : "服务器错误";
+    const fallbackUrl = buildRedirectUrl(stateCallback, redirectUrl);
     const response = NextResponse.redirect(
-      new URL(`${redirectUrl}?wechat_auth=error&code=INTERNAL_ERROR&message=` + encodeURIComponent(message), request.url),
+      new URL(`${fallbackUrl}?wechat_auth=error&code=INTERNAL_ERROR&message=` + encodeURIComponent(message), fallbackUrl),
       302
     );
     response.cookies.set("wechat_oauth_nonce", "", { maxAge: 0, path: "/" });
     return response;
   }
 }
-
