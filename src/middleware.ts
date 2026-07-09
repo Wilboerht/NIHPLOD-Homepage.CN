@@ -78,8 +78,18 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
+  // 调试日志：打印请求路径、方法、目标 Cookie 名称
+  console.log(`[Middleware Debug] pathname=${pathname}, method=${method}, cookieName=${AUTH_COOKIE_NAME}`);
+
+  // 调试日志：打印所有 Cookie 名称（不暴露值）
+  const allCookies = request.cookies.getAll();
+  console.log(`[Middleware Debug] all cookies: ${allCookies.map((c) => c.name).join(", ") || "(none)"}`);
+
   // 获取 Token
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+
+  // 调试日志：打印目标 Cookie 是否存在及 token 前缀
+  console.log(`[Middleware Debug] target cookie found: ${!!token}, token prefix: ${token ? token.slice(0, 20) : "none"}`);
   // 懒惰验证：只有在需要鉴权时才进行 verifyToken，节省 CPU
   // 同一请求内记忆化结果，避免重复验证
   let _authResult: boolean | undefined;
@@ -132,7 +142,10 @@ export async function middleware(request: NextRequest) {
 
   // 2.2 敏感 API -> 严查
   if (matchesPath(pathname, SENSITIVE_API_PREFIXES)) {
-    if (!token || !(await checkAuth())) {
+    const authResult = await checkAuth();
+    console.log(`[Middleware Debug] sensitive API check: token=${!!token}, authResult=${authResult}`);
+    if (!token || !authResult) {
+      console.log(`[Middleware Debug] returning 401 for ${pathname}`);
       return jsonUnauthorized();
     }
     return NextResponse.next();

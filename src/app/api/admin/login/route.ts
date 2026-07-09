@@ -240,6 +240,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 设置 HttpOnly Cookie
+    console.log(`[Login Debug] setting cookie: name=${AUTH_COOKIE_NAME}, token prefix=${token.slice(0, 20)}, options=${JSON.stringify(COOKIE_OPTIONS)}`);
     response.cookies.set(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS);
 
     // 记录登录审计日志
