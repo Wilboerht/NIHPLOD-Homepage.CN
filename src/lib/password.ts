@@ -6,6 +6,37 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { randomInt } from "./random";
 
+// 密码强度规则常量（前后端共用）
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 32;
+
+/**
+ * 校验密码强度
+ * - 至少 8 位，最多 32 位
+ * - 包含至少一个大写字母
+ * - 包含至少一个小写字母
+ * - 包含至少一个数字
+ * 返回 { valid, message }，valid 为 true 时表示符合要求
+ */
+export function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return { valid: false, message: `密码至少${PASSWORD_MIN_LENGTH}位` };
+  }
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    return { valid: false, message: `密码最多${PASSWORD_MAX_LENGTH}位` };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: "密码需包含大写字母" };
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, message: "密码需包含小写字母" };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: "密码需包含数字" };
+  }
+  return { valid: true };
+}
+
 /**
  * 用户密码强度校验 Schema
  * - 至少 8 位，最多 32 位
@@ -14,8 +45,8 @@ import { randomInt } from "./random";
  * - 包含至少一个数字
  */
 export const passwordSchema = z.string()
-  .min(8, "密码至少8位")
-  .max(32, "密码最多32位")
+  .min(PASSWORD_MIN_LENGTH, "密码至少8位")
+  .max(PASSWORD_MAX_LENGTH, "密码最多32位")
   .regex(/[A-Z]/, "密码需包含大写字母")
   .regex(/[a-z]/, "密码需包含小写字母")
   .regex(/[0-9]/, "密码需包含数字");

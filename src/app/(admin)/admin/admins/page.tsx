@@ -6,6 +6,7 @@ import { Search, RefreshCw, Pencil, Trash2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
+import { validatePasswordStrength } from "@/lib/password";
 
 interface AdminItem {
   id: string;
@@ -72,6 +73,16 @@ export default function AdminAdminsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 创建时必须设置密码；编辑时若填写了密码则校验强度
+    if (!editing || form.password) {
+      const strength = validatePasswordStrength(form.password);
+      if (!strength.valid) {
+        error(strength.message || "密码格式不符合要求");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const body = editing
@@ -232,7 +243,7 @@ export default function AdminAdminsPage() {
                 <input
                   type="password"
                   required={!editing}
-                  minLength={6}
+                  minLength={8}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="w-full rounded-lg border px-3 py-2 text-sm"

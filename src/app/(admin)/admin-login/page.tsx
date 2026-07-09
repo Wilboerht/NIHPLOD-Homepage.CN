@@ -14,6 +14,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { apiPost, ApiError } from "@/lib/api-client";
+import { validatePasswordStrength } from "@/lib/password";
 import { OrbitalIcons } from "@/components/ui/OrbitalIcons";
 
 interface FormErrors {
@@ -84,8 +85,11 @@ export default function LoginPage() {
 
     if (!password) {
       errors.password = "请输入密码";
-    } else if (password.length < 8) {
-      errors.password = "密码至少需要 8 位";
+    } else {
+      const strength = validatePasswordStrength(password);
+      if (!strength.valid) {
+        errors.password = strength.message || "密码格式不符合要求";
+      }
     }
 
     if (totpRequired && totpCode.length !== 6) {
