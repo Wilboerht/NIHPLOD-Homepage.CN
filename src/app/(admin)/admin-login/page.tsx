@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -27,7 +27,6 @@ function validateEmail(email: string): boolean {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/admin";
 
@@ -111,8 +110,9 @@ export default function LoginPage() {
 
       try {
         await apiPost("/api/admin/login", { email, password, totpCode });
-        router.push(redirectTo);
-        router.refresh();
+        // 使用 window.location.href 而不是 router.push，确保是 top-level 导航，
+        // 浏览器会带上 SameSite=Strict 的 admin_token Cookie，避免 middleware 拦截。
+        window.location.href = redirectTo;
       } catch (err) {
         if (err instanceof ApiError && err.code === "TOTP_REQUIRED") {
           setTotpRequired(true);
@@ -125,7 +125,7 @@ export default function LoginPage() {
         setIsLoading(false);
       }
     },
-    [email, password, totpCode, redirectTo, router, validateForm]
+    [email, password, totpCode, redirectTo, validateForm]
   );
 
   const handleEmailChange = useCallback(
