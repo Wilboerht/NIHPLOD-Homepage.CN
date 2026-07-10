@@ -79,11 +79,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "服务条款 | NIHPLOD 旎柏",
     description: "了解使用 NIHPLOD 旎柏服务的条款和条件。",
+    images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "服务条款 | NIHPLOD 旎柏",
     description: "了解使用 NIHPLOD 旎柏服务的条款和条件。",
+    images: ["/images/og-image.png"],
   },
   robots: {
     index: false, // 服务条款页面通常不需要被索引

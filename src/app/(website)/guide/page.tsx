@@ -22,13 +22,13 @@ export const metadata: Metadata = {
     title: "护肤仪式 | NIHPLOD 旎柏",
     description:
       "每一次护肤，都是与自己对话的珍贵时光。探索 NIHPLOD 旎柏专属晨间与晚间护肤仪式。",
-    images: ["/images/ritual-og.jpg"],
+    images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "护肤仪式 | NIHPLOD 旎柏",
     description: "每一次护肤，都是与自己对话的珍贵时光。探索专属晨间与晚间护肤仪式。",
-    images: ["/images/ritual-og.jpg"],
+    images: ["/images/og-image.png"],
   },
 };
 

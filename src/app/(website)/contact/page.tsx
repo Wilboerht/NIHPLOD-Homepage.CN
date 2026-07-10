@@ -14,11 +14,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "联系我们 | NIHPLOD 旎柏",
     description: "有任何问题或建议？欢迎联系 NIHPLOD 旎柏，我们期待与您的每一次交流。",
+    images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "联系我们 | NIHPLOD 旎柏",
     description: "有任何问题或建议？欢迎联系 NIHPLOD 旎柏。",
+    images: ["/images/og-image.png"],
   },
 };
 

@@ -17,11 +17,13 @@ export const metadata: Metadata = {
     title: "加入我们 | NIHPLOD 旎柏",
     description:
       "加入 NIHPLOD 旎柏，与我们一起创造高端护肤的未来。探索上海与摩纳哥的职位机会。",
+    images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "加入我们 | NIHPLOD 旎柏",
     description: "加入 NIHPLOD 旎柏，与我们一起创造高端护肤的未来。",
+    images: ["/images/og-image.png"],
   },
 };
 

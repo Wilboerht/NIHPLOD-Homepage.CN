@@ -12,13 +12,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "产品系列 | NIHPLOD 旎柏",
     description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
-    images: ["/images/products-og.jpg"],
+    images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "产品系列 | NIHPLOD 旎柏",
     description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
-    images: ["/images/products-og.jpg"],
+    images: ["/images/og-image.png"],
   },
 };
 

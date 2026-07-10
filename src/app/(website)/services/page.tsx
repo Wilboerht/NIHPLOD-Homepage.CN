@@ -50,11 +50,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "服务入口 | NIHPLOD 旎柏",
     description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
+    images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "服务入口 | NIHPLOD 旎柏",
     description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
+    images: ["/images/og-image.png"],
   },
   robots: {
     index: false, // 服务入口页面不需要被索引

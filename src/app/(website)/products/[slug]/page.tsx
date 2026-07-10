@@ -75,10 +75,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     "脂质体护肤",
   ];
 
-  // OG 图片使用绝对 URL
-  const ogImageUrl = product.images[0]?.url
-    ? (product.images[0].url.startsWith("http") ? product.images[0].url : `${baseUrl}${product.images[0].url}`)
-    : `${baseUrl}/images/og-image.png`;
+  const ogImageUrl = `${baseUrl}/images/og-image.png`;
 
   return {
     title: product.name,
