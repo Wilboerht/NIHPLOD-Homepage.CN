@@ -57,8 +57,10 @@ const nextConfig = {
     return config;
   },
 
-  // Next.js 16: Turbopack 为默认构建器，声明空配置以消除 webpack/turbopack 歧义报错
-  turbopack: {},
+  // Next.js 16 默认使用 Turbopack，但由于 Tailwind 3.x 生成的 CSS 在
+  // Turbopack CSS 解析器下会产生 ::after::before 无效选择器，暂时回退到 webpack。
+  // build 脚本已默认传递 --webpack 标志（见 package.json）。
+  // 追踪：待 Tailwind 升级到 v4 后可移除 webpack 配置并改用 Turbopack。
 
   // 优化: 将大型服务端依赖外部化，避免打包进每个 serverless function
   serverExternalPackages: [
