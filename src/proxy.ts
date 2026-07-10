@@ -1,5 +1,5 @@
 /**
- * Next.js 中间件
+ * Next.js Proxy（原 Middleware）
  * 保护管理后台路由，验证认证状态
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -12,7 +12,7 @@ const AUTH_COOKIE_NAME = "__Host-admin_token";
 function getSecret(): Uint8Array {
   const jwtSecret = process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET;
   if (!jwtSecret) {
-    throw new Error("[Middleware] JWT_SECRET / JWT_ADMIN_SECRET 环境变量未设置，请配置后再启动应用");
+    throw new Error("[Proxy] JWT_SECRET / JWT_ADMIN_SECRET 环境变量未设置，请配置后再启动应用");
   }
   return new TextEncoder().encode(jwtSecret);
 }
@@ -74,7 +74,7 @@ function matchesPath(pathname: string, paths: string[]): boolean {
   return paths.some((path) => pathname.startsWith(path));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
@@ -130,7 +130,7 @@ export async function middleware(request: NextRequest) {
     ];
     if (matchesPath(pathname, PAYMENT_CALLBACK_PATHS)) {
       if (method !== "POST") {
-        console.warn(`[Middleware] 支付回调路由 ${pathname} 收到非 POST 请求 (${method})，已拦截`);
+        console.warn(`[Proxy] 支付回调路由 ${pathname} 收到非 POST 请求 (${method})，已拦截`);
         return new NextResponse("Method Not Allowed", { status: 405 });
       }
     }
@@ -168,7 +168,7 @@ function jsonUnauthorized() {
   );
 }
 
-// 配置中间件匹配的路径
+// 配置代理匹配的路径
 export const config = {
   matcher: [
     // 页面
