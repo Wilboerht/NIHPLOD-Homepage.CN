@@ -122,7 +122,7 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     });
 
     // 资料变更后失效缓存
-    revalidateTag(USER_PROFILE_TAG);
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({ success: true, data: { user } });
   } catch (error) {
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 头像变更后失效缓存
-    revalidateTag(USER_PROFILE_TAG);
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,

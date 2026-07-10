@@ -57,14 +57,19 @@ const nextConfig = {
     return config;
   },
 
+  // Next.js 16: Turbopack 为默认构建器，声明空配置以消除 webpack/turbopack 歧义报错
+  turbopack: {},
+
   // 优化: 将大型服务端依赖外部化，避免打包进每个 serverless function
+  serverExternalPackages: [
+    'sharp',
+    '@prisma/client',
+    'prisma',
+    'tencentcloud-sdk-nodejs',
+  ],
+
+  // 优化: 减小包体积
   experimental: {
-    serverComponentsExternalPackages: [
-      'sharp',
-      '@prisma/client',
-      'prisma',
-      'tencentcloud-sdk-nodejs',
-    ],
     optimizePackageImports: [
       'lucide-react',
       'echarts',

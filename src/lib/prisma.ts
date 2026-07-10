@@ -39,6 +39,8 @@ const poolConfig: pg.PoolConfig = {
   idleTimeoutMillis: 30000,
   // 获取连接等待超时 30秒，避免请求长时间卡死
   connectionTimeoutMillis: 30000,
+  // 语句执行超时 30秒，防止慢查询耗尽连接池
+  statement_timeout: 30000,
 };
 
 const pool =

@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, Suspense, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar, AdminHeader } from "@/components/admin";
 import { useSidebar } from "@/hooks";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ interface AdminLayoutProps {
  */
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isOpen, isCollapsed, isMobile, toggle, close, toggleCollapse } = useSidebar();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [userName, setUserName] = useState<string | undefined>(undefined);
@@ -31,10 +32,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           setUserName(data.user.name);
         }
       })
-      .catch(() => {
-        // 静默失败，不设置角色（Sidebar 会显示骨架屏）
+      .catch((err: unknown) => {
+        const status = (err as { status?: number })?.status;
+        if (status === 401) {
+          // 管理员账号已被删除/禁用，重定向到登录页
+          router.push("/admin-login");
+        }
       });
-  }, []);
+  }, [router]);
 
   // 登录页面使用独立的简洁布局
   if (pathname === "/admin-login") {

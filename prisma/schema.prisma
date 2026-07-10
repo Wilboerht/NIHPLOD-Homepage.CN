@@ -315,6 +315,10 @@ model SmsCode {
   @@index([phone, type])
   @@index([expiresAt])
   @@index([phone, used, expiresAt])
+
+  // 注意：以下约束通过 raw SQL migration 实现（Prisma 不支持 partial unique index）：
+  // migration 20260710100000_smscode_partial_unique_index
+  // CREATE UNIQUE INDEX "SmsCode_phone_type_used_false_key" ON "SmsCode"("phone","type") WHERE "used" = false;
 }
 
 

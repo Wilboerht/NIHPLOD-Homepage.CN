@@ -14,9 +14,9 @@ export const dynamicParams = true;
 // 基础 URL
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
 
-interface PageProps {
-  params: { slug: string };
-}
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
 
 /**
  * 生成静态参数
@@ -43,7 +43,7 @@ export async function generateStaticParams() {
  * 生成页面元数据
  */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = params;
+  const { slug } = await params;
 
   const product = await prisma.product.findUnique({
     where: { slug, published: true },
@@ -163,7 +163,7 @@ async function getRelatedProducts(categoryId: string, currentProductId: string) 
  * 产品详情页
  */
 export default async function ProductDetailPage({ params }: PageProps) {
-  const { slug } = params;
+  const { slug } = await params;
 
   const product = await getProduct(slug);
 

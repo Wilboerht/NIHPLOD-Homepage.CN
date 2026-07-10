@@ -94,7 +94,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       },
     });
 
-    revalidateTag("admin-stats");
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,
@@ -150,7 +150,7 @@ export async function DELETE(
     // 删除留言
     await prisma.contactMessage.delete({ where: { id } });
 
-    revalidateTag("admin-stats");
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,

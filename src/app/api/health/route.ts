@@ -3,17 +3,30 @@ import prisma from "@/lib/prisma";
 
 /**
  * 健康检查 API
- * GET /api/health - 检查服务和数据库状态
+ * GET /api/health - 检查服务和关键依赖状态
  */
-// 强制动态渲染，禁止静态预渲染
 export const dynamic = 'force-dynamic';
+
+async function checkHttp(url: string, timeoutMs = 3000): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        return res.ok ? "ok" : `http_${res.status}`;
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return msg.includes("abort") ? "timeout" : "unreachable";
+    } finally {
+        clearTimeout(timeout);
+    }
+}
 
 export async function GET() {
   const checks: Record<string, { status: string; latency?: number; error?: string }> = {
     server: { status: "ok" },
   };
 
-  // 检查数据库连接
+  // 数据库连接
   const dbStart = Date.now();
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -28,6 +41,18 @@ export async function GET() {
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
+
+  // OSS 连通性（仅已配置时检查）
+  if (process.env.ALI_OSS_REGION && process.env.ALI_OSS_BUCKET) {
+    const ossHost = process.env.ALI_OSS_PUBLIC_DOMAIN
+      || `https://${process.env.ALI_OSS_BUCKET}.${process.env.ALI_OSS_REGION}.aliyuncs.com`;
+    const ossResult = await checkHttp(ossHost, 3000);
+    checks.oss = { status: ossResult === "ok" ? "ok" : "error", error: ossResult !== "ok" ? ossResult : undefined };
+  }
+
+  // 微信支付 API 可达性
+  const wxResult = await checkHttp("https://api.mch.weixin.qq.com", 3000);
+  checks.wechat_pay = { status: wxResult === "ok" ? "ok" : "degraded", error: wxResult !== "ok" ? wxResult : undefined };
 
   const allOk = Object.values(checks).every((c) => !c.error);
 

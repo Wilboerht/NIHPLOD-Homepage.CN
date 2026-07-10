@@ -3,10 +3,55 @@
  *
  * 用于多实例部署场景，替代内存 LRU 限流。
  * 通过 Prisma 事务保证并发安全。
+ *
+ * 故障降级：当数据库不可用时，自动回退到内存 LRU 限流，
+ * 避免 fail-open（放行） 也避免 fail-closed（全拦截）。
  */
 
 import { prisma } from "./prisma";
+import { LRUCache } from "lru-cache";
 import type { RateLimitResult, RateLimitOptions } from "./ratelimit";
+
+interface FallbackRecord {
+  timestamps: number[];
+}
+
+const fallbackCache = new LRUCache<string, FallbackRecord>({
+  max: 5000,
+  ttl: 60 * 60 * 1000,
+});
+
+/**
+ * 内存 LRU 降级限流（数据库不可用时的兜底方案）
+ */
+function fallbackRateLimit(
+  identifier: string,
+  options: RateLimitOptions
+): RateLimitResult {
+  const now = Date.now();
+  const windowStart = now - options.windowMs;
+  const reset = now + options.windowMs;
+
+  let record = fallbackCache.get(identifier);
+  if (!record) {
+    record = { timestamps: [] };
+    fallbackCache.set(identifier, record);
+  }
+
+  record.timestamps = record.timestamps.filter((t) => t > windowStart);
+
+  if (record.timestamps.length >= options.maxRequests) {
+    return { success: false, remaining: 0, reset, limit: options.maxRequests };
+  }
+
+  record.timestamps.push(now);
+  return {
+    success: true,
+    remaining: options.maxRequests - record.timestamps.length,
+    reset,
+    limit: options.maxRequests,
+  };
+}
 
 /**
  * 数据库限流检查
@@ -25,7 +70,6 @@ export async function rateLimitDB(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 1. 查找当前窗口内的记录
       const record = await tx.rateLimitRecord.findFirst({
         where: {
           key: identifier,
@@ -35,7 +79,6 @@ export async function rateLimitDB(
       });
 
       if (!record) {
-        // 2. 没有记录或已过期，创建新窗口
         await tx.rateLimitRecord.create({
           data: {
             key: identifier,
@@ -52,7 +95,6 @@ export async function rateLimitDB(
         };
       }
 
-      // 3. 检查是否超过限制
       if (record.count >= options.maxRequests) {
         return {
           success: false,
@@ -62,7 +104,6 @@ export async function rateLimitDB(
         };
       }
 
-      // 4. 增加计数
       await tx.rateLimitRecord.update({
         where: { id: record.id },
         data: { count: { increment: 1 }, updatedAt: new Date(now) },
@@ -78,14 +119,8 @@ export async function rateLimitDB(
 
     return result;
   } catch (error) {
-    console.error("[RateLimitDB] 限流检查失败:", error);
-    // 数据库异常时放行，避免阻塞正常请求
-    return {
-      success: true,
-      remaining: 0,
-      reset,
-      limit: options.maxRequests,
-    };
+    console.error("[RateLimitDB] 数据库异常，降级到内存限流:", error);
+    return fallbackRateLimit(identifier, options);
   }
 }
 

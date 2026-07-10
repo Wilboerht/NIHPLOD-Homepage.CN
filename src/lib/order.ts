@@ -81,11 +81,16 @@ export async function createOrder(
         subtotal: number;
       }> = [];
 
+      // 批量预取所有产品，避免 N+1
+      const productIds = items.map((i) => i.productId);
+      const allProducts = await tx.product.findMany({
+        where: { id: { in: productIds } },
+        include: { images: { take: 1 } },
+      });
+      const productMap = new Map(allProducts.map((p) => [p.id, p]));
+
       for (const item of items) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
-          include: { images: { take: 1 } },
-        });
+        const product = productMap.get(item.productId);
 
         if (!product || !product.published) {
           throw new Error(`商品 ${item.productId} 不存在或已下架`);
@@ -302,15 +307,10 @@ export async function cancelOrder(
 
       // 恢复库存（PENDING 订单从未支付，销量未增加，无需回滚销量）
       for (const item of order.items) {
-        const product = await tx.product.findUnique({
+        await tx.product.update({
           where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
         });
-        if (product) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { increment: item.quantity } },
-          });
-        }
       }
 
       // 释放优惠券
@@ -373,17 +373,12 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
             return; // 已被其他流程处理
           }
 
-          // 恢复库存（PENDING/PAYING 订单未最终支付成功，销量未增加，无需回滚销量）
+          // 恢复库存
           for (const item of order.items) {
-            const product = await tx.product.findUnique({
+            await tx.product.update({
               where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
             });
-            if (product) {
-              await tx.product.update({
-                where: { id: item.productId },
-                data: { stock: { increment: item.quantity } },
-              });
-            }
           }
 
           // 释放优惠券

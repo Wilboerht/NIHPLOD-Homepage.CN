@@ -11,7 +11,7 @@ import { verifyUserAuth } from "@/lib/auth";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import {
   USER_COOKIE_NAME,
-  USER_COOKIE_OPTIONS,
+  USER_ACCESS_COOKIE_OPTIONS,
   USER_REFRESH_COOKIE_NAME,
   USER_REFRESH_COOKIE_OPTIONS,
 } from "@/types/auth";
@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
 
     // 清除所有认证相关的 Cookies
     response.cookies.set(USER_COOKIE_NAME, "", {
-      ...USER_COOKIE_OPTIONS,
-      maxAge: 0, // 立即过期
+      ...USER_ACCESS_COOKIE_OPTIONS,
+      maxAge: 0,
     });
     response.cookies.set(USER_REFRESH_COOKIE_NAME, "", {
       ...USER_REFRESH_COOKIE_OPTIONS,

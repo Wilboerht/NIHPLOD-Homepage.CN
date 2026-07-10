@@ -43,8 +43,9 @@ export const DELETE = withRole(
         }
       }
 
-      const deletedAdmin = await prisma.admin.delete({
+      const deletedAdmin = await prisma.admin.update({
         where: { id },
+        data: { deletedAt: new Date(), status: "DISABLED" },
         select: { id: true, email: true, name: true, role: true },
       });
 

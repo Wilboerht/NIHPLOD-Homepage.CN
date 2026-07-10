@@ -10,6 +10,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { rateLimit } from "@/lib/ratelimit";
 import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -31,6 +32,16 @@ const resetPasswordSchema = z
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  // IP 速率限制：必须在 CSRF 检查之前，防止攻击者通过不带 CSRF token 的请求绕过限流
+  const ip = getClientIP(request);
+  const ipLimit = await rateLimit(ip, "reset-password", { maxRequests: 5, windowMs: 15 * 60 * 1000 });
+  if (!ipLimit.success) {
+    return NextResponse.json(
+      { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请 15 分钟后再试" } },
+      { status: 429 }
+    );
+  }
+
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
   }
@@ -167,6 +178,12 @@ export async function POST(request: NextRequest) {
 
     // 清除失败记录
     await clearLoginAttempts(phone);
+
+    // 向用户发送安全通知：密码已被重置
+    const { sendPasswordChangedNotification } = await import("@/lib/sms");
+    sendPasswordChangedNotification(phone).catch((err) => {
+      apiConsole.error("[ResetPassword] 安全通知发送失败:", err);
+    });
 
     logAuthEvent("user_reset_password", {
       userId: user.id,

@@ -54,22 +54,24 @@ export async function finalizeRefund(
       },
     });
 
-    // 恢复库存 + 回滚销量（防止销量为负）
+    // 恢复库存 + 回滚销量（批量预取产品，避免 N+1）
+    const productIds = order.items.map((i) => i.productId);
+    const allProducts = await tx.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, salesCount: true },
+    });
+    const productMap = new Map(allProducts.map((p) => [p.id, p]));
+
     for (const item of order.items) {
-      const product = await tx.product.findUnique({
+      const product = productMap.get(item.productId);
+      const decrementQty = product ? Math.min(item.quantity, product.salesCount) : item.quantity;
+      await tx.product.update({
         where: { id: item.productId },
+        data: {
+          stock: { increment: item.quantity },
+          salesCount: { decrement: decrementQty },
+        },
       });
-      if (product) {
-        // 防御性校验：销量不足时最多回滚到 0，避免负数
-        const decrementQty = Math.min(item.quantity, product.salesCount);
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: { increment: item.quantity },
-            salesCount: { decrement: decrementQty },
-          },
-        });
-      }
     }
 
     // 释放优惠券（退款时状态为 USED，不能限定 LOCKED）

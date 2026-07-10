@@ -74,7 +74,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       apiConsole.error("[AdminShip] 审计日志写入失败，业务操作已执行");
     }
 
-    revalidateTag("admin-stats");
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,

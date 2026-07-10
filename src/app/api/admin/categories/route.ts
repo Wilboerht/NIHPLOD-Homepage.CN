@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    revalidateTag("admin-stats");
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,

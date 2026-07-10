@@ -6,7 +6,7 @@
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
 import { autoExpireUserCoupons } from "./coupon";
-import { cleanupExpiredRefreshTokens } from "./auth-security";
+import { cleanupExpiredRefreshTokens, cleanupOldLoginAttempts } from "./auth-security";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -80,6 +80,19 @@ const tasks: ScheduledTask[] = [
         console.log(`[Cron] 过期限流记录清理完成: ${count} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 过期限流记录清理失败:", error);
+      }
+    },
+  },
+  {
+    name: "Cleanup Old Login Attempts",
+    cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
+    handler: async () => {
+      try {
+        console.log("[Cron] 开始清理陈旧登录尝试记录...");
+        const count = await cleanupOldLoginAttempts();
+        console.log(`[Cron] 登录尝试记录清理完成: ${count} 条`);
+      } catch (error) {
+        apiConsole.error("[Cron] 登录尝试记录清理失败:", error);
       }
     },
   },

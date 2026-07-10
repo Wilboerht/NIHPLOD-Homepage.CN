@@ -38,6 +38,9 @@ export const DEFAULT_BRUTE_FORCE_CONFIG: BruteForceConfig = {
 // 登录尝试管理
 // ============================================
 
+/** 每个用户允许的最大设备数（Refresh Token 设备上限） */
+export const MAX_REFRESH_TOKEN_DEVICES = 10;
+
 
 /**
  * 获取 User Agent
@@ -53,13 +56,15 @@ export function getUserAgent(request: NextRequest): string | null {
  * @param request 请求对象
  * @param reason 失败原因
  * @param type 认证类型
+ * @param userId 用户 ID（成功登录时传入）
  */
 export async function recordLoginAttempt(
   identifier: string,
   success: boolean,
   request: NextRequest,
   reason?: string,
-  type: "password" | "sms" = "password"
+  type: "password" | "sms" = "password",
+  userId?: string
 ): Promise<void> {
   const ip = getClientIP(request);
   const ua = getUserAgent(request);
@@ -77,6 +82,7 @@ export async function recordLoginAttempt(
     });
 
     logAuthEvent("user_login", {
+      userId,
       identifier,
       success,
       reason,
@@ -85,7 +91,6 @@ export async function recordLoginAttempt(
       ua,
     });
   } catch (error) {
-    // 使用结构化日志记录失败，不阻塞主流程
     const { logError } = await import("./logger");
     logError("RecordLoginAttempt", error, { identifier, success });
   }
@@ -121,6 +126,7 @@ export async function checkAccountLockout(
         where: {
           identifier,
           success: false,
+          createdAt: { gte: windowStart },
         },
         orderBy: { createdAt: "desc" },
       });
@@ -265,11 +271,11 @@ export function extractDeviceInfo(request: NextRequest): DeviceInfo {
 
 function getDeviceFingerprint(info?: DeviceInfo): string {
   if (!info) return "unknown";
-  const ua = info.userAgent || "";
+  const ua = (info.deviceInfo || info.userAgent || "");
   const ip = info.ipAddress || "";
-  // 使用 UA 前 80 字符 + IP 生成指纹
+  const name = info.deviceName || "";
   return createHash("sha256")
-    .update(`${ua.slice(0, 80)}:${ip}`)
+    .update(`${name}|${ua}|${ip}`)
     .digest("hex");
 }
 
@@ -296,6 +302,7 @@ export async function saveRefreshToken(
 
       const sameDeviceToken = existingTokens.find((t) => {
         const existingFingerprint = getDeviceFingerprint({
+          deviceName: t.deviceName || undefined,
           deviceInfo: t.deviceInfo || undefined,
           ipAddress: t.ipAddress || undefined,
           userAgent: t.userAgent || undefined,
@@ -319,11 +326,10 @@ export async function saveRefreshToken(
           },
         });
       } else {
-        // 2. 限制每个用户的最大设备数（例如 10 个），防止无限增长
-        const MAX_DEVICES = 10;
-        if (existingTokens.length >= MAX_DEVICES) {
+        // 2. 限制每个用户的最大设备数，防止无限增长
+        if (existingTokens.length >= MAX_REFRESH_TOKEN_DEVICES) {
           // 撤销最早的 Token
-          const tokensToRevoke = existingTokens.slice(0, existingTokens.length - MAX_DEVICES + 1);
+          const tokensToRevoke = existingTokens.slice(0, existingTokens.length - MAX_REFRESH_TOKEN_DEVICES + 1);
           await tx.refreshToken.updateMany({
             where: { id: { in: tokensToRevoke.map((t) => t.id) } },
             data: { revokedAt: new Date() },
@@ -352,7 +358,7 @@ export async function saveRefreshToken(
 
 export type RefreshTokenValidationResult =
   | { valid: true }
-  | { valid: false; reason: "missing" | "revoked" | "expired" | "account_disabled" };
+  | { valid: false; reason: "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" };
 
 /**
  * 验证并刷新 Token
@@ -393,6 +399,133 @@ export async function validateAndRefreshToken(
     return { valid: true };
   } catch (error) {
     apiConsole.error("[ValidateAndRefreshToken] 验证失败:", error);
+    return { valid: false, reason: "missing" };
+  }
+}
+
+/**
+ * 原子化验证并轮换 Refresh Token
+ * 在单个数据库事务中完成：验证旧 Token → 撤销旧 Token → 创建新 Token
+ * 消除 validate + revoke + create 之间的 Race Condition 窗口
+ *
+ * @returns 成功时返回 { valid: true }，失败时返回失败原因
+ */
+export async function atomicallyRotateRefreshToken(
+  userId: string,
+  oldToken: string,
+  newToken: string,
+  expiresAt: Date,
+  deviceInfo?: DeviceInfo
+): Promise<RefreshTokenValidationResult> {
+  try {
+    const oldTokenHash = hashToken(oldToken);
+    const newTokenHash = hashToken(newToken);
+    const fingerprint = getDeviceFingerprint(deviceInfo);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. 查找旧 Token（必须是未撤销、未过期的）
+      const existing = await tx.refreshToken.findFirst({
+        where: {
+          userId,
+          token: oldTokenHash,
+          expiresAt: { gt: new Date() },
+        },
+      });
+
+      if (!existing) {
+        return { valid: false as const, reason: "missing" as const };
+      }
+
+      if (existing.revokedAt) {
+        return { valid: false as const, reason: "revoked" as const };
+      }
+
+      // 2. 校验账号状态
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { status: true },
+      });
+
+      if (user?.status !== "ACTIVE") {
+        return { valid: false as const, reason: "account_disabled" as const };
+      }
+
+      // 3. 撤销旧 Token（通过 revokedAt = null 条件进行乐观锁，防止并发重复使用）
+      const revokeResult = await tx.refreshToken.updateMany({
+        where: {
+          id: existing.id,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
+
+      if (revokeResult.count === 0) {
+        // 并发场景：另一个请求已先撤销此 Token → 视为重用攻击
+        return { valid: false as const, reason: "concurrent_rotation" as const };
+      }
+
+      // 4. 查找同设备旧 Token 并更新或创建（设备级复用，与 saveRefreshToken 逻辑一致）
+      const existingTokens = await tx.refreshToken.findMany({
+        where: {
+          userId,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const sameDeviceToken = existingTokens.find((t) => {
+        const existingFingerprint = getDeviceFingerprint({
+          deviceName: t.deviceName || undefined,
+          deviceInfo: t.deviceInfo || undefined,
+          ipAddress: t.ipAddress || undefined,
+          userAgent: t.userAgent || undefined,
+        });
+        return existingFingerprint === fingerprint;
+      });
+
+      if (sameDeviceToken) {
+        await tx.refreshToken.update({
+          where: { id: sameDeviceToken.id },
+          data: {
+            token: newTokenHash,
+            expiresAt,
+            deviceName: deviceInfo?.deviceName ?? sameDeviceToken.deviceName,
+            deviceInfo: deviceInfo?.deviceInfo ?? sameDeviceToken.deviceInfo,
+            ipAddress: deviceInfo?.ipAddress ?? sameDeviceToken.ipAddress,
+            userAgent: deviceInfo?.userAgent ?? sameDeviceToken.userAgent,
+            revokedAt: null,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        if (existingTokens.length >= MAX_REFRESH_TOKEN_DEVICES) {
+          const tokensToRevoke = existingTokens.slice(0, existingTokens.length - MAX_REFRESH_TOKEN_DEVICES + 1);
+          await tx.refreshToken.updateMany({
+            where: { id: { in: tokensToRevoke.map((t) => t.id) } },
+            data: { revokedAt: new Date() },
+          });
+        }
+
+        await tx.refreshToken.create({
+          data: {
+            userId,
+            token: newTokenHash,
+            expiresAt,
+            deviceName: deviceInfo?.deviceName,
+            deviceInfo: deviceInfo?.deviceInfo,
+            ipAddress: deviceInfo?.ipAddress,
+            userAgent: deviceInfo?.userAgent,
+          },
+        });
+      }
+
+      return { valid: true as const };
+    });
+
+    return result;
+  } catch (error) {
+    apiConsole.error("[AtomicallyRotateRefreshToken] 失败:", error);
     return { valid: false, reason: "missing" };
   }
 }
@@ -453,6 +586,27 @@ export async function cleanupExpiredRefreshTokens(): Promise<number> {
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupExpiredRefreshTokens] 清理失败:", error);
+    return 0;
+  }
+}
+
+/**
+ * 清理陈旧的登录尝试记录（可定期运行）
+ * 保留最近 7 天的记录用于安全审计，超出 7 天的自动删除
+ * 防止 LoginAttempt 表无限增长
+ */
+export async function cleanupOldLoginAttempts(): Promise<number> {
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const result = await prisma.loginAttempt.deleteMany({
+      where: {
+        createdAt: { lt: sevenDaysAgo },
+      },
+    });
+    console.log(`[CleanupLoginAttempts] 清理了 ${result.count} 条陈旧登录记录`);
+    return result.count;
+  } catch (error) {
+    apiConsole.error("[CleanupLoginAttempts] 清理失败:", error);
     return 0;
   }
 }

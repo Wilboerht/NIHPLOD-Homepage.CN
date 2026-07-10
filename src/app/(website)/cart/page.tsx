@@ -17,12 +17,13 @@ export const metadata: Metadata = {
 };
 
 interface CartPageProps {
-  searchParams?: {
+  searchParams: Promise<{
     openCheckout?: string;
-  };
+  }>;
 }
 
 export default async function CartPage({ searchParams }: CartPageProps) {
+  const params = await searchParams;
   const user = await getCurrentLoginUser();
   
   if (!user) {
@@ -68,7 +69,7 @@ export default async function CartPage({ searchParams }: CartPageProps) {
     price: Number(item.product.price),
   }));
 
-  const autoOpenCheckout = searchParams?.openCheckout === "1";
+  const autoOpenCheckout = params.openCheckout === "1";
 
   return (
     <div className="min-h-dvh bg-gray-50">

@@ -80,6 +80,10 @@ export const RATE_LIMIT_PRESETS = {
   "refund-notify": { maxRequests: 120, windowMs: 60 * 1000 },
   /** 支付宝退款回调 - IP 级 - 每分钟 120 次 */
   "alipay-refund-notify": { maxRequests: 120, windowMs: 60 * 1000 },
+  /** Token 刷新限制 - 每 5 分钟 10 次 */
+  refresh: { maxRequests: 10, windowMs: 5 * 60 * 1000 },
+  /** 密码重置限制 - 每 15 分钟 5 次 */
+  "reset-password": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
 } as const;
 
 /**

@@ -211,6 +211,7 @@ describe("auth-security", () => {
       mock.findMany.mockResolvedValueOnce([
         {
           id: "rt-1",
+          deviceName: "Test Device",
           deviceInfo: "TestAgent",
           ipAddress: "1.2.3.4",
           userAgent: "TestAgent",

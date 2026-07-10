@@ -41,7 +41,8 @@ export type AuditAction =
   | "user_register"
   | "user_reset_password"
   | "user_wechat_bind"
-  | "user_status_change";
+  | "user_status_change"
+  | "user_deleted";
 
 export type AuditTargetType =
   | "order"

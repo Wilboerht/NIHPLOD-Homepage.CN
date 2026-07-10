@@ -1,6 +1,12 @@
 /**
  * 密码加密工具
  * 使用 bcryptjs 进行密码哈希和验证
+ *
+ * TODO: 密码策略增强
+ * - 密码历史检查：防止用户重复使用最近 N 个密码
+ * - 密码过期策略：定期强制用户更换密码
+ * - 弱密码黑名单：拒绝常见弱密码（123456, password 等）
+ * - 以上功能需额外 schema 变更（PasswordHistory 表等）
  */
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -79,32 +85,39 @@ export async function verifyPassword(
 /**
  * 生成安全的随机密码
  * 用于微信登录自动生成密码场景
+ * 保证至少包含大写、小写、数字、特殊字符各一个
  * @param length 密码长度，默认 32
  * @returns 随机密码字符串
  */
 export function generateSecurePassword(length: number = 32): string {
-  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
-  let password = "";
-  const charsetLength = charset.length;
-  
-  // 确保包含大写、小写、数字、特殊字符
-  const has = {
-    upper: false,
-    lower: false,
-    digit: false,
-    special: false,
-  };
-
-  while (password.length < length || !has.upper || !has.lower || !has.digit || !has.special) {
-    const randomIndex = randomInt(0, charsetLength);
-    const char = charset[randomIndex];
-    password += char;
-
-    if (/[A-Z]/.test(char)) has.upper = true;
-    if (/[a-z]/.test(char)) has.lower = true;
-    if (/[0-9]/.test(char)) has.digit = true;
-    if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(char)) has.special = true;
+  if (length < 4) {
+    throw new Error("密码长度至少为 4");
   }
 
-  return password.slice(0, length);
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  const specials = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+  const all = upper + lower + digits + specials;
+
+  // 前置：每种类型至少一个
+  const chars: string[] = [
+    upper[randomInt(0, upper.length)],
+    lower[randomInt(0, lower.length)],
+    digits[randomInt(0, digits.length)],
+    specials[randomInt(0, specials.length)],
+  ];
+
+  // 填充剩余字符
+  for (let i = 4; i < length; i++) {
+    chars.push(all[randomInt(0, all.length)]);
+  }
+
+  // Fisher-Yates 洗牌
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(0, i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.slice(0, length).join("");
 }

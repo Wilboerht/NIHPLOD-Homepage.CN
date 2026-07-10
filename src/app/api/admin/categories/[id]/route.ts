@@ -119,7 +119,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data: validated,
     });
 
-    revalidateTag("admin-stats");
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,
@@ -210,7 +210,7 @@ export async function DELETE(
       throw error;
     }
 
-    revalidateTag("admin-stats");
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,

@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       delete: "删除",
     };
 
-    revalidateTag("admin-stats");
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,

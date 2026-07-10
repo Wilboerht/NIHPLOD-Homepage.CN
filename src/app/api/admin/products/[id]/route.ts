@@ -385,7 +385,7 @@ export async function DELETE(
     // 重新验证前台页面缓存 & 管理后台统计缓存
     revalidatePath("/products");
     revalidatePath(`/products/${existing.slug}`);
-    revalidateTag("admin-stats");
+    revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
       success: true,

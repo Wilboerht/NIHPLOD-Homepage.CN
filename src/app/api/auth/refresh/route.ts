@@ -10,7 +10,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRefreshToken, signUserToken, signRefreshToken, getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
-import { validateAndRefreshToken, saveRefreshToken, revokeRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import { atomicallyRotateRefreshToken, revokeRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import {
   USER_ACCESS_COOKIE_OPTIONS,
@@ -21,12 +21,23 @@ import {
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { rateLimit } from "@/lib/ratelimit";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
+    // 0. 速率限制：IP 维度每 5 分钟最多 10 次刷新
+    const ip = getClientIP(request);
+    const ipLimit = await rateLimit(ip, "refresh", { maxRequests: 10, windowMs: 5 * 60 * 1000 });
+    if (!ipLimit.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" } },
+        { status: 429 }
+      );
+    }
+
     // 1. 从 httpOnly Cookie 中读取 Refresh Token
     const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
 
@@ -90,62 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. 检查 Refresh Token 是否在数据库中有效（未被撤销）
-    const validation = await validateAndRefreshToken(payload.id, refreshToken);
-    if (!validation.valid) {
-      // Refresh Token 重用检测：签名有效但数据库中不存在或已被撤销，说明可能被盗用
-      if (validation.reason === "revoked" || validation.reason === "missing") {
-        logAuthEvent("refresh_token_reuse_detected", {
-          userId: payload.id,
-          identifier: payload.phone,
-          reason: validation.reason,
-          ip: getClientIP(request),
-        });
-        // 撤销该用户所有未过期 Refresh Token，强制所有设备重新登录
-        await revokeRefreshToken(payload.id);
-      }
-
-      logAuthEvent("user_refresh_token", {
-        success: false,
-        reason: validation.reason,
-        userId: payload.id,
-        identifier: payload.phone,
-        ip: getClientIP(request),
-      });
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "TOKEN_REVOKED",
-            message: "刷新令牌已失效，请重新登录",
-          },
-        },
-        { status: 401 }
-      );
-    }
-
-    // 5. Refresh Token Rotation：删除旧 Token，签发新双 Token
-    const revokedCount = await revokeRefreshToken(payload.id, refreshToken);
-    if (revokedCount === 0) {
-      // 并发刷新场景：旧 Token 已被其他请求撤销，当前请求视为潜在重用
-      logAuthEvent("refresh_token_reuse_detected", {
-        userId: payload.id,
-        identifier: payload.phone,
-        reason: "concurrent_rotation",
-        ip: getClientIP(request),
-      });
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "TOKEN_REVOKED",
-            message: "刷新令牌已失效，请重新登录",
-          },
-        },
-        { status: 401 }
-      );
-    }
-
+    // 4. 签发新双 Token（先签发，后续在原子事务中与旧 Token 一起处理）
     const newAccessToken = await signUserToken({
       id: payload.id,
       phone: payload.phone,
@@ -154,9 +110,50 @@ export async function POST(request: NextRequest) {
       id: payload.id,
       phone: payload.phone,
     });
-
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await saveRefreshToken(payload.id, newRefreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
+
+    // 5. 原子化验证旧 Token 并轮换新 Token
+    //    在单一 DB 事务中完成：查找旧 Token → 校验状态 → 撤销旧 → 保存新
+    //    消除 validate + revoke + save 之间的 Race Condition 窗口
+    const rotation = await atomicallyRotateRefreshToken(
+      payload.id,
+      refreshToken,
+      newRefreshToken,
+      refreshTokenExpiresAt,
+      extractDeviceInfo(request)
+    );
+
+    if (!rotation.valid) {
+      // Refresh Token 重用检测：JWT 签名有效但原子轮换失败
+      if (rotation.reason === "revoked" || rotation.reason === "missing" || rotation.reason === "concurrent_rotation") {
+        logAuthEvent("refresh_token_reuse_detected", {
+          userId: payload.id,
+          identifier: payload.phone,
+          reason: rotation.reason,
+          ip: getClientIP(request),
+        });
+        // 撤销该用户所有未过期 Refresh Token，强制所有设备重新登录
+        await revokeRefreshToken(payload.id);
+      }
+
+      logAuthEvent("user_refresh_token", {
+        success: false,
+        reason: rotation.reason,
+        userId: payload.id,
+        identifier: payload.phone,
+        ip: getClientIP(request),
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "TOKEN_REVOKED",
+            message: "刷新令牌已失效，请重新登录",
+          },
+        },
+        { status: 401 }
+      );
+    }
 
     // 6. 构建响应（不再在 body 中返回 Token，仅返回过期时间等元数据）
     const response = NextResponse.json({

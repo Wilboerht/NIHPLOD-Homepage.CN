@@ -15,18 +15,17 @@ export const metadata: Metadata = {
   },
 };
 
-interface PayPageProps {
-  params: { orderId: string };
-}
+type PayPageProps = {
+  params: Promise<{ orderId: string }>;
+};
 
 export default async function PayPage({ params }: PayPageProps) {
+  const { orderId } = await params;
   const user = await getCurrentLoginUser();
 
   if (!user) {
     redirect("/login");
   }
-
-  const { orderId } = params;
 
   const order = await prisma.order.findFirst({
     where: { id: orderId, userId: user.id },

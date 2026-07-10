@@ -117,10 +117,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 手机号业务规则校验（防止短信滥用）
+    const userExists = await prisma.user.findUnique({
+      where: { phone },
+      select: { id: true },
+    });
+
+    if (type === "register" && userExists) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PHONE_EXISTS",
+            message: "该手机号已注册，请直接登录",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    if ((type === "login" || type === "bind") && !userExists) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "USER_NOT_FOUND",
+            message: "该手机号未注册，请先注册账户",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    if (type === "reset" && !userExists) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CODE_SENT",
+            message: "验证码已发送（如手机号已注册）",
+          },
+        },
+        { status: 200 }
+      );
+    }
+
     // 生成验证码
     const code = generateVerifyCode();
     const expiresAt = new Date(Date.now() + CODE_EXPIRE_MINUTES * 60 * 1000);
     const codeHash = hashVerifyCode(phone, code, type);
+
+    // 将同 phone+type 的旧未使用验证码标记为已使用（确保 partial unique index 约束）
+    await prisma.smsCode.updateMany({
+      where: { phone, type, used: false },
+      data: { used: true },
+    });
 
     // 保存验证码哈希（不再存储明文）
     await prisma.smsCode.create({

@@ -16,6 +16,7 @@ import {
 } from "@/types/auth";
 import { prisma } from "./prisma";
 import type { UserStatus, AdminStatus } from "@/generated/prisma/client";
+import { isTokenBlacklisted } from "@/lib/token-blacklist";
 
 const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -35,7 +36,7 @@ function isAdminActive(status: AdminStatus, deletedAt: Date | null): boolean {
  * 用于 Server Components 和 Server Actions
  */
 export async function getCurrentAdmin(): Promise<AdminUser | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
 
   if (!token) {
@@ -271,6 +272,12 @@ export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPaylo
     return null;
   }
 
+  // 校验 access token 黑名单（封禁后 15 分钟窗口期内的 token）
+  const blacklisted = isTokenBlacklisted(payload.id);
+  if (blacklisted) {
+    return null;
+  }
+
   return payload;
 }
 
@@ -278,7 +285,7 @@ export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPaylo
  * 从 Cookie 中获取当前登录用户（完整信息）
  */
 export async function getCurrentLoginUser(): Promise<UserInfo | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(USER_COOKIE_NAME)?.value;
 
   if (!token) {
@@ -303,6 +310,12 @@ export async function getCurrentLoginUser(): Promise<UserInfo | null> {
   });
 
   if (!user || user.status !== "ACTIVE") {
+    return null;
+  }
+
+  // 检查 access token 黑名单
+  const blacklisted = isTokenBlacklisted(payload.id);
+  if (blacklisted) {
     return null;
   }
 

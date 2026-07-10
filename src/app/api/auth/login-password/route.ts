@@ -26,11 +26,9 @@ import {
   extractDeviceInfo,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
-import { getClientIP } from "@/lib/client-ip";
-import { logAuthEvent } from "@/lib/auth-logger";
-import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { z } from "zod";
 
 // 请求参数验证
 const loginSchema = z.object({
@@ -170,7 +168,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. 记录成功登录
-    await recordLoginAttempt(phone, true, request, undefined, "password");
+    await recordLoginAttempt(phone, true, request, undefined, "password", user.id);
 
     // 7. 清除失败登录记录（成功登录后重置）
     await clearLoginAttempts(phone);
@@ -192,14 +190,6 @@ export async function POST(request: NextRequest) {
       Date.now() + 30 * 24 * 60 * 60 * 1000
     );
     await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
-
-    logAuthEvent("user_login", {
-      userId: user.id,
-      identifier: user.phone,
-      success: true,
-      method: "password",
-      ip: getClientIP(request),
-    });
 
     // 11. 构建响应
     const response = NextResponse.json({

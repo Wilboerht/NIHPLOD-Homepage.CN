@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+import bcrypt from "bcryptjs";
 import { signToken } from "@/lib/jwt";
 import { AdminLoginSchema } from "@/schemas/api";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
@@ -8,11 +9,22 @@ import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 管理员账户级防爆破配置
 const ADMIN_MAX_ATTEMPTS = 5;
 const ADMIN_WINDOW_MS = 15 * 60 * 1000; // 15 分钟
 const ADMIN_LOCKOUT_MS = 30 * 60 * 1000; // 30 分钟
+
+// 防时序攻击 dummy 哈希（与 password.ts 中 SALT_ROUNDS = 12 保持一致）
+// 懒加载生成，避免冷启动延迟，同时保证与真实密码哈希相同的盐轮数
+let _dummyHash: string | null = null;
+function getDummyHash(): string {
+  if (!_dummyHash) {
+    _dummyHash = bcrypt.hashSync("__nihplod_dummy_timing_defense__", 12);
+  }
+  return _dummyHash;
+}
 
 async function checkAdminLockout(email: string): Promise<{ locked: boolean; remainingMinutes: number }> {
   const windowStart = new Date(Date.now() - ADMIN_WINDOW_MS);
@@ -81,6 +93,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 0.1 CSRF Token 校验（纵深防御，与 Origin/Referer 互补）
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const body = await request.json();
 
     // 1. 先验证请求数据格式
@@ -147,7 +164,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 使用恒定时间比较防御时序攻击：无论用户是否存在都执行一次 bcrypt
-    const targetHash = admin ? admin.password : "$2a$12$dummy.hash.to.prevent.timing.attacks.on.nonexistent.users";
+    const targetHash = admin ? admin.password : getDummyHash();
     const isPasswordValid = await verifyPassword(password, targetHash);
 
     // 使用通用错误信息，避免泄露用户是否存在

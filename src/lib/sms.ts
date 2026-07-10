@@ -49,7 +49,7 @@ import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 import { apiConsole } from "@/lib/logger";
 
-export type SMSTemplate = "LOGIN_CODE";
+export type SMSTemplate = "LOGIN_CODE" | "PASSWORD_RESET";
 
 export interface SMSParams {
   phone: string;
@@ -204,6 +204,7 @@ function percentEncode(str: string): string {
 function getAliyunTemplateCode(template: SMSTemplate): string | null {
   const templates: Record<SMSTemplate, string | undefined> = {
     LOGIN_CODE: process.env.SMS_TEMPLATE_CODE_LOGIN,
+    PASSWORD_RESET: process.env.SMS_TEMPLATE_CODE_PASSWORD_RESET,
   };
   return templates[template] || null;
 }
@@ -278,6 +279,7 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
 function getTencentTemplateId(template: SMSTemplate): string | null {
   const templates: Record<SMSTemplate, string | undefined> = {
     LOGIN_CODE: process.env.TENCENT_SMS_TEMPLATE_ID_LOGIN,
+    PASSWORD_RESET: process.env.TENCENT_SMS_TEMPLATE_ID_PASSWORD_RESET,
   };
   return templates[template] || null;
 }
@@ -291,6 +293,25 @@ export async function sendLoginCode(phone: string, code: string): Promise<SMSRes
     template: "LOGIN_CODE",
     params: { code },
   });
+}
+
+/**
+ * 发送密码变更安全通知（密码重置/修改后调用）
+ * 通知用户其密码已被修改，若非本人操作请及时联系客服
+ */
+export async function sendPasswordChangedNotification(phone: string): Promise<void> {
+  try {
+    const result = await sendSMS({
+      phone,
+      template: "PASSWORD_RESET",
+      params: { time: new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) },
+    });
+    if (!result.success) {
+      apiConsole.error("[PasswordNotification] 短信发送失败:", result.error);
+    }
+  } catch (error) {
+    apiConsole.error("[PasswordNotification] 发送异常:", error);
+  }
 }
 
 /**
