@@ -9,7 +9,7 @@ export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "产品系列",
-  description: "探索 NIHPLOD 旎柏高端护肤产品系列，囊括修护面霜、焕活身体乳、洁面慕斯等奢华产品，源自摩纳哥的精准护肤体验。",
+  description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
   alternates: {
     canonical: "/products",
   },
@@ -20,13 +20,13 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "产品系列 | NIHPLOD 旎柏",
-    description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "产品系列 | NIHPLOD 旎柏",
-    description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
 };
