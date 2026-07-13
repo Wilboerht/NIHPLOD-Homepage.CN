@@ -16,6 +16,9 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
   return (
     <div className="min-h-dvh">
       {/* Skip to main content 链接 - 可访问性 */}
+      <a href="#main-content" className="skip-link">
+        跳转到主要内容
+      </a>
 
 
       {/* Graphite Kinetic Grid 全局背景 */}

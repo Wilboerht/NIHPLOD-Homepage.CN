@@ -46,6 +46,9 @@ declare namespace NodeJS {
     CLOUDINARY_API_KEY?: string;
     CLOUDINARY_API_SECRET?: string;
     NEXT_PUBLIC_GA_ID?: string;
+    NEXT_PUBLIC_BAIDU_TONGJI_ID?: string;
+    BAIDU_PUSH_TOKEN?: string;
+    NEXT_PUBLIC_SITE_URL?: string;
 
     // ----- 系统配置 -----
     NODE_ENV: "development" | "production" | "test";

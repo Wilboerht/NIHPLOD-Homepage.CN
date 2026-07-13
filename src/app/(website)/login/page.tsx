@@ -2,10 +2,19 @@
  * 用户登录页面
  * 登录功能通过 AuthModal 模态框实现，此页面作为 SEO 友好的入口重定向到首页
  */
+import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { USER_COOKIE_NAME } from "@/types/auth";
 import { verifyUserToken } from "@/lib/jwt";
+
+export const metadata: Metadata = {
+  title: "登录",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 interface LoginPageProps {
   searchParams: Promise<{ redirect?: string }>;

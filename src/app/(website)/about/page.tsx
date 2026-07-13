@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/about",
   },
+  keywords: [
+    "NIHPLOD", "旎柏", "品牌故事", "摩纳哥护肤品牌", "高端护肤",
+    "真脂质体技术", "Dolphin-Skin", "抗衰老品牌", "奢华护肤传奇",
+  ],
   openGraph: {
     title: "品牌故事 | NIHPLOD 旎柏",
     description:

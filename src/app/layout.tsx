@@ -5,6 +5,8 @@ import "./globals.css";
 import { MotionProvider } from "@/components/providers/MotionProvider";
 import { ChunkErrorBoundary } from "@/components/providers/ChunkErrorBoundary";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
+import { BaiduAnalytics } from "@/components/seo/BaiduAnalytics";
+import { GoogleAnalytics } from "@/components/seo/GoogleAnalytics";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -26,7 +28,7 @@ export const metadata: Metadata = {
     default: "NIHPLOD 旎柏",
     template: "%s | NIHPLOD 旎柏",
   },
-  description: "NIHPLOD 旎柏（Niphlod）是源自摩纳哥的高端护肤品牌，独创真脂质体（Dolphin-Skin）专利技术，专注于抗衰老修护面霜、焕活身体乳等奢华护肤产品，为全球高净值人士提供精准、高效的护肤方案。",
+  description: "NIHPLOD 旎柏是源自摩纳哥的高端护肤品牌，独创真脂质体 Dolphin-Skin 专利技术，专注抗衰老修护面霜、焕活身体乳等奢华护肤产品。",
   keywords: [
     "NIHPLOD", "旎柏", "尼柏", "Niphlod", "Niphold",
     "护肤品", "高端护肤", "摩纳哥护肤品牌", "摩纳哥护肤品",
@@ -132,6 +134,10 @@ export default function RootLayout({
           {/* Schema.org 结构化数据 */}
           <OrganizationJsonLd />
           <WebSiteJsonLd />
+          {/* 百度统计 */}
+          <BaiduAnalytics />
+          {/* Google Analytics */}
+          <GoogleAnalytics />
         </head>
         <body className={`${playfair.variable} font-sans antialiased`}>
           <ChunkErrorBoundary>

@@ -47,6 +47,9 @@ const defaultContent: ServicesPageContent = {
 export const metadata: Metadata = {
   title: "服务入口",
   description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
+  alternates: {
+    canonical: "/services",
+  },
   openGraph: {
     title: "服务入口 | NIHPLOD 旎柏",
     description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",

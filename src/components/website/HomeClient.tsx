@@ -395,7 +395,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     </h1>
 
                     {/* 移动端 & iPad mini (4行) - 字号从 base 提升至 lg */}
-                    <h2 className="title block min-[820px]:hidden text-lg font-light leading-[2.1] text-brand-charcoal">
+                    <h1 className="title block min-[820px]:hidden text-lg font-light leading-[2.1] text-brand-charcoal">
                       {[
                         "海豚的肌肤，拥有每两小时",
                         "自我更新的神奇能力，",
@@ -417,7 +417,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                           {line}
                         </m.span>
                       ))}
-                    </h2>
+                    </h1>
                   </m.div>
 
                   {/* 按钮组 - 增加触压反馈 */}

@@ -9,7 +9,10 @@ import CartContent from "./CartContent";
 
 export const metadata: Metadata = {
   title: "购物车",
-  description: "查看您的购物车",
+  description: "查看您购物车中的商品，确认订单并完成购买。",
+  alternates: {
+    canonical: "/cart",
+  },
   robots: {
     index: false,
     follow: false,

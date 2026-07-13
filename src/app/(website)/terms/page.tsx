@@ -76,6 +76,9 @@ const defaultContent: TermsPageContent = {
 export const metadata: Metadata = {
   title: "服务条款",
   description: "了解使用 NIHPLOD 旎柏服务的条款和条件。",
+  alternates: {
+    canonical: "/terms",
+  },
   openGraph: {
     title: "服务条款 | NIHPLOD 旎柏",
     description: "了解使用 NIHPLOD 旎柏服务的条款和条件。",

@@ -2,13 +2,22 @@ import { Suspense } from "react";
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { ProductsContent } from "./ProductsContent";
+import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
 // ISR: 产品列表页每60秒重新验证一次
 export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "产品系列",
-  description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
+  description: "探索 NIHPLOD 旎柏高端护肤产品系列，囊括修护面霜、焕活身体乳、洁面慕斯等奢华产品，源自摩纳哥的精准护肤体验。",
+  alternates: {
+    canonical: "/products",
+  },
+  keywords: [
+    "NIHPLOD", "旎柏", "产品系列", "高端护肤产品",
+    "修护面霜", "焕活身体乳", "洁面慕斯", "保湿精华",
+    "摩纳哥护肤品", "奢侈护肤品", "抗衰老产品",
+  ],
   openGraph: {
     title: "产品系列 | NIHPLOD 旎柏",
     description: "探索 NIHPLOD 旎柏高端护肤产品系列，源自摩纳哥的奢华护肤体验",
@@ -89,8 +98,15 @@ export default async function ProductsPage() {
     getProducts(),
   ]);
 
+  const breadcrumbs = [
+    { name: "首页", url: "/" },
+    { name: "产品系列", url: "/products" },
+  ];
+
   return (
-    <Suspense
+    <>
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <Suspense
       fallback={
         <div className="flex h-dvh items-center justify-center bg-brand-cream">
           <div className="text-brand-charcoal/50">加载中...</div>
@@ -98,6 +114,7 @@ export default async function ProductsPage() {
       }
     >
       <ProductsContent categories={categories} products={products} />
-    </Suspense>
+      </Suspense>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { CareersContent, Job } from "./CareersContent";
-import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { BreadcrumbJsonLd, JobPostingJsonLd } from "@/components/seo/JsonLd";
 
 // ISR: 招聘页面每小时重新验证一次
 export const revalidate = 3600; // 1小时
@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/careers",
   },
+  keywords: [
+    "NIHPLOD", "旎柏", "招聘", "加入我们", "工作机会",
+    "高端护肤品牌招聘", "上海招聘", "摩纳哥招聘", "护肤品行业",
+  ],
   openGraph: {
     title: "加入我们 | NIHPLOD 旎柏",
     description:
@@ -68,6 +72,9 @@ export default async function CareersPage() {
   return (
     <>
       <BreadcrumbJsonLd items={breadcrumbs} />
+      {jobs.map((job) => (
+        <JobPostingJsonLd key={job.id} job={job} />
+      ))}
       {/* 预加载高德地图配置 */}
       <Script
         id="amap-security-config"
