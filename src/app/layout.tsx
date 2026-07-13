@@ -83,10 +83,7 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: '32x32' },
-      { url: '/images/NIHPLOD-logo.svg', type: 'image/svg+xml' },
-    ],
+    icon: '/favicon.ico',
   },
 
   // 其他 SEO
