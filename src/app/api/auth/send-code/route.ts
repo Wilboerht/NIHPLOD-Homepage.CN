@@ -15,7 +15,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 // 请求参数验证
 const sendCodeSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  type: z.enum(["login", "register", "bind", "reset"]).default("login"),
+  type: z.enum(["login", "register", "reset"]).default("login"),
 });
 
 // 验证码有效期（分钟）
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if ((type === "login" || type === "bind") && !userExists) {
+    if (type === "login" && !userExists) {
       return NextResponse.json(
         {
           success: false,
@@ -164,6 +164,7 @@ export async function POST(request: NextRequest) {
 
     // 生成验证码
     const code = generateVerifyCode();
+    console.log(`[DEBUG-SMS] 📱 ${phone} | 类型: ${type} | 验证码: ${code}`);
     const expiresAt = new Date(Date.now() + CODE_EXPIRE_MINUTES * 60 * 1000);
     const codeHash = hashVerifyCode(phone, code, type);
 
@@ -173,7 +174,8 @@ export async function POST(request: NextRequest) {
       data: { used: true },
     });
 
-    // 保存验证码哈希（不再存储明文）
+    // 先入库再发短信：入库占用 slot，阻止并发请求通过冷却检查
+    // 入库失败（唯一约束冲突）说明并发请求已占用，这是正确的竞态防护
     await prisma.smsCode.create({
       data: {
         phone,
@@ -187,7 +189,12 @@ export async function POST(request: NextRequest) {
     const smsResult = await sendLoginCode(phone, code);
 
     if (!smsResult.success) {
+      // 短信发送失败，清理已入库的验证码（避免脏数据）
       apiConsole.error("[SendCode] 短信发送失败:", smsResult.error);
+      await prisma.smsCode.updateMany({
+        where: { phone, type, used: false },
+        data: { used: true },
+      });
       return NextResponse.json(
         {
           success: false,

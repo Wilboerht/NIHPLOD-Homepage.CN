@@ -14,6 +14,7 @@ import { rateLimit } from "@/lib/ratelimit";
 import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { verifyCode, sendPasswordChangedNotification } from "@/lib/sms";
 
 // 请求参数验证
 const resetPasswordSchema = z
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!smsCode) {
+      await recordLoginAttempt(phone, false, request, "code_expired", "sms");
       return NextResponse.json(
         {
           success: false,
@@ -105,7 +107,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { verifyCode } = await import("@/lib/sms");
     if (!verifyCode(phone, code, "reset", smsCode.codeHash)) {
       await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
       return NextResponse.json(
@@ -120,11 +121,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 标记验证码已使用
-    await prisma.smsCode.update({
-      where: { id: smsCode.id },
+    // 原子核销验证码（updateMany + used:false 防止并发重用）
+    const consumeResult = await prisma.smsCode.updateMany({
+      where: { id: smsCode.id, used: false },
       data: { used: true },
     });
+    if (consumeResult.count === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CODE_EXPIRED",
+            message: "验证码已过期或已被使用",
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     // 查找用户
     const user = await prisma.user.findUnique({
@@ -180,7 +193,6 @@ export async function POST(request: NextRequest) {
     await clearLoginAttempts(phone);
 
     // 向用户发送安全通知：密码已被重置
-    const { sendPasswordChangedNotification } = await import("@/lib/sms");
     sendPasswordChangedNotification(phone).catch((err) => {
       apiConsole.error("[ResetPassword] 安全通知发送失败:", err);
     });

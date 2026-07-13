@@ -610,3 +610,24 @@ export async function cleanupOldLoginAttempts(): Promise<number> {
     return 0;
   }
 }
+
+/**
+ * 清理过期/已使用的 SmsCode 记录（可定期运行）
+ * 保留最近 7 天的记录用于安全审计，超出 7 天的自动删除
+ * 防止 SmsCode 表无限增长
+ */
+export async function cleanupExpiredSmsCodes(): Promise<number> {
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const result = await prisma.smsCode.deleteMany({
+      where: {
+        createdAt: { lt: sevenDaysAgo },
+      },
+    });
+    console.log(`[CleanupSmsCodes] 清理了 ${result.count} 条过期验证码记录`);
+    return result.count;
+  } catch (error) {
+    apiConsole.error("[CleanupSmsCodes] 清理失败:", error);
+    return 0;
+  }
+}

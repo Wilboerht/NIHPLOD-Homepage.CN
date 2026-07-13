@@ -56,10 +56,14 @@ async function verifyAndConsumeSmsCode(phone: string, code: string) {
     return { valid: false as const, error: "验证码错误或已过期" };
   }
 
-  await prisma.smsCode.update({
-    where: { id: smsCode.id },
+  // 原子核销验证码（updateMany + used:false 防止并发重用）
+  const consumeResult = await prisma.smsCode.updateMany({
+    where: { id: smsCode.id, used: false },
     data: { used: true },
   });
+  if (consumeResult.count === 0) {
+    return { valid: false as const, error: "验证码已过期或已被使用" };
+  }
 
   return { valid: true as const };
 }

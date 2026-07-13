@@ -21,6 +21,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
 import { hashPassword, passwordSchema } from "@/lib/password";
+import { verifyCode } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
@@ -123,8 +124,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证码校验（优先使用 codeHash，兼容明文 code）
-    const { verifyCode } = await import("@/lib/sms");
+    // 验证码校验
     if (!verifyCode(phone, code, "register", smsCode.codeHash)) {
       return NextResponse.json(
         {
@@ -138,11 +138,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 标记验证码已使用
-    await prisma.smsCode.update({
-      where: { id: smsCode.id },
+    // 原子核销验证码（updateMany + used:false 防止并发重用）
+    const consumeResult = await prisma.smsCode.updateMany({
+      where: { id: smsCode.id, used: false },
       data: { used: true },
     });
+    if (consumeResult.count === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CODE_EXPIRED",
+            message: "验证码已过期或已被使用",
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     // 加密密码（使用项目统一的 salt rounds）
     const hashedPassword = await hashPassword(password);

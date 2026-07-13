@@ -25,6 +25,7 @@ import {
   extractDeviceInfo,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
+import { verifyCode } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
@@ -41,6 +42,22 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
+  }
+
+  // 1. 项目级速率限制（防止滥用，在 body 解析之前，避免大 payload 绕过限流）
+  const clientIP = getRateLimitClientIP(request);
+  const ipLimit = await rateLimit(clientIP, "login");
+  if (!ipLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: "登录尝试过于频繁，请稍后再试",
+        },
+      },
+      { status: 429 }
+    );
   }
 
   try {
@@ -62,22 +79,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone, code } = result.data;
-
-    // 1. 项目级速率限制（防止滥用）
-    const clientIP = getRateLimitClientIP(request);
-    const ipLimit = await rateLimit(clientIP, "login");
-    if (!ipLimit.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "TOO_MANY_REQUESTS",
-            message: "登录尝试过于频繁，请稍后再试",
-          },
-        },
-        { status: 429 }
-      );
-    }
 
     // 2. 检查账户是否被锁定（防爆破）
     const { locked, remainingMinutes } = await checkAccountLockout(phone);
@@ -121,8 +122,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. 验证码校验（优先使用 codeHash，兼容明文 code）
-    const { verifyCode } = await import("@/lib/sms");
+    // 4. 验证码校验
     if (!verifyCode(phone, code, "login", smsCode.codeHash)) {
       // 记录失败尝试
       await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
@@ -139,11 +139,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 标记验证码已使用
-    await prisma.smsCode.update({
-      where: { id: smsCode.id },
+    // 原子核销验证码（updateMany + used:false 防止并发重用）
+    const consumeResult = await prisma.smsCode.updateMany({
+      where: { id: smsCode.id, used: false },
       data: { used: true },
     });
+    if (consumeResult.count === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CODE_EXPIRED",
+            message: "验证码已过期或已被使用",
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     // 5. 查找用户（验证码登录不再自动注册，用户必须先通过 /api/auth/register 注册）
     const user = await prisma.user.findUnique({

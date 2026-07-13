@@ -6,7 +6,7 @@
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
 import { autoExpireUserCoupons } from "./coupon";
-import { cleanupExpiredRefreshTokens, cleanupOldLoginAttempts } from "./auth-security";
+import { cleanupExpiredRefreshTokens, cleanupOldLoginAttempts, cleanupExpiredSmsCodes } from "./auth-security";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -93,6 +93,19 @@ const tasks: ScheduledTask[] = [
         console.log(`[Cron] 登录尝试记录清理完成: ${count} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 登录尝试记录清理失败:", error);
+      }
+    },
+  },
+  {
+    name: "Cleanup Expired Sms Codes",
+    cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
+    handler: async () => {
+      try {
+        console.log("[Cron] 开始清理过期验证码记录...");
+        const count = await cleanupExpiredSmsCodes();
+        console.log(`[Cron] 过期验证码记录清理完成: ${count} 条`);
+      } catch (error) {
+        apiConsole.error("[Cron] 验证码记录清理失败:", error);
       }
     },
   },

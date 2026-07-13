@@ -15,6 +15,7 @@ import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { rateLimit } from "@/lib/ratelimit";
 
 /**
  * 微信绑定表单
@@ -35,6 +36,22 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+        // IP 速率限制（防爆破）
+        const clientIP = getClientIP(request);
+        const ipLimit = await rateLimit(clientIP, "form");
+        if (!ipLimit.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        code: "TOO_MANY_REQUESTS",
+                        message: "请求过于频繁，请稍后再试",
+                    },
+                },
+                { status: 429 }
+            );
+        }
+
         const body = await request.json();
 
         const result = bindSchema.safeParse(body);
