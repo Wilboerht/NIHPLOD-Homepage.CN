@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     default: "NIHPLOD 旎柏",
     template: "%s | NIHPLOD 旎柏",
   },
-  description: "NIHPLOD 旎柏是源自摩纳哥的高端护肤品牌，独创真脂质体 Dolphin-Skin 专利技术，专注抗衰老修护面霜、焕活身体乳等奢华护肤产品。",
+  description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
   keywords: [
     "NIHPLOD", "旎柏", "尼柏", "Niphlod", "Niphold",
     "护肤品", "高端护肤", "摩纳哥护肤品牌", "摩纳哥护肤品",
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
     title: "NIHPLOD 旎柏",
-    description: "源自摩纳哥的 Liposome 真脂质体专利技术，为全球高净值人群提供精准护肤方案。开启高端护肤之旅。",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
     creator: "@nihplod",
   },

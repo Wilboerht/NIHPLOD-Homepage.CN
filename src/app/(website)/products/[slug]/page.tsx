@@ -62,8 +62,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const benefitsText = product.benefits?.length ? `主要功效：${product.benefits.join('、')}。` : '';
-  const enhancedDescription = `${benefitsText}${product.description}`.slice(0, 160);
+  const description = "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。";
   const productKeywords = [
     product.name,
     product.nameEn,
@@ -79,20 +78,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: product.name,
-    description: enhancedDescription,
+    description: description,
     keywords: productKeywords,
     alternates: {
       canonical: `/products/${slug}`,
     },
     openGraph: {
       title: `${product.name} | NIHPLOD 旎柏`,
-      description: enhancedDescription,
+      description: description,
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: product.name }],
     },
     twitter: {
       card: "summary",
       title: `${product.name} | NIHPLOD 旎柏`,
-      description: enhancedDescription,
+      description: description,
       images: [ogImageUrl],
     },
   };

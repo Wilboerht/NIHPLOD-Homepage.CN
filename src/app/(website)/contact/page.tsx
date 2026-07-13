@@ -7,7 +7,7 @@ export const revalidate = 86400; // 24小时
 
 export const metadata: Metadata = {
   title: "联系我们",
-  description: "有任何问题或建议？欢迎联系 NIHPLOD 旎柏，我们期待与您的每一次交流。",
+  description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
   alternates: {
     canonical: "/contact",
   },
@@ -17,13 +17,13 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "联系我们 | NIHPLOD 旎柏",
-    description: "有任何问题或建议？欢迎联系 NIHPLOD 旎柏，我们期待与您的每一次交流。",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "联系我们 | NIHPLOD 旎柏",
-    description: "有任何问题或建议？欢迎联系 NIHPLOD 旎柏。",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
 };

@@ -61,13 +61,13 @@ export const metadata: Metadata = {
     ],
     openGraph: {
       title: "常见问题 | NIHPLOD 旎柏",
-      description: "NIHPLOD 旎柏常见问题解答。了解真脂质体护肤技术、抗衰老产品使用方法、修护面霜与焕活身体乳的功效、适合肤质及护肤建议。",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
       images: ["/images/og-image.png"],
     },
     twitter: {
       card: "summary",
       title: "常见问题 | NIHPLOD 旎柏",
-      description: "NIHPLOD 旎柏常见问题解答。了解真脂质体护肤技术、抗衰老产品使用方法。",
+      description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
       images: ["/images/og-image.png"],
     },
 };

@@ -46,19 +46,19 @@ const defaultContent: ServicesPageContent = {
 
 export const metadata: Metadata = {
   title: "服务入口",
-  description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
+  description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
   alternates: {
     canonical: "/services",
   },
   openGraph: {
     title: "服务入口 | NIHPLOD 旎柏",
-    description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "服务入口 | NIHPLOD 旎柏",
-    description: "快速访问 NIHPLOD 旎柏各服务系统，包括会员系统、官网和达人合作平台。",
+    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
   robots: {
