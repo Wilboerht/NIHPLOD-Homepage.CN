@@ -10,7 +10,7 @@ import { ChevronRight } from "lucide-react";
  * Kinetic Grid 全局背景组件
  * 
  * 特点：
- * - 米白背景 (#FAF5EA) + 微点阵图案
+ * - 米白背景 (#F0EDE1) + 微点阵图案
  * - Bento Grid 便当盒卡片布局（左侧大卡片 + 右侧3x2小卡片）
  * - 鼠标跟随的3D透视倾斜效果
  */
@@ -99,7 +99,7 @@ export function KineticBackground() {
                 <div className="hidden md:block relative opacity-[0.6]">
                     <Image
                         src="/images/N-web.svg"
-                        alt="Watermark PC"
+                        alt="NIHPLOD 品牌水印"
                         width={2800}
                         height={800}
                         style={{ objectFit: 'contain' }}
@@ -110,7 +110,7 @@ export function KineticBackground() {
                 <div className="block md:hidden absolute inset-0">
                     <Image
                         src="/images/watermark-mobile.png"
-                        alt="Watermark Mobile"
+                        alt="NIHPLOD 品牌水印"                        
                         fill
                         priority
                         style={{ objectFit: 'cover' }}
@@ -205,37 +205,27 @@ export function KineticBackground() {
                     ref={(el) => addCellRef(el, 4)}
                     className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect"
                 >
-                    <div className="kinetic-text-glow" />
                     <div className="kinetic-name" style={{ fontSize: '1.8rem' }}>逆转时光</div>
                     <div className="kinetic-desc" style={{ fontSize: '13px', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400, opacity: 0.8 }}>REVERSE TIME</div>
                 </div>
 
                 {/* Row 2, Col 4: 登录/CTA卡 */}
-                {/* Row 2, Col 4: 登录/CTA卡 */}
                 <div
                     ref={(el) => addCellRef(el, 5)}
-                    onClick={user ? () => openUserCenter() : handleLoginClick}
-                    className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect cursor-pointer"
+                    className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect"
                 >
                     <div className="kinetic-btn-group">
                         {user ? (
                             <>
                                 <div className="flex flex-col items-center justify-center w-full group/avatar mb-4">
                                     <div className="relative h-14 w-14 sm:h-20 sm:w-20 flex items-center justify-center">
-                                        {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
                                         <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
                                         <div className="absolute inset-[2px] sm:inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:group-hover/avatar:scale-90" />
-
-                                        {/* 主图标容器 - 极简白润质感 */}
-                                        <div className="relative h-10 w-10 sm:h-16 sm:w-16 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden cursor-pointer" onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            openUserCenter();
-                                        }}>
+                                        <div className="relative h-10 w-10 sm:h-16 sm:w-16 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden">
                                             {user.avatar ? (
                                                 <Image
                                                     src={user.avatar}
-                                                    alt={user.nickname || "User"}
+                                                    alt={user.nickname || "用户头像"}
                                                     fill
                                                     className="object-cover"
                                                 />
@@ -243,7 +233,7 @@ export function KineticBackground() {
                                                 <div className="relative h-5 w-5 sm:h-7 sm:w-7 opacity-50">
                                                     <Image
                                                         src="/images/profile-icon.svg"
-                                                        alt="User Profile"
+                                                        alt="用户头像"
                                                         fill
                                                         className="object-contain"
                                                     />
@@ -255,7 +245,6 @@ export function KineticBackground() {
                                 <button
                                     type="button"
                                     onClick={(e) => {
-                                        e.preventDefault();
                                         e.stopPropagation();
                                         openUserCenter();
                                     }}
@@ -269,16 +258,13 @@ export function KineticBackground() {
                             <>
                                 <div className="flex flex-col items-center justify-center w-full group/avatar mb-4">
                                     <div className="relative h-14 w-14 sm:h-20 sm:w-20 flex items-center justify-center">
-                                        {/* 装饰性极细圆环 - 模拟精密仪器的精致感 */}
                                         <div className="absolute inset-0 rounded-full border border-brand-charcoal/5 scale-[1.15] sm:scale-125 group-hover/avatar:scale-[1.2] sm:group-hover/avatar:scale-150 transition-transform duration-1000 ease-out" />
                                         <div className="absolute inset-[2px] sm:inset-4 rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:group-hover/avatar:scale-90" />
-
-                                        {/* 主图标容器 - 极简白润质感 */}
                                         <div className="relative h-10 w-10 sm:h-16 sm:w-16 rounded-full bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/60 transition-all duration-500 overflow-hidden">
                                             <div className="relative h-5 w-5 sm:h-7 sm:w-7 opacity-50">
                                                 <Image
                                                     src="/images/profile-icon.svg"
-                                                    alt="User Profile"
+                                                    alt="用户头像"
                                                     fill
                                                     className="object-contain"
                                                 />

@@ -371,8 +371,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       }
                     }}
                   >
-                    {/* 桌面端 & iPad Air/Pro (2行) - 字号提升至 22px */}
-                    <h1 className="title hidden min-[820px]:block text-[22px] lg:text-2xl font-light leading-[2.2] tracking-[0.25em] text-brand-charcoal">
+                    {/* 桌面端 & iPad Air/Pro (2行) */}
+                    <h1 className="title hidden min-[820px]:block text-xl lg:text-2xl font-light leading-[2.2] tracking-[0.25em] text-brand-charcoal">
                       {[
                         "海豚的肌肤，拥有每两小时自我更新的神奇能力，",
                         "这种「逆转时光」的动物本能，是我们灵感的来源。"
@@ -394,7 +394,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       ))}
                     </h1>
 
-                    {/* 移动端 & iPad mini (4行) - 字号从 base 提升至 lg */}
+                    {/* 移动端 & iPad mini (4行) */}
                     <h1 className="title block min-[820px]:hidden text-lg font-light leading-[2.1] text-brand-charcoal">
                       {[
                         "海豚的肌肤，拥有每两小时",
@@ -475,7 +475,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       <p className="text-[10px] sm:text-[11px] font-light tracking-widest text-brand-charcoal relative z-10 leading-tight">
                         &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                       </p>
-                      <div className="flex items-center justify-center gap-2 sm:gap-4 text-[9px] sm:text-[10px] font-light tracking-normal sm:tracking-widest text-brand-charcoal whitespace-nowrap flex-nowrap leading-tight">
+                      <div className="flex items-center justify-center gap-2 sm:gap-4 text-[10px] sm:text-[10px] font-light tracking-normal sm:tracking-widest text-brand-charcoal whitespace-nowrap flex-nowrap leading-tight">
                         <Link href="https://beian.miit.gov.cn/" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center">
                           沪ICP备2026014764号-1
                         </Link>

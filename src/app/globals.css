@@ -550,8 +550,6 @@
 
 /* 品牌文案 */
 .home-container .title {
-  font-size: 1.5rem;
-  /* 桌面端保持原始字号，不影响 PC */
   font-weight: 300;
   line-height: 1.6;
   letter-spacing: 0.1em;
@@ -986,9 +984,9 @@
 
 .kinetic-container {
   position: absolute;
-  top: 50%;
+  top: 52%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -52%);
   width: 75vw;
   max-width: 950px;
   display: grid;
@@ -1109,57 +1107,11 @@
       transparent 100%);
 }
 
-/* 装饰小圆点 */
-.kinetic-cell::after {
-  content: "";
-  display: none;
-  /* position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 10px;
-  height: 10px;
-  background: var(--kinetic-accent);
-  border-radius: 50%;
-  opacity: 0.3;
-  transition:
-    transform 0.4s var(--kinetic-ease),
-    opacity 0.4s ease,
-    box-shadow 0.4s ease;
-  z-index: 5; */
-}
-
-/* 悬停时装饰点发光 */
-.kinetic-cell:not(.no-hover-effect):hover::after {
-  opacity: 1;
-  transform: scale(1.5);
-  box-shadow: 0 0 20px var(--kinetic-accent), 0 0 40px var(--kinetic-accent);
-}
-
 /* ========== 图片卡片样式 ========== */
 
 .kinetic-image-cell {
   padding: 0 !important;
   background: transparent;
-}
-
-/* 图片卡片悬停时的渐变遮罩 */
-.kinetic-image-cell .kinetic-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg,
-      transparent 0%,
-      transparent 50%,
-      rgba(51, 51, 51, 0.8) 100%);
-  /* opacity: 0; */
-  opacity: 1;
-  /* Permanently visible */
-  transition: opacity 0.5s var(--kinetic-ease);
-  z-index: 2;
-  pointer-events: none;
-}
-
-.kinetic-image-cell:not(.no-hover-effect):hover .kinetic-overlay {
-  opacity: 1;
 }
 
 .kinetic-cell-image {
@@ -1187,30 +1139,6 @@
   justify-content: center;
   border: none;
   overflow: hidden;
-}
-
-/* 文字卡片背景光晕 */
-.kinetic-text-cell .kinetic-text-glow {
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at center,
-      rgba(85, 85, 85, 0.3) 0%,
-      transparent 50%);
-  opacity: 0;
-  transition: opacity 0.6s ease;
-  pointer-events: none;
-}
-
-.kinetic-text-cell:not(.no-hover-effect):hover {
-  background: #1a1a1a;
-  border-color: var(--kinetic-accent);
-}
-
-.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-text-glow {
-  opacity: 1;
 }
 
 .kinetic-name {
@@ -1347,7 +1275,7 @@
   /* iPad Air (820px), Pro (834px+) 恢复展示 PC 的全量卡片 */
   @media (min-width: 820px) {
     .kinetic-container {
-      top: 50%;
+  top: 53%;
     }
 
     .kinetic-cell-steps,
@@ -1390,7 +1318,7 @@
       width: min(80vw, 36vh);
       max-width: 400px;
       gap: 14px;
-      top: 53%;
+  top: 55%;
     }
 
     .kinetic-cell-steps,
@@ -1510,8 +1438,7 @@
 /* ========== 自定义彩色卡片样式 ========== */
 
 .kinetic-cell-yellow {
-  /* 微调偏米色 */
-  background: linear-gradient(135deg, rgba(245, 240, 226, 0.75) 0%, rgba(245, 240, 226, 0.55) 100%);
+  background: linear-gradient(135deg, rgba(228, 223, 217, 0.80) 0%, rgba(218, 212, 205, 0.65) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1521,14 +1448,11 @@
 }
 
 .kinetic-cell-yellow .kinetic-name {
-  color: #ffffff;
-  text-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.25),
-    0 0 1px rgba(0, 0, 0, 0.15);
+  color: #00263E;
 }
 
 .kinetic-cell-yellow .kinetic-desc {
-  color: rgba(0, 38, 62, 0.5);
+  color: #4A6272;
 }
 
 .kinetic-cell-yellow .kinetic-description {
@@ -1541,8 +1465,7 @@
 }
 
 .kinetic-cell-orange {
-  /* CMYK 4 5 10 0 → #F5F2E6 */
-  background: linear-gradient(135deg, rgba(245, 242, 230, 0.55) 0%, rgba(245, 242, 230, 0.35) 100%);
+  background: linear-gradient(135deg, rgba(228, 223, 217, 0.80) 0%, rgba(218, 212, 205, 0.65) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
