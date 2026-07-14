@@ -499,7 +499,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                           "relative flex flex-1 items-center justify-center text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
                           activeTab === 'description'
                             ? "text-[#00263E]"
-                            : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                            : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
                         )}
                         style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                       >
@@ -521,7 +521,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                             "relative flex flex-1 items-center justify-center text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
                             activeTab === 'ingredients'
                               ? "text-[#00263E]"
-                              : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                              : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
                           )}
                           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                         >
@@ -544,7 +544,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                             "relative flex flex-1 items-center justify-center text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
                             activeTab === 'usage'
                               ? "text-[#00263E]"
-                              : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                              : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
                           )}
                           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                         >

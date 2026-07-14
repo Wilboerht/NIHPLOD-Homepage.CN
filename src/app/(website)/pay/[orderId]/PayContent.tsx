@@ -43,7 +43,7 @@ export default function PayContent({ orderId }: PayContentProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6">
       <Loader2 className="w-8 h-8 text-[#A69374] animate-spin mb-4" />
-      <p className="text-[#8B8579]">正在加载支付...</p>
+      <p className="text-[#4A6272]">正在加载支付...</p>
     </div>
   );
 }

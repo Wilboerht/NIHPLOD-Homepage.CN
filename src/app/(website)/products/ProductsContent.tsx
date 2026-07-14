@@ -465,7 +465,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         <button
           type="button"
           onClick={() => setIsCategoryMenuOpen(true)}
-          className="flex items-center gap-0.5 text-[13px] font-normal tracking-wide text-[#7B726C] transition-all active:scale-95"
+          className="flex items-center gap-0.5 text-[13px] font-normal tracking-wide text-[#4A6272] transition-all active:scale-95"
           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
         >
           全部产品

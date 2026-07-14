@@ -269,7 +269,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
             {/* 底部版权信息 - 固定在卡片底部 */}
               <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12 max-lg:border-0 max-lg:pt-4">
-                <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#7B726C]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
+                <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#4A6272]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
               </div>
@@ -663,7 +663,7 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                 {job.location}
               </span>
               {job.salary && (
-                <span className="flex items-center gap-1 text-xs font-medium text-[#8B7355]">
+                <span className="flex items-center gap-1 text-xs font-medium text-[#4A6272]">
                   <Clock className="h-3.5 w-3.5" />
                   {job.salary}
                 </span>
@@ -675,14 +675,14 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
 
           <div className="border-b border-slate-100 px-10 pt-8 pb-8">
             <div className="mb-5">
-              <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">职位描述</h4>
+              <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#4A6272]">职位描述</h4>
               <div
                 className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#00263E] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeJobHtml(job.description)) }}
               />
             </div>
             <div>
-              <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">任职要求</h4>
+              <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#4A6272]">任职要求</h4>
               <div
                 className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#00263E] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeJobHtml(job.requirements)) }}
@@ -691,7 +691,7 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
 
             {(job.longitude || job.location) && (
               <div className="mt-8">
-                <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">工作地点</h4>
+                <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#4A6272]">工作地点</h4>
                 <div id={`map-${job.id}`} className="relative h-48 w-full rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
                   <div className="absolute inset-0 z-0 flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-[#00263E]/20" />
@@ -702,8 +702,8 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
           </div>
 
           <div className="px-10 pb-10 pt-8">
-            <h4 className="mb-6 flex items-center gap-2 text-base font-bold tracking-widest text-[#8B7355]">
-              <Send className="h-4 w-4 text-[#8B7355]" />
+            <h4 className="mb-6 flex items-center gap-2 text-base font-bold tracking-widest text-[#4A6272]">
+              <Send className="h-4 w-4 text-[#4A6272]" />
               投递简历
             </h4>
 
@@ -741,7 +741,7 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                   <div className="flex items-center justify-between">
                     <span className="text-[13px] font-medium text-slate-500">简历 <span className="text-red-500">*</span></span>
                     <span className="group/tooltip relative cursor-help">
-                      <HelpCircle className="h-4 w-4 text-slate-300 transition-colors group-hover/tooltip:text-[#8B7355]" />
+                      <HelpCircle className="h-4 w-4 text-slate-300 transition-colors group-hover/tooltip:text-[#4A6272]" />
                       <span className="pointer-events-none absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-slate-100 bg-white px-3 py-2 text-xs text-slate-700 opacity-0 shadow-lg transition-opacity group-hover/tooltip:opacity-100">
                         简历命名格式：【应聘】职位名称 - 姓名
                       </span>
@@ -766,7 +766,7 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                   >
                     {resumeFile ? (
                       <>
-                        <FileText className="h-4 w-4 text-[#8B7355]" />
+                        <FileText className="h-4 w-4 text-[#4A6272]" />
                         {resumeFile.name}
                       </>
                     ) : (
@@ -791,7 +791,7 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                     "flex w-full items-center justify-center gap-2 rounded-xl border py-3.5 text-[13px] font-bold tracking-widest transition-all duration-300",
                     isSubmitting || !resumeFile
                       ? "border-slate-200 bg-slate-100 text-slate-400"
-                      : "border-[#8B7355]/40 bg-[#8B7355]/10 text-[#8B7355] hover:border-[#8B7355]/70 hover:bg-[#8B7355]/20"
+                      : "border-[#4A6272]/40 bg-[#4A6272]/10 text-[#4A6272] hover:border-[#4A6272]/70 hover:bg-[#4A6272]/20"
                   )}
                 >
                   {isSubmitting ? (
@@ -811,18 +811,18 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="absolute inset-x-[-8px] inset-y-[-8px] z-50 flex flex-col items-center justify-center rounded-[28px] bg-white p-6 text-center"
                   >
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#8B7355]/10">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#4A6272]/10">
                       <m.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
                       >
-                        <svg className="h-8 w-8 text-[#8B7355]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="h-8 w-8 text-[#4A6272]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
                       </m.div>
                     </div>
-                    <h3 className="mb-2 text-lg font-bold tracking-widest text-[#8B7355]">投递成功</h3>
+                    <h3 className="mb-2 text-lg font-bold tracking-widest text-[#4A6272]">投递成功</h3>
                     <p className="text-sm text-slate-500">
                       简历已送达，我们会尽快与您联系
                     </p>

@@ -382,7 +382,7 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#8B7355]/40 bg-[#8B7355]/10 py-3.5 text-[13px] font-bold tracking-widest text-[#8B7355] transition-all duration-300 hover:border-[#8B7355]/70 hover:bg-[#8B7355]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#4A6272]/40 bg-[#4A6272]/10 py-3.5 text-[13px] font-bold tracking-widest text-[#4A6272] transition-all duration-300 hover:border-[#4A6272]/70 hover:bg-[#4A6272]/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isLoading ? (
                       <>

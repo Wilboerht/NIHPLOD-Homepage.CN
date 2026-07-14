@@ -112,10 +112,10 @@ function MobileFooterMenu({ links, onExploreClick }: { links: { href: string; la
                       }}
                       className="group flex flex-col items-center gap-2 mb-4"
                     >
-                      <span className="text-2xl font-serif tracking-[0.3em] text-[#8B7355] transition-all group-hover:scale-105">
+                      <span className="text-2xl font-serif tracking-[0.3em] text-[#4A6272] transition-all group-hover:scale-105">
                         探索更多
                       </span>
-                      <div className="h-px w-12 bg-[#8B7355]/30 group-hover:w-20 transition-all duration-500" />
+                      <div className="h-px w-12 bg-[#4A6272]/30 group-hover:w-20 transition-all duration-500" />
                     </button>
                   </m.div>
 

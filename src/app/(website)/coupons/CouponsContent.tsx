@@ -125,8 +125,8 @@ export function CouponsContent() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#A69374]/10 mb-4">
             <Gift className="w-7 h-7 text-[#A69374]" />
           </div>
-          <h1 className="text-2xl font-bold text-[#5C5347] mb-2">领券中心</h1>
-          <p className="text-sm text-[#A69B8C]">领取优惠券，享受更多购物优惠</p>
+          <h1 className="text-2xl font-bold text-[#00263E] mb-2">领券中心</h1>
+          <p className="text-sm text-[#4A6272]">领取优惠券，享受更多购物优惠</p>
         </div>
 
         {loading ? (
@@ -134,7 +134,7 @@ export function CouponsContent() {
             <Loader2 className="w-8 h-8 text-[#A69374] animate-spin" />
           </div>
         ) : coupons.length === 0 ? (
-          <div className="text-center py-20 text-[#A69B8C]">
+          <div className="text-center py-20 text-[#4A6272]">
             <Ticket className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p>暂无可用优惠券</p>
           </div>
@@ -157,7 +157,7 @@ export function CouponsContent() {
                   {/* 左侧面值 */}
                   <div className="shrink-0 w-20 text-center">
                     <div className="text-2xl font-bold text-[#A69374]">{getValueText(coupon)}</div>
-                    <div className="text-[10px] text-[#A69B8C] mt-0.5">
+                    <div className="text-[10px] text-[#4A6272] mt-0.5">
                       {Number(coupon.minAmount) > 0 ? `满¥${coupon.minAmount}` : "无门槛"}
                     </div>
                   </div>
@@ -167,8 +167,8 @@ export function CouponsContent() {
 
                   {/* 右侧信息 */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-[#5C5347] text-sm mb-1 truncate">{coupon.name}</h3>
-                    <div className="flex items-center gap-1 text-xs text-[#A69B8C] mb-2">
+                    <h3 className="font-medium text-[#00263E] text-sm mb-1 truncate">{coupon.name}</h3>
+                    <div className="flex items-center gap-1 text-xs text-[#4A6272] mb-2">
                       <Clock className="w-3 h-3" />
                       {getValidityText(coupon)}
                     </div>
@@ -193,7 +193,7 @@ export function CouponsContent() {
                         ? "bg-green-50 text-green-700 cursor-default"
                         : disabled
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-[#A69374] text-white hover:bg-[#8B7355]"
+                        : "bg-[#A69374] text-white hover:bg-[#4A6272]"
                     }`}
                   >
                     {acquiredIds.has(coupon.id) ? (

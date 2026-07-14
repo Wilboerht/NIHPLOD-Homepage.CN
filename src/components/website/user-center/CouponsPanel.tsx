@@ -88,7 +88,7 @@ export function CouponsPanel() {
     <div className="h-full overflow-y-auto px-6 py-6 md:px-10 md:py-8">
       <div className="flex items-center gap-3 mb-6">
         <Ticket className="w-5 h-5 text-[#A69374]" strokeWidth={1.5} />
-        <h2 className="text-lg font-medium text-[#5C5347]">我的优惠券</h2>
+        <h2 className="text-lg font-medium text-[#00263E]">我的优惠券</h2>
       </div>
 
       {/* 筛选 */}
@@ -105,7 +105,7 @@ export function CouponsPanel() {
             className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
               filter === f.key
                 ? "bg-[#A69374] text-white"
-                : "bg-[#FAF5EA] text-[#8B8579] hover:bg-[#FAF5EA]"
+                : "bg-[#FAF5EA] text-[#4A6272] hover:bg-[#FAF5EA]"
             }`}
           >
             {f.label}
@@ -118,7 +118,7 @@ export function CouponsPanel() {
           <Loader2 className="w-6 h-6 text-[#A69374] animate-spin" />
         </div>
       ) : coupons.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-[#A69B8C]">
+        <div className="flex flex-col items-center justify-center py-16 text-[#4A6272]">
           <Ticket className="w-10 h-10 mb-3 opacity-30" strokeWidth={1.5} />
           <p className="text-sm">暂无优惠券</p>
         </div>
@@ -138,11 +138,11 @@ export function CouponsPanel() {
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-[#5C5347] truncate">
+                    <span className="font-medium text-[#00263E] truncate">
                       {uc.coupon.name}
                     </span>
                     {uc.coupon.code && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FAF5EA] text-[#8B8579] font-mono">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FAF5EA] text-[#4A6272] font-mono">
                         {uc.coupon.code}
                       </span>
                     )}
@@ -151,13 +151,13 @@ export function CouponsPanel() {
                     <span className="text-xl font-bold text-[#A69374]">
                       {getCouponValueText(uc)}
                     </span>
-                    <span className="text-xs text-[#A69B8C]">
+                    <span className="text-xs text-[#4A6272]">
                       {Number(uc.coupon.minAmount) > 0
                         ? `满 ¥${uc.coupon.minAmount} 可用`
                         : "无门槛"}
                     </span>
                   </div>
-                  <div className="text-xs text-[#A69B8C]">
+                  <div className="text-xs text-[#4A6272]">
                     {uc.displayStatus === "USED" && uc.usedAt
                       ? `使用时间：${new Date(uc.usedAt).toLocaleDateString("zh-CN")}`
                       : `有效期至：${new Date(uc.expiresAt).toLocaleDateString("zh-CN")}`}

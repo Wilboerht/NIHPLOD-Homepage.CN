@@ -1241,10 +1241,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               >
                                 <div className="relative z-10 flex flex-col">
                                   <div className="mb-4">
-                                    <module.icon className="w-8 h-8 text-[#8B7355]" strokeWidth={1} />
+                                    <module.icon className="w-8 h-8 text-[#4A6272]" strokeWidth={1} />
                                   </div>
                                   <span className="text-lg font-medium text-[#00263E] tracking-widest">{module.label}</span>
-                                  <div className="mt-3 h-[1px] w-8 bg-[#8B7355]/20" />
+                                  <div className="mt-3 h-[1px] w-8 bg-[#4A6272]/20" />
                                 </div>
                               </m.button>
                             ))}
@@ -1268,7 +1268,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 {modules.find(m => m.id === selectedModule)?.label}
                               </h2>
                               <div className="mt-2 flex justify-center">
-                                <div className="h-0.5 w-8 bg-[#8B7355]/20 rounded-full" />
+                                <div className="h-0.5 w-8 bg-[#4A6272]/20 rounded-full" />
                               </div>
                             </div>
 
@@ -1287,7 +1287,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   className="group relative flex items-center bg-white overflow-hidden rounded-2xl px-5 py-5 shadow-[0_4px_20px_-4px_rgba(0,38,62,0.03)] border border-[#00263E]/5 active:scale-[0.98] transition-all duration-300"
                                 >
                                   {/* 左侧装饰线 */}
-                                  <div className="w-[3px] h-10 bg-[#8B7355]/20 rounded-full mr-4 group-active:bg-[#8B7355]/40 transition-colors shrink-0" />
+                                  <div className="w-[3px] h-10 bg-[#4A6272]/20 rounded-full mr-4 group-active:bg-[#4A6272]/40 transition-colors shrink-0" />
 
                                   {/* 中间内容：标题 + 时长 */}
                                   <div className="flex-1 flex flex-col gap-1.5 text-left min-w-0">
@@ -1295,15 +1295,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       {scheme.name}
                                     </h3>
                                     <div className="flex items-center gap-1.5">
-                                      <Clock className="w-3 h-3 text-[#8B7355]/60" />
-                                      <span className="text-[11px] text-[#8B7355]/80 font-medium">
+                                      <Clock className="w-3 h-3 text-[#4A6272]/60" />
+                                      <span className="text-[11px] text-[#4A6272]/80 font-medium">
                                         {scheme.totalDuration || "15分钟"}
                                       </span>
                                     </div>
                                   </div>
 
                                   {/* 右侧箭头 */}
-                                  <ChevronRight className="w-5 h-5 text-[#8B7355]/30 group-active:text-[#8B7355] transition-colors shrink-0 ml-3" />
+                                  <ChevronRight className="w-5 h-5 text-[#4A6272]/30 group-active:text-[#4A6272] transition-colors shrink-0 ml-3" />
                                 </button>
                               ))}
                             </div>
@@ -1314,7 +1314,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 href="https://advisor.nihplod.cn"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-sm text-[#8B7355] font-light tracking-wide leading-relaxed hover:underline active:opacity-70 transition-opacity"
+                                className="inline-flex items-center gap-1 text-sm text-[#4A6272] font-light tracking-wide leading-relaxed hover:underline active:opacity-70 transition-opacity"
                               >
                                 精简护肤，从了解自己的肌肤开始 <span>→</span>
                               </a>
@@ -1453,12 +1453,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 <div className="mt-8 flex items-center justify-center gap-6">
                                   <div className="flex flex-col items-center">
-                                    <span className="text-[10px] uppercase tracking-widest text-[#8B7355]/60 mb-1">预计时长</span>
+                                    <span className="text-[10px] uppercase tracking-widest text-[#4A6272]/60 mb-1">预计时长</span>
                                     <span className="text-[14px] font-medium text-[#00263E]">{selectedScheme.totalDuration?.replace("min", "分钟") || "15-20 分钟"}</span>
                                   </div>
                                   <div className="w-px h-6 bg-[#00263E]/5" />
                                   <div className="flex flex-col items-center">
-                                    <span className="text-[10px] uppercase tracking-widest text-[#8B7355]/60 mb-1">护理阶段</span>
+                                    <span className="text-[10px] uppercase tracking-widest text-[#4A6272]/60 mb-1">护理阶段</span>
                                     <span className="text-[14px] font-medium text-[#00263E]">{currentSteps.length} 个核心步骤</span>
                                   </div>
                                 </div>
@@ -1471,7 +1471,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           ) : (
                             <div className="mb-4">
                               <h2 className="text-3xl font-medium text-[#00263E] tracking-widest">{selectedScheme.name}</h2>
-                              <span className="inline-block mt-2 text-[10px] uppercase font-serif tracking-[0.2em] text-[#8B7355]">{selectedScheme.nameEn}</span>
+                              <span className="inline-block mt-2 text-[10px] uppercase font-serif tracking-[0.2em] text-[#4A6272]">{selectedScheme.nameEn}</span>
                             </div>
                           )}
 
@@ -1502,18 +1502,18 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {/* Description Content */}
                               <div className="px-2">
                                 <p className="text-sm font-light text-[#00263E]/80 leading-[1.8] mb-8 relative">
-                                  <span className="absolute -left-3 -top-2 text-3xl font-serif text-[#8B7355]/20">"</span>
+                                  <span className="absolute -left-3 -top-2 text-3xl font-serif text-[#4A6272]/20">"</span>
                                   {selectedScheme.desc}
-                                  <span className="absolute -right-1 bottom-0 translate-y-1 text-3xl font-serif text-[#8B7355]/20">"</span>
+                                  <span className="absolute -right-1 bottom-0 translate-y-1 text-3xl font-serif text-[#4A6272]/20">"</span>
                                 </p>
 
                                 {/* Products Meta */}
                                 <div className="flex flex-col gap-3 py-4 border-t border-[#00263E]/10">
-                                  <span className="text-[10px] uppercase tracking-widest text-[#8B7355]/80 font-medium">核心单品搭配</span>
+                                  <span className="text-[10px] uppercase tracking-widest text-[#4A6272]/80 font-medium">核心单品搭配</span>
                                   <div className="flex flex-wrap gap-2">
                                     {selectedScheme.products?.split('、').map((prod, i) => (
                                       <div key={i} className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-md border border-[#00263E]/5 shadow-sm">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B7355]/40" />
+                                        <div className="w-1.5 h-1.5 rounded-full bg-[#4A6272]/40" />
                                         <span className="text-xs text-[#00263E]/90">{prod}</span>
                                       </div>
                                     ))}
@@ -1587,9 +1587,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {/* 底部 Logo 栏 - 无限滚动 */}
                               <div className="pt-6 border-t border-[#00263E]/10 pb-4 overflow-hidden relative -mx-5 px-5">
                                 {/* 左侧渐变遮罩 */}
-                                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#efede6] to-transparent z-10 pointer-events-none" />
+                                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#FAF5EA] to-transparent z-10 pointer-events-none" />
                                 {/* 右侧渐变遮罩 */}
-                                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#efede6] to-transparent z-10 pointer-events-none" />
+                                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#FAF5EA] to-transparent z-10 pointer-events-none" />
 
                                 {/* 滚动容器 */}
                                 <div className="flex items-center animate-marquee w-max">
@@ -1658,7 +1658,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* 底部仪式感收尾 & 认证 */}
                           <div className="mt-4 sm:mt-12 pb-10 flex flex-col items-center text-center">
-                            <div className="h-px w-12 bg-[#8B7355]/20 mb-5 sm:mb-10" />
+                            <div className="h-px w-12 bg-[#4A6272]/20 mb-5 sm:mb-10" />
                             {selectedModule !== 'portable' && (
                               <div className="flex flex-col items-center gap-7 sm:gap-14 mb-4">
                                 {/* 核心优势 */}
@@ -1666,8 +1666,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">核心优势</span>
                                   <div className="flex flex-wrap justify-center gap-2 px-4 w-full">
                                     {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
-                                      <div key={tag} className="flex items-center gap-1.5 px-3 py-1 bg-[#8B7355]/5 rounded-full border border-[#8B7355]/10">
-                                        <span className="text-[9px] text-[#8B7355]/60">✦</span>
+                                      <div key={tag} className="flex items-center gap-1.5 px-3 py-1 bg-[#4A6272]/5 rounded-full border border-[#4A6272]/10">
+                                        <span className="text-[9px] text-[#4A6272]/60">✦</span>
                                         <span className="text-[11px] tracking-widest text-[#00263E]/70 font-light">
                                           {tag}
                                         </span>
@@ -1685,9 +1685,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       <span className="text-[11px] uppercase tracking-[0.2em] text-[#00263E]/40 font-medium">特殊时期支持</span>
                                       <div className={cn(
                                         "px-4 py-2 rounded-lg border inline-flex items-center gap-2",
-                                        isRestricted ? "border-orange-900/10 bg-orange-50/30" : "border-[#8B7355]/10 bg-[#8B7355]/[0.03]"
+                                        isRestricted ? "border-orange-900/10 bg-orange-50/30" : "border-[#4A6272]/10 bg-[#4A6272]/[0.03]"
                                       )}>
-                                        <Info className={cn("w-3.5 h-3.5", isRestricted ? "text-orange-900/40" : "text-[#8B7355]/40")} />
+                                        <Info className={cn("w-3.5 h-3.5", isRestricted ? "text-orange-900/40" : "text-[#4A6272]/40")} />
                                         <span className={cn(
                                           "text-[11px] tracking-widest font-light",
                                           isRestricted ? "text-orange-900/70" : "text-[#00263E]/60"
@@ -1710,11 +1710,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* 专业门店入驻提醒 - 特殊移动端位置 */}
                                 {selectedModule === "professional" && (
-                                  <div className="mt-2 flex items-start bg-[#8B7355]/5 p-4 rounded-xl border border-[#8B7355]/10 text-left">
-                                    <Info className="w-4 h-4 mt-0.5 mr-2 shrink-0 text-[#8B7355]/60" />
+                                  <div className="mt-2 flex items-start bg-[#4A6272]/5 p-4 rounded-xl border border-[#4A6272]/10 text-left">
+                                    <Info className="w-4 h-4 mt-0.5 mr-2 shrink-0 text-[#4A6272]/60" />
                                     <p className="text-[12px] text-[#00263E]/70 tracking-wide font-light leading-[1.6]">
                                       找不到您所在城市的门店？银卡级别以上会员可
-                                      <span onClick={() => openContact("application")} className="mx-1 font-medium underline underline-offset-2 decoration-[#8B7355]/40 text-[#8B7355] cursor-pointer active:opacity-70">
+                                      <span onClick={() => openContact("application")} className="mx-1 font-medium underline underline-offset-2 decoration-[#4A6272]/40 text-[#4A6272] cursor-pointer active:opacity-70">
                                         申请入驻
                                       </span>
                                       您所在的城市。
@@ -1731,7 +1731,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               }}
                               className={cn(
                                 "mt-6 sm:mt-8 w-full max-w-[280px] rounded-full py-3.5 sm:py-4 text-[13px] font-medium tracking-[0.2em] transition-all duration-300",
-                                "bg-brand-gold/15 border border-[#8b7355]/30 text-[#8B7355] backdrop-blur-[4px] shadow-[0_4px_15px_-3px_rgba(139,115,85,0.1)]",
+                                "bg-brand-gold/15 border border-[#4A6272]/30 text-[#4A6272] backdrop-blur-[4px] shadow-[0_4px_15px_-3px_rgba(139,115,85,0.1)]",
                                 "active:scale-[0.97] active:bg-brand-gold/25"
                               )}
                             >
@@ -1851,7 +1851,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 <div className="relative z-10 flex w-full flex-col items-center justify-center p-8 text-center text-[#00263e]">
                                   {/* 模块图标 */}
                                   <div className="mb-8 transition-transform duration-500 group-hover:scale-110">
-                                    <module.icon className="w-12 h-12 text-[#8B7355] group-hover:text-[#B5A48F]" strokeWidth={1} />
+                                    <module.icon className="w-12 h-12 text-[#4A6272] group-hover:text-[#B5A48F]" strokeWidth={1} />
                                   </div>
 
                                   {/* 标题 */}
@@ -1865,7 +1865,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   </p>
 
                                   {/* 装饰线 - hover时变宽 */}
-                                  <div className="mt-8 h-[1px] w-12 bg-[#8B7355]/20 transition-all duration-700 ease-out group-hover:w-20 group-hover:bg-[#8B7355]/40" />
+                                  <div className="mt-8 h-[1px] w-12 bg-[#4A6272]/20 transition-all duration-700 ease-out group-hover:w-20 group-hover:bg-[#4A6272]/40" />
                                 </div>
                               </m.button>
                             ))}

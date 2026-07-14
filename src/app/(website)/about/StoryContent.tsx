@@ -229,7 +229,7 @@ export function StoryContent() {
                                 "text-[13px] font-normal leading-[20px] whitespace-nowrap transition-all duration-300",
                                 isActive
                                   ? "rounded-full bg-white px-2 py-[3px] text-[#00263E] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-                                  : "text-[#7B726C]/60 hover:text-[#7B726C]/80"
+                                  : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
                               )}
                             >
                               {item.label}

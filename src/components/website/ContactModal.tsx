@@ -341,7 +341,7 @@ export function ContactModal() {
                                                     const selected = messageTypes.find(t => t.value === formData.type);
                                                     if (selected) {
                                                         const Icon = selected.icon;
-                                                        return <Icon className="h-4 w-4 text-[#8B7355]" />;
+                                                        return <Icon className="h-4 w-4 text-[#4A6272]" />;
                                                     }
                                                     return null;
                                                 })()}
@@ -381,18 +381,18 @@ export function ContactModal() {
                                                                 className={cn(
                                                                     "flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-all",
                                                                     isSelected
-                                                                        ? "bg-[#8B7355]/5 text-[#8B7355]"
+                                                                        ? "bg-[#4A6272]/5 text-[#4A6272]"
                                                                         : "text-slate-600 hover:bg-slate-50",
                                                                     index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-slate-50"
                                                                 )}
                                                             >
                                                                 <Icon className={cn(
                                                                     "h-4 w-4 transition-colors",
-                                                                    isSelected ? "text-[#8B7355]" : "text-slate-400"
+                                                                    isSelected ? "text-[#4A6272]" : "text-slate-400"
                                                                 )} />
                                                                 <span>{type.label}</span>
                                                                 {isSelected && (
-                                                                    <CheckCircle className="ml-auto h-4 w-4 text-[#8B7355]" />
+                                                                    <CheckCircle className="ml-auto h-4 w-4 text-[#4A6272]" />
                                                                 )}
                                                             </button>
                                                         );
@@ -498,7 +498,7 @@ export function ContactModal() {
                                                 "flex w-full items-center justify-center gap-2 rounded-xl border py-3.5 text-[13px] font-bold tracking-widest transition-all duration-300",
                                                 status === "loading"
                                                     ? "border-slate-200 bg-slate-100 text-slate-400"
-                                                    : "border-[#8B7355]/40 bg-[#8B7355]/10 text-[#8B7355] hover:border-[#8B7355]/70 hover:bg-[#8B7355]/20"
+                                                    : "border-[#4A6272]/40 bg-[#4A6272]/10 text-[#4A6272] hover:border-[#4A6272]/70 hover:bg-[#4A6272]/20"
                                             )}
                                         >
                                             {status === "loading" ? (
@@ -517,18 +517,18 @@ export function ContactModal() {
                                                     exit={{ opacity: 0, scale: 0.95 }}
                                                     className="absolute inset-x-[-8px] inset-y-[-8px] z-50 flex flex-col items-center justify-center rounded-[28px] bg-white p-6 text-center"
                                                 >
-                                                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#8B7355]/10">
+                                                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#4A6272]/10">
                                                         <m.div
                                                             initial={{ scale: 0 }}
                                                             animate={{ scale: 1 }}
                                                             transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
                                                         >
-                                                            <svg className="h-8 w-8 text-[#8B7355]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <svg className="h-8 w-8 text-[#4A6272]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                                             </svg>
                                                         </m.div>
                                                     </div>
-                                                    <h3 className="mb-2 text-lg font-bold tracking-widest text-[#8B7355]">提交成功</h3>
+                                                    <h3 className="mb-2 text-lg font-bold tracking-widest text-[#4A6272]">提交成功</h3>
                                                     <p className="text-sm text-slate-500">
                                                         留言已送达，我们会尽快与您联系
                                                     </p>
@@ -564,18 +564,18 @@ export function ContactModal() {
 
                                 {status === "success" ? (
                                     <div className="flex flex-col items-center justify-center flex-1">
-                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#8B7355]/10">
+                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#4A6272]/10">
                                             <m.div
                                                 initial={{ scale: 0 }}
                                                 animate={{ scale: 1 }}
                                                 transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
                                             >
-                                                <svg className="h-8 w-8 text-[#8B7355]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg className="h-8 w-8 text-[#4A6272]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                                 </svg>
                                             </m.div>
                                         </div>
-                                        <h3 className="mb-2 text-lg font-bold tracking-widest text-[#8B7355]">提交成功</h3>
+                                        <h3 className="mb-2 text-lg font-bold tracking-widest text-[#4A6272]">提交成功</h3>
                                         <p className="text-sm text-slate-500">
                                             留言已送达，我们会尽快与您联系
                                         </p>
@@ -728,15 +728,15 @@ export function ContactModal() {
                                                                     >
                                                                         <div className={cn(
                                                                             "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                                                                            isSelected ? "bg-[#8B7355]/10" : "bg-[#FAF5EA]"
+                                                                            isSelected ? "bg-[#4A6272]/10" : "bg-[#FAF5EA]"
                                                                         )}>
                                                                             <Icon className={cn(
                                                                                 "h-[18px] w-[18px]",
-                                                                                isSelected ? "text-[#8B7355]" : "text-[#00263E]/50"
+                                                                                isSelected ? "text-[#4A6272]" : "text-[#00263E]/50"
                                                                             )} />
                                                                         </div>
                                                                         <span className="flex-1 text-[15px] font-medium">{type.label}</span>
-                                                                        {isSelected && <CheckCircle className="h-5 w-5 text-[#8B7355]" />}
+                                                                        {isSelected && <CheckCircle className="h-5 w-5 text-[#4A6272]" />}
                                                                     </button>
                                                                 );
                                                             })}

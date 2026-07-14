@@ -281,7 +281,7 @@ export function FAQContent() {
                                             </p>
                                             <button
                                                 onClick={() => openContact("support")}
-                                                className="flex items-center gap-2 rounded-full bg-[#FFFFFF] px-7 py-3 text-[14px] lg:text-[16px] font-medium tracking-[0.2em] text-[#7B726C] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:bg-brand-gold/15 sm:hover:text-[#8B7355] sm:hover:border-[#8B7355]/30 sm:hover:backdrop-blur-md sm:hover:shadow-lg sm:active:scale-95"
+                                                className="flex items-center gap-2 rounded-full bg-[#FFFFFF] px-7 py-3 text-[14px] lg:text-[16px] font-medium tracking-[0.2em] text-[#4A6272] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:bg-brand-gold/15 sm:hover:text-[#4A6272] sm:hover:border-[#4A6272]/30 sm:hover:backdrop-blur-md sm:hover:shadow-lg sm:active:scale-95"
                                                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                                             >
                                                 <span>更多疑问</span>
