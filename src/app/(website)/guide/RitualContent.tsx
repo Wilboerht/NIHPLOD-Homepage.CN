@@ -1731,7 +1731,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               }}
                               className={cn(
                                 "mt-6 sm:mt-8 w-full max-w-[280px] rounded-full py-3.5 sm:py-4 text-[13px] font-medium tracking-[0.2em] transition-all duration-300",
-                                "bg-brand-gold/15 border border-[#4A6272]/30 text-[#4A6272] backdrop-blur-[4px] shadow-[0_4px_15px_-3px_rgba(139,115,85,0.1)]",
+                                "bg-brand-gold/15 border border-[#4A6272]/30 text-[#4A6272] backdrop-blur-[4px] shadow-[0_4px_15px_-3px_rgba(0,38,62,0.1)]",
                                 "active:scale-[0.97] active:bg-brand-gold/25"
                               )}
                             >
