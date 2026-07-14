@@ -1256,97 +1256,11 @@
   overflow: hidden;
 }
 
-/* 登录卡片背景动效 - 流体发光网格 */
-@keyframes loginBlob1 {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-
-  33% {
-    transform: translate(30px, -20px) scale(1.15);
-  }
-
-  66% {
-    transform: translate(-15px, 20px) scale(0.9);
-  }
-
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-@keyframes loginBlob2 {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-
-  33% {
-    transform: translate(-30px, 20px) scale(1.2);
-  }
-
-  66% {
-    transform: translate(25px, -15px) scale(0.85);
-  }
-
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-.kinetic-login-cell .kinetic-login-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-  border-radius: inherit;
-}
-
-.kinetic-login-cell .kinetic-login-bg::before,
-.kinetic-login-cell .kinetic-login-bg::after {
-  content: "";
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(28px);
-  z-index: 0;
-  opacity: 0.8;
-  transition: opacity 0.5s ease;
-}
-
-.kinetic-login-cell .kinetic-login-bg::before {
-  width: 140px;
-  height: 140px;
-  background: rgba(255, 255, 255, 0.7);
-  top: -20px;
-  left: -20px;
-  animation: loginBlob1 8s ease-in-out infinite alternate;
-}
-
-.kinetic-login-cell .kinetic-login-bg::after {
-  width: 120px;
-  height: 120px;
-  background: rgba(0, 38, 62, 0.25);
-  /* 淡淡的金色光晕 */
-  bottom: -20px;
-  right: -20px;
-  animation: loginBlob2 10s ease-in-out infinite alternate-reverse;
-}
-
 .kinetic-login-cell:not(.no-hover-effect):hover {
   background: #FAF5EA;
   box-shadow:
     18px 18px 0px #fff,
     0 25px 50px -12px rgba(255, 255, 255, 0.2);
-}
-
-.kinetic-login-cell:not(.no-hover-effect):hover .kinetic-login-bg::before {
-  animation-duration: 4s;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.kinetic-login-cell:not(.no-hover-effect):hover .kinetic-login-bg::after {
-  animation-duration: 5s;
-  background: rgba(0, 38, 62, 0.4);
 }
 
 /* 登录卡片标题 */
@@ -1596,8 +1510,8 @@
 /* ========== 自定义彩色卡片样式 ========== */
 
 .kinetic-cell-yellow {
-  /* CMYK 20 18 36 0 → #CCD1A3 */
-  background: linear-gradient(135deg, rgba(204, 209, 163, 0.55) 0%, rgba(204, 209, 163, 0.35) 100%);
+  /* 微调偏米色 */
+  background: linear-gradient(135deg, rgba(245, 240, 226, 0.75) 0%, rgba(245, 240, 226, 0.55) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1606,15 +1520,20 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-.kinetic-cell-yellow .kinetic-name,
-.kinetic-cell-yellow .kinetic-desc {
+.kinetic-cell-yellow .kinetic-name {
   color: #ffffff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.25),
+    0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.kinetic-cell-yellow .kinetic-desc {
+  color: rgba(0, 38, 62, 0.5);
 }
 
 .kinetic-cell-yellow .kinetic-description {
-  color: rgba(255, 255, 255, 0.7);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  color: #00263E;
+  text-shadow: none;
   font-size: 0.8rem;
   white-space: nowrap;
   letter-spacing: 0.5px;
@@ -1636,6 +1555,8 @@
 .kinetic-cell-orange .kinetic-desc,
 .kinetic-cell-orange .kinetic-description {
   color: #ffffff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.25),
+    0 0 1px rgba(0, 0, 0, 0.15);
 }
 

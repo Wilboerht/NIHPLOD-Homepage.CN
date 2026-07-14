@@ -155,7 +155,7 @@ export function KineticBackground() {
                     className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect"
                 >
                     <div className="kinetic-name" style={{ marginBottom: '12px', lineHeight: '1.3', fontSize: '1.8rem' }}>更少步骤<br />更多呵护</div>
-                    <div className="kinetic-desc" style={{ fontSize: '13px', lineHeight: '1.5', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400, opacity: 0.8, textShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>美丽不该复杂<br />专注美好生活</div>
+                    <div className="kinetic-desc" style={{ fontSize: '13px', lineHeight: '1.5', letterSpacing: '0.05em', textTransform: 'none', fontWeight: 400 }}>美丽不该复杂<br />专注美好生活</div>
                 </div>
 
                 {/* Row 1, Col 3-4: 官方指南宽图片卡 */}
@@ -217,7 +217,6 @@ export function KineticBackground() {
                     onClick={user ? () => openUserCenter() : handleLoginClick}
                     className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect cursor-pointer"
                 >
-                    <div className="kinetic-login-bg" />
                     <div className="kinetic-btn-group">
                         {user ? (
                             <>
