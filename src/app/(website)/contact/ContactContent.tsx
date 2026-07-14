@@ -169,7 +169,7 @@ export function ContactContent({ content }: ContactContentProps) {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="safe-area-content !pointer-events-none"
       >
-        <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
+        <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)]">
           {/* 主内容区域 */}
           <div className="w-full flex-1 overflow-hidden rounded-2xl bg-[#FAF5EA] lg:rounded-3xl pointer-events-auto">
             <div className="flex h-full flex-col justify-center overflow-y-auto px-4 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:px-6 sm:py-8 lg:px-8 lg:py-10">

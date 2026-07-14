@@ -572,7 +572,7 @@ function LoginModal({
 
                   {/* 手机端页脚 */}
                   <div className="md:hidden flex-shrink-0 pt-4 pb-4 text-center mx-6">
-                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)] uppercase">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>
@@ -1102,7 +1102,7 @@ function RegisterModal({
 
                   {/* 手机端页脚 */}
                   <div className="md:hidden flex-shrink-0 pt-4 pb-4 text-center mx-6">
-                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)] uppercase">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>
@@ -1659,7 +1659,7 @@ function ForgotPasswordModal({
 
                   {/* 手机端页脚 */}
                   <div className="md:hidden flex-shrink-0 pt-4 pb-4 text-center mx-6">
-                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)] uppercase">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>

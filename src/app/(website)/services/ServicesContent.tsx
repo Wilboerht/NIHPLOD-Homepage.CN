@@ -167,7 +167,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
         transition={{ duration: 0.6 }}
         className="safe-area-content !pointer-events-none max-lg:!inset-0"
       >
-        <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)] max-lg:drop-shadow-none">
+        <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)] max-lg:drop-shadow-none">
           {/* 主内容卡片容器 */}
           <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#FFFFFF] lg:bg-[#FAF5EA] pointer-events-auto relative">
             {/* 手机端背景水印 */}

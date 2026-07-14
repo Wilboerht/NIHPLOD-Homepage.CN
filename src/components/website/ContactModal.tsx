@@ -820,7 +820,7 @@ export function ContactModal() {
 
                                 {/* Footer */}
                                 <div className="mt-auto pt-4 pb-4 text-center mx-6">
-                                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)] uppercase">
                                         &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                                     </p>
                                 </div>

@@ -139,7 +139,7 @@ export default function RootLayout({
           {/* Google Analytics */}
           <GoogleAnalytics />
         </head>
-        <body className={`${playfair.variable} font-sans antialiased`}>
+        <body className={`${playfair.variable} font-sans antialiased`} suppressHydrationWarning>
           <ChunkErrorBoundary>
             <MotionProvider>
               <AuthProvider>

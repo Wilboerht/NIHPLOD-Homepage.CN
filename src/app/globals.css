@@ -458,7 +458,6 @@
 
 .home-container {
   --home-bg: #FAF5EA;
-  --home-beige: #E4DFD9;
   --home-dark: #4A6272;
 
   display: flex;
@@ -580,7 +579,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--home-beige);
+  background-color: #00263E;
   color: white;
   font-size: 16px;
   font-weight: 400;

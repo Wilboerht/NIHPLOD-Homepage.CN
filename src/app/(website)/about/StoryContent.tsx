@@ -124,7 +124,7 @@ export function StoryContent() {
           className="h-full pointer-events-none"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
+          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)]">
             {/* 主内容区域 + 按钮一起移动 */}
             <m.div
               className="relative z-20 flex h-full w-full flex-col"
@@ -432,7 +432,7 @@ export function StoryContent() {
 
                   {/* Mobile Footer Copyright */}
                   <div className="flex flex-col items-center justify-center pt-3 pb-1">
-                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>

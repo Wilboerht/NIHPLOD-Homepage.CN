@@ -635,7 +635,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                   {/* Footer */}
                   <div className="mt-8 text-center">
-                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase">
+                    <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)] uppercase">
                       &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                     </p>
                   </div>

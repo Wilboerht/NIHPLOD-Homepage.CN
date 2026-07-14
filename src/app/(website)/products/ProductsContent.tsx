@@ -539,7 +539,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       </div>
       {/* 移动端版权信息 - 与指南页保持一致 */}
       <footer className="shrink-0 pt-3 pb-1 relative z-20 flex flex-col items-center">
-        <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
+        <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
         </p>
       </footer>
@@ -570,7 +570,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           className="h-full pointer-events-none"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
+          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)]">
             {/* 主内容区域 + 按钮一起移动 */}
             <m.div
               className="relative z-20 flex h-full w-full flex-col"
@@ -902,7 +902,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               {/* Footer */}
               <div className="mt-auto pt-4 pb-4 text-center px-4">
                 <p
-                  className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] uppercase"
+                  className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)] uppercase"
                   style={{ fontFamily: "'Futura', sans-serif" }}
                 >
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.

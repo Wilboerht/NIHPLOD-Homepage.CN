@@ -1123,7 +1123,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
           className="h-full pointer-events-none"
         >
           {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
+          <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)]">
             {/* 主内容区域 + 按钮一起移动 */}
             <m.div
               className="relative z-20 flex h-full w-full flex-col"

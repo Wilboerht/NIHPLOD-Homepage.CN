@@ -149,7 +149,7 @@ export function FAQContent() {
                     transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                     className="h-full pointer-events-none"
                 >
-                    <div className="flex h-full flex-col items-center drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
+                    <div className="flex h-full flex-col items-center drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)]">
                         {/* Drawer Content + Button */}
                         <m.div
                             className="relative z-20 flex h-full w-full flex-col"
@@ -292,7 +292,7 @@ export function FAQContent() {
 
                                     {/* Footer Info */}
                                     <div className="flex flex-col items-center justify-center pt-3 pb-1 sm:shrink-0 sm:gap-2 sm:pt-4 sm:pb-2">
-                                        <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(123,114,108,0.3)] sm:text-[12px] sm:font-light sm:tracking-widest sm:text-center sm:text-brand-charcoal/60" style={{ fontFamily: "'Futura', sans-serif" }}>
+                                        <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)] sm:text-[12px] sm:font-light sm:tracking-widest sm:text-center sm:text-brand-charcoal/60" style={{ fontFamily: "'Futura', sans-serif" }}>
                                             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                                         </p>
                                     </div>
