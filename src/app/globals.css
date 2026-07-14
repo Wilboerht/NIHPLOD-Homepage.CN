@@ -12,8 +12,8 @@
 }
 
 :root {
-  --background: #F8F7F3;
-  --foreground: #2c2c2c;
+  --background: #FFFFFF;
+  --foreground: #00263E;
 }
 
 @layer base {
@@ -79,7 +79,7 @@
     position: fixed;
     inset: 0;
     z-index: -1;
-    background-color: #F8F7F3;
+    background-color: #FFFFFF;
   }
 
   /* 全屏背景容器 - 带边距和圆角 */
@@ -167,7 +167,7 @@
 
   /* Focus 可见性 - 键盘导航用户 */
   :focus-visible {
-    outline: 2px solid #c9a86c;
+    outline: 2px solid #00263E;
     outline-offset: 2px;
   }
 
@@ -181,7 +181,7 @@
     position: absolute;
     top: -100px;
     left: 0;
-    background: #c9a86c;
+    background: #00263E;
     color: white;
     padding: 8px 16px;
     z-index: 100;
@@ -274,7 +274,7 @@
   }
 
   a:hover {
-    color: #c9a86c;
+    color: #00263E;
   }
 
   img {
@@ -285,7 +285,7 @@
 
 @layer components {
   .btn-primary {
-    background-color: #c9a86c;
+    background-color: #00263E;
     color: white;
     padding: 12px 24px;
     font-weight: 500;
@@ -298,8 +298,8 @@
   }
 
   .btn-outline {
-    border: 1px solid #c9a86c;
-    color: #c9a86c;
+    border: 1px solid #00263E;
+    color: #00263E;
     padding: 12px 24px;
     font-weight: 500;
     letter-spacing: 0.05em;
@@ -308,7 +308,7 @@
   }
 
   .btn-outline:hover {
-    background-color: #c9a86c;
+    background-color: #00263E;
     color: white;
   }
 
@@ -520,10 +520,10 @@
 /* ========== 首页专用样式 ========== */
 
 .home-container {
-  --home-bg: #F8F7F3;
-  --home-text: #3A3530;
+  --home-bg: #FAF5EA;
+  --home-text: #00263E;
   --home-morandi: #A89F91;
-  --home-dark: #6B655E;
+  --home-dark: #4A6272;
   --home-gold: #FFD700;
 
   display: flex;
@@ -1421,7 +1421,7 @@
 /* ========== 登录卡片样式 ========== */
 
 .kinetic-login-cell {
-  background: #F8F7F3;
+  background: #FAF5EA;
   justify-content: center;
   align-items: flex-start;
   border: none;
@@ -1497,7 +1497,7 @@
 .kinetic-login-cell .kinetic-login-bg::after {
   width: 120px;
   height: 120px;
-  background: rgba(201, 168, 108, 0.25);
+  background: rgba(0, 38, 62, 0.25);
   /* 淡淡的金色光晕 */
   bottom: -20px;
   right: -20px;
@@ -1518,7 +1518,7 @@
 
 .kinetic-login-cell:not(.no-hover-effect):hover .kinetic-login-bg::after {
   animation-duration: 5s;
-  background: rgba(201, 168, 108, 0.4);
+  background: rgba(0, 38, 62, 0.4);
 }
 
 /* 登录卡片标题 */
@@ -1535,7 +1535,7 @@
   box-shadow:
     0 20px 50px -12px rgba(44, 44, 44, 0.08),
     inset 0 0 0 1px rgba(255, 255, 255, 1),
-    inset 0 1px 2px 0 rgba(201, 168, 108, 0.15) !important;
+    inset 0 1px 2px 0 rgba(0, 38, 62, 0.15) !important;
   border: none !important;
   padding: 16px 12px 18px !important;
 }
@@ -1558,7 +1558,7 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 1px dashed rgba(201, 168, 108, 0.3);
+  border: 1px dashed rgba(0, 38, 62, 0.3);
   animation: rotate-slow 15s linear infinite;
 }
 
@@ -1583,7 +1583,7 @@
 .user-premium-line {
   width: 24px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #c9a86c, transparent);
+  background: linear-gradient(90deg, transparent, #00263E, transparent);
   margin: 6px 0;
   opacity: 0.6;
 }
@@ -1597,8 +1597,8 @@
 }
 
 .btn-logout-minimal:hover {
-  color: #c9a86c;
-  background: rgba(201, 168, 108, 0.05);
+  color: #00263E;
+  background: rgba(0, 38, 62, 0.05);
   transform: rotate(90deg);
 }
 
@@ -1610,7 +1610,7 @@
 
 /* 玻璃感按钮 - 延续首页 NEW 角标的奢侈品极简风格 */
 .btn-glassy-premium {
-  background-color: rgba(201, 168, 108, 0.1) !important;
+  background-color: rgba(0, 38, 62, 0.1) !important;
   backdrop-filter: blur(6px) !important;
   -webkit-backdrop-filter: blur(6px) !important;
   border: 0.5px solid rgba(139, 115, 85, 0.3) !important;
@@ -1620,7 +1620,7 @@
 }
 
 .btn-glassy-premium:hover {
-  background-color: rgba(201, 168, 108, 0.2) !important;
+  background-color: rgba(0, 38, 62, 0.2) !important;
   border-color: rgba(139, 115, 85, 0.5) !important;
   color: #6d5a42 !important;
   transform: translateY(-1px);

@@ -12,19 +12,20 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         brand: {
-          gold: "#C9A86C", // 品牌金 - Logo、按钮、强调
-          "gold-light": "#D4B77A", // 浅金色 - 高亮、hover状态
-          "gold-dark": "#B8975B", // 深金色 - 按下状态
-          cream: "#F8F7F3", // 暖白 - 主背景
-          "cream-dark": "#F8F7F3", // 米色背景 - 卡片背景
-          charcoal: "#2C2C2C", // 深炭灰 - 主文字
-          "charcoal-light": "#4A4A4A", // 浅炭灰 - 次要文字
-          blush: "#F5E6E0", // 柔粉 - 辅助背景
-          beige: "#F8F7F3", // 米色 - 分隔、边框
-          "beige-dark": "#D9D0C3", // 深米色 - 边框hover
-          blue: "#7a9fd4", // AI蓝 - AI护肤顾问专用
-          bronze: "#8B6914", // 青铜色 - 高级装饰
-          champagne: "#F7E7CE", // 香槟色 - 高光装饰
+          gold: "#00263E", // 品牌主色 — Logo、按钮、强调（对齐 nihplod.net 深海蓝）
+          "gold-light": "#1A3B52", // 浅色 — 高亮、hover 状态
+          "gold-dark": "#001525", // 深色 — 按下状态
+          cream: "#FAF5EA", // 浅奶油 — 内容板块背景
+          "cream-dark": "#F0EBE0", // 深奶油 — 卡片背景
+          charcoal: "#00263E", // 主文字色（对齐 navy）
+          "charcoal-light": "#4A6272", // 次要文字
+          blush: "#F5E6E0", // 柔粉 — 辅助背景
+          beige: "#E4DFD9", // 暖米色 — 分隔、边框
+          "beige-dark": "#D5CFC8", // 深米色 — 边框 hover
+          blue: "#7a9fd4", // AI蓝 — AI护肤顾问专用
+          bronze: "#8B6914", // 青铜色 — 高级装饰（保留）
+          champagne: "#F7E7CE", // 香槟色 — 高光装饰（保留）
+          warmgray: "#E2DEDC", // 暖灰 — 过渡/遮罩
         },
       },
       fontFamily: {
@@ -54,16 +55,16 @@ const config: Config = {
         xxl: "120px",
       },
       boxShadow: {
-        "luxury": "0 4px 20px -2px rgba(201, 168, 108, 0.15)",
-        "luxury-lg": "0 8px 30px -4px rgba(201, 168, 108, 0.2)",
-        "card": "0 2px 12px -2px rgba(44, 44, 44, 0.06)",
-        "card-hover": "0 8px 24px -4px rgba(44, 44, 44, 0.1)",
-        "glow-gold": "0 0 20px rgba(201, 168, 108, 0.3)",
+        "luxury": "0 4px 20px -2px rgba(0, 38, 62, 0.1)",
+        "luxury-lg": "0 8px 30px -4px rgba(0, 38, 62, 0.15)",
+        "card": "0 2px 12px -2px rgba(0, 38, 62, 0.04)",
+        "card-hover": "0 8px 24px -4px rgba(0, 38, 62, 0.08)",
+        "glow-navy": "0 0 20px rgba(0, 38, 62, 0.15)",
       },
       backgroundImage: {
-        "gradient-luxury": "linear-gradient(135deg, #C9A86C 0%, #D4B77A 50%, #B8975B 100%)",
-        "gradient-cream": "linear-gradient(180deg, #F8F7F3 0%, #F8F7F3 100%)",
-        "gradient-radial-gold": "radial-gradient(circle, rgba(201, 168, 108, 0.1) 0%, transparent 70%)",
+        "gradient-luxury": "linear-gradient(135deg, #00263E 0%, #1A3B52 50%, #001525 100%)",
+        "gradient-cream": "linear-gradient(180deg, #FAF5EA 0%, #FFFFFF 100%)",
+        "gradient-radial-navy": "radial-gradient(circle, rgba(0, 38, 62, 0.06) 0%, transparent 70%)",
         "shimmer": "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)",
       },
       animation: {
