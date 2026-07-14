@@ -340,7 +340,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 </div> */}
 
                 {/* 主内容 - 添加底部padding以在视觉上居中(抵消底部absolute定位的元素) */}
-                <main className="main-content relative z-10 flex h-full flex-col items-center justify-center text-center pb-32 lg:pb-24">
+                <main className="main-content relative z-10 flex h-full flex-col items-center justify-center text-center pb-20 lg:pb-16">
                   {/* Logo */}
                   <m.div
                     initial={{ opacity: 0, y: 20 }}
@@ -359,7 +359,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
                   {/* 品牌文案 - 针对不同设备切换 2行/4行 */}
                   <m.div
-                    className="content-wrapper mt-16 md:mt-20"
+                    className="content-wrapper mt-12 md:mt-16"
                     initial="hidden"
                     animate="visible"
                     variants={{
@@ -422,7 +422,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
                   {/* 按钮组 - 增加触压反馈 */}
                   <m.div
-                    className="button-group mt-[70px] md:mt-24 flex gap-6"
+                    className="button-group mt-16 md:mt-20 flex gap-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, delay: 1.2 }}
@@ -471,7 +471,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     />
 
                     {/* 版权文本 & 备案信息 */}
-                    <div className="flex flex-col items-center gap-1 opacity-40">
+                    <div className="flex flex-col items-center gap-2 opacity-40">
                       <p className="text-[10px] sm:text-[11px] font-light tracking-widest text-brand-charcoal relative z-10 leading-tight">
                         &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                       </p>
@@ -483,6 +483,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                         <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center gap-1">
                           <Image src="/images/beian.webp" alt="公安部备案图标" width={12} height={12} className="shrink-0 opacity-80" />
                           <span>沪公网安备31010702010178号</span>
+                        </Link>
+                        <span className="text-brand-charcoal/30">|</span>
+                        <Link href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA" target="_blank" className="!min-h-0 !min-w-0 hover:text-brand-gold transition-colors flex items-center gap-0.5">
+                          <Image src="/images/aic_icon.png" alt="电子营业执照" width={12} height={12} className="shrink-0 opacity-50" unoptimized />
+                          电子营业执照
                         </Link>
                       </div>
                     </div>
