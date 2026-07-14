@@ -105,7 +105,7 @@ export function CouponsPanel() {
             className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
               filter === f.key
                 ? "bg-[#A69374] text-white"
-                : "bg-[#F8F7F3] text-[#8B8579] hover:bg-[#F8F7F3]"
+                : "bg-[#FAF5EA] text-[#8B8579] hover:bg-[#FAF5EA]"
             }`}
           >
             {f.label}
@@ -142,7 +142,7 @@ export function CouponsPanel() {
                       {uc.coupon.name}
                     </span>
                     {uc.coupon.code && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F8F7F3] text-[#8B8579] font-mono">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FAF5EA] text-[#8B8579] font-mono">
                         {uc.coupon.code}
                       </span>
                     )}

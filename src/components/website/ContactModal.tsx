@@ -285,7 +285,7 @@ export function ContactModal() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={closeContact}
-                        className="absolute inset-0 bg-[#F0EDE1] md:bg-slate-900/40 md:backdrop-blur-md"
+                        className="absolute inset-0 bg-[#FFFFFF] md:bg-slate-900/40 md:backdrop-blur-md"
                     />
 
                     {/* 弹窗主体 - 双列布局 */}
@@ -294,7 +294,7 @@ export function ContactModal() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 10 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="relative w-full h-full md:w-full md:max-w-[880px] md:h-[600px] rounded-none md:rounded-[2.5rem] bg-transparent md:bg-[#F8F7F3] shadow-none md:shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row max-h-none overflow-hidden"
+                        className="relative w-full h-full md:w-full md:max-w-[880px] md:h-[600px] rounded-none md:rounded-[2.5rem] bg-transparent md:bg-[#FAF5EA] shadow-none md:shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] flex flex-col md:flex-row max-h-none overflow-hidden"
                     >
                         {/* 手机端背景水印 */}
                         <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
@@ -333,7 +333,7 @@ export function ContactModal() {
                                                 !formData.type && "text-slate-400",
                                                 errors.type
                                                     ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                    : "border-[#C8C4BC] hover:border-[#C6A87C]/50 focus:border-[#C6A87C] focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                    : "border-[#C8C4BC] hover:border-[#00263E]/50 focus:border-[#00263E] focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                                             )}
                                         >
                                             <span className="flex items-center gap-2">
@@ -418,7 +418,7 @@ export function ContactModal() {
                                                     "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
                                                     errors.name
                                                         ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                        : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                        : "focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                                                 )}
                                                 placeholder="请输入您的称呼"
                                             />
@@ -439,7 +439,7 @@ export function ContactModal() {
                                                     "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
                                                     errors.phone
                                                         ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                        : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                        : "focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                                                 )}
                                                 placeholder="请输入11位手机号"
                                             />
@@ -462,7 +462,7 @@ export function ContactModal() {
                                                     "block w-full rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
                                                     errors.location
                                                         ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                        : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                        : "focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                                                 )}
                                                 placeholder="您的所在城市（如：上海、北京）"
                                             />
@@ -483,7 +483,7 @@ export function ContactModal() {
                                                     "block w-full resize-none rounded-xl border border-[#C8C4BC] bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300",
                                                     errors.content
                                                         ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                        : "focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                                                        : "focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                                                 )}
                                             />
                                             {errors.content && <p className="text-xs text-red-500">{errors.content}</p>}
@@ -609,7 +609,7 @@ export function ContactModal() {
                                                     onChange={handleChange}
                                                     maxLength={50}
                                                     className={cn(
-                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        "block w-full rounded-lg bg-[#FAF5EA] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
                                                         errors.name && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="请输入称呼"
@@ -627,7 +627,7 @@ export function ContactModal() {
                                                     onChange={handleChange}
                                                     maxLength={11}
                                                     className={cn(
-                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        "block w-full rounded-lg bg-[#FAF5EA] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
                                                         errors.phone && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="请输入手机号"
@@ -648,7 +648,7 @@ export function ContactModal() {
                                                 aria-expanded={isTypeDropdownOpen}
                                                 onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                                                 className={cn(
-                                                    "flex w-full items-center justify-between rounded-lg bg-[#F8F7F3] py-3 px-3 text-left text-[14px] tracking-wide outline-none transition-all",
+                                                    "flex w-full items-center justify-between rounded-lg bg-[#FAF5EA] py-3 px-3 text-left text-[14px] tracking-wide outline-none transition-all",
                                                     !formData.type ? "text-[13px] text-[#00263E]/50 font-light" : "text-[#00263E]",
                                                     errors.type && "ring-1 ring-red-400"
                                                 )}
@@ -689,7 +689,7 @@ export function ContactModal() {
                                                     />
                                                     {/* 底部面板 */}
                                                     <m.div
-                                                        className="absolute bottom-0 left-0 right-0 bg-[#F8F7F3] rounded-t-[2rem] px-5 pt-5 pb-8 max-h-[70vh] flex flex-col"
+                                                        className="absolute bottom-0 left-0 right-0 bg-[#FAF5EA] rounded-t-[2rem] px-5 pt-5 pb-8 max-h-[70vh] flex flex-col"
                                                         initial={{ y: "100%" }}
                                                         animate={{ y: 0, transition: { type: "spring", damping: 25, stiffness: 300 } }}
                                                         exit={{ y: "100%", transition: { type: "spring", damping: 25, stiffness: 300 } }}
@@ -728,7 +728,7 @@ export function ContactModal() {
                                                                     >
                                                                         <div className={cn(
                                                                             "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                                                                            isSelected ? "bg-[#8B7355]/10" : "bg-[#F8F7F3]"
+                                                                            isSelected ? "bg-[#8B7355]/10" : "bg-[#FAF5EA]"
                                                                         )}>
                                                                             <Icon className={cn(
                                                                                 "h-[18px] w-[18px]",
@@ -768,7 +768,7 @@ export function ContactModal() {
                                                     onChange={handleChange}
                                                     maxLength={100}
                                                     className={cn(
-                                                        "block w-full rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        "block w-full rounded-lg bg-[#FAF5EA] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
                                                         errors.location && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="您的所在城市（如：上海、北京）"
@@ -787,7 +787,7 @@ export function ContactModal() {
                                                     rows={3}
                                                     maxLength={2000}
                                                     className={cn(
-                                                        "block w-full resize-none rounded-lg bg-[#F8F7F3] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
+                                                        "block w-full resize-none rounded-lg bg-[#FAF5EA] border-0 py-3 px-3 text-[14px] tracking-wide text-[#00263E] placeholder:text-[13px] placeholder:font-light placeholder:text-[#00263E]/50 focus:outline-none focus:ring-1 focus:ring-[#00263E]/20 transition-all",
                                                         errors.content && "ring-1 ring-red-400 focus:ring-red-400"
                                                     )}
                                                     placeholder="请输入您的具体需求或建议..."
@@ -800,7 +800,7 @@ export function ContactModal() {
                                             <button
                                                 type="submit"
                                                 disabled={status === "loading"}
-                                                className="mx-auto mt-2 flex items-center justify-center gap-2 rounded-full bg-[#F8F7F3] px-8 py-3 text-[14px] font-medium tracking-[0.15em] text-[#00263E] shadow-sm hover:shadow-md active:scale-[0.98] transition-all disabled:opacity-40"
+                                                className="mx-auto mt-2 flex items-center justify-center gap-2 rounded-full bg-[#FAF5EA] px-8 py-3 text-[14px] font-medium tracking-[0.15em] text-[#00263E] shadow-sm hover:shadow-md active:scale-[0.98] transition-all disabled:opacity-40"
                                             >
                                                 {status === "loading" ? (
                                                     <span className="flex items-center justify-center gap-2">

@@ -435,7 +435,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
    * 移动端展示组件 - 三行错落橱窗
    */
   const MobileShowcase = () => (
-    <div className="flex h-full flex-col overflow-hidden bg-[#F8F7F3]">
+    <div className="flex h-full flex-col overflow-hidden bg-[#FAF5EA]">
       {/* Header - Mobile */}
       <div className="flex h-[88px] shrink-0 items-center justify-center relative z-50">
         <Link href="/" className="flex items-center justify-center mt-1">
@@ -487,13 +487,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             <Link
               href={`/products/${product.slug}`}
               onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
-              className="group relative flex w-full flex-col bg-white/60 backdrop-blur-md border-[1.5px] border-[#F0EDE1] transition-all active:scale-[0.98]"
+              className="group relative flex w-full flex-col bg-white/60 backdrop-blur-md border-[1.5px] border-[#FFFFFF] transition-all active:scale-[0.98]"
             >
               {/* 矿物纹理 - 极淡 */}
               <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
               {/* 产品图片区域 —— 正方形容器，图片填满 */}
-              <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#F8F7F3]">
+              <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#FAF5EA]">
                 {/* 容量标签 */}
                 {product.capacity && (
                   <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
@@ -593,7 +593,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto">
+              <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl pointer-events-auto">
                 {/* 矿物纹理覆盖层 */}
                 <div className="texture-overlay absolute inset-0" />
 
@@ -763,7 +763,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   setIsExpanded(newState);
                   setDrawerOpen(newState);
                 }}
-                className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#F8F7F3] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
+                className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
               >
                 {/* 矿物纹理覆盖层 */}
                 <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
@@ -791,7 +791,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] flex flex-col bg-[#F0EDE1]/95 backdrop-blur-xl lg:hidden"
+            className="fixed inset-0 z-[100] flex flex-col bg-[#FFFFFF]/95 backdrop-blur-xl lg:hidden"
           >
             {/* 手机端背景水印 - 同联系我们 */}
             <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
@@ -871,8 +871,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           className={cn(
                             "group grid w-full grid-cols-[48px_1fr] items-center gap-4 rounded-2xl py-6 px-6 transition-all",
                             categoryProduct
-                              ? "bg-[#F8F7F3]/60 active:scale-95 active:bg-[#F8F7F3]"
-                              : "bg-[#F8F7F3]/30 cursor-not-allowed opacity-60"
+                              ? "bg-[#FAF5EA]/60 active:scale-95 active:bg-[#FAF5EA]"
+                              : "bg-[#FAF5EA]/30 cursor-not-allowed opacity-60"
                           )}
                         >
                           <div className={cn(

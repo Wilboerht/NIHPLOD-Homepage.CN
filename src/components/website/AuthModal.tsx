@@ -233,7 +233,7 @@ function LoginModal({
             initial={isMobile ? { x: "100vw" } : { opacity: 0 }}
             animate={isMobile ? { x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } } : { opacity: 1, transition: { duration: 0.3 } }}
             exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, transition: { duration: 0.3 } }}
-            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
+            className="absolute inset-0 bg-[#FAF5EA] md:bg-black/40"
             onClick={onClose}
           />
 
@@ -244,7 +244,7 @@ function LoginModal({
             exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, scale: 0.95, y: 10, transition: { duration: 0.25, ease: "easeOut" } }}
             className="relative z-10 w-full h-full md:w-full md:max-w-[1100px] md:h-[680px] flex items-center max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-[#F8F7F3] md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-[#FAF5EA] md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
@@ -779,7 +779,7 @@ function RegisterModal({
             initial={isMobile ? { x: "100vw" } : { opacity: 0 }}
             animate={isMobile ? { x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } } : { opacity: 1, transition: { duration: 0.3 } }}
             exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, transition: { duration: 0.3 } }}
-            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
+            className="absolute inset-0 bg-[#FAF5EA] md:bg-black/40"
             onClick={onClose}
           />
 
@@ -790,7 +790,7 @@ function RegisterModal({
             exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, scale: 0.95, y: 10, transition: { duration: 0.25, ease: "easeOut" } }}
             className="relative z-10 w-full h-full md:w-full md:max-w-[1100px] md:h-[680px] flex items-center max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-[#F8F7F3] md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-[#FAF5EA] md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
@@ -1301,7 +1301,7 @@ function ForgotPasswordModal({
             initial={isMobile ? { x: "100vw" } : { opacity: 0 }}
             animate={isMobile ? { x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } } : { opacity: 1, transition: { duration: 0.3 } }}
             exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, transition: { duration: 0.3 } }}
-            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
+            className="absolute inset-0 bg-[#FAF5EA] md:bg-black/40"
             onClick={onClose}
           />
 
@@ -1312,7 +1312,7 @@ function ForgotPasswordModal({
             exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, scale: 0.95, y: 10, transition: { duration: 0.25, ease: "easeOut" } }}
             className="relative z-10 w-full h-full md:w-full md:max-w-[1100px] md:h-[680px] flex items-center max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-[#F8F7F3] md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-[#FAF5EA] md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               {/* 背景图片区域 - 铺满整个卡片 */}
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
@@ -1845,7 +1845,7 @@ function WechatBindModal({
             initial={isMobile ? { x: "100vw" } : { opacity: 0 }}
             animate={isMobile ? { x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } } : { opacity: 1, transition: { duration: 0.3 } }}
             exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, transition: { duration: 0.3 } }}
-            className="absolute inset-0 bg-[#F8F7F3] md:bg-black/40"
+            className="absolute inset-0 bg-[#FAF5EA] md:bg-black/40"
             onClick={onClose}
           />
           <m.div
@@ -1854,7 +1854,7 @@ function WechatBindModal({
             exit={isMobile ? { x: "100vw", transition: { duration: 0.8, ease: [0.9, 0, 0.17, 1] } } : { opacity: 0, scale: 0.95, y: 10, transition: { duration: 0.25, ease: "easeOut" } }}
             className="relative z-10 w-full h-full md:w-full md:max-w-[1100px] md:h-[680px] flex items-center max-h-none"
           >
-            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-[#F8F7F3] md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
+            <div className="relative w-full h-full overflow-hidden rounded-none md:rounded-[2.5rem] bg-[#FAF5EA] md:bg-black/10 shadow-none md:shadow-2xl md:p-6 md:flex md:items-stretch">
               <div className="absolute inset-0 z-0 hidden md:block">
                 <Image
                   src="/images/login-background.webp"

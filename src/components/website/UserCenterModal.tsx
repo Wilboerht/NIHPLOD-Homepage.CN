@@ -154,7 +154,7 @@ export function UserCenterModal() {
           >
             <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
               {/* 底层基础色 */}
-              <div className="absolute inset-0 z-0 bg-[#F8F7F3]" />
+              <div className="absolute inset-0 z-0 bg-[#FAF5EA]" />
 
               {/* 背景动态装饰层 (位于模糊层之下) */}
               <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
@@ -200,7 +200,7 @@ export function UserCenterModal() {
                   {/* 用户头像区域 */}
                   <div className="px-16 pt-12 pb-4">
                     <div className="flex flex-col items-start gap-4 text-left">
-                      <div className="w-16 h-16 rounded-full bg-[#F8F7F3]/40 flex items-center justify-center overflow-hidden shrink-0 object-cover">
+                      <div className="w-16 h-16 rounded-full bg-[#FAF5EA]/40 flex items-center justify-center overflow-hidden shrink-0 object-cover">
                         {user.avatar ? (
                           <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -271,7 +271,7 @@ export function UserCenterModal() {
                   }`}>
 
                   {/* 移动端统一 Header (重工业级网格强对称) */}
-                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden grid grid-cols-[3.5rem_1fr_3.5rem] items-center bg-[#F8F7F3]/80 backdrop-blur-md border-b border-stone-200/40">
+                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden grid grid-cols-[3.5rem_1fr_3.5rem] items-center bg-[#FAF5EA]/80 backdrop-blur-md border-b border-stone-200/40">
                     <div className="flex h-full w-full items-center justify-center">
                       <button
                         onClick={() => setShowMobileDetail(false)}

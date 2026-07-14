@@ -118,7 +118,7 @@ export function CouponsContent() {
   };
 
   return (
-    <div className="min-h-dvh bg-[#F8F7F3] py-12 px-4">
+    <div className="min-h-dvh bg-[#FAF5EA] py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* 头部 */}
         <div className="text-center mb-10">
@@ -163,7 +163,7 @@ export function CouponsContent() {
                   </div>
 
                   {/* 分隔线 */}
-                  <div className="w-px h-14 bg-[#F8F7F3]" />
+                  <div className="w-px h-14 bg-[#FAF5EA]" />
 
                   {/* 右侧信息 */}
                   <div className="flex-1 min-w-0">

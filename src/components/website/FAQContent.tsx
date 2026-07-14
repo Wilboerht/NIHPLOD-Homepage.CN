@@ -172,7 +172,7 @@ export function FAQContent() {
                                 delay: isExpanded ? 0.3 : 0
                             }}
                         >
-                            <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto">
+                            <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl pointer-events-auto">
                                 {/* Texture Overlay */}
                                 <div className="texture-overlay absolute inset-0" />
 
@@ -184,7 +184,7 @@ export function FAQContent() {
                                     )}
                                 >
                                 {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
-                                <div className="sticky top-0 z-50 flex h-[88px] sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#F8F7F3]/95 sm:bg-[#F8F7F3]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
+                                <div className="sticky top-0 z-50 flex h-[88px] sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#FAF5EA]/95 sm:bg-[#FAF5EA]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
                                     <Link href="/" className="flex items-center justify-center mt-1">
                                         <div className="relative h-[28px] w-[100px] sm:h-8 sm:w-[132px]">
                                             <Image
@@ -226,8 +226,8 @@ export function FAQContent() {
                                                         "group transition-colors duration-500 ease-out",
                                                         "rounded-lg p-4 mb-3 sm:rounded-none sm:p-0 sm:mb-0 sm:border-b sm:border-brand-charcoal/10 sm:overflow-visible sm:border-l-[1.5px] sm:border-l-transparent",
                                                         openIndex === index
-                                                            ? "bg-[#F0EDE1] sm:bg-[#F0EDE1]/40 sm:border-l-[#B5AC88]"
-                                                            : "ring-[1.5px] ring-inset ring-[#F0EDE1] sm:ring-0 sm:hover:bg-white/20"
+                                                            ? "bg-[#FFFFFF] sm:bg-[#FFFFFF]/40 sm:border-l-[#B5AC88]"
+                                                            : "ring-[1.5px] ring-inset ring-[#FFFFFF] sm:ring-0 sm:hover:bg-white/20"
                                                     )}
                                                 >
                                                     <button
@@ -281,7 +281,7 @@ export function FAQContent() {
                                             </p>
                                             <button
                                                 onClick={() => openContact("support")}
-                                                className="flex items-center gap-2 rounded-full bg-[#F0EDE1] px-7 py-3 text-[14px] lg:text-[16px] font-medium tracking-[0.2em] text-[#7B726C] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:bg-brand-gold/15 sm:hover:text-[#8B7355] sm:hover:border-[#8B7355]/30 sm:hover:backdrop-blur-md sm:hover:shadow-lg sm:active:scale-95"
+                                                className="flex items-center gap-2 rounded-full bg-[#FFFFFF] px-7 py-3 text-[14px] lg:text-[16px] font-medium tracking-[0.2em] text-[#7B726C] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:bg-brand-gold/15 sm:hover:text-[#8B7355] sm:hover:border-[#8B7355]/30 sm:hover:backdrop-blur-md sm:hover:shadow-lg sm:active:scale-95"
                                                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                                             >
                                                 <span>更多疑问</span>
@@ -309,7 +309,7 @@ export function FAQContent() {
                                 setIsExpanded(newState);
                                 setDrawerOpen(newState);
                             }}
-                            className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#F8F7F3] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
+                            className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
                         >
                             <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
                             <m.div

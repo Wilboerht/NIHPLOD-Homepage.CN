@@ -69,7 +69,7 @@ function MobileFooterMenu({ links, onExploreClick }: { links: { href: string; la
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
-              className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#F8F7F3]/95 backdrop-blur-xl pointer-events-auto"
+              className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#FAF5EA]/95 backdrop-blur-xl pointer-events-auto"
             >
               {/* 顶层背景纹理 */}
               <div
@@ -309,7 +309,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 delay: isExpanded ? 0.3 : 0
               }}
             >
-              <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#F8F7F3] lg:rounded-b-3xl pointer-events-auto">
+              <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl pointer-events-auto">
                 <div className={cn("home-container relative h-full w-full transition-opacity duration-300", isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none")}>
                 {/* 矿物纹理覆盖层 - 支持微弱视差 */}
                 <div
@@ -499,7 +499,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   setIsExpanded(newState);
                   setDrawerOpen(newState);
                 }}
-                className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#F8F7F3] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
+                className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
               >
                 {/* 矿物纹理覆盖层 - 使用与抽屉相同的 texture-overlay 类 */}
                 <div className="texture-overlay absolute inset-0" />

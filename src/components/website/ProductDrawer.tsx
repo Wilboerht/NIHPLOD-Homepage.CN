@@ -214,10 +214,10 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute inset-0 bg-[#F0EDE1] lg:bg-black/40 lg:backdrop-blur-sm"
+              className="absolute inset-0 bg-[#FFFFFF] lg:bg-black/40 lg:backdrop-blur-sm"
             />
             <m.div
-              className="relative flex w-full max-w-6xl h-full flex-col overflow-hidden rounded-none bg-transparent lg:bg-[#F8F7F3] shadow-2xl lg:h-[700px] lg:rounded-3xl lg:flex-row"
+              className="relative flex w-full max-w-6xl h-full flex-col overflow-hidden rounded-none bg-transparent lg:bg-[#FAF5EA] shadow-2xl lg:h-[700px] lg:rounded-3xl lg:flex-row"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -491,7 +491,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                   {/* Tab 切换 */}
                   <div className="relative z-40 mb-4 shrink-0">
-                    <nav className="flex h-[37px] items-center rounded-full bg-[#F0EDE1] p-[4px]">
+                    <nav className="flex h-[37px] items-center rounded-full bg-[#FFFFFF] p-[4px]">
                       <button
                         type="button"
                         onClick={() => handleTabChange('description')}
@@ -603,7 +603,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                           <button
                             type="button"
                             onClick={() => setPurchaseMenuOpen(!purchaseMenuOpen)}
-                            className="flex items-center gap-1.5 rounded-full bg-[#F0EDE1] px-3 py-1.5 text-[12px] text-[#00263E]"
+                            className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-[#00263E]"
                           >
                             <span className="font-medium">NIHPLOD</span>
                           </button>
@@ -623,7 +623,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 rounded-full bg-[#F0EDE1] px-3 py-1.5 text-[12px] text-[#00263E]"
+                            className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-[#00263E]"
                           >
                             <PlatformIcon platform={link.platform} />
                             <span>{link.platform}</span>

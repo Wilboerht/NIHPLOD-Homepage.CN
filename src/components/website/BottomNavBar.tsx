@@ -137,7 +137,7 @@ export function BottomNavBar() {
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                                    className="absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-2xl bg-[#F8F7F3] p-2 pointer-events-auto lg:hidden"
+                                    className="absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-2xl bg-[#FAF5EA] p-2 pointer-events-auto lg:hidden"
                                 >
                                     <div className="flex flex-col gap-1.5">
                                         {otherNavItems.map((item) => {
@@ -149,7 +149,7 @@ export function BottomNavBar() {
                                                     onClick={() => setIsNavMenuOpen(false)}
                                                     className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/20 bg-transparent"
                                                 >
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F0EDE1]">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#FFFFFF]">
                                                         <Icon className="h-5 w-5 text-[#B5AC88]" />
                                                     </div>
                                                     <div className="flex flex-col">
@@ -167,9 +167,9 @@ export function BottomNavBar() {
                             className={cn(
                                 "flex items-center justify-between pointer-events-auto",
                                 // Mobile: compact rounded design
-                                "rounded-2xl bg-[#F8F7F3] px-4 py-4",
+                                "rounded-2xl bg-[#FAF5EA] px-4 py-4",
                                 // Desktop: dock-style design from reference
-                                "lg:rounded-[20px] lg:bg-[#F8F7F3] lg:px-10 lg:py-0 lg:h-[100px]",
+                                "lg:rounded-[20px] lg:bg-[#FAF5EA] lg:px-10 lg:py-0 lg:h-[100px]",
                                 "lg:shadow-[0_20px_50px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.8)]",
                                 "lg:backdrop-blur-none"
                             )}
@@ -182,7 +182,7 @@ export function BottomNavBar() {
                                 className="group flex items-center gap-2 transition-opacity active:opacity-70 lg:hidden"
                             >
                                 {/* 图标容器 */}
-                                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#F0EDE1]">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#FFFFFF]">
                                     <PrimaryIcon className="h-6 w-6 text-[#B5AC88]" />
                                 </div>
                                 {/* 文字 */}
@@ -231,7 +231,7 @@ export function BottomNavBar() {
                             <button
                                 type="button"
                                 onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
-                                className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#F0EDE1] transition-colors active:bg-[#E8E4D8] lg:hidden"
+                                className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#FFFFFF] transition-colors active:bg-[#E8E4D8] lg:hidden"
                                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
                             >
                                 <AnimatePresence mode="wait" initial={false}>

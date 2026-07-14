@@ -10,7 +10,7 @@ import { ChevronRight } from "lucide-react";
  * Kinetic Grid 全局背景组件
  * 
  * 特点：
- * - 米白背景 (#F0EDE1) + 微点阵图案
+ * - 米白背景 (#FAF5EA) + 微点阵图案
  * - Bento Grid 便当盒卡片布局（左侧大卡片 + 右侧3x2小卡片）
  * - 鼠标跟随的3D透视倾斜效果
  */

@@ -269,7 +269,7 @@ export default function LoginPage() {
                         "block w-full rounded-xl border bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
                         fieldErrors.email
                           ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                          : "border-slate-100 focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                          : "border-slate-100 focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                       )}
                     />
                     <p
@@ -302,7 +302,7 @@ export default function LoginPage() {
                         "block w-full rounded-xl border bg-slate-50 py-3.5 px-5 pr-10 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
                         fieldErrors.password
                           ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                          : "border-slate-100 focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                          : "border-slate-100 focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                       )}
                     />
                     <button
@@ -350,7 +350,7 @@ export default function LoginPage() {
                           "block w-full rounded-xl border bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
                           fieldErrors.totpCode
                             ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                            : "border-slate-100 focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                            : "border-slate-100 focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                         )}
                       />
                       <p

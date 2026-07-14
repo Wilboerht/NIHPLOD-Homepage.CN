@@ -206,7 +206,7 @@ export function ProductDetailContent({
       >
         <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
           {/* 主内容卡片容器 */}
-          <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#F0EDE1] lg:bg-[#F8F7F3] pointer-events-auto relative">
+          <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#FFFFFF] lg:bg-[#FAF5EA] pointer-events-auto relative">
             {/* 手机端背景水印 */}
             <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
               <Image
@@ -544,7 +544,7 @@ export function ProductDetailContent({
           {/* 返回首页按钮 - 仅桌面端 */}
           <Link
             href="/"
-            className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#F8F7F3] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
+            className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#FAF5EA] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
           >
             <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
             <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">

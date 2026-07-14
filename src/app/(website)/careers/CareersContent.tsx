@@ -89,7 +89,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       >
         <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(123,114,108,0.2)]">
           {/* 主内容卡片容器 */}
-          <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#F0EDE1] lg:bg-[#F8F7F3] pointer-events-auto relative">
+          <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#FFFFFF] lg:bg-[#FAF5EA] pointer-events-auto relative">
             {/* 手机端背景水印 */}
             <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
               <Image
@@ -279,7 +279,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           {/* 返回首页按钮 - 仅桌面端 */}
           <Link
             href="/"
-            className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#F8F7F3] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
+            className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#FAF5EA] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
           >
             <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
             <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">返回首页</span>
@@ -677,14 +677,14 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
             <div className="mb-5">
               <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">职位描述</h4>
               <div
-                className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
+                className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#00263E] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeJobHtml(job.description)) }}
               />
             </div>
             <div>
               <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">任职要求</h4>
               <div
-                className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#C6A87C] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
+                className="text-sm leading-relaxed text-slate-600 [&>p]:mb-3 [&>blockquote]:border-l-4 [&>blockquote]:border-[#00263E] [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeJobHtml(job.requirements)) }}
               />
             </div>
@@ -694,7 +694,7 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                 <h4 className="mb-3 font-sans text-sm font-bold tracking-widest text-[#8B7355]">工作地点</h4>
                 <div id={`map-${job.id}`} className="relative h-48 w-full rounded-xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
                   <div className="absolute inset-0 z-0 flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-[#C6A87C]/20" />
+                    <Loader2 className="h-6 w-6 animate-spin text-[#00263E]/20" />
                   </div>
                 </div>
               </div>
@@ -716,7 +716,7 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="block w-full rounded-xl border border-slate-100 bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                    className="block w-full rounded-xl border border-slate-100 bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                     placeholder="请输入您的姓名"
                   />
                 </div>
@@ -732,7 +732,7 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                       const value = e.target.value.replace(/\D/g, "").slice(0, 11);
                       setFormData({ ...formData, phone: value });
                     }}
-                    className="block w-full rounded-xl border border-slate-100 bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 focus:border-[#C6A87C]/40 focus:bg-white focus:ring-4 focus:ring-[#C6A87C]/15"
+                    className="block w-full rounded-xl border border-slate-100 bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
                     placeholder="请输入11位手机号"
                   />
                 </div>
@@ -760,8 +760,8 @@ function JobModal({ job, onClose, _contactEmail, _submitTip }: { job: Job; onClo
                     className={cn(
                       "flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-5 py-3.5 text-[13px] transition-all duration-300",
                       resumeFile
-                        ? "border-[#C6A87C]/40 bg-[#C6A87C]/5 text-slate-900"
-                        : "border-slate-100 text-slate-400 hover:border-[#C6A87C]/30"
+                        ? "border-[#00263E]/40 bg-[#00263E]/5 text-slate-900"
+                        : "border-slate-100 text-slate-400 hover:border-[#00263E]/30"
                     )}
                   >
                     {resumeFile ? (
