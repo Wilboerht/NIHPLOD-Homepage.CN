@@ -921,96 +921,7 @@
   transform-style: preserve-3d;
 }
 
-/* 渐变光晕效果 */
-.kinetic-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.15;
-  pointer-events: none;
-}
-
-.kinetic-glow-1 {
-  width: 600px;
-  height: 600px;
-  background: var(--kinetic-accent);
-  top: -200px;
-  right: -200px;
-  animation: kinetic-float-1 20s ease-in-out infinite;
-}
-
-.kinetic-glow-2 {
-  width: 500px;
-  height: 500px;
-  background: linear-gradient(135deg, var(--kinetic-accent), #555555);
-  bottom: -150px;
-  left: -150px;
-  animation: kinetic-float-2 25s ease-in-out infinite;
-}
-
-.kinetic-glow-3 {
-  width: 400px;
-  height: 400px;
-  background: var(--kinetic-accent);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: kinetic-float-3 30s ease-in-out infinite;
-  opacity: 0.08;
-}
-
-/* 光晕漂浮动画 */
-@keyframes kinetic-float-1 {
-
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-
-  25% {
-    transform: translate(50px, 30px) scale(1.1);
-  }
-
-  50% {
-    transform: translate(20px, -20px) scale(0.95);
-  }
-
-  75% {
-    transform: translate(-30px, 40px) scale(1.05);
-  }
-}
-
-@keyframes kinetic-float-2 {
-
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-
-  33% {
-    transform: translate(-40px, -30px) scale(1.08);
-  }
-
-  66% {
-    transform: translate(30px, 20px) scale(0.92);
-  }
-}
-
-@keyframes kinetic-float-3 {
-
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.08;
-  }
-
-  50% {
-    transform: translate(-50%, -50%) scale(1.3);
-    opacity: 0.12;
-  }
-}
-
-/* 响应式调整 - 移动端减少光晕数量 */
+/* 响应式调整 - 移动端缩小 Logo */
 @media (max-width: 768px) {
   .kinetic-logo {
     top: -38px;
@@ -1018,16 +929,6 @@
 
   .kinetic-logo-image {
     height: 32px;
-  }
-
-  .kinetic-glow-3 {
-    display: none;
-  }
-
-  .kinetic-glow-1,
-  .kinetic-glow-2 {
-    filter: blur(60px);
-    opacity: 0.1;
   }
 
   /* 移动端关闭卡片过渡动画，防止地址栏收缩时触发残影 */
@@ -1039,13 +940,6 @@
 
 /* 尊重用户减少动画偏好 */
 @media (prefers-reduced-motion: reduce) {
-
-  .kinetic-glow-1,
-  .kinetic-glow-2,
-  .kinetic-glow-3 {
-    animation: none !important;
-  }
-
   .kinetic-parallax-container {
     transition: none !important;
   }
@@ -1702,26 +1596,25 @@
 /* ========== 自定义彩色卡片样式 ========== */
 
 .kinetic-cell-yellow {
-  /* Apple Liquid Glass Effect */
-  background: linear-gradient(135deg, rgba(194, 181, 163, 0.72) 0%, rgba(194, 181, 163, 0.52) 100%);
+  /* CMYK 20 18 36 0 → #CCD1A3 */
+  background: linear-gradient(135deg, rgba(204, 209, 163, 0.55) 0%, rgba(204, 209, 163, 0.35) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow:
-    0 8px 32px 0 rgba(0, 0, 0, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+    0 8px 32px 0 rgba(0, 0, 0, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .kinetic-cell-yellow .kinetic-name,
 .kinetic-cell-yellow .kinetic-desc {
   color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .kinetic-cell-yellow .kinetic-description {
-  color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   font-size: 0.8rem;
   white-space: nowrap;
   letter-spacing: 0.5px;
@@ -1729,21 +1622,20 @@
 }
 
 .kinetic-cell-orange {
-  /* Apple Liquid Glass Effect */
-  background: linear-gradient(135deg, rgba(183, 167, 153, 0.62) 0%, rgba(183, 167, 153, 0.42) 100%);
+  /* CMYK 4 5 10 0 → #F5F2E6 */
+  background: linear-gradient(135deg, rgba(245, 242, 230, 0.55) 0%, rgba(245, 242, 230, 0.35) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow:
-    0 8px 32px 0 rgba(0, 0, 0, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+    0 8px 32px 0 rgba(0, 0, 0, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .kinetic-cell-orange .kinetic-name,
 .kinetic-cell-orange .kinetic-desc,
 .kinetic-cell-orange .kinetic-description {
   color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
