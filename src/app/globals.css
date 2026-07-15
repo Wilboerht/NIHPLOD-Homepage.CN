@@ -579,9 +579,9 @@
   border: 1px solid #00263e;
   background-color: transparent;
   color: #00263e;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.08em;
   border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
@@ -678,6 +678,7 @@
   .home-container .btn-primary {
     padding: 14px 36px;
     font-size: 13px;
+    letter-spacing: 0.06em;
   }
 
   .home-container .btn-primary::before,
@@ -713,6 +714,7 @@
   .home-container .btn-primary {
     padding: 12px 28px;
     font-size: 12px;
+    letter-spacing: 0.05em;
   }
 
   .home-container .btn-primary::before,
