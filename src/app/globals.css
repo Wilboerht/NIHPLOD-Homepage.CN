@@ -581,7 +581,7 @@
   color: #00263e;
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
@@ -679,7 +679,7 @@
     padding: 14px 36px;
     font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
   .home-container .btn-primary::before,
@@ -716,7 +716,7 @@
     padding: 12px 28px;
     font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
   .home-container .btn-primary::before,
