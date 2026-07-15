@@ -12,8 +12,8 @@
 }
 
 :root {
-  --background: #FFFFFF;
-  --foreground: #00263E;
+  --background: #ffffff;
+  --foreground: #00263e;
 }
 
 @layer base {
@@ -108,7 +108,7 @@
 
   /* Focus 可见性 - 键盘导航用户 */
   :focus-visible {
-    outline: 2px solid #00263E;
+    outline: 2px solid #00263e;
     outline-offset: 2px;
   }
 
@@ -122,7 +122,7 @@
     position: absolute;
     top: -100px;
     left: 0;
-    background: #00263E;
+    background: #00263e;
     color: white;
     padding: 8px 16px;
     z-index: 100;
@@ -176,7 +176,6 @@
 
   /* 移动端表单输入优化 - 防止 iOS 自动缩放 */
   @media screen and (max-width: 768px) {
-
     input,
     select,
     textarea {
@@ -215,7 +214,7 @@
   }
 
   a:hover {
-    color: #00263E;
+    color: #00263e;
   }
 
   img {
@@ -226,7 +225,7 @@
 
 @layer components {
   .btn-primary {
-    background-color: #00263E;
+    background-color: #00263e;
     color: white;
     padding: 12px 24px;
     font-weight: 500;
@@ -239,8 +238,8 @@
   }
 
   .btn-outline {
-    border: 1px solid #00263E;
-    color: #00263E;
+    border: 1px solid #00263e;
+    color: #00263e;
     padding: 12px 24px;
     font-weight: 500;
     letter-spacing: 0.05em;
@@ -249,7 +248,7 @@
   }
 
   .btn-outline:hover {
-    background-color: #00263E;
+    background-color: #00263e;
     color: white;
   }
 
@@ -441,7 +440,6 @@
 
 /* 尊重用户的减少动画偏好 */
 @media (prefers-reduced-motion: reduce) {
-
   ::view-transition-group(root),
   ::view-transition-old(root),
   ::view-transition-new(root) {
@@ -457,8 +455,8 @@
 /* ========== 首页专用样式 ========== */
 
 .home-container {
-  --home-bg: #FAF5EA;
-  --home-dark: #4A6272;
+  --home-bg: #faf5ea;
+  --home-dark: #4a6272;
 
   display: flex;
   justify-content: center;
@@ -500,7 +498,7 @@
 
 .home-container .wave path {
   fill: none;
-  stroke: #FAF5EA;
+  stroke: #faf5ea;
   stroke-width: 1px;
 }
 
@@ -570,30 +568,29 @@
   /* margin-top: 4rem; - Removed to use Tailwind for consistency */
 }
 
-/* 主按钮 */
+/* 主按钮 - 与 skin-advisor 首页 CTA 对齐：描边透明底 + hover 填充 */
 .home-container .btn-primary {
-  width: 220px;
-  height: 54px;
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #00263E;
-  color: white;
-  font-size: 16px;
-  font-weight: 400;
-  letter-spacing: 0.20em;
+  gap: 0.75rem;
+  padding: 16px 48px;
+  border: 1px solid #00263e;
+  background-color: transparent;
+  color: #00263e;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
   border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 38, 62, 0.1);
-  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.5s ease;
 }
 
 .home-container .btn-primary:hover {
-  background-color: var(--home-dark);
-  transform: translateY(-2px);
-  box-shadow: 0 15px 40px rgba(0, 38, 62, 0.15);
+  background-color: #00263e;
   color: white;
-  opacity: 1;
-  /* 覆盖默认btn-primary hover */
 }
 
 /* 次按钮 */
@@ -626,8 +623,11 @@
   right: -10px;
   top: -8px;
   background-color: rgba(0, 38, 62, 0.08);
-  color: #4A6272;
-  font-family: system-ui, -apple-system, sans-serif;
+  color: #4a6272;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-style: normal;
   font-size: 0.5rem;
   font-weight: 500;
@@ -641,7 +641,6 @@
 }
 
 @keyframes floatBadge {
-
   0%,
   100% {
     transform: translateY(0);
@@ -677,57 +676,13 @@
   }
 
   .home-container .btn-primary {
-    width: auto;
-    min-width: 121px;
-    height: 45px;
-    padding: 12px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #FAF5EA;
-    color: #4A6272;
-    font-family: "Source Han Sans SC", "PingFang SC", sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 21px;
-    letter-spacing: 0.2em;
-    text-align: center;
-    border-radius: 99px;
-    border: none;
-    box-shadow: none;
-    position: relative;
-    overflow: visible;
-    white-space: nowrap;
+    padding: 14px 36px;
+    font-size: 13px;
   }
 
   .home-container .btn-primary::before,
   .home-container .btn-primary::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 99px;
-    border: 1px solid rgba(0, 38, 62, 0.25);
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .home-container .btn-primary::before {
-    animation: sonar-ring 3s ease-out infinite;
-  }
-
-  .home-container .btn-primary::after {
-    animation: sonar-ring 3s ease-out infinite 1.5s;
-  }
-
-  @keyframes sonar-ring {
-    0% {
-      transform: scale(1, 1);
-      opacity: 0.5;
-    }
-    100% {
-      transform: scale(1.2, 1.45);
-      opacity: 0;
-    }
+    display: none;
   }
 
   .home-container .btn-secondary {
@@ -756,58 +711,24 @@
   }
 
   .home-container .btn-primary {
-    width: auto;
-    min-width: 121px;
-    height: 45px;
     padding: 12px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #FAF5EA;
-    color: #4A6272;
-    font-family: "Source Han Sans SC", "PingFang SC", sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 21px;
-    letter-spacing: 0.2em;
-    text-align: center;
-    border-radius: 99px;
-    border: none;
-    box-shadow: none;
-    position: relative;
-    overflow: visible;
-    white-space: nowrap;
+    font-size: 12px;
   }
 
   .home-container .btn-primary::before,
   .home-container .btn-primary::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 99px;
-    box-shadow: 0 0 0 0 rgba(0, 38, 62, 0.2);
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .home-container .btn-primary::before {
-    animation: sonar-pulse 3s ease-out infinite;
-  }
-
-  .home-container .btn-primary::after {
-    animation: sonar-pulse 3s ease-out infinite 1.5s;
+    display: none;
   }
 }
 
 @keyframes pulse-slow {
-
   0%,
   100% {
     opacity: 1;
   }
 
   50% {
-    opacity: .5;
+    opacity: 0.5;
   }
 }
 
@@ -833,7 +754,7 @@
 /* ========== Graphite Kinetic Grid 全局背景 ========== */
 
 :root {
-  --kinetic-bg: #F0EDE1;
+  --kinetic-bg: #f0ede1;
   --kinetic-accent: #333333;
   --kinetic-text-primary: #ffffff;
   --kinetic-text-secondary: #a1a1a1;
@@ -857,7 +778,11 @@
   position: absolute;
   inset: 0;
   background-color: var(--kinetic-bg);
-  background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.6) 0%, transparent 100%);
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 255, 255, 0.6) 0%,
+    transparent 100%
+  );
   pointer-events: none;
 }
 
@@ -871,9 +796,11 @@
 .kinetic-dot-pattern {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle at 2px 2px,
-      rgba(255, 255, 255, 0.05) 1px,
-      transparent 0);
+  background-image: radial-gradient(
+    circle at 2px 2px,
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 0
+  );
   background-size: 40px 40px;
   pointer-events: none;
 }
@@ -999,7 +926,6 @@
   z-index: 2;
 }
 
-
 /* 大卡片底部内容区 */
 .kinetic-large-content {
   position: absolute;
@@ -1007,10 +933,12 @@
   left: 0;
   right: 0;
   padding: 40px;
-  background: linear-gradient(to top,
-      rgba(154, 155, 155, 0.8) 0%,
-      rgba(154, 155, 155, 0.4) 50%,
-      transparent 100%);
+  background: linear-gradient(
+    to top,
+    rgba(154, 155, 155, 0.8) 0%,
+    rgba(154, 155, 155, 0.4) 50%,
+    transparent 100%
+  );
   z-index: 5;
 }
 
@@ -1020,14 +948,20 @@
   color: var(--kinetic-text-primary);
   letter-spacing: 0.1em;
   margin-bottom: 8px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 .kinetic-large-subtitle {
   font-size: 1rem;
   color: var(--kinetic-text-secondary);
   letter-spacing: 0.2em;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
 }
 
 /* 单个卡片基础样式 */
@@ -1071,11 +1005,13 @@
   inset: 0;
   border-radius: var(--kinetic-border-radius);
   padding: 2px;
-  background: linear-gradient(135deg,
-      transparent 0%,
-      transparent 40%,
-      rgba(51, 51, 51, 0) 40%,
-      rgba(51, 51, 51, 0) 100%);
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent 40%,
+    rgba(51, 51, 51, 0) 40%,
+    rgba(51, 51, 51, 0) 100%
+  );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -1100,11 +1036,13 @@
 
 .kinetic-cell:not(.no-hover-effect):hover::before {
   opacity: 1;
-  background: linear-gradient(135deg,
-      rgba(85, 85, 85, 0.8) 0%,
-      rgba(85, 85, 85, 0.4) 30%,
-      transparent 60%,
-      transparent 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(85, 85, 85, 0.8) 0%,
+    rgba(85, 85, 85, 0.4) 30%,
+    transparent 60%,
+    transparent 100%
+  );
 }
 
 /* ========== 图片卡片样式 ========== */
@@ -1148,23 +1086,33 @@
   margin-bottom: 12px;
   letter-spacing: -1px;
   color: var(--kinetic-text-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   transition: text-shadow 0.4s ease;
   position: relative;
   z-index: 2;
 }
 
 .kinetic-text-cell:not(.no-hover-effect):hover .kinetic-name {
-  text-shadow: 0 0 30px rgba(85, 85, 85, 0.8), 0 0 60px rgba(85, 85, 85, 0.4);
+  text-shadow:
+    0 0 30px rgba(85, 85, 85, 0.8),
+    0 0 60px rgba(85, 85, 85, 0.4);
 }
 
 .kinetic-description {
   font-size: 0.95rem;
   color: var(--kinetic-text-secondary);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   text-transform: uppercase;
   letter-spacing: 1px;
-  transition: color 0.4s ease, letter-spacing 0.4s ease;
+  transition:
+    color 0.4s ease,
+    letter-spacing 0.4s ease;
   position: relative;
   z-index: 2;
 }
@@ -1177,7 +1125,7 @@
 /* ========== 登录卡片样式 ========== */
 
 .kinetic-login-cell {
-  background: #FAF5EA;
+  background: #faf5ea;
   justify-content: center;
   align-items: flex-start;
   border: none;
@@ -1185,7 +1133,7 @@
 }
 
 .kinetic-login-cell:not(.no-hover-effect):hover {
-  background: #FAF5EA;
+  background: #faf5ea;
   box-shadow:
     18px 18px 0px #fff,
     0 25px 50px -12px rgba(255, 255, 255, 0.2);
@@ -1275,7 +1223,7 @@
   /* iPad Air (820px), Pro (834px+) 恢复展示 PC 的全量卡片 */
   @media (min-width: 820px) {
     .kinetic-container {
-  top: 53%;
+      top: 53%;
     }
 
     .kinetic-cell-steps,
@@ -1318,7 +1266,7 @@
       width: min(80vw, 36vh);
       max-width: 400px;
       gap: 14px;
-  top: 55%;
+      top: 55%;
     }
 
     .kinetic-cell-steps,
@@ -1438,7 +1386,7 @@
 /* ========== 自定义彩色卡片样式 ========== */
 
 .kinetic-cell-yellow {
-  background: linear-gradient(135deg, rgba(228, 223, 217, 0.80) 0%, rgba(218, 212, 205, 0.65) 100%);
+  background: linear-gradient(135deg, rgba(228, 223, 217, 0.8) 0%, rgba(218, 212, 205, 0.65) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1448,15 +1396,15 @@
 }
 
 .kinetic-cell-yellow .kinetic-name {
-  color: #00263E;
+  color: #00263e;
 }
 
 .kinetic-cell-yellow .kinetic-desc {
-  color: #4A6272;
+  color: #4a6272;
 }
 
 .kinetic-cell-yellow .kinetic-description {
-  color: #00263E;
+  color: #00263e;
   text-shadow: none;
   font-size: 0.8rem;
   white-space: nowrap;
@@ -1465,7 +1413,7 @@
 }
 
 .kinetic-cell-orange {
-  background: linear-gradient(135deg, rgba(228, 223, 217, 0.80) 0%, rgba(218, 212, 205, 0.65) 100%);
+  background: linear-gradient(135deg, rgba(228, 223, 217, 0.8) 0%, rgba(218, 212, 205, 0.65) 100%);
   backdrop-filter: blur(25px) saturate(180%);
   -webkit-backdrop-filter: blur(25px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1482,4 +1430,3 @@
     0 1px 4px rgba(0, 0, 0, 0.25),
     0 0 1px rgba(0, 0, 0, 0.15);
 }
-
