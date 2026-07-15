@@ -554,7 +554,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   setIsExpanded(newState);
                   setDrawerOpen(newState);
                 }}
-                className="group pointer-events-auto relative z-30 -mt-[1px] flex w-[110px] items-center justify-center self-center overflow-hidden rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5"
+                className="group pointer-events-auto relative z-30 -mt-[1px] flex w-[140px] items-center justify-center self-center overflow-hidden rounded-b-2xl bg-[#FAF5EA] py-3 lg:w-[160px] lg:py-3.5"
               >
                 {/* 矿物纹理覆盖层 - 使用与抽屉相同的 texture-overlay 类 */}
                 <div className="texture-overlay absolute inset-0" />
