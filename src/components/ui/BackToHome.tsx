@@ -6,7 +6,7 @@ export function BackToHome() {
   return (
     <Link
       href="/"
-      className="fixed right-6 md:right-8 bottom-8 z-50 flex items-center justify-center w-10 h-10 rounded-full bg-zinc-900/80 hover:bg-zinc-900 text-white shadow-lg backdrop-blur-sm transition-all hover:scale-105"
+      className="fixed right-6 md:right-8 bottom-8 z-50 flex items-center justify-center w-11 h-11 rounded-full bg-white/90 backdrop-blur-sm border border-[#00263E]/30 text-[#00263E]/60 hover:text-[#00263E] hover:border-[#00263E]/60 shadow-md hover:shadow-lg transition-all duration-200"
       aria-label="返回首页"
     >
       <svg
@@ -20,7 +20,8 @@ export function BackToHome() {
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <path d="M19 12H5" />
+        <path d="M12 19l-7-7 7-7" />
       </svg>
     </Link>
   );
