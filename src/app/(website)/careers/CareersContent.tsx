@@ -472,63 +472,82 @@ function JobModal({
         className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-6">
-          <div>
-            <h2 className="text-xl font-medium text-zinc-900">{job.title}</h2>
-            <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
-              <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
+        <div className="flex shrink-0 items-start justify-between border-b border-zinc-100 bg-white p-6">
+          <div className="min-w-0 flex-1 pr-4">
+            <h2 className="text-2xl font-semibold tracking-tight text-[#00263E]">{job.title}</h2>
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${typeInfo.color}`}>
                 {typeInfo.label}
               </span>
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" />
-                {extractCity(job.location)}
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                {job.location}
               </span>
-              {job.salary && <span>{job.salary}</span>}
+              {job.salary && <span className="font-medium text-[#00263E]/80">{job.salary}</span>}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 transition-colors hover:bg-zinc-100"
+            className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 space-y-6 overflow-y-auto p-6">
+        <div className="flex-1 space-y-8 overflow-y-auto bg-[#FAF8F3] p-6 sm:p-8">
           {/* Map */}
           {job.location && (
-            <div id={`map-${job.id}`} className="h-48 w-full rounded-xl border border-zinc-100" />
-          )}
-
-          {/* Description */}
-          <div>
-            <h3 className="mb-3 text-base font-medium text-zinc-900">职位描述</h3>
-            <div
-              className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1"
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(descriptionHtml),
-              }}
-            />
-          </div>
-
-          {/* Requirements */}
-          {job.requirements && (
-            <div>
-              <h3 className="mb-3 text-base font-medium text-zinc-900">任职要求</h3>
-              <div
-                className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1"
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(requirementsHtml),
-                }}
-              />
+            <div className="overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm">
+              <div id={`map-${job.id}`} className="h-56 w-full" />
+              <div className="flex items-center gap-2 border-t border-zinc-100 px-4 py-3 text-sm text-zinc-600">
+                <MapPin className="h-4 w-4 shrink-0 text-zinc-400" />
+                <span>{job.location}</span>
+              </div>
             </div>
           )}
 
+          {/* Description */}
+          <section>
+            <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-[#00263E]">
+              <span className="h-5 w-1 rounded-full bg-[#00263E]" />
+              职位描述
+            </h3>
+            <div className="rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+              <div
+                className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1.5"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(descriptionHtml),
+                }}
+              />
+            </div>
+          </section>
+
+          {/* Requirements */}
+          {job.requirements && (
+            <section>
+              <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-[#00263E]">
+                <span className="h-5 w-1 rounded-full bg-[#00263E]" />
+                任职要求
+              </h3>
+              <div className="rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+                <div
+                  className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1.5"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(requirementsHtml),
+                  }}
+                />
+              </div>
+            </section>
+          )}
+
           {/* Application Form */}
-          <div className="border-t border-zinc-100 pt-6">
-            <h3 className="mb-4 text-base font-medium text-zinc-900">投递简历</h3>
-            <p className="mb-4 whitespace-pre-line text-sm text-zinc-500">{submitTip?.content}</p>
+          <section className="rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+            <h3 className="mb-2 flex items-center gap-2 text-base font-semibold text-[#00263E]">
+              <span className="h-5 w-1 rounded-full bg-[#00263E]" />
+              投递简历
+            </h3>
+            <p className="mb-6 whitespace-pre-line text-sm text-zinc-500">{submitTip?.content}</p>
 
             {submitStatus === "success" ? (
               <div className="rounded-xl bg-green-50 p-6 text-center">
@@ -536,32 +555,31 @@ function JobModal({
                 <p className="mt-1 text-sm text-green-600">我们会尽快查看您的简历</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1.5 block text-sm text-zinc-600">姓名 *</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData((d) => ({ ...d, name: e.target.value }))}
-                      className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
-                      placeholder="您的姓名"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm text-zinc-600">电话 *</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData((d) => ({ ...d, phone: e.target.value }))}
-                      className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
-                      placeholder="您的手机号"
-                    />
-                  </div>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700">姓名 *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData((d) => ({ ...d, name: e.target.value }))}
+                    className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
+                    placeholder="请输入您的姓名"
+                  />
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm text-zinc-600">简历 *</label>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700">电话 *</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData((d) => ({ ...d, phone: e.target.value }))}
+                    className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
+                    placeholder="请输入您的手机号"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700">简历 *</label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -572,7 +590,7 @@ function JobModal({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-sm text-zinc-500 transition-colors hover:border-[#00263E]/40 hover:text-[#00263E]"
+                    className="flex w-full items-center justify-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-5 text-sm text-zinc-500 transition-colors hover:border-[#00263E]/40 hover:text-[#00263E]"
                   >
                     {resumeFile ? (
                       <>
@@ -582,7 +600,7 @@ function JobModal({
                     ) : (
                       <>
                         <Upload className="h-5 w-5" />
-                        <span>上传简历 (PDF, DOC, DOCX)</span>
+                        <span>点击上传简历（PDF, DOC, DOCX）</span>
                       </>
                     )}
                   </button>
@@ -593,7 +611,7 @@ function JobModal({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00263E] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#00263E]/90 disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00263E] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#00263E]/90 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
@@ -609,7 +627,7 @@ function JobModal({
                 </button>
               </form>
             )}
-          </div>
+          </section>
         </div>
       </m.div>
     </m.div>
