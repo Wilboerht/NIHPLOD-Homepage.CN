@@ -34,6 +34,7 @@ export function DrawerPageContainer({
   const handleRef = useRef<HTMLButtonElement>(null);
   const [handleHeight, setHandleHeight] = useState(0);
   const { isDrawerOpen, setDrawerOpen } = useLayout();
+  const hasSyncRun = useRef(false);
 
   useLayoutEffect(() => {
     if (!handleRef.current || typeof ResizeObserver === "undefined") return;
@@ -50,6 +51,11 @@ export function DrawerPageContainer({
   }, []);
 
   useEffect(() => {
+    // 跳过首次渲染，避免 mount 期间全局 isDrawerOpen 把抽屉先展开再收起
+    if (!hasSyncRun.current) {
+      hasSyncRun.current = true;
+      return;
+    }
     if (isDrawerOpen && !isExpanded) {
       setIsExpanded(true);
     } else if (!isDrawerOpen && isExpanded) {
