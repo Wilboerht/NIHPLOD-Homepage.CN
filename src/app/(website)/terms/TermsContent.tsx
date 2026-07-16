@@ -2,6 +2,7 @@ import TableOfContents from "@/components/ui/TableOfContents";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 import { BackToHome } from "@/components/ui/BackToHome";
 import Link from "next/link";
+import Image from "next/image";
 import type { TermsPageContent } from "@/types/page-content";
 
 interface TermsContentProps {
@@ -218,6 +219,45 @@ export function TermsContent({ content }: TermsContentProps) {
           <p className="text-xs text-zinc-500 tracking-wide">
             &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
           </p>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+            <Link
+              href="https://beian.miit.gov.cn/"
+              target="_blank"
+              className="hover:text-zinc-600 transition-colors"
+            >
+              沪ICP备2026014764号-1
+            </Link>
+            <span className="text-zinc-300">|</span>
+            <Link
+              href="http://www.beian.gov.cn/portal/registerSystemInfo"
+              target="_blank"
+              className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
+            >
+              <Image
+                src="/images/beian.webp"
+                alt="公安备案"
+                width={12}
+                height={12}
+                className="opacity-60"
+              />
+              <span>沪公网安备31010702010178号</span>
+            </Link>
+            <span className="text-zinc-300">|</span>
+            <Link
+              href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
+              target="_blank"
+              className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
+            >
+              <Image
+                src="/images/aic_icon.png"
+                alt="电子营业执照"
+                width={12}
+                height={12}
+                className="opacity-50"
+              />
+              <span>电子营业执照</span>
+            </Link>
+          </div>
         </div>
       </footer>
 
