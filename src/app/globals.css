@@ -450,6 +450,37 @@
   .animate-fade-scale-in {
     animation: none !important;
   }
+
+  /* 首页波浪动画 */
+  .home-container .wave-1,
+  .home-container .wave-2 {
+    animation: none !important;
+  }
+
+  /* 浮动徽标 */
+  .badge-container {
+    animation: none !important;
+  }
+
+  /* 骨架屏加载 */
+  .animate-shimmer {
+    animation: none !important;
+    background-image: none !important;
+    opacity: 0.5;
+  }
+
+  /* Tailwind 自定义动画 */
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-scale-in,
+  .animate-pulse-soft,
+  .animate-float,
+  .animate-marquee,
+  .animate-orbit-spin-slow,
+  .animate-orbit-spin-slower,
+  .animate-pulse-slow {
+    animation: none !important;
+  }
 }
 
 /* ========== 首页专用样式 ========== */

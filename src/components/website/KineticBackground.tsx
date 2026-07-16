@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
 import { ChevronRight } from "lucide-react";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 /**
  * Kinetic Grid 全局背景组件
