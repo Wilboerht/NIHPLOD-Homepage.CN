@@ -51,6 +51,8 @@ const extractCity = (location: string) => {
 function normalizeJobHtml(html: string): string {
   let result = html;
   result = result.replace(/<p[^>]*>\s*(?:<br\s*\/?>)*\s*<\/p>/gi, "");
+  // 清理 <p> 上的内联样式和 class，统一由外层 CSS 控制
+  result = result.replace(/<p\b[^>]*>/gi, "<p>");
   const pattern = /(<p[^>]*>\s*\d+[\.．。、\s]+.*?<\/p>\s*){2,}/gi;
   result = result.replace(pattern, (match) => {
     const items: string[] = [];
@@ -474,7 +476,7 @@ function JobModal({
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-6">
           <div>
-            <h2 className="text-xl font-medium text-zinc-900">{job.title}</h2>
+            <h2 className="text-lg font-medium text-zinc-900">{job.title}</h2>
             <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
               <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
                 {typeInfo.label}
@@ -505,7 +507,7 @@ function JobModal({
           <div>
             <h3 className="mb-3 text-base font-medium text-zinc-900">职位描述</h3>
             <div
-              className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1"
+              className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(descriptionHtml),
               }}
@@ -517,7 +519,7 @@ function JobModal({
             <div>
               <h3 className="mb-3 text-base font-medium text-zinc-900">任职要求</h3>
               <div
-                className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1"
+                className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
                 dangerouslySetInnerHTML={{
                   __html: DOMPurify.sanitize(requirementsHtml),
                 }}
