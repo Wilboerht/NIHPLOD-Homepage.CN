@@ -55,7 +55,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
   const services = [...cmsServices, advisorService];
 
   return (
-    <div className="bg-[#fefcf8] min-h-screen flex flex-col">
+    <div className="animate-fade-in bg-[#fefcf8] min-h-screen flex flex-col">
       {/* Top Bar */}
       <nav aria-label="服务页导航" className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white/50 backdrop-blur-md w-full py-3 md:py-6">
         <Link href="/" className="ml-[30px] md:ml-[80px]">

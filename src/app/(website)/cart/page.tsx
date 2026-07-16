@@ -75,7 +75,7 @@ export default async function CartPage({ searchParams }: CartPageProps) {
   const autoOpenCheckout = params.openCheckout === "1";
 
   return (
-    <div className="min-h-dvh bg-gray-50">
+    <div className="animate-fade-in min-h-dvh bg-gray-50">
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <h1 className="text-lg font-semibold text-gray-900">购物车</h1>
