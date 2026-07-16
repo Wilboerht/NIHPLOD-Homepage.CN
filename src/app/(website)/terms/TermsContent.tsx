@@ -1,5 +1,6 @@
 import TableOfContents from "@/components/ui/TableOfContents";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
+import { BackToHome } from "@/components/ui/BackToHome";
 import Link from "next/link";
 import type { TermsPageContent } from "@/types/page-content";
 
@@ -161,18 +162,7 @@ export function TermsContent({ content }: TermsContentProps) {
           <h1 className="text-4xl md:text-5xl font-normal text-zinc-900 mb-6">
             {pageTitle.zh}
           </h1>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-500">
-            <p>生效日期：{lastUpdated}</p>
-            <span
-              className="hidden sm:block w-1 h-1 rounded-full bg-zinc-300"
-              aria-hidden="true"
-            />
-            <p>最后更新：{lastUpdated}</p>
-          </div>
-          <p className="mt-6 text-zinc-500 leading-relaxed max-w-2xl">
-            {content.description ||
-              "在使用我们的服务前，请仔细阅读以下条款。"}
-          </p>
+
         </div>
       </div>
 
@@ -230,6 +220,8 @@ export function TermsContent({ content }: TermsContentProps) {
           </p>
         </div>
       </footer>
+
+      <BackToHome />
     </div>
   );
 }

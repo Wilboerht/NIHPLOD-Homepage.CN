@@ -1,6 +1,6 @@
 import TableOfContents from "@/components/ui/TableOfContents";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
-import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { BackToHome } from "@/components/ui/BackToHome";
 
 // ============================================
 // 隐私政策内容数据
@@ -21,7 +21,7 @@ const privacyData: Record<string, SectionContent> = {
   ch2: {
     title: "二、本隐私政策范围",
     content: [
-      "二、本隐私政策范围\n\n本隐私政策适用于我们通过以下渠道向您提供产品、服务或活动时涉及的个人信息处理活动：\n\n（1）我们的官方网站（nihplod.cn 及其子域名，包括 AI 测肤顾问独立网站 skin-advisor.nihplod.cn）\n（2）我们的官方微信小程序（包括「NIHPLOD 官方商城」小程序及「NIHPLOD 预约服务」小程序）\n（3）我们的 AI 测肤顾问独立网站（skin-advisor.nihplod.cn 及其子域名）\n（4）我们在天猫、京东等第三方电商平台开设的品牌官方旗舰店\n（5）我们的官方第三方社交媒体账号（如微信公众号、小红书、微博官方账号等）\n（6）我们的电子邮箱及线下实体店铺（包括百货专柜、免税店、美妆集合店等授权经销商）\n（7）其他经我们确认的线上和线下渠道\n\n本隐私政策是 NIHPLOD 旎柏《服务条款》不可分割的组成部分。就个人信息处理事项，如本隐私政策与《服务条款》之间存在任何理解上的冲突，除非另有明确说明，以本隐私政策为准。\n\n本隐私政策不适用于以下情形：\n\n（1）第三方向您提供的服务，该等服务适用第三方向您另行说明的个人信息处理规则；\n（2）我们的员工、实习生或外包人员的个人信息处理，该等处理适用我们的内部人力资源管理制度和员工个人信息处理规则。\n\n若某项产品、服务或活动有单独的个人信息处理规则（包括隐私政策、告知文案、现场说明、系统弹窗等），该单独规则中未涵盖的内容，以本隐私政策为准；该单独规则对本隐私政策中内容有特殊约定的，以单独规则相关内容为准。上述适用规则以不降低法律规定的告知和同意标准为前提——若单独规则的告知内容不符合法律强制性要求，则仍以法律规定的完整告知内容为准。\n\n随着业务发展，我们可能推出新的服务或功能，或调整现有的个人信息处理活动。如处理目的、处理方式或处理的个人信息种类发生变更，我们将更新本隐私政策并在显著位置提示您阅读。对于重大变更，我们将依法重新征求您的同意。",
+      "二、本隐私政策范围\n\n本隐私政策适用于我们通过以下渠道向您提供产品、服务或活动时涉及的个人信息处理活动：\n\n（1）我们的官方网站（nihplod.cn 及其子域名，包括 AI 测肤顾问独立网站 advisor.nihplod.cn）\n（2）我们的官方微信小程序（包括「NIHPLOD 官方商城」小程序及「NIHPLOD 预约服务」小程序）\n（3）我们的 AI 测肤顾问独立网站（advisor.nihplod.cn 及其子域名）\n（4）我们在天猫、京东等第三方电商平台开设的品牌官方旗舰店\n（5）我们的官方第三方社交媒体账号（如微信公众号、小红书、微博官方账号等）\n（6）我们的电子邮箱及线下实体店铺（包括百货专柜、免税店、美妆集合店等授权经销商）\n（7）其他经我们确认的线上和线下渠道\n\n本隐私政策是 NIHPLOD 旎柏《服务条款》不可分割的组成部分。就个人信息处理事项，如本隐私政策与《服务条款》之间存在任何理解上的冲突，除非另有明确说明，以本隐私政策为准。\n\n本隐私政策不适用于以下情形：\n\n（1）第三方向您提供的服务，该等服务适用第三方向您另行说明的个人信息处理规则；\n（2）我们的员工、实习生或外包人员的个人信息处理，该等处理适用我们的内部人力资源管理制度和员工个人信息处理规则。\n\n若某项产品、服务或活动有单独的个人信息处理规则（包括隐私政策、告知文案、现场说明、系统弹窗等），该单独规则中未涵盖的内容，以本隐私政策为准；该单独规则对本隐私政策中内容有特殊约定的，以单独规则相关内容为准。上述适用规则以不降低法律规定的告知和同意标准为前提——若单独规则的告知内容不符合法律强制性要求，则仍以法律规定的完整告知内容为准。\n\n随着业务发展，我们可能推出新的服务或功能，或调整现有的个人信息处理活动。如处理目的、处理方式或处理的个人信息种类发生变更，我们将更新本隐私政策并在显著位置提示您阅读。对于重大变更，我们将依法重新征求您的同意。",
     ],
   },
   ch3: {
@@ -265,33 +265,14 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
 export function PrivacyContent() {
   return (
     <div className="bg-white min-h-screen pt-16 md:pt-24 pb-0">
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-2 md:mb-4">
-        <Breadcrumb
-          items={[
-            { label: "首页", href: "/" },
-            { label: "隐私政策" },
-          ]}
-        />
-      </div>
-
       {/* Header Section */}
       <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-8 md:mb-16">
         <div className="max-w-4xl">
           <h1 className="text-4xl md:text-5xl font-normal text-zinc-900 mb-6">
             隐私政策
           </h1>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-500">
-            <p>生效日期：2026年7月6日</p>
-            <span
-              className="hidden sm:block w-1 h-1 rounded-full bg-zinc-300"
-              aria-hidden="true"
-            />
-            <p>最后更新：2026年7月6日</p>
-          </div>
-          <p className="mt-6 text-zinc-500 leading-relaxed max-w-2xl">
-            我们重视并尊重您的隐私，了解我们如何收集、使用和保护您的个人信息。
-          </p>
+
+
         </div>
       </div>
 
@@ -335,6 +316,8 @@ export function PrivacyContent() {
           </p>
         </div>
       </footer>
+
+      <BackToHome />
     </div>
   );
 }
