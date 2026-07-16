@@ -246,7 +246,7 @@ export function ContactContent({ content }: ContactContentProps) {
 
               {/* Submit */}
               <button type="submit" disabled={status === "loading"}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#00263E] px-6 py-3 text-sm font-medium text-[#00263E] hover:bg-[#00263E] hover:text-white transition-colors disabled:opacity-50">
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#00263E]/30 px-6 py-3 text-sm font-medium text-[#00263E] hover:border-[#00263E] hover:bg-[#00263E]/5 transition-colors disabled:opacity-50">
                 {status === "loading" ? (<><Loader2 className="h-4 w-4 animate-spin" />提交中...</>) : (<><Send className="h-4 w-4" />提交留言</>)}
               </button>
             </form>
