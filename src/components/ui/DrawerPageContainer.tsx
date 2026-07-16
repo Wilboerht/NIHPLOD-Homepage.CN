@@ -24,7 +24,7 @@ const SLIDE_TRANSITION = {
 export function DrawerPageContainer({
   children,
   defaultExpanded = false,
-  buttonWidth = "w-[110px]",
+  buttonWidth = "w-[140px] lg:w-[160px]",
   shadowOpacity = 0.2,
   wrapperClassName = "!-top-[1px] !pointer-events-none",
   onCollapse,

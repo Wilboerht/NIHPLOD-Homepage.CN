@@ -66,7 +66,7 @@ export function StoryContent() {
     <>
       {/* 背景已移至 layout.tsx 实现无缝切换 */}
 
-      <DrawerPageContainer defaultExpanded shadowOpacity={0.2}>
+      <DrawerPageContainer>
         {/* 矿物纹理覆盖层 */}
         <div className="texture-overlay absolute inset-0" />
 

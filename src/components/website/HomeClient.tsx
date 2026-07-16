@@ -240,7 +240,6 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
       <DrawerPageContainer
         defaultExpanded
-        buttonWidth="w-[140px] lg:w-[160px]"
         shadowOpacity={0.15}
         onCollapse={handleCollapse}
       >

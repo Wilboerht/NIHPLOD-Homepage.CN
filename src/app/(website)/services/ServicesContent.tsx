@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Crown, ShieldCheck, Users, ScanFace } from "lucide-react";
-import type { ServicesPageContent } from "@/types/page-content";
+import type { ServicesPageContent, ServiceDetail, ServiceLink } from "@/types/page-content";
 
 interface ServicesContentProps {
   content: ServicesPageContent;
@@ -14,19 +14,43 @@ const ICON_COLOR = "#C3BC9F";
 const ICON_HOVER_COLOR = "#B8A47B";
 
 function VipIcon({ className, isHovered }: { className?: string; isHovered?: boolean }) {
-  return <Crown className={className} stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR} strokeWidth="1.6" />;
+  return (
+    <Crown
+      className={className}
+      stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR}
+      strokeWidth="1.6"
+    />
+  );
 }
 
 function AuthIcon({ className, isHovered }: { className?: string; isHovered?: boolean }) {
-  return <ShieldCheck className={className} stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR} strokeWidth="1.6" />;
+  return (
+    <ShieldCheck
+      className={className}
+      stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR}
+      strokeWidth="1.6"
+    />
+  );
 }
 
 function InfluencerIcon({ className, isHovered }: { className?: string; isHovered?: boolean }) {
-  return <Users className={className} stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR} strokeWidth="1.6" />;
+  return (
+    <Users
+      className={className}
+      stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR}
+      strokeWidth="1.6"
+    />
+  );
 }
 
 function AdvisorIcon({ className, isHovered }: { className?: string; isHovered?: boolean }) {
-  return <ScanFace className={className} stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR} strokeWidth="1.6" />;
+  return (
+    <ScanFace
+      className={className}
+      stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR}
+      strokeWidth="1.6"
+    />
+  );
 }
 
 const iconMap: Record<string, React.FC<{ className?: string; isHovered?: boolean }>> = {
@@ -44,57 +68,63 @@ export function ServicesContent({ content }: ServicesContentProps) {
   const pageTitle = content.pageTitle || { en: "SERVICES", zh: "服务入口" };
   const cmsServices = content.services || [];
 
-  const advisorService = {
+  const advisorService: ServiceDetail = {
     id: "advisor",
     label: "素颜测肤",
     title: "AI 素颜测肤智能平台",
+    nameEn: "AI Skin Advisor",
     description: "通过 AI 技术分析面部肌肤状况，获取个性化护肤建议及产品推荐。",
-    links: [{ label: "立即体验", url: "https://advisor.nihplod.cn", isAdmin: false, description: "" }],
+    links: [
+      { label: "立即体验", url: "https://advisor.nihplod.cn", isAdmin: false, description: "" },
+    ],
   };
 
   const services = [...cmsServices, advisorService];
 
   return (
-    <div className="animate-fade-in bg-[#fefcf8] min-h-screen flex flex-col">
+    <div className="flex min-h-screen animate-fade-in flex-col bg-[#fefcf8]">
       {/* Top Bar */}
-      <nav aria-label="服务页导航" className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white/50 backdrop-blur-md w-full py-3 md:py-6">
+      <nav
+        aria-label="服务页导航"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center justify-between bg-white/50 py-3 backdrop-blur-md md:py-6"
+      >
         <Link href="/" className="ml-[30px] md:ml-[80px]">
           <img
             src="/images/NIHPLOD-logo.svg"
             alt="NIHPLOD"
-            className="h-[30px] md:h-[40px] w-auto"
+            className="h-[30px] w-auto md:h-[40px]"
           />
         </Link>
-        <div className="flex items-center gap-6 md:gap-10 mr-[30px] md:mr-[85px]">
-          <Link href="/contact" className="text-xs md:text-sm text-[#00263E]">
+        <div className="mr-[30px] flex items-center gap-6 md:mr-[85px] md:gap-10">
+          <Link href="/contact" className="text-xs text-[#00263E] md:text-sm">
             联系我们
           </Link>
-          <Link href="/terms" className="text-xs md:text-sm text-[#00263E]">
+          <Link href="/terms" className="text-xs text-[#00263E] md:text-sm">
             服务条款
           </Link>
-          <Link href="/privacy" className="text-xs md:text-sm text-[#00263E]">
+          <Link href="/privacy" className="text-xs text-[#00263E] md:text-sm">
             隐私政策
           </Link>
-          <Link href="/" className="text-xs md:text-sm text-[#00263E]">
+          <Link href="/" className="text-xs text-[#00263E] md:text-sm">
             返回首页
           </Link>
         </div>
       </nav>
 
       {/* Spacer for fixed navbar */}
-      <div className="h-[62px] md:h-[88px] shrink-0" />
+      <div className="h-[62px] shrink-0 md:h-[88px]" />
 
       {/* Services Grid - centered vertically */}
-      <main className="flex-1 flex flex-col items-center justify-center">
-        <h1 className="text-3xl md:text-4xl font-light text-[#00263E] tracking-wider mb-4">
+      <main className="flex flex-1 flex-col items-center justify-center">
+        <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
           {pageTitle.zh}
         </h1>
-        <p className="text-sm md:text-base text-zinc-500 mb-12 md:mb-16">
+        <p className="mb-12 text-sm text-zinc-500 md:mb-16 md:text-base">
           NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验
         </p>
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
-          <div className="max-w-4xl mx-auto">
-            <div className="grid grid-cols-2 gap-8 sm:gap-12 lg:grid-cols-4 place-items-center">
+          <div className="mx-auto max-w-4xl">
+            <div className="grid grid-cols-2 place-items-center gap-8 sm:gap-12 lg:grid-cols-4">
               {services.map((service) => (
                 <ServiceCard key={service.id} service={service} />
               ))}
@@ -105,8 +135,8 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
       {/* Page Footer */}
       <footer className="border-t border-zinc-200">
-        <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-10 text-center">
-          <p className="text-xs text-zinc-500 tracking-wide">
+        <div className="container mx-auto px-6 py-10 text-center md:px-8 lg:px-12 xl:px-16">
+          <p className="text-xs tracking-wide text-zinc-500">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
@@ -114,7 +144,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
               href="https://beian.miit.gov.cn/"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-zinc-600 transition-colors"
+              className="transition-colors hover:text-zinc-600"
             >
               沪ICP备2026014764号-1
             </Link>
@@ -123,7 +153,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
               href="http://www.beian.gov.cn/portal/registerSystemInfo"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
+              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
             >
               <Image
                 src="/images/beian.webp"
@@ -139,7 +169,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
               href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
+              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
             >
               <Image
                 src="/images/aic_icon.png"
@@ -153,20 +183,19 @@ export function ServicesContent({ content }: ServicesContentProps) {
           </div>
         </div>
       </footer>
-
     </div>
   );
 }
 
-function ServiceCard({ service }: { service: CMSServiceDetail }) {
+function ServiceCard({ service }: { service: ServiceDetail }) {
   const [isHovered, setIsHovered] = useState(false);
   const Icon = getServiceIcon(service.id);
   const isDisabled = service.id === "vip" || service.id === "influencer";
-  const targetLink = service.links?.find((l) => !l.isAdmin) || service.links?.[0];
+  const targetLink = service.links?.find((l: ServiceLink) => !l.isAdmin) || service.links?.[0];
 
   return (
     <Link
-      href={isDisabled || !targetLink ? "#" : (targetLink?.url || "#")}
+      href={isDisabled || !targetLink ? "#" : targetLink?.url || "#"}
       target={isDisabled ? undefined : "_blank"}
       rel={isDisabled ? undefined : "noopener noreferrer"}
       onClick={(e) => isDisabled && e.preventDefault()}
@@ -179,9 +208,7 @@ function ServiceCard({ service }: { service: CMSServiceDetail }) {
       <div className="flex h-16 w-16 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
         <Icon className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16" isHovered={isHovered} />
       </div>
-      <span className="text-sm font-medium text-[#00263E]">
-        {service.label}
-      </span>
+      <span className="text-sm font-medium text-[#00263E]">{service.label}</span>
     </Link>
   );
 }
