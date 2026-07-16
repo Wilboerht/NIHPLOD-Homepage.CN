@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { ContactContent } from "./ContactContent";
 import { BreadcrumbJsonLd, LocalBusinessJsonLd } from "@/components/seo/JsonLd";
 
@@ -47,7 +48,9 @@ export default function ContactPage() {
         }}
         telephone="+86-21-xxxx-xxxx"
       />
-      <ContactContent content={undefined} />
+      <Suspense fallback={null}>
+        <ContactContent content={undefined} />
+      </Suspense>
     </>
   );
 }

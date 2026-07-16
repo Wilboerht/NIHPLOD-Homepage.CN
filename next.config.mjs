@@ -153,11 +153,6 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: '/contact',
-        destination: '/?contact=true',
-        permanent: false,
-      },
-      {
         source: '/checkout',
         destination: '/cart?openCheckout=1',
         permanent: true,

@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
+import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronDown, Plus, MessageCircle, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
-import { useAuth } from "@/contexts/AuthContext";
 
 
 
@@ -88,7 +88,7 @@ export function FAQContent() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [openIndex, setOpenIndex] = useState<number | null>(null);
     const { isDrawerOpen, setDrawerOpen } = useLayout();
-    const { openContact } = useAuth();
+    const router = useRouter();
     const handleRef = useRef<HTMLButtonElement>(null);
     const [handleHeight, setHandleHeight] = useState(0);
 
@@ -280,7 +280,7 @@ export function FAQContent() {
                                                 我们的支持团队随时候命，为您解答任何疑问。
                                             </p>
                                             <button
-                                                onClick={() => openContact("support")}
+                                                onClick={() => router.push("/contact?type=support")}
                                                 className="flex items-center gap-2 rounded-full bg-[#FFFFFF] px-7 py-3 text-[14px] lg:text-[16px] font-medium tracking-[0.2em] text-[#4A6272] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:bg-brand-gold/15 sm:hover:text-[#4A6272] sm:hover:border-[#4A6272]/30 sm:hover:backdrop-blur-md sm:hover:shadow-lg sm:active:scale-95"
                                                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                                             >

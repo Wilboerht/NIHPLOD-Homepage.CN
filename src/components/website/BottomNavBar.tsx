@@ -62,7 +62,7 @@ const allNavItems: NavItem[] = [
 export function BottomNavBar() {
     const pathname = usePathname();
     const { isDrawerOpen, setDrawerOpen, isNavMenuOpen, setNavMenuOpen: setIsNavMenuOpen } = useLayout();
-    const { activeModal, userCenterOpen, contactOpen } = useAuth();
+    const { activeModal, userCenterOpen } = useAuth();
 
     // 简单映射 pathname 到 currentPage，仅用于高亮和主导航判定
     // 如果路径是嵌套的（如 /products/123），可能需要 startsWith 逻辑
@@ -89,7 +89,7 @@ export function BottomNavBar() {
     const PrimaryIcon = primaryNav.icon;
 
     // 当抽屉展开、登录弹窗、用户中心面板或联系我们弹窗激活时，隐藏导航栏
-    const isVisible = !isDrawerOpen && !activeModal && !userCenterOpen && !contactOpen;
+    const isVisible = !isDrawerOpen && !activeModal && !userCenterOpen;
 
     // 服务入口页面在移动端隐藏底部导航栏（实现全屏效果）
     const isServicesPage = pathname === '/services';

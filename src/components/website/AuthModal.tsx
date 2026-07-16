@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, Smartphone, Shield, Lock, KeyRound, CheckCircle2, Check, Headset, ChevronLeft, ArrowLeftRight } from "lucide-react";
 import { Link } from "next-view-transitions";
+import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -76,7 +77,7 @@ function LoginModal({
   onSwitchToForgotPassword: () => void;
   onSuccess: () => Promise<void>;
 }) {
-  const { openContact: _openContact } = useAuth();
+  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -425,7 +426,7 @@ function LoginModal({
                           type="button"
                           onClick={() => {
                             onClose();
-                            _openContact();
+                            router.push("/contact");
                           }}
                           className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors"
                         >
@@ -585,7 +586,7 @@ function LoginModal({
                         type="button"
                         onClick={() => {
                           onClose();
-                          _openContact();
+                          router.push("/contact");
                         }}
                         className="ml-1 inline-flex items-center gap-1 font-medium text-brand-charcoal/60 hover:text-brand-charcoal transition-all"
                       >
@@ -1165,7 +1166,7 @@ function ForgotPasswordModal({
   onClose: () => void;
   onSwitchToLogin: () => void;
 }) {
-  const { openContact: _openContact } = useAuth();
+  const router = useRouter();
   const [step, setStep] = useState<ForgotPasswordStep>("form");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -1485,7 +1486,7 @@ function ForgotPasswordModal({
                           <div className="flex flex-col gap-1">
                             <button
                               type="button"
-                              onClick={() => { _openContact(); }}
+                              onClick={() => { router.push("/contact"); }}
                               className="inline-flex h-7 min-h-0 items-center justify-center text-xs text-brand-charcoal/40 tracking-wide hover:text-brand-charcoal/70 transition-colors underline underline-offset-4"
                             >
                               手机号无法使用？
@@ -1627,7 +1628,7 @@ function ForgotPasswordModal({
                           <div className="pt-2 text-center">
                             <button
                               type="button"
-                              onClick={() => { _openContact(); }}
+                              onClick={() => { router.push("/contact"); }}
                               className="text-xs text-brand-charcoal/50 hover:text-brand-charcoal/80 transition-colors underline underline-offset-4"
                             >
                               手机号无法使用？

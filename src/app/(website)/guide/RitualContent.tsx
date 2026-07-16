@@ -8,7 +8,6 @@ import { m, AnimatePresence, LayoutGroup } from "framer-motion";
 import { ChevronDown, Clock, Info, ChevronLeft, ChevronRight, Sun, Home, ShoppingBag, SoapDispenserDroplet, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 
@@ -881,7 +880,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   const [selectedSubPlan, setSelectedSubPlan] = useState<SubPlan | null>(null);
   // 悬停的模块索引
   const { isDrawerOpen, setDrawerOpen } = useLayout();
-  const { openContact } = useAuth();
+  const router = useRouter();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // 轮播导航状态
@@ -1714,7 +1713,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     <Info className="w-4 h-4 mt-0.5 mr-2 shrink-0 text-[#4A6272]/60" />
                                     <p className="text-[12px] text-[#00263E]/70 tracking-wide font-light leading-[1.6]">
                                       找不到您所在城市的门店？银卡级别以上会员可
-                                      <span onClick={() => openContact("application")} className="mx-1 font-medium underline underline-offset-2 decoration-[#4A6272]/40 text-[#4A6272] cursor-pointer active:opacity-70">
+                                      <span onClick={() => router.push("/contact?type=cooperation")} className="mx-1 font-medium underline underline-offset-2 decoration-[#4A6272]/40 text-[#4A6272] cursor-pointer active:opacity-70">
                                         申请入驻
                                       </span>
                                       您所在的城市。
@@ -2215,7 +2214,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                         <p className="text-[12px] text-brand-charcoal/60 tracking-wide font-light flex items-center">
                                           <Info className="w-3.5 h-3.5 mr-1.5 text-brand-charcoal/40" />
                                           找不到您所在城市的门店？银卡级别以上会员可
-                                          <span onClick={() => openContact("application")} className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5">
+                                          <span onClick={() => router.push("/contact?type=cooperation")} className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5">
                                             <span className="relative z-10 font-semibold transition-colors duration-500 group-hover:text-brand-charcoal">申请入驻</span>
                                             <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
                                             <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />

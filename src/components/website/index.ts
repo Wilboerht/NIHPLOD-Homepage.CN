@@ -6,6 +6,5 @@ export { GlobalModals } from "./GlobalModals";
 export { ProductCard } from "./ProductCard";
 export { ProductDrawer, PlatformIcon } from "./ProductDrawer";
 export { BottomNavBar } from "./BottomNavBar";
-export { ContactModal } from "./ContactModal";
 export { KineticBackground } from "./KineticBackground";
 export { XiaohongshuLink } from "./XiaohongshuLink";

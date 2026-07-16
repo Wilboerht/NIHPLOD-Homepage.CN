@@ -39,11 +39,6 @@ interface AuthContextType {
   payOrderId: string | null;
   openPay: (orderId: string) => void;
   closePay: () => void;
-  // 联系我们弹窗状态
-  contactOpen: boolean;
-  contactDefaultType: string | null;
-  openContact: (defaultType?: string) => void;
-  closeContact: () => void;
   // 登录弹窗
   openLoginModal: () => void;
   openRegisterModal: () => void;
@@ -140,20 +135,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPayOrderId(null);
   }, []);
 
-  // 联系我们弹窗状态
-  const [contactOpen, setContactOpen] = useState(false);
-  const [contactDefaultType, setContactDefaultType] = useState<string | null>(null);
-  const openContact = useCallback((defaultType?: string) => {
-    if (defaultType) {
-      setContactDefaultType(defaultType);
-    }
-    setContactOpen(true);
-  }, []);
-  const closeContact = useCallback(() => {
-    setContactOpen(false);
-    setContactDefaultType(null);
-  }, []);
-
   const refreshUser = useCallback(async (force?: boolean) => {
     // 如果没有前端认证提示且非强制刷新，跳过请求（避免未登录用户产生 401）
     if (!force && typeof window !== "undefined" && !localStorage.getItem("auth_hint")) {
@@ -240,10 +221,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         payOrderId,
         openPay,
         closePay,
-        contactOpen,
-        contactDefaultType,
-        openContact,
-        closeContact,
         openLoginModal,
         openRegisterModal,
         openForgotPasswordModal,

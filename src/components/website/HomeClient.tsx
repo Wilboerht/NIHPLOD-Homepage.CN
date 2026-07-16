@@ -19,27 +19,15 @@ import { useAuth } from "@/contexts/AuthContext";
  */
 function UrlParamHandler() {
   const searchParams = useSearchParams();
-  const { openContact, openWechatBindModal } = useAuth();
+  const { openWechatBindModal } = useAuth();
 
   useEffect(() => {
-    let shouldClearUrl = false;
-
-    if (searchParams.get("contact") === "true") {
-      openContact();
-      shouldClearUrl = true;
-    }
-
     if (searchParams.get("login") === "wechat_bind") {
       openWechatBindModal();
-      shouldClearUrl = true;
-    }
-
-    if (shouldClearUrl) {
-      // 清除 URL 参数
       const newUrl = window.location.pathname;
       window.history.replaceState({}, "", newUrl);
     }
-  }, [searchParams, openContact, openWechatBindModal]);
+  }, [searchParams, openWechatBindModal]);
 
   return null;
 }
