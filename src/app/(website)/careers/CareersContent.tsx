@@ -476,8 +476,8 @@ function JobModal({
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-6">
           <div>
-            <h2 className="text-lg font-medium text-zinc-900">{job.title}</h2>
-            <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
+            <h2 className="text-xl font-medium text-zinc-900">{job.title}</h2>
+            <div className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
               <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
                 {typeInfo.label}
               </span>
