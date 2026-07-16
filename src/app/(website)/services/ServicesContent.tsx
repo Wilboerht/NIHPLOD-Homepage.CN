@@ -83,9 +83,12 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
       {/* Services Grid - centered vertically */}
       <main className="flex-1 flex flex-col items-center justify-center">
-        <h1 className="text-3xl md:text-4xl font-light text-[#00263E] tracking-wider mb-12 md:mb-16">
+        <h1 className="text-3xl md:text-4xl font-light text-[#00263E] tracking-wider mb-4">
           {pageTitle.zh}
         </h1>
+        <p className="text-sm md:text-base text-zinc-500 mb-12 md:mb-16">
+          NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验
+        </p>
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-2 gap-8 sm:gap-12 lg:grid-cols-4 place-items-center">
