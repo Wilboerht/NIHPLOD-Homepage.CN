@@ -213,10 +213,10 @@ export function TermsContent({ content }: TermsContentProps) {
       </div>
 
       {/* Page Footer */}
-      <footer className="mt-16 md:mt-24 border-t border-zinc-100">
-        <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-8">
-          <p className="text-xs text-zinc-400">
-            &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司版权所有。
+      <footer className="mt-16 md:mt-24 border-t border-zinc-200">
+        <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-10 text-center">
+          <p className="text-xs text-zinc-500 tracking-wide">
+            &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
           </p>
         </div>
       </footer>
