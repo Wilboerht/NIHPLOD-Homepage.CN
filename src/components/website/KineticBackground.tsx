@@ -38,11 +38,11 @@ export function KineticBackground() {
 
       cells.forEach((cell, index) => {
         if (!cell) return;
-        const factor = (index + 1) * 1.5;
+        const factor = (index + 1) * 0.8;
         cell.style.setProperty("--parallax-x", `${x * factor}px`);
         cell.style.setProperty("--parallax-y", `${y * factor}px`);
-        cell.style.setProperty("--parallax-rx", `${-y * 4}deg`);
-        cell.style.setProperty("--parallax-ry", `${x * 4}deg`);
+        cell.style.setProperty("--parallax-rx", `${-y * 2}deg`);
+        cell.style.setProperty("--parallax-ry", `${x * 2}deg`);
       });
     };
 
@@ -212,6 +212,7 @@ export function KineticBackground() {
             alt="Brand Story"
             fill
             className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
+            style={{ objectPosition: "center 30%" }}
             sizes="(max-width: 600px) 100vw, 30vw"
             priority
           />
@@ -263,6 +264,7 @@ export function KineticBackground() {
             alt="官方指南"
             fill
             className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
+            style={{ objectPosition: "center 40%" }}
             sizes="(max-width: 600px) 100vw, 50vw"
           />
           <div className="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100 sm:flex">
@@ -323,72 +325,48 @@ export function KineticBackground() {
           className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect"
         >
           <div className="kinetic-btn-group">
+            <div className="mb-4 flex w-full flex-col items-center justify-center">
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand-charcoal/10 bg-brand-charcoal/5 sm:h-20 sm:w-20">
+                {user?.avatar ? (
+                  <Image
+                    src={user.avatar}
+                    alt={user.nickname || "用户头像"}
+                    fill
+                    className="rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="relative h-5 w-5 opacity-50 sm:h-7 sm:w-7">
+                    <Image
+                      src="/images/profile-icon.svg"
+                      alt="用户头像"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
             {user ? (
-              <>
-                <div className="group/avatar mb-4 flex w-full flex-col items-center justify-center">
-                  <div className="relative flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20">
-                    <div className="absolute inset-0 scale-[1.15] rounded-full border border-brand-charcoal/5 transition-transform duration-1000 ease-out group-hover/avatar:scale-[1.2] sm:scale-125 sm:group-hover/avatar:scale-150" />
-                    <div className="absolute inset-[2px] rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:inset-4 sm:group-hover/avatar:scale-90" />
-                    <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/60 bg-white/40 backdrop-blur-md transition-all duration-500 sm:h-16 sm:w-16">
-                      {user.avatar ? (
-                        <Image
-                          src={user.avatar}
-                          alt={user.nickname || "用户头像"}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="relative h-5 w-5 opacity-50 sm:h-7 sm:w-7">
-                          <Image
-                            src="/images/profile-icon.svg"
-                            alt="用户头像"
-                            fill
-                            className="object-contain"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openUserCenter();
-                  }}
-                  className="group flex h-8 min-h-0 w-full min-w-0 shrink-0 items-center justify-center gap-1 rounded-xl bg-white/30 text-xs font-medium tracking-[0.1em] text-brand-charcoal/90 backdrop-blur-sm transition-all duration-500 hover:bg-white/50 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98] sm:h-10 sm:gap-1.5 sm:text-sm sm:tracking-[0.15em]"
-                >
-                  <span>进入会员中心</span>
-                  <ChevronRight className="h-3.5 w-3.5 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5 sm:h-4 sm:w-4" />
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openUserCenter();
+                }}
+                className="group flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-brand-charcoal/5 text-sm font-medium tracking-[0.15em] text-brand-charcoal/80 backdrop-blur-sm transition-all duration-500 hover:bg-brand-charcoal/10 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98]"
+              >
+                <span>进入会员中心</span>
+                <ChevronRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5" />
+              </button>
             ) : (
-              <>
-                <div className="group/avatar mb-4 flex w-full flex-col items-center justify-center">
-                  <div className="relative flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20">
-                    <div className="absolute inset-0 scale-[1.15] rounded-full border border-brand-charcoal/5 transition-transform duration-1000 ease-out group-hover/avatar:scale-[1.2] sm:scale-125 sm:group-hover/avatar:scale-150" />
-                    <div className="absolute inset-[2px] rounded-full border border-brand-charcoal/10 transition-transform duration-700 group-hover/avatar:scale-95 sm:inset-4 sm:group-hover/avatar:scale-90" />
-                    <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/60 bg-white/40 backdrop-blur-md transition-all duration-500 sm:h-16 sm:w-16">
-                      <div className="relative h-5 w-5 opacity-50 sm:h-7 sm:w-7">
-                        <Image
-                          src="/images/profile-icon.svg"
-                          alt="用户头像"
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleLoginClick}
-                  className="flex min-h-0 w-full min-w-0 items-center justify-center gap-1 text-xs font-normal tracking-[0.1em] text-brand-charcoal/60 transition-colors duration-300 hover:text-brand-charcoal active:text-brand-charcoal/80 sm:h-10 sm:gap-1.5 sm:rounded-xl sm:bg-white/30 sm:text-sm sm:font-medium sm:tracking-[0.15em] sm:backdrop-blur-sm sm:hover:bg-white/50 sm:hover:shadow-sm sm:active:scale-[0.98]"
-                >
-                  <span>立即登录</span>
-                  <ChevronRight className="h-3.5 w-3.5 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5 sm:h-4 sm:w-4" />
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={handleLoginClick}
+                className="group flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-brand-charcoal/5 text-sm font-medium tracking-[0.15em] text-brand-charcoal/80 backdrop-blur-sm transition-all duration-500 hover:bg-brand-charcoal/10 hover:text-brand-charcoal hover:shadow-sm active:scale-[0.98]"
+              >
+                <span>立即登录</span>
+                <ChevronRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5" />
+              </button>
             )}
           </div>
         </div>

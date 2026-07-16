@@ -1027,11 +1027,29 @@
     rotateY(var(--parallax-ry, 0));
 }
 
-/* 左侧大卡片 - 跨两行 */
+/* 左侧大卡片 - 跨两行，视觉权重最高 */
 .kinetic-cell-large {
   grid-row: span 2;
   aspect-ratio: auto !important;
   height: 100%;
+  box-shadow: 0 6px 24px -8px rgba(0, 38, 62, 0.1);
+}
+
+/* 小卡片默认更低调 */
+.kinetic-cell:not(.kinetic-cell-large) {
+  box-shadow: 0 2px 12px -6px rgba(0, 38, 62, 0.05);
+}
+
+.kinetic-cell-large:not(.no-hover-effect):hover {
+  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 4px))
+    rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.01);
+  box-shadow: 0 24px 48px -12px rgba(0, 38, 62, 0.18);
+}
+
+.kinetic-cell:not(.kinetic-cell-large):not(.no-hover-effect):hover {
+  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 6px))
+    rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.03);
+  box-shadow: 0 16px 36px -10px rgba(0, 38, 62, 0.12);
 }
 
 /* 卡片内发光边框效果 */
@@ -1104,6 +1122,12 @@
   filter: saturate(1) contrast(1.05);
 }
 
+/* 键盘焦点可访问性 */
+.kinetic-cell:focus-within {
+  outline: 2px solid #00263e;
+  outline-offset: 4px;
+}
+
 /* ========== 文字卡片样式 ========== */
 
 .kinetic-text-cell {
@@ -1164,13 +1188,6 @@
   align-items: flex-start;
   border: none;
   overflow: hidden;
-}
-
-.kinetic-login-cell:not(.no-hover-effect):hover {
-  background: #faf5ea;
-  box-shadow:
-    18px 18px 0px #fff,
-    0 25px 50px -12px rgba(255, 255, 255, 0.2);
 }
 
 /* 登录卡片标题 */
@@ -1360,6 +1377,11 @@
       letter-spacing: 0.05em;
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
     }
+
+    .kinetic-cell-yellow .kinetic-desc {
+      color: #4a6272 !important;
+      text-shadow: none;
+    }
   }
 
   .kinetic-cell-skin {
@@ -1420,13 +1442,8 @@
 /* ========== 自定义彩色卡片样式 ========== */
 
 .kinetic-cell-yellow {
-  background: linear-gradient(135deg, rgba(228, 223, 217, 0.8) 0%, rgba(218, 212, 205, 0.65) 100%);
-  backdrop-filter: blur(25px) saturate(180%);
-  -webkit-backdrop-filter: blur(25px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 8px 32px 0 rgba(0, 0, 0, 0.15),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  background: #faf5ea;
+  box-shadow: 0 4px 20px -8px rgba(0, 38, 62, 0.08);
 }
 
 .kinetic-cell-yellow .kinetic-name {
@@ -1447,20 +1464,17 @@
 }
 
 .kinetic-cell-orange {
-  background: linear-gradient(135deg, rgba(228, 223, 217, 0.8) 0%, rgba(218, 212, 205, 0.65) 100%);
-  backdrop-filter: blur(25px) saturate(180%);
-  -webkit-backdrop-filter: blur(25px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 8px 32px 0 rgba(0, 0, 0, 0.15),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  background: #f0ede1;
+  box-shadow: 0 4px 20px -8px rgba(0, 38, 62, 0.08);
 }
 
 .kinetic-cell-orange .kinetic-name,
 .kinetic-cell-orange .kinetic-desc,
 .kinetic-cell-orange .kinetic-description {
-  color: #ffffff;
-  text-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.25),
-    0 0 1px rgba(0, 0, 0, 0.15);
+  color: #00263e;
+  text-shadow: none;
+}
+
+.kinetic-cell-orange .kinetic-desc {
+  color: #4a6272;
 }
