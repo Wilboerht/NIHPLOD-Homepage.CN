@@ -529,7 +529,7 @@
 
 .home-container .wave path {
   fill: none;
-  stroke: #faf5ea;
+  stroke: #f2ede2;
   stroke-width: 1px;
 }
 
@@ -573,8 +573,6 @@
 .home-container .logo {
   width: 240px;
   height: auto;
-  /* margin-bottom: 3.5rem; - Removed to match logo area height with logo */
-  filter: grayscale(0.2) contrast(1.1);
 }
 
 /* 品牌文案 */
@@ -619,6 +617,11 @@
   transition: all 0.5s ease;
 }
 
+.home-container .btn-primary:focus-visible {
+  outline: 2px solid #00263e;
+  outline-offset: 2px;
+}
+
 .home-container .btn-primary:hover {
   background-color: #00263e;
   color: white;
@@ -640,6 +643,11 @@
   border: 1px solid rgba(0, 38, 62, 0.4);
   border-radius: 8px;
   transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-container .btn-secondary:focus-visible {
+  outline: 2px solid #00263e;
+  outline-offset: 2px;
 }
 
 .home-container .btn-secondary:hover {

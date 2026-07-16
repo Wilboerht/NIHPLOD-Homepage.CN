@@ -108,7 +108,7 @@ function MobileFooterMenu({
                         }}
                         className="group mb-4 flex flex-col items-center gap-2"
                       >
-                        <span className="font-serif text-2xl tracking-[0.3em] text-[#4A6272] transition-all group-hover:scale-105">
+                        <span className="text-2xl tracking-[0.3em] text-[#4A6272] transition-all group-hover:scale-105">
                           探索更多
                         </span>
                         <div className="h-px w-12 bg-[#4A6272]/30 transition-all duration-500 group-hover:w-20" />
@@ -249,7 +249,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
           {/* 矿物纹理覆盖层 - 支持微弱视差 */}
           <div
             ref={textureRef}
-            className="mineral-texture absolute -inset-10 z-0 opacity-40 transition-transform duration-1000 ease-out"
+            className="mineral-texture absolute -inset-10 z-0 transition-transform duration-1000 ease-out"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
             }}
@@ -315,7 +315,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               }}
             >
               {/* 桌面端 & iPad Air/Pro (2行) */}
-              <h1 className="title hidden text-xl font-light leading-[2.2] tracking-[0.25em] text-brand-charcoal min-[820px]:block lg:text-2xl">
+              <h1 className="title hidden text-xl font-light tracking-[0.25em] text-brand-charcoal min-[820px]:block lg:text-2xl">
                 {[
                   "海豚的肌肤，拥有每两小时自我更新的神奇能力，",
                   "这种「逆转时光」的动物本能，是我们灵感的来源。",
@@ -338,7 +338,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               </h1>
 
               {/* 移动端 & iPad mini (4行) */}
-              <h1 className="title block text-lg font-light leading-[2.1] text-brand-charcoal min-[820px]:hidden">
+              <h1 className="title block text-lg font-light text-brand-charcoal min-[820px]:hidden">
                 {[
                   "海豚的肌肤，拥有每两小时",
                   "自我更新的神奇能力，",
@@ -412,7 +412,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
 
               {/* 版权文本 & 备案信息 */}
-              <div className="flex flex-col items-center gap-2 opacity-40">
+              <div className="flex flex-col items-center gap-2 opacity-60">
                 <p className="relative z-10 text-[10px] font-light leading-tight tracking-widest text-brand-charcoal sm:text-[11px]">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
