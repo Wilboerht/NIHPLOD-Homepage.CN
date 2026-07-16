@@ -200,7 +200,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
   const textureRef = useRef<HTMLDivElement>(null);
-  const { isDrawerOpen, setNavMenuOpen } = useLayout();
+  const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
 
   // 鼠标视差效果
   useEffect(() => {
@@ -229,6 +229,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   }, [isDrawerOpen]);
 
   const handleCollapse = () => {
+    setDrawerOpen(false);
     setNavMenuOpen(true);
   };
 
@@ -238,11 +239,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
         <UrlParamHandler />
       </Suspense>
 
-      <DrawerPageContainer
-        defaultExpanded
-        shadowOpacity={0.15}
-        onCollapse={handleCollapse}
-      >
+      <DrawerPageContainer defaultExpanded shadowOpacity={0.15} onCollapse={handleCollapse}>
         <div
           className={cn(
             "home-container relative h-full w-full transition-opacity duration-300",
