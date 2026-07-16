@@ -214,7 +214,7 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
           return (
             <h4
               key={lIdx}
-              className="text-base font-medium text-zinc-800 mt-8 mb-0 font-sans"
+              className="text-lg font-medium text-zinc-800 mt-8 mb-0 font-sans"
             >
               {formatText(trimmed)}
             </h4>
@@ -238,10 +238,26 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
           return (
             <h4
               key={lIdx}
-              className="text-base font-medium text-zinc-800 mt-8 mb-0 font-sans"
+              className="text-lg font-medium text-zinc-800 mt-8 mb-0 font-sans"
             >
               {formatText(trimmed)}
             </h4>
+          );
+        }
+
+        // 子列表项 ((1) (2) • -)
+        if (
+          /^[（(][0-9]+[）)]/.test(trimmed) ||
+          trimmed.startsWith("•") ||
+          /^\-[\s]/.test(trimmed)
+        ) {
+          return (
+            <p
+              key={lIdx}
+              className="text-sm leading-7 text-zinc-600"
+            >
+              {formatText(trimmed)}
+            </p>
           );
         }
 
@@ -249,7 +265,7 @@ function ContentParagraph({ text, isFirst = false }: { text: string; isFirst?: b
         return (
           <p
             key={lIdx}
-            className="text-zinc-600 leading-8"
+            className="text-base text-zinc-600 leading-8"
           >
             {formatText(trimmed)}
           </p>
