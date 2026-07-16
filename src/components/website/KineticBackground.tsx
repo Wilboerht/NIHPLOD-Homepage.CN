@@ -20,6 +20,7 @@ export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const cellsRef = useRef<HTMLDivElement[]>([]);
   const { user, switchToLogin, openUserCenter } = useAuth();
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -54,7 +55,7 @@ export function KineticBackground() {
     const mediaQuery = window.matchMedia("(min-width: 768px) and (hover: hover)");
 
     const setupListeners = () => {
-      if (mediaQuery.matches) {
+      if (mediaQuery.matches && !prefersReducedMotion) {
         container.addEventListener("mousemove", handleMouseMove);
         container.addEventListener("mouseleave", handleMouseLeave);
       } else {
@@ -72,7 +73,7 @@ export function KineticBackground() {
       container.removeEventListener("mousemove", handleMouseMove);
       container.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   const addCellRef = (el: HTMLDivElement | null, index: number) => {
     if (el) {
