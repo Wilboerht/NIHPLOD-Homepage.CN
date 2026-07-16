@@ -34,7 +34,6 @@ export function KineticBackground() {
       cells.forEach((cell, index) => {
         if (!cell) return;
         const factor = (index + 1) * 1.5;
-        // 使用 CSS 自定义变量，避免与 CSS hover transform 冲突
         cell.style.setProperty("--parallax-x", `${x * factor}px`);
         cell.style.setProperty("--parallax-y", `${y * factor}px`);
         cell.style.setProperty("--parallax-rx", `${-y * 4}deg`);
@@ -49,6 +48,26 @@ export function KineticBackground() {
         cell.style.setProperty("--parallax-y", "0");
         cell.style.setProperty("--parallax-rx", "0");
         cell.style.setProperty("--parallax-ry", "0");
+      });
+    };
+
+    let rafId: number;
+
+    const handleScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = maxScroll > 0 ? scrollY / maxScroll : 0;
+
+        cells.forEach((cell, index) => {
+          if (!cell) return;
+          const factor = (index + 1) * 0.5;
+          const offset = progress * 20 * factor;
+          cell.style.setProperty("--parallax-scroll-y", `-${offset}px`);
+        });
+
+        rafId = 0;
       });
     };
 
@@ -67,9 +86,13 @@ export function KineticBackground() {
 
     setupListeners();
     mediaQuery.addEventListener("change", setupListeners);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
 
     return () => {
+      cancelAnimationFrame(rafId);
       mediaQuery.removeEventListener("change", setupListeners);
+      window.removeEventListener("scroll", handleScroll);
       container.removeEventListener("mousemove", handleMouseMove);
       container.removeEventListener("mouseleave", handleMouseLeave);
     };

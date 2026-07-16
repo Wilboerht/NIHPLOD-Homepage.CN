@@ -285,9 +285,13 @@ export function StoryContent() {
                         { num: "02", title: "更优越的体验", desc: "严选供应渠道，极致专员服务，力求专业、舒适与满意。" },
                         { num: "03", title: "更积极的方式", desc: "倡导健康心态，通过合理的膳食及平衡心理面对每一天。" },
                         { num: "04", title: "更艰巨的责任", desc: "将产品销售额的 2% 捐赠给全球慈善及非营利组织。" },
-                      ].map((item) => (
-                        <div
+                      ].map((item, idx) => (
+                        <m.div
                           key={item.num}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, margin: "-20px" }}
+                          transition={{ duration: 0.4, delay: idx * 0.1, ease: "easeOut" }}
                           className="flex flex-col justify-start rounded-lg bg-[#FFFFFF] p-4 gap-2"
                         >
                           <span className="text-[10px] font-light text-[#00263e]/30">{item.num}</span>
@@ -295,7 +299,7 @@ export function StoryContent() {
                           <p className="text-[14px] font-light leading-[21px] text-[#00263E]" style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}>
                             {item.desc}
                           </p>
-                        </div>
+                        </m.div>
                       ))}
                     </div>
                   </div>
@@ -315,8 +319,12 @@ export function StoryContent() {
                     {/* 奖项列表 */}
                     <div className="flex flex-col gap-4">
                       {AWARDS_DATA.map((award, idx) => (
-                        <div
+                        <m.div
                           key={idx}
+                          initial={{ opacity: 0, y: 30 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, margin: "-20px" }}
+                          transition={{ duration: 0.5, delay: idx * 0.08, ease: "easeOut" }}
                           className="flex flex-col border-[1.5px] border-[#FFFFFF]"
                         >
                           {/* Award Image */}
@@ -341,7 +349,7 @@ export function StoryContent() {
                               {award.year}
                             </span>
                           </div>
-                        </div>
+                        </m.div>
                       ))}
                     </div>
                   </div>
@@ -354,9 +362,8 @@ export function StoryContent() {
               <p className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)]" style={{ fontFamily: "'Futura', sans-serif" }}>
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
-            </div>
-          </div>
-
+                          </div>
+                                            
           {/* ========== 桌面端布局 - 保持原有样式 ========== */}
           <div className="hidden h-full flex-col lg:flex">
             {/* 顶部导航栏 */}
@@ -639,8 +646,8 @@ export function StoryContent() {
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
             </div>
-          </div>
-        </div>
+                          </div>
+                        </m.div>
       </DrawerPageContainer>
 
       {/* 动态背景图片 - 移至最底层 */}

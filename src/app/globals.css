@@ -1026,7 +1026,7 @@
   pointer-events: auto;
 
   /* 鼠标视差由 JS 通过 CSS 变量控制，与 hover transform 组合 */
-  transform: translate(var(--parallax-x, 0), var(--parallax-y, 0)) rotateX(var(--parallax-rx, 0))
+  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px))) rotateX(var(--parallax-rx, 0))
     rotateY(var(--parallax-ry, 0));
 }
 
@@ -1067,7 +1067,7 @@
 /* Neo-Brutalism 悬停阴影效果 */
 .kinetic-cell:not(.no-hover-effect):hover {
   /* 在视差 transform 基础上叠加悬浮位移 */
-  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) - 4px))
+  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 4px))
     rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.005);
   z-index: 10;
 }

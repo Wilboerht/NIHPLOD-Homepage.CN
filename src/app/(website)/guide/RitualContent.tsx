@@ -1150,7 +1150,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 key={module.id}
                                 whileTap={{ scale: 0.96 }}
                                 initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: "-20px" }}
                                 transition={{ delay: index * 0.1 }}
                                 onClick={() => selectModule(module.id)}
                                 className="relative h-full overflow-hidden rounded-[2rem] shadow-[0_8px_32px_-4px_rgba(0,38,62,0.06)] bg-white/60 backdrop-blur-md border border-[#00263E]/5 flex flex-col justify-end p-5 pb-6 text-left transition-all active:bg-white/80 active:scale-[0.98]"
@@ -1196,9 +1197,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </div>
 
                             <div className="flex flex-col gap-3">
-                              {moduleData[selectedModule].map((scheme) => (
-                                <button
+                              {moduleData[selectedModule].map((scheme, idx) => (
+                                <m.button
                                   key={scheme.id}
+                                  initial={{ opacity: 0, x: -20 }}
+                                  whileInView={{ opacity: 1, x: 0 }}
+                                  viewport={{ once: true, margin: "-10px" }}
+                                  transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
                                   onClick={() => selectScheme(scheme)}
                                   className="group relative flex items-center bg-white overflow-hidden rounded-2xl px-5 py-5 shadow-[0_4px_20px_-4px_rgba(0,38,62,0.03)] border border-[#00263E]/5 active:scale-[0.98] transition-all duration-300"
                                 >
@@ -1220,7 +1225,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                   {/* 右侧箭头 */}
                                   <ChevronRight className="w-5 h-5 text-[#4A6272]/30 group-active:text-[#4A6272] transition-colors shrink-0 ml-3" />
-                                </button>
+                                </m.button>
                               ))}
                             </div>
 
@@ -1312,7 +1317,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                                                 />
                                               )}
-                                            </button>
+                                </button>
                                           );
                                         })
                                       )
