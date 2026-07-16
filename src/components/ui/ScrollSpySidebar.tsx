@@ -65,7 +65,7 @@ export default function ScrollSpySidebar({
 
   return (
     <aside className="hidden lg:block w-72 shrink-0">
-      <div className="sticky top-32">
+      <div className="sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain scrollbar-hide">
         <nav
           className="flex flex-col space-y-1"
           aria-label={label}
