@@ -29,7 +29,8 @@ export function DrawerPageContainer({
   wrapperClassName = "!-top-[1px] !pointer-events-none",
   onCollapse,
 }: DrawerPageContainerProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  // 默认初始收起，确保 defaultExpanded 页面（首页）能从收起状态播放入场动画
+  const [isExpanded, setIsExpanded] = useState(false);
   const handleRef = useRef<HTMLButtonElement>(null);
   const [handleHeight, setHandleHeight] = useState(0);
   const { isDrawerOpen, setDrawerOpen } = useLayout();
@@ -58,13 +59,17 @@ export function DrawerPageContainer({
 
   useEffect(() => {
     if (defaultExpanded) {
-      setDrawerOpen(true);
-      return;
+      // 首页：强制从收起状态开始，保证无论从哪个页面进入都能看到展开动画
+      setDrawerOpen(false);
+      setIsExpanded(false);
     }
-    const timer = setTimeout(() => {
-      setIsExpanded(true);
-      setDrawerOpen(true);
-    }, 100);
+    const timer = setTimeout(
+      () => {
+        setIsExpanded(true);
+        setDrawerOpen(true);
+      },
+      defaultExpanded ? 150 : 100
+    );
     return () => clearTimeout(timer);
   }, [defaultExpanded, setDrawerOpen]);
 
@@ -82,18 +87,15 @@ export function DrawerPageContainer({
     : "translate3d(0, -100%, 0)";
 
   return (
-    <m.div
-      className={cn("safe-area-content", wrapperClassName)}
-      transition={TRANSITION}
-    >
+    <m.div className={cn("safe-area-content", wrapperClassName)} transition={TRANSITION}>
       <m.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={TRANSITION}
-        className="h-full pointer-events-none"
+        className="pointer-events-none h-full"
       >
         <div
-          className="flex h-full flex-col items-center pointer-events-none"
+          className="pointer-events-none flex h-full flex-col items-center"
           style={{
             filter: `drop-shadow(4px 2px 1px rgba(0, 38, 62, ${shadowOpacity}))`,
           }}
@@ -102,21 +104,17 @@ export function DrawerPageContainer({
             className="relative z-20 flex h-full w-full flex-col"
             style={{ willChange: "transform" }}
             initial={{
-              transform: defaultExpanded
-                ? "translate3d(0, 0, 0)"
-                : collapsedTransform,
+              transform: collapsedTransform,
             }}
             animate={{
-              transform: isExpanded
-                ? "translate3d(0, 0, 0)"
-                : collapsedTransform,
+              transform: isExpanded ? "translate3d(0, 0, 0)" : collapsedTransform,
             }}
             transition={{
               ...SLIDE_TRANSITION,
               delay: isExpanded ? 0.3 : 0,
             }}
           >
-            <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl pointer-events-auto">
+            <div className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl">
               {children}
             </div>
 
@@ -125,7 +123,7 @@ export function DrawerPageContainer({
               type="button"
               onClick={handleToggle}
               className={cn(
-                "group -mt-[1px] relative z-30 flex self-center items-center justify-center rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5 overflow-hidden pointer-events-auto",
+                "group pointer-events-auto relative z-30 -mt-[1px] flex items-center justify-center self-center overflow-hidden rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5",
                 buttonWidth
               )}
             >
