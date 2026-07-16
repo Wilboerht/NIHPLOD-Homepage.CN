@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { BackToHome } from "@/components/ui/BackToHome";
 import Link from "next/link";
 import Image from "next/image";
-import { Crown, ShieldCheck, Users, ScanFace, ExternalLink } from "lucide-react";
+import { Crown, ShieldCheck, Users, ScanFace } from "lucide-react";
 import type { ServicesPageContent } from "@/types/page-content";
 
 interface ServicesContentProps {
@@ -47,7 +46,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
   const advisorService = {
     id: "advisor",
-    label: "测肤平台",
+    label: "素颜测肤",
     title: "AI 素颜测肤智能平台",
     description: "通过 AI 技术分析面部肌肤状况，获取个性化护肤建议及产品推荐。",
     links: [{ label: "立即体验", url: "https://advisor.nihplod.cn", isAdmin: false, description: "" }],
@@ -57,17 +56,36 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
   return (
     <div className="bg-[#fefcf8] min-h-screen flex flex-col">
-      {/* Header Section */}
-      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 pt-16 md:pt-24 pb-8 md:pb-12">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-normal text-zinc-900">
-            {pageTitle.zh}
-          </h1>
+      {/* Top Bar */}
+      <nav aria-label="服务页导航" className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white/50 backdrop-blur-md w-full py-3 md:py-6">
+        <Link href="/" className="ml-[30px] md:ml-[80px]">
+          <img
+            src="/images/NIHPLOD-logo.svg"
+            alt="NIHPLOD"
+            className="h-[30px] md:h-[40px] w-auto"
+          />
+        </Link>
+        <div className="flex items-center gap-6 md:gap-10 mr-[30px] md:mr-[85px]">
+          <Link href="/terms" className="text-xs md:text-sm text-[#00263E]">
+            服务条款
+          </Link>
+          <Link href="/privacy" className="text-xs md:text-sm text-[#00263E]">
+            隐私政策
+          </Link>
+          <Link href="/" className="text-xs md:text-sm text-[#00263E]">
+            返回首页
+          </Link>
         </div>
-      </div>
+      </nav>
+
+      {/* Spacer for fixed navbar */}
+      <div className="h-[62px] md:h-[88px] shrink-0" />
 
       {/* Services Grid - centered vertically */}
-      <div className="flex-1 flex items-center justify-center">
+      <main className="flex-1 flex flex-col items-center justify-center">
+        <h1 className="text-3xl md:text-4xl font-light text-[#00263E] tracking-wider mb-12 md:mb-16">
+          {pageTitle.zh}
+        </h1>
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-2 gap-8 sm:gap-12 lg:grid-cols-4 place-items-center">
@@ -77,7 +95,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Page Footer */}
       <footer className="border-t border-zinc-200">
@@ -89,6 +107,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             <Link
               href="https://beian.miit.gov.cn/"
               target="_blank"
+              rel="noopener noreferrer"
               className="hover:text-zinc-600 transition-colors"
             >
               沪ICP备2026014764号-1
@@ -97,6 +116,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             <Link
               href="http://www.beian.gov.cn/portal/registerSystemInfo"
               target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
             >
               <Image
@@ -112,6 +132,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             <Link
               href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
               target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
             >
               <Image
@@ -127,16 +148,15 @@ export function ServicesContent({ content }: ServicesContentProps) {
         </div>
       </footer>
 
-      <BackToHome />
     </div>
   );
 }
 
-function ServiceCard({ service }: { service: any }) {
+function ServiceCard({ service }: { service: CMSServiceDetail }) {
   const [isHovered, setIsHovered] = useState(false);
   const Icon = getServiceIcon(service.id);
   const isDisabled = service.id === "vip" || service.id === "influencer";
-  const targetLink = service.links?.find((l: any) => !l.isAdmin) || service.links?.[0];
+  const targetLink = service.links?.find((l) => !l.isAdmin) || service.links?.[0];
 
   return (
     <Link
@@ -153,9 +173,7 @@ function ServiceCard({ service }: { service: any }) {
       <div className="flex h-16 w-16 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
         <Icon className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16" isHovered={isHovered} />
       </div>
-      <span className={`text-sm font-medium transition-colors duration-300 ${
-        isHovered ? "text-zinc-900" : "text-[#00263E]"
-      }`}>
+      <span className="text-sm font-medium text-[#00263E]">
         {service.label}
       </span>
     </Link>
