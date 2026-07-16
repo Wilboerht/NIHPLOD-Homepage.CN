@@ -647,7 +647,8 @@ export function StoryContent() {
               </p>
             </div>
                           </div>
-                        </m.div>
+                        </div>
+          </div>
       </DrawerPageContainer>
 
       {/* 动态背景图片 - 移至最底层 */}
