@@ -45,11 +45,11 @@ export default function ScrollSpySidebar({
 
     const selectActive = () => {
       if (visibleSet.size === 0) return;
-      // 在 sections 顺序中找到第一个可见的（即页面位置最靠上的）
       const firstVisible = sections.find((s) => visibleSet.has(s.id));
       if (firstVisible) setActiveId(firstVisible.id);
     };
 
+    // 普通章节：底部留 40% 防止过早激活
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -59,24 +59,48 @@ export default function ScrollSpySidebar({
             visibleSet.delete(entry.target.id);
           }
         });
-
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(selectActive);
       },
       {
-        // 顶部偏移 96px（sticky header），底部不设限制让末章节也能被检测
+        rootMargin: "-96px 0px -40% 0px",
+        threshold: 0,
+      }
+    );
+
+    // 最后一个章节：不设底部边距，确保能被检测到
+    const lastObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            visibleSet.add(entry.target.id);
+          } else {
+            visibleSet.delete(entry.target.id);
+          }
+        });
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(selectActive);
+      },
+      {
         rootMargin: "-96px 0px 0px 0px",
         threshold: 0,
       }
     );
 
-    const els = sections
+    const allButLast = sections.slice(0, -1);
+    const lastSection = sections[sections.length - 1];
+
+    allButLast
       .map((s) => document.getElementById(s.id))
-      .filter(Boolean) as HTMLElement[];
-    els.forEach((el) => observer.observe(el));
+      .filter(Boolean)
+      .forEach((el) => observer.observe(el!));
+
+    const lastEl = document.getElementById(lastSection.id);
+    if (lastEl) lastObserver.observe(lastEl);
 
     return () => {
       observer.disconnect();
+      lastObserver.disconnect();
       visibleSet.clear();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
