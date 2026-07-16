@@ -113,6 +113,9 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             />
           </Link>
           <div className="flex items-center gap-6 md:gap-10 mr-[30px] md:mr-[85px]">
+            <Link href="/contact" className="text-xs md:text-sm text-[#00263E]">
+              联系我们
+            </Link>
             <Link href="/terms" className="text-xs md:text-sm text-[#00263E]">
               服务条款
             </Link>
