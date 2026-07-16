@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "next-view-transitions";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, X, ArrowRight } from "lucide-react";
+import { X, ArrowRight } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 // import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 
 /**
  * 独立的 URL 参数处理器组件
@@ -199,27 +200,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   const wave1Ref = useRef<SVGSVGElement>(null);
   const wave2Ref = useRef<SVGSVGElement>(null);
   const textureRef = useRef<HTMLDivElement>(null);
-  const handleRef = useRef<HTMLButtonElement>(null);
-  const [isExpanded, setIsExpanded] = useState(true); // 首页默认展开
-  const [handleHeight, setHandleHeight] = useState(0);
-  const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
-  // const { openContact } = useAuth();
-  // const router = useRouter();
-
-  // 首页特殊处理：立即设置抽屉为展开状态，不需要动画
-  useEffect(() => {
-    setDrawerOpen(true);
-  }, [setDrawerOpen]);
-
-  // 监听 LayoutContext 中的 isDrawerOpen 变化，同步本地 isExpanded 状态
-  // 解决：点击底部导航栏时，setDrawerOpen(true) 不会触发本地状态更新的问题
-  useEffect(() => {
-    if (isDrawerOpen && !isExpanded) {
-      setIsExpanded(true);
-    } else if (!isDrawerOpen && isExpanded) {
-      setIsExpanded(false);
-    }
-  }, [isDrawerOpen, isExpanded]);
+  const { isDrawerOpen, setNavMenuOpen } = useLayout();
 
   // 鼠标视差效果
   useEffect(() => {
@@ -227,7 +208,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
     if (typeof window !== "undefined" && window.innerWidth <= 768) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isExpanded) return; // 只在展开时启用视差
+      if (!isDrawerOpen) return;
 
       const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
       const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
@@ -239,33 +220,15 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
         wave2Ref.current.style.transform = `translate(${-moveX}px, ${-moveY}px)`;
       }
       if (textureRef.current) {
-        // 纹理视差更弱一点
         textureRef.current.style.transform = `translate(${moveX * 0.5}px, ${moveY * 0.5}px)`;
       }
     };
 
     document.addEventListener("mousemove", handleMouseMove);
     return () => document.removeEventListener("mousemove", handleMouseMove);
-  }, [isExpanded]);
-
-  useLayoutEffect(() => {
-    if (!handleRef.current || typeof ResizeObserver === "undefined") return;
-
-    const updateHandleHeight = () => {
-      setHandleHeight(handleRef.current?.offsetHeight ?? 0);
-    };
-
-    updateHandleHeight();
-    const observer = new ResizeObserver(updateHandleHeight);
-    observer.observe(handleRef.current);
-
-    return () => observer.disconnect();
-  }, []);
+  }, [isDrawerOpen]);
 
   const handleCollapse = () => {
-    setIsExpanded(false);
-    setDrawerOpen(false);
-    // 展开底部导航菜单
     setNavMenuOpen(true);
   };
 
@@ -275,292 +238,233 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
         <UrlParamHandler />
       </Suspense>
 
-      {/* 内容区域容器 */}
-      <m.div
-        className="safe-area-content !pointer-events-none !-top-[1px]"
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      <DrawerPageContainer
+        defaultExpanded
+        buttonWidth="w-[140px] lg:w-[160px]"
+        shadowOpacity={0.15}
+        onCollapse={handleCollapse}
       >
-        {/* 主内容区域 + 展开按钮一体化 */}
-        <m.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="pointer-events-none h-full"
+        <div
+          className={cn(
+            "home-container relative h-full w-full transition-opacity duration-300",
+            isDrawerOpen ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
+          )}
         >
-          {/* 主内容区域 + 按钮一体化容器 */}
-          <div className="pointer-events-none flex h-full flex-col items-center drop-shadow-[4px_2px_1px_rgba(0,38,62,0.15)]">
-            {/* 主内容区域 + 按钮一起移动 */}
-            <m.div
-              className="relative z-20 flex h-full w-full flex-col"
-              style={{ willChange: "transform" }}
-              initial={{
-                transform: handleHeight
-                  ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
-                  : "translate3d(0, -100%, 0)",
-              }}
-              animate={{
-                transform: isExpanded
-                  ? "translate3d(0, 0, 0)"
-                  : handleHeight
-                    ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
-                    : "translate3d(0, -100%, 0)",
-              }}
-              transition={{
-                duration: 1.2,
-                ease: [0.22, 1, 0.36, 1],
-                delay: isExpanded ? 0.3 : 0,
-              }}
+          {/* 矿物纹理覆盖层 - 支持微弱视差 */}
+          <div
+            ref={textureRef}
+            className="mineral-texture absolute -inset-10 z-0 opacity-40 transition-transform duration-1000 ease-out"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+            }}
+          />
+
+          {/* 装饰线条 - 已移除 */}
+
+          {/* 波浪背景 - 仅桌面端渲染 */}
+          <div className="wave-container pointer-events-none absolute bottom-0 left-0 right-0 z-0 hidden lg:block">
+            <svg
+              ref={wave1Ref}
+              className="wave wave-1"
+              viewBox="0 0 1200 120"
+              preserveAspectRatio="none"
             >
-              <div className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl">
-                <div
-                  className={cn(
-                    "home-container relative h-full w-full transition-opacity duration-300",
-                    isExpanded ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
-                  )}
-                >
-                  {/* 矿物纹理覆盖层 - 支持微弱视差 */}
-                  <div
-                    ref={textureRef}
-                    className="mineral-texture absolute -inset-10 z-0 opacity-40 transition-transform duration-1000 ease-out"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-                    }}
-                  />
+              <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
+            </svg>
+            <svg
+              ref={wave2Ref}
+              className="wave wave-2"
+              viewBox="0 0 1200 120"
+              preserveAspectRatio="none"
+            >
+              <path d="M0,40 C200,90 400,0 600,40 C800,80 1000,0 1200,40" />
+            </svg>
+          </div>
 
-                  {/* 装饰线条 - 已移除 */}
-
-                  {/* 波浪背景 - 仅桌面端渲染 */}
-                  <div className="wave-container pointer-events-none absolute bottom-0 left-0 right-0 z-0 hidden lg:block">
-                    <svg
-                      ref={wave1Ref}
-                      className="wave wave-1"
-                      viewBox="0 0 1200 120"
-                      preserveAspectRatio="none"
-                    >
-                      <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
-                    </svg>
-                    <svg
-                      ref={wave2Ref}
-                      className="wave wave-2"
-                      viewBox="0 0 1200 120"
-                      preserveAspectRatio="none"
-                    >
-                      <path d="M0,40 C200,90 400,0 600,40 C800,80 1000,0 1200,40" />
-                    </svg>
-                  </div>
-
-                  {/* 右上角登录按钮 - 暂时隐藏 */}
-                  {/* <div className="user-button-container relative z-20">
+          {/* 右上角登录按钮 - 暂时隐藏 */}
+          {/* <div className="user-button-container relative z-20">
                   <UserButton />
                 </div> */}
 
-                  {/* 主内容 - 添加底部padding以在视觉上居中(抵消底部absolute定位的元素) */}
-                  <main className="main-content relative z-10 flex h-full flex-col items-center justify-center pb-20 text-center lg:pb-16">
-                    {/* Logo */}
-                    <m.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 1.2, delay: 0.4 }}
-                    >
-                      <Image
-                        src="/images/NIHPLOD-logo.svg"
-                        alt="NIHPLOD 旎柏官方网站"
-                        width={200}
-                        height={72}
-                        className="logo"
-                        priority
-                      />
-                    </m.div>
+          {/* 主内容 - 添加底部padding以在视觉上居中(抵消底部absolute定位的元素) */}
+          <main className="main-content relative z-10 flex h-full flex-col items-center justify-center pb-20 text-center lg:pb-16">
+            {/* Logo */}
+            <m.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2, delay: 0.4 }}
+            >
+              <Image
+                src="/images/NIHPLOD-logo.svg"
+                alt="NIHPLOD 旎柏官方网站"
+                width={200}
+                height={72}
+                className="logo"
+                priority
+              />
+            </m.div>
 
-                    {/* 品牌文案 - 针对不同设备切换 2行/4行 */}
-                    <m.div
-                      className="content-wrapper mt-12 md:mt-16"
-                      initial="hidden"
-                      animate="visible"
-                      variants={{
-                        visible: {
-                          transition: {
-                            staggerChildren: 0.3,
-                            delayChildren: 0.6,
-                          },
-                        },
-                      }}
-                    >
-                      {/* 桌面端 & iPad Air/Pro (2行) */}
-                      <h1 className="title hidden text-xl font-light leading-[2.2] tracking-[0.25em] text-brand-charcoal min-[820px]:block lg:text-2xl">
-                        {[
-                          "海豚的肌肤，拥有每两小时自我更新的神奇能力，",
-                          "这种「逆转时光」的动物本能，是我们灵感的来源。",
-                        ].map((line, i) => (
-                          <m.span
-                            key={i}
-                            className="block"
-                            variants={{
-                              hidden: { opacity: 0, y: 15 },
-                              visible: {
-                                opacity: 1,
-                                y: 0,
-                                transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-                              },
-                            }}
-                          >
-                            {line}
-                          </m.span>
-                        ))}
-                      </h1>
+            {/* 品牌文案 - 针对不同设备切换 2行/4行 */}
+            <m.div
+              className="content-wrapper mt-12 md:mt-16"
+              initial="hidden"
+              animate="visible"
+              variants={{
+                visible: {
+                  transition: {
+                    staggerChildren: 0.3,
+                    delayChildren: 0.6,
+                  },
+                },
+              }}
+            >
+              {/* 桌面端 & iPad Air/Pro (2行) */}
+              <h1 className="title hidden text-xl font-light leading-[2.2] tracking-[0.25em] text-brand-charcoal min-[820px]:block lg:text-2xl">
+                {[
+                  "海豚的肌肤，拥有每两小时自我更新的神奇能力，",
+                  "这种「逆转时光」的动物本能，是我们灵感的来源。",
+                ].map((line, i) => (
+                  <m.span
+                    key={i}
+                    className="block"
+                    variants={{
+                      hidden: { opacity: 0, y: 15 },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+                      },
+                    }}
+                  >
+                    {line}
+                  </m.span>
+                ))}
+              </h1>
 
-                      {/* 移动端 & iPad mini (4行) */}
-                      <h1 className="title block text-lg font-light leading-[2.1] text-brand-charcoal min-[820px]:hidden">
-                        {[
-                          "海豚的肌肤，拥有每两小时",
-                          "自我更新的神奇能力，",
-                          "这种「逆转时光」的动物本能，",
-                          "是我们灵感的来源。",
-                        ].map((line, i) => (
-                          <m.span
-                            key={i}
-                            className="block"
-                            variants={{
-                              hidden: { opacity: 0, y: 15 },
-                              visible: {
-                                opacity: 1,
-                                y: 0,
-                                transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-                              },
-                            }}
-                          >
-                            {line}
-                          </m.span>
-                        ))}
-                      </h1>
-                    </m.div>
+              {/* 移动端 & iPad mini (4行) */}
+              <h1 className="title block text-lg font-light leading-[2.1] text-brand-charcoal min-[820px]:hidden">
+                {[
+                  "海豚的肌肤，拥有每两小时",
+                  "自我更新的神奇能力，",
+                  "这种「逆转时光」的动物本能，",
+                  "是我们灵感的来源。",
+                ].map((line, i) => (
+                  <m.span
+                    key={i}
+                    className="block"
+                    variants={{
+                      hidden: { opacity: 0, y: 15 },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+                      },
+                    }}
+                  >
+                    {line}
+                  </m.span>
+                ))}
+              </h1>
+            </m.div>
 
-                    {/* 按钮组 - 增加触压反馈 */}
-                    <m.div
-                      className="button-group mt-16 flex gap-6 md:mt-20"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 1.2, delay: 1.2 }}
-                    >
-                      <m.button
-                        type="button"
-                        onClick={handleCollapse}
-                        whileTap={{ scale: 0.96 }}
-                        className="btn btn-primary group min-h-0 min-w-0"
-                      >
-                        <span>探索旎柏</span>
-                        <ArrowRight className="h-4 w-4 transition-transform duration-500 group-hover:translate-x-2" />
-                      </m.button>
-                      {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
+            {/* 按钮组 - 增加触压反馈 */}
+            <m.div
+              className="button-group mt-16 flex gap-6 md:mt-20"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2, delay: 1.2 }}
+            >
+              <m.button
+                type="button"
+                onClick={handleCollapse}
+                whileTap={{ scale: 0.96 }}
+                className="btn btn-primary group min-h-0 min-w-0"
+              >
+                <span>探索旎柏</span>
+                <ArrowRight className="h-4 w-4 transition-transform duration-500 group-hover:translate-x-2" />
+              </m.button>
+              {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
                       <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
                         AI快速测肤
                         <span className="badge-new">NEW</span>
                       </Link>
                     </m.div> */}
-                    </m.div>
+            </m.div>
 
-                    {/* 底部辅助导航与版权 */}
-                    <m.div
-                      className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-4"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 1.2, delay: 1 }}
-                    >
-                      {/* 辅助链接 */}
-                      {/* 辅助链接 - 桌面端 (静态列表) */}
-                      <div className="hidden items-center gap-3 sm:gap-6 md:flex">
-                        {FOOTER_LINKS.map((link) => (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-                          >
-                            {link.label}
-                          </Link>
-                        ))}
-                      </div>
-
-                      {/* 辅助链接 - 移动端 (可折叠菜单) */}
-                      <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
-
-                      {/* 版权文本 & 备案信息 */}
-                      <div className="flex flex-col items-center gap-2 opacity-40">
-                        <p className="relative z-10 text-[10px] font-light leading-tight tracking-widest text-brand-charcoal sm:text-[11px]">
-                          &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-                        </p>
-                        <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap text-[10px] font-light leading-tight tracking-normal text-brand-charcoal sm:gap-4 sm:text-[10px] sm:tracking-widest">
-                          <Link
-                            href="https://beian.miit.gov.cn/"
-                            target="_blank"
-                            className="flex !min-h-0 !min-w-0 items-center transition-colors hover:text-brand-gold"
-                          >
-                            沪ICP备2026014764号-1
-                          </Link>
-                          <span className="text-brand-charcoal/30">|</span>
-                          <Link
-                            href="http://www.beian.gov.cn/portal/registerSystemInfo"
-                            target="_blank"
-                            className="flex !min-h-0 !min-w-0 items-center gap-1 transition-colors hover:text-brand-gold"
-                          >
-                            <Image
-                              src="/images/beian.webp"
-                              alt="公安部备案图标"
-                              width={12}
-                              height={12}
-                              className="shrink-0 opacity-80"
-                            />
-                            <span>沪公网安备31010702010178号</span>
-                          </Link>
-                          <span className="text-brand-charcoal/30">|</span>
-                          <Link
-                            href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
-                            target="_blank"
-                            className="flex !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-gold"
-                          >
-                            <Image
-                              src="/images/aic_icon.png"
-                              alt="电子营业执照"
-                              width={12}
-                              height={12}
-                              className="shrink-0 opacity-50"
-                              unoptimized
-                            />
-                            电子营业执照
-                          </Link>
-                        </div>
-                      </div>
-                    </m.div>
-                  </main>
-                </div>
+            {/* 底部辅助导航与版权 */}
+            <m.div
+              className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1.2, delay: 1 }}
+            >
+              {/* 辅助链接 */}
+              {/* 辅助链接 - 桌面端 (静态列表) */}
+              <div className="hidden items-center gap-3 sm:gap-6 md:flex">
+                {FOOTER_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
               </div>
 
-              {/* 展开/收起按钮 */}
-              <button
-                ref={handleRef}
-                onClick={() => {
-                  const newState = !isExpanded;
-                  setIsExpanded(newState);
-                  setDrawerOpen(newState);
-                }}
-                className="group pointer-events-auto relative z-30 -mt-[1px] flex w-[140px] items-center justify-center self-center overflow-hidden rounded-b-2xl bg-[#FAF5EA] py-3 lg:w-[160px] lg:py-3.5"
-              >
-                {/* 矿物纹理覆盖层 - 使用与抽屉相同的 texture-overlay 类 */}
-                <div className="texture-overlay absolute inset-0" />
-                <m.div
-                  className="relative z-10 flex flex-col items-center"
-                  animate={{ rotate: isExpanded ? 180 : 0, scale: 1 }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-                  <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-                </m.div>
-              </button>
+              {/* 辅助链接 - 移动端 (可折叠菜单) */}
+              <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
+
+              {/* 版权文本 & 备案信息 */}
+              <div className="flex flex-col items-center gap-2 opacity-40">
+                <p className="relative z-10 text-[10px] font-light leading-tight tracking-widest text-brand-charcoal sm:text-[11px]">
+                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                </p>
+                <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap text-[10px] font-light leading-tight tracking-normal text-brand-charcoal sm:gap-4 sm:text-[10px] sm:tracking-widest">
+                  <Link
+                    href="https://beian.miit.gov.cn/"
+                    target="_blank"
+                    className="flex !min-h-0 !min-w-0 items-center transition-colors hover:text-brand-gold"
+                  >
+                    沪ICP备2026014764号-1
+                  </Link>
+                  <span className="text-brand-charcoal/30">|</span>
+                  <Link
+                    href="http://www.beian.gov.cn/portal/registerSystemInfo"
+                    target="_blank"
+                    className="flex !min-h-0 !min-w-0 items-center gap-1 transition-colors hover:text-brand-gold"
+                  >
+                    <Image
+                      src="/images/beian.webp"
+                      alt="公安部备案图标"
+                      width={12}
+                      height={12}
+                      className="shrink-0 opacity-80"
+                    />
+                    <span>沪公网安备31010702010178号</span>
+                  </Link>
+                  <span className="text-brand-charcoal/30">|</span>
+                  <Link
+                    href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
+                    target="_blank"
+                    className="flex !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-gold"
+                  >
+                    <Image
+                      src="/images/aic_icon.png"
+                      alt="电子营业执照"
+                      width={12}
+                      height={12}
+                      className="shrink-0 opacity-50"
+                      unoptimized
+                    />
+                    电子营业执照
+                  </Link>
+                </div>
+              </div>
             </m.div>
-          </div>
-        </m.div>
-      </m.div>
+          </main>
+        </div>
+      </DrawerPageContainer>
 
       {/* 动态背景图片 - 移至最底层，位于 safe-area-content 之外或作为其第一层 */}
 

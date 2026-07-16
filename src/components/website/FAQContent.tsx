@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronDown, Plus, MessageCircle, ArrowRight } from "lucide-react";
+import { Plus, MessageCircle, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 
 
 
@@ -85,44 +86,9 @@ const FAQS = [
 ];
 
 export function FAQContent() {
-    const [isExpanded, setIsExpanded] = useState(false);
     const [openIndex, setOpenIndex] = useState<number | null>(null);
-    const { isDrawerOpen, setDrawerOpen } = useLayout();
+    const { isDrawerOpen } = useLayout();
     const router = useRouter();
-    const handleRef = useRef<HTMLButtonElement>(null);
-    const [handleHeight, setHandleHeight] = useState(0);
-
-    useLayoutEffect(() => {
-        if (!handleRef.current || typeof ResizeObserver === "undefined") return;
-
-        const updateHandleHeight = () => {
-            setHandleHeight(handleRef.current?.offsetHeight ?? 0);
-        };
-
-        updateHandleHeight();
-        const observer = new ResizeObserver(updateHandleHeight);
-        observer.observe(handleRef.current);
-
-        return () => observer.disconnect();
-    }, []);
-
-    // Sync with LayoutContext
-    useEffect(() => {
-        if (isDrawerOpen && !isExpanded) {
-            setIsExpanded(true);
-        } else if (!isDrawerOpen && isExpanded) {
-            setIsExpanded(false);
-        }
-    }, [isDrawerOpen, isExpanded]);
-
-    // Auto expand on mount
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsExpanded(true);
-            setDrawerOpen(true);
-        }, 100);
-        return () => clearTimeout(timer);
-    }, [setDrawerOpen]);
 
     // Toggle Accordion
     const toggleFAQ = (index: number) => {
@@ -130,59 +96,17 @@ export function FAQContent() {
     };
 
     return (
-        <>
-            {/* Content wrapper - top aligned */}
-            <m.div
-                className="safe-area-content !top-0 !pointer-events-none"
-                transition={{
-                    duration: 0.8,
-                    ease: [0.22, 1, 0.36, 1]
-                }}
-            >
-                {/* Main content + Expand Button container */}
-                <m.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{
-                        opacity: 1,
-                        scale: 1
-                    }}
-                    transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                    className="h-full pointer-events-none"
-                >
-                    <div className="flex h-full flex-col items-center drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)]">
-                        {/* Drawer Content + Button */}
-                        <m.div
-                            className="relative z-20 flex h-full w-full flex-col"
-                            style={{ willChange: "transform" }}
-                            initial={{
-                                transform: handleHeight
-                                    ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
-                                    : "translate3d(0, -100%, 0)"
-                            }}
-                            animate={{
-                                transform: isExpanded
-                                    ? "translate3d(0, 0, 0)"
-                                    : handleHeight
-                                        ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
-                                        : "translate3d(0, -100%, 0)"
-                            }}
-                            transition={{
-                                duration: 1.2,
-                                ease: [0.22, 1, 0.36, 1],
-                                delay: isExpanded ? 0.3 : 0
-                            }}
-                        >
-                            <div className="relative w-full flex-1 min-h-0 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl pointer-events-auto">
-                                {/* Texture Overlay */}
-                                <div className="texture-overlay absolute inset-0" />
+        <DrawerPageContainer wrapperClassName="!top-0 !pointer-events-none">
+            {/* Texture Overlay */}
+            <div className="texture-overlay absolute inset-0" />
 
-                                {/* Scrollable Content */}
-                                <div
-                                    className={cn(
-                                        "relative z-10 flex h-full flex-col overflow-hidden transition-opacity duration-300",
-                                        isExpanded ? "opacity-100 delay-300" : "opacity-0 pointer-events-none"
-                                    )}
-                                >
+            {/* Scrollable Content */}
+            <div
+                className={cn(
+                    "relative z-10 flex h-full flex-col overflow-hidden transition-opacity duration-300",
+                    isDrawerOpen ? "opacity-100 delay-300" : "opacity-0 pointer-events-none"
+                )}
+            >
                                 {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
                                 <div className="sticky top-0 z-50 flex h-[88px] sm:h-[80px] shrink-0 items-center justify-center sm:justify-start border-b border-transparent sm:border-brand-charcoal/5 bg-[#FAF5EA]/95 sm:bg-[#FAF5EA]/95 backdrop-blur-sm px-6 sm:px-[8%] transition-all">
                                     <Link href="/" className="flex items-center justify-center mt-1">
@@ -296,43 +220,8 @@ export function FAQContent() {
                                             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                                         </p>
                                     </div>
-                                </div>
                             </div>
                         </div>
-
-                        {/* Collapse Button */}
-                        <button
-                            ref={handleRef}
-                            type="button"
-                            onClick={() => {
-                                const newState = !isExpanded;
-                                setIsExpanded(newState);
-                                setDrawerOpen(newState);
-                            }}
-                            className="group -mt-[1px] relative z-30 flex w-[110px] self-center items-center justify-center rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5 overflow-hidden pointer-events-auto"
-                        >
-                            <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
-                            <m.div
-                                className="relative z-10 flex flex-col items-center"
-                                animate={{
-                                    rotate: isExpanded ? 180 : 0,
-                                    scale: 1
-                                }}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.95 }}
-                                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                            >
-                                <ChevronDown className="h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-                                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold lg:h-8 lg:w-8" />
-                            </m.div>
-                        </button>
-                    </m.div>
-                    </div>
-                </m.div>
-            </m.div>
-
-            {/* Dynamic Background Image */}
-
-        </>
+                    </DrawerPageContainer>
     );
 }
