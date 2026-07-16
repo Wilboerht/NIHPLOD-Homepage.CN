@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { fadeIn, defaultTransition } from "@/lib/animations";
 
 /**
  * 产品图片类型
@@ -161,10 +160,10 @@ export function ProductCard({
         "focus-within:ring-2 focus-within:ring-brand-gold focus-within:ring-offset-2",
         className
       )}
-      variants={fadeIn}
-      initial="initial"
-      animate="animate"
-      transition={defaultTransition}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
