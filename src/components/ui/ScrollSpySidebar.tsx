@@ -23,35 +23,53 @@ export default function ScrollSpySidebar({
 }: ScrollSpySidebarProps) {
   const [activeId, setActiveId] = useState<string>("");
   const rafRef = useRef<number | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  const visibleSectionsRef = useRef<Set<string>>(new Set());
+
+  // 活跃项变更时自动滚动到可视区域
+  useEffect(() => {
+    if (!activeId || !navRef.current) return;
+    const activeBtn = navRef.current.querySelector(
+      `[data-section-id="${activeId}"]`
+    ) as HTMLElement | null;
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [activeId]);
 
   useEffect(() => {
     if (sections.length === 0) return;
 
+    const visibleSet = visibleSectionsRef.current;
+    visibleSet.clear();
+
+    const selectActive = () => {
+      if (visibleSet.size === 0) return;
+      // 在 sections 顺序中找到第一个可见的（即页面位置最靠上的）
+      const firstVisible = sections.find((s) => visibleSet.has(s.id));
+      if (firstVisible) setActiveId(firstVisible.id);
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
-        // 收集所有进入视口的 section
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .map((e) => e.target.id);
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            visibleSet.add(entry.target.id);
+          } else {
+            visibleSet.delete(entry.target.id);
+          }
+        });
 
-        if (visible.length > 0) {
-          // rAF 防抖：合并同一帧内的多次回调
-          if (rafRef.current) cancelAnimationFrame(rafRef.current);
-          rafRef.current = requestAnimationFrame(() => {
-            // 取 sections 顺序中第一个可见的（即最靠上的）
-            const firstVisible = sections.find((s) => visible.includes(s.id));
-            if (firstVisible) setActiveId(firstVisible.id);
-          });
-        }
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(selectActive);
       },
       {
-        // 顶部偏移 96px（sticky header + h2 margin），底部留 60% 确保足够内容可见才激活
-        rootMargin: "-96px 0px -60% 0px",
+        // 顶部偏移 96px（sticky header），底部不设限制让末章节也能被检测
+        rootMargin: "-96px 0px 0px 0px",
         threshold: 0,
       }
     );
 
-    // 观察所有 section
     const els = sections
       .map((s) => document.getElementById(s.id))
       .filter(Boolean) as HTMLElement[];
@@ -59,13 +77,17 @@ export default function ScrollSpySidebar({
 
     return () => {
       observer.disconnect();
+      visibleSet.clear();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [sections]);
 
   return (
     <aside className="hidden lg:block w-72 shrink-0">
-      <div className="sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain scrollbar-hide">
+      <div
+        ref={navRef}
+        className="sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain scrollbar-hide"
+      >
         <nav
           className="flex flex-col space-y-1"
           aria-label={label}
@@ -74,10 +96,12 @@ export default function ScrollSpySidebar({
             <button
               key={section.id}
               type="button"
+              data-section-id={section.id}
               onClick={() => {
                 const el = document.getElementById(section.id);
                 if (el) el.scrollIntoView({ behavior: "smooth" });
               }}
+              aria-current={activeId === section.id ? "true" : undefined}
               className={`group flex flex-col py-3 px-4 border-l transition-all duration-200 text-left ${
                 activeId === section.id
                   ? "border-[#00263E]"
