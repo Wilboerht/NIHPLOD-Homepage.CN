@@ -32,7 +32,7 @@ export function TermsContent({ content }: TermsContentProps) {
   });
 
   return (
-    <div className="bg-white min-h-screen pt-16 md:pt-24 pb-0">
+    <div className="bg-[#fefcf8] min-h-screen pt-16 md:pt-24 pb-0">
       {/* Header Section */}
       <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-8 md:mb-16">
         <div className="max-w-4xl">
@@ -70,7 +70,7 @@ export function TermsContent({ content }: TermsContentProps) {
 
                 {/* 隐私政策引用 - 仅在第一个章节 */}
                 {sIdx === 1 && (
-                  <div className="mt-8 p-5 bg-zinc-50 rounded-xl border border-zinc-100">
+                  <div className="mt-8 p-5 bg-zinc-50 rounded-xl border border-[#00263E]/30">
                     <p className="text-sm text-zinc-500 leading-relaxed">
                       有关我们如何收集、使用和保护您的个人信息的详细说明，请参阅我们的{" "}
                       <Link
