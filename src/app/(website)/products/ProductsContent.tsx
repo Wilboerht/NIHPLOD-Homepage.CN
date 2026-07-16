@@ -372,8 +372,14 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   }, [isDrawerOpen, isExpanded]);
 
   // 组件加载后自动展开，实现"抽屉下拉"动画
+  // 如果是从产品详情页返回，跳过动画直接展开
   useEffect(() => {
-    // 稍微延迟以展示"下拉"动画
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("products_animate")) {
+      sessionStorage.removeItem("products_animate");
+      setIsExpanded(true);
+      setDrawerOpen(true);
+      return;
+    }
     const timer = setTimeout(() => {
       setIsExpanded(true);
       setDrawerOpen(true);

@@ -88,6 +88,13 @@ export function ProductDetailContent({
     }
   }, [router]);
 
+  // 标记从产品列表页导航过来，返回时跳过列表页抽屉动画
+  useEffect(() => {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem("products_animate", "1");
+    }
+  }, []);
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [quantity, setQuantity] = useState(1);
@@ -201,6 +208,7 @@ export function ProductDetailContent({
       <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         transition={{ duration: 0.6 }}
         className="safe-area-content !pointer-events-none max-lg:!inset-0"
       >
