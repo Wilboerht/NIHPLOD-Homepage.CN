@@ -4,15 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, m } from "framer-motion";
-import {
-  MapPin,
-  Briefcase,
-  X,
-  Upload,
-  FileText,
-  Send,
-  Loader2,
-} from "lucide-react";
+import { MapPin, Briefcase, X, Upload, FileText, Send, Loader2 } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { apiPost, ApiError } from "@/lib/api-client";
 
@@ -82,7 +74,8 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
   const [filterType, setFilterType] = useState<string>("all");
 
   const title = content?.title || { en: "JOIN US", zh: "加入我们" };
-  const description = content?.description || "我们正在寻找那些希望将想法转化为创新体验和解决方案的人";
+  const description =
+    content?.description || "我们正在寻找那些希望将想法转化为创新体验和解决方案的人";
   const contactEmail = content?.contactEmail || "hr@nihplod.com";
   const submitTip = content?.submitTip || {
     title: "简历投递",
@@ -91,65 +84,61 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
   const filterItems = [
     { id: "all", label: "全部职位", count: jobs.length },
-    { id: "fulltime", label: "全职", count: jobs.filter(j => j.type === "fulltime").length },
-    { id: "parttime", label: "兼职", count: jobs.filter(j => j.type === "parttime").length },
-    { id: "intern", label: "实习", count: jobs.filter(j => j.type === "intern").length },
+    { id: "fulltime", label: "全职", count: jobs.filter((j) => j.type === "fulltime").length },
+    { id: "parttime", label: "兼职", count: jobs.filter((j) => j.type === "parttime").length },
+    { id: "intern", label: "实习", count: jobs.filter((j) => j.type === "intern").length },
   ];
 
-  const filteredJobs = filterType === "all"
-    ? jobs
-    : jobs.filter((job) => job.type === filterType);
+  const filteredJobs = filterType === "all" ? jobs : jobs.filter((job) => job.type === filterType);
 
   return (
     <>
-      <div className="bg-[#fefcf8] min-h-screen flex flex-col">
+      <div className="scrollbar-hide flex h-screen flex-col overflow-y-auto bg-[#fefcf8]">
         {/* Top Bar */}
-        <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white/50 backdrop-blur-md w-full py-3 md:py-6">
+        <nav className="fixed left-0 right-0 top-0 z-50 flex w-full items-center justify-between bg-white/50 py-3 backdrop-blur-md md:py-6">
           <Link href="/" className="ml-[30px] md:ml-[80px]">
             <img
               src="/images/NIHPLOD-logo.svg"
               alt="NIHPLOD"
-              className="h-[30px] md:h-[40px] w-auto"
+              className="h-[30px] w-auto md:h-[40px]"
             />
           </Link>
-          <div className="flex items-center gap-6 md:gap-10 mr-[30px] md:mr-[85px]">
-            <Link href="/contact" className="text-xs md:text-sm text-[#00263E]">
+          <div className="mr-[30px] flex items-center gap-6 md:mr-[85px] md:gap-10">
+            <Link href="/contact" className="text-xs text-[#00263E] md:text-sm">
               联系我们
             </Link>
-            <Link href="/terms" className="text-xs md:text-sm text-[#00263E]">
+            <Link href="/terms" className="text-xs text-[#00263E] md:text-sm">
               服务条款
             </Link>
-            <Link href="/privacy" className="text-xs md:text-sm text-[#00263E]">
+            <Link href="/privacy" className="text-xs text-[#00263E] md:text-sm">
               隐私政策
             </Link>
-            <Link href="/" className="text-xs md:text-sm text-[#00263E]">
+            <Link href="/" className="text-xs text-[#00263E] md:text-sm">
               返回首页
             </Link>
           </div>
         </nav>
 
         {/* Spacer */}
-        <div className="h-[62px] md:h-[88px] shrink-0" />
+        <div className="h-[62px] shrink-0 md:h-[88px]" />
 
         {/* Header */}
-        <div className="text-center pt-12 md:pt-20 pb-8 md:pb-12">
-          <h1 className="text-3xl md:text-4xl font-light text-[#00263E] tracking-wider mb-4">
+        <div className="pb-8 pt-12 text-center md:pb-12 md:pt-20">
+          <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
             {title.zh}
           </h1>
-          <p className="text-sm md:text-base text-zinc-500 max-w-md mx-auto">
-            {description}
-          </p>
+          <p className="mx-auto max-w-md text-sm text-zinc-500 md:text-base">{description}</p>
         </div>
 
         {/* Filter Tabs */}
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
-          <div className="max-w-2xl mx-auto">
-            <div className="flex items-center justify-center gap-2 mb-8">
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-8 flex items-center justify-center gap-2">
               {filterItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setFilterType(item.id)}
-                  className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                  className={`rounded-full px-4 py-2 text-sm transition-colors ${
                     filterType === item.id
                       ? "bg-[#00263E]/10 text-[#00263E]"
                       : "text-zinc-500 hover:text-zinc-700"
@@ -164,8 +153,8 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         </div>
 
         {/* Job List */}
-        <main className="flex-1 container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 pb-16">
-          <div className="max-w-2xl mx-auto">
+        <main className="container mx-auto flex-1 px-6 pb-16 md:px-8 lg:px-12 xl:px-16">
+          <div className="mx-auto max-w-2xl">
             {filteredJobs.length === 0 ? (
               <div className="flex min-h-[30vh] flex-col items-center justify-center text-center">
                 <Briefcase className="mx-auto mb-3 h-10 w-10 text-zinc-300" />
@@ -183,8 +172,8 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
         {/* Page Footer */}
         <footer className="border-t border-zinc-200">
-          <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-10 text-center">
-            <p className="text-xs text-zinc-500 tracking-wide">
+          <div className="container mx-auto px-6 py-10 text-center md:px-8 lg:px-12 xl:px-16">
+            <p className="text-xs tracking-wide text-zinc-500">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
@@ -192,7 +181,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 href="https://beian.miit.gov.cn/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-zinc-600 transition-colors"
+                className="transition-colors hover:text-zinc-600"
               >
                 沪ICP备2026014764号-1
               </Link>
@@ -201,7 +190,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 href="http://www.beian.gov.cn/portal/registerSystemInfo"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
+                className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
               >
                 <Image
                   src="/images/beian.webp"
@@ -217,7 +206,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
+                className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
               >
                 <Image
                   src="/images/aic_icon.png"
@@ -254,12 +243,12 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         .amap-custom-label {
           padding: 6px 12px;
           background: white;
-          border: 1px solid #EBE8DB;
+          border: 1px solid #ebe8db;
           border-radius: 6px;
           font-size: 13px;
           color: #333;
           white-space: nowrap;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
           font-family: inherit;
         }
         .amap-custom-label::after {
@@ -288,26 +277,33 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  const descriptionSummary = plainDescription.length > 80
-    ? plainDescription.slice(0, 80) + "..."
-    : plainDescription;
+  const descriptionSummary =
+    plainDescription.length > 80 ? plainDescription.slice(0, 80) + "..." : plainDescription;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left p-5 rounded-xl border border-zinc-200/60 hover:border-[#00263E]/30 hover:bg-white/50 transition-all duration-200"
+      className="w-full rounded-xl border border-zinc-200/60 p-5 text-left transition-all duration-200 hover:border-[#00263E]/30 hover:bg-white/50"
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-medium text-zinc-900">
-          {job.title}
-        </h3>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300 shrink-0">
+        <h3 className="text-lg font-medium text-zinc-900">{job.title}</h3>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0 text-zinc-300"
+        >
           <path d="m6 9 6 6 6-6" />
         </svg>
       </div>
       <div className="mt-2.5 flex items-center gap-2.5 text-sm text-zinc-500">
-        <span className="text-[#00263E]/60 font-medium">{typeInfo.label}</span>
+        <span className="font-medium text-[#00263E]/60">{typeInfo.label}</span>
         <span className="text-zinc-300">|</span>
         {job.salary && (
           <>
@@ -321,7 +317,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
         </span>
       </div>
       {descriptionSummary && (
-        <p className="mt-2.5 text-sm leading-relaxed text-zinc-400 line-clamp-1">
+        <p className="mt-2.5 line-clamp-1 text-sm leading-relaxed text-zinc-400">
           {descriptionSummary}
         </p>
       )}
@@ -473,14 +469,14 @@ function JobModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-zinc-100 shrink-0">
+        <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-6">
           <div>
             <h2 className="text-xl font-medium text-zinc-900">{job.title}</h2>
-            <div className="flex items-center gap-2 mt-1 text-sm text-zinc-500">
-              <span className={`px-2 py-0.5 rounded-full text-xs ${typeInfo.color}`}>
+            <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
+              <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
                 {typeInfo.label}
               </span>
               <span className="flex items-center gap-1">
@@ -490,23 +486,26 @@ function JobModal({
               {job.salary && <span>{job.salary}</span>}
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 transition-colors hover:bg-zinc-100"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto p-6">
           {/* Map */}
           {job.location && (
-            <div id={`map-${job.id}`} className="w-full h-48 rounded-xl border border-zinc-100" />
+            <div id={`map-${job.id}`} className="h-48 w-full rounded-xl border border-zinc-100" />
           )}
 
           {/* Description */}
           <div>
-            <h3 className="text-base font-medium text-zinc-900 mb-3">职位描述</h3>
+            <h3 className="mb-3 text-base font-medium text-zinc-900">职位描述</h3>
             <div
-              className="prose prose-sm max-w-none text-zinc-600 [&_ol]:space-y-1 [&_li]:text-sm [&_li]:leading-7"
+              className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1"
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(descriptionHtml),
               }}
@@ -516,9 +515,9 @@ function JobModal({
           {/* Requirements */}
           {job.requirements && (
             <div>
-              <h3 className="text-base font-medium text-zinc-900 mb-3">任职要求</h3>
+              <h3 className="mb-3 text-base font-medium text-zinc-900">任职要求</h3>
               <div
-                className="prose prose-sm max-w-none text-zinc-600 [&_ol]:space-y-1 [&_li]:text-sm [&_li]:leading-7"
+                className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1"
                 dangerouslySetInnerHTML={{
                   __html: DOMPurify.sanitize(requirementsHtml),
                 }}
@@ -528,43 +527,41 @@ function JobModal({
 
           {/* Application Form */}
           <div className="border-t border-zinc-100 pt-6">
-            <h3 className="text-base font-medium text-zinc-900 mb-4">投递简历</h3>
-            <p className="text-sm text-zinc-500 mb-4 whitespace-pre-line">
-              {submitTip?.content}
-            </p>
+            <h3 className="mb-4 text-base font-medium text-zinc-900">投递简历</h3>
+            <p className="mb-4 whitespace-pre-line text-sm text-zinc-500">{submitTip?.content}</p>
 
             {submitStatus === "success" ? (
-              <div className="p-6 bg-green-50 rounded-xl text-center">
-                <p className="text-green-700 font-medium">投递成功！</p>
-                <p className="text-green-600 text-sm mt-1">我们会尽快查看您的简历</p>
+              <div className="rounded-xl bg-green-50 p-6 text-center">
+                <p className="font-medium text-green-700">投递成功！</p>
+                <p className="mt-1 text-sm text-green-600">我们会尽快查看您的简历</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-zinc-600 mb-1.5">姓名 *</label>
+                    <label className="mb-1.5 block text-sm text-zinc-600">姓名 *</label>
                     <input
                       type="text"
                       value={formData.name}
-                      onChange={(e) => setFormData(d => ({ ...d, name: e.target.value }))}
-                      className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10 transition-all"
+                      onChange={(e) => setFormData((d) => ({ ...d, name: e.target.value }))}
+                      className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
                       placeholder="您的姓名"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-zinc-600 mb-1.5">电话 *</label>
+                    <label className="mb-1.5 block text-sm text-zinc-600">电话 *</label>
                     <input
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => setFormData(d => ({ ...d, phone: e.target.value }))}
-                      className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10 transition-all"
+                      onChange={(e) => setFormData((d) => ({ ...d, phone: e.target.value }))}
+                      className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
                       placeholder="您的手机号"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-zinc-600 mb-1.5">简历 *</label>
+                  <label className="mb-1.5 block text-sm text-zinc-600">简历 *</label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -575,7 +572,7 @@ function JobModal({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-sm text-zinc-500 hover:border-[#00263E]/40 hover:text-[#00263E] transition-colors"
+                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-sm text-zinc-500 transition-colors hover:border-[#00263E]/40 hover:text-[#00263E]"
                   >
                     {resumeFile ? (
                       <>
@@ -591,14 +588,12 @@ function JobModal({
                   </button>
                 </div>
 
-                {errorMessage && (
-                  <p className="text-sm text-red-500">{errorMessage}</p>
-                )}
+                {errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00263E] px-6 py-3 text-sm font-medium text-white hover:bg-[#00263E]/90 transition-colors disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00263E] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#00263E]/90 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
