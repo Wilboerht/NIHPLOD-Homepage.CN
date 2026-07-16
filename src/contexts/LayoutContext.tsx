@@ -21,9 +21,6 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
     const [isDrawerOpen, setDrawerOpen] = useState(true);
     const [isNavMenuOpen, setNavMenuOpen] = useState(false);
 
-    // 包装 setState 以避免不必要的重渲染? 暂不需要，直接传递
-    // console.log("[LayoutContext] isDrawerOpen:", isDrawerOpen);
-
     return (
         <LayoutContext.Provider value={{ isDrawerOpen, setDrawerOpen, isNavMenuOpen, setNavMenuOpen }}>
             {children}

@@ -880,7 +880,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   const [selectedSubPlan, setSelectedSubPlan] = useState<SubPlan | null>(null);
   // 悬停的模块索引
   const { isDrawerOpen, setDrawerOpen } = useLayout();
-  const router = useRouter();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // 轮播导航状态
