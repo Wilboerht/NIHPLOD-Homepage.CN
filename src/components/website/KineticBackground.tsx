@@ -27,9 +27,14 @@ export function KineticBackground() {
     const cells = cellsRef.current;
     if (!container || cells.length === 0) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const x = e.clientX / window.innerWidth - 0.5;
-      const y = e.clientY / window.innerHeight - 0.5;
+    let mouseRafId: number;
+    let scrollRafId: number;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    const applyMouseParallax = () => {
+      const x = lastMouseX;
+      const y = lastMouseY;
 
       cells.forEach((cell, index) => {
         if (!cell) return;
@@ -41,7 +46,22 @@ export function KineticBackground() {
       });
     };
 
+    const handleMouseMove = (e: MouseEvent) => {
+      lastMouseX = e.clientX / window.innerWidth - 0.5;
+      lastMouseY = e.clientY / window.innerHeight - 0.5;
+
+      if (mouseRafId) return;
+      mouseRafId = requestAnimationFrame(() => {
+        applyMouseParallax();
+        mouseRafId = 0;
+      });
+    };
+
     const handleMouseLeave = () => {
+      cancelAnimationFrame(mouseRafId);
+      mouseRafId = 0;
+      lastMouseX = 0;
+      lastMouseY = 0;
       cells.forEach((cell) => {
         if (!cell) return;
         cell.style.setProperty("--parallax-x", "0");
@@ -51,23 +71,22 @@ export function KineticBackground() {
       });
     };
 
-    let rafId: number;
-
     const handleScroll = () => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(() => {
-        const scrollY = window.scrollY;
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-        const progress = maxScroll > 0 ? scrollY / maxScroll : 0;
+      if (scrollRafId) return;
+      scrollRafId = requestAnimationFrame(() => {
+        if (!prefersReducedMotion) {
+          const scrollY = window.scrollY;
+          const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+          const progress = maxScroll > 0 ? scrollY / maxScroll : 0;
 
-        cells.forEach((cell, index) => {
-          if (!cell) return;
-          const factor = (index + 1) * 0.5;
-          const offset = progress * 20 * factor;
-          cell.style.setProperty("--parallax-scroll-y", `-${offset}px`);
-        });
-
-        rafId = 0;
+          cells.forEach((cell, index) => {
+            if (!cell) return;
+            const factor = (index + 1) * 0.5;
+            const offset = progress * 20 * factor;
+            cell.style.setProperty("--parallax-scroll-y", `-${offset}px`);
+          });
+        }
+        scrollRafId = 0;
       });
     };
 
@@ -90,7 +109,8 @@ export function KineticBackground() {
     handleScroll();
 
     return () => {
-      cancelAnimationFrame(rafId);
+      cancelAnimationFrame(mouseRafId);
+      cancelAnimationFrame(scrollRafId);
       mediaQuery.removeEventListener("change", setupListeners);
       window.removeEventListener("scroll", handleScroll);
       container.removeEventListener("mousemove", handleMouseMove);

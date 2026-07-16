@@ -4,6 +4,7 @@ import { useState, useEffect, useLayoutEffect, useRef, type ReactNode } from "re
 import { m } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { cn } from "@/lib/utils";
 
 interface DrawerPageContainerProps {
@@ -33,8 +34,9 @@ export function DrawerPageContainer({
   const [isExpanded, setIsExpanded] = useState(false);
   const handleRef = useRef<HTMLButtonElement>(null);
   const [handleHeight, setHandleHeight] = useState(0);
-  const { isDrawerOpen, setDrawerOpen } = useLayout();
+  const { isDrawerOpen, setDrawerOpen, setDrawerAnimating } = useLayout();
   const hasSyncRun = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
 
   useLayoutEffect(() => {
     if (!handleRef.current || typeof ResizeObserver === "undefined") return;
@@ -64,20 +66,33 @@ export function DrawerPageContainer({
   }, [isDrawerOpen, isExpanded]);
 
   useEffect(() => {
+    if (prefersReducedMotion) {
+      // 减少动画偏好：直接展开，不播放入场动画
+      setIsExpanded(true);
+      setDrawerOpen(true);
+      return;
+    }
+
     if (defaultExpanded) {
       // 首页：强制从收起状态开始，保证无论从哪个页面进入都能看到展开动画
       setDrawerOpen(false);
       setIsExpanded(false);
+      setDrawerAnimating(true);
     }
+
     const timer = setTimeout(
       () => {
         setIsExpanded(true);
         setDrawerOpen(true);
+        setDrawerAnimating(false);
       },
-      defaultExpanded ? 150 : 100
+      defaultExpanded ? 80 : 100
     );
-    return () => clearTimeout(timer);
-  }, [defaultExpanded, setDrawerOpen]);
+    return () => {
+      clearTimeout(timer);
+      setDrawerAnimating(false);
+    };
+  }, [defaultExpanded, prefersReducedMotion, setDrawerOpen, setDrawerAnimating]);
 
   const handleToggle = () => {
     const newState = !isExpanded;
