@@ -161,7 +161,7 @@ export function BottomNavBar() {
                           className="flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/20"
                         >
                           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#FFFFFF]">
-                            <Icon className="h-5 w-5 text-[#B5AC88]" />
+                            <Icon className="h-5 w-5 text-brand-gold" />
                           </div>
                           <div className="flex flex-col">
                             <span
@@ -186,12 +186,9 @@ export function BottomNavBar() {
             <nav
               className={cn(
                 "pointer-events-auto flex items-center justify-between",
-                // Mobile: compact rounded design
-                "rounded-2xl bg-[#FAF5EA] px-4 py-4",
-                // Desktop: dock-style design from reference
+                "rounded-2xl bg-[#FAF5EA] px-4 py-4 shadow-[0_4px_20px_-8px_rgba(0,38,62,0.08)]",
                 "lg:h-[100px] lg:rounded-[20px] lg:bg-[#FAF5EA] lg:px-10 lg:py-0",
-                "lg:shadow-[0_20px_50px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.8)]",
-                "lg:backdrop-blur-none"
+                "lg:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.1)]"
               )}
               aria-label="主要导航"
             >
@@ -203,7 +200,7 @@ export function BottomNavBar() {
               >
                 {/* 图标容器 */}
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#FFFFFF]">
-                  <PrimaryIcon className="h-6 w-6 text-[#B5AC88]" />
+                  <PrimaryIcon className="h-6 w-6 text-brand-gold" />
                 </div>
                 {/* 文字 */}
                 <div className="flex flex-col">
@@ -235,7 +232,7 @@ export function BottomNavBar() {
                       <Icon className="h-9 w-9 text-brand-gold transition-transform duration-500 group-hover:scale-105" />
 
                       {/* 主标题 - 衬线体 大号 */}
-                      <span className="font-serif text-[18px] font-medium tracking-wide text-brand-charcoal">
+                      <span className="text-[18px] font-medium tracking-wide text-brand-charcoal">
                         关于旎柏
                       </span>
                     </Link>
@@ -264,7 +261,7 @@ export function BottomNavBar() {
                       exit={{ opacity: 0, rotate: 90 }}
                       transition={{ duration: 0.15 }}
                     >
-                      <X className="h-5 w-5 text-[#B5AC88]" />
+                      <X className="h-5 w-5 text-brand-gold" />
                     </m.div>
                   ) : (
                     <m.div
@@ -274,7 +271,7 @@ export function BottomNavBar() {
                       exit={{ opacity: 0, rotate: -90 }}
                       transition={{ duration: 0.15 }}
                     >
-                      <Menu className="h-5 w-5 text-[#B5AC88]" />
+                      <Menu className="h-5 w-5 text-brand-gold" />
                     </m.div>
                   )}
                 </AnimatePresence>
@@ -292,16 +289,16 @@ export function BottomNavBar() {
                     return (
                       <React.Fragment key={item.href}>
                         {/* 在首页前添加分割线 */}
-                        {isHome && <div className="h-10 w-px bg-black/20" />}
+                        {isHome && <div className="h-10 w-px bg-brand-charcoal/15" />}
                         <Link
                           href={item.href}
                           onClick={(e) => handleNavClick(item.href, e)}
                           className={cn(
-                            "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium text-[#1a1a1a] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)]",
+                            "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium text-[#00263E] transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00263E]",
                             "hover:opacity-70"
                           )}
                         >
-                          <Icon className="h-8 w-8 text-[#C3BC9F] transition-all duration-[600ms] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-y-[-2px] group-hover:text-brand-gold" />
+                          <Icon className="h-8 w-8 text-[#C3BC9F] transition-all duration-300 ease-out group-hover:translate-y-[-2px] group-hover:text-brand-gold" />
                           <span>{item.label}</span>
                         </Link>
                       </React.Fragment>
