@@ -101,7 +101,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
       <footer className="border-t border-zinc-200">
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-10 text-center">
           <p className="text-xs text-zinc-500 tracking-wide">
-            &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
+            &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
             <Link
