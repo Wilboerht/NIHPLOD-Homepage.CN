@@ -993,6 +993,10 @@
 
   cursor: default;
   pointer-events: auto;
+
+  /* 鼠标视差由 JS 通过 CSS 变量控制，与 hover transform 组合 */
+  transform: translate(var(--parallax-x, 0), var(--parallax-y, 0)) rotateX(var(--parallax-rx, 0))
+    rotateY(var(--parallax-ry, 0));
 }
 
 /* 左侧大卡片 - 跨两行 */
@@ -1030,11 +1034,10 @@
 }
 
 /* Neo-Brutalism 悬停阴影效果 */
-/* Neo-Brutalism 悬停阴影效果 - 极简微调版 */
-/* Neo-Brutalism 悬停阴影效果 - 极简微调版 - 已合并至默认状态 */
 .kinetic-cell:not(.no-hover-effect):hover {
-  /* 仅保留位移效果 */
-  transform: translateY(-4px) scale(1.005) !important;
+  /* 在视差 transform 基础上叠加悬浮位移 */
+  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) - 4px))
+    rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.005);
   z-index: 10;
 }
 
