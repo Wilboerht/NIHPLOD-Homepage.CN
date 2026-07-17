@@ -160,7 +160,7 @@ export function BottomNavBar() {
                           onClick={() => setIsNavMenuOpen(false)}
                           className="flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/20"
                         >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/80">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/80">
                             <Icon className="h-5 w-5 text-brand-gold" />
                           </div>
                           <div className="flex flex-col">
@@ -172,7 +172,7 @@ export function BottomNavBar() {
                             >
                               {item.label}
                             </span>
-                            <span className="text-[10px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.5)]">
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.5)]">
                               {item.labelEn}
                             </span>
                           </div>
@@ -210,7 +210,7 @@ export function BottomNavBar() {
                   >
                     {primaryNav.label}
                   </span>
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.5)]">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.5)]">
                     {primaryNav.labelEn}
                   </span>
                 </div>
@@ -228,11 +228,21 @@ export function BottomNavBar() {
                       onClick={(e) => handleNavClick(storyItem.href, e)}
                       className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
                     >
-                      {/* 图标 (放大作为视觉重心) */}
-                      <Icon className="h-9 w-9 text-brand-gold transition-transform duration-300 group-hover:scale-105" />
+                      {/* 图标 */}
+                      <Icon className={cn(
+                        "h-8 w-8 transition-all duration-300 group-hover:scale-105",
+                        isCurrentPage(pathname, storyItem.href)
+                          ? "text-brand-gold"
+                          : "text-brand-gold/60 group-hover:text-brand-gold"
+                      )} />
 
-                      {/* 主标题 - 衬线体 大号 */}
-                      <span className="text-[18px] font-medium tracking-wide text-brand-charcoal">
+                      {/* 主标题 */}
+                      <span className={cn(
+                        "text-[18px] font-medium tracking-wide transition-colors duration-300",
+                        isCurrentPage(pathname, storyItem.href)
+                          ? "text-brand-charcoal"
+                          : "text-brand-charcoal/60"
+                      )}>
                         关于旎柏
                       </span>
                     </Link>
@@ -285,6 +295,7 @@ export function BottomNavBar() {
                   .map((item) => {
                     const Icon = item.icon;
                     const isHome = item.href === "/";
+                    const isActive = isCurrentPage(pathname, item.href);
 
                     return (
                       <React.Fragment key={item.href}>
@@ -294,11 +305,16 @@ export function BottomNavBar() {
                           href={item.href}
                           onClick={(e) => handleNavClick(item.href, e)}
                           className={cn(
-                            "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium text-[#00263E] transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00263E]",
-                            "hover:opacity-70"
+                            "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00263E]",
+                            isActive
+                              ? "text-[#00263E]"
+                              : "text-[#00263E]/60 hover:text-[#00263E]"
                           )}
                         >
-                          <Icon className="h-8 w-8 text-[#C3BC9F] transition-all duration-300 ease-out group-hover:translate-y-[-2px] group-hover:text-brand-gold" />
+                          <Icon className={cn(
+                            "h-8 w-8 transition-all duration-300 ease-out group-hover:translate-y-[-2px]",
+                            isActive ? "text-brand-gold" : "text-brand-gold/60 group-hover:text-brand-gold"
+                          )} />
                           <span>{item.label}</span>
                         </Link>
                       </React.Fragment>
