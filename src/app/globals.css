@@ -99,15 +99,11 @@
 
   @media (min-width: 1024px) {
     .safe-area-content {
-      /* 上下等距 4rem；左右 = 4rem + 把手高度(~4rem) = 8rem */
+      /* left = right = bottom(4rem) + handle(4rem) = 8rem */
       top: max(4rem, env(safe-area-inset-top, 4rem));
       bottom: max(4rem, env(safe-area-inset-bottom, 4rem));
-      left: 50%;
-      right: auto;
-      width: calc(100% - 2 * max(8rem, env(safe-area-inset-left, 8rem)));
-      max-width: 2200px;
-      transform: translateX(-50%) translateZ(0);
-      -webkit-transform: translateX(-50%) translateZ(0);
+      left: max(8rem, env(safe-area-inset-left, 8rem));
+      right: max(8rem, env(safe-area-inset-right, 8rem));
     }
   }
 
