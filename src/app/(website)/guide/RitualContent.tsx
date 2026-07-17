@@ -1899,9 +1899,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     : selectedScheme.name}
                                 </h1>
                                 {selectedModule !== "portable" && selectedModule !== "professional" && (
-                                  <div className="flex items-center justify-center px-3 py-1 rounded-full border border-brand-charcoal/10 bg-white/50 gap-1.5">
+                                  <div className="flex items-center justify-center px-3 py-1 rounded-full border border-[#00263e]/25 bg-white/50 gap-1.5">
                                     <Clock className="w-3 h-3 text-brand-charcoal/60" />
-                                    <span className="font-sans text-[11px] tracking-widest text-brand-charcoal/60 tabular-nums">
+                                    <span className="font-sans text-xs tracking-widest text-brand-charcoal/70 tabular-nums">
                                       {selectedScheme.totalDuration || "5-10分钟"}
                                     </span>
                                   </div>
