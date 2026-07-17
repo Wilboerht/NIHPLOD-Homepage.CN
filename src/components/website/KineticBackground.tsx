@@ -230,7 +230,7 @@ export function KineticBackground() {
         >
           <div
             className="kinetic-name"
-            style={{ marginBottom: "12px", lineHeight: "1.3", fontSize: "1.8rem" }}
+            style={{ marginBottom: "12px", lineHeight: "1.3", fontSize: "1.8rem", fontWeight: 300 }}
           >
             更少步骤
             <br />
