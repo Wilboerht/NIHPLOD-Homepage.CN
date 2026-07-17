@@ -1761,7 +1761,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 onClick={() => selectModule(module.id)}
                                 onMouseEnter={() => setHoveredIndex(index)}
                                 onMouseLeave={() => setHoveredIndex(null)}
-                                className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl bg-[#FCF9F2] border border-[#00263E]/15 shadow-sm transition-all duration-500 hover:shadow-lg"
+                                className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl bg-[#FCF9F2] border border-[#00263E]/15 shadow-sm transition-all duration-500 hover:border-[#00263e]/30"
                                 initial={{ opacity: 0, y: 15 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.7, delay: 0.1 + index * 0.05, ease: [0.16, 1, 0.3, 1] }}
