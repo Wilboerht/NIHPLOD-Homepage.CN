@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Crown, ShieldCheck, Users, ScanFace } from "lucide-react";
+import { Crown, ShieldCheck, Users, ScanFace, Home } from "lucide-react";
 import type { ServicesPageContent, ServiceDetail, ServiceLink } from "@/types/page-content";
 
 interface ServicesContentProps {
@@ -86,27 +86,31 @@ export function ServicesContent({ content }: ServicesContentProps) {
       {/* Top Bar */}
       <nav
         aria-label="服务页导航"
-        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center justify-between bg-white/50 py-3 backdrop-blur-md md:py-6"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center justify-between bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
       >
-        <Link href="/" className="ml-[30px] md:ml-[80px]">
-          <img
-            src="/images/NIHPLOD-logo.svg"
-            alt="NIHPLOD"
-            className="h-[30px] w-auto md:h-[40px]"
-          />
+        <Link href="/">
+          <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
+            <Image
+              src="/images/NIHPLOD-logo.svg"
+              alt="NIHPLOD"
+              fill
+              className="object-contain object-left"
+              priority
+            />
+          </div>
         </Link>
-        <div className="mr-[30px] flex items-center gap-6 md:mr-[85px] md:gap-10">
-          <Link href="/contact" className="text-xs text-[#00263E] md:text-sm">
+        <div className="flex items-center gap-6 md:gap-10">
+          <Link href="/contact" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
             联系我们
           </Link>
-          <Link href="/terms" className="text-xs text-[#00263E] md:text-sm">
+          <Link href="/terms" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
             服务条款
           </Link>
-          <Link href="/privacy" className="text-xs text-[#00263E] md:text-sm">
+          <Link href="/privacy" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
             隐私政策
           </Link>
-          <Link href="/" className="text-xs text-[#00263E] md:text-sm">
-            返回首页
+          <Link href="/" className="inline-flex items-center gap-1 text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+            <Home className="h-3.5 w-3.5" /> 返回首页
           </Link>
         </div>
       </nav>
@@ -134,53 +138,11 @@ export function ServicesContent({ content }: ServicesContentProps) {
       </main>
 
       {/* Page Footer */}
-      <footer className="border-t border-zinc-200">
-        <div className="container mx-auto px-6 py-10 text-center md:px-8 lg:px-12 xl:px-16">
-          <p className="text-xs tracking-wide text-zinc-500">
+      <footer className="border-t border-brand-charcoal/10">
+        <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
+          <p className="text-xs text-brand-charcoal/50 tracking-wider">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
-            <Link
-              href="https://beian.miit.gov.cn/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition-colors hover:text-zinc-600"
-            >
-              沪ICP备2026014764号-1
-            </Link>
-            <span className="text-zinc-300">|</span>
-            <Link
-              href="http://www.beian.gov.cn/portal/registerSystemInfo"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
-            >
-              <Image
-                src="/images/beian.webp"
-                alt="公安备案"
-                width={12}
-                height={12}
-                className="opacity-60"
-              />
-              <span>沪公网安备31010702010178号</span>
-            </Link>
-            <span className="text-zinc-300">|</span>
-            <Link
-              href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
-            >
-              <Image
-                src="/images/aic_icon.png"
-                alt="电子营业执照"
-                width={12}
-                height={12}
-                className="opacity-50"
-              />
-              <span>电子营业执照</span>
-            </Link>
-          </div>
         </div>
       </footer>
     </div>

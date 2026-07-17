@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown } from "lucide-react";
+import { Send, CheckCircle, Loader2, MessageSquare, Briefcase, MessageCircle, AlertTriangle, HelpCircle, ChevronDown, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks";
 import { apiPost, ApiError } from "@/lib/api-client";
@@ -139,18 +139,22 @@ export function ContactContent({ content }: ContactContentProps) {
   return (
     <div className="animate-fade-in bg-[#fefcf8] min-h-screen flex flex-col">
       {/* Top Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white/50 backdrop-blur-md w-full py-3 md:py-6">
-        <Link href="/" className="ml-[30px] md:ml-[80px]">
-          <img
-            src="/images/NIHPLOD-logo.svg"
-            alt="NIHPLOD"
-            className="h-[30px] md:h-[40px] w-auto"
-          />
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-[#fefcf8]/80 backdrop-blur-md w-full px-6 py-3 md:px-20 md:py-6">
+        <Link href="/">
+          <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
+            <Image
+              src="/images/NIHPLOD-logo.svg"
+              alt="NIHPLOD"
+              fill
+              className="object-contain object-left"
+              priority
+            />
+          </div>
         </Link>
-        <div className="flex items-center gap-6 md:gap-10 mr-[30px] md:mr-[85px]">
-          <Link href="/terms" className="text-xs md:text-sm text-[#00263E]">服务条款</Link>
-          <Link href="/privacy" className="text-xs md:text-sm text-[#00263E]">隐私政策</Link>
-          <Link href="/" className="text-xs md:text-sm text-[#00263E]">返回首页</Link>
+        <div className="flex items-center gap-6 md:gap-10">
+          <Link href="/terms" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">服务条款</Link>
+          <Link href="/privacy" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">隐私政策</Link>
+          <Link href="/" className="inline-flex items-center gap-1 text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors"><Home className="h-3.5 w-3.5" /> 返回首页</Link>
         </div>
       </nav>
 
@@ -159,7 +163,7 @@ export function ContactContent({ content }: ContactContentProps) {
 
       {/* Header */}
       <div className="text-center pt-12 md:pt-20 pb-8 md:pb-12">
-        <h1 className="text-3xl md:text-4xl font-light text-[#00263E] tracking-wider mb-4">
+        <h1 className="text-3xl md:text-4xl font-light text-[#00263E] tracking-widerr mb-4">
           {title.zh}
         </h1>
         <p className="text-sm md:text-base text-zinc-500 max-w-md mx-auto">
@@ -255,22 +259,9 @@ export function ContactContent({ content }: ContactContentProps) {
       </main>
 
       {/* Page Footer */}
-      <footer className="border-t border-zinc-200">
-        <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-10 text-center">
-          <p className="text-xs text-zinc-500 tracking-wide">&copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.</p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
-            <Link href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600 transition-colors">沪ICP备2026014764号-1</Link>
-            <span className="text-zinc-300">|</span>
-            <Link href="http://www.beian.gov.cn/portal/registerSystemInfo" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors">
-              <Image src="/images/beian.webp" alt="公安备案" width={12} height={12} className="opacity-60" />
-              <span>沪公网安备31010702010178号</span>
-            </Link>
-            <span className="text-zinc-300">|</span>
-            <Link href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors">
-              <Image src="/images/aic_icon.png" alt="电子营业执照" width={12} height={12} className="opacity-50" />
-              <span>电子营业执照</span>
-            </Link>
-          </div>
+      <footer className="border-t border-brand-charcoal/10">
+        <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-6 text-center">
+          <p className="text-xs text-brand-charcoal/50 tracking-wider">&copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.</p>
         </div>
       </footer>
     </div>
