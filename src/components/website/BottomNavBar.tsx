@@ -117,7 +117,7 @@ export function BottomNavBar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-[#00263E]/30 backdrop-blur-sm lg:hidden"
             onClick={() => setIsNavMenuOpen(false)}
           />
         )}
@@ -148,7 +148,7 @@ export function BottomNavBar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-2xl bg-[#FAF5EA] p-2 lg:hidden"
+                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-2xl bg-[#FAF5EA] p-2 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.1)] lg:hidden"
                 >
                   <div className="flex flex-col gap-1.5">
                     {otherNavItems.map((item) => {
@@ -160,7 +160,7 @@ export function BottomNavBar() {
                           onClick={() => setIsNavMenuOpen(false)}
                           className="flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/20"
                         >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#FFFFFF]">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/80">
                             <Icon className="h-5 w-5 text-brand-gold" />
                           </div>
                           <div className="flex flex-col">
@@ -186,9 +186,9 @@ export function BottomNavBar() {
             <nav
               className={cn(
                 "pointer-events-auto flex items-center justify-between",
-                "rounded-2xl bg-[#FAF5EA] px-4 py-4 shadow-[0_4px_20px_-8px_rgba(0,38,62,0.08)]",
+                "rounded-2xl bg-[#FAF5EA] px-4 py-4 shadow-[0_4px_20px_-8px_rgba(0,38,62,0.06)]",
                 "lg:h-[100px] lg:rounded-[20px] lg:bg-[#FAF5EA] lg:px-10 lg:py-0",
-                "lg:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.1)]"
+                "lg:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.08)]"
               )}
               aria-label="主要导航"
             >
@@ -199,7 +199,7 @@ export function BottomNavBar() {
                 className="group flex items-center gap-2 transition-opacity active:opacity-70 lg:hidden"
               >
                 {/* 图标容器 */}
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#FFFFFF]">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/80">
                   <PrimaryIcon className="h-6 w-6 text-brand-gold" />
                 </div>
                 {/* 文字 */}
@@ -229,7 +229,7 @@ export function BottomNavBar() {
                       className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
                     >
                       {/* 图标 (放大作为视觉重心) */}
-                      <Icon className="h-9 w-9 text-brand-gold transition-transform duration-500 group-hover:scale-105" />
+                      <Icon className="h-9 w-9 text-brand-gold transition-transform duration-300 group-hover:scale-105" />
 
                       {/* 主标题 - 衬线体 大号 */}
                       <span className="text-[18px] font-medium tracking-wide text-brand-charcoal">
@@ -249,7 +249,7 @@ export function BottomNavBar() {
               <button
                 type="button"
                 onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
-                className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#FFFFFF] transition-colors active:bg-[#E8E4D8] lg:hidden"
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/80 transition-colors active:bg-[#E8E4D8] lg:hidden"
                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
               >
                 <AnimatePresence mode="wait" initial={false}>
