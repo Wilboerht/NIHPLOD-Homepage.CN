@@ -1890,7 +1890,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         >
                           <div className="flex h-full w-full flex-col justify-center">
                             {/* Level 3 Header: 标题与切换器 */}
-                            <header className="mb-9 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
+                            <header className="mb-8 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                               {/* 左侧标题组 */}
                               <div className="flex flex-row items-end gap-5">
                                 <h1 className="font-sans text-[48px] font-light leading-none tracking-wide text-brand-charcoal">
@@ -1992,13 +1992,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               >
                                 {/* Meta Item: Products */}
                                 <div className="flex flex-col relative isolate">
-                                  <h3 className="mb-4 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal z-10">
+                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal z-10">
                                     相关产品
                                   </h3>
 
 
 
-                                  <div className="flex flex-wrap gap-x-6 gap-y-8 pl-2">
+                                  <div className="flex flex-wrap gap-x-6 gap-y-8">
                                     {currentProducts
                                       .split("、")
                                       .map((product, index) => {
@@ -2087,7 +2087,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                   return (
                                     <div className="flex flex-col">
-                                      <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal">
+                                      <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal">
                                         特殊时期支持
                                       </h3>
                                       <div className={cn(
