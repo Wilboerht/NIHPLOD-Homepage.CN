@@ -476,11 +476,11 @@ export function StoryContent() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative flex h-[100px] flex-shrink-0 items-center justify-between px-[8%]"
+                  className="relative flex h-[80px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.08] px-10"
                 >
                   {/* 左侧：Logo */}
                   <Link href="/">
-                    <div className="relative h-8 w-[160px]">
+                    <div className="relative h-9 w-[180px]">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
                         alt="Logo"
@@ -499,7 +499,7 @@ export function StoryContent() {
                         type="button"
                         onClick={() => setActiveSection(item.id)}
                           className={cn(
-                            "group relative px-1 py-1 text-[15px] font-medium transition-opacity duration-300",
+                            "group relative px-1 py-1 text-[15px] font-medium tracking-[0.1em] transition-opacity duration-300",
                             activeSection === item.id
                               ? "text-[#00263E] opacity-100"
                               : "text-[#00263E] opacity-60 hover:opacity-80"
@@ -515,22 +515,6 @@ export function StoryContent() {
                       </button>
                     ))}
                   </div>
-
-                  {/* 右侧：占位 */}
-                  <div className="w-24" />
-
-                  {/* 底部边线 - 顶部横线移入此处 */}
-                  <m.div
-                    initial={{ scaleX: 0, opacity: 0 }}
-                    animate={{ scaleX: 1, opacity: 1 }}
-                    exit={{ scaleX: 0, opacity: 0 }}
-                    transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-                    className="pointer-events-none absolute bottom-0 left-0 right-0 h-px origin-center"
-                    style={{
-                      background:
-                        "linear-gradient(to right, transparent 0%, rgba(0,38,62,0.12) 20%, rgba(0,38,62,0.12) 80%, transparent 100%)",
-                    }}
-                  />
                 </m.nav>
               )}
             </AnimatePresence>
