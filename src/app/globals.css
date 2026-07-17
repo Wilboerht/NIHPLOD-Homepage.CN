@@ -1041,8 +1041,11 @@
   pointer-events: auto;
 
   /* 鼠标视差由 JS 通过 CSS 变量控制，与 hover transform 组合 */
-  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px))) rotateX(var(--parallax-rx, 0))
-    rotateY(var(--parallax-ry, 0));
+  transform: translate(
+      var(--parallax-x, 0),
+      calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px))
+    )
+    rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0));
 }
 
 /* 左侧大卡片 - 跨两行，视觉权重最高 */
@@ -1059,13 +1062,19 @@
 }
 
 .kinetic-cell-large:not(.no-hover-effect):hover {
-  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 4px))
+  transform: translate(
+      var(--parallax-x, 0),
+      calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 4px)
+    )
     rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.01);
   box-shadow: 0 24px 48px -12px rgba(0, 38, 62, 0.18);
 }
 
 .kinetic-cell:not(.kinetic-cell-large):not(.no-hover-effect):hover {
-  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 6px))
+  transform: translate(
+      var(--parallax-x, 0),
+      calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 6px)
+    )
     rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.03);
   box-shadow: 0 16px 36px -10px rgba(0, 38, 62, 0.12);
 }
@@ -1099,7 +1108,10 @@
 
 .kinetic-cell:not(.no-hover-effect):hover {
   /* 在视差 transform 基础上叠加悬浮位移 */
-  transform: translate(var(--parallax-x, 0), calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 4px))
+  transform: translate(
+      var(--parallax-x, 0),
+      calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 4px)
+    )
     rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.005);
   box-shadow: 0 20px 40px -12px rgba(0, 38, 62, 0.15);
   z-index: 10;

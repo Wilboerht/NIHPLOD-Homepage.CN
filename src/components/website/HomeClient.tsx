@@ -327,12 +327,22 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
           {/* 波浪背景 - 仅桌面端渲染。浮动动画在包裹层，JS 视差在内层 svg，两者 transform 互不覆盖 */}
           <div className="wave-container pointer-events-none absolute bottom-0 left-0 right-0 z-0 hidden lg:block">
             <div className="wave-wrapper wave-1">
-              <svg ref={wave1Ref} className="wave" viewBox="0 0 1200 120" preserveAspectRatio="none">
+              <svg
+                ref={wave1Ref}
+                className="wave"
+                viewBox="0 0 1200 120"
+                preserveAspectRatio="none"
+              >
                 <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
               </svg>
             </div>
             <div className="wave-wrapper wave-2">
-              <svg ref={wave2Ref} className="wave" viewBox="0 0 1200 120" preserveAspectRatio="none">
+              <svg
+                ref={wave2Ref}
+                className="wave"
+                viewBox="0 0 1200 120"
+                preserveAspectRatio="none"
+              >
                 <path d="M0,40 C200,90 400,0 600,40 C800,80 1000,0 1200,40" />
               </svg>
             </div>
