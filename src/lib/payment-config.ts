@@ -83,31 +83,9 @@ export function getPaymentMethods(): PaymentMethodConfig[] {
 }
 
 /**
- * 获取已启用的支付方式
- */
-export function getEnabledPaymentMethods(): PaymentMethodConfig[] {
-  return getPaymentMethods().filter((m) => m.enabled);
-}
-
-/**
  * 检查指定支付方式是否启用
  */
 export function isPaymentMethodEnabled(methodId: "wechat" | "alipay"): boolean {
   const method = getPaymentMethods().find((m) => m.id === methodId);
   return method?.enabled ?? false;
-}
-
-/**
- * 获取支付方式的优先级
- */
-export function getPaymentMethodPriority(methodId: "wechat" | "alipay"): number {
-  const method = getPaymentMethods().find((m) => m.id === methodId);
-  return method?.priority ?? 999;
-}
-
-/**
- * 重置缓存（用于测试或动态更新）
- */
-export function resetPaymentMethodsCache(): void {
-  _paymentMethods = null;
 }

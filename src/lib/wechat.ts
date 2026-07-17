@@ -17,14 +17,6 @@ export interface WechatSignature {
   signature: string;
 }
 
-/** 分享数据 */
-export interface WechatShareData {
-  title: string;
-  desc: string;
-  link: string;
-  imgUrl: string;
-}
-
 /** 缓存的 Access Token */
 interface CachedToken {
   accessToken: string;
@@ -214,29 +206,6 @@ export function isWechatBrowser(): boolean {
   
   const ua = window.navigator.userAgent.toLowerCase();
   return ua.includes("micromessenger");
-}
-
-/**
- * 获取默认分享图片 URL
- */
-export function getDefaultShareImage(): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-  return `${baseUrl}/images/og-image.png`;
-}
-
-/**
- * 格式化分享链接
- * 移除 hash，添加分享标记
- */
-export function formatShareUrl(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    urlObj.hash = ""; // 移除 hash
-    urlObj.searchParams.set("from", "wechat");
-    return urlObj.toString();
-  } catch {
-    return url;
-  }
 }
 
 // ============================================

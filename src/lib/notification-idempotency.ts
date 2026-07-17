@@ -5,20 +5,6 @@
 import { prisma } from "./prisma";
 import { apiConsole } from "@/lib/logger";
 
-export interface PaymentNotificationRecord {
-  id: string;
-  paymentGateway: "wechat" | "alipay" | "wechat_refund" | "alipay_refund"; // 支付网关
-  notificationId: string; // 网关返回的通知ID（微信: out_trade_no, 支付宝: trade_no）
-  transactionId: string; // 交易ID（微信: transaction_id, 支付宝: trade_no）
-  amount: number; // 金额（分）
-  status: "PENDING" | "SUCCESS" | "FAILED"; // 处理状态
-  rawData: string; // 原始通知数据（JSON字符串）
-  errorMessage?: string; // 失败时的错误信息
-  processedAt?: Date; // 处理时间
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 /**
  * 检查通知是否已处理过 - 用于幂等性判断
  * @param gateway 支付网关

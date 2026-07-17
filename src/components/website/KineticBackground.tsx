@@ -375,4 +375,3 @@ export function KineticBackground() {
   );
 }
 
-export default KineticBackground;

@@ -51,54 +51,6 @@ export function Skeleton({
 }
 
 /**
- * 文本骨架屏
- */
-export function TextSkeleton({
-  lines = 1,
-  className,
-}: {
-  lines?: number;
-  className?: string;
-}) {
-  return (
-    <div className={cn("space-y-2", className)}>
-      {Array.from({ length: lines }).map((_, i) => (
-        <Skeleton
-          key={i}
-          variant="text"
-          className={cn(
-            "h-4",
-            i === lines - 1 && lines > 1 ? "w-3/4" : "w-full"
-          )}
-        />
-      ))}
-    </div>
-  );
-}
-
-/**
- * 卡片骨架屏
- */
-export function CardSkeleton({ className }: { className?: string }) {
-  return (
-    <div className={cn("rounded-xl bg-white p-6 shadow-sm", className)}>
-      <div className="flex items-start gap-4">
-        <Skeleton variant="circular" className="h-12 w-12" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-3 w-3/4" />
-        </div>
-      </div>
-      <div className="mt-4 space-y-2">
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-2/3" />
-      </div>
-    </div>
-  );
-}
-
-/**
  * 表格行骨架屏
  */
 export function TableRowSkeleton({

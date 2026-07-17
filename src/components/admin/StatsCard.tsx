@@ -71,20 +71,4 @@ export function StatsCard({
   );
 }
 
-/**
- * 统计卡片骨架屏
- */
-export function StatsCardSkeleton() {
-  return (
-    <div className="rounded-xl bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
-          <div className="mt-3 h-9 w-24 animate-pulse rounded bg-gray-200" />
-        </div>
-        <div className="h-12 w-12 animate-pulse rounded-lg bg-gray-200" />
-      </div>
-    </div>
-  );
-}
 

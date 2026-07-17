@@ -67,5 +67,3 @@ export async function initializeApp(): Promise<void> {
   }
 }
 
-// 自动导出别名用于更方便的导入
-export const setupServer = initializeApp;

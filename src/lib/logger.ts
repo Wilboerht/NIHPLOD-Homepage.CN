@@ -169,25 +169,9 @@ async function reportToExternalService(entry: LogEntry) {
 export const apiLogger = createLogger("API");
 
 /**
- * 数据库模块日志器
- */
-export const dbLogger = createLogger("DB");
-
-/**
  * 通用日志器
  */
 export const logger = createLogger("App");
-
-/**
- * 请求日志中间件辅助函数
- */
-export function logRequest(
-  method: string,
-  path: string,
-  context?: LogContext
-) {
-  apiLogger.info(`${method} ${path}`, context);
-}
 
 /**
  * 错误日志辅助函数（包含堆栈信息）

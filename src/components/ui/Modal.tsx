@@ -134,5 +134,3 @@ export function Modal({
   return createPortal(modalContent, document.body);
 }
 
-// 兼容旧版本 API
-export { Modal as default };

@@ -191,14 +191,6 @@ export function withRole<T extends NextRequest, C = unknown, R extends Response 
   });
 }
 
-/**
- * 检查管理员是否已认证
- */
-export async function isAuthenticated(): Promise<boolean> {
-  const user = await getCurrentAdmin();
-  return user !== null;
-}
-
 // ============================================
 // C端用户认证
 // ============================================

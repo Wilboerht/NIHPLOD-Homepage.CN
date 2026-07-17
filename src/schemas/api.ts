@@ -11,5 +11,3 @@ export const AdminLoginSchema = z.object({
   totpCode: z.string().length(6, "二次验证码为6位数字").optional(),
 });
 
-// 类型导出
-export type AdminLoginData = z.infer<typeof AdminLoginSchema>;

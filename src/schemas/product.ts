@@ -102,9 +102,3 @@ export const CategorySchema = z.object({
   visible: z.boolean().default(true),
 });
 
-// 类型导出
-export type ProductImageData = z.infer<typeof ProductImageSchema>;
-export type PurchaseLinkData = z.infer<typeof PurchaseLinkSchema>;
-export type ProductFormData = z.infer<typeof ProductSchema>;
-export type ProductQueryParams = z.infer<typeof ProductQuerySchema>;
-export type CategoryFormData = z.infer<typeof CategorySchema>;

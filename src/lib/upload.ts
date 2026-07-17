@@ -454,20 +454,6 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
   }
 }
 
-// 获取文件的 MIME 类型
-export function getMimeType(filename: string): string {
-  const ext = filename.toLowerCase().split(".").pop();
-  const mimeTypes: Record<string, string> = {
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-    gif: "image/gif",
-    webp: "image/webp",
-    pdf: "application/pdf",
-  };
-  return mimeTypes[ext || ""] || "application/octet-stream";
-}
-
 // 验证上传文件（服务端）
 export function validateUploadServer(
   mimeType: string,

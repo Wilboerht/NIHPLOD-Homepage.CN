@@ -75,6 +75,7 @@ export function AuthModal() {
     const [loginPassword, setLoginPassword] = useState("");
 
     // Register Fields
+    const [regName, setRegName] = useState("");
     const [regPhone, setRegPhone] = useState("");
     const [regCode, setRegCode] = useState("");
     const [regPassword, setRegPassword] = useState("");
@@ -224,6 +225,7 @@ export function AuthModal() {
         setLoading(true);
         try {
             await apiPost("/api/auth/register", {
+                name: regName,
                 phone: regPhone,
                 code: regCode,
                 password: regPassword,
@@ -675,6 +677,14 @@ export function AuthModal() {
                                         </h1>
                                         <form onSubmit={handleRegister} className="space-y-8">
                                             <input
+                                                type="text"
+                                                required
+                                                value={regName}
+                                                onChange={(e) => setRegName(e.target.value)}
+                                                className={pcInputClass}
+                                                placeholder="姓名"
+                                            />
+                                            <input
                                                 type="tel"
                                                 required
                                                 value={regPhone}
@@ -1031,7 +1041,7 @@ export function AuthModal() {
                                         priority
                                     />
                                 </div>
-                                <form onSubmit={handleLogin} className="w-full space-y-6">
+                                <form id="mobile-login-form" onSubmit={handleLogin} className="w-full space-y-6">
                                     <div>
                                         <input
                                             type="tel"
@@ -1144,8 +1154,8 @@ export function AuthModal() {
                                 <div className="flex flex-col gap-6">
                                     <div className="pt-2">
                                         <button
-                                            type="button"
-                                            onClick={handleLogin}
+                                            type="submit"
+                                            form="mobile-login-form"
                                             disabled={loading}
                                             className={`w-full py-3.5 min-h-12 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40 ${!mobileAgreed && !loading ? "opacity-40 cursor-not-allowed" : ""}`}
                                         >
@@ -1199,6 +1209,16 @@ export function AuthModal() {
                                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                                 </div>
                                 <form onSubmit={handleRegister} className="w-full space-y-6">
+                                    <div>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={regName}
+                                            onChange={(e) => setRegName(e.target.value)}
+                                            placeholder="姓名"
+                                            className={mobileInputClass}
+                                        />
+                                    </div>
                                     <div>
                                         <input
                                             type="tel"
@@ -1443,7 +1463,7 @@ export function AuthModal() {
                                         <button
                                             type="button"
                                             onClick={switchToLogin}
-                                            className={mobileBtnClass}
+                                            className="w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all"
                                         >
                                             返回登录
                                         </button>

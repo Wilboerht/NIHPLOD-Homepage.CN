@@ -171,46 +171,4 @@ export function stopCronTasks(): void {
   console.log("[Cron] 所有定时任务已停止");
 }
 
-/**
- * 获取任务状态
- */
-export function getCronTasksStatus(): Array<{
-  name: string;
-  schedule: string;
-  running: boolean;
-}> {
-  return tasks.map((task, index) => ({
-    name: task.name,
-    schedule: task.cronExpression,
-    running: isInitialized && index < scheduledTasks.length,
-  }));
-}
 
-/**
- * 手动执行某个任务（用于测试）
- */
-export async function runCronTaskManually(taskName: string): Promise<{ success: boolean; message: string }> {
-  const task = tasks.find((t) => t.name === taskName);
-
-  if (!task) {
-    return {
-      success: false,
-      message: `未找到任务: ${taskName}`,
-    };
-  }
-
-  try {
-    console.log(`[Cron] 手动执行任务: ${taskName}`);
-    await task.handler();
-    return {
-      success: true,
-      message: `任务 ${taskName} 执行成功`,
-    };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return {
-      success: false,
-      message: `任务 ${taskName} 执行失败: ${errorMessage}`,
-    };
-  }
-}

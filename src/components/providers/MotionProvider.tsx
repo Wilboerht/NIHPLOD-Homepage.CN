@@ -51,4 +51,3 @@ export function MotionProvider({ children }: MotionProviderProps) {
   );
 }
 
-export default MotionProvider;

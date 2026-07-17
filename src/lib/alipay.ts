@@ -448,34 +448,3 @@ export async function refundAlipayOrder(
   }
 }
 
-/**
- * 申请支付宝退款
- */
-export async function applyAlipayRefund(data: {
-  tradeNo: string;
-  refundAmount: string;
-  refundReason: string;
-}): Promise<{ success: boolean; refundNo?: string; error?: string }> {
-  try {
-    const result = await refundAlipayOrder(
-      data.tradeNo,
-      parseFloat(data.refundAmount),
-      data.refundReason
-    );
-
-    if (result.success) {
-      return {
-        success: true,
-        refundNo: `${data.tradeNo}-${Date.now()}`,
-      };
-    } else {
-      return {
-        success: false,
-        error: result.error,
-      };
-    }
-  } catch (e) {
-    apiConsole.error("[Alipay] 申请退款异常:", e);
-    return { success: false, error: "Alipay Refund API Error" };
-  }
-}

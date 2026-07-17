@@ -33,38 +33,6 @@ export interface AdminJWTPayload extends JWTPayload {
 }
 
 /**
- * 登录请求数据
- */
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-/**
- * 登录响应数据
- */
-export interface LoginResponse {
-  success: boolean;
-  data?: {
-    user: AdminUser;
-    expiresAt: number;
-  };
-  error?: {
-    code: string;
-    message: string;
-  };
-}
-
-/**
- * 认证会话状态
- */
-export interface AuthSession {
-  user: AdminUser | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
-/**
  * Cookie 配置
  *
  * 使用 __Host- 前缀要求：
@@ -150,38 +118,6 @@ export interface RefreshTokenPayload extends JWTPayload {
 }
 
 /**
- * 发送验证码请求
- */
-export interface SendCodeRequest {
-  phone: string;
-  type?: "login" | "register" | "bind" | "reset";
-}
-
-/**
- * 手机号登录请求
- */
-export interface PhoneLoginRequest {
-  phone: string;
-  code: string;
-}
-
-/**
- * 用户登录响应
- */
-export interface UserLoginResponse {
-  success: boolean;
-  data?: {
-    user: UserInfo;
-    isNewUser: boolean;
-    expiresAt: number;
-  };
-  error?: {
-    code: string;
-    message: string;
-  };
-}
-
-/**
  * C端用户 Cookie 配置
  */
 export const USER_COOKIE_NAME = "__Host-user_token";
@@ -207,6 +143,4 @@ export const USER_REFRESH_COOKIE_OPTIONS = {
   maxAge: 30 * 24 * 60 * 60, // 30 天（秒）
 };
 
-/** @deprecated 使用 USER_ACCESS_COOKIE_OPTIONS 或 USER_REFRESH_COOKIE_OPTIONS */
-export const USER_COOKIE_OPTIONS = USER_ACCESS_COOKIE_OPTIONS;
 

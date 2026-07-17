@@ -155,49 +155,6 @@ export async function checkAccountLockout(
 }
 
 /**
- * 获取最近的登录尝试统计
- */
-export async function getLoginAttemptStats(
-  identifier: string,
-  windowMinutes: number = 15
-): Promise<{
-  totalAttempts: number;
-  successCount: number;
-  failureCount: number;
-  lastAttempt: Date | null;
-}> {
-  try {
-    const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000);
-
-    const attempts = await prisma.loginAttempt.findMany({
-      where: {
-        identifier,
-        createdAt: { gte: windowStart },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const successCount = attempts.filter((a) => a.success).length;
-    const failureCount = attempts.filter((a) => !a.success).length;
-
-    return {
-      totalAttempts: attempts.length,
-      successCount,
-      failureCount,
-      lastAttempt: attempts.length > 0 ? attempts[0].createdAt : null,
-    };
-  } catch (error) {
-    apiConsole.error("[GetLoginAttemptStats] 获取统计错误:", error);
-    return {
-      totalAttempts: 0,
-      successCount: 0,
-      failureCount: 0,
-      lastAttempt: null,
-    };
-  }
-}
-
-/**
  * 清除特定用户的登录尝试记录（成功登录后清除）
  */
 export async function clearLoginAttempts(identifier: string): Promise<void> {
@@ -359,49 +316,6 @@ export async function saveRefreshToken(
 export type RefreshTokenValidationResult =
   | { valid: true }
   | { valid: false; reason: "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" };
-
-/**
- * 验证并刷新 Token
- * 使用 refresh token 获取新的 access token
- */
-export async function validateAndRefreshToken(
-  userId: string,
-  token: string
-): Promise<RefreshTokenValidationResult> {
-  try {
-    const tokenHash = hashToken(token);
-    const refreshToken = await prisma.refreshToken.findFirst({
-      where: {
-        userId,
-        token: tokenHash,
-        expiresAt: { gt: new Date() },
-      },
-    });
-
-    if (!refreshToken) {
-      return { valid: false, reason: "missing" };
-    }
-
-    if (refreshToken.revokedAt) {
-      return { valid: false, reason: "revoked" };
-    }
-
-    // 校验账号状态，被冻结/封禁用户无法刷新 Token
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { status: true },
-    });
-
-    if (user?.status !== "ACTIVE") {
-      return { valid: false, reason: "account_disabled" };
-    }
-
-    return { valid: true };
-  } catch (error) {
-    apiConsole.error("[ValidateAndRefreshToken] 验证失败:", error);
-    return { valid: false, reason: "missing" };
-  }
-}
 
 /**
  * 原子化验证并轮换 Refresh Token

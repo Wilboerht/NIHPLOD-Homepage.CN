@@ -28,6 +28,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 // 请求参数验证
 const registerSchema = z
   .object({
+    name: z.string().trim().min(1, "请输入姓名").max(30, "姓名最多30个字符").optional(),
     phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
     code: z.string().regex(/^\d{6}$/, "验证码为6位数字"),
     password: passwordSchema,
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { phone, code, password } = result.data;
+    const { name, phone, code, password } = result.data;
 
     // 检查手机号是否已注册
     const existingUser = await prisma.user.findUnique({
@@ -165,6 +166,7 @@ export async function POST(request: NextRequest) {
         phone,
         phoneVerified: true,
         password: hashedPassword,
+        ...(name ? { nickname: name } : {}),
       },
     });
 

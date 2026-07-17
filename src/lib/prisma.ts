@@ -63,6 +63,8 @@ export const prisma =
 globalForPrisma.prisma = prisma;
 globalForPrisma.pool = pool;
 
+export default prisma;
+
 // 非构建阶段注册优雅关闭钩子，确保连接池正确释放
 if (process.env.NEXT_PHASE !== "phase-production-build" && typeof process !== "undefined") {
   const gracefulShutdown = async (signal: string) => {
@@ -79,4 +81,3 @@ if (process.env.NEXT_PHASE !== "phase-production-build" && typeof process !== "u
   process.once("SIGINT", () => gracefulShutdown("SIGINT"));
 }
 
-export default prisma;

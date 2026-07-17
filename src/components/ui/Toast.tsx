@@ -211,37 +211,3 @@ export function useToast() {
   return context;
 }
 
-/**
- * 单独使用的 Toast 组件（用于简单场景）
- */
-interface ToastProps {
-  message: string;
-  type?: ToastType;
-  onClose?: () => void;
-}
-
-export function Toast({ message, type = "info", onClose }: ToastProps) {
-  const Icon = iconMap[type];
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg",
-        typeStyles[type]
-      )}
-      role="alert"
-    >
-      <Icon className={cn("h-5 w-5 flex-shrink-0", iconStyles[type])} />
-      <span className="text-sm font-medium">{message}</span>
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="ml-2 rounded p-0.5 opacity-70 hover:opacity-100"
-          aria-label="关闭"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      )}
-    </div>
-  );
-}
