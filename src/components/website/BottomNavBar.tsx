@@ -55,10 +55,10 @@ const CustomAboutIcon = ({ className }: { className?: string }) => (
 );
 
 const allNavItems: NavItem[] = [
-  { href: "/products", label: "探索产品", labelEn: "Products", icon: ShoppingBag },
-  { href: "/guide", label: "官方指南", labelEn: "Guide", icon: BookOpen },
+  { href: "/products", label: "产品系列", labelEn: "Products", icon: ShoppingBag },
+  { href: "/guide", label: "护肤指南", labelEn: "Guide", icon: BookOpen },
   { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: HelpCircle },
-  { href: "/about", label: "关于旎柏", labelEn: "About", icon: CustomAboutIcon },
+  { href: "/about", label: "品牌故事", labelEn: "About", icon: CustomAboutIcon },
   { href: "/", label: "首页", labelEn: "Home", icon: Home },
 ];
 
