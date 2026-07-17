@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useMemo, type ReactNode } from "react";
 
 interface LayoutContextType {
   /** 抽屉是否展开 */
@@ -26,17 +26,20 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
   const [isNavMenuOpen, setNavMenuOpen] = useState(false);
   const [isDrawerAnimating, setDrawerAnimating] = useState(false);
 
+  const value = useMemo(
+    () => ({
+      isDrawerOpen,
+      setDrawerOpen,
+      isNavMenuOpen,
+      setNavMenuOpen,
+      isDrawerAnimating,
+      setDrawerAnimating,
+    }),
+    [isDrawerOpen, isNavMenuOpen, isDrawerAnimating]
+  );
+
   return (
-    <LayoutContext.Provider
-      value={{
-        isDrawerOpen,
-        setDrawerOpen,
-        isNavMenuOpen,
-        setNavMenuOpen,
-        isDrawerAnimating,
-        setDrawerAnimating,
-      }}
-    >
+    <LayoutContext.Provider value={value}>
       {children}
     </LayoutContext.Provider>
   );

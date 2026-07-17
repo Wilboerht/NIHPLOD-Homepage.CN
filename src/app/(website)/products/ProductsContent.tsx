@@ -7,12 +7,9 @@ import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronLeft } from "lucide-react";
-import { ProductDrawer } from "@/components/website";
-import type { ProductData } from "@/components/website/ProductDrawer";
 import { cn, formatPrice } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
-import { useIsMobile } from "@/hooks";
 import { getCategoryIconPath } from "@/lib/product-icons";
 
 interface Category {
@@ -66,10 +63,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
   // 状态管理
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
-  const [productDrawerOpen, setProductDrawerOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
   const [activeTab, _setActiveTab] = useState<'featured' | 'all'>('featured');
-  const isMobile = useIsMobile();
   const router = useRouter();
 
   const _tabItems = [
@@ -82,36 +76,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
   // 打开产品详情
   const handleProductClick = (product: Product) => {
-    // 手机端直接跳转到产品详情页，不使用抽屉
-    if (isMobile) {
-      router.push(`/products/${product.slug}`);
-      return;
-    }
-    const productData: ProductData = {
-      id: product.id,
-      name: product.name,
-      nameEn: "", // 强制移除英文
-      slug: product.slug,
-      description: product.description,
-      price: product.price,
-      capacity: product.capacity || undefined,
-      purchaseUrl: product.purchaseUrl || undefined,
-      purchaseLinks: product.purchaseLinks,
-      images: product.images.map((img) => ({
-        url: img.url,
-        alt: img.alt || undefined,
-      })),
-      category: { name: product.category.name },
-      ingredients: product.ingredients || undefined,
-      usage: product.usage || undefined,
-      benefits: product.benefits,
-      allowDirectBuy: product.allowDirectBuy,
-      stock: product.stock,
-    };
-    setSelectedProduct(productData);
-    setProductDrawerOpen(true);
-    // 同步更新 URL，便于 SEO 和分享（使用原生 History API，不触发页面导航）
-    window.history.replaceState(null, '', `/products/${product.slug}`);
+    router.push(`/products/${product.slug}`);
   };
 
   /**
@@ -230,12 +195,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   );
 
   // 关闭抽屉
-  const handleCloseDrawer = () => {
-    setProductDrawerOpen(false);
-    // 恢复 URL 到产品列表（使用原生 History API，不触发页面导航）
-    window.history.replaceState(null, '', '/products');
-  };
-
   return (
     <>
       {/* 背景已移至 layout.tsx 实现无缝切换 */}
@@ -278,7 +237,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 {/* 桌面端内容展示 - 保持原有响应式逻辑但对移动端隐藏 */}
                 <div className="hidden h-full flex-col overflow-hidden lg:flex w-full max-w-[1920px] mx-auto">
                   {/* 桌面端内容已有的逻辑... */}
-                  <nav className="relative flex h-[88px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.05] px-10 xl:px-[8%]">
+                  <nav className="relative grid h-[88px] flex-shrink-0 grid-cols-[150px_1fr_150px] items-center border-b border-brand-charcoal/[0.05] px-10 xl:px-[8%]">
                     {/* Logo */}
                     <Link href="/">
                       <div className="relative h-9 w-[150px] opacity-90 transition-opacity hover:opacity-70">
@@ -293,7 +252,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     </Link>
 
                     {/* 导航链接 */}
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center justify-center gap-6">
                       {categories.map((cat) => (
                         <button
                           key={cat.id}
@@ -310,7 +269,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       ))}
                     </div>
 
-                    <div className="w-6" />
+                    <div />
                   </nav>
 
                   {/* 桌面端主内容区：增加滚动支持并移除可能导致重叠的弹性冲突 */}
@@ -540,16 +499,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           </m.div>
         )}
       </AnimatePresence>
-
-      {/* 产品详情抽屉 */}
-      <ProductDrawer
-        isOpen={productDrawerOpen}
-        onClose={handleCloseDrawer}
-        product={selectedProduct}
-      />
-
-      {/* 动态背景图片 - 移至最底层，位于抽屉之外 */}
-
     </>
   );
 }

@@ -11,12 +11,11 @@ import {
 
   ShoppingCart,
   Loader2,
-  Home,
 } from "lucide-react";
 import { ProductCard, PlatformIcon, XiaohongshuLink } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useLayout } from "@/contexts/LayoutContext";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/store/cart";
 
@@ -79,15 +78,11 @@ export function ProductDetailContent({
   relatedProducts,
 }: ProductDetailContentProps) {
   const router = useRouter();
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const [shouldRender, setShouldRender] = useState(true);
+  const { setDrawerOpen } = useLayout();
 
   useEffect(() => {
-    if (isDesktop) {
-      setShouldRender(false);
-      router.replace("/products");
-    }
-  }, [isDesktop, router]);
+    setDrawerOpen(false);
+  }, [setDrawerOpen]);
 
   // 标记从产品列表页导航过来，返回时跳过列表页抽屉动画
   useEffect(() => {
@@ -220,83 +215,77 @@ export function ProductDetailContent({
     }
   };
 
-  if (!shouldRender) return null;
-
   return (
-    <>
-      <m.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.6 }}
-        className="safe-area-content !pointer-events-none max-lg:!inset-0"
-      >
-        <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)]">
-          {/* 主内容卡片容器 */}
-          <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#FFFFFF] lg:bg-[#FBF8F0] pointer-events-auto relative">
-            {/* 手机端背景水印 */}
-            <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
+    <m.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.6 }}
+      className="relative min-h-dvh bg-[#FBF8F0] flex flex-col"
+    >
+      {/* 手机端背景水印 */}
+      <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
+        <Image
+          src="/images/watermark-mobile.png"
+          alt=""
+          fill
+          className="object-cover opacity-75 blur-[7.5px]"
+          priority
+        />
+      </div>
+      {/* 矿物纹理叠加层 */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0 opacity-[0.04]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+        }}
+      />
+
+      <div className="relative z-10 flex flex-1 flex-col p-4 sm:p-6 lg:p-8">
+        {/* 顶栏 / Logo 区 */}
+        <header className="flex-shrink-0 text-center sm:px-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8">
+          {/* 手机端顶部栏 */}
+          <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center pointer-events-auto">
+            <button
+              onClick={() =>
+                typeof window !== "undefined" && window.history.back()
+              }
+              className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
+            >
+              <ChevronLeft className="h-6 w-6 text-[#00263E]" />
+            </button>
+            <Link
+              href="/"
+              className="flex items-center justify-center py-[30px]"
+            >
+              <div className="relative h-[28px] w-[100px]">
+                <Image
+                  src="/images/NIHPLOD-logo.svg"
+                  alt="NIHPLOD Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </Link>
+          </div>
+          {/* Logo - 桌面端 */}
+          <m.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="hidden lg:flex justify-center"
+          >
+            <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
               <Image
-                src="/images/watermark-mobile.png"
-                alt=""
+                src="/images/NIHPLOD-logo.svg"
+                alt="公司标志"
                 fill
-                className="object-cover opacity-75 blur-[7.5px]"
+                className="object-contain"
                 priority
               />
             </div>
-            {/* 矿物纹理叠加层 */}
-            <div
-              className="pointer-events-none absolute inset-0 z-0 opacity-[0.04]"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-              }}
-            />
-
-            <div className="relative z-10 flex h-full flex-col p-4 sm:p-6 lg:p-8">
-              {/* 顶栏 / Logo 区 */}
-              <header className="flex-shrink-0 text-center sm:px-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8">
-                {/* 手机端顶部栏 */}
-                <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center pointer-events-auto">
-                  <button
-                    onClick={() =>
-                      typeof window !== "undefined" && window.history.back()
-                    }
-                    className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
-                  >
-                    <ChevronLeft className="h-6 w-6 text-[#00263E]" />
-                  </button>
-                  <Link
-                    href="/"
-                    className="flex items-center justify-center py-[30px]"
-                  >
-                    <div className="relative h-[28px] w-[100px]">
-                      <Image
-                        src="/images/NIHPLOD-logo.svg"
-                        alt="NIHPLOD Logo"
-                        fill
-                        className="object-contain"
-                        priority
-                      />
-                    </div>
-                  </Link>
-                </div>
-                {/* Logo - 桌面端 */}
-                <m.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="hidden lg:flex justify-center"
-                >
-                  <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
-                    <Image
-                      src="/images/NIHPLOD-logo.svg"
-                      alt="公司标志"
-                      fill
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                </m.div>
-              </header>
+          </m.div>
+        </header>
 
               {/* 分割线 - 仅桌面端 */}
               <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
@@ -574,21 +563,7 @@ export function ProductDetailContent({
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* 返回首页按钮 - 仅桌面端 */}
-          <Link
-            href="/"
-            className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#FBF8F0] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
-          >
-            <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
-            <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">
-              返回首页
-            </span>
-          </Link>
-        </div>
       </m.div>
-    </>
   );
 }
 
