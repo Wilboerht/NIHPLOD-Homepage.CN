@@ -282,6 +282,7 @@ export function StoryContent() {
                         alt="Mission"
                         width={600}
                         height={800}
+                        sizes="(max-width: 640px) calc(100vw - 48px), 600px"
                         className="h-auto w-full object-contain"
                       />
                     </div>
@@ -587,6 +588,7 @@ export function StoryContent() {
                           src="/images/story/mission-image.webp"
                           alt="护肤专家"
                           fill
+                          sizes="(max-width: 768px) 100vw, 550px"
                           className="object-cover object-top"
                         />
                       </div>
