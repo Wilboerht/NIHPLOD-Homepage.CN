@@ -121,7 +121,7 @@ export function DrawerPageContainer({
             <div
               id={contentId}
               inert={!isDrawerOpen}
-              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FBF8F0] lg:rounded-b-3xl 2xl:max-w-[2000px] 2xl:mx-auto"
+              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FBF8F0] lg:rounded-b-3xl"
             >
               {children}
             </div>
