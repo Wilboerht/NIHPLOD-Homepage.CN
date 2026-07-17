@@ -209,7 +209,7 @@ function MobileFooterMenu({
                         className="h-7 w-7 text-brand-charcoal/30 group-hover:text-brand-charcoal"
                         strokeWidth={1}
                       />
-                    </div>
+                </div>
                   </m.button>
                 </div>
               </m.div>
@@ -443,7 +443,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               animate={{ opacity: 1 }}
               transition={{ duration: 1.2, delay: 1 }}
             >
-              <div className="flex w-full flex-col items-center gap-4 rounded-t-2xl bg-gradient-to-t from-[#FAF5EA]/80 via-[#FAF5EA]/60 to-transparent px-6 pt-8 pb-3 backdrop-blur-sm">
+              <div className="flex w-full flex-col items-center gap-4 rounded-t-2xl bg-gradient-to-t from-[#FAF5EA]/50 via-[#FAF5EA]/30 to-transparent px-6 pt-8 pb-3 backdrop-blur-sm">
                 {/* 辅助链接 */}
                 {/* 辅助链接 - 桌面端 (静态列表) */}
                 <div className="hidden items-center gap-3 sm:gap-6 md:flex">
@@ -462,11 +462,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
 
                 {/* 版权文本 & 备案信息 */}
-                <div className="flex flex-col items-center gap-2">
-                  <p className="relative z-10 text-xs font-light leading-tight tracking-widest text-brand-charcoal/70 sm:text-sm">
+                <footer className="flex flex-col items-center gap-2">
+                  <p className="relative z-10 text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
                     &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                   </p>
-                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 whitespace-nowrap text-[9px] font-light leading-tight tracking-normal text-brand-charcoal/70 sm:gap-x-4 sm:text-[10px] sm:tracking-widest">
+                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 whitespace-nowrap text-[10px] font-light leading-relaxed tracking-normal text-brand-charcoal/70 sm:gap-x-4 sm:text-[11px] sm:tracking-widest">
                     <Link
                       href="https://beian.miit.gov.cn/"
                       target="_blank"
@@ -506,7 +506,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       电子营业执照
                     </Link>
                   </div>
-                </div>
+                </footer>
               </div>
             </m.div>
           </main>
