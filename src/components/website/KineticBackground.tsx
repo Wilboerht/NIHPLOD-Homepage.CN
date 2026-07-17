@@ -178,7 +178,7 @@ export function KineticBackground() {
         {/* Row 2, Col 4: 登录/CTA卡 */}
         <div className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect">
           <div className="kinetic-btn-group">
-            <div className="mb-2 flex w-full flex-col items-center justify-center">
+            <div className="mb-2 flex w-full items-center justify-center">
               <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/30 transition-all duration-300 hover:scale-105 hover:border-brand-charcoal/40 sm:h-20 sm:w-20">
                 {user?.avatar ? (
                   <Image
@@ -198,9 +198,6 @@ export function KineticBackground() {
                   </div>
                 )}
               </div>
-              <span className="mt-2 text-center text-xs font-medium tracking-wide text-brand-charcoal/60 sm:text-sm">
-                {user ? `你好，${user.nickname || "会员"}` : "登录查看专属礼遇"}
-              </span>
             </div>
             {user ? (
               <button
