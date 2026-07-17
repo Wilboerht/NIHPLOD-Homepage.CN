@@ -2302,7 +2302,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       </p>
                                     </div>
                                   </m.section>
-                                ) : currentSteps.length <= 3 ? (
+                                ) : currentSteps.length <= 2 ? (
                                   /* <= 3 步骤：直接展示卡片 (无折叠逻辑) */
                                   <m.section
                                     key={`${selectedModule}-simple`}
@@ -2316,7 +2316,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       {currentSteps.map((step, index) => (
                                         <div
                                           key={`${step.title}-${index}`}
-                                          className="relative w-[320px] flex-none group"
+                                          className="relative w-[260px] flex-none group"
                                         >
                                           {/* 步骤序号 */}
                                           <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
@@ -2324,7 +2324,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           </div>
 
                                           {/* 内容卡片 */}
-                                          <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md">
+                                          <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-[#FCF9F2]">
                                             <div className="absolute inset-0 flex flex-col p-6 pt-10">
                                               {/* 图片区域 */}
                                               <div className="relative w-full h-[240px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 mb-6">
@@ -2338,10 +2338,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                               {/* 文字区域 */}
                                               <div className="flex flex-1 flex-col items-center">
-                                                <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap text-center">
+                                                <h2 className="font-sans text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap text-center">
                                                   {step.title}
                                                 </h2>
-                                                <p className="text-sm leading-relaxed text-brand-charcoal/70 text-left">
+                                                <p className="text-sm leading-relaxed text-brand-charcoal/80 text-left">
                                                   {step.description}
                                                 </p>
                                               </div>
@@ -2370,14 +2370,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           exit={{ opacity: 0, x: -20 }}
                                           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                                         >
-                                          {currentSteps.slice(currentStepIndex * 3, (currentStepIndex + 1) * 3).map((step, index) => {
+                                          {currentSteps.slice(currentStepIndex * 2, (currentStepIndex + 1) * 2).map((step, index) => {
                                             // Calculate actual index in the full array for the step number
-                                            const actualIndex = currentStepIndex * 3 + index;
+                                            const actualIndex = currentStepIndex * 2 + index;
 
                                             return (
                                               <m.div
                                                 key={`${step.title}-${actualIndex}`}
-                                                className="relative w-[320px] flex-none group"
+                                                className="relative w-[260px] flex-none group"
                                                 initial={{ opacity: 0, y: 20 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{
@@ -2392,7 +2392,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                 </div>
 
                                                 {/* 内容卡片 */}
-                                                <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-white/90 backdrop-blur-md transition-all duration-300 hover:border-brand-charcoal/40 hover:shadow-lg">
+                                                <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-[#FCF9F2] transition-all duration-300 hover:border-brand-charcoal/40">
                                                   <div className="absolute inset-0 flex flex-col p-6 pt-10">
                                                     {/* 图片区域 */}
                                                     <div className="relative w-full h-[240px] flex-shrink-0 flex items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 mb-6 group-hover:bg-brand-beige/30 transition-colors">
@@ -2406,10 +2406,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                                     {/* 文字区域 */}
                                                     <div className="flex flex-1 flex-col items-center">
-                                                      <h2 className="font-display text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap text-center">
+                                                      <h2 className="font-sans text-2xl font-medium text-brand-charcoal mb-4 whitespace-nowrap text-center">
                                                         {step.title}
                                                       </h2>
-                                                      <p className="text-sm leading-relaxed text-brand-charcoal/70 text-left">
+                                                      <p className="text-sm leading-relaxed text-brand-charcoal/80 text-left">
                                                         {step.description}
                                                       </p>
 
@@ -2431,7 +2431,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     </div>
 
                                     {/* Pagination Controls */}
-                                    {currentSteps.length > 3 && (
+                                    {currentSteps.length > 2 && (
                                       <div className="flex w-full max-w-[1000px] items-center justify-end gap-4 z-20 pt-4">
                                         <button
                                           onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))}
@@ -2441,7 +2441,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           <ChevronLeft className="w-6 h-6 text-[#00263e]" />
                                         </button>
                                         <span className="text-sm font-light tracking-widest text-[#00263e]/60">
-                                          {currentStepIndex + 1} / {Math.ceil(currentSteps.length / 3)}
+                                          {currentStepIndex + 1} / {Math.ceil(currentSteps.length / 2)}
                                         </span>
                                         <button
                                           onClick={() => setCurrentStepIndex(p => Math.min(Math.ceil(currentSteps.length / 3) - 1, p + 1))}
