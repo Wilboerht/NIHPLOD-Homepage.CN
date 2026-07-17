@@ -399,27 +399,27 @@ export function StoryContent() {
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                   </div>
-                  <div className="mb-6 px-6">
+                   <div className="mb-6 px-6">
                     {/* 奖项列表 */}
                     <div className="flex flex-col gap-4">
-                      {AWARDS_DATA.map((award, idx) => (
+                      {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map((award, idx) => (
                         <m.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 30 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true, margin: "-20px" }}
-                          transition={{ duration: 0.5, delay: idx * 0.08, ease: "easeOut" }}
+                          key={`mobile-${currentAwardPage}-${idx}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
                           className="flex flex-col border-[1.5px] border-[#FFFFFF]"
                         >
                           {/* Award Image */}
                           <div className="relative w-full overflow-hidden">
-                            <Image
-                              src={award.image}
-                              alt={award.title}
-                              width={600}
-                              height={400}
-                              className="h-auto w-full object-contain"
-                            />
+                              <Image
+                                src={award.image}
+                                alt={award.title}
+                                width={600}
+                                height={400}
+                                sizes="(max-width: 640px) calc(100vw - 48px), 600px"
+                                className="h-auto w-full object-contain"
+                              />
                           </div>
 
                           <div className="flex flex-col items-center gap-2 p-6 text-center">
@@ -451,6 +451,33 @@ export function StoryContent() {
                         </m.div>
                       ))}
                     </div>
+
+                    {/* 移动端分页控制 */}
+                    {AWARDS_DATA.length > 6 && (
+                      <div className="mt-6 flex items-center justify-center gap-6">
+                        <button
+                          onClick={() => setCurrentAwardPage((p) => Math.max(0, p - 1))}
+                          disabled={currentAwardPage === 0}
+                          className="rounded-full p-2 transition-colors hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent"
+                        >
+                          <ChevronLeft className="h-5 w-5 text-[#00263e]" />
+                        </button>
+                        <span className="text-sm font-light tracking-widest text-[#00263e]/60">
+                          {currentAwardPage + 1} / {Math.ceil(AWARDS_DATA.length / 6)}
+                        </span>
+                        <button
+                          onClick={() =>
+                            setCurrentAwardPage((p) =>
+                              Math.min(Math.ceil(AWARDS_DATA.length / 6) - 1, p + 1)
+                            )
+                          }
+                          disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
+                          className="rounded-full p-2 transition-colors hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent"
+                        >
+                          <ChevronRight className="h-5 w-5 text-[#00263e]" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </section>
               )}
@@ -704,16 +731,17 @@ export function StoryContent() {
                               delay: idx * 0.1,
                               ease: [0.22, 1, 0.36, 1],
                             }}
-                            className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/15 bg-[#FAF5EA]/50 p-6 transition-all duration-500 hover:border-[#00263e]/40 lg:p-8 xl:p-10"
+                            className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/15 bg-white p-6 transition-all duration-500 hover:border-[#00263e]/40 lg:p-8 xl:p-10"
                           >
                             {/* 悬浮显示的背景图 */}
                             <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-                              <Image
-                                src={award.image}
-                                alt={award.title}
-                                fill
-                                className="object-cover transition-transform duration-700 group-hover:scale-110"
-                              />
+                                <Image
+                                  src={award.image}
+                                  alt={award.title}
+                                  fill
+                                  sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
+                                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                />
                               <div className="absolute inset-0 bg-[#FAF5EA]/80 mix-blend-multiply" />
                             </div>
 
