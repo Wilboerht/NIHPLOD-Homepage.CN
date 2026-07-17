@@ -528,12 +528,6 @@ export function StoryContent() {
                           )}
                       >
                         {item.label}
-                        <span
-                          className={cn(
-                            "absolute bottom-0 left-0 h-px bg-brand-gold transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                            activeSection === item.id ? "w-full" : "w-0 group-hover:w-full"
-                          )}
-                        />
                       </button>
                     ))}
                   </div>

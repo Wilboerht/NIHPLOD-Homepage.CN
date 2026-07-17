@@ -602,7 +602,7 @@
   /* margin-top: 4rem; - Removed to use Tailwind for consistency */
 }
 
-/* 主按钮 - 描边透明底 + hover 背景从左滑入填充 */
+/* 主按钮 - 描边透明底 */
 .home-container .btn-primary {
   position: relative;
   display: inline-flex;
@@ -619,20 +619,7 @@
   border-radius: 2px;
   cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
-  isolation: isolate;
-  transition: color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.home-container .btn-primary::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: #00263e;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.3s ease;
 }
 
 .home-container .btn-primary:focus-visible {
@@ -641,12 +628,7 @@
 }
 
 .home-container .btn-primary:hover {
-  color: white;
-  background-color: transparent;
-}
-
-.home-container .btn-primary:hover::before {
-  transform: scaleX(1);
+  border-color: #4A6272;
 }
 
 /* 次按钮 */
