@@ -1,13 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { CATEGORY_ICONS } from "@/app/(website)/products/ProductsContent";
+import { CATEGORY_ICON_PATH } from "@/lib/product-icons";
 
 interface OrbitalRingProps {
-  radius: number; // px
-  duration: number; // seconds
+  radius: number;
+  duration: number;
   reverse?: boolean;
-  items: { icon: React.ReactNode; angle: number }[];
+  items: { src: string; alt: string; angle: number }[];
   className?: string;
 }
 
@@ -20,13 +21,10 @@ function OrbitalRing({ radius, duration, reverse, items, className }: OrbitalRin
         height: radius * 2,
       }}
     >
-      {/* 轨道线 */}
       <div
         className="absolute inset-0 rounded-full border border-brand-charcoal/[0.06]"
         style={{ animation: `none` }}
       />
-
-      {/* 旋转容器 */}
       <div
         className="absolute inset-0"
         style={{
@@ -47,14 +45,19 @@ function OrbitalRing({ radius, duration, reverse, items, className }: OrbitalRin
                 transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
               }}
             >
-              {/* 图标容器：反向旋转保持 upright */}
               <div
                 className="flex h-14 w-14 items-center justify-center sm:h-16 sm:w-16"
                 style={{
                   animation: `orbit-spin ${duration}s linear infinite ${reverse ? "" : "reverse"}`,
                 }}
               >
-                <div className="h-12 w-12 sm:h-14 sm:w-14">{item.icon}</div>
+                <Image
+                  src={item.src}
+                  alt={item.alt}
+                  width={56}
+                  height={56}
+                  className="h-12 w-12 sm:h-14 sm:w-14"
+                />
               </div>
             </div>
           );
@@ -75,10 +78,10 @@ export function OrbitalIcons({ className, children }: OrbitalIconsProps) {
       radius: 260,
       duration: 28,
       items: [
-        { icon: CATEGORY_ICONS["洁面"], angle: 0 },
-        { icon: CATEGORY_ICONS["面霜"], angle: 90 },
-        { icon: CATEGORY_ICONS["精华露"], angle: 180 },
-        { icon: CATEGORY_ICONS["面膜"], angle: 270 },
+        { src: CATEGORY_ICON_PATH["洁面"], alt: "洁面", angle: 0 },
+        { src: CATEGORY_ICON_PATH["面霜"], alt: "面霜", angle: 90 },
+        { src: CATEGORY_ICON_PATH["精华露"], alt: "精华露", angle: 180 },
+        { src: CATEGORY_ICON_PATH["面膜"], alt: "面膜", angle: 270 },
       ],
     },
     {
@@ -86,11 +89,11 @@ export function OrbitalIcons({ className, children }: OrbitalIconsProps) {
       duration: 42,
       reverse: true,
       items: [
-        { icon: CATEGORY_ICONS["护手霜"], angle: 0 },
-        { icon: CATEGORY_ICONS["防晒"], angle: 72 },
-        { icon: CATEGORY_ICONS["身体乳"], angle: 144 },
-        { icon: CATEGORY_ICONS["磨砂膏"], angle: 216 },
-        { icon: CATEGORY_ICONS["护理油"], angle: 288 },
+        { src: CATEGORY_ICON_PATH["护手霜"], alt: "护手霜", angle: 0 },
+        { src: CATEGORY_ICON_PATH["防晒"], alt: "防晒", angle: 72 },
+        { src: CATEGORY_ICON_PATH["身体乳"], alt: "身体乳", angle: 144 },
+        { src: CATEGORY_ICON_PATH["磨砂膏"], alt: "磨砂膏", angle: 216 },
+        { src: CATEGORY_ICON_PATH["护理油"], alt: "护理油", angle: 288 },
       ],
     },
   ];
