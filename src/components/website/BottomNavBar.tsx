@@ -160,7 +160,7 @@ export function BottomNavBar() {
                           onClick={() => setIsNavMenuOpen(false)}
                           className="flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/20"
                         >
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/80">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/40">
                             <Icon className="h-5 w-5 text-brand-gold" />
                           </div>
                           <div className="flex flex-col">
@@ -172,7 +172,7 @@ export function BottomNavBar() {
                             >
                               {item.label}
                             </span>
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.5)]">
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.6)]">
                               {item.labelEn}
                             </span>
                           </div>
@@ -199,7 +199,7 @@ export function BottomNavBar() {
                 className="group flex items-center gap-2 transition-opacity active:opacity-70 lg:hidden"
               >
                 {/* 图标容器 */}
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/80">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40">
                   <PrimaryIcon className="h-6 w-6 text-brand-gold" />
                 </div>
                 {/* 文字 */}
@@ -210,7 +210,7 @@ export function BottomNavBar() {
                   >
                     {primaryNav.label}
                   </span>
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.5)]">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.6)]">
                     {primaryNav.labelEn}
                   </span>
                 </div>
@@ -233,7 +233,7 @@ export function BottomNavBar() {
                         "h-8 w-8 transition-all duration-300 group-hover:scale-105",
                         isCurrentPage(pathname, storyItem.href)
                           ? "text-brand-gold"
-                          : "text-brand-gold/60 group-hover:text-brand-gold"
+                          : "text-brand-charcoal-light group-hover:text-brand-gold"
                       )} />
 
                       {/* 主标题 */}
@@ -259,7 +259,7 @@ export function BottomNavBar() {
               <button
                 type="button"
                 onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
-                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/80 transition-colors active:bg-[#E8E4D8] lg:hidden"
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40 transition-colors active:bg-[#E8E4D8] lg:hidden"
                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
               >
                 <AnimatePresence mode="wait" initial={false}>
@@ -313,7 +313,7 @@ export function BottomNavBar() {
                         >
                           <Icon className={cn(
                             "h-8 w-8 transition-all duration-300 ease-out group-hover:translate-y-[-2px]",
-                            isActive ? "text-brand-gold" : "text-brand-gold/60 group-hover:text-brand-gold"
+                            isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
                           )} />
                           <span>{item.label}</span>
                         </Link>
