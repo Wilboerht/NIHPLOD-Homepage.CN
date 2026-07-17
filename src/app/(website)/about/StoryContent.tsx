@@ -124,9 +124,6 @@ export function StoryContent() {
           )}
         </AnimatePresence>
 
-        {/* 建筑风格装饰线条 - 渐变淡出 + 绘制动画 + 呼吸脉动 - 仅桌面端显示 */}
-        <AnimatePresence>{isDrawerOpen && <></>}</AnimatePresence>
-
         <div
           className={cn(
             "relative z-10 flex h-full flex-col overflow-hidden pb-3 transition-opacity duration-300",
@@ -146,7 +143,7 @@ export function StoryContent() {
             {/* Header - Mobile */}
             <div className="relative z-50 flex h-[88px] shrink-0 items-center justify-center">
               <Link href="/" className="mt-1 flex items-center justify-center">
-                <div className="relative h-[28px] w-[100px]">
+                <div className="relative h-[32px] w-[140px]">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
                     alt="NIHPLOD Logo"
@@ -160,7 +157,7 @@ export function StoryContent() {
 
             {/* Navigation - Mobile Tab Bar */}
             <div className="relative z-40 shrink-0 px-4">
-              <nav className="flex h-[37px] items-center rounded-full bg-[#FFFFFF] p-[4px]">
+              <nav className="flex h-[37px] items-center rounded-full bg-white/80 p-[4px]">
                 {navItems.map((item) => {
                   const isActive = activeSection === item.id;
                   return (
@@ -178,7 +175,7 @@ export function StoryContent() {
                         className={cn(
                           "whitespace-nowrap text-[13px] font-normal leading-[20px] transition-all duration-300",
                           isActive
-                            ? "rounded-full bg-white px-2 py-[3px] text-[#00263E] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                            ? "rounded-full bg-white px-2 py-[3px] text-[#00263E] shadow-[0_1px_4px_rgba(0,38,62,0.06)]"
                             : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
                         )}
                       >
@@ -227,7 +224,7 @@ export function StoryContent() {
                           alt="Dolphin Skin"
                           width={600}
                           height={400}
-                          className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                          className="w-full transition-transform duration-[1.2s] hover:scale-105"
                         />
                       </div>
                     </div>
@@ -257,7 +254,7 @@ export function StoryContent() {
                           alt="Science"
                           width={600}
                           height={400}
-                          className="w-full grayscale-[20%] transition-transform duration-[1.2s] hover:scale-105"
+                          className="w-full transition-transform duration-[1.2s] hover:scale-105"
                         />
                       </div>
                     </div>
@@ -363,7 +360,7 @@ export function StoryContent() {
                           transition={{ duration: 0.4, delay: idx * 0.1, ease: "easeOut" }}
                           className="flex flex-col justify-start gap-2 rounded-lg bg-[#FFFFFF] p-4"
                         >
-                          <span className="text-[10px] font-light text-[#00263e]/30">
+                          <span className="text-[12px] font-light text-brand-charcoal/60">
                             {item.num}
                           </span>
                           <h3
@@ -461,7 +458,7 @@ export function StoryContent() {
             {/* Mobile Footer Copyright */}
             <div className="flex flex-col items-center justify-center pb-1 pt-3">
               <p
-                className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)]"
+                className="text-[11px] font-medium tracking-[0.12em] text-brand-charcoal/60"
                 style={{ fontFamily: "'Futura', sans-serif" }}
               >
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
@@ -501,12 +498,12 @@ export function StoryContent() {
                         key={item.id}
                         type="button"
                         onClick={() => setActiveSection(item.id)}
-                        className={cn(
-                          "group relative px-1 py-1 text-[15px] font-medium transition-opacity duration-300",
-                          activeSection === item.id
-                            ? "text-[#1a1a1a] opacity-100"
-                            : "text-[#1a1a1a] opacity-60 hover:opacity-80"
-                        )}
+                          className={cn(
+                            "group relative px-1 py-1 text-[15px] font-medium transition-opacity duration-300",
+                            activeSection === item.id
+                              ? "text-[#00263E] opacity-100"
+                              : "text-[#00263E] opacity-60 hover:opacity-80"
+                          )}
                       >
                         {item.label}
                         <span
@@ -558,7 +555,7 @@ export function StoryContent() {
                           src="/images/story/dolphin-ocean.webp"
                           alt="大自然"
                           fill
-                          className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
+                          className="object-cover transition-transform duration-[1.5s] hover:scale-105"
                         />
                       </div>
                       <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#FAF5EA] bg-[#FAF5EA] lg:-mt-14 lg:h-80">
@@ -566,7 +563,7 @@ export function StoryContent() {
                           src="/images/story/lab-research.webp"
                           alt="科技"
                           fill
-                          className="object-cover grayscale-[20%] transition-transform duration-[1.5s] hover:scale-105"
+                          className="object-cover transition-transform duration-[1.5s] hover:scale-105"
                         />
                       </div>
                     </div>
@@ -576,12 +573,12 @@ export function StoryContent() {
                       <span className="mb-3 block text-sm uppercase tracking-[5px] text-[#00263e]/60">
                         Since 2008 | Monaco
                       </span>
-                      <h2 className="mb-6 text-3xl font-light leading-tight tracking-[6px] text-[#00263e] md:mb-8 md:text-4xl md:tracking-[8px] lg:text-[42px]">
+                      <h2 className="mb-6 text-3xl font-light leading-tight tracking-[4px] text-[#00263e] md:mb-8 md:text-4xl md:tracking-[6px] lg:text-[42px]">
                         来自大自然的
                         <br />
                         神奇修复力
                       </h2>
-                      <p className="max-w-md text-[15px] leading-[2] tracking-wide text-[#00263e]/75">
+                      <p className="max-w-md text-[15px] leading-[1.8] tracking-wide text-[#00263e]/75">
                         海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。所以我们将「DOLPHIN」这个单词逆转，这就是
                         NIHPLOD。
                         <br />
@@ -615,7 +612,7 @@ export function StoryContent() {
                       </div>
 
                       {/* 右侧悬浮卡片 - 减小高度并叠层 */}
-                      <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#FAF5EA] p-8 shadow-[20px_20px_60px_rgba(0,0,0,0.1)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
+                      <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#FAF5EA] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.1)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
                         <div>
                           <span className="mb-3 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
                             公司使命
@@ -625,7 +622,7 @@ export function StoryContent() {
                             <br />
                             逆转时光
                           </h2>
-                          <p className="max-w-[420px] text-[15px] font-light leading-[2] tracking-wide text-[#00263e]/75">
+                          <p className="max-w-[420px] text-[15px] font-light leading-[1.8] tracking-wide text-[#00263e]/75">
                             旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                             <br />
                             <br />
@@ -693,7 +690,7 @@ export function StoryContent() {
                           <h3 className="mb-3 text-lg tracking-[3px] text-[#00263e]">
                             {item.title}
                           </h3>
-                          <p className="line-clamp-4 min-h-[104px] text-[13px] leading-[2] text-[#00263e]/80">
+                          <p className="line-clamp-4 min-h-[104px] text-[13px] leading-[1.8] text-[#00263e]/80">
                             {item.desc}
                           </p>
                         </div>
