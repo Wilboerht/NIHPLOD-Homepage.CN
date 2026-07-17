@@ -937,7 +937,8 @@
   position: absolute;
   top: 52%;
   left: 50%;
-  transform: translate(-50%, -52%);
+  /* 使用 -50% -50% 避免 -52% 带来的亚像素模糊 */
+  transform: translate(-50%, -50%);
   width: 75vw;
   max-width: 950px;
   display: grid;
@@ -945,7 +946,6 @@
   grid-template-columns: 1.2fr repeat(3, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 16px;
-  perspective: 1000px;
   pointer-events: auto;
   z-index: 2;
 }
@@ -1010,10 +1010,6 @@
 
   cursor: default;
   pointer-events: auto;
-
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  will-change: transform;
 }
 
 /* 左侧大卡片 - 跨两行，视觉权重最高 */
