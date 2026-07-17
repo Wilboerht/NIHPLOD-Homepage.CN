@@ -332,7 +332,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 </div> */}
 
           {/* 主内容 - 添加底部padding以在视觉上居中(抵消底部absolute定位的元素) */}
-          <main className="main-content relative z-10 flex h-full flex-col items-center justify-center pb-20 text-center lg:pb-16">
+          <main className="main-content relative z-10 flex h-full flex-col items-center justify-center pb-28 text-center lg:pb-20">
             {/* Logo */}
             <m.div
               initial={{ opacity: 0, y: 20 }}
@@ -438,72 +438,74 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
             {/* 底部辅助导航与版权 */}
             <m.div
-              className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-4"
+              className="absolute bottom-4 left-0 right-0 flex flex-col items-center sm:bottom-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1.2, delay: 1 }}
             >
-              {/* 辅助链接 */}
-              {/* 辅助链接 - 桌面端 (静态列表) */}
-              <div className="hidden items-center gap-3 sm:gap-6 md:flex">
-                {FOOTER_LINKS.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
+              <div className="flex w-full flex-col items-center gap-4 rounded-t-2xl bg-gradient-to-t from-[#FAF5EA]/80 via-[#FAF5EA]/60 to-transparent px-6 pt-8 pb-3 backdrop-blur-sm">
+                {/* 辅助链接 */}
+                {/* 辅助链接 - 桌面端 (静态列表) */}
+                <div className="hidden items-center gap-3 sm:gap-6 md:flex">
+                  {FOOTER_LINKS.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/70 transition-colors hover:text-brand-charcoal"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
 
-              {/* 辅助链接 - 移动端 (可折叠菜单) */}
-              <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
+                {/* 辅助链接 - 移动端 (可折叠菜单) */}
+                <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
 
-              {/* 版权文本 & 备案信息 */}
-              <div className="flex flex-col items-center gap-2 opacity-60">
-                <p className="relative z-10 text-xs font-light leading-tight tracking-widest text-brand-charcoal sm:text-sm">
-                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 whitespace-nowrap text-[9px] font-light leading-tight tracking-normal text-brand-charcoal sm:gap-x-4 sm:text-[10px] sm:tracking-widest">
-                  <Link
-                    href="https://beian.miit.gov.cn/"
-                    target="_blank"
-                    className="flex !min-h-0 !min-w-0 items-center transition-colors hover:text-brand-gold"
-                  >
-                    沪ICP备2026014764号-1
-                  </Link>
-                  <span className="text-brand-charcoal/30">|</span>
-                  <Link
-                    href="http://www.beian.gov.cn/portal/registerSystemInfo"
-                    target="_blank"
-                    className="flex !min-h-0 !min-w-0 items-center gap-1 transition-colors hover:text-brand-gold"
-                  >
-                    <Image
-                      src="/images/beian.webp"
-                      alt="公安部备案图标"
-                      width={12}
-                      height={12}
-                      className="shrink-0 opacity-80"
-                    />
-                    <span>沪公网安备31010702010178号</span>
-                  </Link>
-                  <span className="text-brand-charcoal/30">|</span>
-                  <Link
-                    href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
-                    target="_blank"
-                    className="flex !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-gold"
-                  >
-                    <Image
-                      src="/images/aic_icon.png"
-                      alt="电子营业执照"
-                      width={12}
-                      height={12}
-                      className="shrink-0 opacity-50"
-                      unoptimized
-                    />
-                    电子营业执照
-                  </Link>
+                {/* 版权文本 & 备案信息 */}
+                <div className="flex flex-col items-center gap-2">
+                  <p className="relative z-10 text-xs font-light leading-tight tracking-widest text-brand-charcoal/70 sm:text-sm">
+                    &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 whitespace-nowrap text-[9px] font-light leading-tight tracking-normal text-brand-charcoal/70 sm:gap-x-4 sm:text-[10px] sm:tracking-widest">
+                    <Link
+                      href="https://beian.miit.gov.cn/"
+                      target="_blank"
+                      className="flex !min-h-0 !min-w-0 items-center transition-colors hover:text-brand-gold"
+                    >
+                      沪ICP备2026014764号-1
+                    </Link>
+                    <span className="text-brand-charcoal/30">|</span>
+                    <Link
+                      href="http://www.beian.gov.cn/portal/registerSystemInfo"
+                      target="_blank"
+                      className="flex !min-h-0 !min-w-0 items-center gap-1 transition-colors hover:text-brand-gold"
+                    >
+                      <Image
+                        src="/images/beian.webp"
+                        alt="公安部备案图标"
+                        width={12}
+                        height={12}
+                        className="shrink-0 opacity-80"
+                      />
+                      <span>沪公网安备31010702010178号</span>
+                    </Link>
+                    <span className="text-brand-charcoal/30">|</span>
+                    <Link
+                      href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
+                      target="_blank"
+                      className="flex !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-gold"
+                    >
+                      <Image
+                        src="/images/aic_icon.png"
+                        alt="电子营业执照"
+                        width={12}
+                        height={12}
+                        className="shrink-0 opacity-50"
+                        unoptimized
+                      />
+                      电子营业执照
+                    </Link>
+                  </div>
                 </div>
               </div>
             </m.div>
