@@ -1678,8 +1678,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 {/* ========== 桌面端布局 - 保持原有样式 ========== */}
                 <div className="hidden h-full flex-col sm:flex">
                   {/* 顶部栏：LOGO + 面包屑/用户按钮 */}
-                  <div className="flex flex-shrink-0 items-center justify-center border-b border-brand-charcoal/5 px-8 py-8 lg:px-12">
-                    <div className="flex w-full max-w-[1440px] items-center justify-between">
+                  <div className="flex h-[88px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.05] px-10 xl:px-[8%]">
                       {/* 左侧：LOGO - 点击返回 Level 1 */}
                       <button
                         type="button"
@@ -1688,14 +1687,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           setSelectedModule(null);
                           setSelectedScheme(null);
                         }}
-                        className="block transition-opacity hover:opacity-70"
+                        className="block opacity-90 transition-opacity hover:opacity-70"
                       >
-                        <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
+                        <div className="relative h-9 w-[150px]">
                           <Image
                             src="/images/NIHPLOD-logo.svg"
                             alt="NIHPLOD"
                             fill
-                            className="object-contain"
+                            className="object-contain object-left"
                             priority
                           />
                         </div>
@@ -1739,7 +1738,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           </m.nav>
                         ) : null}
                       </AnimatePresence>
-                    </div>
                   </div>
 
                   {/* 视口容器 - 三层级切换 */}
@@ -1755,7 +1753,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                           className="absolute inset-0 flex items-center justify-center overflow-visible p-5 lg:p-6"
                         >
-                          <div className="flex h-full w-full max-w-[1440px] flex-row gap-8 py-10">
+                          <div className="flex h-full w-full flex-row gap-8 py-10">
                             {modules.map((module, index) => (
                               <m.button
                                 key={module.id}
@@ -1888,9 +1886,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -30 }}
                           transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
-                          className="absolute inset-0 flex flex-col overflow-hidden p-8 lg:p-12 items-center"
+                          className="absolute inset-0 flex flex-col overflow-hidden px-10 xl:px-[8%]"
                         >
-                          <div className="flex h-full w-full max-w-[1440px] flex-col justify-center">
+                          <div className="flex h-full w-full flex-col justify-center">
                             {/* Level 3 Header: 标题与切换器 */}
                             <header className="mb-9 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                               {/* 左侧标题组 */}
