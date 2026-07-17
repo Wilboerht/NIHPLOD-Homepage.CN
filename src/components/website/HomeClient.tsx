@@ -47,10 +47,54 @@ function MobileFooterMenu({
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 全屏菜单打开时的模态行为：Esc 关闭、锁定背景滚动、背景 inert、焦点移入/还原
+  useEffect(() => {
+    if (!isOpen) return;
+    const menuEl = menuRef.current;
+    if (!menuEl) return;
+
+    const previousFocus = document.activeElement as HTMLElement | null;
+
+    // 背景内容设为 inert，避免读屏器和键盘访问菜单背后的内容
+    const backgroundElements = Array.from(document.body.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && el !== menuEl
+    );
+    backgroundElements.forEach((el) => {
+      el.inert = true;
+    });
+
+    // 锁定背景滚动
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+
+    // 焦点移入菜单（关闭按钮）
+    closeButtonRef.current?.focus();
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      backgroundElements.forEach((el) => {
+        el.inert = false;
+      });
+      if (previousFocus && previousFocus !== document.body) {
+        previousFocus.focus();
+      }
+    };
+  }, [isOpen]);
 
   return (
     <div className="pointer-events-auto relative mb-2 flex flex-col items-center md:hidden">
@@ -60,6 +104,10 @@ function MobileFooterMenu({
             {isOpen && (
               <m.div
                 key="mobile-full-menu"
+                ref={menuRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="更多导航"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -146,12 +194,14 @@ function MobileFooterMenu({
 
                   {/* 关闭按钮 */}
                   <m.button
+                    ref={closeButtonRef}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                     onClick={() => {
                       setIsOpen(false);
                     }}
+                    aria-label="关闭菜单"
                     className="group pointer-events-auto flex flex-col items-center"
                   >
                     <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand-charcoal/10 bg-white/5 transition-all hover:bg-white/20">
@@ -207,11 +257,15 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
     // 移动端禁用鼠标视差
     if (typeof window !== "undefined" && window.innerWidth <= 768) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDrawerOpen) return;
+    let rafId = 0;
+    let pendingEvent: MouseEvent | null = null;
 
-      const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
-      const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+    const applyParallax = () => {
+      rafId = 0;
+      if (!pendingEvent) return;
+
+      const moveX = (pendingEvent.clientX - window.innerWidth / 2) * 0.01;
+      const moveY = (pendingEvent.clientY - window.innerHeight / 2) * 0.01;
 
       if (wave1Ref.current) {
         wave1Ref.current.style.transform = `translate(${moveX}px, ${moveY}px)`;
@@ -224,8 +278,21 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
       }
     };
 
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDrawerOpen) return;
+
+      // rAF 节流：每帧最多应用一次视差，避免高频 mousemove 造成多余 style recalc
+      pendingEvent = e;
+      if (!rafId) {
+        rafId = requestAnimationFrame(applyParallax);
+      }
+    };
+
     document.addEventListener("mousemove", handleMouseMove);
-    return () => document.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [isDrawerOpen]);
 
   const handleCollapse = () => {
@@ -257,24 +324,18 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
           {/* 装饰线条 - 已移除 */}
 
-          {/* 波浪背景 - 仅桌面端渲染 */}
+          {/* 波浪背景 - 仅桌面端渲染。浮动动画在包裹层，JS 视差在内层 svg，两者 transform 互不覆盖 */}
           <div className="wave-container pointer-events-none absolute bottom-0 left-0 right-0 z-0 hidden lg:block">
-            <svg
-              ref={wave1Ref}
-              className="wave wave-1"
-              viewBox="0 0 1200 120"
-              preserveAspectRatio="none"
-            >
-              <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
-            </svg>
-            <svg
-              ref={wave2Ref}
-              className="wave wave-2"
-              viewBox="0 0 1200 120"
-              preserveAspectRatio="none"
-            >
-              <path d="M0,40 C200,90 400,0 600,40 C800,80 1000,0 1200,40" />
-            </svg>
+            <div className="wave-wrapper wave-1">
+              <svg ref={wave1Ref} className="wave" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
+              </svg>
+            </div>
+            <div className="wave-wrapper wave-2">
+              <svg ref={wave2Ref} className="wave" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                <path d="M0,40 C200,90 400,0 600,40 C800,80 1000,0 1200,40" />
+              </svg>
+            </div>
           </div>
 
           {/* 右上角登录按钮 - 暂时隐藏 */}

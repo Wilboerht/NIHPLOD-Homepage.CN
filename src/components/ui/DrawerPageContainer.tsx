@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useId, type ReactNode } from "react";
 import { m } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -30,12 +30,10 @@ export function DrawerPageContainer({
   wrapperClassName = "!-top-[1px] !pointer-events-none",
   onCollapse,
 }: DrawerPageContainerProps) {
-  // 默认初始收起，确保 defaultExpanded 页面（首页）能从收起状态播放入场动画
-  const [isExpanded, setIsExpanded] = useState(false);
+  const contentId = useId();
   const handleRef = useRef<HTMLButtonElement>(null);
   const [handleHeight, setHandleHeight] = useState(0);
   const { isDrawerOpen, setDrawerOpen, setDrawerAnimating } = useLayout();
-  const hasSyncRun = useRef(false);
   const prefersReducedMotion = useReducedMotion();
 
   useLayoutEffect(() => {
@@ -53,50 +51,36 @@ export function DrawerPageContainer({
   }, []);
 
   useEffect(() => {
-    // 跳过首次渲染，避免 mount 期间全局 isDrawerOpen 把抽屉先展开再收起
-    if (!hasSyncRun.current) {
-      hasSyncRun.current = true;
-      return;
-    }
-    if (isDrawerOpen && !isExpanded) {
-      setIsExpanded(true);
-    } else if (!isDrawerOpen && isExpanded) {
-      setIsExpanded(false);
-    }
-  }, [isDrawerOpen, isExpanded]);
-
-  useEffect(() => {
-    if (prefersReducedMotion) {
-      // 减少动画偏好：直接展开，不播放入场动画
-      setIsExpanded(true);
+    // 入场动画由 framer-motion 的 initial（收起位置）→ animate（展开位置）在挂载时
+    // 自动播放，这里只需保证挂载后全局状态为展开。
+    // 减少动画偏好时 MotionConfig 已把动画时长降为 0.01s，等价于直接展开。
+    if (prefersReducedMotion || !defaultExpanded) {
       setDrawerOpen(true);
       return;
     }
 
-    if (defaultExpanded) {
-      // 首页：强制从收起状态开始，保证无论从哪个页面进入都能看到展开动画
-      setDrawerOpen(false);
-      setIsExpanded(false);
-      setDrawerAnimating(true);
-    }
+    // 首页：先重置为收起，等收起状态真正绘制一帧后再展开（双 rAF），
+    // 从而重播内容淡入过渡，并在入场期间隐藏底部导航栏。
+    setDrawerAnimating(true);
+    setDrawerOpen(false);
 
-    const timer = setTimeout(
-      () => {
-        setIsExpanded(true);
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
         setDrawerOpen(true);
         setDrawerAnimating(false);
-      },
-      defaultExpanded ? 80 : 100
-    );
+      });
+    });
+
     return () => {
-      clearTimeout(timer);
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
       setDrawerAnimating(false);
     };
   }, [defaultExpanded, prefersReducedMotion, setDrawerOpen, setDrawerAnimating]);
 
   const handleToggle = () => {
-    const newState = !isExpanded;
-    setIsExpanded(newState);
+    const newState = !isDrawerOpen;
     setDrawerOpen(newState);
     if (!newState && onCollapse) {
       onCollapse();
@@ -123,19 +107,22 @@ export function DrawerPageContainer({
         >
           <m.div
             className="relative z-20 flex h-full w-full flex-col"
-            style={{ willChange: "transform" }}
             initial={{
               transform: collapsedTransform,
             }}
             animate={{
-              transform: isExpanded ? "translate3d(0, 0, 0)" : collapsedTransform,
+              transform: isDrawerOpen ? "translate3d(0, 0, 0)" : collapsedTransform,
             }}
             transition={{
               ...SLIDE_TRANSITION,
-              delay: isExpanded ? 0.3 : 0,
+              delay: isDrawerOpen ? 0.3 : 0,
             }}
           >
-            <div className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl">
+            <div
+              id={contentId}
+              inert={!isDrawerOpen}
+              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl"
+            >
               {children}
             </div>
 
@@ -143,6 +130,9 @@ export function DrawerPageContainer({
               ref={handleRef}
               type="button"
               onClick={handleToggle}
+              aria-expanded={isDrawerOpen}
+              aria-controls={contentId}
+              aria-label={isDrawerOpen ? "收起页面内容" : "展开页面内容"}
               className={cn(
                 "group pointer-events-auto relative z-30 -mt-[1px] flex items-center justify-center self-center overflow-hidden rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5",
                 buttonWidth
@@ -151,7 +141,7 @@ export function DrawerPageContainer({
               <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
               <m.div
                 className="relative z-10 flex flex-col items-center"
-                animate={{ rotate: isExpanded ? 180 : 0, scale: 1 }}
+                animate={{ rotate: isDrawerOpen ? 180 : 0, scale: 1 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 transition={TRANSITION}
