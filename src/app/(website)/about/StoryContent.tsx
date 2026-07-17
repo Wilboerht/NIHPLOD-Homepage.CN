@@ -557,7 +557,7 @@ export function StoryContent() {
                       <span className="mb-4 block text-sm uppercase tracking-[3px] text-[#00263e]/60">
                         Since 2008 | Monaco
                       </span>
-                      <h2 className="mb-8 font-sans text-3xl font-normal !leading-[1.3] tracking-[4px] text-brand-charcoal md:mb-10 md:text-4xl md:tracking-[6px] lg:text-[42px]">
+                      <h2 className="mb-8 font-sans text-3xl font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:mb-10 md:text-4xl md:tracking-[6px] lg:text-[42px]">
                         来自大自然的
                         <br />
                         神奇修复力
@@ -581,7 +581,7 @@ export function StoryContent() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                    className="relative -mt-4 flex h-full items-center justify-center lg:-mt-8"
+                    className="relative flex h-full items-center justify-center"
                   >
                     <div className="relative flex w-full max-w-[1000px] items-center">
                       {/* 左侧大图 - 基准高度 580px */}
@@ -597,10 +597,10 @@ export function StoryContent() {
                       {/* 右侧悬浮卡片 - 减小高度并叠层 */}
                       <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#FAF5EA] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.1)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
                         <div>
-                          <span className="mb-4 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
+                          <span className="mb-4 block text-[12px] uppercase tracking-[4px] text-brand-charcoal/60">
                             公司使命
                           </span>
-                          <h2 className="mb-8 text-[28px] font-light leading-snug tracking-[4px] text-[#00263e] md:text-[32px] md:tracking-[6px] lg:text-[36px]">
+                          <h2 className="mb-8 font-sans text-[28px] font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:text-[32px] md:tracking-[6px] lg:text-[36px]">
                             化繁为简
                             <br />
                             逆转时光
