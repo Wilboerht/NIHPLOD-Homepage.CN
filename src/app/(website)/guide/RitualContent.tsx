@@ -1770,7 +1770,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 <div className="relative z-10 flex w-full flex-col items-center justify-center p-8 text-center text-[#00263e]">
                                   {/* 模块图标 */}
                                   <div className="mb-8 transition-transform duration-500 group-hover:scale-110">
-                                    <module.icon className="w-12 h-12 text-[#4A6272] group-hover:text-[#B5A48F]" strokeWidth={1} />
+                                    <module.icon className="w-12 h-12 text-brand-charcoal-light group-hover:text-brand-charcoal" strokeWidth={1} />
                                   </div>
 
                                   {/* 标题 */}
@@ -2044,7 +2044,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     <div className="flex flex-wrap gap-x-6 gap-y-3">
                                       {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
                                         <div key={tag} className="flex items-center gap-2 group">
-                                          <span className="text-[10px] text-brand-gold/70 group-hover:text-brand-gold transition-colors">✦</span>
+                                          <span className="text-[10px] text-brand-charcoal-light group-hover:text-brand-charcoal transition-colors">✦</span>
                                           <span className="text-sm tracking-wide text-brand-charcoal/80 font-normal group-hover:text-brand-charcoal transition-colors">
                                             {tag}
                                           </span>
@@ -2461,7 +2461,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                 {/* Desktop Footer Copyright */}
                 <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
-                  <p className="text-center text-xs font-light leading-tight tracking-widest text-brand-charcoal/70 sm:text-sm">
+                  <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
                     &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                   </p>
                 </div>
