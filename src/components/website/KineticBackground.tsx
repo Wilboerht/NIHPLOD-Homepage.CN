@@ -230,7 +230,7 @@ export function KineticBackground() {
         >
           <div
             className="kinetic-name"
-            style={{ marginBottom: "12px", lineHeight: "1.3", fontSize: "1.8rem", fontWeight: 300 }}
+            style={{ marginBottom: "12px", lineHeight: "1.3", fontSize: "1.8rem", fontWeight: 500 }}
           >
             更少步骤
             <br />
@@ -302,7 +302,7 @@ export function KineticBackground() {
           ref={(el) => addCellRef(el, 4)}
           className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect"
         >
-          <div className="kinetic-name" style={{ fontSize: "1.8rem", fontWeight: 300 }}>
+          <div className="kinetic-name" style={{ fontSize: "1.8rem", fontWeight: 500 }}>
             逆转时光
           </div>
           <div
