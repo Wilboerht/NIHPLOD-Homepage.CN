@@ -222,13 +222,10 @@ function MobileFooterMenu({
         type="button"
         onClick={() => setIsOpen(true)}
         whileTap={{ scale: 0.95 }}
-        className="pointer-events-auto relative z-[30] flex min-h-0 min-w-0 cursor-pointer items-center gap-2 text-xs uppercase tracking-[0.2em] text-brand-charcoal/60 transition-all hover:text-brand-charcoal"
+        className="pointer-events-auto relative z-[30] flex min-h-0 min-w-0 cursor-pointer flex-col items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-brand-charcoal/40 transition-all hover:text-brand-charcoal/70"
       >
-        <div className="flex flex-col gap-1">
-          <div className="h-px w-4 bg-current opacity-40" />
-          <div className="ml-auto h-px w-2 bg-current opacity-40" />
-        </div>
         <span>更多</span>
+        <div className="h-px w-5 bg-current opacity-40" />
       </m.button>
     </div>
   );
@@ -331,142 +328,147 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   <UserButton />
                 </div> */}
 
-          {/* 主内容 - 添加底部padding以在视觉上居中(抵消底部absolute定位的元素) */}
-          <main className="main-content relative z-10 flex h-full flex-col items-center justify-center pb-28 text-center lg:pb-20">
-            {/* Logo */}
-            <m.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1.2, delay: 0.4 }}
-            >
-              <Image
-                src="/images/NIHPLOD-logo.svg"
-                alt="NIHPLOD 旎柏官方网站"
-                width={200}
-                height={72}
-                className="logo"
-                priority
-              />
-            </m.div>
-
-            {/* 品牌文案 - 针对不同设备切换 2行/4行 */}
-            <m.div
-              className="content-wrapper mt-12 md:mt-16"
-              initial="hidden"
-              animate="visible"
-              variants={{
-                visible: {
-                  transition: {
-                    staggerChildren: 0.3,
-                    delayChildren: 0.6,
-                  },
-                },
-              }}
-            >
-              {/* 桌面端 & iPad Air/Pro (2行) */}
-              <h1 className="title hidden text-xl font-light tracking-[0.25em] text-brand-charcoal min-[820px]:block lg:text-2xl">
-                {[
-                  "海豚的肌肤，拥有每两小时自我更新的神奇能力，",
-                  "这种「逆转时光」的动物本能，是我们灵感的来源。",
-                ].map((line, i) => (
-                  <m.span
-                    key={i}
-                    className="block"
-                    variants={{
-                      hidden: { opacity: 0, y: 15 },
-                      visible: {
-                        opacity: 1,
-                        y: 0,
-                        transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-                      },
-                    }}
-                  >
-                    {line}
-                  </m.span>
-                ))}
-              </h1>
-
-              {/* 移动端 & iPad mini (4行) */}
-              <div className="title block text-lg font-light text-brand-charcoal min-[820px]:hidden">
-                {[
-                  "海豚的肌肤，拥有每两小时",
-                  "自我更新的神奇能力，",
-                  "这种「逆转时光」的动物本能，",
-                  "是我们灵感的来源。",
-                ].map((line, i) => (
-                  <m.span
-                    key={i}
-                    className="block"
-                    variants={{
-                      hidden: { opacity: 0, y: 15 },
-                      visible: {
-                        opacity: 1,
-                        y: 0,
-                        transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-                      },
-                    }}
-                  >
-                    {line}
-                  </m.span>
-                ))}
-              </div>
-            </m.div>
-
-            {/* 按钮组 - 增加触压反馈 */}
-            <m.div
-              className="button-group mt-16 flex gap-6 md:mt-20"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1.2, delay: 1.2 }}
-            >
-              <m.button
-                type="button"
-                onClick={handleCollapse}
-                whileTap={{ scale: 0.96 }}
-                className="btn btn-primary group min-h-0 min-w-0"
+          {/* 主内容 - 上/中/下三分区 */}
+          <main className="main-content relative z-10 flex min-h-full flex-col justify-between px-6 py-8 text-center lg:py-12">
+            {/* 中区：Logo + 文案 + CTA + 移动端服务菜单 */}
+            <div className="flex flex-1 flex-col items-center justify-center gap-8 md:gap-10">
+              {/* Logo */}
+              <m.div
+                className="flex flex-col items-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.2, delay: 0.4 }}
               >
-                <span>探索旎柏</span>
-                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-              </m.button>
-              {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
-                      <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
-                        AI快速测肤
-                        <span className="badge-new">NEW</span>
-                      </Link>
-                    </m.div> */}
-            </m.div>
+                <Image
+                  src="/images/NIHPLOD-logo.svg"
+                  alt="NIHPLOD 旎柏官方网站"
+                  width={200}
+                  height={72}
+                  className="logo"
+                  priority
+                />
+                <div className="logo-divider" aria-hidden="true" />
+              </m.div>
 
-            {/* 底部辅助导航与版权 */}
+              {/* 品牌文案 - 统一语义，响应式切换行数 */}
+              <m.div
+                className="content-wrapper"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  visible: {
+                    transition: {
+                      staggerChildren: 0.3,
+                      delayChildren: 0.6,
+                    },
+                  },
+                }}
+              >
+                <h1 className="title text-lg font-light tracking-wide text-brand-charcoal min-[820px]:text-xl min-[820px]:tracking-[0.25em] lg:text-2xl">
+                  <span className="block min-[820px]:hidden">
+                    {[
+                      "海豚的肌肤，拥有每两小时",
+                      "自我更新的神奇能力，",
+                      "这种「逆转时光」的动物本能，",
+                      "是我们灵感的来源。",
+                    ].map((line, i) => (
+                      <m.span
+                        key={i}
+                        className="block"
+                        variants={{
+                          hidden: { opacity: 0, y: 15 },
+                          visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+                          },
+                        }}
+                      >
+                        {line}
+                      </m.span>
+                    ))}
+                  </span>
+                  <span className="hidden min-[820px]:block">
+                    {[
+                      "海豚的肌肤，拥有每两小时自我更新的神奇能力，",
+                      "这种「逆转时光」的动物本能，是我们灵感的来源。",
+                    ].map((line, i) => (
+                      <m.span
+                        key={i}
+                        className="block"
+                        variants={{
+                          hidden: { opacity: 0, y: 15 },
+                          visible: {
+                            opacity: 1,
+                            y: 0,
+                            transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+                          },
+                        }}
+                      >
+                        {line}
+                      </m.span>
+                    ))}
+                  </span>
+                </h1>
+              </m.div>
+
+              {/* 按钮组 - 增加触压反馈 */}
+              <m.div
+                className="button-group flex gap-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.2, delay: 1.2 }}
+              >
+                <m.button
+                  type="button"
+                  onClick={handleCollapse}
+                  whileTap={{ scale: 0.96 }}
+                  className="home-explore-btn group min-h-0 min-w-0"
+                >
+                  <span>探索旎柏</span>
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </m.button>
+                {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
+                        <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
+                          AI快速测肤
+                          <span className="badge-new">NEW</span>
+                        </Link>
+                      </m.div> */}
+              </m.div>
+
+              {/* 移动端辅助导航 - 上移到 CTA 下方，单手操作更友好 */}
+              <div className="md:hidden">
+                <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
+              </div>
+            </div>
+
+            {/* 下区：桌面端 footer 链接 + 版权信息 */}
             <m.div
-              className="absolute bottom-4 left-0 right-0 flex flex-col items-center sm:bottom-6"
+              className="relative flex flex-col items-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1.2, delay: 1 }}
             >
-              <div className="flex w-full flex-col items-center gap-4 rounded-t-2xl bg-gradient-to-t from-[#FBF8F0]/50 via-[#FBF8F0]/30 to-transparent px-6 pt-8 pb-3 backdrop-blur-sm">
-                {/* 辅助链接 */}
+              <div className="flex w-full flex-col items-center gap-4 px-6 pt-6 pb-2">
                 {/* 辅助链接 - 桌面端 (静态列表) */}
-                <div className="hidden items-center gap-3 sm:gap-6 md:flex">
+                <div className="footer-links hidden items-center gap-6 md:flex">
                   {FOOTER_LINKS.map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}
-                      className="inline-flex items-center text-xs uppercase tracking-wider text-brand-charcoal/70 transition-colors hover:text-brand-charcoal"
+                      className="inline-flex items-center transition-colors hover:text-brand-charcoal"
                     >
                       {link.label}
                     </Link>
                   ))}
                 </div>
 
-                {/* 辅助链接 - 移动端 (可折叠菜单) */}
-                <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
-
                 {/* 版权文本 & 备案信息 */}
-                <footer className="flex flex-col items-center gap-2">
-                  <p className="relative z-10 text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
+                <footer className="home-footer">
+                  <p className="footer-copyright relative z-10">
                     &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                   </p>
-                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 whitespace-nowrap text-[10px] font-light leading-relaxed tracking-normal text-brand-charcoal/70 sm:gap-x-4 sm:text-[11px] sm:tracking-widest">
+                  <div className="footer-beian">
                     <Link
                       href="https://beian.miit.gov.cn/"
                       target="_blank"
@@ -474,7 +476,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     >
                       沪ICP备2026014764号-1
                     </Link>
-                    <span className="text-brand-charcoal/30">|</span>
+                    <span className="text-brand-charcoal/20">|</span>
                     <Link
                       href="http://www.beian.gov.cn/portal/registerSystemInfo"
                       target="_blank"
@@ -489,7 +491,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       />
                       <span>沪公网安备31010702010178号</span>
                     </Link>
-                    <span className="hidden md:inline text-brand-charcoal/30">|</span>
+                    <span className="hidden md:inline text-brand-charcoal/20">|</span>
                     <Link
                       href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
                       target="_blank"
