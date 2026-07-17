@@ -559,11 +559,11 @@ export function StoryContent() {
                         <br />
                         神奇修复力
                       </h2>
-                      <p className="max-w-md text-[16px] leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
+                      <p className="max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-brand-charcoal/80">
                         海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。所以我们将「DOLPHIN」这个单词逆转，这就是
                         NIHPLOD。
                       </p>
-                      <p className="mt-6 max-w-md text-[16px] leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
+                      <p className="mt-6 max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-brand-charcoal/80">
                         创始人 Dr. Stefan 和他的团队，将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
                       </p>
                     </div>
