@@ -2461,8 +2461,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       )}
                     </AnimatePresence>
                   </div>
+
+                {/* Desktop Footer Copyright */}
+                <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
+                  <p className="text-center text-xs font-light leading-tight tracking-widest text-brand-charcoal/70 sm:text-sm">
+                    &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                  </p>
                 </div>
-                </div>
+              </div>
+            </div>
       </DrawerPageContainer>
 
       {/* 动态背景图片 - 移至最底层，位于 safe-area-content 之外 */}
