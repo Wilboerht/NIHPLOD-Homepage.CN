@@ -424,7 +424,7 @@ export function StoryContent() {
 
                           <div className="flex flex-col items-center gap-2 p-6 text-center">
                             <span
-                              className="text-[14px] font-normal leading-[21px] text-[#00263e]/50"
+                              className="text-[14px] font-normal leading-[21px] text-[#00263e]/60"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
@@ -432,7 +432,7 @@ export function StoryContent() {
                               {award.org}
                             </span>
                             <h3
-                              className="text-[16px] font-normal leading-[24px] text-[#00263E]"
+                              className="text-[16px] font-medium leading-[24px] text-[#00263E]"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
@@ -440,7 +440,7 @@ export function StoryContent() {
                               {award.title}
                             </h3>
                             <span
-                              className="text-[14px] font-light leading-[21px] text-[#00263e]/50"
+                              className="text-[14px] font-light leading-[21px] text-[#00263e]/60"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
@@ -743,13 +743,13 @@ export function StoryContent() {
 
                             {/* 默认显示的文字内容 */}
                             <div className="relative z-10 flex flex-col items-start gap-2 transition-opacity duration-300 group-hover:opacity-0">
-                              <span className="block text-sm font-medium uppercase tracking-wider text-[#00263e]/70">
+                              <span className="block text-sm tracking-wide text-[#00263e]/60">
                                 {award.org}
                               </span>
-                              <span className="text-left text-base font-normal leading-relaxed tracking-wide text-[#00263e] lg:text-lg">
+                              <span className="text-left text-base font-medium leading-relaxed tracking-wide text-[#00263e] lg:text-lg">
                                 {award.title}
                               </span>
-                              <span className="text-xs font-medium tracking-[2px] text-[#00263e]/40 lg:text-sm">
+                              <span className="text-xs tracking-normal text-[#00263e]/60 lg:text-sm">
                                 {award.year}
                               </span>
                             </div>
