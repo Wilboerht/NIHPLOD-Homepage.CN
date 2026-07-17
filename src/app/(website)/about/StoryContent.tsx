@@ -143,7 +143,7 @@ export function StoryContent() {
             {/* Header - Mobile */}
             <div className="relative z-50 flex h-[88px] shrink-0 items-center justify-center">
               <Link href="/" className="mt-1 flex items-center justify-center">
-                <div className="relative h-[32px] w-[140px]">
+                <div className="relative h-[42px] w-[150px]">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
                     alt="NIHPLOD Logo"
@@ -502,7 +502,7 @@ export function StoryContent() {
                 >
                   {/* 左侧：Logo */}
                   <Link href="/">
-                    <div className="relative h-10 w-[200px] opacity-90 transition-opacity hover:opacity-70">
+                    <div className="relative h-9 w-[150px] opacity-90 transition-opacity hover:opacity-70">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
                         alt="Logo"
