@@ -458,9 +458,9 @@ export function StoryContent() {
                         <button
                           onClick={() => setCurrentAwardPage((p) => Math.max(0, p - 1))}
                           disabled={currentAwardPage === 0}
-                          className="absolute left-0 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
+                          className="absolute -left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
                         >
-                          <ChevronLeft className="h-5 w-5 text-[#00263e]" />
+                          <ChevronLeft className="h-4 w-4 text-[#00263e]" />
                         </button>
                         <button
                           onClick={() =>
@@ -469,9 +469,9 @@ export function StoryContent() {
                             )
                           }
                           disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
-                          className="absolute right-0 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
+                          className="absolute -right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
                         >
-                          <ChevronRight className="h-5 w-5 text-[#00263e]" />
+                          <ChevronRight className="h-4 w-4 text-[#00263e]" />
                         </button>
                       </>
                     )}
@@ -764,7 +764,7 @@ export function StoryContent() {
                         <button
                           onClick={() => setCurrentAwardPage((p) => Math.max(0, p - 1))}
                           disabled={currentAwardPage === 0}
-                          className="absolute -left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none lg:-left-5"
+                          className="absolute -left-12 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none lg:-left-16"
                         >
                           <ChevronLeft className="h-5 w-5 text-[#00263e]" />
                         </button>
@@ -775,7 +775,7 @@ export function StoryContent() {
                             )
                           }
                           disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
-                          className="absolute -right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none lg:-right-5"
+                          className="absolute -right-12 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none lg:-right-16"
                         >
                           <ChevronRight className="h-5 w-5 text-[#00263e]" />
                         </button>
