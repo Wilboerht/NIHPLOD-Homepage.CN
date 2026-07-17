@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Crown, ShieldCheck, Users, ScanFace, Home } from "lucide-react";
+import { Crown, ShieldCheck, Users, ScanFace, Home, Menu, X } from "lucide-react";
 import type { ServicesPageContent, ServiceDetail, ServiceLink } from "@/types/page-content";
 
 interface ServicesContentProps {
@@ -80,40 +80,144 @@ export function ServicesContent({ content }: ServicesContentProps) {
   };
 
   const services = [...cmsServices, advisorService];
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      return () => {
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [mobileMenuOpen]);
 
   return (
     <div className="flex min-h-screen animate-fade-in flex-col bg-[#fefcf8]">
       {/* Top Bar */}
       <nav
         aria-label="服务页导航"
-        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center justify-between bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
+        className="fixed left-0 right-0 top-0 z-50 flex items-center bg-[#fefcf8]/80 backdrop-blur-md w-full px-6 py-3 md:px-20 md:py-6"
+        style={{ pointerEvents: "none" }}
       >
-        <Link href="/">
-          <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
-            <Image
-              src="/images/NIHPLOD-logo.svg"
-              alt="NIHPLOD"
-              fill
-              className="object-contain object-left"
-              priority
-            />
+        <div className="w-full flex items-center justify-center md:justify-between relative" style={{ pointerEvents: "auto" }}>
+          <Link href="/">
+            <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
+              <Image
+                src="/images/NIHPLOD-logo.svg"
+                alt="NIHPLOD"
+                fill
+                className="object-contain object-center md:object-left"
+                priority
+              />
+            </div>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-10">
+            <Link href="/contact" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+              联系我们
+            </Link>
+            <Link href="/terms" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+              服务条款
+            </Link>
+            <Link href="/privacy" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+              隐私政策
+            </Link>
+            <Link href="/" className="inline-flex items-center gap-1 text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+              <Home className="h-3.5 w-3.5" /> 返回首页
+            </Link>
           </div>
-        </Link>
-        <div className="flex items-center gap-6 md:gap-10">
-          <Link href="/contact" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
-            联系我们
-          </Link>
-          <Link href="/terms" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
-            服务条款
-          </Link>
-          <Link href="/privacy" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
-            隐私政策
-          </Link>
-          <Link href="/" className="inline-flex items-center gap-1 text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
-            <Home className="h-3.5 w-3.5" /> 返回首页
-          </Link>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden absolute left-0 flex items-center justify-center w-10 h-10 rounded-full hover:bg-brand-charcoal/5 transition-colors"
+            aria-label="打开菜单"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="services-nav-panel"
+          >
+            <Menu className="h-5 w-5 text-[#00263E]" />
+          </button>
         </div>
       </nav>
+
+      <div
+        id="services-nav-panel"
+        ref={mobileMenuRef}
+        role="dialog"
+        aria-modal={mobileMenuOpen}
+        aria-label="导航菜单"
+        className={`fixed inset-0 z-[100] md:hidden transition-all duration-500 ${mobileMenuOpen ? "visible opacity-100" : "invisible opacity-0"}`}
+      >
+        <div
+          className="absolute inset-0 bg-[#00263E]/20 backdrop-blur-sm"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        <div
+          className={`absolute top-0 left-0 h-full w-[min(300px,80vw)] bg-[#FBF8F0] shadow-2xl rounded-r-3xl transform transition-transform duration-500 ease-out pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.25rem+env(safe-area-inset-bottom,16px))] ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+        >
+          <div className="flex flex-col h-full px-6">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="self-end flex items-center justify-center w-10 h-10 rounded-full hover:bg-brand-charcoal/5 transition-colors mb-8"
+              aria-label="关闭菜单"
+            >
+              <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
+            </button>
+
+            <Link href="/" onClick={() => setMobileMenuOpen(false)} className="mb-10">
+              <div className="relative h-[30px] w-[130px]">
+                <Image
+                  src="/images/NIHPLOD-logo.svg"
+                  alt="NIHPLOD"
+                  fill
+                className="object-contain object-center md:object-left"
+                />
+              </div>
+            </Link>
+
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] hover:bg-brand-charcoal/5 rounded-xl transition-colors"
+              >
+                联系我们
+              </Link>
+              <Link
+                href="/terms"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] hover:bg-brand-charcoal/5 rounded-xl transition-colors"
+              >
+                服务条款
+              </Link>
+              <Link
+                href="/privacy"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] hover:bg-brand-charcoal/5 rounded-xl transition-colors"
+              >
+                隐私政策
+              </Link>
+            </div>
+
+            <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="mt-auto flex items-center gap-2 px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] hover:bg-brand-charcoal/5 rounded-xl transition-colors"
+            >
+              <Home className="h-5 w-5" />
+              返回首页
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {/* Spacer for fixed navbar */}
       <div className="h-[62px] shrink-0 md:h-[88px]" />

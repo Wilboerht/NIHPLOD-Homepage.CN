@@ -535,7 +535,7 @@ export function StoryContent() {
                   >
                     {/* 左侧图片区域 */}
                     <div className="relative flex h-full flex-col justify-center gap-4">
-                      <div className="relative h-44 w-[70%] self-start overflow-hidden bg-[#FAF5EA] md:h-56 lg:h-64">
+                      <div className="relative h-44 w-[70%] self-start overflow-hidden bg-[#FBF8F0] md:h-56 lg:h-64">
                         <Image
                           src="/images/story/dolphin-ocean.webp"
                           alt="大自然"
@@ -543,7 +543,7 @@ export function StoryContent() {
                           className="object-cover transition-transform duration-[1.5s] hover:scale-105"
                         />
                       </div>
-                      <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#FAF5EA] bg-[#FAF5EA] lg:-mt-14 lg:h-80">
+                      <div className="relative -mt-10 ml-auto h-64 w-[80%] overflow-hidden border-8 border-[#FBF8F0] bg-[#FBF8F0] lg:-mt-14 lg:h-80">
                         <Image
                           src="/images/story/lab-research.webp"
                           alt="科技"
@@ -667,7 +667,7 @@ export function StoryContent() {
                     ].map((item, idx) => (
                       <div
                         key={idx}
-                        className="flex h-full flex-col justify-between bg-[#FAF5EA] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] lg:p-10"
+                        className="flex h-full flex-col justify-between bg-[#FBF8F0] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] lg:p-10"
                       >
                         <span className="text-6xl font-thin text-[#00263e]/10">{item.num}</span>
                         <div>
@@ -717,7 +717,7 @@ export function StoryContent() {
                                   sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
                                   className="object-cover transition-all duration-500"
                                 />
-                              <div className="absolute inset-0 bg-[#FAF5EA]/80 mix-blend-multiply" />
+                              <div className="absolute inset-0 bg-[#FBF8F0]/80 mix-blend-multiply" />
                             </div>
 
                             {/* 默认显示的文字内容 */}

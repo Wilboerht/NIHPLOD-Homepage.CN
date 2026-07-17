@@ -112,7 +112,7 @@ function MobileFooterMenu({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
-                className="pointer-events-auto fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#FAF5EA]/95 backdrop-blur-xl"
+                className="pointer-events-auto fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#FBF8F0]/95 backdrop-blur-xl"
               >
                 {/* 顶层背景纹理 */}
                 <div
@@ -443,7 +443,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               animate={{ opacity: 1 }}
               transition={{ duration: 1.2, delay: 1 }}
             >
-              <div className="flex w-full flex-col items-center gap-4 rounded-t-2xl bg-gradient-to-t from-[#FAF5EA]/50 via-[#FAF5EA]/30 to-transparent px-6 pt-8 pb-3 backdrop-blur-sm">
+              <div className="flex w-full flex-col items-center gap-4 rounded-t-2xl bg-gradient-to-t from-[#FBF8F0]/50 via-[#FBF8F0]/30 to-transparent px-6 pt-8 pb-3 backdrop-blur-sm">
                 {/* 辅助链接 */}
                 {/* 辅助链接 - 桌面端 (静态列表) */}
                 <div className="hidden items-center gap-3 sm:gap-6 md:flex">
@@ -489,11 +489,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       />
                       <span>沪公网安备31010702010178号</span>
                     </Link>
-                    <span className="text-brand-charcoal/30">|</span>
+                    <span className="hidden md:inline text-brand-charcoal/30">|</span>
                     <Link
                       href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
                       target="_blank"
-                      className="flex !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-gold"
+                      className="hidden md:flex !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-gold"
                     >
                       <Image
                         src="/images/aic_icon.png"

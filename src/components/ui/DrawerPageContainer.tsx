@@ -121,7 +121,7 @@ export function DrawerPageContainer({
             <div
               id={contentId}
               inert={!isDrawerOpen}
-              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FAF5EA] lg:rounded-b-3xl 2xl:max-w-[1400px] 2xl:mx-auto"
+              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FBF8F0] lg:rounded-b-3xl 2xl:max-w-[1400px] 2xl:mx-auto"
             >
               {children}
             </div>
@@ -134,7 +134,7 @@ export function DrawerPageContainer({
               aria-controls={contentId}
               aria-label={isDrawerOpen ? "收起页面内容" : "展开页面内容"}
               className={cn(
-                "group pointer-events-auto relative z-30 -mt-[1px] flex items-center justify-center self-center overflow-hidden rounded-b-2xl bg-[#FAF5EA] py-3 lg:py-3.5",
+                "group pointer-events-auto relative z-30 -mt-[1px] flex items-center justify-center self-center overflow-hidden rounded-b-2xl bg-[#FBF8F0] py-3 lg:py-3.5",
                 buttonWidth
               )}
             >

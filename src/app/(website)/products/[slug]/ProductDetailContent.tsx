@@ -214,7 +214,7 @@ export function ProductDetailContent({
       >
         <div className="flex h-full flex-col items-center pointer-events-none drop-shadow-[4px_2px_1px_rgba(0,38,62,0.2)]">
           {/* 主内容卡片容器 */}
-          <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#FFFFFF] lg:bg-[#FAF5EA] pointer-events-auto relative">
+          <div className="w-full flex-1 overflow-hidden rounded-none lg:rounded-3xl bg-[#FFFFFF] lg:bg-[#FBF8F0] pointer-events-auto relative">
             {/* 手机端背景水印 */}
             <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
               <Image
@@ -373,7 +373,7 @@ export function ProductDetailContent({
                           {product.benefits.map((benefit, index) => (
                             <span
                               key={index}
-                              className="rounded-full border border-brand-beige bg-brand-cream px-3 py-1 text-[14px] font-light text-[#00263E]"
+                              className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[14px] font-light text-[#00263E]"
                             >
                               {benefit}
                             </span>
@@ -552,7 +552,7 @@ export function ProductDetailContent({
           {/* 返回首页按钮 - 仅桌面端 */}
           <Link
             href="/"
-            className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#FAF5EA] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
+            className="hidden lg:flex group items-center justify-center gap-2 rounded-b-2xl bg-[#FBF8F0] px-10 py-2.5 lg:px-14 lg:py-3 pointer-events-auto"
           >
             <Home className="h-5 w-5 text-brand-gold transition-all duration-200 group-hover:scale-110 group-hover:text-brand-gold/80 lg:h-6 lg:w-6" />
             <span className="text-sm font-medium text-brand-charcoal transition-colors duration-200 group-hover:text-brand-charcoal/70 lg:text-base">
@@ -726,7 +726,7 @@ function QuantitySelector({
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-brand-charcoal/60">数量</span>
-      <div className="flex items-center rounded-lg border border-brand-beige bg-brand-cream">
+      <div className="flex items-center rounded-lg border border-brand-beige bg-[#FBF8F0]">
         <button
           type="button"
           onClick={handleDecrease}

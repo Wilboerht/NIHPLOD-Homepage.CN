@@ -1074,9 +1074,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   isDrawerOpen ? "opacity-100 delay-300" : "opacity-0 pointer-events-none"
                 )}>
                 {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
-                <div className="flex h-full flex-col sm:hidden bg-[#FAF5EA]">
+                <div className="flex h-full flex-col sm:hidden bg-[#FBF8F0]">
                   {/* 移动端 Header - 完全按照 FAQ 顶部栏样式 */}
-                  <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-[#FAF5EA]/95 backdrop-blur-sm px-6 transition-all">
+                  <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-[#FBF8F0]/95 backdrop-blur-sm px-6 transition-all">
                     <AnimatePresence>
                       {currentLevel > 1 && (
                         <m.button
@@ -1508,9 +1508,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {/* 底部 Logo 栏 - 无限滚动 */}
                               <div className="pt-6 border-t border-[#00263E]/10 pb-4 overflow-hidden relative -mx-5 px-5">
                                 {/* 左侧渐变遮罩 */}
-                                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#FAF5EA] to-transparent z-10 pointer-events-none" />
+                                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#FBF8F0] to-transparent z-10 pointer-events-none" />
                                 {/* 右侧渐变遮罩 */}
-                                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#FAF5EA] to-transparent z-10 pointer-events-none" />
+                                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#FBF8F0] to-transparent z-10 pointer-events-none" />
 
                                 {/* 滚动容器 */}
                                 <div className="flex items-center animate-marquee w-max">
@@ -1551,7 +1551,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   {/* 图片展示区 + 胶囊定位容器 */}
                                   <div className="relative mb-5 sm:mb-7">
                                     {/* 步骤胶囊 - 挂在卡片顶部正中间 */}
-                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-xs font-medium tracking-widest text-[#00263E] border border-[#00263E]/20 whitespace-nowrap shadow-sm">
+                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FBF8F0] px-4 py-1 text-xs font-medium tracking-widest text-[#00263E] border border-[#00263E]/20 whitespace-nowrap shadow-sm">
                                       步骤 {String(index + 1).padStart(2, "0")}
                                     </div>
                                     {/* 图片展示区 - 极简白背景 */}
@@ -2226,9 +2226,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     {/* 底部 Logo 栏 - 无限滚动 */}
                                     <div className="pt-8 border-t border-brand-charcoal/10 mb-6 overflow-hidden relative">
                                       {/* 左侧渐变遮罩 */}
-                                      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#FAF5EA] to-transparent z-10 pointer-events-none" />
+                                      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#FBF8F0] to-transparent z-10 pointer-events-none" />
                                       {/* 右侧渐变遮罩 */}
-                                      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#FAF5EA] to-transparent z-10 pointer-events-none" />
+                                      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#FBF8F0] to-transparent z-10 pointer-events-none" />
 
                                       {/* 滚动容器 */}
                                       <div className="flex items-center animate-marquee hover:[animation-play-state:paused]">
@@ -2310,7 +2310,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           className="relative w-[280px] flex-none group"
                                         >
                                           {/* 步骤序号 */}
-                                          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
+                                          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FBF8F0] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
                                             步骤 {String(index + 1).padStart(2, "0")}
                                           </div>
 
@@ -2378,7 +2378,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                 }}
                                               >
                                                 {/* 步骤序号 */}
-                                          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-xs font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
+                                          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FBF8F0] px-4 py-1 text-xs font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
                                                   步骤 {String(actualIndex + 1).padStart(2, "0")}
                                                 </div>
 

@@ -14,7 +14,7 @@ const config: Config = {
         brand: {
           gold: "#00263E",
           "gold-dark": "#001525",
-          cream: "#FAF5EA",
+          cream: "#FBF8F0",
           charcoal: "#00263E",
           "charcoal-light": "#4A6272",
           beige: "#E4DFD9",

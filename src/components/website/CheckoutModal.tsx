@@ -204,13 +204,13 @@ export function CheckoutModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md max-h-[85vh] bg-[#FAF5EA] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            className="relative w-full max-w-md max-h-[85vh] bg-[#FBF8F0] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             style={{ backgroundImage: TEXTURE_BG }}
           >
             {/* 关闭按钮 */}
             <button
               onClick={closeCheckout}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full text-[#4A6272] hover:text-[#00263E] hover:bg-[#FAF5EA] transition-colors"
+              className="absolute top-4 right-4 z-10 p-2 rounded-full text-[#4A6272] hover:text-[#00263E] hover:bg-[#FBF8F0] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -283,7 +283,7 @@ export function CheckoutModal() {
                             className={`block p-3 rounded-xl cursor-pointer transition-all ${
                               selectedAddressId === addr.id
                                 ? "bg-[#A69374]/10 border-2 border-[#A69374]"
-                                : "bg-[#FAF5EA] border-2 border-transparent hover:border-[#E4DFD9]"
+                                : "bg-[#FBF8F0] border-2 border-transparent hover:border-[#E4DFD9]"
                             }`}
                           >
                             <input
@@ -322,13 +322,13 @@ export function CheckoutModal() {
                       <h3 className="font-medium text-[#00263E]">
                         商品清单
                       </h3>
-                      <span className="text-xs text-[#4A6272] bg-[#FAF5EA] px-2 py-0.5 rounded-full">
+                      <span className="text-xs text-[#4A6272] bg-[#FBF8F0] px-2 py-0.5 rounded-full">
                         {data.items.length} 件
                       </span>
                     </div>
                     <div className="space-y-3 max-h-52 overflow-y-auto pr-1 scrollbar-thin">
                       {data.items.map((item, idx) => (
-                        <div key={idx} className="flex gap-3 p-2 rounded-lg bg-[#FAF5EA]/50">
+                        <div key={idx} className="flex gap-3 p-2 rounded-lg bg-[#FBF8F0]/50">
                           <div className="w-14 h-14 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-[#E8E3DC]">
                             {item.image ? (
                               <Image
@@ -355,7 +355,7 @@ export function CheckoutModal() {
                               <span className="text-sm text-[#A69374] font-medium">
                                 {formatPrice(item.price)}
                               </span>
-                              <span className="text-xs text-[#4A6272] bg-[#FAF5EA] px-2 py-0.5 rounded">
+                              <span className="text-xs text-[#4A6272] bg-[#FBF8F0] px-2 py-0.5 rounded">
                                 x{item.quantity}
                               </span>
                             </div>
@@ -374,7 +374,7 @@ export function CheckoutModal() {
                       <select
                         value={selectedCouponId}
                         onChange={(e) => setSelectedCouponId(e.target.value)}
-                        className="w-full bg-[#FAF5EA] border-none rounded-lg text-sm text-[#00263E] p-3 focus:ring-2 focus:ring-[#A69374]/30"
+                        className="w-full bg-[#FBF8F0] border-none rounded-lg text-sm text-[#00263E] p-3 focus:ring-2 focus:ring-[#A69374]/30"
                       >
                         <option value="">不使用优惠券</option>
                         {data.availableCoupons.map((coupon) => (
@@ -403,7 +403,7 @@ export function CheckoutModal() {
                       placeholder="有什么想告诉我们的？（选填）"
                       rows={2}
                       maxLength={200}
-                      className="w-full bg-[#FAF5EA] border-none rounded-lg resize-none focus:ring-2 focus:ring-[#A69374]/30 text-sm text-[#00263E] placeholder:text-[#4A6272] p-3"
+                      className="w-full bg-[#FBF8F0] border-none rounded-lg resize-none focus:ring-2 focus:ring-[#A69374]/30 text-sm text-[#00263E] placeholder:text-[#4A6272] p-3"
                     />
                   </div>
 

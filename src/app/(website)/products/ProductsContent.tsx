@@ -399,7 +399,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
    * 移动端展示组件 - 三行错落橱窗
    */
   const MobileShowcase = () => (
-    <div className="flex h-full flex-col overflow-hidden bg-[#FAF5EA]">
+    <div className="flex h-full flex-col overflow-hidden bg-[#FBF8F0]">
       {/* Header - Mobile */}
       <div className="flex h-[88px] shrink-0 items-center justify-center relative z-50">
         <Link href="/" className="flex items-center justify-center mt-1">
@@ -457,7 +457,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               <div className="texture-overlay absolute inset-0 opacity-[0.03] pointer-events-none" />
 
               {/* 产品图片区域 —— 正方形容器，图片填满 */}
-              <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#FAF5EA]">
+              <div className="relative z-10 w-full aspect-square overflow-hidden bg-[#FBF8F0]">
                 {/* 容量标签 */}
                 {product.capacity && (
                   <div className="absolute top-3 right-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
@@ -770,8 +770,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           className={cn(
                             "group grid w-full grid-cols-[48px_1fr] items-center gap-4 rounded-2xl py-6 px-6 transition-all",
                             categoryProduct
-                              ? "bg-[#FAF5EA]/60 active:scale-95 active:bg-[#FAF5EA]"
-                              : "bg-[#FAF5EA]/30 cursor-not-allowed opacity-60"
+                              ? "bg-[#FBF8F0]/60 active:scale-95 active:bg-[#FBF8F0]"
+                              : "bg-[#FBF8F0]/30 cursor-not-allowed opacity-60"
                           )}
                         >
                           <div className={cn(

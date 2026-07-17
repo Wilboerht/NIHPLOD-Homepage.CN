@@ -57,7 +57,7 @@ export function CartDrawer() {
                         animate={{ x: 0 }}
                         exit={{ x: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-md flex-col bg-brand-cream shadow-2xl sm:w-[450px]"
+                        className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-md flex-col bg-[#FBF8F0] shadow-2xl sm:w-[450px]"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-brand-brown/10 px-6 py-5">
@@ -160,7 +160,7 @@ export function CartDrawer() {
 
                         {/* Footer */}
                         {items.length > 0 && (
-                            <div className="border-t border-brand-brown/10 bg-brand-cream p-6">
+                            <div className="border-t border-brand-brown/10 bg-[#FBF8F0] p-6">
                                 <div className="mb-4 flex items-center justify-between">
                                     <span className="text-base text-brand-brown/70">总计 (不含运费)</span>
                                     <span className="font-serif text-2xl font-bold text-brand-brown">
