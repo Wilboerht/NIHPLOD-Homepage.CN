@@ -1090,6 +1090,12 @@
   pointer-events: none;
 }
 
+/* 禁止文字卡/登录卡的视差倾斜效果 */
+.kinetic-cell.no-hover-effect {
+  transform: none !important;
+  transition: none;
+}
+
 .kinetic-cell:not(.no-hover-effect):hover {
   /* 在视差 transform 基础上叠加悬浮位移 */
   transform: translate(
