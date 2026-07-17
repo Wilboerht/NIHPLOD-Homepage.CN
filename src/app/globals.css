@@ -874,13 +874,6 @@
   }
 }
 
-/* 3D 视差容器 */
-.kinetic-parallax-container {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-}
-
 /* 响应式调整 - 移动端缩小 Logo */
 @media (max-width: 768px) {
   .kinetic-logo {
@@ -900,10 +893,6 @@
 
 /* 尊重用户减少动画偏好 */
 @media (prefers-reduced-motion: reduce) {
-  .kinetic-parallax-container {
-    transition: none !important;
-  }
-
   .kinetic-cell {
     transition: none !important;
   }
@@ -1022,12 +1011,7 @@
   cursor: default;
   pointer-events: auto;
 
-  /* 鼠标视差由 JS 通过 CSS 变量控制，与 hover transform 组合 */
-  transform: translate(
-      var(--parallax-x, 0),
-      calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px))
-    )
-    rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0));
+  transform: translate(0, 0);
 }
 
 /* 左侧大卡片 - 跨两行，视觉权重最高 */
@@ -1044,20 +1028,12 @@
 }
 
 .kinetic-cell-large:not(.no-hover-effect):hover {
-  transform: translate(
-      var(--parallax-x, 0),
-      calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 4px)
-    )
-    rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.01);
+  transform: translateY(-4px) scale(1.01);
   box-shadow: 0 24px 48px -12px rgba(0, 38, 62, 0.18);
 }
 
 .kinetic-cell:not(.kinetic-cell-large):not(.no-hover-effect):hover {
-  transform: translate(
-      var(--parallax-x, 0),
-      calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 6px)
-    )
-    rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.03);
+  transform: translateY(-6px) scale(1.03);
   box-shadow: 0 16px 36px -10px rgba(0, 38, 62, 0.12);
 }
 
@@ -1095,12 +1071,7 @@
 }
 
 .kinetic-cell:not(.no-hover-effect):hover {
-  /* 在视差 transform 基础上叠加悬浮位移 */
-  transform: translate(
-      var(--parallax-x, 0),
-      calc(var(--parallax-y, 0) + var(--parallax-scroll-y, 0px) - 4px)
-    )
-    rotateX(var(--parallax-rx, 0)) rotateY(var(--parallax-ry, 0)) scale(1.005);
+  transform: translateY(-4px) scale(1.005);
   box-shadow: 0 20px 40px -12px rgba(0, 38, 62, 0.15);
   z-index: 10;
 }
@@ -1127,7 +1098,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: saturate(0.6) contrast(1.05);
+  /* 默认保持彩色，悬浮时轻微增强 */
+  filter: saturate(1) contrast(1.02);
   /* Slightly scale up to prevent sub-pixel gaps/borders */
   transform: scale(1.01);
   transition:
@@ -1137,22 +1109,63 @@
 
 .kinetic-cell:not(.no-hover-effect):hover .kinetic-cell-image {
   transform: scale(1.05);
-  filter: saturate(1) contrast(1.05);
+  filter: saturate(1.05) contrast(1.05);
 }
 
-/* 键盘焦点可访问性 */
+/* 键盘焦点可访问性 - 白色 outline 适配深色/浅色各类卡片 */
 .kinetic-cell:focus-within {
-  outline: 2px solid #00263e;
-  outline-offset: 4px;
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 3px;
 }
 
 /* ========== 文字卡片样式 ========== */
 
 .kinetic-text-cell {
-  background: #111;
+  /* 基础背景使用品牌深海蓝；黄色/橙色卡片会通过自身类覆盖 */
+  background: #00263e;
   justify-content: center;
   border: none;
   overflow: hidden;
+}
+
+/* 统一的标题层级 */
+.kinetic-title-sm {
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-bottom: 12px;
+  letter-spacing: 0;
+  color: var(--kinetic-text-primary);
+  font-family:
+    "PingFang SC",
+    "Source Han Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  transition: text-shadow 0.4s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.kinetic-title-lg {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 12px;
+  letter-spacing: -1px;
+  color: var(--kinetic-text-primary);
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  transition: text-shadow 0.4s ease;
+  position: relative;
+  z-index: 2;
 }
 
 .kinetic-name {
@@ -1174,10 +1187,50 @@
   z-index: 2;
 }
 
-.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-name {
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-name,
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-title-sm,
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-title-lg {
   text-shadow:
     0 0 30px rgba(85, 85, 85, 0.8),
     0 0 60px rgba(85, 85, 85, 0.4);
+}
+
+.kinetic-desc {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  letter-spacing: 0.12em;
+  color: var(--kinetic-text-secondary);
+  font-family:
+    "PingFang SC",
+    "Source Han Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  transition:
+    color 0.4s ease,
+    letter-spacing 0.4s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.kinetic-body-sm {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  letter-spacing: 0.08em;
+  color: var(--kinetic-text-secondary);
+  font-family:
+    "PingFang SC",
+    "Source Han Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  transition: color 0.4s ease;
+  position: relative;
+  z-index: 2;
 }
 
 .kinetic-description {
@@ -1193,9 +1246,14 @@
   z-index: 2;
 }
 
-.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-description {
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-description,
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-body-sm {
   color: #c0c0c0;
   letter-spacing: 2px;
+}
+
+.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-body-sm {
+  letter-spacing: 0.12em;
 }
 
 /* ========== 登录卡片样式 ========== */
@@ -1208,14 +1266,6 @@
   overflow: hidden;
 }
 
-/* 登录卡片标题 */
-.kinetic-login-title {
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin-bottom: 24px;
-  color: var(--kinetic-text-primary);
-}
-
 .kinetic-btn-group {
   display: flex;
   flex-direction: column;
@@ -1223,35 +1273,6 @@
   width: 100%;
   position: relative;
   z-index: 10;
-}
-
-.kinetic-btn {
-  padding: 12px 24px;
-  border-radius: 12px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  text-align: center;
-  cursor: pointer;
-  pointer-events: auto;
-  position: relative;
-  z-index: 10;
-}
-
-.kinetic-btn-primary {
-  background: #fff;
-  color: #333333;
-}
-
-.kinetic-btn-secondary {
-  border: 1px solid #555555;
-  color: #555555;
-  background: transparent;
-}
-
-.kinetic-btn:hover {
-  transform: translateX(5px);
-  color: inherit;
 }
 
 /* ========== 响应式布局 ========== */
@@ -1268,7 +1289,8 @@
     padding: 30px;
   }
 
-  .kinetic-name {
+  .kinetic-name,
+  .kinetic-title-sm {
     font-size: 1.8rem;
   }
 }
@@ -1298,15 +1320,9 @@
     .kinetic-cell-steps,
     .kinetic-cell-reverse {
       display: flex !important;
-      /* 恢复显示 */
-      order: 3;
-      /* 放在第三行 */
     }
 
-    .kinetic-cell-boxes {
-      order: 1;
-    }
-
+    .kinetic-cell-boxes,
     .kinetic-cell-reverse {
       order: 1;
     }
@@ -1315,10 +1331,7 @@
       order: 2;
     }
 
-    .kinetic-cell-steps {
-      order: 3;
-    }
-
+    .kinetic-cell-steps,
     .kinetic-cell-login {
       order: 3;
     }
@@ -1383,12 +1396,14 @@
     }
 
     /* 针对文字卡片的字号微调 */
-    .kinetic-text-cell .kinetic-name {
+    .kinetic-text-cell .kinetic-name,
+    .kinetic-text-cell .kinetic-title-sm {
       font-size: 1.45rem;
       line-height: 1.25;
     }
 
-    .kinetic-desc {
+    .kinetic-desc,
+    .kinetic-body-sm {
       font-size: 0.85rem !important;
       color: #ffffff !important;
       opacity: 0.8;
@@ -1396,7 +1411,8 @@
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
     }
 
-    .kinetic-cell-yellow .kinetic-desc {
+    .kinetic-cell-yellow .kinetic-desc,
+    .kinetic-cell-yellow .kinetic-body-sm {
       color: #4a6272 !important;
       text-shadow: none;
     }
@@ -1423,7 +1439,8 @@
     aspect-ratio: 1 / 1;
   }
 
-  .kinetic-name {
+  .kinetic-name,
+  .kinetic-title-sm {
     font-size: 1.35rem;
     text-shadow: none !important;
   }
@@ -1436,11 +1453,6 @@
     .kinetic-login-cell {
       padding: 24px;
     }
-  }
-
-  .kinetic-btn {
-    padding: 10px 16px;
-    font-size: 14px;
   }
 
   .kinetic-btn-group {
@@ -1464,11 +1476,13 @@
   box-shadow: 0 4px 20px -8px rgba(0, 38, 62, 0.08);
 }
 
-.kinetic-cell-yellow .kinetic-name {
+.kinetic-cell-yellow .kinetic-name,
+.kinetic-cell-yellow .kinetic-title-sm {
   color: #00263e;
 }
 
-.kinetic-cell-yellow .kinetic-desc {
+.kinetic-cell-yellow .kinetic-desc,
+.kinetic-cell-yellow .kinetic-body-sm {
   color: #4a6272;
 }
 
@@ -1487,12 +1501,15 @@
 }
 
 .kinetic-cell-orange .kinetic-name,
+.kinetic-cell-orange .kinetic-title-sm,
 .kinetic-cell-orange .kinetic-desc,
+.kinetic-cell-orange .kinetic-body-sm,
 .kinetic-cell-orange .kinetic-description {
   color: #00263e;
   text-shadow: none;
 }
 
-.kinetic-cell-orange .kinetic-desc {
+.kinetic-cell-orange .kinetic-desc,
+.kinetic-cell-orange .kinetic-body-sm {
   color: #4a6272;
 }

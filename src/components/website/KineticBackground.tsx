@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
 import { ChevronRight } from "lucide-react";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 /**
  * Kinetic Grid 全局背景组件
@@ -13,121 +12,10 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
  * 特点：
  * - 米白背景 (#EBE5D8) + 微点阵图案
  * - Bento Grid 便当盒卡片布局（左侧大卡片 + 右侧3x2小卡片）
- * - 鼠标跟随的3D透视倾斜效果
  */
 export function KineticBackground() {
-  const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const cellsRef = useRef<HTMLDivElement[]>([]);
   const { user, switchToLogin, openUserCenter } = useAuth();
-  const prefersReducedMotion = useReducedMotion();
-
-  useEffect(() => {
-    const container = containerRef.current;
-    const cells = cellsRef.current;
-    if (!container || cells.length === 0) return;
-
-    let mouseRafId: number;
-    let scrollRafId: number;
-    let lastMouseX = 0;
-    let lastMouseY = 0;
-
-    const applyMouseParallax = () => {
-      const x = lastMouseX;
-      const y = lastMouseY;
-
-      cells.forEach((cell, index) => {
-        if (!cell) return;
-        const factor = (index + 1) * 0.8;
-        cell.style.setProperty("--parallax-x", `${x * factor}px`);
-        cell.style.setProperty("--parallax-y", `${y * factor}px`);
-        cell.style.setProperty("--parallax-rx", `${-y * 2}deg`);
-        cell.style.setProperty("--parallax-ry", `${x * 2}deg`);
-      });
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      lastMouseX = e.clientX / window.innerWidth - 0.5;
-      lastMouseY = e.clientY / window.innerHeight - 0.5;
-
-      if (mouseRafId) return;
-      mouseRafId = requestAnimationFrame(() => {
-        applyMouseParallax();
-        mouseRafId = 0;
-      });
-    };
-
-    const handleMouseLeave = () => {
-      cancelAnimationFrame(mouseRafId);
-      mouseRafId = 0;
-      lastMouseX = 0;
-      lastMouseY = 0;
-      cells.forEach((cell) => {
-        if (!cell) return;
-        cell.style.setProperty("--parallax-x", "0");
-        cell.style.setProperty("--parallax-y", "0");
-        cell.style.setProperty("--parallax-rx", "0");
-        cell.style.setProperty("--parallax-ry", "0");
-      });
-    };
-
-    const handleScroll = () => {
-      if (scrollRafId) return;
-      scrollRafId = requestAnimationFrame(() => {
-        if (!prefersReducedMotion) {
-          const scrollY = window.scrollY;
-          const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-          const progress = maxScroll > 0 ? scrollY / maxScroll : 0;
-
-          cells.forEach((cell, index) => {
-            if (!cell) return;
-            const factor = (index + 1) * 0.5;
-            const offset = progress * 20 * factor;
-            cell.style.setProperty("--parallax-scroll-y", `-${offset}px`);
-          });
-        }
-        scrollRafId = 0;
-      });
-    };
-
-    const mediaQuery = window.matchMedia("(min-width: 768px) and (hover: hover)");
-
-    const setupListeners = () => {
-      if (mediaQuery.matches && !prefersReducedMotion) {
-        // 3D 视差已禁用
-        handleMouseLeave();
-      } else {
-        handleMouseLeave();
-        container.removeEventListener("mousemove", handleMouseMove);
-        container.removeEventListener("mouseleave", handleMouseLeave);
-      }
-    };
-
-    setupListeners();
-    mediaQuery.addEventListener("change", setupListeners);
-    // 滚动视差已禁用
-
-    return () => {
-      cancelAnimationFrame(mouseRafId);
-      cancelAnimationFrame(scrollRafId);
-      mediaQuery.removeEventListener("change", setupListeners);
-      window.removeEventListener("scroll", handleScroll);
-      container.removeEventListener("mousemove", handleMouseMove);
-      container.removeEventListener("mouseleave", handleMouseLeave);
-    };
-  }, [prefersReducedMotion]);
-
-  const addCellRef = (el: HTMLDivElement | null, index: number) => {
-    if (el) {
-      cellsRef.current[index] = el;
-    }
-  };
-
-  const handleLoginClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    switchToLogin();
-  };
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -160,6 +48,12 @@ export function KineticBackground() {
     };
   }, []);
 
+  const handleLoginClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    switchToLogin();
+  };
+
   return (
     <div ref={wrapperRef} className="kinetic-background-wrapper">
       <div className="kinetic-bg-base" />
@@ -173,6 +67,7 @@ export function KineticBackground() {
             width={2800}
             height={800}
             style={{ objectFit: "contain" }}
+            priority
             unoptimized
           />
         </div>
@@ -184,12 +79,11 @@ export function KineticBackground() {
             fill
             priority
             style={{ objectFit: "cover" }}
-            className=""
           />
         </div>
       </div>
 
-      <div ref={containerRef} className="kinetic-container">
+      <div className="kinetic-container">
         <Link href="/" className="kinetic-logo">
           <Image
             src="/images/NIHPLOD-logo.svg"
@@ -200,22 +94,20 @@ export function KineticBackground() {
             priority
           />
         </Link>
+
         {/* 左侧大卡片 - 跨两行 */}
-        <div
-          ref={(el) => addCellRef(el, 0)}
-          className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes group relative cursor-pointer"
-        >
+        <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes group relative cursor-pointer">
           <Link href="/products" className="absolute inset-0 z-20" aria-label="了解产品" />
           <Image
             src="/images/kinetic-product-hero.jpeg"
-            alt="Brand Story"
+            alt="NIHPLOD 产品系列"
             fill
-            className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
+            className="kinetic-cell-image transition-all duration-500 group-hover:scale-105"
             style={{ objectPosition: "center 30%" }}
             sizes="(max-width: 600px) 100vw, 30vw"
             priority
           />
-          <div className="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100 sm:flex">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
             <span className="border-b-2 border-white/60 pb-1.5 text-2xl font-bold tracking-[0.25em] text-white">
               探索产品
             </span>
@@ -223,28 +115,13 @@ export function KineticBackground() {
         </div>
 
         {/* Row 1, Col 2: 文字卡 */}
-        <div
-          ref={(el) => addCellRef(el, 1)}
-          className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect"
-        >
-          <div
-            className="kinetic-name"
-            style={{ marginBottom: "12px", lineHeight: "1.3", fontSize: "1.4rem", fontWeight: 400 }}
-          >
+        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect">
+          <div className="kinetic-title-sm">
             更少步骤
             <br />
             更多呵护
           </div>
-          <div
-            className="kinetic-desc"
-            style={{
-              fontSize: "14px",
-              lineHeight: "1.5",
-              letterSpacing: "0.12em",
-              textTransform: "none",
-              fontWeight: 400,
-            }}
-          >
+          <div className="kinetic-body-sm">
             美丽不该复杂
             <br />
             专注美好生活
@@ -253,79 +130,56 @@ export function KineticBackground() {
 
         {/* Row 1, Col 3-4: 官方指南宽图片卡 */}
         <div
-          ref={(el) => addCellRef(el, 2)}
           className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer"
           style={{ gridColumn: "span 2", aspectRatio: "auto" }}
         >
           <Link href="/guide" className="absolute inset-0 z-20" aria-label="官方指南" />
           <Image
             src="/images/kinetic-guide.webp"
-            alt="官方指南"
+            alt="NIHPLOD 官方护肤指南"
             fill
-            className="kinetic-cell-image grayscale transition-all duration-500 group-hover:grayscale-0"
+            className="kinetic-cell-image transition-all duration-500 group-hover:scale-105"
             style={{ objectPosition: "center 40%" }}
             sizes="(max-width: 600px) 100vw, 50vw"
           />
-          <div className="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100 sm:flex">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
             <span className="border-b-2 border-white/60 pb-1.5 text-2xl font-bold tracking-[0.25em] text-white">
               官方指南
             </span>
           </div>
         </div>
 
-        <div
-          ref={(el) => addCellRef(el, 3)}
-          className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer"
-        >
+        <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer">
           <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
           {/* Desktop Image */}
           <Image
             src="/images/kinetic-desktop.webp"
-            alt="Product Desktop"
+            alt="旎柏品牌故事 - 桌面端展示"
             fill
-            className="kinetic-cell-image hidden !filter-none transition-all duration-500 xl:block"
+            className="kinetic-cell-image hidden transition-all duration-500 group-hover:scale-105 xl:block"
             sizes="(max-width: 1280px) 100vw, 25vw"
           />
           {/* Mobile Image */}
           <Image
             src="/images/kinetic-mobile.webp"
-            alt="Product Mobile"
+            alt="旎柏品牌故事 - 移动端展示"
             fill
-            className="kinetic-cell-image block !filter-none transition-all duration-500 xl:hidden"
+            className="kinetic-cell-image block transition-all duration-500 group-hover:scale-105 xl:hidden"
             sizes="100vw"
           />
         </div>
 
         {/* Row 2, Col 3: 文字卡 */}
-        <div
-          ref={(el) => addCellRef(el, 4)}
-          className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect"
-        >
-          <div className="kinetic-name" style={{ fontSize: "1.4rem", fontWeight: 400 }}>
-            逆转时光
-          </div>
-          <div
-            className="kinetic-desc"
-            style={{
-              fontSize: "14px",
-              letterSpacing: "0.08em",
-              textTransform: "none",
-              fontWeight: 400,
-              opacity: 0.8,
-            }}
-          >
-            REVERSE TIME
-          </div>
+        <div className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect">
+          <div className="kinetic-title-sm">逆转时光</div>
+          <div className="kinetic-desc">REVERSE TIME</div>
         </div>
 
         {/* Row 2, Col 4: 登录/CTA卡 */}
-        <div
-          ref={(el) => addCellRef(el, 5)}
-          className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect"
-        >
+        <div className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect">
           <div className="kinetic-btn-group">
-            <div className="mb-4 flex w-full flex-col items-center justify-center">
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/30 sm:h-20 sm:w-20">
+            <div className="mb-2 flex w-full flex-col items-center justify-center">
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/30 transition-all duration-300 hover:scale-105 hover:border-brand-charcoal/40 sm:h-20 sm:w-20">
                 {user?.avatar ? (
                   <Image
                     src={user.avatar}
@@ -344,6 +198,9 @@ export function KineticBackground() {
                   </div>
                 )}
               </div>
+              <span className="mt-2 text-center text-xs font-medium tracking-wide text-brand-charcoal/60 sm:text-sm">
+                {user ? `你好，${user.nickname || "会员"}` : "登录查看专属礼遇"}
+              </span>
             </div>
             {user ? (
               <button
@@ -352,7 +209,7 @@ export function KineticBackground() {
                   e.stopPropagation();
                   openUserCenter();
                 }}
-                className="group flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/40 text-sm font-medium tracking-[0.15em] text-brand-charcoal/80 transition-all duration-500 hover:bg-white/60 hover:text-brand-charcoal active:scale-[0.98]"
+                className="group flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/20 bg-white/50 text-sm font-medium tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:bg-brand-charcoal hover:text-white active:scale-[0.98]"
               >
                 <span>进入会员中心</span>
                 <ChevronRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5" />
@@ -361,7 +218,7 @@ export function KineticBackground() {
               <button
                 type="button"
                 onClick={handleLoginClick}
-                className="group flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/40 text-sm font-medium tracking-[0.15em] text-brand-charcoal/80 transition-all duration-500 hover:bg-white/60 hover:text-brand-charcoal active:scale-[0.98]"
+                className="group flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/20 bg-white/50 text-sm font-medium tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:bg-brand-charcoal hover:text-white active:scale-[0.98]"
               >
                 <span>立即登录</span>
                 <ChevronRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5" />
@@ -373,4 +230,3 @@ export function KineticBackground() {
     </div>
   );
 }
-
