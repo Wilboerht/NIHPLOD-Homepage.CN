@@ -2196,7 +2196,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           className="group relative flex flex-col w-full cursor-pointer h-full"
                                         >
                                           {/* 图片区域 - 包含所有内容 */}
-                                          <div className="relative aspect-[1/1] w-full overflow-hidden rounded-md bg-brand-charcoal/5 isolation-auto">
+                                          <div className="relative aspect-[1/1] w-[92%] mx-auto overflow-hidden rounded-md bg-brand-charcoal/5 isolation-auto">
                                             <Image
                                               src={item.image}
                                               alt={item.title}
