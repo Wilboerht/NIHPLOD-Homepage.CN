@@ -75,10 +75,10 @@
   /* 安全区域内的内容容器 - fixed 定位，通过 GPU 层隔离内部滚动，防止 iOS 抖动 */
   .safe-area-content {
     position: fixed;
-    top: max(1rem, env(safe-area-inset-top, 1rem));
+    top: max(1.5rem, env(safe-area-inset-top, 1.5rem));
     left: max(1.5rem, env(safe-area-inset-left, 1.5rem));
     right: max(1.5rem, env(safe-area-inset-right, 1.5rem));
-    bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+    bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
     z-index: 20;
     /* 强制 GPU 合成层，避免 fixed 容器受内部滚动影响产生位置漂移 */
     transform: translateZ(0);
@@ -87,23 +87,25 @@
     -webkit-backface-visibility: hidden;
   }
 
-  /* 平板/桌面端安全区域调整 */
+  /* 平板端安全区域调整 — 上下与左右等距 */
   @media (min-width: 640px) {
     .safe-area-content {
+      top: max(2.5rem, env(safe-area-inset-top, 2.5rem));
       left: max(2.5rem, env(safe-area-inset-left, 2.5rem));
       right: max(2.5rem, env(safe-area-inset-right, 2.5rem));
+      bottom: max(2.5rem, env(safe-area-inset-bottom, 2.5rem));
     }
   }
 
   @media (min-width: 1024px) {
     .safe-area-content {
-      top: max(1.5rem, env(safe-area-inset-top, 1.5rem));
-      bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
-      /* 大屏：抬高上限至 1700px，超大屏利用率更高；小屏行为不变 */
+      /* 上下等距 4rem；左右 = 4rem + 把手高度(~4rem) = 8rem */
+      top: max(4rem, env(safe-area-inset-top, 4rem));
+      bottom: max(4rem, env(safe-area-inset-bottom, 4rem));
       left: 50%;
       right: auto;
-      width: calc(100% - 2 * max(4rem, env(safe-area-inset-left, 4rem)));
-      max-width: 1700px;
+      width: calc(100% - 2 * max(8rem, env(safe-area-inset-left, 8rem)));
+      max-width: 2200px;
       transform: translateX(-50%) translateZ(0);
       -webkit-transform: translateX(-50%) translateZ(0);
     }
