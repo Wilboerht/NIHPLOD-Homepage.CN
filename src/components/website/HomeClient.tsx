@@ -247,8 +247,6 @@ interface HomeClientProps {
 }
 
 export default function HomeClient({ content: _content }: HomeClientProps) {
-  const wave1Ref = useRef<SVGSVGElement>(null);
-  const wave2Ref = useRef<SVGSVGElement>(null);
   const textureRef = useRef<HTMLDivElement>(null);
   const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
 
@@ -267,12 +265,6 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
       const moveX = (pendingEvent.clientX - window.innerWidth / 2) * 0.01;
       const moveY = (pendingEvent.clientY - window.innerHeight / 2) * 0.01;
 
-      if (wave1Ref.current) {
-        wave1Ref.current.style.transform = `translate(${moveX}px, ${moveY}px)`;
-      }
-      if (wave2Ref.current) {
-        wave2Ref.current.style.transform = `translate(${-moveX}px, ${-moveY}px)`;
-      }
       if (textureRef.current) {
         textureRef.current.style.transform = `translate(${moveX * 0.5}px, ${moveY * 0.5}px)`;
       }
@@ -324,28 +316,22 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
           {/* 装饰线条 - 已移除 */}
 
-          {/* 波浪背景 - 仅桌面端渲染。浮动动画在包裹层，JS 视差在内层 svg，两者 transform 互不覆盖 */}
+          {/* 波浪背景 - 仅桌面端渲染，CSS 浮动动画 */}
           <div className="wave-container pointer-events-none absolute bottom-0 left-0 right-0 z-0 hidden lg:block">
-            <div className="wave-wrapper wave-1">
-              <svg
-                ref={wave1Ref}
-                className="wave"
-                viewBox="0 0 1200 120"
-                preserveAspectRatio="none"
-              >
-                <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
-              </svg>
-            </div>
-            <div className="wave-wrapper wave-2">
-              <svg
-                ref={wave2Ref}
-                className="wave"
-                viewBox="0 0 1200 120"
-                preserveAspectRatio="none"
-              >
-                <path d="M0,40 C200,90 400,0 600,40 C800,80 1000,0 1200,40" />
-              </svg>
-            </div>
+            <svg
+              className="wave wave-1"
+              viewBox="0 0 1200 120"
+              preserveAspectRatio="none"
+            >
+              <path d="M0,60 C150,110 350,10 500,60 C650,110 850,10 1000,60 C1150,110 1350,10 1500,60" />
+            </svg>
+            <svg
+              className="wave wave-2"
+              viewBox="0 0 1200 120"
+              preserveAspectRatio="none"
+            >
+              <path d="M0,40 C200,90 400,0 600,40 C800,80 1000,0 1200,40" />
+            </svg>
           </div>
 
           {/* 右上角登录按钮 - 暂时隐藏 */}

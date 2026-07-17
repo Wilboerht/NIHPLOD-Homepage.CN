@@ -517,20 +517,13 @@
   pointer-events: none;
 }
 
-/* 波浪浮动动画作用在包裹层，内层 svg 留给 JS 鼠标视差（两者 transform 互不覆盖） */
-.home-container .wave-wrapper {
-  position: absolute;
-  top: 10%;
-  left: -50%;
-  width: 200%;
-  height: 100%;
-}
-
 .home-container .wave {
-  display: block;
-  width: 100%;
+  position: absolute;
+  width: 200%;
   max-width: none;
   height: 100%;
+  top: 10%;
+  left: -50%;
   opacity: 0.4;
 }
 
@@ -561,9 +554,6 @@
 
 .home-container .wave-2 {
   animation: waveMove 20s ease-in-out infinite reverse;
-}
-
-.home-container .wave-2 .wave {
   opacity: 0.2;
 }
 
