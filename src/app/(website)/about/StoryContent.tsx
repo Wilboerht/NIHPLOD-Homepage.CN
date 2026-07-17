@@ -276,7 +276,7 @@ export function StoryContent() {
                   </div>
 
                   <div className="flex flex-col gap-4 px-6">
-                    <div className="relative w-full overflow-hidden border border-[#00263e]/10 bg-white/20 shadow-sm">
+                    <div className="relative w-full overflow-hidden border border-[#00263e]/10 bg-white/20 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)]">
                       <Image
                         src="/images/story/mission-image.webp"
                         alt="Mission"
@@ -583,7 +583,7 @@ export function StoryContent() {
                   >
                     <div className="relative flex w-full max-w-[1000px] items-center">
                       {/* 左侧大图 - 基准高度 580px */}
-                      <div className="relative z-0 h-[450px] flex-[1.1] overflow-hidden shadow-2xl md:h-[520px] lg:h-[580px]">
+                      <div className="relative z-0 h-[450px] flex-[1.1] overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,38,62,0.2)] md:h-[520px] lg:h-[580px]">
                         <Image
                           src="/images/story/mission-image.webp"
                           alt="护肤专家"
