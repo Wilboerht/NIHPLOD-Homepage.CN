@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useMemo, useCallback } from "react";
 
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
@@ -8,11 +8,6 @@ import { Menu, X, Home, BookOpen, HelpCircle, ShoppingBag } from "lucide-react";
 import { cn, isCurrentPage } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
-
-/*
- * 备选图标导入 (随时可以换回原有的自定义 SVG 图标)
- * import { ShopIcon, StoryIcon, RitualIcon, HomeIcon, FAQIcon } from "@/components/website";
- */
 
 /**
  * 导航项配置
@@ -24,18 +19,6 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-/**
- * 所有可用的导航项
- *
- * 备选原有自定义图标配置:
- * [
- *   { href: "/products", label: "探索产品", labelEn: "Products", icon: ShopIcon },
- *   { href: "/guide", label: "官方指南", labelEn: "Guide", icon: RitualIcon },
- *   { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: FAQIcon },
- *   { href: "/about", label: "关于旎柏", labelEn: "About", icon: StoryIcon },
- *   { href: "/", label: "首页", labelEn: "Home", icon: HomeIcon },
- * ]
- */
 /**
  * 自定义 "关于旎柏" SVG 图标
  */
@@ -62,42 +45,84 @@ const allNavItems: NavItem[] = [
   { href: "/", label: "首页", labelEn: "Home", icon: Home },
 ];
 
+const homeNavItem = allNavItems.find((item) => item.href === "/")!;
+const storyNavItem = allNavItems.find((item) => item.href === "/about")!;
+
+/**
+ * 桌面端左侧 Story 导航
+ */
+function DesktopStoryNav({ pathname }: { pathname: string }) {
+  const Icon = storyNavItem.icon;
+  const isActive = isCurrentPage(pathname, storyNavItem.href);
+
+  return (
+    <div className="hidden items-center gap-8 lg:flex">
+      <Link
+        href={storyNavItem.href}
+        aria-current={isActive ? "page" : undefined}
+        className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
+      >
+        <Icon
+          className={cn(
+            "h-8 w-8 transition-all duration-300 group-hover:scale-105",
+            isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
+          )}
+        />
+        <span
+          className={cn(
+            "text-[18px] font-medium tracking-wide transition-colors duration-300",
+            isActive ? "text-[#00263E]" : "text-[#00263E]/60"
+          )}
+        >
+          {storyNavItem.label}
+        </span>
+      </Link>
+
+      {/* 垂直分割线 */}
+      <div className="h-10 w-px bg-brand-charcoal/15" />
+    </div>
+  );
+}
+
 /**
  * 底部导航栏组件 - 全局单例
  * 自动根据 pathname 高亮，并根据 LayoutContext 控制显示/隐藏
  */
-
 export function BottomNavBar() {
   const pathname = usePathname();
   const {
     isDrawerOpen,
     setDrawerOpen,
     isNavMenuOpen,
-    setNavMenuOpen: setIsNavMenuOpen,
+    setNavMenuOpen,
     isDrawerAnimating,
   } = useLayout();
   const { activeModal, userCenterOpen } = useAuth();
 
-  // 简单映射 pathname 到 currentPage，仅用于高亮和主导航判定
-  // 如果路径是嵌套的（如 /products/123），可能需要 startsWith 逻辑
-  // 这里暂时做精准匹配或一级匹配
-  const currentPage = allNavItems.find((item) => isCurrentPage(pathname, item.href))?.href || "/";
+  const currentPage = useMemo(
+    () => allNavItems.find((item) => isCurrentPage(pathname, item.href))?.href || homeNavItem.href,
+    [pathname]
+  );
 
-  // 根据当前页面获取主导航项和其他导航项
-  // allNavItems 长度为 5，索引 0-4，首页为索引 4
-  const primaryNav = allNavItems.find((item) => item.href === currentPage) || allNavItems[4];
-  const otherNavItems = allNavItems.filter((item) => item.href !== currentPage);
+  const primaryNav = useMemo(
+    () => allNavItems.find((item) => item.href === currentPage) || homeNavItem,
+    [currentPage]
+  );
 
-  /**
-   * 处理导航点击
-   * 如果点击的是当前页面，则展开抽屉而不是跳转
-   */
-  const handleNavClick = (href: string, e: React.MouseEvent) => {
-    if (isCurrentPage(pathname, href)) {
-      e.preventDefault();
-      setDrawerOpen(true);
-    }
-  };
+  const otherNavItems = useMemo(
+    () => allNavItems.filter((item) => item.href !== currentPage),
+    [currentPage]
+  );
+
+  const handleNavClick = useCallback(
+    (href: string, e: React.MouseEvent) => {
+      if (isCurrentPage(pathname, href)) {
+        e.preventDefault();
+        setDrawerOpen(true);
+      }
+    },
+    [pathname, setDrawerOpen]
+  );
 
   const PrimaryIcon = primaryNav.icon;
 
@@ -108,7 +133,8 @@ export function BottomNavBar() {
   const isProductDetailPage = pathname.startsWith("/products/") && pathname !== "/products";
 
   // 当抽屉展开、动画中、登录弹窗、用户中心面板或联系我们弹窗激活时，隐藏导航栏
-  const isVisible = !isDrawerOpen && !isDrawerAnimating && !activeModal && !userCenterOpen && !isProductDetailPage;
+  const isVisible =
+    !isDrawerOpen && !isDrawerAnimating && !activeModal && !userCenterOpen && !isProductDetailPage;
 
   return (
     <>
@@ -121,15 +147,15 @@ export function BottomNavBar() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-40 bg-[#00263E]/30 backdrop-blur-sm lg:hidden"
-            onClick={() => setIsNavMenuOpen(false)}
+            onClick={() => setNavMenuOpen(false)}
           />
         )}
       </AnimatePresence>
 
-      {/* 底部导航栏 - 抽屉展开时平滑滑出 */}
+      {/* 底部导航容器 - 抽屉展开时平滑滑出 */}
       <AnimatePresence>
         {isVisible && (
-          <m.header
+          <m.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
@@ -141,12 +167,12 @@ export function BottomNavBar() {
               "pointer-events-none fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
               isServicesPage && "max-lg:hidden"
             )}
-            role="banner"
           >
-            {/* 移动端弹出菜单 - 嵌套在 header 内以实现 Dock 对齐 */}
+            {/* 移动端弹出菜单 */}
             <AnimatePresence>
               {isNavMenuOpen && (
                 <m.div
+                  id="mobile-nav-menu"
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -160,7 +186,7 @@ export function BottomNavBar() {
                         <Link
                           key={item.href}
                           href={item.href}
-                          onClick={() => setIsNavMenuOpen(false)}
+                          onClick={() => setNavMenuOpen(false)}
                           className="flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/20"
                         >
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/40">
@@ -186,6 +212,7 @@ export function BottomNavBar() {
                 </m.div>
               )}
             </AnimatePresence>
+
             <nav
               className={cn(
                 "pointer-events-auto flex items-center justify-between",
@@ -195,17 +222,17 @@ export function BottomNavBar() {
               )}
               aria-label="主要导航"
             >
-              {/* ================= 移动端左侧主导航 (动态) ================= */}
+              {/* 移动端左侧主导航 (动态) */}
               <Link
                 href={primaryNav.href}
                 onClick={(e) => handleNavClick(primaryNav.href, e)}
+                aria-current={isCurrentPage(pathname, primaryNav.href) ? "page" : undefined}
+                aria-describedby={isCurrentPage(pathname, primaryNav.href) ? "current-page-hint" : undefined}
                 className="group flex items-center gap-2 transition-opacity active:opacity-70 lg:hidden"
               >
-                {/* 图标容器 */}
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40">
                   <PrimaryIcon className="h-6 w-6 text-brand-gold" />
                 </div>
-                {/* 文字 */}
                 <div className="flex flex-col">
                   <span
                     className="text-[14px] font-medium leading-[21px] text-[#00263E]"
@@ -219,51 +246,17 @@ export function BottomNavBar() {
                 </div>
               </Link>
 
-              {/* ================= 桌面端左侧固定导航 (Story - 关于旎柏 - 极简横向锁定) ================= */}
-              {(() => {
-                const storyItem = allNavItems.find((item) => item.href === "/about")!;
-                const Icon = storyItem.icon;
-
-                return (
-                  <div className="hidden items-center gap-8 lg:flex">
-                    <Link
-                      href={storyItem.href}
-                      onClick={(e) => handleNavClick(storyItem.href, e)}
-                      className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
-                    >
-                      {/* 图标 */}
-                      <Icon className={cn(
-                        "h-8 w-8 transition-all duration-300 group-hover:scale-105",
-                        isCurrentPage(pathname, storyItem.href)
-                          ? "text-brand-gold"
-                          : "text-brand-charcoal-light group-hover:text-brand-gold"
-                      )} />
-
-                      {/* 主标题 */}
-                      <span className={cn(
-                        "text-[18px] font-medium tracking-wide transition-colors duration-300",
-                        isCurrentPage(pathname, storyItem.href)
-                          ? "text-[#00263E]"
-                          : "text-[#00263E]/60"
-                      )}>
-                        {storyItem.label}
-                      </span>
-                    </Link>
-
-                    {/* 垂直分割线 */}
-                    <div className="h-10 w-px bg-brand-charcoal/15" />
-                  </div>
-                );
-              })()}
-
-              {/* 移动端：购物车按钮 (已移除) */}
+              {/* 桌面端左侧固定导航 */}
+              <DesktopStoryNav pathname={pathname} />
 
               {/* 移动端：菜单按钮 */}
               <button
                 type="button"
-                onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
-                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40 transition-colors active:bg-[#E8E4D8] lg:hidden"
+                onClick={() => setNavMenuOpen(!isNavMenuOpen)}
+                aria-expanded={isNavMenuOpen}
+                aria-controls="mobile-nav-menu"
                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40 transition-colors active:bg-[#E8E4D8] lg:hidden"
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {isNavMenuOpen ? (
@@ -290,8 +283,7 @@ export function BottomNavBar() {
                 </AnimatePresence>
               </button>
 
-              {/* ================= 桌面端右侧固定导航列表 ================= */}
-              {/* 排除 Story (已在左侧)，其余按顺序排列 */}
+              {/* 桌面端右侧固定导航列表 */}
               <div className="hidden items-center gap-3 lg:flex lg:gap-[40px]">
                 {allNavItems
                   .filter((item) => item.href !== "/about")
@@ -307,6 +299,8 @@ export function BottomNavBar() {
                         <Link
                           href={item.href}
                           onClick={(e) => handleNavClick(item.href, e)}
+                          aria-current={isActive ? "page" : undefined}
+                          aria-describedby={isActive ? "current-page-hint" : undefined}
                           className={cn(
                             "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00263E]",
                             isActive
@@ -314,25 +308,27 @@ export function BottomNavBar() {
                               : "text-[#00263E]/60 hover:text-[#00263E]"
                           )}
                         >
-                          <Icon className={cn(
-                            "h-8 w-8 transition-all duration-300 ease-out group-hover:translate-y-[-2px]",
-                            isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
-                          )} />
+                          <Icon
+                            className={cn(
+                              "h-8 w-8 transition-all duration-300 ease-out group-hover:translate-y-[-2px]",
+                              isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
+                            )}
+                          />
                           <span>{item.label}</span>
                         </Link>
                       </React.Fragment>
                     );
                   })}
-
-                {/* 桌面端：分割线 */}
-                {/* <div className="h-10 w-px bg-black/20" /> */}
-
-                {/* 桌面端：购物车按钮 (已移除) */}
               </div>
             </nav>
-          </m.header>
+          </m.div>
         )}
       </AnimatePresence>
+
+      {/* 当前页操作提示（仅对屏幕阅读器可见） */}
+      <span id="current-page-hint" className="sr-only">
+        点击打开当前页详情
+      </span>
     </>
   );
 }
