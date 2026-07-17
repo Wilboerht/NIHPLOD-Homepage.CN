@@ -388,7 +388,7 @@ export function StoryContent() {
               )}
 
               {/* 移动端 Section 4: 媒体获奖 */}
-              {activeSection === "awards" && (
+               {activeSection === "awards" && (
                 <section className="relative pb-4 pt-7">
                   <div className="mb-7 flex flex-col items-center">
                     <h2
@@ -399,7 +399,7 @@ export function StoryContent() {
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                   </div>
-                   <div className="mb-6 px-6">
+                   <div className="relative mb-6 px-6">
                     {/* 奖项列表 */}
                     <div className="flex flex-col gap-4">
                       {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map((award, idx) => (
@@ -452,19 +452,16 @@ export function StoryContent() {
                       ))}
                     </div>
 
-                    {/* 移动端分页控制 */}
+                    {/* 左右浮动箭头 */}
                     {AWARDS_DATA.length > 6 && (
-                      <div className="mt-6 flex items-center justify-center gap-6">
+                      <>
                         <button
                           onClick={() => setCurrentAwardPage((p) => Math.max(0, p - 1))}
                           disabled={currentAwardPage === 0}
-                          className="rounded-full p-2 transition-colors hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent"
+                          className="absolute left-0 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
                         >
                           <ChevronLeft className="h-5 w-5 text-[#00263e]" />
                         </button>
-                        <span className="text-sm font-light tracking-widest text-[#00263e]/60">
-                          {currentAwardPage + 1} / {Math.ceil(AWARDS_DATA.length / 6)}
-                        </span>
                         <button
                           onClick={() =>
                             setCurrentAwardPage((p) =>
@@ -472,11 +469,11 @@ export function StoryContent() {
                             )
                           }
                           disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
-                          className="rounded-full p-2 transition-colors hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent"
+                          className="absolute right-0 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
                         >
                           <ChevronRight className="h-5 w-5 text-[#00263e]" />
                         </button>
-                      </div>
+                      </>
                     )}
                   </div>
                 </section>
@@ -621,7 +618,7 @@ export function StoryContent() {
                       </div>
 
                       {/* 右侧悬浮卡片 - 减小高度并叠层 */}
-                      <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#F8F7F3] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
+                      <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#FCF9F2] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
                         <div>
                           <span className="mb-4 block text-[12px] uppercase tracking-[4px] text-brand-charcoal/60">
                             公司使命
@@ -716,9 +713,9 @@ export function StoryContent() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                    className="relative flex h-full flex-col justify-center pb-20 lg:pb-24"
+                    className="relative flex h-full flex-col justify-center"
                   >
-                    {/* 奖项网格 - 使用 16:9 比例自适应布局 */}
+                    {/* 奖项网格 */}
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                       {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map(
                         (award, idx) => (
@@ -762,19 +759,16 @@ export function StoryContent() {
                       )}
                     </div>
 
-                    {/* Pagination Controls */}
+                    {/* 左右浮动箭头 */}
                     {AWARDS_DATA.length > 6 && (
-                      <div className="absolute bottom-4 right-0 z-20 flex items-center gap-4">
+                      <>
                         <button
                           onClick={() => setCurrentAwardPage((p) => Math.max(0, p - 1))}
                           disabled={currentAwardPage === 0}
-                          className="rounded-full p-2 transition-colors hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent"
+                          className="absolute -left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none lg:-left-5"
                         >
-                          <ChevronLeft className="h-6 w-6 text-[#00263e]" />
+                          <ChevronLeft className="h-5 w-5 text-[#00263e]" />
                         </button>
-                        <span className="text-sm font-light tracking-widest text-[#00263e]/60">
-                          {currentAwardPage + 1} / {Math.ceil(AWARDS_DATA.length / 6)}
-                        </span>
                         <button
                           onClick={() =>
                             setCurrentAwardPage((p) =>
@@ -782,11 +776,11 @@ export function StoryContent() {
                             )
                           }
                           disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
-                          className="rounded-full p-2 transition-colors hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent"
+                          className="absolute -right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none lg:-right-5"
                         >
-                          <ChevronRight className="h-6 w-6 text-[#00263e]" />
+                          <ChevronRight className="h-5 w-5 text-[#00263e]" />
                         </button>
-                      </div>
+                      </>
                     )}
                   </m.div>
                 )}
