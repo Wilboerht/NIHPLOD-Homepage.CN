@@ -1812,10 +1812,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 onMouseLeave={() => setHoveredIndex(null)}
                                 className={cn(
                                   // Bento Box 样式：正方形卡片，宽高固定
-                                  "group relative flex aspect-square w-full max-w-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-0 shadow-sm transition-all duration-500",
+                                  "group relative flex aspect-square w-full max-w-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-0 shadow-sm transition-all duration-500 active:scale-[0.98]",
                                   hoveredIndex === index
-                                    ? "scale-[1.03] bg-white/90 shadow-xl ring-1 ring-brand-charcoal/5"
-                                    : "bg-white/40 hover:bg-white/60 hover:shadow-md"
+                                    ? "scale-[1.03] bg-[#FCF9F2] shadow-xl ring-1 ring-brand-charcoal/10"
+                                    : "bg-[#FCF9F2]/70 hover:bg-[#FCF9F2]/90 hover:shadow-md"
                                 )}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -1843,7 +1843,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* 英文标题 (如果有) */}
                                 {scheme.nameEn && (
-                                  <span className="mb-6 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40">
+                                  <span className="mb-6 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/50">
                                     {scheme.nameEn}
                                   </span>
                                 )}
@@ -1860,16 +1860,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* 预计用时 */}
                                 <div className="flex items-center gap-2 rounded-full bg-brand-charcoal/5 px-4 py-1.5 text-xs text-brand-charcoal/50 transition-colors group-hover:bg-brand-charcoal/10 group-hover:text-brand-charcoal/70">
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    className="h-3.5 w-3.5"
-                                  >
-                                    <circle cx="12" cy="12" r="10" />
-                                    <path d="M12 6v6l4 2" />
-                                  </svg>
+                                  <Clock className="h-3.5 w-3.5" />
                                   <span>预计用时 {scheme.totalDuration}</span>
                                 </div>
                               </m.button>
