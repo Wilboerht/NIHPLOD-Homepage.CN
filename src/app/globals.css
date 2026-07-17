@@ -98,9 +98,14 @@
   @media (min-width: 1024px) {
     .safe-area-content {
       top: max(1.5rem, env(safe-area-inset-top, 1.5rem));
-      left: max(4rem, env(safe-area-inset-left, 4rem));
-      right: max(4rem, env(safe-area-inset-right, 4rem));
       bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
+      /* 限制最大宽度并居中，避免在超宽屏幕上过度拉伸 */
+      left: 50%;
+      right: auto;
+      width: calc(100% - 2 * max(4rem, env(safe-area-inset-left, 4rem)));
+      max-width: 1440px;
+      transform: translateX(-50%) translateZ(0);
+      -webkit-transform: translateX(-50%) translateZ(0);
     }
   }
 

@@ -476,11 +476,11 @@ export function StoryContent() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative flex h-[80px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.08] px-10"
+                  className="relative flex h-[80px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.05] px-10"
                 >
                   {/* 左侧：Logo */}
                   <Link href="/">
-                    <div className="relative h-9 w-[180px]">
+                    <div className="relative h-10 w-[200px]">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
                         alt="Logo"
@@ -554,21 +554,20 @@ export function StoryContent() {
 
                     {/* 右侧文字区域 */}
                     <div className="pl-0 lg:pl-10">
-                      <span className="mb-3 block text-sm uppercase tracking-[5px] text-[#00263e]/60">
+                      <span className="mb-4 block text-sm uppercase tracking-[3px] text-[#00263e]/60">
                         Since 2008 | Monaco
                       </span>
-                      <h2 className="mb-6 text-3xl font-light leading-tight tracking-[4px] text-[#00263e] md:mb-8 md:text-4xl md:tracking-[6px] lg:text-[42px]">
+                      <h2 className="mb-8 text-3xl font-light leading-snug tracking-[4px] text-[#00263e] md:mb-10 md:text-4xl md:tracking-[6px] lg:text-[42px]">
                         来自大自然的
                         <br />
                         神奇修复力
                       </h2>
-                      <p className="max-w-md text-[15px] leading-[1.8] tracking-wide text-[#00263e]/75">
+                      <p className="max-w-md text-[16px] leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
                         海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。所以我们将「DOLPHIN」这个单词逆转，这就是
                         NIHPLOD。
-                        <br />
-                        <br />
-                        创始人 Dr. Stefan
-                        博士和他的团队，将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
+                      </p>
+                      <p className="mt-6 max-w-md text-[16px] leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
+                        创始人 Dr. Stefan 和他的团队，将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
                       </p>
                     </div>
                   </m.div>
@@ -598,18 +597,18 @@ export function StoryContent() {
                       {/* 右侧悬浮卡片 - 减小高度并叠层 */}
                       <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#FAF5EA] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.1)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
                         <div>
-                          <span className="mb-3 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
+                          <span className="mb-4 block text-[12px] uppercase tracking-[4px] text-[#00263e]/60">
                             公司使命
                           </span>
-                          <h2 className="mb-4 text-[28px] font-light leading-tight tracking-[4px] text-[#00263e] md:text-[32px] md:tracking-[6px] lg:text-[36px]">
+                          <h2 className="mb-8 text-[28px] font-light leading-snug tracking-[4px] text-[#00263e] md:text-[32px] md:tracking-[6px] lg:text-[36px]">
                             化繁为简
                             <br />
                             逆转时光
                           </h2>
-                          <p className="max-w-[420px] text-[15px] font-light leading-[1.8] tracking-wide text-[#00263e]/75">
+                          <p className="max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
                             旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
-                            <br />
-                            <br />
+                          </p>
+                          <p className="mt-6 max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
                             将逆转时光的不可能，慢慢变得「有可能」。
                           </p>
                         </div>
