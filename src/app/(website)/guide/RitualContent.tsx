@@ -2445,7 +2445,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                         </span>
                                         <button
                                           onClick={() => setCurrentStepIndex(p => Math.min(Math.ceil(currentSteps.length / 3) - 1, p + 1))}
-                                          disabled={currentStepIndex >= Math.ceil(currentSteps.length / 3) - 1}
+                                          disabled={currentStepIndex >= Math.ceil(currentSteps.length / 2) - 1}
                                           className="p-2 rounded-full hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                                         >
                                           <ChevronRight className="w-6 h-6 text-[#00263e]" />
