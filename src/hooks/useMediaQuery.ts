@@ -22,8 +22,12 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-// 预定义断点
+// 预定义断点 — 与 Tailwind lg: 断点（1024px）对齐
 export function useIsMobile() {
-  return useMediaQuery("(max-width: 768px)");
+  return useMediaQuery("(max-width: 1023px)");
+}
+
+export function useIsDesktop() {
+  return useMediaQuery("(min-width: 1024px)");
 }
 

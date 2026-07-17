@@ -16,6 +16,7 @@ import {
 import { ProductCard, PlatformIcon, XiaohongshuLink } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useToast } from "@/components/ui/Toast";
 import { useCartStore } from "@/store/cart";
 
@@ -78,15 +79,15 @@ export function ProductDetailContent({
   relatedProducts,
 }: ProductDetailContentProps) {
   const router = useRouter();
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [shouldRender, setShouldRender] = useState(true);
 
   useEffect(() => {
-    // PC 端禁止访问独立产品详情页，重定向到产品列表
-    if (typeof window !== "undefined" && window.innerWidth > 768) {
+    if (isDesktop) {
       setShouldRender(false);
       router.replace("/products");
     }
-  }, [router]);
+  }, [isDesktop, router]);
 
   // 标记从产品列表页导航过来，返回时跳过列表页抽屉动画
   useEffect(() => {
@@ -116,6 +117,24 @@ export function ProductDetailContent({
     description: product.description,
     ingredients: product.ingredients,
     usage: product.usage,
+  };
+
+  const handleTabKeyDown = (e: React.KeyboardEvent) => {
+    const currentIndex = tabs.findIndex((t) => t.key === activeTab);
+    let nextIndex = currentIndex;
+    if (e.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % tabs.length;
+    } else if (e.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    } else if (e.key === "Home") {
+      nextIndex = 0;
+    } else if (e.key === "End") {
+      nextIndex = tabs.length - 1;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    setActiveTab(tabs[nextIndex].key);
   };
 
   // 轮播容器宽度
@@ -387,13 +406,17 @@ export function ProductDetailContent({
                     <div className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4">
                       {/* Tab 切换 */}
                       <div className="border-b border-brand-beige">
-                        <div className="flex justify-start gap-8" role="tablist">
+                        <div className="flex justify-start gap-8" role="tablist" aria-label="产品信息">
                           {tabs.map((tab) => (
                             <div
                               key={tab.key}
                               role="tab"
+                              id={`tab-${tab.key}`}
                               aria-selected={activeTab === tab.key}
+                              aria-controls={`panel-${tab.key}`}
+                              tabIndex={activeTab === tab.key ? 0 : -1}
                               onClick={() => setActiveTab(tab.key)}
+                              onKeyDown={handleTabKeyDown}
                               className={cn(
                                 "relative pb-3 text-[14px] font-normal transition-colors cursor-pointer",
                                 activeTab === tab.key
@@ -418,6 +441,10 @@ export function ProductDetailContent({
                         {tabs.map((tab) => (
                           <div
                             key={tab.key}
+                            role="tabpanel"
+                            id={`panel-${tab.key}`}
+                            aria-labelledby={`tab-${tab.key}`}
+                            tabIndex={0}
                             className={cn(
                               "transition-opacity duration-300",
                               activeTab === tab.key
