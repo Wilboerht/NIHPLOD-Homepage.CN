@@ -1,13 +1,14 @@
 "use client";
 import React, { useMemo, useCallback } from "react";
 
-import { m, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 import { Menu, X, Home, BookOpen, HelpCircle, ShoppingBag } from "lucide-react";
 import { cn, isCurrentPage } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { AboutIcon } from "./icons/AboutIcon";
 
 /**
  * 导航项配置
@@ -19,29 +20,11 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-/**
- * 自定义 "关于旎柏" SVG 图标
- */
-const CustomAboutIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      stroke="currentColor"
-      strokeWidth="1.82"
-      d="M2.889 12.422c0 5.584 4.527 10.11 10.11 10.11q1.039-.001 2.017-.2c1.034-.228.587 1.232 1.31 1.353.883.147 6.785-5.082 6.785-11.263C23.111 6.837 18.584 2.31 13 2.31S2.889 6.837 2.889 12.42Z"
-    />
-    <path
-      fill="currentColor"
-      d="M8.602 17.29a.29.29 0 0 1-.29-.288V9.734a.29.29 0 0 1 .48-.218l1.415 1.238a.3.3 0 0 1 .099.218v6.03c0 .16-.13.288-.29.288zm-.192-6.825a.3.3 0 0 1-.097-.216V8.545c0-.31.367-.476.6-.27l5.575 4.928V8.33c0-.16.13-.289.289-.289h1.415c.16 0 .289.13.289.29v8.456a.361.361 0 0 1-.6.271z"
-    />
-    <circle cx="18.628" cy="16.209" r=".934" fill="currentColor" />
-  </svg>
-);
-
 const allNavItems: NavItem[] = [
   { href: "/products", label: "产品系列", labelEn: "Products", icon: ShoppingBag },
   { href: "/guide", label: "护肤指南", labelEn: "Guide", icon: BookOpen },
   { href: "/faq", label: "常见问题", labelEn: "FAQ", icon: HelpCircle },
-  { href: "/about", label: "品牌故事", labelEn: "About", icon: CustomAboutIcon },
+  { href: "/about", label: "品牌故事", labelEn: "About", icon: AboutIcon },
   { href: "/", label: "首页", labelEn: "Home", icon: Home },
 ];
 
@@ -71,7 +54,7 @@ function DesktopStoryNav({ pathname }: { pathname: string }) {
         <span
           className={cn(
             "text-[18px] font-medium tracking-wide transition-colors duration-300",
-            isActive ? "text-[#00263E]" : "text-[#00263E]/60"
+            isActive ? "text-brand-charcoal" : "text-brand-charcoal/60"
           )}
         >
           {storyNavItem.label}
@@ -90,6 +73,7 @@ function DesktopStoryNav({ pathname }: { pathname: string }) {
  */
 export function BottomNavBar() {
   const pathname = usePathname();
+  const shouldReduceMotion = useReducedMotion();
   const {
     isDrawerOpen,
     setDrawerOpen,
@@ -136,6 +120,17 @@ export function BottomNavBar() {
   const isVisible =
     !isDrawerOpen && !isDrawerAnimating && !activeModal && !userCenterOpen && !isProductDetailPage;
 
+  // 尊重用户减少动画偏好
+  const dockTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const };
+
+  const menuTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: 0.2, ease: [0.4, 0, 0.2, 1] as const };
+
+  const iconTransition = shouldReduceMotion ? { duration: 0 } : { duration: 0.15 };
+
   return (
     <>
       {/* 移动端菜单遮罩层 */}
@@ -145,8 +140,8 @@ export function BottomNavBar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-[#00263E]/30 backdrop-blur-sm lg:hidden"
+            transition={menuTransition}
+            className="fixed inset-0 z-40 bg-brand-charcoal/30 backdrop-blur-sm lg:hidden"
             onClick={() => setNavMenuOpen(false)}
           />
         )}
@@ -159,10 +154,7 @@ export function BottomNavBar() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            transition={{
-              duration: 0.6,
-              ease: [0.22, 1, 0.36, 1],
-            }}
+            transition={dockTransition}
             className={cn(
               "pointer-events-none fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
               isServicesPage && "max-lg:hidden"
@@ -172,12 +164,13 @@ export function BottomNavBar() {
             <AnimatePresence>
               {isNavMenuOpen && (
                 <m.div
+                  data-testid="mobile-nav-menu"
                   id="mobile-nav-menu"
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-2xl bg-[#FBF8F0] p-2 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.1)] lg:hidden"
+                  transition={menuTransition}
+                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-2xl bg-brand-cream p-2 shadow-[0_8px_30px_-8px_theme(colors.brand.charcoal/0.1)] lg:hidden"
                 >
                   <div className="flex flex-col gap-1.5">
                     {otherNavItems.map((item) => {
@@ -187,21 +180,21 @@ export function BottomNavBar() {
                           key={item.href}
                           href={item.href}
                           onClick={() => setNavMenuOpen(false)}
-                          className="flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/20"
+                          className="flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/50"
                         >
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/40">
                             <Icon className="h-5 w-5 text-brand-gold" />
                           </div>
                           <div className="flex flex-col">
                             <span
-                              className="text-[14px] font-medium leading-[21px] text-[#00263E]"
+                              className="text-[14px] font-medium leading-[21px] text-brand-charcoal"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
                             >
                               {item.label}
                             </span>
-                            <span className="text-[11px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.6)]">
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/60">
                               {item.labelEn}
                             </span>
                           </div>
@@ -216,14 +209,15 @@ export function BottomNavBar() {
             <nav
               className={cn(
                 "pointer-events-auto flex items-center justify-between",
-                "rounded-2xl bg-[#FBF8F0] px-4 py-4 shadow-[0_4px_20px_-8px_rgba(0,38,62,0.06)]",
-                "lg:h-[100px] lg:rounded-[20px] lg:bg-[#FBF8F0] lg:px-10 lg:py-0",
-                "lg:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.08)]"
+                "rounded-2xl bg-brand-cream px-4 py-4 shadow-[0_4px_20px_-8px_theme(colors.brand.charcoal/0.06)]",
+                "lg:h-[100px] lg:rounded-[20px] lg:px-10 lg:py-0",
+                "lg:shadow-[0_8px_30px_-8px_theme(colors.brand.charcoal/0.08)]"
               )}
               aria-label="主要导航"
             >
               {/* 移动端左侧主导航 (动态) */}
               <Link
+                data-testid="mobile-primary-nav"
                 href={primaryNav.href}
                 onClick={(e) => handleNavClick(primaryNav.href, e)}
                 aria-current={isCurrentPage(pathname, primaryNav.href) ? "page" : undefined}
@@ -235,12 +229,12 @@ export function BottomNavBar() {
                 </div>
                 <div className="flex flex-col">
                   <span
-                    className="text-[14px] font-medium leading-[21px] text-[#00263E]"
+                    className="text-[14px] font-medium leading-[21px] text-brand-charcoal"
                     style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                   >
                     {primaryNav.label}
                   </span>
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-[rgba(0,38,62,0.6)]">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/60">
                     {primaryNav.labelEn}
                   </span>
                 </div>
@@ -251,12 +245,13 @@ export function BottomNavBar() {
 
               {/* 移动端：菜单按钮 */}
               <button
+                data-testid="mobile-menu-button"
                 type="button"
                 onClick={() => setNavMenuOpen(!isNavMenuOpen)}
                 aria-expanded={isNavMenuOpen}
                 aria-controls="mobile-nav-menu"
                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
-                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40 transition-colors active:bg-[#E8E4D8] lg:hidden"
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40 transition-colors active:bg-brand-beige/50 lg:hidden"
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {isNavMenuOpen ? (
@@ -265,7 +260,7 @@ export function BottomNavBar() {
                       initial={{ opacity: 0, rotate: -90 }}
                       animate={{ opacity: 1, rotate: 0 }}
                       exit={{ opacity: 0, rotate: 90 }}
-                      transition={{ duration: 0.15 }}
+                      transition={iconTransition}
                     >
                       <X className="h-5 w-5 text-brand-gold" />
                     </m.div>
@@ -275,7 +270,7 @@ export function BottomNavBar() {
                       initial={{ opacity: 0, rotate: 90 }}
                       animate={{ opacity: 1, rotate: 0 }}
                       exit={{ opacity: 0, rotate: -90 }}
-                      transition={{ duration: 0.15 }}
+                      transition={iconTransition}
                     >
                       <Menu className="h-5 w-5 text-brand-gold" />
                     </m.div>
@@ -284,7 +279,7 @@ export function BottomNavBar() {
               </button>
 
               {/* 桌面端右侧固定导航列表 */}
-              <div className="hidden items-center gap-3 lg:flex lg:gap-[40px]">
+              <div data-testid="desktop-nav-list" className="hidden items-center gap-3 lg:flex lg:gap-[40px]">
                 {allNavItems
                   .filter((item) => item.href !== "/about")
                   .map((item) => {
@@ -302,10 +297,10 @@ export function BottomNavBar() {
                           aria-current={isActive ? "page" : undefined}
                           aria-describedby={isActive ? "current-page-hint" : undefined}
                           className={cn(
-                            "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00263E]",
+                            "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-charcoal",
                             isActive
-                              ? "text-[#00263E]"
-                              : "text-[#00263E]/60 hover:text-[#00263E]"
+                              ? "text-brand-charcoal"
+                              : "text-brand-charcoal/60 hover:text-brand-charcoal"
                           )}
                         >
                           <Icon
