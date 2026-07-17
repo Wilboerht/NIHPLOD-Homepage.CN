@@ -387,7 +387,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               </h1>
 
               {/* 移动端 & iPad mini (4行) */}
-              <h1 className="title block text-lg font-light text-brand-charcoal min-[820px]:hidden">
+              <div className="title block text-lg font-light text-brand-charcoal min-[820px]:hidden">
                 {[
                   "海豚的肌肤，拥有每两小时",
                   "自我更新的神奇能力，",
@@ -409,7 +409,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     {line}
                   </m.span>
                 ))}
-              </h1>
+              </div>
             </m.div>
 
             {/* 按钮组 - 增加触压反馈 */}
@@ -426,7 +426,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 className="btn btn-primary group min-h-0 min-w-0"
               >
                 <span>探索旎柏</span>
-                <ArrowRight className="h-4 w-4 transition-transform duration-500 group-hover:translate-x-2" />
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
               </m.button>
               {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
                       <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
@@ -462,10 +462,10 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
               {/* 版权文本 & 备案信息 */}
               <div className="flex flex-col items-center gap-2 opacity-60">
-                <p className="relative z-10 text-[10px] font-light leading-tight tracking-widest text-brand-charcoal sm:text-[11px]">
+                <p className="relative z-10 text-xs font-light leading-tight tracking-widest text-brand-charcoal sm:text-sm">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
-                <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap text-[10px] font-light leading-tight tracking-normal text-brand-charcoal sm:gap-4 sm:text-[10px] sm:tracking-widest">
+                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 whitespace-nowrap text-[9px] font-light leading-tight tracking-normal text-brand-charcoal sm:gap-x-4 sm:text-[10px] sm:tracking-widest">
                   <Link
                     href="https://beian.miit.gov.cn/"
                     target="_blank"
