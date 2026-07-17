@@ -39,22 +39,25 @@ function DesktopStoryNav({ pathname }: { pathname: string }) {
   const isActive = isCurrentPage(pathname, storyNavItem.href);
 
   return (
-    <div className="hidden items-center gap-8 lg:flex">
+    <div className="hidden items-center gap-6 lg:flex">
       <Link
         href={storyNavItem.href}
         aria-current={isActive ? "page" : undefined}
-        className="group flex items-center gap-3 px-2 transition-opacity duration-300 hover:opacity-70"
+        className={cn(
+          "group flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-300",
+          isActive ? "bg-brand-charcoal/[0.05]" : "hover:bg-brand-charcoal/[0.03]"
+        )}
       >
         <Icon
           className={cn(
-            "h-8 w-8 transition-all duration-300 group-hover:scale-105",
+            "h-5 w-5 transition-all duration-300 group-hover:scale-105",
             isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
           )}
         />
         <span
           className={cn(
-            "text-[18px] font-medium tracking-wide transition-colors duration-300",
-            isActive ? "text-brand-charcoal" : "text-brand-charcoal/60"
+            "text-[15px] font-medium tracking-wide transition-colors duration-300",
+            isActive ? "text-brand-charcoal" : "text-brand-charcoal/60 group-hover:text-brand-charcoal"
           )}
         >
           {storyNavItem.label}
@@ -62,7 +65,7 @@ function DesktopStoryNav({ pathname }: { pathname: string }) {
       </Link>
 
       {/* 垂直分割线 */}
-      <div className="h-10 w-px bg-brand-charcoal/15" />
+      <div className="h-6 w-px bg-brand-charcoal/15" />
     </div>
   );
 }
@@ -109,6 +112,7 @@ export function BottomNavBar() {
   );
 
   const PrimaryIcon = primaryNav.icon;
+  const isPrimaryActive = isCurrentPage(pathname, primaryNav.href);
 
   // 服务入口页面在移动端隐藏底部导航栏（实现全屏效果）
   const isServicesPage = pathname === "/services";
@@ -209,9 +213,9 @@ export function BottomNavBar() {
             <nav
               className={cn(
                 "pointer-events-auto flex items-center justify-between",
-                "rounded-2xl bg-brand-cream px-4 py-4 shadow-[0_4px_20px_-8px_theme(colors.brand.charcoal/0.06)]",
-                "lg:h-[100px] lg:rounded-[20px] lg:px-10 lg:py-0",
-                "lg:shadow-[0_8px_30px_-8px_theme(colors.brand.charcoal/0.08)]"
+                "rounded-2xl bg-brand-cream px-4 py-3 shadow-[0_1px_1px_theme(colors.brand.charcoal/0.02),0_8px_24px_-6px_theme(colors.brand.charcoal/0.08)]",
+                "lg:h-[76px] lg:rounded-[20px] lg:px-8 lg:py-0",
+                "xl:px-10"
               )}
               aria-label="主要导航"
             >
@@ -220,16 +224,19 @@ export function BottomNavBar() {
                 data-testid="mobile-primary-nav"
                 href={primaryNav.href}
                 onClick={(e) => handleNavClick(primaryNav.href, e)}
-                aria-current={isCurrentPage(pathname, primaryNav.href) ? "page" : undefined}
-                aria-describedby={isCurrentPage(pathname, primaryNav.href) ? "current-page-hint" : undefined}
-                className="group flex items-center gap-2 transition-opacity active:opacity-70 lg:hidden"
+                aria-current={isPrimaryActive ? "page" : undefined}
+                aria-describedby={isPrimaryActive ? "current-page-hint" : undefined}
+                className={cn(
+                  "group flex items-center gap-2 rounded-xl px-2 py-2 transition-all active:scale-[0.97] active:opacity-70 lg:hidden",
+                  isPrimaryActive ? "bg-brand-charcoal/[0.05]" : "hover:bg-brand-charcoal/[0.03]"
+                )}
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40">
-                  <PrimaryIcon className="h-6 w-6 text-brand-gold" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/40">
+                  <PrimaryIcon className="h-5 w-5 text-brand-gold" />
                 </div>
                 <div className="flex flex-col">
                   <span
-                    className="text-[14px] font-medium leading-[21px] text-brand-charcoal"
+                    className="text-[15px] font-medium leading-[22px] text-brand-charcoal"
                     style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                   >
                     {primaryNav.label}
@@ -251,7 +258,7 @@ export function BottomNavBar() {
                 aria-expanded={isNavMenuOpen}
                 aria-controls="mobile-nav-menu"
                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
-                className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40 transition-colors active:bg-brand-beige/50 lg:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/40 transition-colors active:bg-brand-beige/50 lg:hidden"
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {isNavMenuOpen ? (
@@ -279,7 +286,7 @@ export function BottomNavBar() {
               </button>
 
               {/* 桌面端右侧固定导航列表 */}
-              <div data-testid="desktop-nav-list" className="hidden items-center gap-3 lg:flex lg:gap-[40px]">
+              <div data-testid="desktop-nav-list" className="hidden items-center gap-1 lg:flex xl:gap-2">
                 {allNavItems
                   .filter((item) => item.href !== "/about")
                   .map((item) => {
@@ -290,22 +297,22 @@ export function BottomNavBar() {
                     return (
                       <React.Fragment key={item.href}>
                         {/* 在首页前添加分割线 */}
-                        {isHome && <div className="h-10 w-px bg-brand-charcoal/15" />}
+                        {isHome && <div className="mx-2 h-6 w-px bg-brand-charcoal/15 xl:mx-3" />}
                         <Link
                           href={item.href}
                           onClick={(e) => handleNavClick(item.href, e)}
                           aria-current={isActive ? "page" : undefined}
                           aria-describedby={isActive ? "current-page-hint" : undefined}
                           className={cn(
-                            "group flex flex-col items-center gap-1 py-2 text-[15px] font-medium transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-charcoal",
+                            "group flex items-center gap-2 rounded-xl px-3 py-2 text-[15px] font-medium transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-charcoal",
                             isActive
-                              ? "text-brand-charcoal"
-                              : "text-brand-charcoal/60 hover:text-brand-charcoal"
+                              ? "bg-brand-charcoal/[0.05] text-brand-charcoal"
+                              : "text-brand-charcoal/60 hover:bg-brand-charcoal/[0.03] hover:text-brand-charcoal"
                           )}
                         >
                           <Icon
                             className={cn(
-                              "h-8 w-8 transition-all duration-300 ease-out group-hover:translate-y-[-2px]",
+                              "h-5 w-5 transition-all duration-300 ease-out group-hover:scale-110",
                               isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
                             )}
                           />

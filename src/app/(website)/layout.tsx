@@ -30,7 +30,7 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="relative z-10 pointer-events-none [&>*]:pointer-events-auto"
+          className="relative z-10 pointer-events-none pb-28 lg:pb-24 [&>*]:pointer-events-auto"
         >
           {children}
         </main>
