@@ -302,7 +302,7 @@ export function KineticBackground() {
           ref={(el) => addCellRef(el, 4)}
           className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect"
         >
-          <div className="kinetic-name" style={{ fontSize: "1.8rem" }}>
+          <div className="kinetic-name" style={{ fontSize: "1.8rem", fontWeight: 300 }}>
             逆转时光
           </div>
           <div
