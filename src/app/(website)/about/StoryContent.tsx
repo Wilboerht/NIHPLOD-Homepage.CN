@@ -594,7 +594,7 @@ export function StoryContent() {
                       </div>
 
                       {/* 右侧悬浮卡片 - 减小高度并叠层 */}
-                      <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#FAF5EA] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.1)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
+                      <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#F8F7F3] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
                         <div>
                           <span className="mb-4 block text-[12px] uppercase tracking-[4px] text-brand-charcoal/60">
                             公司使命
@@ -665,7 +665,7 @@ export function StoryContent() {
                     ].map((item, idx) => (
                       <div
                         key={idx}
-                        className="flex h-full flex-col justify-between bg-[#FAF5EA] p-8 transition-all duration-300 hover:-translate-y-1 hover:bg-[#FAF5EA] hover:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] lg:p-10"
+                        className="flex h-full flex-col justify-between bg-[#FAF5EA] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] lg:p-10"
                       >
                         <span className="text-6xl font-thin text-[#00263e]/10">{item.num}</span>
                         <div>
