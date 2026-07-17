@@ -241,7 +241,7 @@ export function KineticBackground() {
             style={{
               fontSize: "14px",
               lineHeight: "1.5",
-              letterSpacing: "0.08em",
+              letterSpacing: "0.12em",
               textTransform: "none",
               fontWeight: 400,
             }}
