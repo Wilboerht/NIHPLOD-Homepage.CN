@@ -358,13 +358,13 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 variants={{
                   visible: {
                     transition: {
-                      staggerChildren: 0.3,
+                      staggerChildren: 0.25,
                       delayChildren: 0.6,
                     },
                   },
                 }}
               >
-                <h1 className="title text-lg font-light tracking-wide text-brand-charcoal min-[820px]:text-xl min-[820px]:tracking-[0.25em] lg:text-2xl">
+                <h1 className="title">
                   <span className="block min-[820px]:hidden">
                     {[
                       "海豚的肌肤，拥有每两小时",

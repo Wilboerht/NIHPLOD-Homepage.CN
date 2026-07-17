@@ -607,15 +607,17 @@
 /* 品牌文案 - 高奢护肤品调性 */
 .home-container .title {
   font-family: "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
-  font-weight: 400;
-  line-height: 1.65;
+  font-size: 1.0625rem;
+  font-weight: 300;
+  line-height: 1.6;
   letter-spacing: 0.04em;
-  color: var(--home-text-primary);
+  color: rgba(0, 38, 62, 0.86);
 }
 
-@media (min-width: 820px) {
+@media (min-width: 1024px) {
   .home-container .title {
-    letter-spacing: 0.06em;
+    font-size: 1.1875rem;
+    letter-spacing: 0.045em;
   }
 }
 
@@ -802,12 +804,10 @@
 /* 响应式 - 将断点提升至包含 iPad mini (820px) */
 @media (max-width: 820px) {
   .home-container .title {
-    font-size: 1rem;
-    /* 小屏保持 16px 基准 */
-    line-height: 1.75;
-    letter-spacing: 0.05em;
-    /* 字间距收紧 */
-    padding: 0 12px;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    letter-spacing: 0.04em;
+    padding: 0 16px;
   }
 
   .home-container .home-explore-btn {
@@ -832,10 +832,9 @@
   .home-container .title {
     font-size: 0.875rem;
     /* 14px，极窄屏进一步缩小 */
-    line-height: 1.75;
-    letter-spacing: 0.05em;
-    /* 减小字距避免换行太碎 */
-    padding: 0 8px;
+    line-height: 1.6;
+    letter-spacing: 0.04em;
+    padding: 0 12px;
   }
 
   .home-container .home-explore-btn {
