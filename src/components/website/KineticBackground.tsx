@@ -239,9 +239,9 @@ export function KineticBackground() {
           <div
             className="kinetic-desc"
             style={{
-              fontSize: "13px",
+              fontSize: "14px",
               lineHeight: "1.5",
-              letterSpacing: "0.05em",
+              letterSpacing: "0.08em",
               textTransform: "none",
               fontWeight: 400,
             }}
@@ -308,8 +308,8 @@ export function KineticBackground() {
           <div
             className="kinetic-desc"
             style={{
-              fontSize: "13px",
-              letterSpacing: "0.05em",
+              fontSize: "14px",
+              letterSpacing: "0.08em",
               textTransform: "none",
               fontWeight: 400,
               opacity: 0.8,
