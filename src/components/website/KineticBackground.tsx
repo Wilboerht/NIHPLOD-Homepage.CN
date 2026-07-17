@@ -94,8 +94,8 @@ export function KineticBackground() {
 
     const setupListeners = () => {
       if (mediaQuery.matches && !prefersReducedMotion) {
-        container.addEventListener("mousemove", handleMouseMove);
-        container.addEventListener("mouseleave", handleMouseLeave);
+        // 3D 视差已禁用
+        handleMouseLeave();
       } else {
         handleMouseLeave();
         container.removeEventListener("mousemove", handleMouseMove);
