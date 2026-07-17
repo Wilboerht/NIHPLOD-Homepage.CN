@@ -408,7 +408,7 @@ export function StoryContent() {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
-                          className="flex flex-col border-[1.5px] border-[#FFFFFF]"
+                          className="flex flex-col border-[1.5px] border-[#00263e]/20 bg-[#F8F7F3]"
                         >
                           {/* Award Image */}
                           <div className="relative w-full overflow-hidden">
@@ -731,7 +731,7 @@ export function StoryContent() {
                               delay: idx * 0.1,
                               ease: [0.22, 1, 0.36, 1],
                             }}
-                            className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/15 bg-white p-6 transition-all duration-500 hover:border-[#00263e]/40 lg:p-8 xl:p-10"
+                            className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/25 bg-[#F8F7F3] p-6 transition-all duration-500 hover:border-[#00263e]/50 lg:p-8 xl:p-10"
                           >
                             {/* 悬浮显示的背景图 */}
                             <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
