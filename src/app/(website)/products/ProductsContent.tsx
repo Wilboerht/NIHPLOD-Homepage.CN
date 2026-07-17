@@ -559,10 +559,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 {/* 桌面端内容展示 - 保持原有响应式逻辑但对移动端隐藏 */}
                 <div className="hidden h-full flex-col overflow-hidden lg:flex w-full max-w-[1920px] mx-auto">
                   {/* 桌面端内容已有的逻辑... */}
-                  <nav className="relative flex h-[100px] flex-shrink-0 items-center justify-between border-b border-[#00263E]/10 px-[12%]">
+                  <nav className="relative flex h-[88px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.05] px-10 xl:px-[8%]">
                     {/* Logo */}
                     <Link href="/">
-                      <div className="relative w-[100px] aspect-[440/124] sm:w-[124px]">
+                      <div className="relative h-9 w-[150px] opacity-90 transition-opacity hover:opacity-70">
                         <Image
                           src="/images/NIHPLOD-logo.svg"
                           alt="Logo"
@@ -583,7 +583,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             const product = products.find(p => p.categoryId === cat.id);
                             if (product) handleProductClick(product);
                           }}
-                          className="group relative py-1 text-[15px] font-medium text-[#1a1a1a] transition-all hover:opacity-80"
+                          className="group relative py-1 text-[15px] font-medium tracking-[0.1em] text-[#00263E] transition-all hover:opacity-80"
                         >
                           {cat.name}
                           <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-gold transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
@@ -714,7 +714,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   <ChevronLeft className="h-6 w-6 text-[#00263E]" />
                 </button>
                 <Link href="/" className="flex items-center justify-center py-[30px]">
-                  <div className="relative h-[28px] w-[100px]">
+          <div className="relative h-[42px] w-[150px]">
                     <Image
                       src="/images/NIHPLOD-logo.svg"
                       alt="NIHPLOD Logo"
