@@ -408,7 +408,7 @@ export function StoryContent() {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
-                          className="flex flex-col border-[1.5px] border-[#00263e]/20 bg-[#F8F7F3]"
+                          className="flex flex-col border-[1.5px] border-[#00263e]/20 bg-[#FCF9F2]"
                         >
                           {/* Award Image */}
                           <div className="relative w-full overflow-hidden">
@@ -607,17 +607,16 @@ export function StoryContent() {
                   >
                     <div className="relative flex w-full max-w-[1000px] items-center">
                       {/* 左侧大图 - 基准高度 580px */}
-                      <div className="relative z-0 h-[450px] flex-[1.1] overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,38,62,0.2)] md:h-[520px] lg:h-[580px]">
+                      <div className="relative z-0 h-[450px] w-[52%] shrink-0 overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,38,62,0.2)] md:h-[520px] lg:h-[580px]">
                         <Image
                           src="/images/story/mission-image.webp"
                           alt="护肤专家"
                           fill
-                          sizes="(max-width: 768px) 100vw, 550px"
                           className="object-cover object-top"
                         />
                       </div>
 
-                      {/* 右侧悬浮卡片 - 减小高度并叠层 */}
+                      {/* 右侧悬浮卡片 */}
                       <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#FCF9F2] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
                         <div>
                           <span className="mb-4 block text-[12px] uppercase tracking-[4px] text-brand-charcoal/60">
@@ -728,7 +727,7 @@ export function StoryContent() {
                               delay: idx * 0.1,
                               ease: [0.22, 1, 0.36, 1],
                             }}
-                            className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/25 bg-[#F8F7F3] p-6 transition-all duration-500 hover:border-[#00263e]/50 lg:p-8 xl:p-10"
+                            className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/25 bg-[#FCF9F2] p-6 transition-all duration-500 hover:border-[#00263e]/50 lg:p-8 xl:p-10"
                           >
                             {/* 悬浮显示的背景图 */}
                             <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
@@ -737,7 +736,7 @@ export function StoryContent() {
                                   alt={award.title}
                                   fill
                                   sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
-                                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                  className="object-cover transition-all duration-500"
                                 />
                               <div className="absolute inset-0 bg-[#FAF5EA]/80 mix-blend-multiply" />
                             </div>
