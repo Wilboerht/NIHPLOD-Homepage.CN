@@ -274,7 +274,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
                   {/* 桌面端主内容区：增加滚动支持并移除可能导致重叠的弹性冲突 */}
                   {/* 桌面端主内容区：通过限制高度和压缩间距实现单屏显示 */}
-                  <div className="flex-1 overflow-hidden px-[12%] py-4">
+                  <div className="flex-1 overflow-hidden px-10 xl:px-[8%] py-4">
                     <div className="flex h-full flex-col">
                       <div className="flex flex-1 flex-col justify-center">
                         <m.header
