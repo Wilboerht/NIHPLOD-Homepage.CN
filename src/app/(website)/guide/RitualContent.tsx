@@ -1751,9 +1751,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0, x: -30 }}
                           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                          className="absolute inset-0 flex items-center justify-center overflow-visible p-5 lg:p-6"
+                          className="absolute inset-0 flex items-center justify-center overflow-visible px-10 xl:px-[8%]"
                         >
-                          <div className="flex h-full w-full flex-row gap-8 py-10">
+                          <div className="flex h-full w-full flex-row gap-8 py-8 xl:py-14">
                             {modules.map((module, index) => (
                               <m.button
                                 key={module.id}
@@ -1779,7 +1779,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   </h2>
 
                                   {/* 描述/副标题 */}
-                                  <p className="max-w-[220px] text-xs font-normal leading-relaxed tracking-wider text-[#00263e]/75 transition-opacity duration-300 group-hover:opacity-100">
+                                  <p className="max-w-[220px] text-xs lg:text-sm font-normal leading-relaxed tracking-wide text-[#00263e]/75 transition-opacity duration-300 group-hover:opacity-100">
                                     {module.description}
                                   </p>
 
