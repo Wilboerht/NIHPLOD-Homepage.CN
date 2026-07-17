@@ -105,8 +105,7 @@ export function KineticBackground() {
 
     setupListeners();
     mediaQuery.addEventListener("change", setupListeners);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
+    // 滚动视差已禁用
 
     return () => {
       cancelAnimationFrame(mouseRafId);
