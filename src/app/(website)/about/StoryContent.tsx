@@ -169,7 +169,7 @@ export function StoryContent() {
                         contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                       }}
                       className="relative flex flex-1 items-center justify-center"
-                      style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                     
                     >
                       <span
                         className={cn(
@@ -202,7 +202,7 @@ export function StoryContent() {
                   <div className="mb-7 flex flex-col items-center">
                     <h2
                       className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
-                      style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                     
                     >
                       品牌故事
                     </h2>
@@ -268,7 +268,7 @@ export function StoryContent() {
                   <div className="mb-7 flex flex-col items-center">
                     <h2
                       className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
-                      style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                     
                     >
                       公司使命
                     </h2>
@@ -300,7 +300,7 @@ export function StoryContent() {
                     <div className="flex flex-col items-end gap-2.5">
                       <span
                         className="text-[10px] leading-[15px] text-[#00263e]/50"
-                        style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                       
                       >
                         首席执行官
                       </span>
@@ -322,7 +322,7 @@ export function StoryContent() {
                   <div className="mb-7 flex shrink-0 flex-col items-center">
                     <h2
                       className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
-                      style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                     
                     >
                       品牌哲学
                     </h2>
@@ -366,17 +366,11 @@ export function StoryContent() {
                           </span>
                           <h3
                             className="text-[14px] font-normal leading-[21px] text-[#00263E]"
-                            style={{
-                              fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
-                            }}
                           >
                             {item.title}
                           </h3>
                           <p
                             className="text-[14px] font-light leading-[21px] text-[#00263E]"
-                            style={{
-                              fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
-                            }}
                           >
                             {item.desc}
                           </p>
@@ -393,7 +387,7 @@ export function StoryContent() {
                   <div className="mb-7 flex flex-col items-center">
                     <h2
                       className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
-                      style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                     
                     >
                       媒体及获奖
                     </h2>
@@ -425,25 +419,16 @@ export function StoryContent() {
                           <div className="flex flex-col items-center gap-2 p-6 text-center">
                             <span
                               className="text-[14px] font-normal leading-[21px] text-[#00263e]/60"
-                              style={{
-                                fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
-                              }}
                             >
                               {award.org}
                             </span>
                             <h3
                               className="text-[16px] font-medium leading-[24px] text-[#00263E]"
-                              style={{
-                                fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
-                              }}
                             >
                               {award.title}
                             </h3>
                             <span
                               className="text-[14px] font-light leading-[21px] text-[#00263e]/60"
-                              style={{
-                                fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
-                              }}
                             >
                               {award.year}
                             </span>
@@ -482,7 +467,7 @@ export function StoryContent() {
 
             {/* Mobile Footer Copyright */}
             <div className="flex flex-col items-center justify-center pb-4 pt-3">
-              <p className="text-xs font-light leading-tight tracking-widest text-brand-charcoal/70 sm:text-sm">
+              <p className="text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
             </div>
@@ -782,7 +767,7 @@ export function StoryContent() {
 
             {/* Desktop Footer Copyright */}
                 <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
-              <p className="text-center text-xs font-light leading-tight tracking-widest text-brand-charcoal/70 sm:text-sm">
+              <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
             </div>
