@@ -1551,7 +1551,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   {/* 图片展示区 + 胶囊定位容器 */}
                                   <div className="relative mb-5 sm:mb-7">
                                     {/* 步骤胶囊 - 挂在卡片顶部正中间 */}
-                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-[10px] font-medium tracking-widest text-[#00263E] border border-[#00263E]/20 whitespace-nowrap shadow-sm">
+                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-xs font-medium tracking-widest text-[#00263E] border border-[#00263E]/20 whitespace-nowrap shadow-sm">
                                       步骤 {String(index + 1).padStart(2, "0")}
                                     </div>
                                     {/* 图片展示区 - 极简白背景 */}
@@ -1728,10 +1728,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 setSelectedModule(null);
                                 setSelectedScheme(null);
                               }}
-                              className="group flex items-center gap-1.5 rounded-full border border-brand-charcoal/10 bg-white/40 px-4 py-1.5 backdrop-blur-md transition-all duration-300 hover:bg-white/80 hover:border-brand-charcoal/20 hover:shadow-sm"
+                              className="group flex items-center gap-1.5 text-sm font-medium tracking-wide text-brand-charcoal/50 hover:text-brand-charcoal transition-colors"
                             >
-                              <ChevronLeft className="h-3.5 w-3.5 text-brand-charcoal/60 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:text-brand-charcoal" />
-                              <span className="text-xs font-medium tracking-widest text-brand-charcoal/80 transition-colors duration-300 group-hover:text-brand-charcoal">
+                              <ChevronLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
+                              <span>
                                 返回
                               </span>
                             </button>
@@ -1893,7 +1893,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             <header className="mb-9 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                               {/* 左侧标题组 */}
                               <div className="flex flex-row items-end gap-5">
-                                <h1 className="font-display text-[48px] font-light leading-none tracking-wider text-brand-charcoal">
+                                <h1 className="font-sans text-[48px] font-light leading-none tracking-wide text-brand-charcoal">
                                   {selectedModule === "portable" || selectedModule === "professional"
                                     ? modules.find(m => m.id === selectedModule)?.label
                                     : selectedScheme.name}
@@ -1985,14 +1985,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             <div className="flex w-full flex-row gap-12 items-start max-h-[75vh]">
                               {/* 左侧：信息侧边栏 (Info Sidebar) */}
                               <m.aside
-                                className="flex w-[25%] flex-shrink-0 flex-col gap-12 overflow-y-auto pr-4 scrollbar-thin pt-2"
+                                className="flex w-[25%] flex-shrink-0 flex-col gap-8 overflow-y-auto pr-4 scrollbar-thin pt-2"
                                 initial={{ opacity: 0, x: -30 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.8, delay: 0.1, ease: [0.19, 1, 0.22, 1] }}
                               >
                                 {/* Meta Item: Products */}
                                 <div className="flex flex-col relative isolate">
-                                  <h3 className="mb-4 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal-light z-10">
+                                  <h3 className="mb-4 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal z-10">
                                     相关产品
                                   </h3>
 
@@ -2037,7 +2037,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* Meta Item: Benefits (Tags) */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal-light">
+                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal">
                                     核心优势
                                   </h3>
                                   <div className="flex flex-wrap gap-2">
@@ -2056,7 +2056,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* Meta Item: Certifications */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal-light">
+                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal">
                                     检测认证
                                   </h3>
                                   <div className="flex items-center gap-5">
@@ -2087,7 +2087,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                   return (
                                     <div className="flex flex-col">
-                                      <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
+                                      <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal">
                                         特殊时期支持
                                       </h3>
                                       <div className={cn(
@@ -2302,7 +2302,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       </p>
                                     </div>
                                   </m.section>
-                                ) : currentSteps.length <= 2 ? (
+                                ) : currentSteps.length <= 3 ? (
                                   /* <= 3 步骤：直接展示卡片 (无折叠逻辑) */
                                   <m.section
                                     key={`${selectedModule}-simple`}
@@ -2316,7 +2316,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       {currentSteps.map((step, index) => (
                                         <div
                                           key={`${step.title}-${index}`}
-                                          className="relative w-[260px] flex-none group"
+                                          className="relative w-[280px] flex-none group"
                                         >
                                           {/* 步骤序号 */}
                                           <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
@@ -2370,14 +2370,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           exit={{ opacity: 0, x: -20 }}
                                           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                                         >
-                                          {currentSteps.slice(currentStepIndex * 2, (currentStepIndex + 1) * 2).map((step, index) => {
+                                          {currentSteps.slice(currentStepIndex * 3, (currentStepIndex + 1) * 3).map((step, index) => {
                                             // Calculate actual index in the full array for the step number
-                                            const actualIndex = currentStepIndex * 2 + index;
+                                            const actualIndex = currentStepIndex * 3 + index;
 
                                             return (
                                               <m.div
                                                 key={`${step.title}-${actualIndex}`}
-                                                className="relative w-[260px] flex-none group"
+                                                className="relative w-[280px] flex-none group"
                                                 initial={{ opacity: 0, y: 20 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{
@@ -2387,7 +2387,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                 }}
                                               >
                                                 {/* 步骤序号 */}
-                                                <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
+                                          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#FAF5EA] px-4 py-1 text-xs font-medium tracking-widest text-brand-charcoal border border-brand-charcoal/20 whitespace-nowrap shadow-sm">
                                                   步骤 {String(actualIndex + 1).padStart(2, "0")}
                                                 </div>
 
@@ -2415,7 +2415,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                                       {/* Tips */}
                                                       {step.tips && (
-                                                        <div className="mt-6 flex items-start gap-2 text-xs text-brand-charcoal/50 font-light bg-brand-charcoal/5 px-3 py-2 rounded-lg">
+                                                        <div className="mt-6 flex items-start gap-2 text-xs text-brand-charcoal/60 font-light bg-brand-charcoal/5 px-3 py-2 rounded-lg">
                                                           <span className="shrink-0 uppercase tracking-wider text-[10px] font-medium pt-0.5">Tip:</span>
                                                           <span className="text-left">{step.tips}</span>
                                                         </div>
@@ -2430,27 +2430,24 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       </AnimatePresence>
                                     </div>
 
-                                    {/* Pagination Controls */}
-                                    {currentSteps.length > 2 && (
-                                      <div className="flex w-full max-w-[1000px] items-center justify-end gap-4 z-20 pt-4">
+                                    {/* 左右浮动翻页箭头 */}
+                                    {currentSteps.length > 3 && (
+                                      <>
                                         <button
                                           onClick={() => setCurrentStepIndex(p => Math.max(0, p - 1))}
                                           disabled={currentStepIndex === 0}
-                                          className="p-2 rounded-full hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                          className="absolute -left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
                                         >
-                                          <ChevronLeft className="w-6 h-6 text-[#00263e]" />
+                                          <ChevronLeft className="h-5 w-5 text-[#00263e]" />
                                         </button>
-                                        <span className="text-sm font-light tracking-widest text-[#00263e]/60">
-                                          {currentStepIndex + 1} / {Math.ceil(currentSteps.length / 2)}
-                                        </span>
                                         <button
                                           onClick={() => setCurrentStepIndex(p => Math.min(Math.ceil(currentSteps.length / 3) - 1, p + 1))}
-                                          disabled={currentStepIndex >= Math.ceil(currentSteps.length / 2) - 1}
-                                          className="p-2 rounded-full hover:bg-[#00263e]/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                          disabled={currentStepIndex >= Math.ceil(currentSteps.length / 3) - 1}
+                                          className="absolute -right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
                                         >
-                                          <ChevronRight className="w-6 h-6 text-[#00263e]" />
+                                          <ChevronRight className="h-5 w-5 text-[#00263e]" />
                                         </button>
-                                      </div>
+                                      </>
                                     )}
                                   </m.section>
                                 )}
