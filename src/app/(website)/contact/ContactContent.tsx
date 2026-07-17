@@ -166,7 +166,7 @@ export function ContactContent({ content }: ContactContentProps) {
         <h1 className="text-3xl md:text-4xl font-light text-[#00263E] tracking-widerr mb-4">
           {title.zh}
         </h1>
-        <p className="text-sm md:text-base text-zinc-500 max-w-md mx-auto">
+        <p className="text-sm md:text-base text-brand-charcoal/60 max-w-md mx-auto">
           {description}
         </p>
       </div>
@@ -177,8 +177,8 @@ export function ContactContent({ content }: ContactContentProps) {
           {status === "success" ? (
             <div className="text-center py-16">
               <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
-              <h2 className="text-xl font-medium text-zinc-900 mb-2">留言已提交</h2>
-              <p className="text-zinc-500">感谢您的留言，我们会尽快回复</p>
+              <h2 className="text-xl font-medium text-brand-charcoal mb-2">留言已提交</h2>
+              <p className="text-brand-charcoal/60">感谢您的留言，我们会尽快回复</p>
               <Link href="/" className="inline-block mt-6 text-sm text-[#00263E] hover:underline">返回首页</Link>
             </div>
           ) : (
@@ -189,46 +189,46 @@ export function ContactContent({ content }: ContactContentProps) {
               {/* Name + Phone */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="name" className="block text-sm text-zinc-600 mb-1.5">称呼 <span className="text-red-400">*</span></label>
+                  <label htmlFor="name" className="block text-sm text-brand-charcoal/70 mb-1.5">称呼 <span className="text-red-400">*</span></label>
                   <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} placeholder="您的称呼" autoComplete="name" maxLength={50}
-                    className={cn("w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all", errors.name ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-zinc-200 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10")} />
+                    className={cn("w-full rounded-lg border px-4 py-3 text-sm outline-none transition-all", errors.name ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10")} />
                   {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
                 </div>
                 <div>
-                  <label htmlFor="phone" className="block text-sm text-zinc-600 mb-1.5">手机号 <span className="text-red-400">*</span></label>
+                  <label htmlFor="phone" className="block text-sm text-brand-charcoal/70 mb-1.5">手机号 <span className="text-red-400">*</span></label>
                   <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} placeholder="您的手机号" autoComplete="tel" inputMode="tel" maxLength={11}
-                    className={cn("w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all", errors.phone ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-zinc-200 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10")} />
+                    className={cn("w-full rounded-lg border px-4 py-3 text-sm outline-none transition-all", errors.phone ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10")} />
                   {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
                 </div>
               </div>
 
               {/* Message Type Dropdown */}
               <div ref={typeDropdownRef} className="relative">
-                <label className="block text-sm text-zinc-600 mb-1.5">留言类型 <span className="text-red-400">*</span></label>
+                <label className="block text-sm text-brand-charcoal/70 mb-1.5">留言类型 <span className="text-red-400">*</span></label>
                 <button type="button" onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                  className={cn("flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm outline-none transition-all",
-                    !formData.type && "text-zinc-400",
-                    errors.type ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-zinc-200 hover:border-[#00263E]/40 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10",
+                  className={cn("flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm outline-none transition-all",
+                    !formData.type && "text-brand-charcoal/40",
+                    errors.type ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-charcoal/20 hover:border-[#00263E]/40 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10",
                     isTypeDropdownOpen && !errors.type && "border-[#00263E]/40 ring-4 ring-[#00263E]/10")}>
                   <span className="flex items-center gap-2.5">
                     {formData.type && (() => { const selected = messageTypes.find(t => t.value === formData.type); if (selected) return <selected.icon className="h-4 w-4 text-[#00263E]" />; return null; })()}
-                    <span className={formData.type ? "text-zinc-900" : ""}>{messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}</span>
+                    <span className={formData.type ? "text-brand-charcoal" : ""}>{messageTypes.find(t => t.value === formData.type)?.label || "请选择留言类型"}</span>
                   </span>
-                  <ChevronDown className={cn("h-4 w-4 text-zinc-400 transition-transform duration-200", isTypeDropdownOpen && "rotate-180")} />
+                  <ChevronDown className={cn("h-4 w-4 text-brand-charcoal/40 transition-transform duration-200", isTypeDropdownOpen && "rotate-180")} />
                 </button>
                 <AnimatePresence>
                   {isTypeDropdownOpen && (
                     <m.div initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ duration: 0.15 }}
-                      className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg">
+                      className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-lg border border-brand-charcoal/20 bg-white shadow-lg">
                       {messageTypes.filter(t => t.value !== "").map((type, index) => {
                         const Icon = type.icon;
                         const isSelected = formData.type === type.value;
                         return (
                           <button key={type.value} type="button"
                             onClick={() => { setFormData(prev => ({ ...prev, type: type.value })); setIsTypeDropdownOpen(false); if (errors.type) setErrors(prev => ({ ...prev, type: "" })); }}
-                            className={cn("flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors", isSelected ? "bg-[#00263E]/5 text-[#00263E]" : "text-zinc-600 hover:bg-zinc-50", index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-zinc-100")}
+                            className={cn("flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors", isSelected ? "bg-[#00263E]/5 text-[#00263E]" : "text-brand-charcoal/70 hover:bg-brand-charcoal/5", index !== messageTypes.filter(t => t.value !== "").length - 1 && "border-b border-brand-charcoal/10")}
                           >
-                            <Icon className={cn("h-4 w-4", isSelected ? "text-[#00263E]" : "text-zinc-400")} />
+                            <Icon className={cn("h-4 w-4", isSelected ? "text-[#00263E]" : "text-brand-charcoal/40")} />
                             <span>{type.label}</span>
                             {isSelected && <CheckCircle className="ml-auto h-4 w-4 text-[#00263E]" />}
                           </button>
@@ -242,15 +242,15 @@ export function ContactContent({ content }: ContactContentProps) {
 
               {/* Content */}
               <div>
-                <label htmlFor="content" className="block text-sm text-zinc-600 mb-1.5">留言内容 <span className="text-red-400">*</span></label>
+                <label htmlFor="content" className="block text-sm text-brand-charcoal/70 mb-1.5">留言内容 <span className="text-red-400">*</span></label>
                 <textarea id="content" name="content" value={formData.content} onChange={handleChange} placeholder="请输入您的留言内容..." rows={5} maxLength={2000}
-                  className={cn("w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition-all", errors.content ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-zinc-200 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10")} />
+                  className={cn("w-full resize-none rounded-lg border px-4 py-3 text-sm outline-none transition-all", errors.content ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100" : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10")} />
                 {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
               </div>
 
               {/* Submit */}
               <button type="submit" disabled={status === "loading"}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#00263E]/30 px-6 py-3 text-sm font-medium text-[#00263E] hover:border-[#00263E] hover:bg-[#00263E]/5 transition-colors disabled:opacity-50">
+                className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#00263E]/30 px-6 py-3 text-sm font-medium text-[#00263E] hover:border-[#00263E] hover:bg-[#00263E]/5 transition-colors disabled:opacity-50">
                 {status === "loading" ? (<><Loader2 className="h-4 w-4 animate-spin" />提交中...</>) : (<><Send className="h-4 w-4" />提交留言</>)}
               </button>
             </form>
