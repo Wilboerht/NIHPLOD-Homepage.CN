@@ -13,6 +13,7 @@ import { cn, formatPrice } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 import { useIsMobile } from "@/hooks";
+import { getCategoryIconPath } from "@/lib/product-icons";
 
 interface Category {
   id: string;
@@ -53,10 +54,6 @@ interface ProductsContentProps {
   products: Product[];
 
 }
-
-
-
-import { getCategoryIconPath } from "@/lib/product-icons";
 
 
 

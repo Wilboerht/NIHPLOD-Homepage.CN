@@ -11,12 +11,9 @@ import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
-
-// 动态获取产品图标，确保 SVG 内部 id 不重复以避免渐变失效问题
-
 import { getCategoryIconPath } from "@/lib/product-icons";
 
-// 查找匹配的图标，否则使用默认图标（根据索引循环）
+// 查找匹配的图标，否则使用默认图标
 export const DEFAULT_ICONS = [
   // 默认瓶子1
   <svg key="d1" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-brand-charcoal/60">
