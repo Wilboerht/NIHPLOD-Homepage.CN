@@ -602,24 +602,37 @@
   /* margin-top: 4rem; - Removed to use Tailwind for consistency */
 }
 
-/* 主按钮 - 与 skin-advisor 首页 CTA 对齐：描边透明底 + hover 填充 */
+/* 主按钮 - 描边透明底 + hover 背景从左滑入填充 */
 .home-container .btn-primary {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 16px 48px;
+  gap: 0.5rem;
+  padding: 14px 36px;
   border: 1px solid #00263e;
   background-color: transparent;
   color: #00263e;
   font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  border-radius: 8px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  border-radius: 2px;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.5s ease;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-container .btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #00263e;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .home-container .btn-primary:focus-visible {
@@ -628,8 +641,12 @@
 }
 
 .home-container .btn-primary:hover {
-  background-color: #00263e;
   color: white;
+  background-color: transparent;
+}
+
+.home-container .btn-primary:hover::before {
+  transform: scaleX(1);
 }
 
 /* 次按钮 */
@@ -720,15 +737,10 @@
   }
 
   .home-container .btn-primary {
-    padding: 14px 36px;
+    padding: 14px 32px;
     font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-  }
-
-  .home-container .btn-primary::before,
-  .home-container .btn-primary::after {
-    display: none;
+    font-weight: 500;
+    letter-spacing: 0.12em;
   }
 
   .home-container .btn-secondary {
@@ -757,15 +769,10 @@
   }
 
   .home-container .btn-primary {
-    padding: 12px 28px;
+    padding: 12px 24px;
     font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.07em;
-  }
-
-  .home-container .btn-primary::before,
-  .home-container .btn-primary::after {
-    display: none;
+    font-weight: 500;
+    letter-spacing: 0.1em;
   }
 }
 

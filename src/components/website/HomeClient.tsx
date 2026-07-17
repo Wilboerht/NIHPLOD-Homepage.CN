@@ -426,7 +426,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 className="btn btn-primary group min-h-0 min-w-0"
               >
                 <span>探索旎柏</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </m.button>
               {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
                       <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
