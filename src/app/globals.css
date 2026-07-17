@@ -935,7 +935,7 @@
 
 .kinetic-container {
   position: absolute;
-  top: 52%;
+  top: 53%;
   left: 50%;
   /* 使用 -50% -50% 避免 -52% 带来的亚像素模糊 */
   transform: translate(-50%, -50%);
