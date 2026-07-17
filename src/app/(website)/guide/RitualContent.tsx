@@ -1154,14 +1154,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 viewport={{ once: true, margin: "-20px" }}
                                 transition={{ delay: index * 0.1 }}
                                 onClick={() => selectModule(module.id)}
-                                className="relative h-full overflow-hidden rounded-[2rem] shadow-[0_8px_32px_-4px_rgba(0,38,62,0.06)] bg-white/60 backdrop-blur-md border border-[#00263E]/5 flex flex-col justify-end p-5 pb-6 text-left transition-all active:bg-white/80 active:scale-[0.98]"
+                                className="relative h-full overflow-hidden rounded-[2rem] shadow-[0_8px_32px_-4px_rgba(0,38,62,0.06)] bg-[#FCF9F2] border border-[#00263E]/15 flex flex-col justify-end p-5 pb-6 text-left transition-all active:scale-[0.98]"
                               >
                                 <div className="relative z-10 flex flex-col">
                                   <div className="mb-4">
                                     <module.icon className="w-8 h-8 text-[#4A6272]" strokeWidth={1} />
                                   </div>
-                                  <span className="text-lg font-medium text-[#00263E] tracking-widest">{module.label}</span>
-                                  <div className="mt-3 h-[1px] w-8 bg-[#4A6272]/20" />
+                                  <span className="text-lg font-medium text-[#00263E] tracking-wide">{module.label}</span>
+                                  <div className="mt-3 h-[1px] w-8 bg-[#4A6272]/30" />
                                 </div>
                               </m.button>
                             ))}
@@ -1763,7 +1763,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 onClick={() => selectModule(module.id)}
                                 onMouseEnter={() => setHoveredIndex(index)}
                                 onMouseLeave={() => setHoveredIndex(null)}
-                                className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl bg-white/40 border border-[#00263E]/5 shadow-sm transition-all duration-500 hover:bg-white/60 hover:shadow-xl"
+                                className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl bg-[#FCF9F2] border border-[#00263E]/15 shadow-sm transition-all duration-500 hover:shadow-lg"
                                 initial={{ opacity: 0, y: 15 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.7, delay: 0.1 + index * 0.05, ease: [0.16, 1, 0.3, 1] }}
@@ -1776,17 +1776,17 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   </div>
 
                                   {/* 标题 */}
-                                  <h2 className="mb-4 font-display text-2xl font-light tracking-widest text-[#00263e] lg:text-3xl">
+                                  <h2 className="mb-4 font-display text-2xl font-normal tracking-wide text-[#00263e] lg:text-3xl">
                                     {module.label}
                                   </h2>
 
                                   {/* 描述/副标题 */}
-                                  <p className="max-w-[220px] text-xs font-light leading-relaxed tracking-wider text-[#00263e]/60 opacity-90 transition-opacity duration-300 group-hover:opacity-100">
+                                  <p className="max-w-[220px] text-xs font-normal leading-relaxed tracking-wider text-[#00263e]/75 transition-opacity duration-300 group-hover:opacity-100">
                                     {module.description}
                                   </p>
 
                                   {/* 装饰线 - hover时变宽 */}
-                                  <div className="mt-8 h-[1px] w-12 bg-[#4A6272]/20 transition-all duration-700 ease-out group-hover:w-20 group-hover:bg-[#4A6272]/40" />
+                                  <div className="mt-8 h-[1px] w-12 bg-[#4A6272]/30 transition-all duration-700 ease-out group-hover:w-20 group-hover:bg-[#4A6272]/40" />
                                 </div>
                               </m.button>
                             ))}
