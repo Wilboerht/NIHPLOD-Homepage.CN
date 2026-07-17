@@ -33,9 +33,9 @@ function formatLogEntry(entry: LogEntry): string {
   let log = `${levelIcon} [${timestamp}] [${module}] ${message}`;
 
   if (context && Object.keys(context).length > 0) {
-    // 对敏感信息进行脱敏
-    const sanitizedContext = sanitizeContext(context);
-    log += `\n   ${JSON.stringify(sanitizedContext, null, 2).replace(/\n/g, "\n   ")}`;
+    // 处理 Error 对象后再脱敏
+    const serialized = serializeContext(context);
+    log += `\n   ${JSON.stringify(serialized, null, 2).replace(/\n/g, "\n   ")}`;
   }
 
   return log;

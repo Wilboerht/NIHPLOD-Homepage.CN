@@ -101,14 +101,14 @@ export function BottomNavBar() {
 
   const PrimaryIcon = primaryNav.icon;
 
-  // 当抽屉展开、动画中、登录弹窗、用户中心面板或联系我们弹窗激活时，隐藏导航栏
-  const isVisible = !isDrawerOpen && !isDrawerAnimating && !activeModal && !userCenterOpen && !isProductDetailPage;
-
   // 服务入口页面在移动端隐藏底部导航栏（实现全屏效果）
   const isServicesPage = pathname === "/services";
 
   // 产品详情页隐藏底部导航栏
   const isProductDetailPage = pathname.startsWith("/products/") && pathname !== "/products";
+
+  // 当抽屉展开、动画中、登录弹窗、用户中心面板或联系我们弹窗激活时，隐藏导航栏
+  const isVisible = !isDrawerOpen && !isDrawerAnimating && !activeModal && !userCenterOpen && !isProductDetailPage;
 
   return (
     <>
@@ -243,10 +243,10 @@ export function BottomNavBar() {
                       <span className={cn(
                         "text-[18px] font-medium tracking-wide transition-colors duration-300",
                         isCurrentPage(pathname, storyItem.href)
-                          ? "text-brand-charcoal"
-                          : "text-brand-charcoal/60"
+                          ? "text-[#00263E]"
+                          : "text-[#00263E]/60"
                       )}>
-                        关于旎柏
+                        {storyItem.label}
                       </span>
                     </Link>
 
