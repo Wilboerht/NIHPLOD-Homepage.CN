@@ -476,16 +476,16 @@ export function StoryContent() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative flex h-[80px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.05] px-10"
+                  className="relative flex h-[88px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.05] px-10 xl:px-[8%]"
                 >
                   {/* 左侧：Logo */}
                   <Link href="/">
-                    <div className="relative h-10 w-[200px]">
+                    <div className="relative h-10 w-[200px] opacity-90 transition-opacity hover:opacity-70">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
                         alt="Logo"
                         fill
-                        className="object-contain opacity-90 transition-opacity hover:opacity-70"
+                        className="object-contain object-left"
                         priority
                       />
                     </div>
@@ -520,7 +520,7 @@ export function StoryContent() {
             </AnimatePresence>
 
             {/* 内容区域 - 各 Section */}
-            <div className="flex-1 overflow-y-auto px-10 py-8 [-ms-overflow-style:none] [scrollbar-width:none] lg:px-[8%] lg:py-12 xl:py-14 [&::-webkit-scrollbar]:hidden">
+            <div className="flex-1 overflow-y-auto px-10 py-8 [-ms-overflow-style:none] [scrollbar-width:none] lg:px-10 lg:py-12 xl:px-[8%] xl:py-14 [&::-webkit-scrollbar]:hidden">
               <AnimatePresence mode="wait">
                 {/* Section 1: 品牌故事 */}
                 {activeSection === "story" && (
@@ -557,7 +557,7 @@ export function StoryContent() {
                       <span className="mb-4 block text-sm uppercase tracking-[3px] text-[#00263e]/60">
                         Since 2008 | Monaco
                       </span>
-                      <h2 className="mb-8 text-3xl font-light leading-snug tracking-[4px] text-[#00263e] md:mb-10 md:text-4xl md:tracking-[6px] lg:text-[42px]">
+                      <h2 className="mb-8 font-sans text-3xl font-normal !leading-[1.3] tracking-[4px] text-brand-charcoal md:mb-10 md:text-4xl md:tracking-[6px] lg:text-[42px]">
                         来自大自然的
                         <br />
                         神奇修复力
