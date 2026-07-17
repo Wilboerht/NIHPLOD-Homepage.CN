@@ -1982,7 +1982,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                             {/* 内容主体：左侧边栏 + 右侧网格 */}
                             {/* 内容主体：左侧边栏 + 右侧网格 */}
-                            <div className="flex w-full flex-row gap-16 items-start max-h-[75vh]">
+                            <div className="flex w-full flex-row gap-12 items-start max-h-[75vh]">
                               {/* 左侧：信息侧边栏 (Info Sidebar) */}
                               <m.aside
                                 className="flex w-[25%] flex-shrink-0 flex-col gap-12 overflow-y-auto pr-4 scrollbar-thin pt-2"
