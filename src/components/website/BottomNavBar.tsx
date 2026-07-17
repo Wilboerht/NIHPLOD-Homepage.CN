@@ -50,7 +50,7 @@ function DesktopStoryNav({ pathname }: { pathname: string }) {
       >
         <Icon
           className={cn(
-            "h-5 w-5 transition-all duration-300 group-hover:scale-105",
+            "h-6 w-6 transition-all duration-300 group-hover:scale-105",
             isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
           )}
         />
@@ -174,9 +174,14 @@ export function BottomNavBar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={menuTransition}
-                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-48 rounded-2xl bg-brand-cream p-2 shadow-[0_8px_30px_-8px_theme(colors.brand.charcoal/0.1)] lg:hidden"
+                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-56 rounded-2xl bg-brand-cream p-2 shadow-[0_8px_30px_-8px_theme(colors.brand.charcoal/0.1)] lg:hidden"
                 >
-                  <div className="flex flex-col gap-1.5">
+                  {/* 指向下方的三角箭头 */}
+                  <div
+                    className="absolute -bottom-1.5 right-4 h-3 w-3 rotate-45 bg-brand-cream"
+                    aria-hidden="true"
+                  />
+                  <div className="relative flex flex-col gap-1.5">
                     {otherNavItems.map((item) => {
                       const Icon = item.icon;
                       return (
@@ -184,14 +189,14 @@ export function BottomNavBar() {
                           key={item.href}
                           href={item.href}
                           onClick={() => setNavMenuOpen(false)}
-                          className="flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all active:scale-[0.97] active:bg-brand-beige/50"
+                          className="group flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.97] active:bg-brand-charcoal/[0.05]"
                         >
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/40">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/40 transition-colors group-hover:bg-white/60">
                             <Icon className="h-5 w-5 text-brand-gold" />
                           </div>
                           <div className="flex flex-col">
                             <span
-                              className="text-[14px] font-medium leading-[21px] text-brand-charcoal"
+                              className="text-[15px] font-medium leading-[21px] text-brand-charcoal"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
@@ -227,12 +232,19 @@ export function BottomNavBar() {
                 aria-current={isPrimaryActive ? "page" : undefined}
                 aria-describedby={isPrimaryActive ? "current-page-hint" : undefined}
                 className={cn(
-                  "group flex items-center gap-2 rounded-xl px-2 py-2 transition-all active:scale-[0.97] active:opacity-70 lg:hidden",
+                  "group relative flex items-center gap-2 rounded-xl px-2 py-2 transition-all active:scale-[0.97] active:opacity-70 lg:hidden",
                   isPrimaryActive ? "bg-brand-charcoal/[0.05]" : "hover:bg-brand-charcoal/[0.03]"
                 )}
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/40">
-                  <PrimaryIcon className="h-5 w-5 text-brand-gold" />
+                {/* 当前位置左侧金色竖条 */}
+                {isPrimaryActive && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-brand-gold"
+                  />
+                )}
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40">
+                  <PrimaryIcon className="h-6 w-6 text-brand-gold" />
                 </div>
                 <div className="flex flex-col">
                   <span
@@ -258,7 +270,7 @@ export function BottomNavBar() {
                 aria-expanded={isNavMenuOpen}
                 aria-controls="mobile-nav-menu"
                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/40 transition-colors active:bg-brand-beige/50 lg:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-charcoal/10 bg-transparent transition-colors active:bg-brand-beige/50 lg:hidden"
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {isNavMenuOpen ? (
@@ -312,7 +324,7 @@ export function BottomNavBar() {
                         >
                           <Icon
                             className={cn(
-                              "h-5 w-5 transition-all duration-300 ease-out group-hover:scale-110",
+                              "h-6 w-6 transition-all duration-300 ease-out group-hover:scale-105",
                               isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
                             )}
                           />
