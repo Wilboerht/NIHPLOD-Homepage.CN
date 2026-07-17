@@ -1774,12 +1774,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   </div>
 
                                   {/* 标题 */}
-                                  <h2 className="mb-4 font-display text-2xl font-normal tracking-wide text-[#00263e] lg:text-3xl">
+                                  <h2 className="mb-4 font-sans text-2xl font-light tracking-wide text-brand-charcoal lg:text-3xl">
                                     {module.label}
                                   </h2>
 
                                   {/* 描述/副标题 */}
-                                  <p className="max-w-[220px] text-xs lg:text-sm font-normal leading-relaxed tracking-wide text-[#00263e]/75 transition-opacity duration-300 group-hover:opacity-100">
+                                  <p className="max-w-[220px] text-xs lg:text-sm font-light leading-relaxed tracking-wide text-brand-charcoal/80 transition-opacity duration-300 group-hover:opacity-100">
                                     {module.description}
                                   </p>
 
@@ -1992,7 +1992,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               >
                                 {/* Meta Item: Products */}
                                 <div className="flex flex-col relative isolate">
-                                  <h3 className="mb-4 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light z-10">
+                                  <h3 className="mb-4 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal-light z-10">
                                     相关产品
                                   </h3>
 
@@ -2024,7 +2024,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                             </div>
                                             {/* 产品名称 */}
                                             <div className="flex flex-col items-center gap-0.5">
-                                              <span className="text-sm font-light text-brand-charcoal/80 group-hover:text-brand-charcoal transition-colors">
+                                              <span className="text-sm font-normal text-brand-charcoal/85 group-hover:text-brand-charcoal transition-colors">
                                                 {cleanName}
                                               </span>
                                               {isOptional && <span className="text-[10px] text-brand-charcoal/50 font-light tracking-wide">(可选)</span>}
@@ -2037,15 +2037,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* Meta Item: Benefits (Tags) */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
+                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal-light">
                                     核心优势
                                   </h3>
                                   <div className="flex flex-wrap gap-2">
                                     <div className="flex flex-wrap gap-x-6 gap-y-3">
                                       {(selectedSubPlan?.benefits || selectedScheme.benefits || ["保湿锁水", "屏障增强"]).map((tag) => (
                                         <div key={tag} className="flex items-center gap-2 group">
-                                          <span className="text-[10px] text-brand-gold/60 group-hover:text-brand-gold transition-colors">✦</span>
-                                          <span className="text-sm tracking-widest text-brand-charcoal/70 font-light group-hover:text-brand-charcoal transition-colors">
+                                          <span className="text-[10px] text-brand-gold/70 group-hover:text-brand-gold transition-colors">✦</span>
+                                          <span className="text-sm tracking-wide text-brand-charcoal/80 font-normal group-hover:text-brand-charcoal transition-colors">
                                             {tag}
                                           </span>
                                         </div>
@@ -2056,7 +2056,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                 {/* Meta Item: Certifications */}
                                 <div className="flex flex-col">
-                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-widest text-brand-charcoal-light">
+                                  <h3 className="mb-3 font-display text-[15px] font-medium uppercase tracking-wide text-brand-charcoal-light">
                                     检测认证
                                   </h3>
                                   <div className="flex items-center gap-5">
@@ -2131,7 +2131,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                         <h3 className="text-sm font-light tracking-[0.1em] text-brand-charcoal/60 font-sans">
                                           {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
                                         </h3>
-                                        <p className="text-[12px] text-brand-charcoal/60 tracking-wide font-light flex items-center">
+                                        <p className="text-[12px] text-brand-charcoal/70 tracking-wide font-normal flex items-center">
                                           <Info className="w-3.5 h-3.5 mr-1.5 text-brand-charcoal/40" />
                                           找不到您所在城市的门店？银卡级别以上会员可
                                           <span onClick={() => router.push("/contact?type=cooperation")} className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5">
@@ -2222,7 +2222,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                               {/* 标签 - 胶囊样式 */}
                                               <div>
-                                                <span className="inline-block px-3 py-1 border border-white rounded-full text-[11px] text-white font-light tracking-wider backdrop-blur-sm shadow-sm bg-white/10">
+                                                <span className="inline-block px-3 py-1 border border-white rounded-full text-xs text-white font-normal tracking-wide backdrop-blur-sm shadow-sm bg-white/10">
                                                   {item.tags}
                                                 </span>
                                               </div>
