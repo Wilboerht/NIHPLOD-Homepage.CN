@@ -36,7 +36,7 @@ export function TermsContent({ content }: TermsContentProps) {
       {/* Header Section */}
       <div className="container mx-auto mb-8 px-6 md:mb-16 md:px-8 lg:px-12 xl:px-16">
         <div className="max-w-4xl">
-          <h1 className="mb-6 text-4xl font-normal text-zinc-900 md:text-5xl">{pageTitle.zh}</h1>
+          <h1 className="mb-6 text-4xl font-light tracking-[0.12em] text-brand-charcoal md:text-5xl">{pageTitle.zh}</h1>
         </div>
       </div>
 
@@ -51,10 +51,10 @@ export function TermsContent({ content }: TermsContentProps) {
           <ScrollSpySidebar sections={sections} label="服务条款目录导航" />
 
           {/* Main Content */}
-          <main className="max-w-4xl flex-1 space-y-16 font-songti leading-relaxed text-zinc-800">
+          <main className="max-w-4xl flex-1 space-y-16 font-songti leading-relaxed text-brand-charcoal/80">
             {sections.map((section, sIdx) => (
               <section key={section.id} id={section.id} className="scroll-mt-32">
-                <h2 className="mb-8 font-sans text-2xl font-medium tracking-wide text-zinc-900">
+                <h2 className="mb-8 font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                   {section.title}
                 </h2>
                 <div className="space-y-6">
@@ -63,12 +63,12 @@ export function TermsContent({ content }: TermsContentProps) {
 
                 {/* 隐私政策引用 - 仅在第一个章节 */}
                 {sIdx === 1 && (
-                  <div className="mt-8 rounded-xl border border-[#00263E]/30 bg-zinc-50 p-5">
-                    <p className="text-sm leading-relaxed text-zinc-500">
+                  <div className="mt-8 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-5">
+                    <p className="text-[14px] leading-relaxed text-brand-charcoal/60">
                       有关我们如何收集、使用和保护您的个人信息的详细说明，请参阅我们的{" "}
                       <Link
                         href="/privacy"
-                        className="font-medium text-[#00263E] underline decoration-zinc-300 underline-offset-4 transition-all hover:decoration-[#00263E]"
+                        className="font-light text-brand-charcoal underline decoration-brand-charcoal/20 underline-offset-4 transition-all hover:text-brand-charcoal hover:decoration-brand-charcoal/50"
                       >
                         隐私政策
                       </Link>
@@ -83,24 +83,24 @@ export function TermsContent({ content }: TermsContentProps) {
       </div>
 
       {/* Page Footer */}
-      <footer className="mt-16 border-t border-zinc-200 md:mt-24">
-        <div className="container mx-auto px-6 py-10 text-center md:px-8 lg:px-12 xl:px-16">
-          <p className="text-xs tracking-wide text-zinc-500">
-            &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
-          </p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+<footer className="mt-16 border-t border-brand-charcoal/10 md:mt-24">
+      <div className="container mx-auto px-6 py-10 text-center md:px-8 lg:px-12 xl:px-16">
+        <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+          &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
+        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-light text-brand-charcoal/[0.48]">
             <Link
               href="https://beian.miit.gov.cn/"
               target="_blank"
-              className="transition-colors hover:text-zinc-600"
+              className="transition-colors hover:text-brand-charcoal"
             >
               沪ICP备2026014764号-1
             </Link>
-            <span className="text-zinc-300">|</span>
+            <span className="text-brand-charcoal/15">|</span>
             <Link
               href="http://www.beian.gov.cn/portal/registerSystemInfo"
               target="_blank"
-              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
+              className="inline-flex items-center gap-1 transition-colors hover:text-brand-charcoal"
             >
               <Image
                 src="/images/beian.webp"
@@ -111,11 +111,11 @@ export function TermsContent({ content }: TermsContentProps) {
               />
               <span>沪公网安备31010702010178号</span>
             </Link>
-            <span className="text-zinc-300">|</span>
+            <span className="text-brand-charcoal/15">|</span>
             <Link
               href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
               target="_blank"
-              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
+              className="inline-flex items-center gap-1 transition-colors hover:text-brand-charcoal"
             >
               <Image
                 src="/images/aic_icon.png"
