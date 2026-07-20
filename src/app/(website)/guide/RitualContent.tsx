@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -1045,18 +1045,18 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     <div className="flex flex-1 flex-col justify-center">
                       {/* 标题部分 - 与卡片组统一居中，避免大屏幕下方空洞 */}
                       <div className="mb-6 shrink-0 text-center">
-                        <h2 className="text-2xl font-medium tracking-widest text-[#00263E]">
+                        <h2 className="text-2xl font-medium tracking-[0.15em] text-[#00263E]">
                           {modules.find((m) => m.id === selectedModule)?.label}
                         </h2>
                         <div className="mt-2 flex justify-center">
-                          <div className="h-0.5 w-8 rounded-full bg-[#4A6272]/20" />
+                          <div className="h-px w-10 rounded-full bg-[#4A6272]/20" />
                         </div>
                       </div>
 
                       {/* 模块引导文案 */}
                       <div className="mb-6 px-4 text-center">
-                        <p className="text-sm font-light leading-relaxed tracking-wide text-[#00263E]/50">
-                          在繁忙日常中，为肌肤预留一段专属的精简时光。告别繁琐，轻松护理。
+                        <p className="text-sm font-light leading-relaxed tracking-[0.05em] text-[#4A6272]/80">
+                          {modules.find((m) => m.id === selectedModule)?.description}
                         </p>
                       </div>
 
@@ -1076,12 +1076,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                             {/* 中间内容：标题 + 时长 */}
                             <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-left">
-                              <h3 className="truncate text-lg font-medium tracking-wider text-[#00263E]">
+                              <h3 className="truncate text-lg font-medium tracking-[0.1em] text-[#00263E]">
                                 {scheme.name}
                               </h3>
                               <div className="flex items-center gap-1.5">
-                                <Clock className="h-3 w-3 text-[#4A6272]/60" />
-                                <span className="text-[11px] font-medium text-[#4A6272]/80">
+                                <Clock className="h-3 w-3 text-[#4A6272]/50" />
+                                <span className="text-[11px] font-medium tracking-wide text-[#4A6272]/70">
                                   {scheme.totalDuration || "15分钟"}
                                 </span>
                               </div>
@@ -1099,9 +1099,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           href="https://advisor.nihplod.cn"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm font-light leading-relaxed tracking-wide text-[#4A6272] transition-opacity hover:underline active:opacity-70"
+                          className="group inline-flex items-center gap-1.5 text-sm font-light leading-relaxed tracking-[0.05em] text-[#4A6272] transition-colors hover:text-[#00263E]"
                         >
-                          精简护肤，从了解自己的肌肤开始 <span>→</span>
+                          精简护肤，从了解自己的肌肤开始
+                          <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                         </a>
                       </div>
                     </div>
@@ -1836,29 +1837,29 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           )}
 
                           {/* 标题 */}
-                          <h3 className="font-display mb-6 text-center text-2xl font-light tracking-widest text-brand-charcoal">
+                          <h3 className="mb-5 text-center text-2xl font-light tracking-[0.15em] text-brand-charcoal">
                             {scheme.name}
                           </h3>
 
                           {/* 英文标题 (如果有) */}
                           {scheme.nameEn && (
-                            <span className="mb-6 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/50">
+                            <span className="mb-5 text-[11px] font-medium uppercase tracking-[0.2em] text-brand-charcoal/50">
                               {scheme.nameEn}
                             </span>
                           )}
 
                           {/* 分隔线 - 仅在有描述时显示 */}
-                          {scheme.desc && <div className="mb-6 h-px w-12 bg-brand-charcoal/10" />}
+                          {scheme.desc && <div className="mb-5 h-px w-10 bg-brand-charcoal/10" />}
 
                           {/* 描述文字 - 仅在有描述时显示 */}
                           {scheme.desc && (
-                            <p className="mb-8 max-w-[260px] text-center text-sm leading-relaxed text-brand-charcoal/70">
+                            <p className="mb-7 max-w-[260px] px-2 text-center text-[13px] leading-relaxed tracking-wide text-brand-charcoal/65">
                               {scheme.desc}
                             </p>
                           )}
 
                           {/* 预计用时 */}
-                          <div className="flex items-center gap-2 rounded-full bg-brand-charcoal/5 px-4 py-1.5 text-xs text-brand-charcoal/50 transition-colors group-hover:bg-brand-charcoal/10 group-hover:text-brand-charcoal/70">
+                          <div className="flex items-center gap-2 rounded-full bg-brand-charcoal/5 px-4 py-1.5 text-[11px] tracking-wide text-brand-charcoal/55 transition-colors group-hover:bg-brand-charcoal/10 group-hover:text-brand-charcoal/75">
                             <Clock className="h-3.5 w-3.5" />
                             <span>预计用时 {scheme.totalDuration}</span>
                           </div>
