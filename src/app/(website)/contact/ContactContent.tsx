@@ -546,25 +546,23 @@ export function ContactContent({ content }: ContactContentProps) {
 
       {/* Page Footer */}
       <footer className="border-t border-brand-charcoal/10">
-        <div className="container mx-auto px-6 py-8 text-center md:px-8 lg:px-12 xl:px-16">
+        <div className="mx-auto overflow-visible px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
           <div className="flex items-center justify-center gap-3">
-            <div className="group relative inline-flex cursor-pointer items-center">
-              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">关注公众号</span>
-              <div className="absolute bottom-full left-1/2 z-50 mb-3 -translate-x-1/2 rounded-xl bg-white p-4 opacity-0 shadow-[0_8px_30px_-6px_rgba(0,38,62,0.15)] transition-all duration-300 group-hover:opacity-100">
-                <Image
-                  src="/images/wechat-qrcode.jpg"
-                  alt="NIHPLOD 微信公众号"
-                  width={200}
-                  height={200}
-                  className="h-auto w-[180px] rounded-lg"
-                />
-                <div className="absolute left-1/2 top-full -translate-x-1/2 border-[6px] border-transparent border-t-white" />
-              </div>
-            </div>
-            <span className="text-[11px] font-light text-brand-charcoal/20">|</span>
-            <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+            <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-            </p>
+            </span>
+            <span className="text-[11px] font-light text-brand-charcoal/20">|</span>
+            <div className="group relative inline-flex cursor-pointer">
+              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">公众号</span>
+              <Image
+                src="/images/wechat-qrcode.jpg"
+                alt="NIHPLOD 微信公众号"
+                width={160}
+                height={160}
+                unoptimized
+                className="absolute bottom-full left-1/2 z-50 mb-2 hidden h-auto w-40 -translate-x-1/2 rounded-lg bg-white p-2 shadow-lg group-hover:block"
+              />
+            </div>
           </div>
         </div>
       </footer>
