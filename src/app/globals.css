@@ -603,8 +603,8 @@
 @media (max-width: 767px) {
   .home-container .title {
     font-size: 1.05rem;
-    line-height: 1.5;
-    letter-spacing: 0.08em;
+    line-height: 1.6;
+    letter-spacing: 0.1em;
   }
 }
 
