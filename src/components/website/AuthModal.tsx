@@ -503,8 +503,8 @@ export function AuthModal() {
             )}
 
             {/* 内容区域 */}
-            <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6">
-              <div className="w-full max-w-[480px] py-12">
+            <div className="flex flex-1 flex-col overflow-y-auto px-6">
+              <div className="m-auto w-full max-w-[480px] py-12">
                 {/* Logo */}
                 <div className="mb-14 flex justify-center">
                   <Image
@@ -1043,7 +1043,7 @@ export function AuthModal() {
           initial={{ x: "100%" }}
           animate={{ x: 0, transition: { duration: 0.8, ease: [0.8, 0, 0.13, 1] } }}
           exit={{ x: "100%", transition: { duration: 0.5, ease: [0.8, 0, 0.13, 1] } }}
-          className="fixed inset-0 z-[99999] flex flex-col bg-[#F8F7F3] pb-4 pl-4 pr-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] md:hidden"
+          className="fixed inset-0 z-[99999] flex flex-col bg-[#F8F7F3] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pl-4 pr-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] md:hidden"
         >
           {/* 手机端顶部栏 */}
           <div className="relative flex h-[56px] w-full flex-shrink-0 items-center justify-center">
