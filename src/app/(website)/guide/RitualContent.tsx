@@ -998,7 +998,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   >
                     <div className="mb-7 flex flex-col items-center pb-2 pt-2">
                       <h1
-                        className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
+                        className="text-[24px] font-light tracking-[0.15em] text-[#00263E]"
                         style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                       >
                         护肤仪式指南
@@ -1773,7 +1773,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </div>
 
                             {/* 标题 */}
-                            <h2 className="mb-4 font-sans text-2xl font-light tracking-wide text-brand-charcoal lg:text-3xl">
+                            <h2 className="mb-4 font-sans text-xl font-light tracking-[0.12em] text-brand-charcoal lg:text-2xl">
                               {module.label}
                             </h2>
 
