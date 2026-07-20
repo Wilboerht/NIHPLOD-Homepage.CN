@@ -534,7 +534,7 @@ export function StoryContent() {
                       <span className="mb-4 block text-sm uppercase tracking-[3px] text-[#00263e]/60">
                         Since 2008 | Monaco
                       </span>
-                      <h2 className="mb-8 font-sans text-3xl font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:mb-10 md:text-4xl md:tracking-[6px] lg:text-[42px]">
+                      <h2 className="mt-8 mb-8 font-sans text-3xl font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:mt-10 md:mb-10 md:text-4xl md:tracking-[6px] lg:text-[42px]">
                         来自大自然的
                         <br />
                         神奇修复力
