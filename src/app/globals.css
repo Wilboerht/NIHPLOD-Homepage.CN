@@ -628,13 +628,13 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 16px 48px;
+  padding: 18px 56px;
   border: 1px solid rgba(0, 38, 62, 0.5);
   background-color: transparent;
   color: var(--home-text-primary);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   border-radius: 0;
   cursor: pointer;
   white-space: nowrap;
@@ -662,7 +662,7 @@
 }
 
 .home-container .home-explore-btn:hover svg {
-  transform: translateX(4px);
+  transform: translateX(3px);
   opacity: 1;
 }
 
