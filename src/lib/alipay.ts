@@ -416,11 +416,7 @@ export async function refundAlipayOrder(
     if (data.sign) {
       const responseText = extractResponseText(rawText, "alipay.trade.refund");
       if (responseText) {
-        const verified = verifyWithRSA2(
-          responseText,
-          data.sign,
-          ALIPAY_CONFIG.alipayPublicKey
-        );
+        const verified = verifyWithRSA2(responseText, data.sign, ALIPAY_CONFIG.alipayPublicKey);
         if (!verified) {
           apiConsole.error("[Alipay] 退款响应签名验证失败");
           return { success: false, error: "退款响应签名验证失败" };
@@ -447,4 +443,3 @@ export async function refundAlipayOrder(
     return { success: false, error: "Alipay Refund API Error" };
   }
 }
-

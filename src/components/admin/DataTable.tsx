@@ -108,9 +108,9 @@ export function DataTable<T extends object>({
       return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
     }
     return sortConfig.order === "asc" ? (
-      <ArrowUp className="h-4 w-4 text-brand-gold" />
+      <ArrowUp className="h-4 w-4 text-brand-primary" />
     ) : (
-      <ArrowDown className="h-4 w-4 text-brand-gold" />
+      <ArrowDown className="h-4 w-4 text-brand-primary" />
     );
   };
 
@@ -121,7 +121,12 @@ export function DataTable<T extends object>({
   };
 
   return (
-    <div className={cn("relative overflow-hidden rounded-lg border border-gray-200 bg-white", className)}>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-lg border border-gray-200 bg-white",
+        className
+      )}
+    >
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -137,11 +142,13 @@ export function DataTable<T extends object>({
                   )}
                   onClick={() => handleSort(column)}
                 >
-                  <div className={cn(
-                    "flex items-center gap-1",
-                    column.align === "center" && "justify-center",
-                    column.align === "right" && "justify-end"
-                  )}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-1",
+                      column.align === "center" && "justify-center",
+                      column.align === "right" && "justify-end"
+                    )}
+                  >
                     <span>{column.title}</span>
                     {getSortIcon(column)}
                   </div>
@@ -158,10 +165,7 @@ export function DataTable<T extends object>({
             ) : data.length === 0 ? (
               // 空状态
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="px-6 py-16 text-center text-gray-500"
-                >
+                <td colSpan={columns.length} className="px-6 py-16 text-center text-gray-500">
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-4xl">📭</span>
                     <span>{emptyText}</span>
@@ -192,8 +196,8 @@ export function DataTable<T extends object>({
                         {column.render
                           ? column.render(value, record, rowIndex)
                           : value !== undefined && value !== null
-                          ? String(value)
-                          : "-"}
+                            ? String(value)
+                            : "-"}
                       </td>
                     );
                   })}
@@ -219,7 +223,7 @@ export function DataTable<T extends object>({
       {/* 加载遮罩 */}
       {loading && data.length > 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
+          <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
         </div>
       )}
     </div>

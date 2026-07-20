@@ -20,7 +20,7 @@ const ContactFormSchema = z.object({
 
 // POST /api/contact - 提交联系表单
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -32,10 +32,7 @@ export async function POST(request: NextRequest) {
     const ip = getClientIP(request);
     const limitResult = await rateLimit(ip, "form");
     if (!limitResult.success) {
-      return NextResponse.json(
-        { error: "请求过于频繁，请稍后再试" },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
     }
     const body = await request.json();
 
@@ -78,18 +75,20 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV === "development") console.log("✅ [Contact API] DB record created");
 
     // 发送通知
-    if (process.env.NODE_ENV === "development") console.log("📧 [Contact API] Sending notifications");
+    if (process.env.NODE_ENV === "development")
+      console.log("📧 [Contact API] Sending notifications");
     try {
       // 1. 发送企业微信机器人通知
-      const wecomContent = formatContactToWecom({ 
-        name, 
-        phone, 
+      const wecomContent = formatContactToWecom({
+        name,
+        phone,
         content,
         type: readableType,
         location,
       });
       await sendWecomNotification(wecomContent);
-      if (process.env.NODE_ENV === "development") console.log("✅ [Contact API] WeCom bot notification sent");
+      if (process.env.NODE_ENV === "development")
+        console.log("✅ [Contact API] WeCom bot notification sent");
 
       // 暂不支持向手机发送短信自动回复
     } catch (notifError) {
@@ -100,9 +99,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, message: "感谢您的留言，我们会尽快回复！" });
   } catch (error) {
     apiConsole.error("Contact form error:", error);
-    return NextResponse.json(
-      { error: "提交失败，请稍后重试" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "提交失败，请稍后重试" }, { status: 500 });
   }
 }

@@ -13,19 +13,22 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   // 速率限制：每个 IP 每分钟最多 60 次回调请求
   const clientIP = getClientIP(request);
-  const limitResult = await rateLimit(clientIP, "alipay-notify", { maxRequests: 60, windowMs: 60_000 });
+  const limitResult = await rateLimit(clientIP, "alipay-notify", {
+    maxRequests: 60,
+    windowMs: 60_000,
+  });
   if (!limitResult.success) {
     return NextResponse.json({ code: "FAIL", message: "rate limited" }, { status: 429 });
   }
 
   try {
     const formData = await request.formData();
-    
+
     // 将 FormData 转换为对象
     const params: Record<string, string> = {};
     formData.forEach((value, key) => {
@@ -42,7 +45,8 @@ export async function POST(request: NextRequest) {
     // 1. 只读幂等检查（不写入，防止 DoS 填满数据库）
     const idempotencyCheck = await isNotificationProcessed("alipay", notifyId);
     if (idempotencyCheck.processed && idempotencyCheck.status === "SUCCESS") {
-      if (process.env.NODE_ENV === "development") console.log(`[AlipayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
+      if (process.env.NODE_ENV === "development")
+        console.log(`[AlipayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
       return new NextResponse("success", { status: 200 });
     }
 
@@ -55,7 +59,9 @@ export async function POST(request: NextRequest) {
 
     // 3. 验签通过且处理成功后，再记录幂等性
     try {
-      const amount = Math.round(parseFloat(params.receipt_amount || params.total_amount || "0") * 100);
+      const amount = Math.round(
+        parseFloat(params.receipt_amount || params.total_amount || "0") * 100
+      );
       const recordResult = await recordNotification("alipay", notifyId, tradeNo, amount, params);
       if (recordResult.success && recordResult.recordId) {
         await markNotificationSuccess(recordResult.recordId);
@@ -70,11 +76,13 @@ export async function POST(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     apiConsole.error("[AlipayNotify] 异常:", error);
     // 区分系统错误和业务错误：系统错误返回 500 让支付宝重试
-    const isSystemError = errorMessage.includes("connection") || errorMessage.includes("timeout") || errorMessage.includes("Prisma");
+    const isSystemError =
+      errorMessage.includes("connection") ||
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("Prisma");
     if (isSystemError) {
       return new NextResponse("system error", { status: 500 });
     }
     return new NextResponse("fail", { status: 200 });
   }
 }
-

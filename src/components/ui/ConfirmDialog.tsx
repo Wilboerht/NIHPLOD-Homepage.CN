@@ -78,9 +78,7 @@ export function ConfirmDialog({
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          {description && (
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
-          )}
+          {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
           {children && <div className="mt-3">{children}</div>}
         </div>
       </div>
@@ -101,4 +99,3 @@ export function ConfirmDialog({
     </Modal>
   );
 }
-

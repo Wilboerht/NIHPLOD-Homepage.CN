@@ -2,14 +2,7 @@
 
 import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  Eye,
-  EyeOff,
-  AlertCircle,
-  Loader2,
-  ChevronDown,
-  ExternalLink,
-} from "lucide-react";
+import { Eye, EyeOff, AlertCircle, Loader2, ChevronDown, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -174,7 +167,7 @@ export default function LoginPage() {
         <div className="relative" ref={breadcrumbRef}>
           <button
             onClick={() => setBreadcrumbOpen((v) => !v)}
-            className="flex items-center gap-1 p-0 font-medium text-slate-600 transition-colors hover:text-slate-800 bg-transparent border-none cursor-pointer"
+            className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 font-medium text-slate-600 transition-colors hover:text-slate-800"
           >
             后台登录（官网）
             <ChevronDown
@@ -185,9 +178,9 @@ export default function LoginPage() {
             />
           </button>
           {breadcrumbOpen && (
-            <div className="absolute left-0 top-full mt-2 flex flex-col gap-2 whitespace-nowrap text-xs text-slate-400 -translate-x-[13px]">
+            <div className="absolute left-0 top-full mt-2 flex -translate-x-[13px] flex-col gap-2 whitespace-nowrap text-xs text-slate-400">
               <div className="flex items-center gap-2">
-                <span className="text-slate-300 select-none">/</span>
+                <span className="select-none text-slate-300">/</span>
                 <a
                   href="https://advisor.nihplod.cn/admin"
                   target="_blank"
@@ -200,7 +193,7 @@ export default function LoginPage() {
                 </a>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-300 select-none">/</span>
+                <span className="select-none text-slate-300">/</span>
                 <a
                   href="https://ba.nihplod.cn/admin"
                   target="_blank"
@@ -218,9 +211,9 @@ export default function LoginPage() {
       </div>
 
       {/* 装饰背景光晕 */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-brand-gold/10 blur-[100px]" />
-        <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-brand-gold/10 blur-[100px]" />
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-brand-primary/10 blur-[100px]" />
+        <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-brand-primary/10 blur-[100px]" />
       </div>
 
       <div className="relative z-10 flex w-full flex-col items-center">
@@ -228,9 +221,7 @@ export default function LoginPage() {
         <div
           className={cn(
             "transition-all duration-700",
-            mounted
-              ? "translate-y-0 opacity-100"
-              : "translate-y-4 opacity-0"
+            mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           )}
         >
           <OrbitalIcons className="min-h-[620px] min-w-[380px] sm:min-h-[860px] sm:min-w-[860px]">
@@ -266,7 +257,7 @@ export default function LoginPage() {
                       aria-invalid={!!fieldErrors.email}
                       aria-describedby={fieldErrors.email ? "email-error" : undefined}
                       className={cn(
-                        "block w-full rounded-xl border bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
+                        "block w-full rounded-xl border bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
                         fieldErrors.email
                           ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
                           : "border-slate-100 focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
@@ -276,7 +267,9 @@ export default function LoginPage() {
                       id="email-error"
                       className={cn(
                         "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
-                        fieldErrors.email ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none h-0 mt-0"
+                        fieldErrors.email
+                          ? "translate-y-0 opacity-100"
+                          : "pointer-events-none mt-0 h-0 -translate-y-1 opacity-0"
                       )}
                     >
                       <AlertCircle className="h-3 w-3 flex-shrink-0" />
@@ -299,7 +292,7 @@ export default function LoginPage() {
                       aria-invalid={!!fieldErrors.password}
                       aria-describedby={fieldErrors.password ? "password-error" : undefined}
                       className={cn(
-                        "block w-full rounded-xl border bg-slate-50 py-3.5 px-5 pr-10 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
+                        "block w-full rounded-xl border bg-slate-50 px-5 py-3.5 pr-10 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
                         fieldErrors.password
                           ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
                           : "border-slate-100 focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
@@ -312,17 +305,15 @@ export default function LoginPage() {
                       tabIndex={-1}
                       aria-label={showPassword ? "隐藏密码" : "显示密码"}
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                     <p
                       id="password-error"
                       className={cn(
                         "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
-                        fieldErrors.password ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none h-0 mt-0"
+                        fieldErrors.password
+                          ? "translate-y-0 opacity-100"
+                          : "pointer-events-none mt-0 h-0 -translate-y-1 opacity-0"
                       )}
                     >
                       <AlertCircle className="h-3 w-3 flex-shrink-0" />
@@ -347,7 +338,7 @@ export default function LoginPage() {
                         aria-invalid={!!fieldErrors.totpCode}
                         aria-describedby={fieldErrors.totpCode ? "totp-error" : undefined}
                         className={cn(
-                          "block w-full rounded-xl border bg-slate-50 py-3.5 px-5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
+                          "block w-full rounded-xl border bg-slate-50 px-5 py-3.5 text-[13px] text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-300 disabled:opacity-50",
                           fieldErrors.totpCode
                             ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
                             : "border-slate-100 focus:border-[#00263E]/40 focus:bg-white focus:ring-4 focus:ring-[#00263E]/15"
@@ -357,7 +348,9 @@ export default function LoginPage() {
                         id="totp-error"
                         className={cn(
                           "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
-                          fieldErrors.totpCode ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none h-0 mt-0"
+                          fieldErrors.totpCode
+                            ? "translate-y-0 opacity-100"
+                            : "pointer-events-none mt-0 h-0 -translate-y-1 opacity-0"
                         )}
                       >
                         <AlertCircle className="h-3 w-3 flex-shrink-0" />
@@ -398,8 +391,6 @@ export default function LoginPage() {
             </div>
           </OrbitalIcons>
         </div>
-
-
       </div>
 
       {/* 页脚 */}
@@ -407,11 +398,11 @@ export default function LoginPage() {
         <p className="text-[10px] font-light tracking-widest text-brand-charcoal/40">
           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
         </p>
-        <div className="flex items-center justify-center gap-2 text-[9px] font-light tracking-normal text-brand-charcoal/40 whitespace-nowrap">
+        <div className="flex items-center justify-center gap-2 whitespace-nowrap text-[9px] font-light tracking-normal text-brand-charcoal/40">
           <Link
             href="https://beian.miit.gov.cn/"
             target="_blank"
-            className="hover:text-brand-gold transition-colors"
+            className="transition-colors hover:text-brand-primary"
           >
             沪ICP备2026014764号-1
           </Link>
@@ -419,7 +410,7 @@ export default function LoginPage() {
           <Link
             href="http://www.beian.gov.cn/portal/registerSystemInfo"
             target="_blank"
-            className="flex items-center gap-1 hover:text-brand-gold transition-colors"
+            className="flex items-center gap-1 transition-colors hover:text-brand-primary"
           >
             <Image
               src="/images/beian.webp"

@@ -20,7 +20,7 @@ export default function TableOfContents({
         const el = document.getElementById(e.target.value);
         if (el) el.scrollIntoView({ behavior: "smooth" });
       }}
-      className="w-full p-3 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#00263E] appearance-none cursor-pointer"
+      className="w-full cursor-pointer appearance-none rounded-xl border border-zinc-200 bg-white p-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#00263E]"
       defaultValue=""
       aria-label={label}
     >

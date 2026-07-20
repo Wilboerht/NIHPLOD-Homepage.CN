@@ -27,8 +27,7 @@ const ALLOWED_TAGS = [
 const ALLOWED_ATTR = ["href"];
 
 // 仅允许 http/https/mailto/tel 协议以及相对路径/锚点
-const ALLOWED_URI_REGEXP =
-  /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
+const ALLOWED_URI_REGEXP = /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 
 /**
  * 消毒 HTML 字符串

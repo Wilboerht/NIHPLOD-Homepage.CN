@@ -154,15 +154,10 @@ function generateNonceStr(): string {
 /**
  * 生成签名
  */
-function generateSign(
-  ticket: string,
-  nonceStr: string,
-  timestamp: number,
-  url: string
-): string {
+function generateSign(ticket: string, nonceStr: string, timestamp: number, url: string): string {
   // 按字典序排列参数
   const str = `jsapi_ticket=${ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
-  
+
   // SHA1 签名
   return crypto.createHash("sha1").update(str).digest("hex");
 }
@@ -203,7 +198,7 @@ export async function getWechatSignature(url: string): Promise<WechatSignature> 
  */
 export function isWechatBrowser(): boolean {
   if (typeof window === "undefined") return false;
-  
+
   const ua = window.navigator.userAgent.toLowerCase();
   return ua.includes("micromessenger");
 }
@@ -247,7 +242,11 @@ export function getWechatOAuthUrl(redirectUri: string, state?: string): string {
  * 生成微信公众号网页授权 URL
  * 用于微信内 H5 授权登录
  */
-export function getWechatMpOAuthUrl(redirectUri: string, state?: string, scope: "snsapi_base" | "snsapi_userinfo" = "snsapi_userinfo"): string {
+export function getWechatMpOAuthUrl(
+  redirectUri: string,
+  state?: string,
+  scope: "snsapi_base" | "snsapi_userinfo" = "snsapi_userinfo"
+): string {
   const appId = process.env.WECHAT_MP_APP_ID || process.env.WECHAT_APP_ID;
 
   if (!appId) {
@@ -265,7 +264,10 @@ export function getWechatMpOAuthUrl(redirectUri: string, state?: string, scope: 
  * @param code 微信回调的 code
  * @param type 登录类型: open(开放平台) | mp(公众号)
  */
-export async function getWechatOAuthToken(code: string, type: "open" | "mp" = "open"): Promise<{
+export async function getWechatOAuthToken(
+  code: string,
+  type: "open" | "mp" = "open"
+): Promise<{
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
@@ -310,7 +312,10 @@ export async function getWechatOAuthToken(code: string, type: "open" | "mp" = "o
 /**
  * 通过 Access Token 获取微信用户信息
  */
-export async function getWechatUserInfo(accessToken: string, openid: string): Promise<WechatUserInfo> {
+export async function getWechatUserInfo(
+  accessToken: string,
+  openid: string
+): Promise<WechatUserInfo> {
   const url = `https://api.weixin.qq.com/sns/userinfo?access_token=${accessToken}&openid=${openid}&lang=zh_CN`;
 
   const response = await fetch(url);
@@ -322,4 +327,3 @@ export async function getWechatUserInfo(accessToken: string, openid: string): Pr
 
   return data as WechatUserInfo;
 }
-

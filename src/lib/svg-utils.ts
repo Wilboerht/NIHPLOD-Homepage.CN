@@ -32,8 +32,7 @@ export function sanitizeSvg(svg: string | null | undefined): string {
     FORBID_TAGS: ["foreignObject", "use"],
     FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onstart"],
     // 禁止 data URI 图片，仅允许 http/https/mailto/tel 协议
-    ALLOWED_URI_REGEXP:
-      /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
 
   return cleaned;

@@ -73,11 +73,7 @@ export function Pagination({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {/* 总数显示 */}
-      {showTotal && (
-        <span className="mr-4 text-sm text-gray-500">
-          共 {total} 条
-        </span>
-      )}
+      {showTotal && <span className="mr-4 text-sm text-gray-500">共 {total} 条</span>}
 
       {/* 上一页 */}
       <button
@@ -86,9 +82,7 @@ export function Pagination({
         className={cn(
           buttonBaseStyles,
           "border border-gray-300 bg-white px-2",
-          page === 1
-            ? "cursor-not-allowed opacity-50"
-            : "hover:bg-gray-50"
+          page === 1 ? "cursor-not-allowed opacity-50" : "hover:bg-gray-50"
         )}
         aria-label="上一页"
       >
@@ -113,7 +107,7 @@ export function Pagination({
                 buttonBaseStyles,
                 "px-3",
                 page === item
-                  ? "bg-brand-gold text-white"
+                  ? "bg-brand-primary text-white"
                   : "border border-gray-300 bg-white hover:bg-gray-50"
               )}
             >
@@ -130,9 +124,7 @@ export function Pagination({
         className={cn(
           buttonBaseStyles,
           "border border-gray-300 bg-white px-2",
-          page === totalPages
-            ? "cursor-not-allowed opacity-50"
-            : "hover:bg-gray-50"
+          page === totalPages ? "cursor-not-allowed opacity-50" : "hover:bg-gray-50"
         )}
         aria-label="下一页"
       >
@@ -141,4 +133,3 @@ export function Pagination({
     </div>
   );
 }
-

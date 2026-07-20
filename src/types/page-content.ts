@@ -53,7 +53,13 @@ export interface StoryTabContent {
   title: string;
   subtitle?: string; // 英文副标题
   slogan?: string; // 理念口号
-  layout?: "default" | "cards" | "philosophy" | "mission-centered" | "media-images" | "awards-images";
+  layout?:
+    | "default"
+    | "cards"
+    | "philosophy"
+    | "mission-centered"
+    | "media-images"
+    | "awards-images";
   sections: StorySection[];
 }
 
@@ -155,9 +161,20 @@ export interface CareersPageContent {
 // 隐私政策章节 ID
 export type PrivacySectionId =
   | "summary"
-  | "ch1" | "ch2" | "ch3" | "ch4" | "ch5"
-  | "ch6" | "ch7" | "ch8" | "ch9" | "ch10"
-  | "ch11" | "ch12" | "ch13" | "ch14";
+  | "ch1"
+  | "ch2"
+  | "ch3"
+  | "ch4"
+  | "ch5"
+  | "ch6"
+  | "ch7"
+  | "ch8"
+  | "ch9"
+  | "ch10"
+  | "ch11"
+  | "ch12"
+  | "ch13"
+  | "ch14";
 
 // 隐私政策章节内容
 export interface PrivacySectionContent {
@@ -264,5 +281,3 @@ export type PageContentMap = {
 };
 
 export type PageSlug = keyof PageContentMap;
-
-

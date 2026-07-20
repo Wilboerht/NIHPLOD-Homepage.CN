@@ -14,8 +14,15 @@ export const metadata: Metadata = {
     canonical: "/careers",
   },
   keywords: [
-    "NIHPLOD", "旎柏", "招聘", "加入我们", "工作机会",
-    "高端护肤品牌招聘", "上海招聘", "摩纳哥招聘", "护肤品行业",
+    "NIHPLOD",
+    "旎柏",
+    "招聘",
+    "加入我们",
+    "工作机会",
+    "高端护肤品牌招聘",
+    "上海招聘",
+    "摩纳哥招聘",
+    "护肤品行业",
   ],
   openGraph: {
     title: "加入我们 | NIHPLOD 旎柏",
@@ -26,7 +33,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
     title: "加入我们 | NIHPLOD 旎柏",
-    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    description:
+      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
 };

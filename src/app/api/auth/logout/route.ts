@@ -1,7 +1,7 @@
 /**
  * 用户登出 API
  * POST /api/auth/logout
- * 
+ *
  * 安全增强：
  * - 撤销 Refresh Token（使其失效）
  * - 清除两个 Cookie（Access Token 和 Refresh Token）
@@ -21,7 +21,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -84,4 +84,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -2,16 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  EyeOff,
-  Briefcase,
-  MapPin,
-} from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, EyeOff, Briefcase, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
@@ -58,12 +49,15 @@ export default function AdminJobsPage() {
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGet<{ items: Job[]; pagination: { total: number } }>("/api/admin/jobs", {
-        page,
-        pageSize: 10,
-        search,
-        status: statusFilter === "all" ? undefined : statusFilter,
-      });
+      const data = await apiGet<{ items: Job[]; pagination: { total: number } }>(
+        "/api/admin/jobs",
+        {
+          page,
+          pageSize: 10,
+          search,
+          status: statusFilter === "all" ? undefined : statusFilter,
+        }
+      );
       setJobs(data.items);
       setTotal(data.pagination.total);
     } catch (error) {
@@ -159,7 +153,7 @@ export default function AdminJobsPage() {
               placeholder="搜索职位..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-60 rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+              className="h-9 w-60 rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
           <Select
@@ -180,18 +174,10 @@ export default function AdminJobsPage() {
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">已选 {selectedIds.size} 项</span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBatchAction("publish")}
-            >
+            <Button size="sm" variant="outline" onClick={() => handleBatchAction("publish")}>
               批量发布
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBatchAction("unpublish")}
-            >
+            <Button size="sm" variant="outline" onClick={() => handleBatchAction("unpublish")}>
               批量下架
             </Button>
             <Button
@@ -210,7 +196,7 @@ export default function AdminJobsPage() {
       <div className="rounded-xl bg-white shadow-sm">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : jobs.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center text-gray-400">
@@ -220,10 +206,7 @@ export default function AdminJobsPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {jobs.map((job) => (
-              <div
-                key={job.id}
-                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50"
-              >
+              <div key={job.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
                 {/* 选择框 */}
                 <input
                   type="checkbox"
@@ -241,11 +224,11 @@ export default function AdminJobsPage() {
                 />
 
                 {/* 职位信息 */}
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3">
                     <Link
                       href={`/admin/jobs/${job.id}/edit`}
-                      className="font-medium text-gray-900 hover:text-brand-gold"
+                      className="font-medium text-gray-900 hover:text-brand-primary"
                     >
                       {job.title}
                     </Link>
@@ -280,11 +263,7 @@ export default function AdminJobsPage() {
                     className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                     title={job.published ? "取消发布" : "发布"}
                   >
-                    {job.published ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {job.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                   <button
                     onClick={() => setDeleteTarget(job)}
@@ -302,12 +281,7 @@ export default function AdminJobsPage() {
       {/* 分页 */}
       {total > 10 && (
         <div className="flex justify-center">
-          <Pagination
-            page={page}
-            pageSize={10}
-            total={total}
-            onChange={setPage}
-          />
+          <Pagination page={page} pageSize={10} total={total} onChange={setPage} />
         </div>
       )}
 

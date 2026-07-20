@@ -110,7 +110,10 @@ export function hashBackupCode(code: string): string {
  * @param hashedCodes - 数据库中存储的哈希备用码数组（JSON 字符串）
  * @returns 验证成功时返回新的备用码数组（已移除使用过的码），失败返回 null
  */
-export function verifyBackupCode(code: string, hashedCodes: string): { valid: boolean; remainingCodes: string[] } | null {
+export function verifyBackupCode(
+  code: string,
+  hashedCodes: string
+): { valid: boolean; remainingCodes: string[] } | null {
   try {
     const codes: string[] = JSON.parse(hashedCodes);
     const inputHash = hashBackupCode(code);

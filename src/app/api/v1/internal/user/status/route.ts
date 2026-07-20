@@ -135,7 +135,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { userId: user.id, status: user.status, phone: user.phone, updatedAt: user.updatedAt.toISOString() },
+      data: {
+        userId: user.id,
+        status: user.status,
+        phone: user.phone,
+        updatedAt: user.updatedAt.toISOString(),
+      },
     });
   } catch (error) {
     apiConsole.error("[InternalApiV1] user/status 异常:", error);

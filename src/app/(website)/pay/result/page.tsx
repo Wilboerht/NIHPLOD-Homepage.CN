@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useSearchParams } from "next/navigation";
@@ -22,8 +21,8 @@ function PayResultClient() {
           </div>
         </div>
 
-        <h1 className="mb-4 font-serif text-3xl text-brand-brown">支付成功</h1>
-        <p className="mb-8 text-brand-brown/60">
+        <h1 className="text-brand-brown mb-4 font-serif text-3xl">支付成功</h1>
+        <p className="text-brand-brown/60 mb-8">
           感谢您的购买！我们会尽快为您发货。
           {orderNo && <br />}
           {orderNo && <span className="text-sm">订单编号: {orderNo}</span>}

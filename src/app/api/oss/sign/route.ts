@@ -12,7 +12,11 @@ import { apiConsole } from "@/lib/logger";
 const signSchema = z.object({
   filename: z.string().min(1, "文件名不能为空").max(255, "文件名过长"),
   type: z.string().min(1, "文件类型不能为空").max(100, "文件类型过长"),
-  size: z.number().int("文件大小必须为整数").positive("文件大小必须为正数").max(100 * 1024 * 1024, "文件大小超过最大限制"),
+  size: z
+    .number()
+    .int("文件大小必须为整数")
+    .positive("文件大小必须为正数")
+    .max(100 * 1024 * 1024, "文件大小超过最大限制"),
 });
 
 // 允许的图片 MIME 类型
@@ -36,93 +40,92 @@ const EXT_TO_MIME: Record<string, string> = {
 };
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-    try {
-        // 1. 要求用户登录（优先验证管理员，再验证普通用户）
-        const admin = await verifyAuth(request);
-        const user = admin ?? (await verifyUserAuth(request));
-        if (!user) {
-            return NextResponse.json({ error: "请先登录" }, { status: 401 });
-        }
-
-        // 2. 频率检查
-        const ip = getClientIP(request);
-        const limitParams = await rateLimit(ip, "oss-sign");
-        if (!limitParams.success) {
-            return NextResponse.json({ error: "请求过于频繁" }, { status: 429 });
-        }
-
-        const body = await request.json();
-        const parsed = signSchema.safeParse(body);
-        if (!parsed.success) {
-            return NextResponse.json({ error: "参数错误", details: parsed.error.issues }, { status: 400 });
-        }
-        const { filename, type, size } = parsed.data;
-
-        // 文件名安全字符白名单
-        if (!FILENAME_SAFE_REGEX.test(filename)) {
-            return NextResponse.json({ error: "文件名包含非法字符" }, { status: 400 });
-        }
-
-        // 校验文件扩展名（普通用户只能上传图片和 PDF，视频仅限管理员）
-        const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf"];
-        const ADMIN_EXTS = ["mp4", "mov"];
-        const isAdmin = admin !== null;
-        const ext = filename.split(".").pop()?.toLowerCase() || "";
-        const allAllowed = isAdmin ? [...ALLOWED_EXTS, ...ADMIN_EXTS] : ALLOWED_EXTS;
-        if (!allAllowed.includes(ext)) {
-            return NextResponse.json({ error: "不支持的文件类型" }, { status: 400 });
-        }
-
-        // MIME 类型白名单与可执行类型拦截
-        if (BLOCKED_CONTENT_TYPES.includes(type)) {
-            return NextResponse.json({ error: "不允许的文件类型" }, { status: 400 });
-        }
-
-        const isImage = ALLOWED_IMAGE_TYPES.includes(type);
-        const isVideo = ALLOWED_VIDEO_TYPES.includes(type);
-
-        if (!isImage && !(isAdmin && isVideo)) {
-            return NextResponse.json({ error: "不支持的 MIME 类型" }, { status: 400 });
-        }
-
-        // 文件大小限制（普通用户图片最大 10MB；管理员视频最大 100MB）
-        if (isImage && size > 10 * 1024 * 1024) {
-            return NextResponse.json({ error: "图片大小不能超过 10MB" }, { status: 400 });
-        }
-        if (isAdmin && isVideo && size > 100 * 1024 * 1024) {
-            return NextResponse.json({ error: "视频大小不能超过 100MB" }, { status: 400 });
-        }
-
-        // 扩展名与 MIME 类型一致性校验
-        if (EXT_TO_MIME[ext] && EXT_TO_MIME[ext] !== type) {
-            return NextResponse.json({ error: "文件扩展名与 MIME 类型不一致" }, { status: 400 });
-        }
-
-        // 3. 生成签名
-        const signature = await generateUploadSignature(filename, type);
-
-        return NextResponse.json({
-            success: true,
-            data: signature
-        });
-
-    } catch (error) {
-        apiConsole.error("OSS Sign Error:", error);
-
-        // 如果是未配置 OSS，返回特定错误以便前端降级
-        if (error instanceof Error && error.message === "阿里云 OSS 未配置") {
-            return NextResponse.json(
-                { success: false, error: "NO_OSS" },
-                { status: 501 } // Not Implemented
-            );
-        }
-
-        return NextResponse.json(
-            { error: "获取上传签名失败" },
-            { status: 500 }
-        );
+  try {
+    // 1. 要求用户登录（优先验证管理员，再验证普通用户）
+    const admin = await verifyAuth(request);
+    const user = admin ?? (await verifyUserAuth(request));
+    if (!user) {
+      return NextResponse.json({ error: "请先登录" }, { status: 401 });
     }
+
+    // 2. 频率检查
+    const ip = getClientIP(request);
+    const limitParams = await rateLimit(ip, "oss-sign");
+    if (!limitParams.success) {
+      return NextResponse.json({ error: "请求过于频繁" }, { status: 429 });
+    }
+
+    const body = await request.json();
+    const parsed = signSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "参数错误", details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+    const { filename, type, size } = parsed.data;
+
+    // 文件名安全字符白名单
+    if (!FILENAME_SAFE_REGEX.test(filename)) {
+      return NextResponse.json({ error: "文件名包含非法字符" }, { status: 400 });
+    }
+
+    // 校验文件扩展名（普通用户只能上传图片和 PDF，视频仅限管理员）
+    const ALLOWED_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "pdf"];
+    const ADMIN_EXTS = ["mp4", "mov"];
+    const isAdmin = admin !== null;
+    const ext = filename.split(".").pop()?.toLowerCase() || "";
+    const allAllowed = isAdmin ? [...ALLOWED_EXTS, ...ADMIN_EXTS] : ALLOWED_EXTS;
+    if (!allAllowed.includes(ext)) {
+      return NextResponse.json({ error: "不支持的文件类型" }, { status: 400 });
+    }
+
+    // MIME 类型白名单与可执行类型拦截
+    if (BLOCKED_CONTENT_TYPES.includes(type)) {
+      return NextResponse.json({ error: "不允许的文件类型" }, { status: 400 });
+    }
+
+    const isImage = ALLOWED_IMAGE_TYPES.includes(type);
+    const isVideo = ALLOWED_VIDEO_TYPES.includes(type);
+
+    if (!isImage && !(isAdmin && isVideo)) {
+      return NextResponse.json({ error: "不支持的 MIME 类型" }, { status: 400 });
+    }
+
+    // 文件大小限制（普通用户图片最大 10MB；管理员视频最大 100MB）
+    if (isImage && size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: "图片大小不能超过 10MB" }, { status: 400 });
+    }
+    if (isAdmin && isVideo && size > 100 * 1024 * 1024) {
+      return NextResponse.json({ error: "视频大小不能超过 100MB" }, { status: 400 });
+    }
+
+    // 扩展名与 MIME 类型一致性校验
+    if (EXT_TO_MIME[ext] && EXT_TO_MIME[ext] !== type) {
+      return NextResponse.json({ error: "文件扩展名与 MIME 类型不一致" }, { status: 400 });
+    }
+
+    // 3. 生成签名
+    const signature = await generateUploadSignature(filename, type);
+
+    return NextResponse.json({
+      success: true,
+      data: signature,
+    });
+  } catch (error) {
+    apiConsole.error("OSS Sign Error:", error);
+
+    // 如果是未配置 OSS，返回特定错误以便前端降级
+    if (error instanceof Error && error.message === "阿里云 OSS 未配置") {
+      return NextResponse.json(
+        { success: false, error: "NO_OSS" },
+        { status: 501 } // Not Implemented
+      );
+    }
+
+    return NextResponse.json({ error: "获取上传签名失败" }, { status: 500 });
+  }
 }

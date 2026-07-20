@@ -57,16 +57,12 @@ export function TagInput({
 
   return (
     <div className={className}>
-      {label && (
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      )}
+      {label && <label className="mb-1.5 block text-sm font-medium text-gray-700">{label}</label>}
 
       <div
         className={cn(
           "flex flex-wrap items-center gap-2 rounded-lg border bg-white px-3 py-2",
-          "focus-within:border-brand-gold focus-within:ring-1 focus-within:ring-brand-gold",
+          "focus-within:border-brand-primary focus-within:ring-1 focus-within:ring-brand-primary",
           error ? "border-red-500" : "border-gray-300"
         )}
       >
@@ -74,13 +70,13 @@ export function TagInput({
         {value.map((tag, index) => (
           <span
             key={`${tag}-${index}`}
-            className="inline-flex items-center gap-1 rounded-full bg-brand-gold/10 px-3 py-1 text-sm text-brand-gold"
+            className="inline-flex items-center gap-1 rounded-full bg-brand-primary/10 px-3 py-1 text-sm text-brand-primary"
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(index)}
-              className="rounded-full p-0.5 hover:bg-brand-gold/20"
+              className="rounded-full p-0.5 hover:bg-brand-primary/20"
             >
               <X className="h-3 w-3" />
             </button>
@@ -126,4 +122,3 @@ export function TagInput({
     </div>
   );
 }
-

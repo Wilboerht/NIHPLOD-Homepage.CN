@@ -4,7 +4,7 @@ import { apiConsole } from "@/lib/logger";
 
 // GET /api/categories - 获取分类列表
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

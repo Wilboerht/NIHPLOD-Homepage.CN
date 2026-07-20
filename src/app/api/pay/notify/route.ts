@@ -14,12 +14,15 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   // 速率限制：每个 IP 每分钟最多 60 次回调请求
   const clientIP = getClientIP(request);
-  const limitResult = await rateLimit(clientIP, "pay-notify", { maxRequests: 60, windowMs: 60_000 });
+  const limitResult = await rateLimit(clientIP, "pay-notify", {
+    maxRequests: 60,
+    windowMs: 60_000,
+  });
   if (!limitResult.success) {
     return NextResponse.json({ code: "FAIL", message: "rate limited" }, { status: 429 });
   }
@@ -36,7 +39,8 @@ export async function POST(request: NextRequest) {
     // 1. 只读幂等检查（不写入，防止 DoS 填满数据库）
     const idempotencyCheck = await isNotificationProcessed("wechat", notifyId);
     if (idempotencyCheck.processed && idempotencyCheck.status === "SUCCESS") {
-      if (process.env.NODE_ENV === "development") console.log(`[PayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
+      if (process.env.NODE_ENV === "development")
+        console.log(`[PayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
       return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
     }
 
@@ -53,7 +57,8 @@ export async function POST(request: NextRequest) {
       );
       if (!recordResult.success) {
         // 并发请求：已被另一个请求先记录
-        if (process.env.NODE_ENV === "development") console.log(`[PayNotify] 通知 ${notifyId} 正在被其他请求处理`);
+        if (process.env.NODE_ENV === "development")
+          console.log(`[PayNotify] 通知 ${notifyId} 正在被其他请求处理`);
         return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
       }
       recordId = recordResult.recordId;

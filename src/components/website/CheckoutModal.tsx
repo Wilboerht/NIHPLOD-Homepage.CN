@@ -56,7 +56,16 @@ interface CheckoutData {
 const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`;
 
 export function CheckoutModal() {
-  const { user, checkoutOpen, checkoutSelectedProductIds, checkoutQuantities, closeCheckout, openUserCenter, openLoginModal, openPay } = useAuth();
+  const {
+    user,
+    checkoutOpen,
+    checkoutSelectedProductIds,
+    checkoutQuantities,
+    closeCheckout,
+    openUserCenter,
+    openLoginModal,
+    openPay,
+  } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -158,7 +167,10 @@ export function CheckoutModal() {
         })),
         remark: remark || undefined,
         userCouponId: selectedCouponId || undefined,
-        source: checkoutSelectedProductIds && checkoutSelectedProductIds.length > 0 ? "direct_buy" : "cart",
+        source:
+          checkoutSelectedProductIds && checkoutSelectedProductIds.length > 0
+            ? "direct_buy"
+            : "cart",
       });
 
       closeCheckout();
@@ -204,22 +216,22 @@ export function CheckoutModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md max-h-[85vh] bg-[#FBF8F0] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-[#FBF8F0] shadow-2xl"
             style={{ backgroundImage: TEXTURE_BG }}
           >
             {/* 关闭按钮 */}
             <button
               onClick={closeCheckout}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full text-[#4A6272] hover:text-[#00263E] hover:bg-[#FBF8F0] transition-colors"
+              className="absolute right-4 top-4 z-10 rounded-full p-2 text-[#4A6272] transition-colors hover:bg-[#FBF8F0] hover:text-[#00263E]"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
 
             {/* 头部 */}
-            <div className="px-6 pt-6 pb-4 border-b border-[#E8E3DC]">
+            <div className="border-b border-[#E8E3DC] px-6 pb-4 pt-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#A69374]/10 flex items-center justify-center">
-                  <ShoppingBag className="w-5 h-5 text-[#A69374]" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#A69374]/10">
+                  <ShoppingBag className="h-5 w-5 text-[#A69374]" />
                 </div>
                 <div>
                   <h2 className="text-lg font-medium text-[#00263E]">确认订单</h2>
@@ -229,29 +241,26 @@ export function CheckoutModal() {
             </div>
 
             {/* 内容区域 */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                  <Loader2 className="w-8 h-8 text-[#A69374] animate-spin" />
+                <div className="flex flex-col items-center justify-center gap-3 py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#A69374]" />
                   <p className="text-sm text-[#4A6272]">加载中...</p>
                 </div>
               ) : error && !data ? (
-                <div className="text-center py-16">
-                  <p className="text-red-500 mb-4">{error}</p>
-                  <button
-                    onClick={loadCheckoutData}
-                    className="text-[#A69374] hover:underline"
-                  >
+                <div className="py-16 text-center">
+                  <p className="mb-4 text-red-500">{error}</p>
+                  <button onClick={loadCheckoutData} className="text-[#A69374] hover:underline">
                     重试
                   </button>
                 </div>
               ) : data ? (
                 <>
                   {/* 收货地址 */}
-                  <div className="bg-white/60 rounded-xl p-4 border border-[#E8E3DC]">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 text-[#00263E] font-medium">
-                        <MapPin className="w-4 h-4 text-[#A69374]" />
+                  <div className="rounded-xl border border-[#E8E3DC] bg-white/60 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2 font-medium text-[#00263E]">
+                        <MapPin className="h-4 w-4 text-[#A69374]" />
                         收货地址
                       </div>
                       <button
@@ -259,9 +268,9 @@ export function CheckoutModal() {
                           closeCheckout();
                           openUserCenter("addresses");
                         }}
-                        className="text-sm text-[#A69374] flex items-center gap-1 hover:text-[#4A6272] transition-colors"
+                        className="flex items-center gap-1 text-sm text-[#A69374] transition-colors hover:text-[#4A6272]"
                       >
-                        管理 <ChevronRight className="w-4 h-4" />
+                        管理 <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
 
@@ -271,7 +280,7 @@ export function CheckoutModal() {
                           closeCheckout();
                           openUserCenter("addresses");
                         }}
-                        className="w-full py-4 border-2 border-dashed border-[#E4DFD9] rounded-xl text-[#4A6272] hover:border-[#A69374] hover:text-[#A69374] transition-colors"
+                        className="w-full rounded-xl border-2 border-dashed border-[#E4DFD9] py-4 text-[#4A6272] transition-colors hover:border-[#A69374] hover:text-[#A69374]"
                       >
                         + 添加收货地址
                       </button>
@@ -280,10 +289,10 @@ export function CheckoutModal() {
                         {data.addresses.slice(0, 3).map((addr) => (
                           <label
                             key={addr.id}
-                            className={`block p-3 rounded-xl cursor-pointer transition-all ${
+                            className={`block cursor-pointer rounded-xl p-3 transition-all ${
                               selectedAddressId === addr.id
-                                ? "bg-[#A69374]/10 border-2 border-[#A69374]"
-                                : "bg-[#FBF8F0] border-2 border-transparent hover:border-[#E4DFD9]"
+                                ? "border-2 border-[#A69374] bg-[#A69374]/10"
+                                : "border-2 border-transparent bg-[#FBF8F0] hover:border-[#E4DFD9]"
                             }`}
                           >
                             <input
@@ -296,17 +305,17 @@ export function CheckoutModal() {
                             />
                             <div className="flex items-center gap-2">
                               {selectedAddressId === addr.id && (
-                                <Check className="w-4 h-4 text-[#A69374]" />
+                                <Check className="h-4 w-4 text-[#A69374]" />
                               )}
                               <span className="font-medium text-[#00263E]">{addr.name}</span>
                               <span className="text-[#4A6272]">{addr.phone}</span>
                               {addr.isDefault && (
-                                <span className="text-xs bg-[#A69374]/20 text-[#A69374] px-1.5 py-0.5 rounded">
+                                <span className="rounded bg-[#A69374]/20 px-1.5 py-0.5 text-xs text-[#A69374]">
                                   默认
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-[#4A6272] mt-1 pl-6">
+                            <p className="mt-1 pl-6 text-sm text-[#4A6272]">
                               {addr.province} {addr.city} {addr.district} {addr.detail}
                             </p>
                           </label>
@@ -316,46 +325,44 @@ export function CheckoutModal() {
                   </div>
 
                   {/* 商品列表 */}
-                  <div className="bg-white/60 rounded-xl p-4 border border-[#E8E3DC]">
-                    <div className="flex items-center gap-2 mb-3">
-                      <ShoppingBag className="w-4 h-4 text-[#A69374]" />
-                      <h3 className="font-medium text-[#00263E]">
-                        商品清单
-                      </h3>
-                      <span className="text-xs text-[#4A6272] bg-[#FBF8F0] px-2 py-0.5 rounded-full">
+                  <div className="rounded-xl border border-[#E8E3DC] bg-white/60 p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <ShoppingBag className="h-4 w-4 text-[#A69374]" />
+                      <h3 className="font-medium text-[#00263E]">商品清单</h3>
+                      <span className="rounded-full bg-[#FBF8F0] px-2 py-0.5 text-xs text-[#4A6272]">
                         {data.items.length} 件
                       </span>
                     </div>
-                    <div className="space-y-3 max-h-52 overflow-y-auto pr-1 scrollbar-thin">
+                    <div className="scrollbar-thin max-h-52 space-y-3 overflow-y-auto pr-1">
                       {data.items.map((item, idx) => (
-                        <div key={idx} className="flex gap-3 p-2 rounded-lg bg-[#FBF8F0]/50">
-                          <div className="w-14 h-14 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-[#E8E3DC]">
+                        <div key={idx} className="flex gap-3 rounded-lg bg-[#FBF8F0]/50 p-2">
+                          <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-[#E8E3DC] bg-white">
                             {item.image ? (
                               <Image
                                 src={item.image}
                                 alt={item.productName}
                                 width={56}
                                 height={56}
-                                className="w-full h-full object-cover"
+                                className="h-full w-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <ShoppingBag className="w-6 h-6 text-[#E4DFD9]" />
+                              <div className="flex h-full w-full items-center justify-center">
+                                <ShoppingBag className="h-6 w-6 text-[#E4DFD9]" />
                               </div>
                             )}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-[#00263E] truncate">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-[#00263E]">
                               {item.productName}
                             </p>
                             {item.variantName && (
                               <p className="text-xs text-[#4A6272]">{item.variantName}</p>
                             )}
-                            <div className="flex justify-between items-center mt-1">
-                              <span className="text-sm text-[#A69374] font-medium">
+                            <div className="mt-1 flex items-center justify-between">
+                              <span className="text-sm font-medium text-[#A69374]">
                                 {formatPrice(item.price)}
                               </span>
-                              <span className="text-xs text-[#4A6272] bg-[#FBF8F0] px-2 py-0.5 rounded">
+                              <span className="rounded bg-[#FBF8F0] px-2 py-0.5 text-xs text-[#4A6272]">
                                 x{item.quantity}
                               </span>
                             </div>
@@ -367,14 +374,14 @@ export function CheckoutModal() {
 
                   {/* 优惠券 */}
                   {data.availableCoupons.length > 0 && (
-                    <div className="bg-white/60 rounded-xl p-4 border border-[#E8E3DC]">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="rounded-xl border border-[#E8E3DC] bg-white/60 p-4">
+                      <div className="mb-2 flex items-center gap-2">
                         <span className="text-sm font-medium text-[#00263E]">优惠券</span>
                       </div>
                       <select
                         value={selectedCouponId}
                         onChange={(e) => setSelectedCouponId(e.target.value)}
-                        className="w-full bg-[#FBF8F0] border-none rounded-lg text-sm text-[#00263E] p-3 focus:ring-2 focus:ring-[#A69374]/30"
+                        className="w-full rounded-lg border-none bg-[#FBF8F0] p-3 text-sm text-[#00263E] focus:ring-2 focus:ring-[#A69374]/30"
                       >
                         <option value="">不使用优惠券</option>
                         {data.availableCoupons.map((coupon) => (
@@ -392,9 +399,9 @@ export function CheckoutModal() {
                   )}
 
                   {/* 备注 */}
-                  <div className="bg-white/60 rounded-xl p-4 border border-[#E8E3DC]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-4 h-4 text-[#A69374]" />
+                  <div className="rounded-xl border border-[#E8E3DC] bg-white/60 p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-[#A69374]" />
                       <span className="text-sm font-medium text-[#00263E]">订单备注</span>
                     </div>
                     <textarea
@@ -403,13 +410,13 @@ export function CheckoutModal() {
                       placeholder="有什么想告诉我们的？（选填）"
                       rows={2}
                       maxLength={200}
-                      className="w-full bg-[#FBF8F0] border-none rounded-lg resize-none focus:ring-2 focus:ring-[#A69374]/30 text-sm text-[#00263E] placeholder:text-[#4A6272] p-3"
+                      className="w-full resize-none rounded-lg border-none bg-[#FBF8F0] p-3 text-sm text-[#00263E] placeholder:text-[#4A6272] focus:ring-2 focus:ring-[#A69374]/30"
                     />
                   </div>
 
                   {/* 错误提示 */}
                   {error && (
-                    <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100">
+                    <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
                       {error}
                     </div>
                   )}
@@ -418,69 +425,70 @@ export function CheckoutModal() {
             </div>
 
             {/* 底部提交栏 */}
-            {data && (() => {
-              const selectedCoupon = data.availableCoupons.find((c) => c.id === selectedCouponId);
-              let discountAmount = 0;
-              if (selectedCoupon) {
-                if (selectedCoupon.type === "DISCOUNT_AMOUNT") {
-                  discountAmount = Math.min(selectedCoupon.value, data.totalPrice);
-                } else if (selectedCoupon.type === "DISCOUNT_PERCENT") {
-                  discountAmount = data.totalPrice * (1 - selectedCoupon.value);
+            {data &&
+              (() => {
+                const selectedCoupon = data.availableCoupons.find((c) => c.id === selectedCouponId);
+                let discountAmount = 0;
+                if (selectedCoupon) {
+                  if (selectedCoupon.type === "DISCOUNT_AMOUNT") {
+                    discountAmount = Math.min(selectedCoupon.value, data.totalPrice);
+                  } else if (selectedCoupon.type === "DISCOUNT_PERCENT") {
+                    discountAmount = data.totalPrice * (1 - selectedCoupon.value);
+                  }
                 }
-              }
-              const finalTotal = Math.max(0, data.totalPrice + data.shippingFee - discountAmount);
+                const finalTotal = Math.max(0, data.totalPrice + data.shippingFee - discountAmount);
 
-              return (
-                <div className="border-t border-[#E8E3DC] bg-white/80 px-6 py-4">
-                  {/* 价格明细 */}
-                  <div className="space-y-1 mb-3 text-sm">
-                    <div className="flex justify-between text-[#4A6272]">
-                      <span>商品小计</span>
-                      <span>{formatPrice(data.totalPrice)}</span>
-                    </div>
-                    <div className="flex justify-between text-[#4A6272]">
-                      <span>运费</span>
-                      {data.shippingFee === 0 ? (
-                        <span className="text-green-600">包邮</span>
-                      ) : (
-                        <span>{formatPrice(data.shippingFee)}</span>
+                return (
+                  <div className="border-t border-[#E8E3DC] bg-white/80 px-6 py-4">
+                    {/* 价格明细 */}
+                    <div className="mb-3 space-y-1 text-sm">
+                      <div className="flex justify-between text-[#4A6272]">
+                        <span>商品小计</span>
+                        <span>{formatPrice(data.totalPrice)}</span>
+                      </div>
+                      <div className="flex justify-between text-[#4A6272]">
+                        <span>运费</span>
+                        {data.shippingFee === 0 ? (
+                          <span className="text-green-600">包邮</span>
+                        ) : (
+                          <span>{formatPrice(data.shippingFee)}</span>
+                        )}
+                      </div>
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>优惠券优惠</span>
+                          <span>-{formatPrice(discountAmount)}</span>
+                        </div>
                       )}
-                    </div>
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>优惠券优惠</span>
-                        <span>-{formatPrice(discountAmount)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center pt-2 border-t border-[#E8E3DC]">
-                      <span className="text-sm text-[#4A6272]">
-                        共 {data.items.reduce((sum, i) => sum + i.quantity, 0)} 件商品
-                      </span>
-                      <div className="text-right">
-                        <span className="text-sm text-[#4A6272]">合计：</span>
-                        <span className="text-xl font-bold text-[#A69374]">
-                          {formatPrice(finalTotal)}
+                      <div className="flex items-center justify-between border-t border-[#E8E3DC] pt-2">
+                        <span className="text-sm text-[#4A6272]">
+                          共 {data.items.reduce((sum, i) => sum + i.quantity, 0)} 件商品
                         </span>
+                        <div className="text-right">
+                          <span className="text-sm text-[#4A6272]">合计：</span>
+                          <span className="text-xl font-bold text-[#A69374]">
+                            {formatPrice(finalTotal)}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <button
+                      onClick={handleSubmit}
+                      disabled={submitting || !selectedAddressId}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#A69374] py-3.5 font-medium text-white transition-colors hover:bg-[#4A6272] disabled:opacity-50"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          提交中...
+                        </>
+                      ) : (
+                        "提交订单"
+                      )}
+                    </button>
                   </div>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={submitting || !selectedAddressId}
-                    className="w-full py-3.5 bg-[#A69374] text-white rounded-xl font-medium disabled:opacity-50 hover:bg-[#4A6272] transition-colors flex items-center justify-center gap-2"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        提交中...
-                      </>
-                    ) : (
-                      "提交订单"
-                    )}
-                  </button>
-                </div>
-              );
-            })()}
+                );
+              })()}
           </m.div>
         </div>
       )}
@@ -489,4 +497,3 @@ export function CheckoutModal() {
 
   return createPortal(content, document.body);
 }
-

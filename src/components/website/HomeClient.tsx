@@ -186,7 +186,7 @@ function MobileFooterMenu({
                           <span className="text-lg font-light tracking-[0.2em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
                             {link.label}
                           </span>
-                          <div className="h-px w-0 bg-brand-gold/40 transition-all duration-500 group-hover:w-full" />
+                          <div className="h-px w-0 bg-brand-primary/40 transition-all duration-500 group-hover:w-full" />
                         </button>
                       </m.div>
                     ))}
@@ -209,7 +209,7 @@ function MobileFooterMenu({
                         className="h-7 w-7 text-brand-charcoal/30 group-hover:text-brand-charcoal"
                         strokeWidth={1}
                       />
-                </div>
+                    </div>
                   </m.button>
                 </div>
               </m.div>
@@ -449,7 +449,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               animate={{ opacity: 1 }}
               transition={{ duration: 1.2, delay: 1 }}
             >
-              <div className="flex w-full flex-col items-center gap-4 px-6 pt-6 pb-2">
+              <div className="flex w-full flex-col items-center gap-4 px-6 pb-2 pt-6">
                 {/* 辅助链接 - 桌面端 (静态列表) */}
                 <div className="footer-links hidden items-center gap-6 md:flex">
                   {FOOTER_LINKS.map((link) => (
@@ -472,7 +472,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     <Link
                       href="https://beian.miit.gov.cn/"
                       target="_blank"
-                      className="flex !min-h-0 !min-w-0 items-center transition-colors hover:text-brand-gold"
+                      className="flex !min-h-0 !min-w-0 items-center transition-colors hover:text-brand-primary"
                     >
                       沪ICP备2026014764号-1
                     </Link>
@@ -480,7 +480,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     <Link
                       href="http://www.beian.gov.cn/portal/registerSystemInfo"
                       target="_blank"
-                      className="flex !min-h-0 !min-w-0 items-center gap-1 transition-colors hover:text-brand-gold"
+                      className="flex !min-h-0 !min-w-0 items-center gap-1 transition-colors hover:text-brand-primary"
                     >
                       <Image
                         src="/images/beian.webp"
@@ -491,11 +491,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       />
                       <span>沪公网安备31010702010178号</span>
                     </Link>
-                    <span className="hidden md:inline text-brand-charcoal/20">|</span>
+                    <span className="hidden text-brand-charcoal/20 md:inline">|</span>
                     <Link
                       href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
                       target="_blank"
-                      className="hidden md:flex !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-gold"
+                      className="hidden !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-primary md:flex"
                     >
                       <Image
                         src="/images/aic_icon.png"

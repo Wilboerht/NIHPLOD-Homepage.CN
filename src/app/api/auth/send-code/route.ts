@@ -26,7 +26,7 @@ const SEND_INTERVAL_SECONDS = 60;
 const MAX_SEND_PER_HOUR = 5;
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -234,4 +234,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -10,4 +10,3 @@ export const AdminLoginSchema = z.object({
   password: passwordSchema,
   totpCode: z.string().length(6, "二次验证码为6位数字").optional(),
 });
-

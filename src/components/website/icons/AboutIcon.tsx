@@ -14,7 +14,12 @@ export function AboutIcon({ className }: { className?: string }) {
        * 放在 span 内部是为了避免与父级传入的 group-hover:scale 覆盖冲突，
        * 确保悬浮时图标是放大而不是缩小。
        */}
-      <svg className="h-full w-full scale-[1.15]" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        className="h-full w-full scale-[1.15]"
+        viewBox="0 0 26 26"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <path
           stroke="currentColor"
           strokeWidth="1.82"

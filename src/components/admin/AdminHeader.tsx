@@ -74,7 +74,7 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
               ) : (
                 <Link
                   href={item.href}
-                  className="text-gray-500 hover:text-gray-900 transition-colors"
+                  className="text-gray-500 transition-colors hover:text-gray-900"
                 >
                   {item.title}
                 </Link>
@@ -88,9 +88,9 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
       <div className="relative" ref={userMenuRef}>
         <button
           onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary">
             <User className="h-4 w-4" />
           </div>
           <span className="hidden md:block">{userName || "加载中..."}</span>
@@ -101,13 +101,15 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
           className={cn(
             "absolute right-0 top-full mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg transition-all",
             isUserMenuOpen
-              ? "visible opacity-100 translate-y-0"
-              : "invisible opacity-0 -translate-y-2"
+              ? "visible translate-y-0 opacity-100"
+              : "invisible -translate-y-2 opacity-0"
           )}
         >
           <div className="border-b border-gray-100 px-4 py-2">
             <p className="text-sm font-medium text-gray-900">{userName || "管理员"}</p>
-            <p className="text-xs text-gray-500">{userRole === "owner" ? "最高权限管理员" : "管理员"}</p>
+            <p className="text-xs text-gray-500">
+              {userRole === "owner" ? "最高权限管理员" : "管理员"}
+            </p>
           </div>
           <button
             onClick={handleLogout}

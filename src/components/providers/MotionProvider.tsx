@@ -39,15 +39,10 @@ export function MotionProvider({ children }: MotionProviderProps) {
     <LazyMotion features={domMax} strict>
       <MotionConfig
         reducedMotion={prefersReducedMotion ? "always" : "never"}
-        transition={
-          prefersReducedMotion
-            ? { duration: 0.01 }
-            : undefined
-        }
+        transition={prefersReducedMotion ? { duration: 0.01 } : undefined}
       >
         {children}
       </MotionConfig>
     </LazyMotion>
   );
 }
-

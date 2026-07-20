@@ -55,7 +55,7 @@ export function RichTextEditor({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: "text-brand-gold underline",
+          class: "text-brand-primary underline",
         },
       }),
       Placeholder.configure({
@@ -77,8 +77,8 @@ export function RichTextEditor({
           "prose-strong:text-gray-900",
           "prose-ul:list-disc prose-ol:list-decimal",
           "prose-li:text-gray-700",
-          "prose-blockquote:border-l-brand-gold prose-blockquote:text-gray-600",
-          "prose-a:text-brand-gold prose-a:underline"
+          "prose-blockquote:border-l-brand-primary prose-blockquote:text-gray-600",
+          "prose-a:text-brand-primary prose-a:underline"
         ),
       },
     },
@@ -99,12 +99,7 @@ export function RichTextEditor({
     if (linkUrl === "") {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
     } else {
-      editor
-        .chain()
-        .focus()
-        .extendMarkRange("link")
-        .setLink({ href: linkUrl })
-        .run();
+      editor.chain().focus().extendMarkRange("link").setLink({ href: linkUrl }).run();
     }
     setShowLinkInput(false);
     setLinkUrl("");
@@ -141,7 +136,7 @@ export function RichTextEditor({
       className={cn(
         "rounded p-1.5 transition-colors",
         active
-          ? "bg-brand-gold/20 text-brand-gold"
+          ? "bg-brand-primary/20 text-brand-primary"
           : "text-gray-500 hover:bg-gray-100 hover:text-gray-700",
         disabled && "cursor-not-allowed opacity-50"
       )}
@@ -152,18 +147,12 @@ export function RichTextEditor({
 
   return (
     <div className={className}>
-      {label && (
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      )}
+      {label && <label className="mb-1.5 block text-sm font-medium text-gray-700">{label}</label>}
 
       <div
         className={cn(
           "overflow-hidden rounded-lg border bg-white transition-all",
-          isFocused
-            ? "border-brand-gold ring-2 ring-brand-gold/20"
-            : "border-gray-300",
+          isFocused ? "border-brand-primary ring-2 ring-brand-primary/20" : "border-gray-300",
           error && "border-red-500"
         )}
       >
@@ -278,12 +267,12 @@ export function RichTextEditor({
                       setShowLinkInput(false);
                     }
                   }}
-                  className="w-48 rounded border border-gray-300 px-2 py-1 text-sm focus:border-brand-gold focus:outline-none"
+                  className="w-48 rounded border border-gray-300 px-2 py-1 text-sm focus:border-brand-primary focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={setLink}
-                  className="rounded bg-brand-gold px-2 py-1 text-xs text-white hover:bg-brand-gold/90"
+                  className="rounded bg-brand-primary px-2 py-1 text-xs text-white hover:bg-brand-primary/90"
                 >
                   确定
                 </button>
@@ -371,4 +360,3 @@ export function RichTextEditor({
     </div>
   );
 }
-

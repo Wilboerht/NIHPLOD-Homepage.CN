@@ -78,13 +78,16 @@ export default function AdminProductsPage() {
       if (status && status !== "all") params.set("status", status);
       if (search) params.set("search", search);
 
-      const data = await apiGet<{ products: ProductItem[]; pagination: typeof pagination }>("/api/admin/products", {
-        page,
-        pageSize: 10,
-        categoryId,
-        status: status === "all" ? undefined : status,
-        search,
-      });
+      const data = await apiGet<{ products: ProductItem[]; pagination: typeof pagination }>(
+        "/api/admin/products",
+        {
+          page,
+          pageSize: 10,
+          categoryId,
+          status: status === "all" ? undefined : status,
+          search,
+        }
+      );
       setProducts(data.products);
       setPagination(data.pagination);
     } catch (error) {
@@ -149,9 +152,7 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">产品管理</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            管理所有产品，共 {pagination.total} 个
-          </p>
+          <p className="mt-1 text-sm text-gray-500">管理所有产品，共 {pagination.total} 个</p>
         </div>
         <Link href="/admin/products/new">
           <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
@@ -161,7 +162,7 @@ export default function AdminProductsPage() {
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-4">
         {/* 搜索框 */}
-        <form onSubmit={handleSearch} className="relative flex-1 min-w-[200px] max-w-md">
+        <form onSubmit={handleSearch} className="relative min-w-[200px] max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -170,7 +171,7 @@ export default function AdminProductsPage() {
             placeholder="搜索产品名称..."
             className={cn(
               "w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-10",
-              "focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+              "focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             )}
           />
           {searchInput && (

@@ -26,7 +26,7 @@ export interface Job {
 }
 
 const jobTypeMap: Record<string, { label: string; color: string }> = {
-  fulltime: { label: "全职", color: "bg-brand-gold/15 text-brand-gold" },
+  fulltime: { label: "全职", color: "bg-brand-primary/15 text-brand-primary" },
   parttime: { label: "兼职", color: "bg-brand-charcoal/10 text-brand-charcoal/70" },
   intern: { label: "实习", color: "bg-brand-beige text-brand-charcoal/70" },
 };
@@ -100,11 +100,14 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       <div className="scrollbar-hide flex h-screen flex-col overflow-y-auto bg-[#fefcf8]">
         {/* Top Bar */}
         <nav
-          className="fixed left-0 right-0 top-0 z-50 flex items-center bg-[#fefcf8]/80 backdrop-blur-md w-full px-6 py-3 md:px-20 md:py-6"
+          className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
           style={{ pointerEvents: "none" }}
           aria-label="主导航"
         >
-          <div className="w-full flex items-center justify-center md:justify-between relative" style={{ pointerEvents: "auto" }}>
+          <div
+            className="relative flex w-full items-center justify-center md:justify-between"
+            style={{ pointerEvents: "auto" }}
+          >
             <Link href="/">
               <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
                 <Image
@@ -117,17 +120,29 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               </div>
             </Link>
 
-            <div className="hidden md:flex items-center gap-10">
-              <Link href="/contact" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+            <div className="hidden items-center gap-10 md:flex">
+              <Link
+                href="/contact"
+                className="text-sm tracking-wider text-[#00263E] transition-colors hover:text-brand-charcoal-light"
+              >
                 联系我们
               </Link>
-              <Link href="/terms" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+              <Link
+                href="/terms"
+                className="text-sm tracking-wider text-[#00263E] transition-colors hover:text-brand-charcoal-light"
+              >
                 服务条款
               </Link>
-              <Link href="/privacy" className="text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+              <Link
+                href="/privacy"
+                className="text-sm tracking-wider text-[#00263E] transition-colors hover:text-brand-charcoal-light"
+              >
                 隐私政策
               </Link>
-              <Link href="/" className="inline-flex items-center gap-1 text-sm tracking-wider text-[#00263E] hover:text-brand-charcoal-light transition-colors">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1 text-sm tracking-wider text-[#00263E] transition-colors hover:text-brand-charcoal-light"
+              >
                 <Home className="h-3.5 w-3.5" /> 返回首页
               </Link>
             </div>
@@ -135,7 +150,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden absolute left-0 flex items-center justify-center w-10 h-10 rounded-full hover:bg-brand-charcoal/5 transition-colors"
+              className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
               aria-label="打开菜单"
               aria-expanded={mobileMenuOpen}
               aria-controls="careers-nav-panel"
@@ -151,20 +166,20 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           role="dialog"
           aria-modal={mobileMenuOpen}
           aria-label="导航菜单"
-          className={`fixed inset-0 z-[100] md:hidden transition-all duration-500 ${mobileMenuOpen ? "visible opacity-100" : "invisible opacity-0"}`}
+          className={`fixed inset-0 z-[100] transition-all duration-500 md:hidden ${mobileMenuOpen ? "visible opacity-100" : "invisible opacity-0"}`}
         >
           <div
             className="absolute inset-0 bg-[#00263E]/20 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
           <div
-            className={`absolute top-0 left-0 h-full w-[min(300px,80vw)] bg-[#FBF8F0] shadow-2xl rounded-r-3xl transform transition-transform duration-500 ease-out pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.25rem+env(safe-area-inset-bottom,16px))] ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+            className={`absolute left-0 top-0 h-full w-[min(300px,80vw)] transform rounded-r-3xl bg-[#FBF8F0] pb-[calc(1.25rem+env(safe-area-inset-bottom,16px))] pt-[calc(1.25rem+env(safe-area-inset-top,0px))] shadow-2xl transition-transform duration-500 ease-out ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
           >
-            <div className="flex flex-col h-full px-6">
+            <div className="flex h-full flex-col px-6">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="self-end flex items-center justify-center w-10 h-10 rounded-full hover:bg-brand-charcoal/5 transition-colors mb-8"
+                className="mb-8 flex h-10 w-10 items-center justify-center self-end rounded-full transition-colors hover:bg-brand-charcoal/5"
                 aria-label="关闭菜单"
               >
                 <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
@@ -176,7 +191,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                     src="/images/NIHPLOD-logo.svg"
                     alt="NIHPLOD"
                     fill
-                className="object-contain object-center md:object-left"
+                    className="object-contain object-center md:object-left"
                   />
                 </div>
               </Link>
@@ -185,21 +200,21 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 <Link
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] hover:bg-brand-charcoal/5 rounded-xl transition-colors"
+                  className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   联系我们
                 </Link>
                 <Link
                   href="/terms"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] hover:bg-brand-charcoal/5 rounded-xl transition-colors"
+                  className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   服务条款
                 </Link>
                 <Link
                   href="/privacy"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] hover:bg-brand-charcoal/5 rounded-xl transition-colors"
+                  className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   隐私政策
                 </Link>
@@ -208,7 +223,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className="mt-auto flex items-center gap-2 px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] hover:bg-brand-charcoal/5 rounded-xl transition-colors"
+                className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
               >
                 <Home className="h-5 w-5" />
                 返回首页
@@ -271,7 +286,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         {/* Page Footer */}
         <footer className="border-t border-brand-charcoal/10">
           <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
-            <p className="text-xs text-brand-charcoal/50 tracking-wider">
+            <p className="text-xs tracking-wider text-brand-charcoal/50">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>
           </div>

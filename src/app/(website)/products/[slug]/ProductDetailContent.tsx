@@ -6,12 +6,7 @@ import DOMPurify from "isomorphic-dompurify";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { m, useMotionValue, animate } from "framer-motion";
-import {
-  ChevronLeft,
-
-  ShoppingCart,
-  Loader2,
-} from "lucide-react";
+import { ChevronLeft, ShoppingCart, Loader2 } from "lucide-react";
 import { ProductCard, PlatformIcon, XiaohongshuLink } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,10 +68,7 @@ type TabType = "description" | "ingredients" | "usage";
  * 产品详情页内容组件
  * 样式对齐 Careers 页面
  */
-export function ProductDetailContent({
-  product,
-  relatedProducts,
-}: ProductDetailContentProps) {
+export function ProductDetailContent({ product, relatedProducts }: ProductDetailContentProps) {
   const router = useRouter();
   const { setDrawerOpen } = useLayout();
 
@@ -221,10 +213,10 @@ export function ProductDetailContent({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.6 }}
-      className="relative min-h-dvh bg-[#FBF8F0] flex flex-col"
+      className="relative flex min-h-dvh flex-col bg-[#FBF8F0]"
     >
       {/* 手机端背景水印 */}
-      <div className="lg:hidden absolute inset-0 pointer-events-none z-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden lg:hidden">
         <Image
           src="/images/watermark-mobile.png"
           alt=""
@@ -243,21 +235,16 @@ export function ProductDetailContent({
 
       <div className="relative z-10 flex flex-1 flex-col p-4 sm:p-6 lg:p-8">
         {/* 顶栏 / Logo 区 */}
-        <header className="flex-shrink-0 text-center sm:px-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8">
+        <header className="flex-shrink-0 text-center sm:px-4 sm:pb-6 sm:pt-2 lg:pb-8 lg:pt-4">
           {/* 手机端顶部栏 */}
-          <div className="lg:hidden relative flex-shrink-0 h-[88px] w-full flex items-center justify-center pointer-events-auto">
+          <div className="pointer-events-auto relative flex h-[88px] w-full flex-shrink-0 items-center justify-center lg:hidden">
             <button
-              onClick={() =>
-                typeof window !== "undefined" && window.history.back()
-              }
-              className="absolute left-0 top-0 bottom-0 flex items-center justify-center px-4 py-[10px]"
+              onClick={() => typeof window !== "undefined" && window.history.back()}
+              className="absolute bottom-0 left-0 top-0 flex items-center justify-center px-4 py-[10px]"
             >
               <ChevronLeft className="h-6 w-6 text-[#00263E]" />
             </button>
-            <Link
-              href="/"
-              className="flex items-center justify-center py-[30px]"
-            >
+            <Link href="/" className="flex items-center justify-center py-[30px]">
               <div className="relative h-[28px] w-[100px]">
                 <Image
                   src="/images/NIHPLOD-logo.svg"
@@ -273,7 +260,7 @@ export function ProductDetailContent({
           <m.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="hidden lg:flex justify-center"
+            className="hidden justify-center lg:flex"
           >
             <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
               <Image
@@ -287,283 +274,274 @@ export function ProductDetailContent({
           </m.div>
         </header>
 
-              {/* 分割线 - 仅桌面端 */}
-              <div className="hidden lg:block mx-auto w-full max-w-7xl border-b border-brand-charcoal/10" />
+        {/* 分割线 - 仅桌面端 */}
+        <div className="mx-auto hidden w-full max-w-7xl border-b border-brand-charcoal/10 lg:block" />
 
-              {/* 内容区域 */}
-              <div className="flex-1 relative min-h-0">
-                <main className="h-full overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <div>
-                    {/* 图片轮播区域 + 指示器 */}
-                    <div className="mx-4 md:m-0 md:mx-auto w-[calc(100%-2rem)] md:w-full max-w-4xl">
-                      <div
-                        ref={containerRef}
-                        className="relative aspect-[3/4] bg-brand-beige/30 lg:aspect-[16/9] w-full rounded-2xl overflow-hidden touch-pan-y"
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
+        {/* 内容区域 */}
+        <div className="relative min-h-0 flex-1">
+          <main className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div>
+              {/* 图片轮播区域 + 指示器 */}
+              <div className="mx-4 w-[calc(100%-2rem)] max-w-4xl md:m-0 md:mx-auto md:w-full">
+                <div
+                  ref={containerRef}
+                  className="relative aspect-[3/4] w-full touch-pan-y overflow-hidden rounded-2xl bg-brand-beige/30 lg:aspect-[16/9]"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <m.div
+                    className="flex h-full"
+                    style={{ x }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    {product.images.map((img, index) => (
+                      <div key={img.id} className="relative h-full w-full flex-shrink-0">
+                        <Image
+                          src={img.url}
+                          alt={img.alt || product.name}
+                          fill
+                          priority={index === 0}
+                          className="object-cover"
+                          sizes="100vw"
+                        />
+                      </div>
+                    ))}
+                  </m.div>
+                </div>
+
+                {/* 图片指示器 */}
+                {product.images.length > 1 && (
+                  <div className="mt-7 flex items-center justify-center gap-2">
+                    {product.images.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={cn(
+                          "h-[2px] min-h-[2px] w-5 min-w-5 border-none p-0 transition-all duration-300",
+                          currentImageIndex === index ? "bg-[#00263E]" : "bg-[#00263E]/20"
+                        )}
+                        aria-label={`查看第 ${index + 1} 张图片`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 产品信息 */}
+              <m.div
+                className="mx-auto max-w-2xl px-6 pb-0 pt-7 max-lg:px-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                {/* 产品名称 + 容量 */}
+                <div className="flex items-end justify-between">
+                  <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
+                    {product.name}
+                  </h1>
+                  {product.capacity && (
+                    <span className="ml-3 shrink-0 text-sm font-light text-[#00263E]/60">
+                      {product.capacity}
+                    </span>
+                  )}
+                </div>
+
+                {/* 价格与产地 */}
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[18px] font-normal text-brand-charcoal max-lg:text-[#00263E]">
+                    {formatPrice(product.price)}
+                  </span>
+                  <span className="text-xs text-[#00263E]/50">产地：法国</span>
+                </div>
+
+                {/* 功效标签 */}
+                {product.benefits.length > 0 && (
+                  <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
+                    {product.benefits.map((benefit, index) => (
+                      <span
+                        key={index}
+                        className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[14px] font-light text-[#00263E]"
                       >
-                        <m.div
-                          className="flex h-full"
-                          style={{ x }}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.4 }}
-                        >
-                          {product.images.map((img, index) => (
-                            <div key={img.id} className="relative h-full w-full flex-shrink-0">
-                              <Image
-                                src={img.url}
-                                alt={img.alt || product.name}
-                                fill
-                                priority={index === 0}
-                                className="object-cover"
-                                sizes="100vw"
-                              />
-                            </div>
-                          ))}
-                        </m.div>
+                        {benefit}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </m.div>
+
+              {/* Tab 区域 */}
+              <div className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4">
+                {/* Tab 切换 */}
+                <div className="border-b border-brand-beige">
+                  <div className="flex justify-start gap-8" role="tablist" aria-label="产品信息">
+                    {tabs.map((tab) => (
+                      <div
+                        key={tab.key}
+                        role="tab"
+                        id={`tab-${tab.key}`}
+                        aria-selected={activeTab === tab.key}
+                        aria-controls={`panel-${tab.key}`}
+                        tabIndex={activeTab === tab.key ? 0 : -1}
+                        onClick={() => setActiveTab(tab.key)}
+                        onKeyDown={handleTabKeyDown}
+                        className={cn(
+                          "relative cursor-pointer pb-3 text-[14px] font-normal transition-colors",
+                          activeTab === tab.key
+                            ? "text-brand-charcoal"
+                            : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                        )}
+                      >
+                        {tab.label}
+                        {activeTab === tab.key && (
+                          <m.div
+                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00263e]"
+                            layoutId="tab-indicator"
+                          />
+                        )}
                       </div>
+                    ))}
+                  </div>
+                </div>
 
-                      {/* 图片指示器 */}
-                      {product.images.length > 1 && (
-                        <div className="flex items-center gap-2 justify-center mt-7">
-                          {product.images.map((_, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => setCurrentImageIndex(index)}
-                              className={cn(
-                                "h-[2px] w-5 min-h-[2px] min-w-5 p-0 border-none transition-all duration-300",
-                                currentImageIndex === index
-                                  ? "bg-[#00263E]"
-                                  : "bg-[#00263E]/20"
-                              )}
-                              aria-label={`查看第 ${index + 1} 张图片`}
-                            />
-                          ))}
-                        </div>
+                {/* Tab 内容 */}
+                <div className="mt-4">
+                  {tabs.map((tab) => (
+                    <div
+                      key={tab.key}
+                      role="tabpanel"
+                      id={`panel-${tab.key}`}
+                      aria-labelledby={`tab-${tab.key}`}
+                      tabIndex={0}
+                      className={cn(
+                        "transition-opacity duration-300",
+                        activeTab === tab.key ? "block opacity-100" : "hidden opacity-0"
                       )}
-                    </div>
-
-                    {/* 产品信息 */}
-                    <m.div
-                      className="mx-auto max-w-2xl px-6 pt-7 pb-0 max-lg:px-4"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, ease: "easeOut" }}
                     >
-                      {/* 产品名称 + 容量 */}
-                      <div className="flex items-end justify-between">
-                        <h1 className="font-serif text-[20px] sm:text-[24px] lg:text-[28px] text-brand-charcoal max-lg:text-[#00263E] max-lg:font-medium max-lg:tracking-[0.2em]">
-                          {product.name}
-                        </h1>
-                        {product.capacity && (
-                          <span className="text-sm font-light text-[#00263E]/60 shrink-0 ml-3">
-                            {product.capacity}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* 价格与产地 */}
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-[18px] font-normal text-brand-charcoal max-lg:text-[#00263E]">
-                          {formatPrice(product.price)}
-                        </span>
-                        <span className="text-xs text-[#00263E]/50">
-                          产地：法国
-                        </span>
-                      </div>
-
-                      {/* 功效标签 */}
-                      {product.benefits.length > 0 && (
-                        <div className="mt-6 hidden lg:flex flex-wrap gap-2">
-                          {product.benefits.map((benefit, index) => (
-                            <span
-                              key={index}
-                              className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[14px] font-light text-[#00263E]"
-                            >
-                              {benefit}
-                            </span>
-                          ))}
-                        </div>
+                      {tabContent[tab.key] ? (
+                        <div
+                          className="text-justify text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90"
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(tabContent[tab.key]!),
+                          }}
+                        />
+                      ) : (
+                        <p className="text-[14px] font-light text-[#00263e]/40">暂无内容</p>
                       )}
-
-                    </m.div>
-
-                    {/* Tab 区域 */}
-                    <div className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4">
-                      {/* Tab 切换 */}
-                      <div className="border-b border-brand-beige">
-                        <div className="flex justify-start gap-8" role="tablist" aria-label="产品信息">
-                          {tabs.map((tab) => (
-                            <div
-                              key={tab.key}
-                              role="tab"
-                              id={`tab-${tab.key}`}
-                              aria-selected={activeTab === tab.key}
-                              aria-controls={`panel-${tab.key}`}
-                              tabIndex={activeTab === tab.key ? 0 : -1}
-                              onClick={() => setActiveTab(tab.key)}
-                              onKeyDown={handleTabKeyDown}
-                              className={cn(
-                                "relative pb-3 text-[14px] font-normal transition-colors cursor-pointer",
-                                activeTab === tab.key
-                                  ? "text-brand-charcoal"
-                                  : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                              )}
-                            >
-                              {tab.label}
-                              {activeTab === tab.key && (
-                                <m.div
-                                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00263e]"
-                                  layoutId="tab-indicator"
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Tab 内容 */}
-                      <div className="mt-4">
-                        {tabs.map((tab) => (
-                          <div
-                            key={tab.key}
-                            role="tabpanel"
-                            id={`panel-${tab.key}`}
-                            aria-labelledby={`tab-${tab.key}`}
-                            tabIndex={0}
-                            className={cn(
-                              "transition-opacity duration-300",
-                              activeTab === tab.key
-                                ? "block opacity-100"
-                                : "hidden opacity-0"
-                            )}
-                          >
-                            {tabContent[tab.key] ? (
-                              <div
-                                className="text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90 text-justify"
-                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(tabContent[tab.key]!) }}
-                              />
-                            ) : (
-                              <p className="text-[14px] font-light text-[#00263e]/40">
-                                暂无内容
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
 
-                    {/* 小红书链接 */}
-                    <XiaohongshuLink
-                      categoryName={product.category.name}
-                      className="mx-auto max-w-2xl px-6 pb-7 max-lg:px-4 flex flex-col gap-1"
-                    />
+              {/* 小红书链接 */}
+              <XiaohongshuLink
+                categoryName={product.category.name}
+                className="mx-auto flex max-w-2xl flex-col gap-1 px-6 pb-7 max-lg:px-4"
+              />
 
-                    {/* 购买按钮区域 */}
-                    <div className="mx-auto max-w-2xl px-6 pb-3 max-lg:px-4">
-                      <div className="flex flex-col gap-3">
-                        {product.allowDirectBuy && (
-                          <>
-                            <QuantitySelector
-                              stock={product.stock}
-                              quantity={quantity}
-                              onChange={setQuantity}
-                            />
-                            <AddToCartButton
-                              productId={product.id}
-                              stock={product.stock}
-                              quantity={quantity}
-                            />
-                            <DirectBuyButton
-                              productId={product.id}
-                              stock={product.stock}
-                              quantity={quantity}
-                            />
-                          </>
-                        )}
+              {/* 购买按钮区域 */}
+              <div className="mx-auto max-w-2xl px-6 pb-3 max-lg:px-4">
+                <div className="flex flex-col gap-3">
+                  {product.allowDirectBuy && (
+                    <>
+                      <QuantitySelector
+                        stock={product.stock}
+                        quantity={quantity}
+                        onChange={setQuantity}
+                      />
+                      <AddToCartButton
+                        productId={product.id}
+                        stock={product.stock}
+                        quantity={quantity}
+                      />
+                      <DirectBuyButton
+                        productId={product.id}
+                        stock={product.stock}
+                        quantity={quantity}
+                      />
+                    </>
+                  )}
 
-                        {/* 外部购买链接 - 图标形式 */}
-                        <div className="flex flex-wrap gap-4 items-center justify-start">
-                          {product.purchaseLinks &&
-                          product.purchaseLinks.length > 0 ? (
-                            product.purchaseLinks.map((link) => (
-                              <a
-                                key={link.id}
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`在${link.platform}购买`}
-                                className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 -m-2 transition-opacity hover:opacity-60"
-                              >
-                                <PlatformIcon platform={link.platform} />
-                              </a>
-                            ))
-                          ) : product.purchaseUrl ? (
-                            <a
-                              href={product.purchaseUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              aria-label="在官网购买"
-                              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] p-2 -m-2 transition-opacity hover:opacity-60"
-                            >
-                              <PlatformIcon platform="官网" />
-                            </a>
-                          ) : (
-                            !product.allowDirectBuy && (
-                              <span className="text-[14px] font-light text-[#00263e]/50">
-                                暂无购买链接
-                              </span>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 相关产品推荐 */}
-                    {relatedProducts.length > 0 && (
-                      <div className="mt-8 border-t border-brand-beige pt-8 max-w-4xl mx-auto w-full px-6 max-lg:px-4">
-                        <h2 className="mb-6 text-center font-serif text-xl max-lg:font-medium max-lg:tracking-[0.2em] text-brand-charcoal max-lg:text-[#00263E]">
-                          相关推荐
-                        </h2>
-                        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                          {relatedProducts.map((rp) => (
-                            <Link key={rp.id} href={`/products/${rp.slug}`}>
-                              <ProductCard
-                                product={{
-                                  id: rp.id,
-                                  name: rp.name,
-                                  nameEn: rp.nameEn,
-                                  slug: rp.slug,
-                                  price: rp.price,
-                                  capacity: rp.capacity || undefined,
-                                  images: rp.images.map((img) => ({
-                                    url: img.url,
-                                    alt: img.alt || undefined,
-                                  })),
-                                  category: { name: rp.category.name },
-                                }}
-                              />
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
+                  {/* 外部购买链接 - 图标形式 */}
+                  <div className="flex flex-wrap items-center justify-start gap-4">
+                    {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+                      product.purchaseLinks.map((link) => (
+                        <a
+                          key={link.id}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`在${link.platform}购买`}
+                          className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
+                        >
+                          <PlatformIcon platform={link.platform} />
+                        </a>
+                      ))
+                    ) : product.purchaseUrl ? (
+                      <a
+                        href={product.purchaseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="在官网购买"
+                        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
+                      >
+                        <PlatformIcon platform="官网" />
+                      </a>
+                    ) : (
+                      !product.allowDirectBuy && (
+                        <span className="text-[14px] font-light text-[#00263e]/50">
+                          暂无购买链接
+                        </span>
+                      )
                     )}
                   </div>
-                </main>
+                </div>
               </div>
 
-              {/* 底部版权信息 */}
-              <div className="mt-auto pt-4 pb-4 sm:pt-6 lg:pt-8 text-center border-t border-brand-charcoal/5 mx-6 lg:mx-12 max-lg:border-0 max-lg:pt-4">
-                <p className="text-[10px] sm:text-[12px] font-light tracking-widest text-brand-charcoal/60 lg:text-brand-charcoal/60 max-lg:text-[#4A6272]/30 max-lg:tracking-[0.12em] max-lg:font-medium">
-                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights
-                  Reserved.
-                </p>
-              </div>
+              {/* 相关产品推荐 */}
+              {relatedProducts.length > 0 && (
+                <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pt-8 max-lg:px-4">
+                  <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E]">
+                    相关推荐
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    {relatedProducts.map((rp) => (
+                      <Link key={rp.id} href={`/products/${rp.slug}`}>
+                        <ProductCard
+                          product={{
+                            id: rp.id,
+                            name: rp.name,
+                            nameEn: rp.nameEn,
+                            slug: rp.slug,
+                            price: rp.price,
+                            capacity: rp.capacity || undefined,
+                            images: rp.images.map((img) => ({
+                              url: img.url,
+                              alt: img.alt || undefined,
+                            })),
+                            category: { name: rp.category.name },
+                          }}
+                        />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-      </m.div>
+          </main>
+        </div>
+
+        {/* 底部版权信息 */}
+        <div className="mx-6 mt-auto border-t border-brand-charcoal/5 pb-4 pt-4 text-center max-lg:border-0 max-lg:pt-4 sm:pt-6 lg:mx-12 lg:pt-8">
+          <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60 max-lg:font-medium max-lg:tracking-[0.12em] max-lg:text-[#4A6272]/30 sm:text-[12px] lg:text-brand-charcoal/60">
+            &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+          </p>
+        </div>
+      </div>
+    </m.div>
   );
 }
 
@@ -621,7 +599,7 @@ function AddToCartButton({
         "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
         isOutOfStock
           ? "cursor-not-allowed bg-gray-300 text-gray-500"
-          : "bg-brand-gold text-white hover:bg-brand-gold/90"
+          : "bg-brand-primary text-white hover:bg-brand-primary/90"
       )}
     >
       {loading ? (
@@ -687,7 +665,7 @@ function DirectBuyButton({
         "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
         isOutOfStock
           ? "cursor-not-allowed bg-gray-300 text-gray-500"
-          : "border border-brand-gold text-brand-gold hover:bg-brand-gold/10"
+          : "border border-brand-primary text-brand-primary hover:bg-brand-primary/10"
       )}
     >
       {loading ? (
@@ -733,7 +711,7 @@ function QuantitySelector({
           type="button"
           onClick={handleDecrease}
           disabled={quantity <= 1}
-          className="flex h-9 w-9 items-center justify-center text-brand-charcoal/60 transition-colors hover:bg-brand-beige disabled:cursor-not-allowed disabled:opacity-30 rounded-l-lg"
+          className="flex h-9 w-9 items-center justify-center rounded-l-lg text-brand-charcoal/60 transition-colors hover:bg-brand-beige disabled:cursor-not-allowed disabled:opacity-30"
         >
           -
         </button>
@@ -743,13 +721,13 @@ function QuantitySelector({
           max={stock}
           value={quantity}
           onChange={handleInputChange}
-          className="h-9 w-12 border-x border-brand-beige bg-transparent text-center text-sm text-brand-charcoal outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-9 w-12 border-x border-brand-beige bg-transparent text-center text-sm text-brand-charcoal outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <button
           type="button"
           onClick={handleIncrease}
           disabled={quantity >= stock}
-          className="flex h-9 w-9 items-center justify-center text-brand-charcoal/60 transition-colors hover:bg-brand-beige disabled:cursor-not-allowed disabled:opacity-30 rounded-r-lg"
+          className="flex h-9 w-9 items-center justify-center rounded-r-lg text-brand-charcoal/60 transition-colors hover:bg-brand-beige disabled:cursor-not-allowed disabled:opacity-30"
         >
           +
         </button>
@@ -758,5 +736,3 @@ function QuantitySelector({
     </div>
   );
 }
-
-

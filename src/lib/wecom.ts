@@ -20,13 +20,14 @@ interface WecomBotMessage {
  * @param type 通知类型 (contact 或 job)
  */
 export async function sendWecomNotification(
-  content: string, 
+  content: string,
   type: "contact" | "job" = "contact"
 ): Promise<{ success: boolean; error?: string }> {
   // 根据类型选择不同的 Webhook 链接
-  const webhookUrl = type === "job" 
-    ? (process.env.WECOM_JOBS_WEBHOOK || process.env.WECOM_BOT_WEBHOOK)
-    : process.env.WECOM_BOT_WEBHOOK;
+  const webhookUrl =
+    type === "job"
+      ? process.env.WECOM_JOBS_WEBHOOK || process.env.WECOM_BOT_WEBHOOK
+      : process.env.WECOM_BOT_WEBHOOK;
 
   if (!webhookUrl) {
     // 未配置 Webhook 时静默跳过
@@ -66,9 +67,12 @@ export async function sendWecomNotification(
   } catch (error) {
     clearTimeout(timeoutId);
     apiConsole.error("企业微信通知请求异常:", error);
-    const errorMsg = error instanceof Error 
-      ? (error.name === 'AbortError' ? '请求超时 (10s)' : error.message) 
-      : String(error);
+    const errorMsg =
+      error instanceof Error
+        ? error.name === "AbortError"
+          ? "请求超时 (10s)"
+          : error.message
+        : String(error);
     return { success: false, error: errorMsg };
   }
 }
@@ -90,10 +94,7 @@ export function formatContactToWecom(data: {
   content: string;
   location?: string;
 }) {
-  const lines = [
-    `> **留言人**: ${data.name}`,
-    `> **咨询类型**: ${data.type || '通用'}`,
-  ];
+  const lines = [`> **留言人**: ${data.name}`, `> **咨询类型**: ${data.type || "通用"}`];
 
   if (data.location) {
     lines.push(`> **所在地**: ${data.location}`);
@@ -102,12 +103,12 @@ export function formatContactToWecom(data: {
     lines.push(`> **手机号**: ${data.phone}`);
   }
 
-  lines.push(`> **时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
+  lines.push(`> **时间**: ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`);
 
   const baseUrl = getBaseUrl();
 
   return `### 📢 NIHPLOD 新留言通知
-${lines.join('\n')}
+${lines.join("\n")}
 
 **留言内容**:
 ${data.content}
@@ -125,12 +126,12 @@ export function formatJobApplicationToWecom(data: {
   resumeUrl: string;
 }) {
   const baseUrl = getBaseUrl();
-  
+
   return `### 💼 NIHPLOD 新求职申请
 > **申请人**: ${data.name}
 > **应聘职位**: ${data.position}
 > **手机号**: ${data.phone}
-> **提交时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+> **提交时间**: ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
 
 **简历详情**: [点击查看简历](${data.resumeUrl})
 

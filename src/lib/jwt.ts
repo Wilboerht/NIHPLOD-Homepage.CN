@@ -17,12 +17,7 @@
 import { createHash } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { LRUCache } from "lru-cache";
-import type {
-  AdminJWTPayload,
-  UserJWTPayload,
-  RefreshTokenPayload,
-  AdminRole,
-} from "@/types/auth";
+import type { AdminJWTPayload, UserJWTPayload, RefreshTokenPayload, AdminRole } from "@/types/auth";
 
 const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 const MIN_SECRET_LENGTH = 32;
@@ -131,10 +126,7 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
 /**
  * 签发用户 Access Token（短期，15分钟）
  */
-export async function signUserToken(payload: {
-  id: string;
-  phone: string;
-}): Promise<string> {
+export async function signUserToken(payload: { id: string; phone: string }): Promise<string> {
   const token = await new SignJWT({ ...payload, type: "user" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -168,10 +160,7 @@ export async function verifyUserToken(token: string): Promise<UserJWTPayload | n
 /**
  * 签发用户 Refresh Token（长期，30天）
  */
-export async function signRefreshToken(payload: {
-  id: string;
-  phone: string;
-}): Promise<string> {
+export async function signRefreshToken(payload: { id: string; phone: string }): Promise<string> {
   const token = await new SignJWT({ ...payload, type: "refresh" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -217,7 +206,9 @@ export interface WechatBindPayload {
 /**
  * 签发微信绑定临时 Token（1小时）
  */
-export async function signWechatBindToken(payload: Omit<WechatBindPayload, "type">): Promise<string> {
+export async function signWechatBindToken(
+  payload: Omit<WechatBindPayload, "type">
+): Promise<string> {
   const token = await new SignJWT({ ...payload, type: "wechat_bind" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -269,7 +260,9 @@ export interface WechatExchangePayload {
 /**
  * 签发微信授权 exchange token（短期，用于跨子站传递微信授权信息）
  */
-export async function signWechatExchangeToken(payload: Omit<WechatExchangePayload, "type">): Promise<string> {
+export async function signWechatExchangeToken(
+  payload: Omit<WechatExchangePayload, "type">
+): Promise<string> {
   const token = await new SignJWT({ ...payload, type: "wechat_exchange" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -284,7 +277,9 @@ export async function signWechatExchangeToken(payload: Omit<WechatExchangePayloa
 /**
  * 验证微信授权 exchange token
  */
-export async function verifyWechatExchangeToken(token: string): Promise<WechatExchangePayload | null> {
+export async function verifyWechatExchangeToken(
+  token: string
+): Promise<WechatExchangePayload | null> {
   try {
     const { payload } = await jwtVerify(token, encodeSecret(wechatExchangeSecret), {
       issuer: ISSUER,

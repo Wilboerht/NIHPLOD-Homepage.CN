@@ -169,7 +169,6 @@ export function StoryContent() {
                         contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                       }}
                       className="relative flex flex-1 items-center justify-center"
-                     
                     >
                       <span
                         className={cn(
@@ -200,10 +199,7 @@ export function StoryContent() {
               {activeSection === "story" && (
                 <section className="relative pb-4 pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2
-                      className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
-                     
-                    >
+                    <h2 className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]">
                       品牌故事
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -266,10 +262,7 @@ export function StoryContent() {
               {activeSection === "mission" && (
                 <section className="relative pb-4 pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2
-                      className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
-                     
-                    >
+                    <h2 className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]">
                       公司使命
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -298,10 +291,7 @@ export function StoryContent() {
 
                     {/* CEO 签名 */}
                     <div className="flex flex-col items-end gap-2.5">
-                      <span
-                        className="text-[10px] leading-[15px] text-[#00263e]/50"
-                       
-                      >
+                      <span className="text-[10px] leading-[15px] text-[#00263e]/50">
                         首席执行官
                       </span>
                       <Image
@@ -320,10 +310,7 @@ export function StoryContent() {
               {activeSection === "philosophy" && (
                 <section className="relative pb-4 pt-7">
                   <div className="mb-7 flex shrink-0 flex-col items-center">
-                    <h2
-                      className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
-                     
-                    >
+                    <h2 className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]">
                       品牌哲学
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -364,14 +351,10 @@ export function StoryContent() {
                           <span className="text-[12px] font-light text-brand-charcoal/60">
                             {item.num}
                           </span>
-                          <h3
-                            className="text-[14px] font-normal leading-[21px] text-[#00263E]"
-                          >
+                          <h3 className="text-[14px] font-normal leading-[21px] text-[#00263E]">
                             {item.title}
                           </h3>
-                          <p
-                            className="text-[14px] font-light leading-[21px] text-[#00263E]"
-                          >
+                          <p className="text-[14px] font-light leading-[21px] text-[#00263E]">
                             {item.desc}
                           </p>
                         </m.div>
@@ -382,30 +365,28 @@ export function StoryContent() {
               )}
 
               {/* 移动端 Section 4: 媒体获奖 */}
-               {activeSection === "awards" && (
+              {activeSection === "awards" && (
                 <section className="relative pb-4 pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2
-                      className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
-                     
-                    >
+                    <h2 className="text-center text-[24px] font-medium tracking-[0.2em] text-[#00263E]">
                       媒体及获奖
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                   </div>
-                   <div className="relative mb-6 px-6">
+                  <div className="relative mb-6 px-6">
                     {/* 奖项列表 */}
                     <div className="flex flex-col gap-4">
-                      {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map((award, idx) => (
-                        <m.div
-                          key={`mobile-${currentAwardPage}-${idx}`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
-                          className="flex flex-col border-[1.5px] border-[#00263e]/20 bg-[#FCF9F2]"
-                        >
-                          {/* Award Image */}
-                          <div className="relative w-full overflow-hidden">
+                      {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map(
+                        (award, idx) => (
+                          <m.div
+                            key={`mobile-${currentAwardPage}-${idx}`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
+                            className="flex flex-col border-[1.5px] border-[#00263e]/20 bg-[#FCF9F2]"
+                          >
+                            {/* Award Image */}
+                            <div className="relative w-full overflow-hidden">
                               <Image
                                 src={award.image}
                                 alt={award.title}
@@ -414,27 +395,22 @@ export function StoryContent() {
                                 sizes="(max-width: 640px) calc(100vw - 48px), 600px"
                                 className="h-auto w-full object-contain"
                               />
-                          </div>
+                            </div>
 
-                          <div className="flex flex-col items-center gap-2 p-6 text-center">
-                            <span
-                              className="text-[14px] font-normal leading-[21px] text-[#00263e]/60"
-                            >
-                              {award.org}
-                            </span>
-                            <h3
-                              className="text-[16px] font-medium leading-[24px] text-[#00263E]"
-                            >
-                              {award.title}
-                            </h3>
-                            <span
-                              className="text-[14px] font-light leading-[21px] text-[#00263e]/60"
-                            >
-                              {award.year}
-                            </span>
-                          </div>
-                        </m.div>
-                      ))}
+                            <div className="flex flex-col items-center gap-2 p-6 text-center">
+                              <span className="text-[14px] font-normal leading-[21px] text-[#00263e]/60">
+                                {award.org}
+                              </span>
+                              <h3 className="text-[16px] font-medium leading-[24px] text-[#00263E]">
+                                {award.title}
+                              </h3>
+                              <span className="text-[14px] font-light leading-[21px] text-[#00263e]/60">
+                                {award.year}
+                              </span>
+                            </div>
+                          </m.div>
+                        )
+                      )}
                     </div>
 
                     {/* 左右浮动箭头 */}
@@ -443,7 +419,7 @@ export function StoryContent() {
                         <button
                           onClick={() => setCurrentAwardPage((p) => Math.max(0, p - 1))}
                           disabled={currentAwardPage === 0}
-                          className="absolute -left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
+                          className="absolute -left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0"
                         >
                           <ChevronLeft className="h-4 w-4 text-[#00263e]" />
                         </button>
@@ -454,7 +430,7 @@ export function StoryContent() {
                             )
                           }
                           disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
-                          className="absolute -right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none"
+                          className="absolute -right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0"
                         >
                           <ChevronRight className="h-4 w-4 text-[#00263e]" />
                         </button>
@@ -505,12 +481,12 @@ export function StoryContent() {
                         key={item.id}
                         type="button"
                         onClick={() => setActiveSection(item.id)}
-                          className={cn(
-                            "group relative px-1 py-1 text-[15px] font-medium tracking-[0.1em] transition-opacity duration-300",
-                            activeSection === item.id
-                              ? "text-[#00263E] opacity-100"
-                              : "text-[#00263E] opacity-60 hover:opacity-80"
-                          )}
+                        className={cn(
+                          "group relative px-1 py-1 text-[15px] font-medium tracking-[0.1em] transition-opacity duration-300",
+                          activeSection === item.id
+                            ? "text-[#00263E] opacity-100"
+                            : "text-[#00263E] opacity-60 hover:opacity-80"
+                        )}
                       >
                         {item.label}
                       </button>
@@ -568,7 +544,8 @@ export function StoryContent() {
                         NIHPLOD。
                       </p>
                       <p className="mt-6 max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-brand-charcoal/80">
-                        创始人 Dr. Stefan 和他的团队，将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
+                        创始人 Dr. Stefan
+                        和他的团队，将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
                       </p>
                     </div>
                   </m.div>
@@ -710,13 +687,13 @@ export function StoryContent() {
                           >
                             {/* 悬浮显示的背景图 */}
                             <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-                                <Image
-                                  src={award.image}
-                                  alt={award.title}
-                                  fill
-                                  sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
-                                  className="object-cover transition-all duration-500"
-                                />
+                              <Image
+                                src={award.image}
+                                alt={award.title}
+                                fill
+                                sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
+                                className="object-cover transition-all duration-500"
+                              />
                               <div className="absolute inset-0 bg-[#FBF8F0]/80 mix-blend-multiply" />
                             </div>
 
@@ -743,7 +720,7 @@ export function StoryContent() {
                         <button
                           onClick={() => setCurrentAwardPage((p) => Math.max(0, p - 1))}
                           disabled={currentAwardPage === 0}
-                          className="absolute -left-12 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none lg:-left-16"
+                          className="absolute -left-12 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0 lg:-left-16"
                         >
                           <ChevronLeft className="h-5 w-5 text-[#00263e]" />
                         </button>
@@ -754,7 +731,7 @@ export function StoryContent() {
                             )
                           }
                           disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
-                          className="absolute -right-12 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:opacity-0 disabled:pointer-events-none lg:-right-16"
+                          className="absolute -right-12 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0 lg:-right-16"
                         >
                           <ChevronRight className="h-5 w-5 text-[#00263e]" />
                         </button>
@@ -766,7 +743,7 @@ export function StoryContent() {
             </div>
 
             {/* Desktop Footer Copyright */}
-                <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
+            <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
               <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>

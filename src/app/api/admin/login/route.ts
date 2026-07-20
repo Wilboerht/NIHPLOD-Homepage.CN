@@ -26,7 +26,9 @@ function getDummyHash(): string {
   return _dummyHash;
 }
 
-async function checkAdminLockout(email: string): Promise<{ locked: boolean; remainingMinutes: number }> {
+async function checkAdminLockout(
+  email: string
+): Promise<{ locked: boolean; remainingMinutes: number }> {
   const windowStart = new Date(Date.now() - ADMIN_WINDOW_MS);
   const failedAttempts = await prisma.loginAttempt.count({
     where: {
@@ -76,7 +78,7 @@ async function recordAdminAttempt(
 
 // POST /api/admin/login - 管理员登录
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -257,7 +259,9 @@ export async function POST(request: NextRequest) {
     });
 
     // 设置 HttpOnly Cookie
-    console.log(`[Login Debug] setting cookie: name=${AUTH_COOKIE_NAME}, token prefix=${token.slice(0, 20)}, options=${JSON.stringify(COOKIE_OPTIONS)}`);
+    console.log(
+      `[Login Debug] setting cookie: name=${AUTH_COOKIE_NAME}, token prefix=${token.slice(0, 20)}, options=${JSON.stringify(COOKIE_OPTIONS)}`
+    );
     response.cookies.set(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS);
 
     // 记录登录审计日志

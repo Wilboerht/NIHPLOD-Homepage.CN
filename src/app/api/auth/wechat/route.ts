@@ -9,13 +9,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWechatOAuthUrl, getWechatMpOAuthUrl } from "@/lib/wechat";
 import crypto from "crypto";
 import { apiConsole } from "@/lib/logger";
-import {
-  WECHAT_NONCE_COOKIE_NAME,
-  WECHAT_NONCE_COOKIE_OPTIONS,
-} from "@/types/auth";
+import { WECHAT_NONCE_COOKIE_NAME, WECHAT_NONCE_COOKIE_OPTIONS } from "@/types/auth";
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * 校验重定向路径是否合法。
@@ -61,13 +58,16 @@ export async function GET(request: NextRequest) {
 
     // 子站可通过 callback 参数指定授权完成后跳转到的域名
     const callbackParam = searchParams.get("callback");
-    const callbackBase = callbackParam && isAllowedCallbackBase(callbackParam)
-      ? callbackParam.replace(/\/$/, "")
-      : defaultBaseUrl;
+    const callbackBase =
+      callbackParam && isAllowedCallbackBase(callbackParam)
+        ? callbackParam.replace(/\/$/, "")
+        : defaultBaseUrl;
 
     // 校验 redirect，防止开放重定向
     const rawRedirect = searchParams.get("redirect") || "/";
-    const redirect = isAllowedRedirect(rawRedirect, new URL(callbackBase).origin) ? rawRedirect : "/";
+    const redirect = isAllowedRedirect(rawRedirect, new URL(callbackBase).origin)
+      ? rawRedirect
+      : "/";
 
     // 微信 OAuth 回调地址固定为官网域名（由官网完成 code 换取 access_token）
     const oauthCallbackUrl = `${defaultBaseUrl}/api/auth/wechat/callback`;
@@ -79,7 +79,9 @@ export async function GET(request: NextRequest) {
     // 生成 CSRF nonce 并编码到 state 中
     const nonce = crypto.randomBytes(16).toString("hex");
     const type = isWechat ? "mp" : "open";
-    const state = Buffer.from(JSON.stringify({ redirect, type, nonce, callback: callbackBase })).toString("base64");
+    const state = Buffer.from(
+      JSON.stringify({ redirect, type, nonce, callback: callbackBase })
+    ).toString("base64");
 
     let authUrl: string;
 

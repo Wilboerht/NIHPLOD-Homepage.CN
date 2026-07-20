@@ -102,13 +102,7 @@ describe("auth-security", () => {
       const mock = await getMockLoginAttempt();
       mock.create.mockResolvedValueOnce({});
 
-      await recordLoginAttempt(
-        "13800138000",
-        true,
-        createMockRequest(),
-        undefined,
-        "password"
-      );
+      await recordLoginAttempt("13800138000", true, createMockRequest(), undefined, "password");
 
       expect(mock.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -139,10 +133,7 @@ describe("auth-security", () => {
         createdAt: new Date(),
       });
 
-      const result = await checkAccountLockout(
-        "13800138000",
-        DEFAULT_BRUTE_FORCE_CONFIG
-      );
+      const result = await checkAccountLockout("13800138000", DEFAULT_BRUTE_FORCE_CONFIG);
 
       expect(result.locked).toBe(true);
       expect(result.remainingMinutes).toBeGreaterThan(0);
@@ -155,10 +146,7 @@ describe("auth-security", () => {
         createdAt: new Date(Date.now() - 60 * 60 * 1000), // 1 小时前
       });
 
-      const result = await checkAccountLockout(
-        "13800138000",
-        DEFAULT_BRUTE_FORCE_CONFIG
-      );
+      const result = await checkAccountLockout("13800138000", DEFAULT_BRUTE_FORCE_CONFIG);
 
       expect(result.locked).toBe(false);
     });
@@ -187,12 +175,11 @@ describe("auth-security", () => {
         return callback(prisma as unknown as never);
       });
 
-      await saveRefreshToken(
-        "user-1",
-        "token-1",
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        { deviceName: "Test Device", ipAddress: "1.2.3.4", userAgent: "TestAgent" }
-      );
+      await saveRefreshToken("user-1", "token-1", new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), {
+        deviceName: "Test Device",
+        ipAddress: "1.2.3.4",
+        userAgent: "TestAgent",
+      });
 
       expect(mock.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -223,12 +210,11 @@ describe("auth-security", () => {
         return callback(prisma as unknown as never);
       });
 
-      await saveRefreshToken(
-        "user-1",
-        "token-2",
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        { deviceName: "Test Device", ipAddress: "1.2.3.4", userAgent: "TestAgent" }
-      );
+      await saveRefreshToken("user-1", "token-2", new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), {
+        deviceName: "Test Device",
+        ipAddress: "1.2.3.4",
+        userAgent: "TestAgent",
+      });
 
       expect(mock.update).toHaveBeenCalled();
       expect(mock.create).not.toHaveBeenCalled();

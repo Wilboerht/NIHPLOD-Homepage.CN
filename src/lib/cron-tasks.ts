@@ -6,7 +6,11 @@
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
 import { autoExpireUserCoupons } from "./coupon";
-import { cleanupExpiredRefreshTokens, cleanupOldLoginAttempts, cleanupExpiredSmsCodes } from "./auth-security";
+import {
+  cleanupExpiredRefreshTokens,
+  cleanupOldLoginAttempts,
+  cleanupExpiredSmsCodes,
+} from "./auth-security";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -117,7 +121,7 @@ let isInitialized = false;
 /**
  * 初始化所有定时任务
  * 在应用启动时调用
- * 
+ *
  * 注意：Vercel 部署请使用 HTTP Cron 端点（/api/cron/*），
  * 自托管服务器可设置 ENABLE_LOCAL_CRON=true 启用 node-cron
  */
@@ -170,5 +174,3 @@ export function stopCronTasks(): void {
   isInitialized = false;
   console.log("[Cron] 所有定时任务已停止");
 }
-
-

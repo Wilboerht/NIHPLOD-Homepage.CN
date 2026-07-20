@@ -21,7 +21,7 @@ const QuerySchema = z.object({
 
 // GET /api/admin/products - 获取产品列表
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,9 +64,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (query.search) {
-      where.OR = [
-        { name: { contains: query.search, mode: "insensitive" } },
-      ];
+      where.OR = [{ name: { contains: query.search, mode: "insensitive" } }];
     }
 
     // 并行查询数据和总数
@@ -126,7 +124,10 @@ export async function GET(request: NextRequest) {
     apiConsole.error("获取产品列表失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -212,12 +213,12 @@ export async function POST(request: NextRequest) {
         },
         purchaseLinks: sanitized.purchaseLinks?.length
           ? {
-            create: sanitized.purchaseLinks.map((link, index) => ({
-              platform: link.platform,
-              url: link.url,
-              order: link.order ?? index,
-            })),
-          }
+              create: sanitized.purchaseLinks.map((link, index) => ({
+                platform: link.platform,
+                url: link.url,
+                order: link.order ?? index,
+              })),
+            }
           : undefined,
       },
       include: {
@@ -242,7 +243,10 @@ export async function POST(request: NextRequest) {
     apiConsole.error("创建产品失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }

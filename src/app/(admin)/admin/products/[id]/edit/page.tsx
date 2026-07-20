@@ -76,12 +76,14 @@ export default function EditProductPage() {
           price: data.price,
           capacity: data.capacity || "",
           purchaseUrl: data.purchaseUrl || "",
-          purchaseLinks: (data.purchaseLinks || []).map((link: PurchaseLinkItem, index: number) => ({
-            id: link.id,
-            platform: link.platform,
-            url: link.url,
-            order: link.order ?? index,
-          })),
+          purchaseLinks: (data.purchaseLinks || []).map(
+            (link: PurchaseLinkItem, index: number) => ({
+              id: link.id,
+              platform: link.platform,
+              url: link.url,
+              order: link.order ?? index,
+            })
+          ),
           description: data.description,
           ingredients: data.ingredients || "",
           usage: data.usage || "",
@@ -110,7 +112,7 @@ export default function EditProductPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
       </div>
     );
   }
@@ -121,7 +123,7 @@ export default function EditProductPage() {
         <p className="text-gray-500">{error || "产品不存在"}</p>
         <button
           onClick={() => router.push("/admin/products")}
-          className="text-brand-gold hover:underline"
+          className="text-brand-primary hover:underline"
         >
           返回产品列表
         </button>
@@ -136,4 +138,3 @@ export default function EditProductPage() {
     </div>
   );
 }
-

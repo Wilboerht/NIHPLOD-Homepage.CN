@@ -21,7 +21,7 @@ const CategorySchema = z.object({
 
 // GET /api/admin/categories - 获取分类列表
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -121,7 +121,10 @@ export async function POST(request: NextRequest) {
     apiConsole.error("创建分类失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -131,4 +134,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

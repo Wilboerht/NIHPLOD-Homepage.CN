@@ -51,15 +51,11 @@ export class ChunkErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="flex min-h-dvh flex-col items-center justify-center bg-brand-cream p-8 text-center">
-          <h2 className="mb-4 text-xl font-medium text-brand-text">
-            页面加载出错
-          </h2>
-          <p className="mb-6 text-brand-text/70">
-            请刷新页面重试，或清除浏览器缓存
-          </p>
+          <h2 className="text-brand-text mb-4 text-xl font-medium">页面加载出错</h2>
+          <p className="text-brand-text/70 mb-6">请刷新页面重试，或清除浏览器缓存</p>
           <button
             onClick={() => window.location.reload()}
-            className="rounded-full bg-brand-gold px-6 py-2 text-white transition-colors hover:bg-brand-gold/90"
+            className="rounded-full bg-brand-primary px-6 py-2 text-white transition-colors hover:bg-brand-primary/90"
           >
             刷新页面
           </button>
@@ -70,4 +66,3 @@ export class ChunkErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-

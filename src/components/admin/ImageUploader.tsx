@@ -44,15 +44,18 @@ export function ImageUploader({
   const dragItem = useRef<number | null>(null);
 
   // 验证文件
-  const validateFile = useCallback((file: File): string | null => {
-    if (!accept.includes(file.type)) {
-      return `不支持的文件格式: ${file.name}`;
-    }
-    if (file.size > maxSize * 1024 * 1024) {
-      return `文件过大: ${file.name} (最大 ${maxSize}MB)`;
-    }
-    return null;
-  }, [accept, maxSize]);
+  const validateFile = useCallback(
+    (file: File): string | null => {
+      if (!accept.includes(file.type)) {
+        return `不支持的文件格式: ${file.name}`;
+      }
+      if (file.size > maxSize * 1024 * 1024) {
+        return `文件过大: ${file.name} (最大 ${maxSize}MB)`;
+      }
+      return null;
+    },
+    [accept, maxSize]
+  );
 
   // 处理文件选择
   const handleFiles = useCallback(
@@ -72,10 +75,10 @@ export function ImageUploader({
         if (file.type.startsWith("image/") && file.type !== "image/gif") {
           try {
             const options = {
-              maxSizeMB: 2,           // 目标大小 2MB
+              maxSizeMB: 2, // 目标大小 2MB
               maxWidthOrHeight: 2000, // 最大宽高 2000px
               useWebWorker: true,
-              initialQuality: 0.8     // 初始质量
+              initialQuality: 0.8, // 初始质量
             };
 
             // 只有当文件确实很大或者尺寸很大时才执行压缩
@@ -186,11 +189,7 @@ export function ImageUploader({
 
   return (
     <div className={className}>
-      {label && (
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      )}
+      {label && <label className="mb-1.5 block text-sm font-medium text-gray-700">{label}</label>}
 
       {/* 错误提示 */}
       {uploadErrors.length > 0 && (
@@ -216,18 +215,11 @@ export function ImageUploader({
               onDragEnd={handleDragEnd}
               className={cn(
                 "group relative aspect-square overflow-hidden rounded-lg border-2 bg-gray-100",
-                dragOverIndex === index
-                  ? "border-brand-gold"
-                  : "border-transparent",
+                dragOverIndex === index ? "border-brand-primary" : "border-transparent",
                 image.uploading && "opacity-50"
               )}
             >
-              <Image
-                src={image.url}
-                alt={image.alt || "产品图片"}
-                fill
-                className="object-cover"
-              />
+              <Image src={image.url} alt={image.alt || "产品图片"} fill className="object-cover" />
               {/* 拖拽手柄 */}
               <div className="absolute left-1 top-1 cursor-grab rounded bg-black/50 p-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <GripVertical className="h-4 w-4 text-white" />
@@ -247,7 +239,7 @@ export function ImageUploader({
               {/* 加载指示器 */}
               {image.uploading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
                 </div>
               )}
             </div>
@@ -266,10 +258,10 @@ export function ImageUploader({
           className={cn(
             "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors",
             dragActive
-              ? "border-brand-gold bg-brand-gold/5"
+              ? "border-brand-primary bg-brand-primary/5"
               : error
                 ? "border-red-300 bg-red-50"
-                : "border-gray-300 hover:border-brand-gold hover:bg-brand-cream/30"
+                : "border-gray-300 hover:border-brand-primary hover:bg-brand-cream/30"
           )}
         >
           <input
@@ -282,9 +274,9 @@ export function ImageUploader({
           />
           <div className="mb-3 rounded-full bg-gray-100 p-3">
             {isCompressing ? (
-              <Loader2 className="h-6 w-6 animate-spin text-brand-gold" />
+              <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
             ) : dragActive ? (
-              <Upload className="h-6 w-6 text-brand-gold" />
+              <Upload className="h-6 w-6 text-brand-primary" />
             ) : (
               <ImageIcon className="h-6 w-6 text-gray-400" />
             )}
@@ -292,9 +284,7 @@ export function ImageUploader({
           <p className="mb-1 text-sm font-medium text-gray-700">
             {isCompressing ? "正在处理图片..." : dragActive ? "释放以上传" : "点击或拖拽上传图片"}
           </p>
-          <p className="text-xs text-gray-500">
-            支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB
-          </p>
+          <p className="text-xs text-gray-500">支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB</p>
           <p className="mt-1 text-xs text-gray-400">
             已上传 {value.length}/{maxImages} 张
           </p>
@@ -305,4 +295,3 @@ export function ImageUploader({
     </div>
   );
 }
-

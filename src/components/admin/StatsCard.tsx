@@ -43,9 +43,7 @@ export function StatsCard({
           ) : (
             <p className="mt-2 text-3xl font-semibold text-gray-900">{value}</p>
           )}
-          {description && (
-            <p className="mt-1 text-xs text-gray-400">{description}</p>
-          )}
+          {description && <p className="mt-1 text-xs text-gray-400">{description}</p>}
           {trend && !loading && (
             <p
               className={cn(
@@ -61,7 +59,7 @@ export function StatsCard({
         <div
           className={cn(
             "flex h-12 w-12 items-center justify-center rounded-lg",
-            "bg-brand-gold/10 text-brand-gold"
+            "bg-brand-primary/10 text-brand-primary"
           )}
         >
           {icon}
@@ -70,5 +68,3 @@ export function StatsCard({
     </div>
   );
 }
-
-

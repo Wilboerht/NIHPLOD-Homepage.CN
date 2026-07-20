@@ -9,24 +9,35 @@ export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "产品系列",
-  description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+  description:
+    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
   alternates: {
     canonical: "/products",
   },
   keywords: [
-    "NIHPLOD", "旎柏", "产品系列", "高端护肤产品",
-    "修护面霜", "焕活身体乳", "洁面慕斯", "保湿精华",
-    "摩纳哥护肤品", "奢侈护肤品", "抗衰老产品",
+    "NIHPLOD",
+    "旎柏",
+    "产品系列",
+    "高端护肤产品",
+    "修护面霜",
+    "焕活身体乳",
+    "洁面慕斯",
+    "保湿精华",
+    "摩纳哥护肤品",
+    "奢侈护肤品",
+    "抗衰老产品",
   ],
   openGraph: {
     title: "产品系列 | NIHPLOD 旎柏",
-    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    description:
+      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: "产品系列 | NIHPLOD 旎柏",
-    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    description:
+      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
 };
@@ -93,10 +104,7 @@ async function getProducts() {
  * Server Component - 数据获取
  */
 export default async function ProductsPage() {
-  const [categories, products] = await Promise.all([
-    getCategories(),
-    getProducts(),
-  ]);
+  const [categories, products] = await Promise.all([getCategories(), getProducts()]);
 
   const breadcrumbs = [
     { name: "首页", url: "/" },
@@ -107,13 +115,13 @@ export default async function ProductsPage() {
     <>
       <BreadcrumbJsonLd items={breadcrumbs} />
       <Suspense
-      fallback={
-        <div className="flex h-dvh items-center justify-center bg-brand-cream">
-          <div className="text-brand-charcoal/50">加载中...</div>
-        </div>
-      }
-    >
-      <ProductsContent categories={categories} products={products} />
+        fallback={
+          <div className="flex h-dvh items-center justify-center bg-brand-cream">
+            <div className="text-brand-charcoal/50">加载中...</div>
+          </div>
+        }
+      >
+        <ProductsContent categories={categories} products={products} />
       </Suspense>
     </>
   );

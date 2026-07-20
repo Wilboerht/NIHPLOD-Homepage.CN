@@ -3,7 +3,14 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type BadgeVariant = "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
+type BadgeVariant =
+  | "default"
+  | "primary"
+  | "secondary"
+  | "success"
+  | "warning"
+  | "danger"
+  | "outline";
 
 interface BadgeProps {
   children: ReactNode;
@@ -14,7 +21,7 @@ interface BadgeProps {
 
 const variantStyles: Record<BadgeVariant, string> = {
   default: "bg-gray-100 text-gray-700",
-  primary: "bg-brand-gold/10 text-brand-gold",
+  primary: "bg-brand-primary/10 text-brand-primary",
   secondary: "bg-gray-500/10 text-gray-600",
   success: "bg-green-50 text-green-700",
   warning: "bg-yellow-50 text-yellow-700",
@@ -30,12 +37,7 @@ const sizeStyles = {
 /**
  * 状态徽章组件
  */
-export function Badge({
-  children,
-  variant = "default",
-  size = "sm",
-  className,
-}: BadgeProps) {
+export function Badge({ children, variant = "default", size = "sm", className }: BadgeProps) {
   return (
     <span
       className={cn(
@@ -59,7 +61,7 @@ export function DotBadge({
   className,
 }: {
   children: ReactNode;
-  color?: "gray" | "green" | "yellow" | "red" | "gold";
+  color?: "gray" | "green" | "yellow" | "red" | "primary";
   className?: string;
 }) {
   const dotColors = {
@@ -67,7 +69,7 @@ export function DotBadge({
     green: "bg-green-500",
     yellow: "bg-yellow-500",
     red: "bg-red-500",
-    gold: "bg-brand-gold",
+    primary: "bg-brand-primary",
   };
 
   return (
@@ -77,4 +79,3 @@ export function DotBadge({
     </span>
   );
 }
-

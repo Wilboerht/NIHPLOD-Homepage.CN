@@ -17,10 +17,7 @@ interface ScrollSpySidebarProps {
  * 带 IntersectionObserver + rAF 防抖的滚动监听侧边栏
  * 移动端隐藏，仅 lg 以上显示
  */
-export default function ScrollSpySidebar({
-  sections,
-  label = "目录导航",
-}: ScrollSpySidebarProps) {
+export default function ScrollSpySidebar({ sections, label = "目录导航" }: ScrollSpySidebarProps) {
   const [activeId, setActiveId] = useState<string>("");
   const rafRef = useRef<number | null>(null);
   const navRef = useRef<HTMLDivElement>(null);
@@ -107,15 +104,12 @@ export default function ScrollSpySidebar({
   }, [sections]);
 
   return (
-    <aside className="hidden lg:block w-72 shrink-0">
+    <aside className="hidden w-72 shrink-0 lg:block">
       <div
         ref={navRef}
-        className="sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain scrollbar-hide"
+        className="scrollbar-hide sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain"
       >
-        <nav
-          className="flex flex-col space-y-1"
-          aria-label={label}
-        >
+        <nav className="flex flex-col space-y-1" aria-label={label}>
           {sections.map((section) => (
             <button
               key={section.id}
@@ -126,7 +120,7 @@ export default function ScrollSpySidebar({
                 if (el) el.scrollIntoView({ behavior: "smooth" });
               }}
               aria-current={activeId === section.id ? "true" : undefined}
-              className={`group flex flex-col py-3 px-4 border-l transition-all duration-200 text-left ${
+              className={`group flex flex-col border-l px-4 py-3 text-left transition-all duration-200 ${
                 activeId === section.id
                   ? "border-[#00263E]"
                   : "border-zinc-200 hover:border-[#00263E]"

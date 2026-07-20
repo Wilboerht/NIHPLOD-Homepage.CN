@@ -24,10 +24,7 @@ const fallbackCache = new LRUCache<string, FallbackRecord>({
 /**
  * 内存 LRU 降级限流（数据库不可用时的兜底方案）
  */
-function fallbackRateLimit(
-  identifier: string,
-  options: RateLimitOptions
-): RateLimitResult {
+function fallbackRateLimit(identifier: string, options: RateLimitOptions): RateLimitResult {
   const now = Date.now();
   const windowStart = now - options.windowMs;
   const reset = now + options.windowMs;

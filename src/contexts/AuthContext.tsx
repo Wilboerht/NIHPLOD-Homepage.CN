@@ -67,7 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 结算弹窗状态
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [checkoutSelectedProductIds, setCheckoutSelectedProductIds] = useState<string[] | null>(null);
+  const [checkoutSelectedProductIds, setCheckoutSelectedProductIds] = useState<string[] | null>(
+    null
+  );
   const [checkoutQuantities, setCheckoutQuantities] = useState<Record<string, number> | null>(null);
 
   // 支付弹窗状态
@@ -107,16 +109,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 结算弹窗操作
-  const openCheckout = useCallback((selectedProductIds?: string[], quantities?: Record<string, number>) => {
-    if (selectedProductIds && selectedProductIds.length > 0) {
-      setCheckoutSelectedProductIds(selectedProductIds);
-      setCheckoutQuantities(quantities || null);
-    } else {
-      setCheckoutSelectedProductIds(null);
-      setCheckoutQuantities(null);
-    }
-    setCheckoutOpen(true);
-  }, []);
+  const openCheckout = useCallback(
+    (selectedProductIds?: string[], quantities?: Record<string, number>) => {
+      if (selectedProductIds && selectedProductIds.length > 0) {
+        setCheckoutSelectedProductIds(selectedProductIds);
+        setCheckoutQuantities(quantities || null);
+      } else {
+        setCheckoutSelectedProductIds(null);
+        setCheckoutQuantities(null);
+      }
+      setCheckoutOpen(true);
+    },
+    []
+  );
 
   const closeCheckout = useCallback(() => {
     setCheckoutOpen(false);
@@ -190,11 +195,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    const intervalId = setInterval(() => {
-      refreshAccessToken().catch(() => {
-        // 静默处理：若刷新失败，下次请求 401 时会触发 logout
-      });
-    }, 14 * 60 * 1000);
+    const intervalId = setInterval(
+      () => {
+        refreshAccessToken().catch(() => {
+          // 静默处理：若刷新失败，下次请求 401 时会触发 logout
+        });
+      },
+      14 * 60 * 1000
+    );
 
     return () => clearInterval(intervalId);
   }, [user]);
@@ -246,4 +254,3 @@ export function useAuth() {
   }
   return context;
 }
-

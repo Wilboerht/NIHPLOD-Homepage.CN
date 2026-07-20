@@ -50,7 +50,8 @@ export function validatePasswordStrength(password: string): { valid: boolean; me
  * - 包含至少一个小写字母
  * - 包含至少一个数字
  */
-export const passwordSchema = z.string()
+export const passwordSchema = z
+  .string()
   .min(PASSWORD_MIN_LENGTH, "密码至少8位")
   .max(PASSWORD_MAX_LENGTH, "密码最多32位")
   .regex(/[A-Z]/, "密码需包含大写字母")
@@ -75,10 +76,7 @@ export async function hashPassword(password: string): Promise<string> {
  * @param hashedPassword 哈希后的密码
  * @returns 是否匹配
  */
-export async function verifyPassword(
-  password: string,
-  hashedPassword: string
-): Promise<boolean> {
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
   return bcrypt.compare(password, hashedPassword);
 }
 

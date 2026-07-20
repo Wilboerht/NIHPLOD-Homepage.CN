@@ -95,7 +95,10 @@ export const POST = withRole(["owner"], async (request, admin) => {
     const body = await request.json();
     const data = createSchema.parse(body);
 
-    const existing = await prisma.admin.findUnique({ where: { email: data.email }, select: { id: true } });
+    const existing = await prisma.admin.findUnique({
+      where: { email: data.email },
+      select: { id: true },
+    });
     if (existing) {
       return NextResponse.json(
         { success: false, error: { code: "DUPLICATE_EMAIL", message: "该邮箱已被使用" } },

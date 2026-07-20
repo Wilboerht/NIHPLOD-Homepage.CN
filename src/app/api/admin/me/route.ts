@@ -4,7 +4,7 @@ import { apiConsole } from "@/lib/logger";
 
 // GET /api/admin/me - 获取当前登录的管理员信息
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const GET = withAuth(async (request: NextRequest, admin) => {
   try {
@@ -33,4 +33,3 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
     );
   }
 });
-

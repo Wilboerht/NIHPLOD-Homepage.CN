@@ -28,7 +28,10 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   // 速率限制：每个 IP 每分钟最多 60 次回调请求
   const clientIP = getClientIP(request);
-  const limitResult = await rateLimit(clientIP, "alipay-refund-notify", { maxRequests: 60, windowMs: 60_000 });
+  const limitResult = await rateLimit(clientIP, "alipay-refund-notify", {
+    maxRequests: 60,
+    windowMs: 60_000,
+  });
   if (!limitResult.success) {
     return new NextResponse("fail", { status: 200 });
   }
@@ -45,7 +48,8 @@ export async function POST(request: NextRequest) {
     const tradeNo = params.out_trade_no;
     const refundStatus = params.refund_status;
 
-    if (process.env.NODE_ENV === "development") console.log(`[AlipayRefundNotify] 收到退款回调: ${tradeNo}, 状态: ${refundStatus}`);
+    if (process.env.NODE_ENV === "development")
+      console.log(`[AlipayRefundNotify] 收到退款回调: ${tradeNo}, 状态: ${refundStatus}`);
 
     // 验证签名
     const sign = params.sign;
@@ -79,7 +83,8 @@ export async function POST(request: NextRequest) {
     // 幂等性检查：验签通过后再检查
     const idempotencyCheck = await isNotificationProcessed("alipay_refund", notifyId);
     if (idempotencyCheck.processed) {
-      if (process.env.NODE_ENV === "development") console.log(`[AlipayRefundNotify] 退款通知已处理: ${notifyId}`);
+      if (process.env.NODE_ENV === "development")
+        console.log(`[AlipayRefundNotify] 退款通知已处理: ${notifyId}`);
       return new NextResponse("success", { status: 200 });
     }
 
@@ -106,7 +111,8 @@ export async function POST(request: NextRequest) {
 
     // 检查订单是否已退款
     if (order.status === OrderStatus.REFUNDED) {
-      if (process.env.NODE_ENV === "development") console.log(`[AlipayRefundNotify] 订单已退款: ${tradeNo}`);
+      if (process.env.NODE_ENV === "development")
+        console.log(`[AlipayRefundNotify] 订单已退款: ${tradeNo}`);
       if (recordId) await markNotificationSuccess(recordId);
       return new NextResponse("success", { status: 200 });
     }
@@ -114,7 +120,9 @@ export async function POST(request: NextRequest) {
     // 退款金额上限校验
     const refundAmount = parseFloat(params.refund_amount || "0");
     if (refundAmount <= 0 || refundAmount > Number(order.payAmount)) {
-      apiConsole.error(`[AlipayRefundNotify] 退款金额异常: ${refundAmount}, 订单金额: ${order.payAmount}`);
+      apiConsole.error(
+        `[AlipayRefundNotify] 退款金额异常: ${refundAmount}, 订单金额: ${order.payAmount}`
+      );
       if (recordId) await markNotificationFailed(recordId, "REFUND_AMOUNT_INVALID");
       return new NextResponse("fail", { status: 200 });
     }
@@ -136,18 +144,19 @@ export async function POST(request: NextRequest) {
       data: { adminNote: newAdminNote },
     });
 
-    if (process.env.NODE_ENV === "development") console.log(`[AlipayRefundNotify] 订单退款成功: ${tradeNo}`);
+    if (process.env.NODE_ENV === "development")
+      console.log(`[AlipayRefundNotify] 订单退款成功: ${tradeNo}`);
     if (recordId) await markNotificationSuccess(recordId);
 
     // 支付宝要求返回 "success" 字符串
     return new NextResponse("success", { status: 200 });
   } catch (error: unknown) {
-    const isSystemError = error instanceof Error && (
-      error.message.includes("connection") ||
-      error.message.includes("timeout") ||
-      error.message.includes("ECONNREFUSED") ||
-      error.message.includes("Prisma")
-    );
+    const isSystemError =
+      error instanceof Error &&
+      (error.message.includes("connection") ||
+        error.message.includes("timeout") ||
+        error.message.includes("ECONNREFUSED") ||
+        error.message.includes("Prisma"));
     apiConsole.error("[AlipayRefundNotify] 异常:", error);
     // 系统错误返回 500，让支付宝重试；业务错误返回 200 + fail
     if (isSystemError) {

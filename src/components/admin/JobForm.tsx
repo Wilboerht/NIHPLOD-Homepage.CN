@@ -102,7 +102,7 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
             city: "上海",
           });
         }
-        
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         autoCompleteRef.current.search(keyword, (status: string, result: any) => {
           if (status === "complete" && result.tips) {
@@ -151,7 +151,7 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
           className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none transition-colors focus:ring-1 ${
             error
               ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-              : "border-gray-200 focus:border-brand-gold focus:ring-brand-gold"
+              : "border-gray-200 focus:border-brand-primary focus:ring-brand-primary"
           }`}
         />
       </div>
@@ -166,10 +166,11 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
               onMouseDown={(e) => {
                 e.preventDefault();
                 // 拼接更完整的地址信息保存
-                const fullLocation = tip.address && typeof tip.address === 'string' && !tip.name.includes(tip.address) 
-                  ? `${tip.district}${tip.name}` 
-                  : `${tip.district}${tip.name}`;
-                
+                const fullLocation =
+                  tip.address && typeof tip.address === "string" && !tip.name.includes(tip.address)
+                    ? `${tip.district}${tip.name}`
+                    : `${tip.district}${tip.name}`;
+
                 onChange(fullLocation);
                 if (tip.location) {
                   onCoordsChange(tip.location.lng, tip.location.lat);
@@ -182,7 +183,10 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
                 <Search className="h-3.5 w-3.5 text-gray-400" />
                 {tip.name}
               </div>
-              <div className="ml-5 text-xs text-gray-500">{tip.district}{tip.address || ""}</div>
+              <div className="ml-5 text-xs text-gray-500">
+                {tip.district}
+                {tip.address || ""}
+              </div>
             </li>
           ))}
         </ul>
@@ -240,58 +244,62 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   };
 
   // 辅助函数：提交前尝试根据文字补全坐标 (针对 POI + 高效纠合方案)
-  const ensureCoordinates = async (address: string): Promise<{lng: number, lat: number} | null> => {
-     return new Promise((resolve) => {
+  const ensureCoordinates = async (
+    address: string
+  ): Promise<{ lng: number; lat: number } | null> => {
+    return new Promise((resolve) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const AMap = (window as any).AMap;
+      if (!AMap || !AMap.PlaceSearch) return resolve(null);
+
+      // 默认上海中心坐标（高德常回落到这里，约在城隍庙/人民广场附近）
+      const IS_DEFAULT_CENTER = (lng: number, lat: number) => {
+        return Math.abs(lng - 121.472) < 0.05 && Math.abs(lat - 31.232) < 0.05;
+      };
+
+      // 策略1：优先用 PlaceSearch 搜具体的建筑物（针对 "信泰中心" 这种写字楼点对点最准）
+      const ps = new AMap.PlaceSearch({ city: "021", pageSize: 1 });
+
+      // 智能提取关键词：如果是 "上海市普陀区信泰中心广场T3-610" -> 会尝试提取 "普陀区信泰中心广场"
+      const cleanKeyword = address.split(" ").shift() || address;
+      const shortKeyword = cleanKeyword.split(/[A-Z,a-z,0-9]/)[0] || cleanKeyword; // 尝试剥离房号后缀
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ps.search(shortKeyword, (status: string, result: any) => {
+        if (status === "complete" && result.poiList && result.poiList.pois.length > 0) {
+          const poi = result.poiList.pois[0];
+          if (!IS_DEFAULT_CENTER(poi.location.lng, poi.location.lat)) {
+            return resolve({ lng: poi.location.lng, lat: poi.location.lat });
+          }
+        }
+
+        // 策略2：备选 Geocoder
+        const geocoder = new AMap.Geocoder({ city: "021" });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const AMap = (window as any).AMap;
-        if (!AMap || !AMap.PlaceSearch) return resolve(null);
+        geocoder.getLocation(address, (s: string, r: any) => {
+          if (s === "complete" && r.geocodes.length > 0) {
+            const loc = r.geocodes[0].location;
+            if (!IS_DEFAULT_CENTER(loc.lng, loc.lat)) {
+              return resolve({ lng: loc.lng, lat: loc.lat });
+            }
+          }
 
-        // 默认上海中心坐标（高德常回落到这里，约在城隍庙/人民广场附近）
-        const IS_DEFAULT_CENTER = (lng: number, lat: number) => {
-           return Math.abs(lng - 121.472) < 0.05 && Math.abs(lat - 31.232) < 0.05;
-        };
-
-        // 策略1：优先用 PlaceSearch 搜具体的建筑物（针对 "信泰中心" 这种写字楼点对点最准）
-        const ps = new AMap.PlaceSearch({ city: "021", pageSize: 1 });
-        
-        // 智能提取关键词：如果是 "上海市普陀区信泰中心广场T3-610" -> 会尝试提取 "普陀区信泰中心广场"
-        const cleanKeyword = address.split(' ').shift() || address;
-        const shortKeyword = cleanKeyword.split(/[A-Z,a-z,0-9]/)[0] || cleanKeyword; // 尝试剥离房号后缀
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ps.search(shortKeyword, (status: string, result: any) => {
-           if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
-              const poi = result.poiList.pois[0];
-              if (!IS_DEFAULT_CENTER(poi.location.lng, poi.location.lat)) {
-                 return resolve({ lng: poi.location.lng, lat: poi.location.lat });
-              }
-           }
-
-           // 策略2：备选 Geocoder 
-           const geocoder = new AMap.Geocoder({ city: "021" });
-           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-           geocoder.getLocation(address, (s: string, r: any) => {
-              if (s === 'complete' && r.geocodes.length > 0) {
-                 const loc = r.geocodes[0].location;
-                 if (!IS_DEFAULT_CENTER(loc.lng, loc.lat)) {
-                    return resolve({ lng: loc.lng, lat: loc.lat });
-                 }
-              }
-
-              // 策略3：极端兜底 - 只搜区名+大楼名关键词
-              const fallbackKeyword = address.includes('区') ? address.split('区').pop()?.substring(0, 10) : address;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              geocoder.getLocation(fallbackKeyword || address, (fs: string, fr: any) => {
-                 if (fs === 'complete' && fr.geocodes.length > 0) {
-                    const loc = fr.geocodes[0].location;
-                    resolve({ lng: loc.lng, lat: loc.lat });
-                 } else {
-                    resolve(null);
-                 }
-              });
-           });
+          // 策略3：极端兜底 - 只搜区名+大楼名关键词
+          const fallbackKeyword = address.includes("区")
+            ? address.split("区").pop()?.substring(0, 10)
+            : address;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          geocoder.getLocation(fallbackKeyword || address, (fs: string, fr: any) => {
+            if (fs === "complete" && fr.geocodes.length > 0) {
+              const loc = fr.geocodes[0].location;
+              resolve({ lng: loc.lng, lat: loc.lat });
+            } else {
+              resolve(null);
+            }
+          });
         });
-     });
+      });
+    });
   };
 
   const doSave = async (publishedState?: boolean) => {
@@ -304,16 +312,16 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
       // 如果没有坐标，尝试强制解析一次（带 10 秒超时）
       if (!finalData.longitude || !finalData.latitude) {
-         const coords = await Promise.race([
-           ensureCoordinates(finalData.location || ""),
-           new Promise<null>((_, reject) =>
-             setTimeout(() => reject(new Error("坐标获取超时")), 10000)
-           ),
-         ]);
-         if (coords) {
-            finalData.longitude = coords.lng;
-            finalData.latitude = coords.lat;
-         }
+        const coords = await Promise.race([
+          ensureCoordinates(finalData.location || ""),
+          new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error("坐标获取超时")), 10000)
+          ),
+        ]);
+        if (coords) {
+          finalData.longitude = coords.lng;
+          finalData.latitude = coords.lat;
+        }
       }
 
       if (isEdit) {
@@ -394,7 +402,9 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             label="职位类型"
             options={JOB_TYPES}
             value={formData.type || "fulltime"}
-            onChange={(e) => updateField("type", e.target.value as "fulltime" | "parttime" | "intern")}
+            onChange={(e) =>
+              updateField("type", e.target.value as "fulltime" | "parttime" | "intern")
+            }
             error={errors.type}
             required
           />
@@ -456,12 +466,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           />
         </div>
         <div className="flex gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={loading}
-          >
+          <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
             取消
           </Button>
           <Button type="submit" loading={loading}>

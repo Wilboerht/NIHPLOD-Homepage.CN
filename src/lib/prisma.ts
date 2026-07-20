@@ -16,7 +16,9 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // 创建连接池（单例）
-const isLocalDb = process.env.DATABASE_URL?.includes("localhost") || process.env.DATABASE_URL?.includes("127.0.0.1");
+const isLocalDb =
+  process.env.DATABASE_URL?.includes("localhost") ||
+  process.env.DATABASE_URL?.includes("127.0.0.1");
 const poolConfig: pg.PoolConfig = {
   connectionString: process.env.DATABASE_URL,
   // 生产环境强制开启 SSL 以确保与云数据库握手稳健
@@ -30,11 +32,12 @@ const poolConfig: pg.PoolConfig = {
         : { rejectUnauthorized: false }
       : undefined,
   // 连接池优化配置：在构建阶段会有高并发的 DB 请求
-  max: process.env.NEXT_PHASE === "phase-production-build"
-    ? 2
-    : process.env.DATABASE_MAX_CONNECTIONS
-      ? parseInt(process.env.DATABASE_MAX_CONNECTIONS)
-      : 10, // 降低默认连接数，防止构建时并行进程过载导致数据库连接被服务端断开
+  max:
+    process.env.NEXT_PHASE === "phase-production-build"
+      ? 2
+      : process.env.DATABASE_MAX_CONNECTIONS
+        ? parseInt(process.env.DATABASE_MAX_CONNECTIONS)
+        : 10, // 降低默认连接数，防止构建时并行进程过载导致数据库连接被服务端断开
   // 连接空闲 30秒后释放，节省资源
   idleTimeoutMillis: 30000,
   // 获取连接等待超时 30秒，避免请求长时间卡死
@@ -43,9 +46,7 @@ const poolConfig: pg.PoolConfig = {
   statement_timeout: 30000,
 };
 
-const pool =
-  globalForPrisma.pool ??
-  new pg.Pool(poolConfig);
+const pool = globalForPrisma.pool ?? new pg.Pool(poolConfig);
 
 // 创建 adapter
 const adapter = new PrismaPg(pool);
@@ -80,4 +81,3 @@ if (process.env.NEXT_PHASE !== "phase-production-build" && typeof process !== "u
   process.once("SIGTERM", () => gracefulShutdown("SIGTERM"));
   process.once("SIGINT", () => gracefulShutdown("SIGINT"));
 }
-

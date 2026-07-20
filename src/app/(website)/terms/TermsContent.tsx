@@ -32,21 +32,18 @@ export function TermsContent({ content }: TermsContentProps) {
   });
 
   return (
-    <div className="animate-fade-in bg-[#fefcf8] min-h-screen pt-16 md:pt-24 pb-0">
+    <div className="min-h-screen animate-fade-in bg-[#fefcf8] pb-0 pt-16 md:pt-24">
       {/* Header Section */}
-      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 mb-8 md:mb-16">
+      <div className="container mx-auto mb-8 px-6 md:mb-16 md:px-8 lg:px-12 xl:px-16">
         <div className="max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-normal text-zinc-900 mb-6">
-            {pageTitle.zh}
-          </h1>
-
+          <h1 className="mb-6 text-4xl font-normal text-zinc-900 md:text-5xl">{pageTitle.zh}</h1>
         </div>
       </div>
 
       <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
-        <div className="flex flex-col lg:flex-row gap-12 lg:gap-24">
+        <div className="flex flex-col gap-12 lg:flex-row lg:gap-24">
           {/* Mobile TOC - Dropdown */}
-          <div className="lg:hidden mb-4">
+          <div className="mb-4 lg:hidden">
             <TableOfContents sections={sections} />
           </div>
 
@@ -54,14 +51,10 @@ export function TermsContent({ content }: TermsContentProps) {
           <ScrollSpySidebar sections={sections} label="服务条款目录导航" />
 
           {/* Main Content */}
-          <main className="flex-1 max-w-4xl text-zinc-800 leading-relaxed space-y-16 font-songti">
+          <main className="max-w-4xl flex-1 space-y-16 font-songti leading-relaxed text-zinc-800">
             {sections.map((section, sIdx) => (
-              <section
-                key={section.id}
-                id={section.id}
-                className="scroll-mt-32"
-              >
-                <h2 className="text-2xl font-medium text-zinc-900 mb-8 font-sans tracking-wide">
+              <section key={section.id} id={section.id} className="scroll-mt-32">
+                <h2 className="mb-8 font-sans text-2xl font-medium tracking-wide text-zinc-900">
                   {section.title}
                 </h2>
                 <div className="space-y-6">
@@ -70,12 +63,12 @@ export function TermsContent({ content }: TermsContentProps) {
 
                 {/* 隐私政策引用 - 仅在第一个章节 */}
                 {sIdx === 1 && (
-                  <div className="mt-8 p-5 bg-zinc-50 rounded-xl border border-[#00263E]/30">
-                    <p className="text-sm text-zinc-500 leading-relaxed">
+                  <div className="mt-8 rounded-xl border border-[#00263E]/30 bg-zinc-50 p-5">
+                    <p className="text-sm leading-relaxed text-zinc-500">
                       有关我们如何收集、使用和保护您的个人信息的详细说明，请参阅我们的{" "}
                       <Link
                         href="/privacy"
-                        className="text-[#00263E] underline decoration-zinc-300 underline-offset-4 hover:decoration-[#00263E] transition-all font-medium"
+                        className="font-medium text-[#00263E] underline decoration-zinc-300 underline-offset-4 transition-all hover:decoration-[#00263E]"
                       >
                         隐私政策
                       </Link>
@@ -90,16 +83,16 @@ export function TermsContent({ content }: TermsContentProps) {
       </div>
 
       {/* Page Footer */}
-      <footer className="mt-16 md:mt-24 border-t border-zinc-200">
-        <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16 py-10 text-center">
-          <p className="text-xs text-zinc-500 tracking-wide">
+      <footer className="mt-16 border-t border-zinc-200 md:mt-24">
+        <div className="container mx-auto px-6 py-10 text-center md:px-8 lg:px-12 xl:px-16">
+          <p className="text-xs tracking-wide text-zinc-500">
             &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
             <Link
               href="https://beian.miit.gov.cn/"
               target="_blank"
-              className="hover:text-zinc-600 transition-colors"
+              className="transition-colors hover:text-zinc-600"
             >
               沪ICP备2026014764号-1
             </Link>
@@ -107,7 +100,7 @@ export function TermsContent({ content }: TermsContentProps) {
             <Link
               href="http://www.beian.gov.cn/portal/registerSystemInfo"
               target="_blank"
-              className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
+              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
             >
               <Image
                 src="/images/beian.webp"
@@ -122,7 +115,7 @@ export function TermsContent({ content }: TermsContentProps) {
             <Link
               href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
               target="_blank"
-              className="inline-flex items-center gap-1 hover:text-zinc-600 transition-colors"
+              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
             >
               <Image
                 src="/images/aic_icon.png"

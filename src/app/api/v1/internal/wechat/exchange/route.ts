@@ -51,8 +51,14 @@ import { logAuthEvent } from "@/lib/auth-logger";
 
 const exchangeSchema = z.object({
   wechatExchangeToken: z.string().min(1, "缺少微信授权 exchange token"),
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号").optional(),
-  code: z.string().regex(/^\d{6}$/, "验证码为6位数字").optional(),
+  phone: z
+    .string()
+    .regex(/^1[3-9]\d{9}$/, "请输入正确的手机号")
+    .optional(),
+  code: z
+    .string()
+    .regex(/^\d{6}$/, "验证码为6位数字")
+    .optional(),
   password: passwordSchema.optional(),
   allowAutoPassword: z.boolean().default(true),
 });
@@ -150,7 +156,10 @@ export async function POST(request: NextRequest) {
     const wechatInfo = await verifyWechatExchangeToken(wechatExchangeToken);
     if (!wechatInfo) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_EXCHANGE_TOKEN", message: "微信授权已过期或无效，请重新扫码" } },
+        {
+          success: false,
+          error: { code: "INVALID_EXCHANGE_TOKEN", message: "微信授权已过期或无效，请重新扫码" },
+        },
         { status: 400 }
       );
     }
@@ -207,7 +216,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 9. 已绑定有效账户，直接登录
-    const result = await finalizeLogin(oldWechatUser, wechatInfo, false, request, wechatExchangeToken);
+    const result = await finalizeLogin(
+      oldWechatUser,
+      wechatInfo,
+      false,
+      request,
+      wechatExchangeToken
+    );
     return result;
   } catch (error) {
     apiConsole.error("[InternalApiV1] 异常:", error);
@@ -239,7 +254,10 @@ async function finalizeLogin(
   const statusCheck = await checkUserStatus(user.id);
   if (!statusCheck.valid) {
     return NextResponse.json(
-      { success: false, error: { code: "ACCOUNT_DISABLED", message: statusCheck.reason || "账号状态异常" } },
+      {
+        success: false,
+        error: { code: "ACCOUNT_DISABLED", message: statusCheck.reason || "账号状态异常" },
+      },
       { status: 403 }
     );
   }

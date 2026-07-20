@@ -175,7 +175,9 @@ export async function healStuckNotifications(timeoutMinutes: number = 5): Promis
     });
 
     if (result.count > 0) {
-      console.warn(`[Notification] 修复了 ${result.count} 条卡住的 PENDING 通知记录（超时 ${timeoutMinutes} 分钟）`);
+      console.warn(
+        `[Notification] 修复了 ${result.count} 条卡住的 PENDING 通知记录（超时 ${timeoutMinutes} 分钟）`
+      );
     }
     return result.count;
   } catch (error) {

@@ -109,27 +109,29 @@ export function OrdersPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col pt-4 md:pt-10">
+    <div className="flex h-full flex-col pt-4 md:pt-10">
       {/* 头部：单向排列避免与关闭按钮冲突 */}
-      <div className="flex-shrink-0 px-16 pb-6 border-b-0 md:border-b border-stone-200/60 flex flex-col items-start">
-        <h2 className="hidden md:block text-xl font-medium tracking-wide text-stone-800">我的订单</h2>
-        
+      <div className="flex flex-shrink-0 flex-col items-start border-b-0 border-stone-200/60 px-16 pb-6 md:border-b">
+        <h2 className="hidden text-xl font-medium tracking-wide text-stone-800 md:block">
+          我的订单
+        </h2>
+
         {/* 状态页签 */}
-        <div className="mt-4 md:mt-8 flex gap-8 w-full overflow-x-auto scrollbar-hide">
+        <div className="scrollbar-hide mt-4 flex w-full gap-8 overflow-x-auto md:mt-8">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-2 text-[13px] tracking-wider transition-all whitespace-nowrap relative ${
+              className={`relative whitespace-nowrap pb-2 text-[13px] tracking-wider transition-all ${
                 activeTab === tab.key
-                  ? "text-stone-800 font-medium"
-                  : "text-stone-400 hover:text-stone-800 font-light"
+                  ? "font-medium text-stone-800"
+                  : "font-light text-stone-400 hover:text-stone-800"
               }`}
             >
               {activeTab === tab.key && (
                 <m.div
                   layoutId="ordersTabActive"
-                  className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-stone-800 rounded-full"
+                  className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-stone-800"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -139,31 +141,33 @@ export function OrdersPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-16 py-6 scrollbar-hide flex flex-col relative">
+      <div className="scrollbar-hide relative flex flex-1 flex-col overflow-y-auto px-16 py-6">
         {/* 持久化加载遮罩层 - 防止 DOM 塌陷导致高度抖动 */}
         {loading && orders.length > 0 && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#FBF8F0]/60 backdrop-blur-[2px]">
-            <Loader2 className="w-8 h-8 text-stone-500 animate-spin" />
+            <Loader2 className="h-8 w-8 animate-spin text-stone-500" />
           </div>
         )}
 
         {loading && orders.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center pb-28">
-            <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
+          <div className="flex flex-1 items-center justify-center pb-28">
+            <Loader2 className="h-8 w-8 animate-spin text-stone-300" />
           </div>
         ) : orders.length === 0 ? (
           <m.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col items-center justify-center pb-28 text-center"
+            className="flex flex-1 flex-col items-center justify-center pb-28 text-center"
           >
-            <div className="w-16 h-16 rounded-full bg-[#FBF8F0]/60 backdrop-blur-sm border border-stone-200/60 flex items-center justify-center mb-5">
-              <Package className="w-6 h-6 text-stone-300" />
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-stone-200/60 bg-[#FBF8F0]/60 backdrop-blur-sm">
+              <Package className="h-6 w-6 text-stone-300" />
             </div>
-            <p className="text-stone-400 text-sm tracking-wider">暂无相关订单</p>
+            <p className="text-sm tracking-wider text-stone-400">暂无相关订单</p>
           </m.div>
         ) : (
-          <div className={`space-y-0 pb-10 w-full transition-opacity duration-300 ${loading ? 'opacity-40' : 'opacity-100'}`}>
+          <div
+            className={`w-full space-y-0 pb-10 transition-opacity duration-300 ${loading ? "opacity-40" : "opacity-100"}`}
+          >
             {orders.map((order) => (
               <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
             ))}
@@ -175,65 +179,68 @@ export function OrdersPanel() {
 }
 
 function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
-  const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-stone-400 bg-transparent border-transparent" };
+  const status = STATUS_CONFIG[order.status] || {
+    label: order.status,
+    color: "text-stone-400 bg-transparent border-transparent",
+  };
   const firstItem = order.items[0];
 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left group border-b border-stone-200/60 last:border-b-0 py-6 px-6 -mx-6 rounded-[2.5rem] transition-all hover:bg-white/40"
+      className="group -mx-6 w-full rounded-[2.5rem] border-b border-stone-200/60 px-6 py-6 text-left transition-all last:border-b-0 hover:bg-white/40"
     >
-      <div className="flex justify-between items-start mb-4 px-2">
+      <div className="mb-4 flex items-start justify-between px-2">
         <div className="flex flex-col">
-          <span className="text-xs text-stone-400 font-mono tracking-wider mb-1">
+          <span className="mb-1 font-mono text-xs tracking-wider text-stone-400">
             {order.orderNo}
           </span>
-          <span className={`text-[11px] px-2 py-0.5 rounded border ${status.color} w-fit`}>
+          <span className={`rounded border px-2 py-0.5 text-[11px] ${status.color} w-fit`}>
             {status.label}
           </span>
         </div>
         <div className="flex flex-col items-end">
-          <div className="text-sm font-medium tracking-wider text-stone-800 tabular-nums">
+          <div className="text-sm font-medium tabular-nums tracking-wider text-stone-800">
             ¥{Number(order.payAmount).toFixed(2)}
           </div>
           {Number(order.discountAmount) > 0 && (
-            <span className="text-[11px] text-green-600 mt-0.5">
+            <span className="mt-0.5 text-[11px] text-green-600">
               已优惠 ¥{Number(order.discountAmount).toFixed(2)}
             </span>
           )}
         </div>
       </div>
-      
-      <div className="flex gap-5 items-center px-2">
-        <div className="w-20 h-20 bg-stone-100 flex-shrink-0 relative overflow-hidden">
+
+      <div className="flex items-center gap-5 px-2">
+        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden bg-stone-100">
           {firstItem?.productImage ? (
             <Image
               src={firstItem.productImage}
               alt={firstItem.productName}
               width={80}
               height={80}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Package className="w-6 h-6 text-stone-300" />
+            <div className="flex h-full w-full items-center justify-center">
+              <Package className="h-6 w-6 text-stone-300" />
             </div>
           )}
         </div>
-        
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <h3 className="text-sm font-medium text-stone-800 truncate tracking-wide group-hover:text-stone-600 transition-colors">
+
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h3 className="truncate text-sm font-medium tracking-wide text-stone-800 transition-colors group-hover:text-stone-600">
             {firstItem?.productName || "未知商品"}
           </h3>
           {order.items.length > 1 && (
-            <p className="text-xs text-stone-400 tracking-wider">
+            <p className="text-xs tracking-wider text-stone-400">
               等 共 {order.items.length} 件商品
             </p>
           )}
         </div>
-        
-        <div className="w-8 h-8 flex justify-center items-center opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all duration-300">
-          <ChevronRight className="w-4 h-4 text-stone-400" />
+
+        <div className="flex h-8 w-8 -translate-x-2 items-center justify-center opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+          <ChevronRight className="h-4 w-4 text-stone-400" />
         </div>
       </div>
     </button>
@@ -242,7 +249,10 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
 
 function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
   const { openPay, closeUserCenter } = useAuth();
-  const status = STATUS_CONFIG[order.status] || { label: order.status, color: "text-brand-charcoal/50 bg-black/5 border-black/5" };
+  const status = STATUS_CONFIG[order.status] || {
+    label: order.status,
+    color: "text-brand-charcoal/50 bg-black/5 border-black/5",
+  };
 
   const handlePay = () => {
     // 先打开支付模态框，再关闭用户中心（避免组件卸载导致的闭包问题）
@@ -251,60 +261,66 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
   };
 
   return (
-    <div className="h-full flex flex-col pt-6 md:pt-10">
-      <div className="flex-shrink-0 px-6 md:px-10 pb-5 border-b border-black/5 md:border-white/30">
+    <div className="flex h-full flex-col pt-6 md:pt-10">
+      <div className="flex-shrink-0 border-b border-black/5 px-6 pb-5 md:border-white/30 md:px-10">
         <button
           onClick={onBack}
-          className="group flex items-center gap-2 text-brand-charcoal/50 hover:text-brand-charcoal transition-colors mb-6"
+          className="group mb-6 flex items-center gap-2 text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
         >
-          <div className="w-7 h-7 rounded-full bg-black/5 md:bg-white/40 flex items-center justify-center group-hover:bg-black/10 transition-colors">
-            <ChevronRight className="w-4 h-4 rotate-180" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black/5 transition-colors group-hover:bg-black/10 md:bg-white/40">
+            <ChevronRight className="h-4 w-4 rotate-180" />
           </div>
           <span className="text-[14px] font-medium tracking-wide">返回订单列表</span>
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-brand-charcoal/40 text-[12px] font-medium tracking-wide uppercase mb-0.5">订单号</p>
-            <p className="text-brand-charcoal text-[16px] font-mono font-medium">{order.orderNo}</p>
+            <p className="mb-0.5 text-[12px] font-medium uppercase tracking-wide text-brand-charcoal/40">
+              订单号
+            </p>
+            <p className="font-mono text-[16px] font-medium text-brand-charcoal">{order.orderNo}</p>
           </div>
-          <span className={`px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border ${status.color}`}>
+          <span
+            className={`rounded-lg border px-3.5 py-1.5 text-[13px] font-semibold ${status.color}`}
+          >
             {status.label}
           </span>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-6 md:px-10 py-6 scrollbar-hide">
+      <div className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-10">
         <div className="mb-6">
-          <p className="text-brand-charcoal/50 text-[13px] font-bold tracking-[0.1em] uppercase mb-4">商品信息</p>
+          <p className="mb-4 text-[13px] font-bold uppercase tracking-[0.1em] text-brand-charcoal/50">
+            商品信息
+          </p>
           <div className="space-y-4">
             {order.items.map((item) => (
               <div
                 key={item.id}
-                className="flex gap-4 bg-black/[0.02] md:bg-white/30 rounded-2xl p-4 border border-black/5 md:border-white/40 backdrop-blur-sm"
+                className="flex gap-4 rounded-2xl border border-black/5 bg-black/[0.02] p-4 backdrop-blur-sm md:border-white/40 md:bg-white/30"
               >
-                <div className="w-20 h-20 rounded-xl overflow-hidden bg-black/5 md:bg-white/50 flex-shrink-0 border border-black/5 md:border-white/50 shadow-inner">
+                <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-black/5 bg-black/5 shadow-inner md:border-white/50 md:bg-white/50">
                   {item.productImage ? (
                     <Image
                       src={item.productImage}
                       alt={item.productName}
                       width={80}
                       height={80}
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-7 h-7" style={{ color: "#BDBDBD" }} />
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Package className="h-7 w-7" style={{ color: "#BDBDBD" }} />
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
-                  <p className="text-brand-charcoal text-[15px] font-semibold leading-snug tracking-wide line-clamp-2">
+                <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+                  <p className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-wide text-brand-charcoal">
                     {item.productName}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="text-brand-gold font-medium tracking-wider text-[16px]">
+                    <span className="text-[16px] font-medium tracking-wider text-brand-primary">
                       ¥{Number(item.price).toFixed(2)}
                     </span>
-                    <span className="text-brand-charcoal/40 text-[14px] font-medium bg-black/5 md:bg-white/50 px-2 py-0.5 rounded-md">
+                    <span className="rounded-md bg-black/5 px-2 py-0.5 text-[14px] font-medium text-brand-charcoal/40 md:bg-white/50">
                       ×{item.quantity}
                     </span>
                   </div>
@@ -315,26 +331,29 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
         </div>
 
         {/* 价格明细 */}
-        <div className="mt-8 bg-brand-charcoal/5 md:bg-white/40 rounded-2xl p-5 border border-brand-charcoal/5 md:border-brand-gold/20 backdrop-blur-md relative overflow-hidden space-y-2">
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-brand-gold/10 to-transparent pointer-events-none" />
-          <div className="flex items-center justify-between relative z-10 text-sm">
+        <div className="relative mt-8 space-y-2 overflow-hidden rounded-2xl border border-brand-charcoal/5 bg-brand-charcoal/5 p-5 backdrop-blur-md md:border-brand-primary/20 md:bg-white/40">
+          <div className="pointer-events-none absolute bottom-0 right-0 top-0 w-32 bg-gradient-to-l from-brand-primary/10 to-transparent" />
+          <div className="relative z-10 flex items-center justify-between text-sm">
             <span className="text-brand-charcoal/50">商品总额</span>
             <span className="text-brand-charcoal/70">¥{Number(order.totalAmount).toFixed(2)}</span>
           </div>
           {Number(order.discountAmount) > 0 && (
             <>
-              <div className="flex items-center justify-between relative z-10 text-sm">
+              <div className="relative z-10 flex items-center justify-between text-sm">
                 <span className="text-brand-charcoal/50">
-                  优惠券优惠 {order.userCoupon?.coupon.name ? `(${order.userCoupon.coupon.name})` : ""}
+                  优惠券优惠{" "}
+                  {order.userCoupon?.coupon.name ? `(${order.userCoupon.coupon.name})` : ""}
                 </span>
                 <span className="text-green-600">-¥{Number(order.discountAmount).toFixed(2)}</span>
               </div>
             </>
           )}
-          <div className="flex items-center justify-between relative z-10 pt-2 border-t border-brand-charcoal/10">
-            <span className="text-brand-charcoal/60 text-[14px] font-medium tracking-wide">实付总额</span>
-            <span className="text-brand-gold text-2xl font-bold tracking-wider relative">
-              <span className="text-[16px] mr-1">¥</span>
+          <div className="relative z-10 flex items-center justify-between border-t border-brand-charcoal/10 pt-2">
+            <span className="text-[14px] font-medium tracking-wide text-brand-charcoal/60">
+              实付总额
+            </span>
+            <span className="relative text-2xl font-bold tracking-wider text-brand-primary">
+              <span className="mr-1 text-[16px]">¥</span>
               {Number(order.payAmount).toFixed(2)}
             </span>
           </div>
@@ -344,7 +363,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
         {order.status === "PENDING" && (
           <button
             onClick={handlePay}
-            className="w-full mt-8 py-4 bg-brand-gold text-white rounded-xl text-[15px] font-bold tracking-[0.2em] shadow-lg shadow-brand-gold/20 transition-all hover:bg-brand-gold-dark hover:scale-[1.02] active:scale-[0.98] uppercase"
+            className="mt-8 w-full rounded-xl bg-brand-primary py-4 text-[15px] font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-primary/20 transition-all hover:scale-[1.02] hover:bg-brand-primary-dark active:scale-[0.98]"
           >
             立即付款
           </button>

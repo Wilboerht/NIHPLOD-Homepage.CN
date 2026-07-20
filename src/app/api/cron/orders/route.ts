@@ -11,10 +11,7 @@ export async function GET(request: NextRequest) {
   // 校验 Cron Secret，防止被外部恶意调用
   const cronSecret = request.headers.get("x-cron-secret");
   if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -48,13 +45,10 @@ export async function GET(request: NextRequest) {
         cleanedNotifications: cleanedCount,
         cleanedRefreshTokens,
       },
-      message: "定时任务执行成功"
+      message: "定时任务执行成功",
     });
   } catch (error) {
     apiConsole.error("[Cron] 订单定时任务执行失败:", error);
-    return NextResponse.json(
-      { success: false, error: "系统内部错误" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "系统内部错误" }, { status: 500 });
   }
 }

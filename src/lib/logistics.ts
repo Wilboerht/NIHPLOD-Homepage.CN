@@ -58,7 +58,10 @@ export async function shipOrder(
         where: { id: orderId },
         select: { status: true },
       });
-      if (!currentOrder || (currentOrder.status !== OrderStatus.PAID && currentOrder.status !== OrderStatus.PROCESSING)) {
+      if (
+        !currentOrder ||
+        (currentOrder.status !== OrderStatus.PAID && currentOrder.status !== OrderStatus.PROCESSING)
+      ) {
         throw new Error("订单状态不正确");
       }
       await tx.order.update({
@@ -192,4 +195,3 @@ export async function confirmReceipt(
     return { success: false, error: "操作失败" };
   }
 }
-

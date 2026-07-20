@@ -41,7 +41,11 @@ interface UserItem {
 
 const userStatusMap: Record<
   UserStatus,
-  { label: string; variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline"; description: string }
+  {
+    label: string;
+    variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
+    description: string;
+  }
 > = {
   ACTIVE: { label: "正常", variant: "success", description: "账号可正常登录和使用" },
   SUSPENDED: { label: "冻结", variant: "warning", description: "账号暂时无法登录，可解冻恢复" },
@@ -86,7 +90,13 @@ interface UserDetail {
   _count: { orders: number };
 }
 
-const orderStatusMap: Record<string, { label: string; variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline" }> = {
+const orderStatusMap: Record<
+  string,
+  {
+    label: string;
+    variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
+  }
+> = {
   PENDING: { label: "待支付", variant: "warning" },
   PAYING: { label: "支付中", variant: "primary" },
   PAID: { label: "已支付", variant: "success" },
@@ -121,10 +131,13 @@ export default function AdminUsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGet<{ users: UserItem[]; pagination: typeof pagination }>("/api/admin/users", {
-        page,
-        search,
-      });
+      const data = await apiGet<{ users: UserItem[]; pagination: typeof pagination }>(
+        "/api/admin/users",
+        {
+          page,
+          search,
+        }
+      );
       setUsers(data.users);
       setPagination(data.pagination);
     } catch {
@@ -203,13 +216,13 @@ export default function AdminUsersPage() {
           <p className="mt-1 text-sm text-gray-500">管理注册用户</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchUsers}>
-          <RefreshCw className="h-4 w-4 mr-1" /> 刷新
+          <RefreshCw className="mr-1 h-4 w-4" /> 刷新
         </Button>
       </div>
 
       {/* 搜索栏 */}
       <div className="flex gap-4 rounded-xl bg-white p-4 shadow-sm">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -223,7 +236,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* 用户列表 */}
-      <div className="rounded-xl bg-white shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
@@ -253,7 +266,7 @@ export default function AdminUsersPage() {
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs overflow-hidden">
+                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-xs text-gray-500">
                         {user.avatar && user.avatar.startsWith("http") ? (
                           <Image
                             src={user.avatar}
@@ -272,10 +285,14 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3">{user.phone || "-"}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={userStatusMap[user.status].variant}>{userStatusMap[user.status].label}</Badge>
+                    <Badge variant={userStatusMap[user.status].variant}>
+                      {userStatusMap[user.status].label}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3">{user.orderCount}</td>
-                  <td className="px-4 py-3 text-gray-400">{new Date(user.createdAt).toLocaleDateString("zh-CN")}</td>
+                  <td className="px-4 py-3 text-gray-400">
+                    {new Date(user.createdAt).toLocaleDateString("zh-CN")}
+                  </td>
                   <td className="px-4 py-3">
                     <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
                       <Eye className="h-4 w-4" />
@@ -295,7 +312,7 @@ export default function AdminUsersPage() {
             <button
               key={i + 1}
               onClick={() => updateParams({ page: String(i + 1) })}
-              className={`px-3 py-1 rounded ${page === i + 1 ? "bg-pink-500 text-white" : "bg-gray-100"}`}
+              className={`rounded px-3 py-1 ${page === i + 1 ? "bg-pink-500 text-white" : "bg-gray-100"}`}
             >
               {i + 1}
             </button>
@@ -312,7 +329,7 @@ export default function AdminUsersPage() {
       >
         {detailLoading ? (
           <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
+            <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
           </div>
         ) : !detailUser ? (
           <div className="flex h-64 flex-col items-center justify-center text-gray-400">
@@ -323,7 +340,7 @@ export default function AdminUsersPage() {
           <div className="space-y-6">
             {/* 顶部：头像 + ID */}
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xl overflow-hidden flex-shrink-0">
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-xl text-gray-500">
                 {detailUser.avatar && detailUser.avatar.startsWith("http") ? (
                   <Image
                     src={detailUser.avatar}
@@ -338,10 +355,10 @@ export default function AdminUsersPage() {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-lg font-semibold text-gray-900 truncate">
+                <p className="truncate text-lg font-semibold text-gray-900">
                   {detailUser.nickname || "未设置昵称"}
                 </p>
-                <p className="text-xs text-gray-400 font-mono truncate">ID: {detailUser.id}</p>
+                <p className="truncate font-mono text-xs text-gray-400">ID: {detailUser.id}</p>
               </div>
             </div>
 
@@ -350,8 +367,8 @@ export default function AdminUsersPage() {
               <div className="rounded-xl bg-gray-50 p-5">
                 <h3 className="mb-3 text-sm font-medium text-gray-900">基本信息</h3>
                 <dl className="space-y-3 text-sm">
-                  <div className="flex justify-between items-center">
-                    <dt className="text-gray-500 flex items-center gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <dt className="flex items-center gap-1.5 text-gray-500">
                       <Shield className="h-3.5 w-3.5" />
                       账号状态
                     </dt>
@@ -361,26 +378,30 @@ export default function AdminUsersPage() {
                       </Badge>
                     </dd>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <dt className="text-gray-500 flex items-center gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <dt className="flex items-center gap-1.5 text-gray-500">
                       <Smartphone className="h-3.5 w-3.5" />
                       手机号
                     </dt>
                     <dd className="flex items-center gap-2">
                       {detailUser.phone || "未绑定"}
                       {detailUser.phoneVerified && (
-                        <Badge variant="success" className="text-[10px] px-1.5 py-0">已验证</Badge>
+                        <Badge variant="success" className="px-1.5 py-0 text-[10px]">
+                          已验证
+                        </Badge>
                       )}
                     </dd>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <dt className="text-gray-500 flex items-center gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <dt className="flex items-center gap-1.5 text-gray-500">
                       <MessageCircle className="h-3.5 w-3.5" />
                       微信绑定
                     </dt>
                     <dd>
                       {detailUser.wechatOpenId ? (
-                        <Badge variant="success" className="text-[10px] px-1.5 py-0">已绑定</Badge>
+                        <Badge variant="success" className="px-1.5 py-0 text-[10px]">
+                          已绑定
+                        </Badge>
                       ) : (
                         <span className="text-gray-400">未绑定</span>
                       )}
@@ -455,7 +476,7 @@ export default function AdminUsersPage() {
             {/* 收货地址 */}
             {detailUser.addresses && detailUser.addresses.length > 0 && (
               <div>
-                <h3 className="mb-3 text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-gray-900">
                   <MapPin className="h-4 w-4" />
                   收货地址
                 </h3>
@@ -465,12 +486,14 @@ export default function AdminUsersPage() {
                       key={addr.id}
                       className="rounded-xl border border-gray-100 bg-white p-4 text-sm"
                     >
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="mb-1 flex items-center justify-between">
                         <span className="font-medium">
                           {addr.name} {addr.phone}
                         </span>
                         {addr.isDefault && (
-                          <Badge variant="success" className="text-[10px] px-1.5 py-0">默认</Badge>
+                          <Badge variant="success" className="px-1.5 py-0 text-[10px]">
+                            默认
+                          </Badge>
                         )}
                       </div>
                       <p className="text-gray-500">
@@ -485,7 +508,7 @@ export default function AdminUsersPage() {
             {/* 优惠券 */}
             {detailUser.userCoupons && detailUser.userCoupons.length > 0 && (
               <div>
-                <h3 className="mb-3 text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-gray-900">
                   <Ticket className="h-4 w-4" />
                   可用优惠券
                 </h3>
@@ -493,10 +516,10 @@ export default function AdminUsersPage() {
                   {detailUser.userCoupons.map((uc) => (
                     <div
                       key={uc.id}
-                      className="rounded-lg border border-dashed border-brand-gold/40 bg-brand-gold/5 px-3 py-1.5 text-xs"
+                      className="rounded-lg border border-dashed border-brand-primary/40 bg-brand-primary/5 px-3 py-1.5 text-xs"
                     >
                       <span className="font-medium text-gray-800">{uc.coupon.name}</span>
-                      <span className="ml-1 text-brand-gold">
+                      <span className="ml-1 text-brand-primary">
                         {uc.coupon.type === "DISCOUNT_PERCENT"
                           ? `${(uc.coupon.value * 10).toFixed(1)}折`
                           : `¥${uc.coupon.value}`}
@@ -511,7 +534,7 @@ export default function AdminUsersPage() {
             {detailUser.orders && detailUser.orders.length > 0 && (
               <div>
                 <h3 className="mb-3 text-sm font-medium text-gray-900">最近订单</h3>
-                <div className="rounded-xl border border-gray-100 overflow-hidden">
+                <div className="overflow-hidden rounded-xl border border-gray-100">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 text-left text-gray-500">
                       <tr>
@@ -531,19 +554,21 @@ export default function AdminUsersPage() {
                           <tr key={order.id} className="hover:bg-gray-50">
                             <td className="px-4 py-2">
                               <button
-                                className="text-brand-gold hover:underline"
+                                className="text-brand-primary hover:underline"
                                 onClick={() => router.push(`/admin/orders/${order.id}`)}
                               >
                                 {order.orderNo}
                               </button>
                             </td>
                             <td className="px-4 py-2">
-                              <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">
+                              <Badge variant={status.variant} className="px-1.5 py-0 text-[10px]">
                                 {status.label}
                               </Badge>
                             </td>
                             <td className="px-4 py-2">¥{order.payAmount}</td>
-                            <td className="px-4 py-2 text-gray-400">{formatDateShort(order.createdAt)}</td>
+                            <td className="px-4 py-2 text-gray-400">
+                              {formatDateShort(order.createdAt)}
+                            </td>
                           </tr>
                         );
                       })}

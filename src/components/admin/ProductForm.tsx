@@ -173,10 +173,17 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   const removePurchaseLink = (index: number) => {
     const newLinks = formData.purchaseLinks.filter((_, i) => i !== index);
     // 重新排序
-    updateField("purchaseLinks", newLinks.map((link, i) => ({ ...link, order: i })));
+    updateField(
+      "purchaseLinks",
+      newLinks.map((link, i) => ({ ...link, order: i }))
+    );
   };
 
-  const updatePurchaseLink = (index: number, field: keyof PurchaseLinkItem, value: string | number) => {
+  const updatePurchaseLink = (
+    index: number,
+    field: keyof PurchaseLinkItem,
+    value: string | number
+  ) => {
     const newLinks = [...formData.purchaseLinks];
     newLinks[index] = { ...newLinks[index], [field]: value };
     updateField("purchaseLinks", newLinks);
@@ -258,9 +265,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       const uploadedImages = await uploadImages(formData.images);
 
       // 过滤掉没有填写完整的购买链接
-      const validPurchaseLinks = formData.purchaseLinks.filter(
-        (link) => link.platform && link.url
-      );
+      const validPurchaseLinks = formData.purchaseLinks.filter((link) => link.platform && link.url);
 
       const payload = {
         ...formData,
@@ -455,8 +460,10 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     type="number"
                     min="0"
                     value={formData.stock}
-                    onChange={(e) => updateField("stock", Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+                    onChange={(e) =>
+                      updateField("stock", Math.max(0, parseInt(e.target.value) || 0))
+                    }
+                    className="w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                   />
                 </div>
               )}
@@ -534,7 +541,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-medium text-gray-900">GEO FAQ 优化 (SEO)</h2>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="mt-1 text-xs text-gray-500">
                 编写针对 AI 搜索（如 Perplexity, ChatGPT）优化的问答对，提升曝光权重
               </p>
             </div>
@@ -552,18 +559,23 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           </div>
 
           {!formData.geoFaqs ? (
-            <div className="flex flex-col items-center justify-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <Sparkles className="h-8 w-8 text-gray-300 mb-2" />
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-8">
+              <Sparkles className="mb-2 h-8 w-8 text-gray-300" />
               <p className="text-sm text-gray-500">尚未生成 GEO 优化内容</p>
             </div>
           ) : (
             <div className="space-y-4">
               {formData.geoFaqs.map((faq, index) => (
-                <div key={index} className="space-y-2 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <div
+                  key={index}
+                  className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-4"
+                >
                   <div className="flex gap-2">
-                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-brand-gold text-white rounded text-xs font-bold">Q</span>
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-primary text-xs font-bold text-white">
+                      Q
+                    </span>
                     <input
-                      className="flex-1 bg-transparent border-none p-0 text-sm font-medium focus:ring-0"
+                      className="flex-1 border-none bg-transparent p-0 text-sm font-medium focus:ring-0"
                       value={faq.question}
                       onChange={(e) => {
                         const newFaqs = [...(formData.geoFaqs || [])];
@@ -573,9 +585,11 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     />
                   </div>
                   <div className="flex gap-2">
-                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-800 text-white rounded text-xs font-bold">A</span>
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-gray-800 text-xs font-bold text-white">
+                      A
+                    </span>
                     <textarea
-                      className="flex-1 bg-transparent border-none p-0 text-sm h-auto focus:ring-0 resize-none"
+                      className="h-auto flex-1 resize-none border-none bg-transparent p-0 text-sm focus:ring-0"
                       rows={2}
                       value={faq.answer}
                       onChange={(e) => {
@@ -585,14 +599,14 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                       }}
                     />
                   </div>
-                  <div className="flex justify-end mt-1">
-                    <button 
+                  <div className="mt-1 flex justify-end">
+                    <button
                       type="button"
                       onClick={() => {
                         const newFaqs = formData.geoFaqs?.filter((_, i) => i !== index) || null;
                         updateField("geoFaqs", newFaqs?.length ? newFaqs : null);
                       }}
-                      className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1"
+                      className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600"
                     >
                       <Trash2 className="h-3 w-3" /> 删除这组
                     </button>
@@ -648,4 +662,3 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     </div>
   );
 }
-

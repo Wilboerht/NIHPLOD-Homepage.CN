@@ -5,7 +5,7 @@ import { createAuditLog } from "@/lib/audit";
 
 // POST /api/admin/logout - 管理员登出
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async (request: NextRequest, admin) => {
   // 记录登出审计日志

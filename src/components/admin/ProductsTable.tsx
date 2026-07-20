@@ -3,12 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Pencil,
-  Trash2,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 import { DataTable, Column } from "@/components/admin";
 import { Badge, DotBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -74,9 +69,7 @@ export function ProductsTable({
 
   // 选择/取消选择
   const handleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
   // 全选/取消全选
@@ -153,7 +146,7 @@ export function ProductsTable({
           type="checkbox"
           checked={selectedIds.length === products.length && products.length > 0}
           onChange={handleSelectAll}
-          className="h-4 w-4 rounded border-gray-300 text-brand-gold focus:ring-brand-gold"
+          className="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
         />
       ) as unknown as string,
       width: "50px",
@@ -162,7 +155,7 @@ export function ProductsTable({
           type="checkbox"
           checked={selectedIds.includes(record.id)}
           onChange={() => handleSelect(record.id)}
-          className="h-4 w-4 rounded border-gray-300 text-brand-gold focus:ring-brand-gold"
+          className="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
         />
       ),
     },
@@ -201,32 +194,28 @@ export function ProductsTable({
     {
       key: "category.name",
       title: "分类",
-      render: (_, record) => (
-        <Badge variant="secondary">{record.category.name}</Badge>
-      ),
+      render: (_, record) => <Badge variant="secondary">{record.category.name}</Badge>,
     },
     {
       key: "price",
       title: "价格",
       align: "right",
-      render: (_, record) => (
-        <span className="font-medium">{formatPrice(record.price)}</span>
-      ),
+      render: (_, record) => <span className="font-medium">{formatPrice(record.price)}</span>,
     },
     {
       key: "salesCount",
       title: "销量",
       align: "right",
-      render: (_, record) => (
-        <span className="text-sm text-gray-600">{record.salesCount}</span>
-      ),
+      render: (_, record) => <span className="text-sm text-gray-600">{record.salesCount}</span>,
     },
     {
       key: "stock",
       title: "库存",
       align: "right",
       render: (_, record) => (
-        <span className={`text-sm ${record.allowDirectBuy && record.stock <= 5 ? "text-red-500 font-medium" : "text-gray-600"}`}>
+        <span
+          className={`text-sm ${record.allowDirectBuy && record.stock <= 5 ? "font-medium text-red-500" : "text-gray-600"}`}
+        >
           {record.allowDirectBuy ? record.stock : "-"}
         </span>
       ),
@@ -253,11 +242,7 @@ export function ProductsTable({
             className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
             title={record.published ? "取消发布" : "发布"}
           >
-            {record.published ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
+            {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
           <Link
             href={`/admin/products/${record.id}/edit`}
@@ -267,9 +252,7 @@ export function ProductsTable({
             <Pencil className="h-4 w-4" />
           </Link>
           <button
-            onClick={() =>
-              setDeleteConfirm({ open: true, id: record.id, name: record.name })
-            }
+            onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
             className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
             title="删除"
           >
@@ -284,7 +267,7 @@ export function ProductsTable({
     <div className="space-y-4">
       {/* 批量操作栏 */}
       {selectedIds.length > 0 && (
-        <div className="flex items-center gap-4 rounded-lg bg-brand-gold/5 px-4 py-3">
+        <div className="flex items-center gap-4 rounded-lg bg-brand-primary/5 px-4 py-3">
           <span className="text-sm text-gray-700">
             已选择 <strong>{selectedIds.length}</strong> 项
           </span>
@@ -355,4 +338,3 @@ export function ProductsTable({
     </div>
   );
 }
-

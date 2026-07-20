@@ -49,9 +49,7 @@ function getActiveNavItem(pathname: string): NavItem | undefined {
     return adminNavItems[0];
   }
   // 前缀匹配其他页面
-  return adminNavItems.find(
-    (item) => item.href !== "/admin" && pathname.startsWith(item.href)
-  );
+  return adminNavItems.find((item) => item.href !== "/admin" && pathname.startsWith(item.href));
 }
 
 /**
@@ -67,4 +65,3 @@ export function getBreadcrumbs(pathname: string): { title: string; href: string 
 
   return breadcrumbs;
 }
-

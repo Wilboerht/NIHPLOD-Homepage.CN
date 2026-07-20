@@ -78,7 +78,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
   // 更新数量
   const updateQuantity = async (id: string, quantity: number) => {
     if (quantity < 1) return;
-    
+
     try {
       await apiPut(`/api/cart/${id}`, { quantity });
       setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity } : i)));
@@ -120,7 +120,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
   if (items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
-        <p className="text-gray-500 mb-4">购物车是空的</p>
+        <p className="mb-4 text-gray-500">购物车是空的</p>
         <Link href="/products" className="text-pink-500 hover:underline">
           去逛逛 →
         </Link>
@@ -131,50 +131,48 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
   return (
     <div className="container mx-auto px-4 py-6">
       {/* 商品列表 */}
-      <div className="space-y-4 mb-24">
+      <div className="mb-24 space-y-4">
         {items.map((item) => (
-          <div key={item.id} className="bg-white rounded-xl p-4 flex gap-4">
+          <div key={item.id} className="flex gap-4 rounded-xl bg-white p-4">
             {/* 选择框 */}
             <input
               type="checkbox"
               checked={item.selected}
               onChange={(e) => toggleSelect(item.id, e.target.checked)}
-              className="w-5 h-5 mt-8 accent-pink-500"
+              className="mt-8 h-5 w-5 accent-pink-500"
             />
 
             {/* 商品图片 */}
-            <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+            <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
               {item.product.featuredImage && (
                 <Image
                   src={item.product.featuredImage}
                   alt={item.product.name}
                   width={80}
                   height={80}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               )}
             </div>
 
             {/* 商品信息 */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-gray-900 truncate">{item.product.name}</h3>
-              {item.variant && (
-                <p className="text-sm text-gray-500">{item.variant.name}</p>
-              )}
-              <p className="text-pink-500 font-bold mt-1">{formatPrice(item.price)}</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate font-medium text-gray-900">{item.product.name}</h3>
+              {item.variant && <p className="text-sm text-gray-500">{item.variant.name}</p>}
+              <p className="mt-1 font-bold text-pink-500">{formatPrice(item.price)}</p>
 
               {/* 数量控制 */}
-              <div className="flex items-center gap-2 mt-2">
+              <div className="mt-2 flex items-center gap-2">
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                  className="w-7 h-7 bg-gray-100 rounded text-gray-600"
+                  className="h-7 w-7 rounded bg-gray-100 text-gray-600"
                 >
                   -
                 </button>
                 <span className="w-8 text-center">{item.quantity}</span>
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  className="w-7 h-7 bg-gray-100 rounded text-gray-600"
+                  className="h-7 w-7 rounded bg-gray-100 text-gray-600"
                 >
                   +
                 </button>
@@ -191,17 +189,17 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
       </div>
 
       {/* 底部结算栏 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 flex items-center">
+      <div className="fixed bottom-0 left-0 right-0 flex items-center border-t bg-white px-4 py-3">
         <div className="flex-1">
           <p className="text-sm text-gray-500">
-            已选 <span className="text-pink-500 font-bold">{totalCount}</span> 件
+            已选 <span className="font-bold text-pink-500">{totalCount}</span> 件
           </p>
           <p className="text-lg font-bold text-pink-500">{formatPrice(totalPrice)}</p>
         </div>
         <button
           onClick={handleCheckout}
           disabled={selectedItems.length === 0 || loading}
-          className="px-8 py-3 bg-pink-500 text-white rounded-full font-medium disabled:opacity-50"
+          className="rounded-full bg-pink-500 px-8 py-3 font-medium text-white disabled:opacity-50"
         >
           去结算
         </button>
@@ -209,4 +207,3 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
     </div>
   );
 }
-

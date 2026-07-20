@@ -20,7 +20,7 @@ const createPaySchema = z.object({
 });
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   let orderId: string | undefined;
@@ -55,7 +55,12 @@ export async function POST(request: NextRequest) {
             message: `请求过于频繁，请在 ${Math.ceil((rateLimitResult.reset - Date.now()) / 1000)} 秒后重试`,
           },
         },
-        { status: 429, headers: { "Retry-After": String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)),
+          },
+        }
       );
     }
 
@@ -77,7 +82,10 @@ export async function POST(request: NextRequest) {
     // 检查支付方式是否启用
     if (!isPaymentMethodEnabled(payMethod)) {
       return NextResponse.json(
-        { success: false, error: { code: "PAYMENT_METHOD_DISABLED", message: `${payMethod} 暂不可用` } },
+        {
+          success: false,
+          error: { code: "PAYMENT_METHOD_DISABLED", message: `${payMethod} 暂不可用` },
+        },
         { status: 400 }
       );
     }
@@ -191,7 +199,12 @@ export async function POST(request: NextRequest) {
       // 获取真实 IP
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
 
-      const payResult = await createPayment(orderId, v3TradeType as "H5" | "JSAPI" | "NATIVE", openId, clientIp);
+      const payResult = await createPayment(
+        orderId,
+        v3TradeType as "H5" | "JSAPI" | "NATIVE",
+        openId,
+        clientIp
+      );
 
       if (!payResult.success) {
         // 回滚为 PENDING，允许用户重试
@@ -210,8 +223,8 @@ export async function POST(request: NextRequest) {
         data: {
           payType: "wechat",
           tradeType,
-          codeUrl: payResult.codeUrl,   // NATIVE
-          mwebUrl: payResult.mwebUrl,   // H5 (MWEB)
+          codeUrl: payResult.codeUrl, // NATIVE
+          mwebUrl: payResult.mwebUrl, // H5 (MWEB)
           payParams: payResult.payParams, // JSAPI
         },
       });
@@ -221,7 +234,6 @@ export async function POST(request: NextRequest) {
       { success: false, error: { code: "NOT_SUPPORTED", message: "暂不支持该支付方式" } },
       { status: 400 }
     );
-
   } catch (error) {
     apiConsole.error("[CreatePay] 异常:", error);
     // 异常时尝试回滚 CAS 锁，防止订单永久停留在 PAYING 状态
@@ -239,4 +251,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

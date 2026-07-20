@@ -46,10 +46,24 @@ function formatLogEntry(entry: LogEntry): string {
  */
 function sanitizeContext(context: LogContext): LogContext {
   const sensitiveKeys = [
-    "apiKey", "password", "token", "secret", "authorization",
-    "creditCard", "cardNumber", "cvv", "phone", "idCard",
-    "cookie", "session", "privateKey", "keyPem", "refreshToken",
-    "jwt", "passphrase", "apiSecret"
+    "apiKey",
+    "password",
+    "token",
+    "secret",
+    "authorization",
+    "creditCard",
+    "cardNumber",
+    "cvv",
+    "phone",
+    "idCard",
+    "cookie",
+    "session",
+    "privateKey",
+    "keyPem",
+    "refreshToken",
+    "jwt",
+    "passphrase",
+    "apiSecret",
   ];
   const sanitized: LogContext = {};
 
@@ -85,7 +99,7 @@ function createLogger(module: string) {
       const jsonLog = JSON.stringify({
         ...entry,
         // 确保 context 中的 Error 对象被正确序列化
-        context: entry.context ? serializeContext(entry.context) : undefined
+        context: entry.context ? serializeContext(entry.context) : undefined,
       });
 
       // 统一使用 console.log 输出 stdout，错误级别输出 stderr
@@ -116,7 +130,7 @@ function createLogger(module: string) {
 
     // 可扩展：调用外部监控 webhook
     if (level === "error" && process.env.ENABLE_CLOUD_LOGGING === "true") {
-      reportToExternalService(entry).catch(err => console.error("Failed to report log:", err));
+      reportToExternalService(entry).catch((err) => console.error("Failed to report log:", err));
     }
   };
 
@@ -141,7 +155,7 @@ function serializeContext(context: LogContext): LogContext {
         name: value.name,
         message: value.message,
         stack: value.stack,
-        cause: (value as { cause?: unknown }).cause
+        cause: (value as { cause?: unknown }).cause,
       };
     } else {
       result[key] = value;
@@ -176,11 +190,7 @@ export const logger = createLogger("App");
 /**
  * 错误日志辅助函数（包含堆栈信息）
  */
-export function logError(
-  module: string,
-  error: unknown,
-  context?: LogContext
-) {
+export function logError(module: string, error: unknown, context?: LogContext) {
   const errorLogger = createLogger(module);
   const errorInfo: LogContext = {
     ...context,
@@ -230,4 +240,3 @@ export const apiConsole = {
     apiLogger.info(msg);
   },
 };
-

@@ -38,11 +38,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
     [isDrawerOpen, isNavMenuOpen, isDrawerAnimating]
   );
 
-  return (
-    <LayoutContext.Provider value={value}>
-      {children}
-    </LayoutContext.Provider>
-  );
+  return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>;
 }
 
 export function useLayout() {

@@ -11,7 +11,7 @@ import {
 
 // POST /api/upload - 上传图片
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -82,11 +82,11 @@ export async function POST(request: NextRequest) {
 
     // 安全清理文件名：移除路径遍历字符，仅保留安全字符
     const safeName = file.name
-      .replace(/\\/g, "/")               // 统一分隔符
-      .replace(/^.*[\\/]/, "")           // 移除目录路径
+      .replace(/\\/g, "/") // 统一分隔符
+      .replace(/^.*[\\/]/, "") // 移除目录路径
       .replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, "_") // 仅保留安全字符
-      .replace(/_{2,}/g, "_")            // 压缩连续下划线
-      .substring(0, 200);                 // 限制长度
+      .replace(/_{2,}/g, "_") // 压缩连续下划线
+      .substring(0, 200); // 限制长度
 
     // 处理并保存图片
     const result = await processAndSaveImage(buffer, safeName || "upload", folder);
@@ -99,7 +99,17 @@ export async function POST(request: NextRequest) {
     apiConsole.error("[Upload] 上传失败:", error);
     const isDev = process.env.NODE_ENV === "development";
     return NextResponse.json(
-      { success: false, error: { code: "UPLOAD_ERROR", message: isDev ? (error instanceof Error ? error.message : "上传失败") : "上传失败，请稍后重试" } },
+      {
+        success: false,
+        error: {
+          code: "UPLOAD_ERROR",
+          message: isDev
+            ? error instanceof Error
+              ? error.message
+              : "上传失败"
+            : "上传失败，请稍后重试",
+        },
+      },
       { status: 500 }
     );
   }

@@ -4,15 +4,15 @@ import { useState, useEffect } from "react";
 
 /**
  * 检测用户是否偏好减少动画
- * 
+ *
  * 用法：
  * ```tsx
  * const prefersReducedMotion = useReducedMotion();
- * 
+ *
  * // 根据用户偏好选择动画配置
  * const variants = prefersReducedMotion ? reducedMotionVariants : normalVariants;
  * ```
- * 
+ *
  * @returns boolean - true 表示用户偏好减少动画
  */
 export function useReducedMotion(): boolean {
@@ -21,7 +21,7 @@ export function useReducedMotion(): boolean {
   useEffect(() => {
     // 检测媒体查询
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    
+
     // 设置初始值
     setPrefersReducedMotion(mediaQuery.matches);
 
@@ -31,7 +31,7 @@ export function useReducedMotion(): boolean {
     };
 
     mediaQuery.addEventListener("change", handleChange);
-    
+
     return () => {
       mediaQuery.removeEventListener("change", handleChange);
     };
@@ -39,4 +39,3 @@ export function useReducedMotion(): boolean {
 
   return prefersReducedMotion;
 }
-

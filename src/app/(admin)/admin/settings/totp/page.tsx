@@ -100,7 +100,7 @@ export default function TOTPSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-gold" />
+        <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
       </div>
     );
   }
@@ -108,7 +108,7 @@ export default function TOTPSettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-3">
-        <ShieldCheck className="h-6 w-6 text-brand-gold" />
+        <ShieldCheck className="h-6 w-6 text-brand-primary" />
         <h1 className="text-2xl font-bold text-gray-900">二次验证设置</h1>
       </div>
 
@@ -139,7 +139,7 @@ export default function TOTPSettingsPage() {
           <button
             onClick={startSetup}
             disabled={processing}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2 text-sm font-medium text-white hover:bg-brand-gold/90 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 disabled:opacity-50"
           >
             {processing && <Loader2 className="h-4 w-4 animate-spin" />}
             启用二次验证
@@ -156,18 +156,26 @@ export default function TOTPSettingsPage() {
 
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700">1. 使用 Authenticator 应用扫描二维码</p>
+              <p className="text-sm font-medium text-gray-700">
+                1. 使用 Authenticator 应用扫描二维码
+              </p>
               <div className="relative inline-block overflow-hidden rounded-lg border border-gray-200">
                 <Image src={setupData.qrCode} alt="TOTP QR Code" width={200} height={200} />
               </div>
               <div className="flex items-center gap-2">
-                <code className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700">{setupData.secret}</code>
+                <code className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700">
+                  {setupData.secret}
+                </code>
                 <button
                   onClick={() => copyToClipboard(setupData.secret, "secret")}
                   className="text-gray-400 hover:text-gray-600"
                   title="复制密钥"
                 >
-                  {copied === "secret" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  {copied === "secret" ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -179,7 +187,7 @@ export default function TOTPSettingsPage() {
                   <div
                     key={index}
                     onClick={() => copyToClipboard(code, `backup-${index}`)}
-                    className="flex cursor-pointer items-center justify-between rounded bg-gray-50 px-3 py-2 text-xs font-mono text-gray-700 hover:bg-gray-100"
+                    className="flex cursor-pointer items-center justify-between rounded bg-gray-50 px-3 py-2 font-mono text-xs text-gray-700 hover:bg-gray-100"
                   >
                     <span>{code}</span>
                     {copied === `backup-${index}` ? (
@@ -195,21 +203,23 @@ export default function TOTPSettingsPage() {
 
           <div className="mt-6 flex items-end gap-3">
             <div className="flex-1">
-              <label className="mb-1 block text-sm font-medium text-gray-700">输入 6 位验证码完成绑定</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                输入 6 位验证码完成绑定
+              </label>
               <input
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
                 value={verifyCode}
                 onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                 placeholder="000000"
               />
             </div>
             <button
               onClick={verifySetup}
               disabled={processing || verifyCode.length !== 6}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-gold px-4 py-2 text-sm font-medium text-white hover:bg-brand-gold/90 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 disabled:opacity-50"
             >
               {processing && <Loader2 className="h-4 w-4 animate-spin" />}
               确认启用
@@ -221,7 +231,9 @@ export default function TOTPSettingsPage() {
       {totpEnabled && (
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="mb-3 text-base font-semibold text-gray-900">关闭二次验证</h3>
-          <p className="mb-4 text-sm text-gray-500">关闭后登录不再需要动态验证码，账号安全性将降低。</p>
+          <p className="mb-4 text-sm text-gray-500">
+            关闭后登录不再需要动态验证码，账号安全性将降低。
+          </p>
           <div className="flex items-end gap-3">
             <div className="flex-1">
               <label className="mb-1 block text-sm font-medium text-gray-700">当前密码</label>
@@ -229,7 +241,7 @@ export default function TOTPSettingsPage() {
                 type="password"
                 value={disablePassword}
                 onChange={(e) => setDisablePassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                 placeholder="请输入当前密码"
               />
             </div>

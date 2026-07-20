@@ -4,7 +4,7 @@ export function BackToHome() {
   return (
     <Link
       href="/"
-      className="fixed right-6 md:right-8 bottom-8 z-50 flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border border-[#00263E]/30 text-[#00263E]/60 hover:text-[#00263E] hover:border-[#00263E]/60 shadow-md hover:shadow-lg transition-all duration-200"
+      className="fixed bottom-8 right-6 z-50 flex items-center gap-1.5 rounded-full border border-[#00263E]/30 bg-white/90 px-4 py-2.5 text-[#00263E]/60 shadow-md backdrop-blur-sm transition-all duration-200 hover:border-[#00263E]/60 hover:text-[#00263E] hover:shadow-lg md:right-8"
       aria-label="返回首页"
     >
       <svg

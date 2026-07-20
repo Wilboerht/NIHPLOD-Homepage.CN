@@ -38,7 +38,13 @@ interface OrderDetail {
   refundTime: string | null;
   receivedAt: string | null;
   user: { id: string; nickname: string | null; phone: string | null };
-  items: { id: string; productName: string; productImage: string | null; price: string | number; quantity: number }[];
+  items: {
+    id: string;
+    productName: string;
+    productImage: string | null;
+    price: string | number;
+    quantity: number;
+  }[];
   userCoupon?: {
     id: string;
     coupon: {
@@ -59,7 +65,10 @@ const REFUND_STATUS_LABELS: Record<string, string> = {
   CLOSED: "退款关闭",
 };
 
-const STATUS_MAP: Record<string, { label: string; color: "default" | "warning" | "success" | "danger" | "primary" }> = {
+const STATUS_MAP: Record<
+  string,
+  { label: string; color: "default" | "warning" | "success" | "danger" | "primary" }
+> = {
   PENDING: { label: "待付款", color: "warning" },
   PAID: { label: "已支付", color: "primary" },
   PROCESSING: { label: "处理中", color: "primary" },
@@ -164,7 +173,9 @@ export default function OrderDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/admin/orders">
-            <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> 返回</Button>
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-1 h-4 w-4" /> 返回
+            </Button>
           </Link>
           <h1 className="text-xl font-semibold">订单 {order.orderNo}</h1>
           <Badge variant={STATUS_MAP[order.status]?.color || "default"}>
@@ -173,15 +184,25 @@ export default function OrderDetailPage() {
         </div>
         <div className="flex gap-2">
           {(order.status === "PAID" || order.status === "PROCESSING") && (
-            <Button onClick={() => setShowShipModal(true)}><Truck className="h-4 w-4 mr-1" /> 发货</Button>
+            <Button onClick={() => setShowShipModal(true)}>
+              <Truck className="mr-1 h-4 w-4" /> 发货
+            </Button>
           )}
           {order.status === "REFUNDING" && (
             <>
-              <Button variant="primary" onClick={() => openRefundModal(true)} disabled={actionLoading}>
-                <CheckCircle className="h-4 w-4 mr-1" /> 同意退款
+              <Button
+                variant="primary"
+                onClick={() => openRefundModal(true)}
+                disabled={actionLoading}
+              >
+                <CheckCircle className="mr-1 h-4 w-4" /> 同意退款
               </Button>
-              <Button variant="outline" onClick={() => openRefundModal(false)} disabled={actionLoading}>
-                <XCircle className="h-4 w-4 mr-1" /> 拒绝
+              <Button
+                variant="outline"
+                onClick={() => openRefundModal(false)}
+                disabled={actionLoading}
+              >
+                <XCircle className="mr-1 h-4 w-4" /> 拒绝
               </Button>
             </>
           )}
@@ -194,25 +215,90 @@ export default function OrderDetailPage() {
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-medium">订单信息</h2>
           <dl className="space-y-2 text-sm">
-            <div className="flex justify-between"><dt className="text-gray-500">订单号</dt><dd>{order.orderNo}</dd></div>
-            <div className="flex justify-between"><dt className="text-gray-500">下单时间</dt><dd>{new Date(order.createdAt).toLocaleString("zh-CN")}</dd></div>
-            {order.paymentTime && <div className="flex justify-between"><dt className="text-gray-500">支付时间</dt><dd>{new Date(order.paymentTime).toLocaleString("zh-CN")}</dd></div>}
-            {order.receivedAt && <div className="flex justify-between"><dt className="text-gray-500">签收时间</dt><dd>{new Date(order.receivedAt).toLocaleString("zh-CN")}</dd></div>}
-            <div className="flex justify-between"><dt className="text-gray-500">用户</dt><dd>{order.user.nickname || order.user.phone}</dd></div>
-            {order.paymentMethod && <div className="flex justify-between"><dt className="text-gray-500">支付方式</dt><dd>{order.paymentMethod === "wechat" ? "微信支付" : order.paymentMethod === "alipay" ? "支付宝" : order.paymentMethod}</dd></div>}
-            {order.paymentNo && <div className="flex justify-between"><dt className="text-gray-500">支付流水号</dt><dd className="font-mono text-xs">{order.paymentNo}</dd></div>}
+            <div className="flex justify-between">
+              <dt className="text-gray-500">订单号</dt>
+              <dd>{order.orderNo}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-gray-500">下单时间</dt>
+              <dd>{new Date(order.createdAt).toLocaleString("zh-CN")}</dd>
+            </div>
+            {order.paymentTime && (
+              <div className="flex justify-between">
+                <dt className="text-gray-500">支付时间</dt>
+                <dd>{new Date(order.paymentTime).toLocaleString("zh-CN")}</dd>
+              </div>
+            )}
+            {order.receivedAt && (
+              <div className="flex justify-between">
+                <dt className="text-gray-500">签收时间</dt>
+                <dd>{new Date(order.receivedAt).toLocaleString("zh-CN")}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-gray-500">用户</dt>
+              <dd>{order.user.nickname || order.user.phone}</dd>
+            </div>
+            {order.paymentMethod && (
+              <div className="flex justify-between">
+                <dt className="text-gray-500">支付方式</dt>
+                <dd>
+                  {order.paymentMethod === "wechat"
+                    ? "微信支付"
+                    : order.paymentMethod === "alipay"
+                      ? "支付宝"
+                      : order.paymentMethod}
+                </dd>
+              </div>
+            )}
+            {order.paymentNo && (
+              <div className="flex justify-between">
+                <dt className="text-gray-500">支付流水号</dt>
+                <dd className="font-mono text-xs">{order.paymentNo}</dd>
+              </div>
+            )}
             {order.remark && (
-              <div className="pt-2 border-t">
-                <dt className="text-gray-500 mb-1">用户备注</dt>
-                <dd className="text-gray-700 bg-yellow-50 rounded-lg p-2">{order.remark}</dd>
+              <div className="border-t pt-2">
+                <dt className="mb-1 text-gray-500">用户备注</dt>
+                <dd className="rounded-lg bg-yellow-50 p-2 text-gray-700">{order.remark}</dd>
               </div>
             )}
             {order.refundStatus && (
-              <div className="pt-2 border-t">
-                <div className="flex justify-between"><dt className="text-gray-500">退款状态</dt><dd><Badge variant={order.refundStatus === "SUCCESS" ? "success" : order.refundStatus === "FAILED" ? "danger" : "warning"}>{REFUND_STATUS_LABELS[order.refundStatus] || order.refundStatus}</Badge></dd></div>
-                {order.refundNo && <div className="flex justify-between mt-1"><dt className="text-gray-500">退款单号</dt><dd className="font-mono text-xs">{order.refundNo}</dd></div>}
-                {order.refundAmount && <div className="flex justify-between mt-1"><dt className="text-gray-500">退款金额</dt><dd>¥{Number(order.refundAmount).toFixed(2)}</dd></div>}
-                {order.refundTime && <div className="flex justify-between mt-1"><dt className="text-gray-500">退款时间</dt><dd>{new Date(order.refundTime).toLocaleString("zh-CN")}</dd></div>}
+              <div className="border-t pt-2">
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">退款状态</dt>
+                  <dd>
+                    <Badge
+                      variant={
+                        order.refundStatus === "SUCCESS"
+                          ? "success"
+                          : order.refundStatus === "FAILED"
+                            ? "danger"
+                            : "warning"
+                      }
+                    >
+                      {REFUND_STATUS_LABELS[order.refundStatus] || order.refundStatus}
+                    </Badge>
+                  </dd>
+                </div>
+                {order.refundNo && (
+                  <div className="mt-1 flex justify-between">
+                    <dt className="text-gray-500">退款单号</dt>
+                    <dd className="font-mono text-xs">{order.refundNo}</dd>
+                  </div>
+                )}
+                {order.refundAmount && (
+                  <div className="mt-1 flex justify-between">
+                    <dt className="text-gray-500">退款金额</dt>
+                    <dd>¥{Number(order.refundAmount).toFixed(2)}</dd>
+                  </div>
+                )}
+                {order.refundTime && (
+                  <div className="mt-1 flex justify-between">
+                    <dt className="text-gray-500">退款时间</dt>
+                    <dd>{new Date(order.refundTime).toLocaleString("zh-CN")}</dd>
+                  </div>
+                )}
               </div>
             )}
           </dl>
@@ -222,13 +308,30 @@ export default function OrderDetailPage() {
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-medium">收货信息</h2>
           <dl className="space-y-2 text-sm">
-            <div className="flex justify-between"><dt className="text-gray-500">收货人</dt><dd>{order.recipientName}</dd></div>
-            <div className="flex justify-between"><dt className="text-gray-500">联系电话</dt><dd>{order.recipientPhone}</dd></div>
-            <div><dt className="text-gray-500 mb-1">地址</dt><dd>{order.recipientAddress}</dd></div>
+            <div className="flex justify-between">
+              <dt className="text-gray-500">收货人</dt>
+              <dd>{order.recipientName}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-gray-500">联系电话</dt>
+              <dd>{order.recipientPhone}</dd>
+            </div>
+            <div>
+              <dt className="mb-1 text-gray-500">地址</dt>
+              <dd>{order.recipientAddress}</dd>
+            </div>
             {order.shippingCompany && (
-              <div className="pt-2 border-t">
-                <div className="flex justify-between"><dt className="text-gray-500">物流公司</dt><dd>{order.shippingCompany}</dd></div>
-                {order.trackingNo && <div className="flex justify-between mt-1"><dt className="text-gray-500">快递单号</dt><dd className="font-mono">{order.trackingNo}</dd></div>}
+              <div className="border-t pt-2">
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">物流公司</dt>
+                  <dd>{order.shippingCompany}</dd>
+                </div>
+                {order.trackingNo && (
+                  <div className="mt-1 flex justify-between">
+                    <dt className="text-gray-500">快递单号</dt>
+                    <dd className="font-mono">{order.trackingNo}</dd>
+                  </div>
+                )}
               </div>
             )}
           </dl>
@@ -253,17 +356,23 @@ export default function OrderDetailPage() {
                 <td className="py-3">{item.productName}</td>
                 <td className="py-3">¥{Number(item.price).toFixed(2)}</td>
                 <td className="py-3">{item.quantity}</td>
-                <td className="py-3 text-pink-500">¥{(Number(item.price) * item.quantity).toFixed(2)}</td>
+                <td className="py-3 text-pink-500">
+                  ¥{(Number(item.price) * item.quantity).toFixed(2)}
+                </td>
               </tr>
             ))}
           </tbody>
           <tfoot className="border-t">
             <tr>
-              <td colSpan={3} className="py-3 text-right text-gray-500">商品总额</td>
+              <td colSpan={3} className="py-3 text-right text-gray-500">
+                商品总额
+              </td>
               <td className="py-3">¥{Number(order.totalAmount).toFixed(2)}</td>
             </tr>
             <tr>
-              <td colSpan={3} className="py-1 text-right text-gray-500">运费</td>
+              <td colSpan={3} className="py-1 text-right text-gray-500">
+                运费
+              </td>
               <td className="py-1">¥{Number(order.shippingFee).toFixed(2)}</td>
             </tr>
             {Number(order.discountAmount) > 0 && (
@@ -275,8 +384,12 @@ export default function OrderDetailPage() {
               </tr>
             )}
             <tr>
-              <td colSpan={3} className="py-3 text-right font-medium">实付金额</td>
-              <td className="py-3 text-lg font-bold text-pink-500">¥{Number(order.payAmount).toFixed(2)}</td>
+              <td colSpan={3} className="py-3 text-right font-medium">
+                实付金额
+              </td>
+              <td className="py-3 text-lg font-bold text-pink-500">
+                ¥{Number(order.payAmount).toFixed(2)}
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -292,22 +405,40 @@ export default function OrderDetailPage() {
               onChange={(e) => setAdminNoteInput(e.target.value)}
               placeholder="输入内部备注信息..."
               rows={3}
-              className="w-full rounded-lg border p-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+              className="w-full rounded-lg border p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setEditingAdminNote(false); setAdminNoteInput(order.adminNote || ""); }}>取消</Button>
-              <Button size="sm" onClick={handleSaveAdminNote} loading={actionLoading}>保存</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditingAdminNote(false);
+                  setAdminNoteInput(order.adminNote || "");
+                }}
+              >
+                取消
+              </Button>
+              <Button size="sm" onClick={handleSaveAdminNote} loading={actionLoading}>
+                保存
+              </Button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
             {order.adminNote ? (
-              <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{order.adminNote}</p>
+              <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">{order.adminNote}</p>
             ) : (
               <p className="text-sm text-gray-400">暂无备注</p>
             )}
             <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => { setAdminNoteInput(order.adminNote || ""); setEditingAdminNote(true); }}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setAdminNoteInput(order.adminNote || "");
+                  setEditingAdminNote(true);
+                }}
+              >
                 {order.adminNote ? "编辑备注" : "添加备注"}
               </Button>
             </div>
@@ -316,79 +447,88 @@ export default function OrderDetailPage() {
       </div>
 
       {/* 发货弹窗 - 使用 Portal 渲染到 body，确保遮罩覆盖整个视口 */}
-      {showShipModal && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-medium">发货</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm text-gray-600">物流公司</label>
-                <select
-                  value={shipForm.logisticsCompany}
-                  onChange={(e) => setShipForm((f) => ({ ...f, logisticsCompany: e.target.value }))}
-                  className="w-full rounded-lg border p-2"
-                >
-                  {LOGISTICS_COMPANIES.map((c) => (
-                    <option key={c.code} value={c.code}>{c.name}</option>
-                  ))}
-                </select>
+      {showShipModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+              <h3 className="mb-4 text-lg font-medium">发货</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm text-gray-600">物流公司</label>
+                  <select
+                    value={shipForm.logisticsCompany}
+                    onChange={(e) =>
+                      setShipForm((f) => ({ ...f, logisticsCompany: e.target.value }))
+                    }
+                    className="w-full rounded-lg border p-2"
+                  >
+                    {LOGISTICS_COMPANIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm text-gray-600">快递单号</label>
+                  <input
+                    type="text"
+                    value={shipForm.trackingNo}
+                    onChange={(e) => setShipForm((f) => ({ ...f, trackingNo: e.target.value }))}
+                    placeholder="请输入快递单号"
+                    className="w-full rounded-lg border p-2"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm text-gray-600">快递单号</label>
-                <input
-                  type="text"
-                  value={shipForm.trackingNo}
-                  onChange={(e) => setShipForm((f) => ({ ...f, trackingNo: e.target.value }))}
-                  placeholder="请输入快递单号"
-                  className="w-full rounded-lg border p-2"
-                />
+              <div className="mt-6 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowShipModal(false)}>
+                  取消
+                </Button>
+                <Button onClick={handleShip} disabled={actionLoading || !shipForm.trackingNo}>
+                  {actionLoading ? "处理中..." : "确认发货"}
+                </Button>
               </div>
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowShipModal(false)}>取消</Button>
-              <Button onClick={handleShip} disabled={actionLoading || !shipForm.trackingNo}>
-                {actionLoading ? "处理中..." : "确认发货"}
-              </Button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* 退款审批弹窗 */}
-      {showRefundModal && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-medium">
-              {refundAction ? "同意退款" : "拒绝退款"}
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm text-gray-600">备注（可选）</label>
-                <textarea
-                  value={refundRemark}
-                  onChange={(e) => setRefundRemark(e.target.value)}
-                  placeholder="请输入退款备注..."
-                  rows={3}
-                  className="w-full rounded-lg border p-2 text-sm"
-                />
+      {showRefundModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+              <h3 className="mb-4 text-lg font-medium">{refundAction ? "同意退款" : "拒绝退款"}</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm text-gray-600">备注（可选）</label>
+                  <textarea
+                    value={refundRemark}
+                    onChange={(e) => setRefundRemark(e.target.value)}
+                    placeholder="请输入退款备注..."
+                    rows={3}
+                    className="w-full rounded-lg border p-2 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowRefundModal(false)}>
+                  取消
+                </Button>
+                <Button
+                  variant={refundAction ? "primary" : "outline"}
+                  onClick={handleRefund}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? "处理中..." : refundAction ? "确认同意" : "确认拒绝"}
+                </Button>
               </div>
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowRefundModal(false)}>取消</Button>
-              <Button
-                variant={refundAction ? "primary" : "outline"}
-                onClick={handleRefund}
-                disabled={actionLoading}
-              >
-                {actionLoading ? "处理中..." : refundAction ? "确认同意" : "确认拒绝"}
-              </Button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
-

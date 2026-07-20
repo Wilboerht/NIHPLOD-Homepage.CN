@@ -1,7 +1,7 @@
 ﻿/**
  * 手机号+密码登录 API
  * POST /api/auth/login-password
- * 
+ *
  * 安全增强：
  * - 请求速率限制
  * - 账户防爆破保护（失败5次后锁定30分钟）
@@ -37,7 +37,7 @@ const loginSchema = z.object({
 });
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -119,7 +119,13 @@ export async function POST(request: NextRequest) {
     // 3.1 检查账号状态
     if (user.status !== "ACTIVE") {
       const statusText = user.status === "SUSPENDED" ? "已被临时冻结" : "已被永久封禁";
-      await recordLoginAttempt(phone, false, request, `account_${user.status.toLowerCase()}`, "password");
+      await recordLoginAttempt(
+        phone,
+        false,
+        request,
+        `account_${user.status.toLowerCase()}`,
+        "password"
+      );
       return NextResponse.json(
         {
           success: false,
@@ -186,10 +192,13 @@ export async function POST(request: NextRequest) {
     });
 
     // 10. 保存 Refresh Token 到数据库
-    const refreshTokenExpiresAt = new Date(
-      Date.now() + 30 * 24 * 60 * 60 * 1000
+    const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await saveRefreshToken(
+      user.id,
+      refreshToken,
+      refreshTokenExpiresAt,
+      extractDeviceInfo(request)
     );
-    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
     // 11. 构建响应
     const response = NextResponse.json({
@@ -223,4 +232,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

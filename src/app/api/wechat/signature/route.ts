@@ -12,7 +12,7 @@ import { apiConsole } from "@/lib/logger";
 const CACHE_DURATION = 300; // 5 分钟缓存，减少重复请求
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -112,4 +112,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

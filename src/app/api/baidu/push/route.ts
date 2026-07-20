@@ -14,10 +14,7 @@ const BAIDU_PUSH_API = "http://data.zz.baidu.com/urls";
 
 export async function POST(request: NextRequest) {
   if (!BAIDU_PUSH_TOKEN) {
-    return NextResponse.json(
-      { error: "BAIDU_PUSH_TOKEN 未配置" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "BAIDU_PUSH_TOKEN 未配置" }, { status: 500 });
   }
 
   // 只允许服务端调用（Cron job 或 admin）
@@ -56,9 +53,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("百度推送失败:", error);
-    return NextResponse.json(
-      { error: "推送失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "推送失败" }, { status: 500 });
   }
 }

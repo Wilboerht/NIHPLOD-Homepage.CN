@@ -13,7 +13,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next-view-transitions", () => ({
-  Link: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: React.ReactNode }) => (
+  Link: ({
+    children,
+    href,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    href: string;
+    children: React.ReactNode;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -40,7 +47,11 @@ import { usePathname } from "next/navigation";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
 
-function setupMocks(pathname: string, layoutOverrides: Record<string, unknown> = {}, authOverrides: Record<string, unknown> = {}) {
+function setupMocks(
+  pathname: string,
+  layoutOverrides: Record<string, unknown> = {},
+  authOverrides: Record<string, unknown> = {}
+) {
   (usePathname as unknown as ReturnType<typeof vi.fn>).mockReturnValue(pathname);
   (useLayout as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
     isDrawerOpen: false,

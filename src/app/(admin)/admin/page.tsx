@@ -1,14 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  Package,
-  FolderTree,
-  MessageSquare,
-  Briefcase,
-  Plus,
-  Eye,
-  Clock,
-} from "lucide-react";
+import { Package, FolderTree, MessageSquare, Briefcase, Plus, Eye, Clock } from "lucide-react";
 import { StatsCard } from "@/components/admin";
 import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
@@ -85,13 +77,10 @@ export default async function AdminDashboard() {
       {/* 下方内容区域 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 最近留言 */}
-        <div className="lg:col-span-2 rounded-xl bg-white p-6 shadow-sm">
+        <div className="rounded-xl bg-white p-6 shadow-sm lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-900">最近留言</h2>
-            <Link
-              href="/admin/messages"
-              className="text-sm text-brand-gold hover:underline"
-            >
+            <Link href="/admin/messages" className="text-sm text-brand-primary hover:underline">
               查看全部
             </Link>
           </div>
@@ -110,12 +99,12 @@ export default async function AdminDashboard() {
                         "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
                         message.read
                           ? "bg-gray-100 text-gray-600"
-                          : "bg-brand-gold/10 text-brand-gold"
+                          : "bg-brand-primary/10 text-brand-primary"
                       )}
                     >
                       {message.name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <span
                           className={cn(
@@ -130,21 +119,15 @@ export default async function AdminDashboard() {
                           {formatRelativeTime(message.createdAt)}
                         </span>
                       </div>
-                      <p className="mt-1 truncate text-sm text-gray-500">
-                        {message.content}
-                      </p>
+                      <p className="mt-1 truncate text-sm text-gray-500">{message.content}</p>
                     </div>
-                    {!message.read && (
-                      <span className="h-2 w-2 rounded-full bg-brand-gold" />
-                    )}
+                    {!message.read && <span className="h-2 w-2 rounded-full bg-brand-primary" />}
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="py-8 text-center text-sm text-gray-400">
-              暂无留言
-            </div>
+            <div className="py-8 text-center text-sm text-gray-400">暂无留言</div>
           )}
         </div>
 
@@ -161,7 +144,7 @@ export default async function AdminDashboard() {
                   target={action.external ? "_blank" : undefined}
                   className="flex items-center gap-3 rounded-lg p-3 text-gray-700 transition-colors hover:bg-gray-50"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-gold/10 text-brand-gold">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
                     <Icon className="h-4 w-4" />
                   </div>
                   <span className="font-medium">{action.title}</span>

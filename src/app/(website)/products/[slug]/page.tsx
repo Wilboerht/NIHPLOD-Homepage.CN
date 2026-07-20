@@ -62,7 +62,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const description = "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。";
+  const description =
+    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。";
   const productKeywords = [
     product.name,
     product.nameEn,
@@ -182,21 +183,20 @@ export default async function ProductDetailPage({ params }: PageProps) {
       {/* Schema.org 结构化数据 */}
       <ProductJsonLd product={product} />
       <BreadcrumbJsonLd items={breadcrumbs} />
-      <FAQJsonLd 
-        items={(product.geoFaqs as { question: string; answer: string }[]) || generateProductFaqs({
-          name: product.name,
-          nameEn: product.nameEn,
-          categoryName: product.category.name,
-          benefits: product.benefits,
-          description: product.description
-        })} 
+      <FAQJsonLd
+        items={
+          (product.geoFaqs as { question: string; answer: string }[]) ||
+          generateProductFaqs({
+            name: product.name,
+            nameEn: product.nameEn,
+            categoryName: product.category.name,
+            benefits: product.benefits,
+            description: product.description,
+          })
+        }
       />
 
-      <ProductDetailContent
-        product={product}
-        relatedProducts={relatedProducts}
-      />
+      <ProductDetailContent product={product} relatedProducts={relatedProducts} />
     </>
   );
 }
-

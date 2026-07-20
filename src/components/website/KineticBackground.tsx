@@ -60,7 +60,10 @@ export function KineticBackground() {
       <div className="kinetic-dot-pattern" />
       <div className="kinetic-watermark">
         {/* PC 端水印 */}
-        <div className="relative hidden md:block" style={{ filter: "brightness(0) invert(0.95)", opacity: 0.22 }}>
+        <div
+          className="relative hidden md:block"
+          style={{ filter: "brightness(0) invert(0.95)", opacity: 0.22 }}
+        >
           <Image
             src="/images/N-web.svg"
             alt="NIHPLOD 品牌水印"
@@ -72,7 +75,10 @@ export function KineticBackground() {
           />
         </div>
         {/* 移动端水印 - 竖版 SVG */}
-        <div className="absolute inset-0 block md:hidden" style={{ filter: "brightness(0) invert(0.95)", opacity: 0.22 }}>
+        <div
+          className="absolute inset-0 block md:hidden"
+          style={{ filter: "brightness(0) invert(0.95)", opacity: 0.22 }}
+        >
           <Image
             src="/images/watermark-mobile.png"
             alt="NIHPLOD 品牌水印"

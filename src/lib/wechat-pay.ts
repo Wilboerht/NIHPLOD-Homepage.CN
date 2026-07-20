@@ -10,8 +10,6 @@ import { formatKey, validateKeyFormat } from "./crypto-utils";
 import { recordTransaction } from "./transaction";
 import { apiConsole } from "@/lib/logger";
 
-
-
 const getConfig = () => ({
   appId: process.env.WECHAT_PAY_APP_ID || process.env.WECHAT_APP_ID || "",
   mchId: process.env.WECHAT_PAY_MCH_ID || "",
@@ -32,7 +30,11 @@ function getWxPay() {
     // 密钥格式校验（在缺失检查之前，提前发现格式问题）
     const keyChecks = [
       validateKeyFormat(process.env.WECHAT_PAY_KEY_PEM, "private", "WECHAT_PAY_KEY_PEM"),
-      validateKeyFormat(process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY, "public", "WECHAT_PAY_PLATFORM_PUBLIC_KEY"),
+      validateKeyFormat(
+        process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY,
+        "public",
+        "WECHAT_PAY_PLATFORM_PUBLIC_KEY"
+      ),
     ];
     for (const check of keyChecks) {
       if (!check.valid) {
@@ -40,7 +42,13 @@ function getWxPay() {
       }
     }
 
-    const required = ["privateKey", "mchId", "apiV3Key", "platformPublicKey", "platformPublicKeyId"];
+    const required = [
+      "privateKey",
+      "mchId",
+      "apiV3Key",
+      "platformPublicKey",
+      "platformPublicKeyId",
+    ];
     const missing = required.filter((k) => !config[k as keyof typeof config]);
     if (missing.length > 0) {
       console.warn(`⚠️ 微信支付配置不完整，缺少: ${missing.join(", ")}`);
@@ -154,7 +162,7 @@ export async function createPayment(
             type: "Wap",
             wap_url: config.siteUrl,
             wap_name: config.siteName,
-          }
+          },
         },
       });
       return { success: true, mwebUrl: response.data.h5_url };
@@ -245,12 +253,12 @@ export async function handlePaymentNotify(
 
       capturedOrderId = order.id;
       capturedPayAmount = Number(order.payAmount);
-      
+
       // 支付回调金额必须严格相等，不容忍任何差异
       if (!moneyStrictEqual(order.payAmount, totalFee / 100)) {
         throw new Error("AMOUNT_MISMATCH");
       }
-      
+
       // 终态拦截：已取消/已退款/退款中/已完成 的订单不应再被支付激活
       const terminalStatuses: OrderStatus[] = [
         OrderStatus.CANCELLED,
@@ -381,7 +389,12 @@ export async function handleRefundNotify(
       }
 
       if (order.status === OrderStatus.REFUNDED) {
-        return { success: true, message: "订单已退款", refundId: data.refund_id, refundAmount: data.amount?.refund };
+        return {
+          success: true,
+          message: "订单已退款",
+          refundId: data.refund_id,
+          refundAmount: data.amount?.refund,
+        };
       }
 
       // 退款金额校验：不能超过订单实付金额

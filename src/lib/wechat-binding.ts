@@ -8,7 +8,12 @@
  * 统一处理：短信验证码校验、账户冲突解决、用户创建/更新、双 Token 签发。
  */
 import { prisma } from "@/lib/prisma";
-import { signUserToken, signRefreshToken, type WechatBindPayload, type WechatExchangePayload } from "@/lib/jwt";
+import {
+  signUserToken,
+  signRefreshToken,
+  type WechatBindPayload,
+  type WechatExchangePayload,
+} from "@/lib/jwt";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
@@ -74,7 +79,9 @@ async function verifyAndConsumeSmsCode(phone: string, code: string) {
  */
 export async function resolveWechatBinding(
   input: WechatBindingInput
-): Promise<{ success: true; data: WechatBindingResult } | { success: false; code: string; message: string }> {
+): Promise<
+  { success: true; data: WechatBindingResult } | { success: false; code: string; message: string }
+> {
   const { phone, code, allowAutoPassword, wechatInfo, request } = input;
   let { password } = input;
 
@@ -143,7 +150,10 @@ export async function resolveWechatBinding(
   }
 
   // 5. 更新或创建用户
-  if (user && (!oldWechatUser || (oldWechatUser.phone.startsWith("wx_") && user.id !== oldWechatUser.id))) {
+  if (
+    user &&
+    (!oldWechatUser || (oldWechatUser.phone.startsWith("wx_") && user.id !== oldWechatUser.id))
+  ) {
     user = await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -171,7 +181,11 @@ export async function resolveWechatBinding(
   // 6. 校验账号状态
   const statusCheck = await checkUserStatus(user.id);
   if (!statusCheck.valid) {
-    return { success: false, code: "ACCOUNT_DISABLED", message: statusCheck.reason || "账号状态异常" };
+    return {
+      success: false,
+      code: "ACCOUNT_DISABLED",
+      message: statusCheck.reason || "账号状态异常",
+    };
   }
 
   // 7. 更新微信信息

@@ -146,8 +146,8 @@ export function DrawerPageContainer({
                 whileTap={{ scale: 0.95 }}
                 transition={TRANSITION}
               >
-                <ChevronDown className="h-7 w-7 text-brand-gold" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-gold" />
+                <ChevronDown className="h-7 w-7 text-brand-primary" />
+                <ChevronDown className="-mt-5 h-7 w-7 text-brand-primary" />
               </m.div>
             </button>
           </m.div>

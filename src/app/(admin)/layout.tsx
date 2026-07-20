@@ -44,7 +44,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   // 登录页面使用独立的简洁布局
   if (pathname === "/admin-login") {
     return (
-      <Suspense fallback={<div className="flex min-h-dvh items-center justify-center">加载中...</div>}>
+      <Suspense
+        fallback={<div className="flex min-h-dvh items-center justify-center">加载中...</div>}
+      >
         {children}
       </Suspense>
     );
@@ -71,11 +73,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           )}
         >
           {/* 顶部导航 */}
-          <AdminHeader onMenuClick={toggle} isMobile={isMobile} userName={userName} userRole={userRole} />
+          <AdminHeader
+            onMenuClick={toggle}
+            isMobile={isMobile}
+            userName={userName}
+            userRole={userRole}
+          />
 
           {/* 页面内容 */}
           <main className="flex-1 p-4 md:p-6">
-            <Suspense fallback={<div className="flex items-center justify-center py-8">加载中...</div>}>
+            <Suspense
+              fallback={<div className="flex items-center justify-center py-8">加载中...</div>}
+            >
               {children}
             </Suspense>
           </main>

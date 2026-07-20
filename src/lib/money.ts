@@ -67,5 +67,3 @@ export function formatMoney(amount: MoneyValue): string {
 export function ensureMoneyPrecision(amount: MoneyValue): number {
   return fenToYuan(yuanToFen(amount));
 }
-
-

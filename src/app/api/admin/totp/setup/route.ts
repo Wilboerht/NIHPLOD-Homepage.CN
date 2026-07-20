@@ -8,7 +8,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { generateTOTPSecret, generateTOTPQRCodeUrl, encryptTOTPSecret, generateBackupCodes, hashBackupCode } from "@/lib/totp";
+import {
+  generateTOTPSecret,
+  generateTOTPQRCodeUrl,
+  encryptTOTPSecret,
+  generateBackupCodes,
+  hashBackupCode,
+} from "@/lib/totp";
 import QRCode from "qrcode";
 import { createAuditLog } from "@/lib/audit";
 

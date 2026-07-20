@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import { StoryContent } from "./StoryContent";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
-
 // ISR: 品牌故事页面每60秒重新验证一次
 export const revalidate = 60;
 
@@ -14,8 +13,15 @@ export const metadata: Metadata = {
     canonical: "/about",
   },
   keywords: [
-    "NIHPLOD", "旎柏", "品牌故事", "摩纳哥护肤品牌", "高端护肤",
-    "真脂质体技术", "Dolphin-Skin", "抗衰老品牌", "奢华护肤传奇",
+    "NIHPLOD",
+    "旎柏",
+    "品牌故事",
+    "摩纳哥护肤品牌",
+    "高端护肤",
+    "真脂质体技术",
+    "Dolphin-Skin",
+    "抗衰老品牌",
+    "奢华护肤传奇",
   ],
   openGraph: {
     title: "品牌故事 | NIHPLOD 旎柏",
@@ -26,7 +32,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
     title: "品牌故事 | NIHPLOD 旎柏",
-    description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    description:
+      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
 };

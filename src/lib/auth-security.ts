@@ -29,9 +29,9 @@ export interface BruteForceConfig {
  * 默认防爆破配置
  */
 export const DEFAULT_BRUTE_FORCE_CONFIG: BruteForceConfig = {
-  maxAttempts: 5,        // 5次失败
-  windowMinutes: 15,     // 15分钟内
-  lockoutMinutes: 30,    // 锁定30分钟
+  maxAttempts: 5, // 5次失败
+  windowMinutes: 15, // 15分钟内
+  lockoutMinutes: 30, // 锁定30分钟
 };
 
 // ============================================
@@ -40,7 +40,6 @@ export const DEFAULT_BRUTE_FORCE_CONFIG: BruteForceConfig = {
 
 /** 每个用户允许的最大设备数（Refresh Token 设备上限） */
 export const MAX_REFRESH_TOKEN_DEVICES = 10;
-
 
 /**
  * 获取 User Agent
@@ -108,9 +107,7 @@ export async function checkAccountLockout(
 ): Promise<{ locked: boolean; remainingMinutes: number }> {
   try {
     // 查询时间窗口内的失败尝试
-    const windowStart = new Date(
-      Date.now() - config.windowMinutes * 60 * 1000
-    );
+    const windowStart = new Date(Date.now() - config.windowMinutes * 60 * 1000);
 
     const failedAttempts = await prisma.loginAttempt.count({
       where: {
@@ -133,8 +130,7 @@ export async function checkAccountLockout(
 
       if (lastFailedAttempt) {
         const lockoutUntil = new Date(
-          lastFailedAttempt.createdAt.getTime() +
-            config.lockoutMinutes * 60 * 1000
+          lastFailedAttempt.createdAt.getTime() + config.lockoutMinutes * 60 * 1000
         );
         const now = new Date();
 
@@ -228,12 +224,10 @@ export function extractDeviceInfo(request: NextRequest): DeviceInfo {
 
 function getDeviceFingerprint(info?: DeviceInfo): string {
   if (!info) return "unknown";
-  const ua = (info.deviceInfo || info.userAgent || "");
+  const ua = info.deviceInfo || info.userAgent || "";
   const ip = info.ipAddress || "";
   const name = info.deviceName || "";
-  return createHash("sha256")
-    .update(`${name}|${ua}|${ip}`)
-    .digest("hex");
+  return createHash("sha256").update(`${name}|${ua}|${ip}`).digest("hex");
 }
 
 export async function saveRefreshToken(
@@ -286,7 +280,10 @@ export async function saveRefreshToken(
         // 2. 限制每个用户的最大设备数，防止无限增长
         if (existingTokens.length >= MAX_REFRESH_TOKEN_DEVICES) {
           // 撤销最早的 Token
-          const tokensToRevoke = existingTokens.slice(0, existingTokens.length - MAX_REFRESH_TOKEN_DEVICES + 1);
+          const tokensToRevoke = existingTokens.slice(
+            0,
+            existingTokens.length - MAX_REFRESH_TOKEN_DEVICES + 1
+          );
           await tx.refreshToken.updateMany({
             where: { id: { in: tokensToRevoke.map((t) => t.id) } },
             data: { revokedAt: new Date() },
@@ -315,7 +312,10 @@ export async function saveRefreshToken(
 
 export type RefreshTokenValidationResult =
   | { valid: true }
-  | { valid: false; reason: "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" };
+  | {
+      valid: false;
+      reason: "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation";
+    };
 
 /**
  * 原子化验证并轮换 Refresh Token
@@ -414,7 +414,10 @@ export async function atomicallyRotateRefreshToken(
         });
       } else {
         if (existingTokens.length >= MAX_REFRESH_TOKEN_DEVICES) {
-          const tokensToRevoke = existingTokens.slice(0, existingTokens.length - MAX_REFRESH_TOKEN_DEVICES + 1);
+          const tokensToRevoke = existingTokens.slice(
+            0,
+            existingTokens.length - MAX_REFRESH_TOKEN_DEVICES + 1
+          );
           await tx.refreshToken.updateMany({
             where: { id: { in: tokensToRevoke.map((t) => t.id) } },
             data: { revokedAt: new Date() },
@@ -448,10 +451,7 @@ export async function atomicallyRotateRefreshToken(
  * 撤销 Refresh Token（登出时调用）
  * 返回实际被撤销的记录数，便于调用方检测并发重用。
  */
-export async function revokeRefreshToken(
-  userId: string,
-  token?: string
-): Promise<number> {
+export async function revokeRefreshToken(userId: string, token?: string): Promise<number> {
   try {
     if (token) {
       // 撤销特定 token（比对哈希值），仅撤销尚未撤销的，便于检测并发重用

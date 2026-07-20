@@ -66,8 +66,6 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
   };
 }
 
-
-
 /**
  * 从请求中获取管理员 Token
  * 支持 Cookie 和 Authorization Header
@@ -217,7 +215,9 @@ export function getUserTokenFromRequest(request: NextRequest): string | null {
 /**
  * 检查用户账号状态
  */
-export async function checkUserStatus(userId: string): Promise<{ valid: boolean; status: UserStatus; reason?: string }> {
+export async function checkUserStatus(
+  userId: string
+): Promise<{ valid: boolean; status: UserStatus; reason?: string }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { status: true },

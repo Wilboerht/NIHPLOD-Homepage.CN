@@ -14,7 +14,10 @@ import { apiConsole } from "@/lib/logger";
  */
 export function generateOrderNo(): string {
   const now = new Date();
-  const datePart = now.toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+  const datePart = now
+    .toISOString()
+    .replace(/[-:T.Z]/g, "")
+    .slice(0, 14);
   const randomPart = randomInt(100000, 1000000).toString();
   return `${datePart}${randomPart}`;
 }
@@ -140,10 +143,10 @@ export async function createOrder(
           where: {
             id: userCouponId,
             userId,
-            status: 'UNUSED',
-            expiresAt: { gt: now }
+            status: "UNUSED",
+            expiresAt: { gt: now },
           },
-          include: { coupon: true }
+          include: { coupon: true },
         });
 
         if (!userCoupon) {
@@ -158,9 +161,9 @@ export async function createOrder(
         }
 
         // 校验适用范围
-        if (coupon.scopeType && coupon.scopeType !== 'ALL' && coupon.scopeIds.length > 0) {
+        if (coupon.scopeType && coupon.scopeType !== "ALL" && coupon.scopeIds.length > 0) {
           const orderProductIds = items.map((i) => i.productId);
-          if (coupon.scopeType === 'CATEGORY') {
+          if (coupon.scopeType === "CATEGORY") {
             const products = await tx.product.findMany({
               where: { id: { in: orderProductIds } },
               select: { categoryId: true },
@@ -168,25 +171,27 @@ export async function createOrder(
             const categoryIds = products.map((p) => p.categoryId);
             const hasMatch = categoryIds.some((cid) => coupon.scopeIds.includes(cid));
             if (!hasMatch) {
-              throw new Error('优惠券不适用于当前商品品类');
+              throw new Error("优惠券不适用于当前商品品类");
             }
-          } else if (coupon.scopeType === 'PRODUCT') {
+          } else if (coupon.scopeType === "PRODUCT") {
             const hasMatch = orderProductIds.some((pid) => coupon.scopeIds.includes(pid));
             if (!hasMatch) {
-              throw new Error('优惠券不适用于当前商品');
+              throw new Error("优惠券不适用于当前商品");
             }
           }
         }
 
         // 计算优惠
-        if (coupon.type === 'DISCOUNT_AMOUNT') {
+        if (coupon.type === "DISCOUNT_AMOUNT") {
           // 满减券：直接减去固定金额
           discountAmount = Number(coupon.value);
           // 零元购防护：满减券金额必须严格小于订单金额（不允许完全免费）
           if (discountAmount >= totalAmount) {
-            throw new Error(`优惠券金额异常：优惠金额 (${discountAmount}元) 不能超过订单金额 (${totalAmount}元)`);
+            throw new Error(
+              `优惠券金额异常：优惠金额 (${discountAmount}元) 不能超过订单金额 (${totalAmount}元)`
+            );
           }
-        } else if (coupon.type === 'DISCOUNT_PERCENT') {
+        } else if (coupon.type === "DISCOUNT_PERCENT") {
           // 折扣券：value 存储的是折扣比例（保留价格的比例）
           // 规范：value 必须在 (0, 1) 之间，例如：
           //   0.9  → 九折 → 优惠 10%
@@ -195,7 +200,9 @@ export async function createOrder(
           const discountRate = Number(coupon.value);
           if (discountRate <= 0 || discountRate >= 1) {
             // value 不合法（后台应强制约束 0 < value < 1），此处防御性抛出错误
-            throw new Error(`优惠券折扣比例无效 (value=${discountRate})，应为 0 到 1 之间的小数，例如 0.8 表示八折`);
+            throw new Error(
+              `优惠券折扣比例无效 (value=${discountRate})，应为 0 到 1 之间的小数，例如 0.8 表示八折`
+            );
           }
           discountAmount = totalAmount * (1 - discountRate);
         }
@@ -208,8 +215,8 @@ export async function createOrder(
 
         // 锁定优惠券（CAS：只有 UNUSED 状态才能被锁定）
         const locked = await tx.userCoupon.updateMany({
-          where: { id: userCoupon.id, status: 'UNUSED' },
-          data: { status: 'LOCKED' }
+          where: { id: userCoupon.id, status: "UNUSED" },
+          data: { status: "LOCKED" },
         });
         if (locked.count === 0) {
           throw new Error("优惠券已被使用或锁定，请刷新后重试");
@@ -241,11 +248,13 @@ export async function createOrder(
           // UserCoupon { orderId String? @unique }
           // 所以这里应该 update UserCoupon connect Order，或者在 create order 时 connect。
           // 由于 UserCoupon 是 optional，prisma 语法:
-          ...(usedCouponId ? {
-            userCoupon: {
-              connect: { id: usedCouponId }
-            }
-          } : {})
+          ...(usedCouponId
+            ? {
+                userCoupon: {
+                  connect: { id: usedCouponId },
+                },
+              }
+            : {}),
         },
       });
 
@@ -317,7 +326,7 @@ export async function cancelOrder(
       if (order.userCoupon) {
         await tx.userCoupon.update({
           where: { id: order.userCoupon.id },
-          data: { status: 'UNUSED', usedAt: null, orderId: null }
+          data: { status: "UNUSED", usedAt: null, orderId: null },
         });
       }
     });
@@ -335,10 +344,12 @@ export async function cancelOrder(
  * 自动取消超时未支付订单
  * 默认 30 分钟未支付则自动取消，释放库存与优惠券
  */
-export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: boolean; canceledCount: number; error?: string }> {
+export async function autoCancelExpiredOrders(
+  minutes = 30
+): Promise<{ success: boolean; canceledCount: number; error?: string }> {
   try {
     const expiredTime = new Date(Date.now() - minutes * 60 * 1000);
-    
+
     // 查找所有待支付或支付中且超时的订单
     const expiredOrders = await prisma.order.findMany({
       where: {
@@ -347,9 +358,9 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
         },
         createdAt: {
           lt: expiredTime,
-        }
+        },
       },
-      include: { items: true, userCoupon: true }
+      include: { items: true, userCoupon: true },
     });
 
     if (expiredOrders.length === 0) {
@@ -366,7 +377,9 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
             where: { id: order.id, status: { in: [OrderStatus.PENDING, OrderStatus.PAYING] } },
             data: {
               status: OrderStatus.CANCELLED,
-              adminNote: order.adminNote ? `${order.adminNote}\n[系统] 超时未支付自动取消` : '[系统] 超时未支付自动取消'
+              adminNote: order.adminNote
+                ? `${order.adminNote}\n[系统] 超时未支付自动取消`
+                : "[系统] 超时未支付自动取消",
             },
           });
           if (canceled.count === 0) {
@@ -385,7 +398,7 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
           if (order.userCoupon) {
             await tx.userCoupon.update({
               where: { id: order.userCoupon.id },
-              data: { status: 'UNUSED', usedAt: null, orderId: null }
+              data: { status: "UNUSED", usedAt: null, orderId: null },
             });
           }
         });
@@ -407,7 +420,9 @@ export async function autoCancelExpiredOrders(minutes = 30): Promise<{ success: 
  * 自动完成（确认收货）超时未确认的已发货订单
  * 默认 15 天后自动收货
  */
-export async function autoCompleteShippedOrders(days = 15): Promise<{ success: boolean; completedCount: number; error?: string }> {
+export async function autoCompleteShippedOrders(
+  days = 15
+): Promise<{ success: boolean; completedCount: number; error?: string }> {
   try {
     const expiredTime = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -416,13 +431,13 @@ export async function autoCompleteShippedOrders(days = 15): Promise<{ success: b
         status: OrderStatus.SHIPPED,
         shippedAt: {
           lt: expiredTime,
-        }
+        },
       },
       data: {
         status: OrderStatus.COMPLETED,
         receivedAt: new Date(),
         // Prisma 不允许在 updateMany 中基于已有字段做字符串拼接，所以暂时不更新 adminNote
-      }
+      },
     });
 
     console.log(`[Order] 系统自动完成了 ${result.count} 个发货超期订单`);
@@ -432,5 +447,3 @@ export async function autoCompleteShippedOrders(days = 15): Promise<{ success: b
     return { success: false, completedCount: 0, error: String(error) };
   }
 }
-
-

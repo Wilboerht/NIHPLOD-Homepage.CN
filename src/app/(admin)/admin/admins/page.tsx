@@ -28,7 +28,12 @@ export default function AdminAdminsPage() {
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminItem | null>(null);
-  const [form, setForm] = useState({ email: "", name: "", password: "", role: "admin" as "owner" | "admin" });
+  const [form, setForm] = useState({
+    email: "",
+    name: "",
+    password: "",
+    role: "admin" as "owner" | "admin",
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -37,7 +42,10 @@ export default function AdminAdminsPage() {
   const fetchAdmins = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGet<{ admins: AdminItem[]; pagination: typeof pagination }>("/api/admin/admins", { page, search });
+      const data = await apiGet<{ admins: AdminItem[]; pagination: typeof pagination }>(
+        "/api/admin/admins",
+        { page, search }
+      );
       setAdmins(data.admins);
       setPagination(data.pagination);
     } catch {
@@ -47,7 +55,9 @@ export default function AdminAdminsPage() {
     }
   }, [page, search]);
 
-  useEffect(() => { fetchAdmins(); }, [fetchAdmins]);
+  useEffect(() => {
+    fetchAdmins();
+  }, [fetchAdmins]);
 
   const updateParams = (newParams: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -67,7 +77,12 @@ export default function AdminAdminsPage() {
 
   const openEdit = (admin: AdminItem) => {
     setEditing(admin);
-    setForm({ email: admin.email, name: admin.name, password: "", role: admin.role as "owner" | "admin" });
+    setForm({
+      email: admin.email,
+      name: admin.name,
+      password: "",
+      role: admin.role as "owner" | "admin",
+    });
     setShowModal(true);
   };
 
@@ -85,9 +100,7 @@ export default function AdminAdminsPage() {
 
     setSubmitting(true);
     try {
-      const body = editing
-        ? { id: editing.id, ...form }
-        : form;
+      const body = editing ? { id: editing.id, ...form } : form;
       if (editing && !form.password) delete (body as Record<string, unknown>).password;
 
       if (editing) {
@@ -125,17 +138,17 @@ export default function AdminAdminsPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchAdmins}>
-            <RefreshCw className="h-4 w-4 mr-1" /> 刷新
+            <RefreshCw className="mr-1 h-4 w-4" /> 刷新
           </Button>
           <Button variant="primary" size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-1" /> 新增管理员
+            <Plus className="mr-1 h-4 w-4" /> 新增管理员
           </Button>
         </div>
       </div>
 
       {/* 搜索栏 */}
       <div className="flex gap-4 rounded-xl bg-white p-4 shadow-sm">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -149,7 +162,7 @@ export default function AdminAdminsPage() {
       </div>
 
       {/* 列表 */}
-      <div className="rounded-xl bg-white shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
@@ -162,31 +175,45 @@ export default function AdminAdminsPage() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">加载中...</td></tr>
-            ) : admins.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">暂无管理员</td></tr>
-            ) : admins.map((admin) => (
-              <tr key={admin.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{admin.name}</td>
-                <td className="px-4 py-3">{admin.email}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${admin.role === "owner" ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-600"}`}>
-                    {admin.role === "owner" ? "最高权限管理员" : "管理员"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-400">{new Date(admin.createdAt).toLocaleDateString("zh-CN")}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(admin)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(admin.id)}>
-                      <Trash2 className="h-4 w-4 text-red-400" />
-                    </Button>
-                  </div>
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  加载中...
                 </td>
               </tr>
-            ))}
+            ) : admins.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  暂无管理员
+                </td>
+              </tr>
+            ) : (
+              admins.map((admin) => (
+                <tr key={admin.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium">{admin.name}</td>
+                  <td className="px-4 py-3">{admin.email}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs ${admin.role === "owner" ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-600"}`}
+                    >
+                      {admin.role === "owner" ? "最高权限管理员" : "管理员"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-400">
+                    {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(admin)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(admin.id)}>
+                        <Trash2 className="h-4 w-4 text-red-400" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -198,7 +225,7 @@ export default function AdminAdminsPage() {
             <button
               key={i + 1}
               onClick={() => updateParams({ page: String(i + 1) })}
-              className={`px-3 py-1 rounded ${page === i + 1 ? "bg-pink-500 text-white" : "bg-gray-100"}`}
+              className={`rounded px-3 py-1 ${page === i + 1 ? "bg-pink-500 text-white" : "bg-gray-100"}`}
             >
               {i + 1}
             </button>
@@ -210,9 +237,12 @@ export default function AdminAdminsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">{editing ? "编辑管理员" : "新增管理员"}</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -261,10 +291,21 @@ export default function AdminAdminsPage() {
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowModal(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowModal(false)}
+                >
                   取消
                 </Button>
-                <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  loading={submitting}
+                  disabled={submitting}
+                >
                   {submitting ? "保存中..." : "保存"}
                 </Button>
               </div>

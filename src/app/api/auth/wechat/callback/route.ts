@@ -1,7 +1,7 @@
 /**
  * 微信登录回调 API
  * GET /api/auth/wechat/callback
- * 
+ *
  * 返回三种情况：
  * 1. 已有账户 + 已绑定微信 → 直接登录
  * 2. 已有账户 + 未绑定微信 → 自动绑定并登录
@@ -32,7 +32,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { checkUserStatus } from "@/lib/auth";
 
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * 构造最终重定向 URL。
@@ -115,7 +115,10 @@ export async function GET(request: NextRequest) {
       targetUrl.searchParams.set("code", "INVALID_STATE");
       targetUrl.searchParams.set("message", encodeURIComponent("授权状态验证失败，请重试"));
       const response = NextResponse.redirect(targetUrl, 302);
-      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+        ...WECHAT_NONCE_COOKIE_OPTIONS,
+        maxAge: 0,
+      });
       return response;
     }
 
@@ -134,7 +137,10 @@ export async function GET(request: NextRequest) {
       deniedUrl.searchParams.set("code", "WECHAT_DENIED");
       deniedUrl.searchParams.set("message", encodeURIComponent("您取消了微信授权"));
       const response = NextResponse.redirect(deniedUrl, 302);
-      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+        ...WECHAT_NONCE_COOKIE_OPTIONS,
+        maxAge: 0,
+      });
       return response;
     }
 
@@ -144,7 +150,10 @@ export async function GET(request: NextRequest) {
       missingCodeUrl.searchParams.set("code", "MISSING_CODE");
       missingCodeUrl.searchParams.set("message", encodeURIComponent("缺少授权码"));
       const response = NextResponse.redirect(missingCodeUrl, 302);
-      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+        ...WECHAT_NONCE_COOKIE_OPTIONS,
+        maxAge: 0,
+      });
       return response;
     }
 
@@ -157,8 +166,12 @@ export async function GET(request: NextRequest) {
     logAuthEvent("wechat_bind", {
       success: true,
       step: "oauth_callback",
-      openid: wechatUser.openid ? `${wechatUser.openid.slice(0, 4)}****${wechatUser.openid.slice(-4)}` : undefined,
-      unionid: wechatUser.unionid ? `${wechatUser.unionid.slice(0, 4)}****${wechatUser.unionid.slice(-4)}` : undefined,
+      openid: wechatUser.openid
+        ? `${wechatUser.openid.slice(0, 4)}****${wechatUser.openid.slice(-4)}`
+        : undefined,
+      unionid: wechatUser.unionid
+        ? `${wechatUser.unionid.slice(0, 4)}****${wechatUser.unionid.slice(-4)}`
+        : undefined,
       nickname: wechatUser.nickname,
       ip: getClientIP(request),
     });
@@ -178,9 +191,15 @@ export async function GET(request: NextRequest) {
         const disabledUrl = new URL(baseRedirectUrl);
         disabledUrl.searchParams.set("wechat_auth", "error");
         disabledUrl.searchParams.set("code", "ACCOUNT_DISABLED");
-        disabledUrl.searchParams.set("message", encodeURIComponent(statusCheck.reason || "账号状态异常"));
+        disabledUrl.searchParams.set(
+          "message",
+          encodeURIComponent(statusCheck.reason || "账号状态异常")
+        );
         const response = NextResponse.redirect(disabledUrl, 302);
-        response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+        response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+          ...WECHAT_NONCE_COOKIE_OPTIONS,
+          maxAge: 0,
+        });
         return response;
       }
 
@@ -210,7 +229,10 @@ export async function GET(request: NextRequest) {
 
         const response = NextResponse.redirect(subsiteRedirect, 302);
         // 清除 CSRF nonce Cookie
-        response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+        response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+          ...WECHAT_NONCE_COOKIE_OPTIONS,
+          maxAge: 0,
+        });
         return response;
       }
 
@@ -235,7 +257,12 @@ export async function GET(request: NextRequest) {
 
       // 保存 Refresh Token 到数据库（统一使用 saveRefreshToken，自动清理旧 Token）
       const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-      await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
+      await saveRefreshToken(
+        user.id,
+        refreshToken,
+        refreshTokenExpiresAt,
+        extractDeviceInfo(request)
+      );
 
       const successUrl = new URL(baseRedirectUrl);
       successUrl.searchParams.set("wechat_auth", "success");
@@ -246,7 +273,10 @@ export async function GET(request: NextRequest) {
       // 设置 Refresh Token Cookie（30 天，使用统一配置 USER_REFRESH_COOKIE_OPTIONS）
       response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);
       // 清除 CSRF nonce Cookie
-      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+        ...WECHAT_NONCE_COOKIE_OPTIONS,
+        maxAge: 0,
+      });
 
       return response;
     }
@@ -273,7 +303,10 @@ export async function GET(request: NextRequest) {
 
       const response = NextResponse.redirect(subsiteRedirect, 302);
       // 清除 CSRF nonce Cookie
-      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+        ...WECHAT_NONCE_COOKIE_OPTIONS,
+        maxAge: 0,
+      });
       return response;
     }
 
@@ -292,18 +325,27 @@ export async function GET(request: NextRequest) {
     // 设置临时绑定令牌
     response.cookies.set(WECHAT_BIND_COOKIE_NAME, bindToken, WECHAT_BIND_COOKIE_OPTIONS);
     // 清除 CSRF nonce Cookie
-    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+      ...WECHAT_NONCE_COOKIE_OPTIONS,
+      maxAge: 0,
+    });
 
     return response;
   } catch (error) {
     apiConsole.error("[WechatCallback] 异常:", error);
-    const message = process.env.NODE_ENV === "development" && error instanceof Error ? error.message : "服务器错误";
+    const message =
+      process.env.NODE_ENV === "development" && error instanceof Error
+        ? error.message
+        : "服务器错误";
     const fallbackUrl = new URL(buildRedirectUrl(stateCallback, redirectUrl));
     fallbackUrl.searchParams.set("wechat_auth", "error");
     fallbackUrl.searchParams.set("code", "INTERNAL_ERROR");
     fallbackUrl.searchParams.set("message", encodeURIComponent(message));
     const response = NextResponse.redirect(fallbackUrl, 302);
-    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", { ...WECHAT_NONCE_COOKIE_OPTIONS, maxAge: 0 });
+    response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+      ...WECHAT_NONCE_COOKIE_OPTIONS,
+      maxAge: 0,
+    });
     return response;
   }
 }

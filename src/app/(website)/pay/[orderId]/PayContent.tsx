@@ -41,10 +41,9 @@ export default function PayContent({ orderId }: PayContentProps) {
   }, [payOpen, router]);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6">
-      <Loader2 className="w-8 h-8 text-[#A69374] animate-spin mb-4" />
+    <div className="flex flex-1 flex-col items-center justify-center p-6">
+      <Loader2 className="mb-4 h-8 w-8 animate-spin text-[#A69374]" />
       <p className="text-[#4A6272]">正在加载支付...</p>
     </div>
   );
 }
-

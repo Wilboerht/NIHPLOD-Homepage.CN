@@ -69,7 +69,7 @@ function ProductCardSkeleton() {
       {/* 图片骨架 */}
       <div className="relative aspect-[4/5] bg-brand-beige/50" />
       {/* 内容骨架 */}
-      <div className="p-4 space-y-3">
+      <div className="space-y-3 p-4">
         <div className="h-3 w-16 rounded bg-brand-beige/50" />
         <div className="h-5 w-3/4 rounded bg-brand-beige/50" />
         <div className="h-4 w-1/2 rounded bg-brand-beige/50" />
@@ -88,12 +88,7 @@ function ProductCardSkeleton() {
  * - 加载动画（骨架屏 + 淡入效果）
  * - 响应式适配
  */
-export function ProductCard({
-  product,
-  onClick,
-  priority = false,
-  className,
-}: ProductCardProps) {
+export function ProductCard({ product, onClick, priority = false, className }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -157,7 +152,7 @@ export function ProductCard({
       className={cn(
         "group relative cursor-pointer overflow-hidden rounded-xl bg-white shadow-sm",
         "transition-shadow duration-300 hover:shadow-lg",
-        "focus-within:ring-2 focus-within:ring-brand-gold focus-within:ring-offset-2",
+        "focus-within:ring-2 focus-within:ring-brand-primary focus-within:ring-offset-2",
         className
       )}
       initial={{ opacity: 0, y: 30 }}
@@ -175,9 +170,7 @@ export function ProductCard({
       {/* 图片区域 */}
       <div className="relative aspect-[4/5] overflow-hidden bg-brand-beige/30">
         {/* 骨架屏（图片加载前显示） */}
-        {!isImageLoaded && (
-          <div className="absolute inset-0 animate-pulse bg-brand-beige/50" />
-        )}
+        {!isImageLoaded && <div className="absolute inset-0 animate-pulse bg-brand-beige/50" />}
 
         {/* 主图片 */}
         {images.length > 0 ? (
@@ -233,9 +226,7 @@ export function ProductCard({
                 key={index}
                 className={cn(
                   "h-1.5 w-1.5 rounded-full transition-all duration-200",
-                  index === currentImageIndex
-                    ? "w-4 bg-white"
-                    : "bg-white/50"
+                  index === currentImageIndex ? "w-4 bg-white" : "bg-white/50"
                 )}
               />
             ))}
@@ -244,16 +235,14 @@ export function ProductCard({
       </div>
 
       {/* 产品信息 */}
-      <div className="p-3 space-y-1 md:p-4">
+      <div className="space-y-1 p-3 md:p-4">
         {/* 中文名 */}
-        <h3 className="font-serif text-base leading-tight text-brand-charcoal line-clamp-2 md:text-lg">
+        <h3 className="line-clamp-2 font-serif text-base leading-tight text-brand-charcoal md:text-lg">
           {name}
         </h3>
 
         {/* 容量（如有） */}
-        {capacity && (
-          <p className="text-xs text-brand-charcoal/60">{capacity}</p>
-        )}
+        {capacity && <p className="text-xs text-brand-charcoal/60">{capacity}</p>}
 
         {/* 价格 */}
         <p className="pt-1 text-sm font-medium text-brand-charcoal md:text-base">

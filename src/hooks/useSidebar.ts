@@ -23,10 +23,10 @@ interface UseSidebarReturn {
  */
 export function useSidebar(): UseSidebarReturn {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  
+
   // 移动端：侧边栏打开/关闭状态
   const [isOpen, setIsOpen] = useState(false);
-  
+
   // 桌面端：侧边栏折叠/展开状态
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -83,4 +83,3 @@ export function useSidebar(): UseSidebarReturn {
     toggleCollapse,
   };
 }
-

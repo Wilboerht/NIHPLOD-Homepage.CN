@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useRef,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +53,7 @@ const iconStyles = {
   error: "text-red-500",
   warning: "text-yellow-500",
   info: "text-blue-500",
-  loading: "text-brand-gold animate-spin",
+  loading: "text-brand-primary animate-spin",
 };
 
 /**
@@ -167,7 +160,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       {/* Toast 容器 - 顶部居中显示 - 极高层级确保不被遮挡 */}
-      <div className="fixed top-10 left-1/2 z-[100000] flex -translate-x-1/2 flex-col gap-2 md:top-16">
+      <div className="fixed left-1/2 top-10 z-[100000] flex -translate-x-1/2 flex-col gap-2 md:top-16">
         {toasts.map((toast, index) => {
           const Icon = iconMap[toast.type];
           return (
@@ -210,4 +203,3 @@ export function useToast() {
   }
   return context;
 }
-

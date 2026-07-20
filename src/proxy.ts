@@ -32,13 +32,13 @@ const SENSITIVE_API_PREFIXES = [
 
 // 2. 完全公开 API: 任何方法都写放行 (这些路由内部会使用 verifyUserAuth 鉴权或白名单机制)
 const PUBLIC_API_PREFIXES = [
-  "/api/admin/login",  // 登录接口
-  "/api/contact",      // 用户留言
-  "/api/careers/apply",// 职位申请
-  "/api/oss/sign",     // OSS 签名 (已有 RateLimit 保护)
+  "/api/admin/login", // 登录接口
+  "/api/contact", // 用户留言
+  "/api/careers/apply", // 职位申请
+  "/api/oss/sign", // OSS 签名 (已有 RateLimit 保护)
   // C端用户系统 — 自带 verifyUserAuth 鉴权，不走 admin_token
-  "/api/auth/",        // 用户认证（登录、注册、验证码、微信）
-  "/api/user/",        // 用户业务（资料、地址、优惠券）
+  "/api/auth/", // 用户认证（登录、注册、验证码、微信）
+  "/api/user/", // 用户业务（资料、地址、优惠券）
   // 电商核心购买链路
   "/api/cart",
   "/api/checkout",
@@ -80,9 +80,13 @@ export async function proxy(request: NextRequest) {
 
   // 调试日志仅开发环境输出
   if (process.env.NODE_ENV !== "production") {
-    console.log(`[Middleware Debug] pathname=${pathname}, method=${method}, cookieName=${AUTH_COOKIE_NAME}`);
+    console.log(
+      `[Middleware Debug] pathname=${pathname}, method=${method}, cookieName=${AUTH_COOKIE_NAME}`
+    );
     const allCookies = request.cookies.getAll();
-    console.log(`[Middleware Debug] all cookies: ${allCookies.map((c) => c.name).join(", ") || "(none)"}`);
+    console.log(
+      `[Middleware Debug] all cookies: ${allCookies.map((c) => c.name).join(", ") || "(none)"}`
+    );
   }
 
   // 获取 Token
@@ -90,13 +94,14 @@ export async function proxy(request: NextRequest) {
   // 懒惰验证：只有在需要鉴权时才进行 verifyToken，节省 CPU
   // 同一请求内记忆化结果，避免重复验证
   let _authResult: boolean | undefined;
-  const checkAuth = async () => _authResult ?? (_authResult = token ? await verifyToken(token) : false);
+  const checkAuth = async () =>
+    _authResult ?? (_authResult = token ? await verifyToken(token) : false);
 
   // ================= 1. 页面路由保护 =================
 
   // 1.1 登录页逻辑: 已登录用户访问登录页 -> 重定向到后台
   if (matchesPath(pathname, PUBLIC_ADMIN_PATHS)) {
-    if (token && await checkAuth()) {
+    if (token && (await checkAuth())) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
     return NextResponse.next();

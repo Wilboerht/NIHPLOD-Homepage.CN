@@ -11,9 +11,20 @@ export const metadata: Metadata = {
   description:
     "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
   keywords: [
-    "NIHPLOD", "旎柏", "尼柏", "Niphlod", "摩纳哥护肤品牌",
-    "高端护肤品", "抗衰老面霜", "脂质体护肤", "奢华护肤", "修护精华",
-    "贵妇护肤", "精准护肤", "Dolphin-Skin", "逆转时光"
+    "NIHPLOD",
+    "旎柏",
+    "尼柏",
+    "Niphlod",
+    "摩纳哥护肤品牌",
+    "高端护肤品",
+    "抗衰老面霜",
+    "脂质体护肤",
+    "奢华护肤",
+    "修护精华",
+    "贵妇护肤",
+    "精准护肤",
+    "Dolphin-Skin",
+    "逆转时光",
   ],
   alternates: {
     canonical: "/",
@@ -33,4 +44,3 @@ export const metadata: Metadata = {
 export default async function Home() {
   return <HomeClient />;
 }
-

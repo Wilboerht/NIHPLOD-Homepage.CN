@@ -4,12 +4,7 @@ import { join, resolve } from "path";
 import { randomUUID } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
 import { apiConsole } from "@/lib/logger";
-import { 
-  isOSSConfigured, 
-  uploadToOSS, 
-  deleteOSSFiles,
-  getOSSPublicDomain 
-} from "./ali-oss";
+import { isOSSConfigured, uploadToOSS, deleteOSSFiles, getOSSPublicDomain } from "./ali-oss";
 
 /**
  * 智能存储模式检测 (优先级: OSS > Local)
@@ -94,11 +89,11 @@ export function getSafeExtension(mimeType: string): string | null {
 
 // 图片尺寸配置
 export const imageSizes = {
-  thumbnail: { width: 400, height: 400, quality: 80 },   // 缩略图
-  small: { width: 640, height: 640, quality: 80 },       // 小图
-  medium: { width: 1024, height: 1024, quality: 80 },    // 中图
-  large: { width: 1920, height: 1920, quality: 85 },     // 大图
-  og: { width: 1200, height: 630, quality: 85 },         // OG 分享图
+  thumbnail: { width: 400, height: 400, quality: 80 }, // 缩略图
+  small: { width: 640, height: 640, quality: 80 }, // 小图
+  medium: { width: 1024, height: 1024, quality: 80 }, // 中图
+  large: { width: 1920, height: 1920, quality: 85 }, // 大图
+  og: { width: 1200, height: 630, quality: 85 }, // OG 分享图
 } as const;
 
 export type ImageSizeKey = keyof typeof imageSizes;
@@ -131,13 +126,19 @@ export function validateFileSize(size: number): boolean {
  * @param buffer 文件内容
  * @returns 检测结果
  */
-export async function validateFileBuffer(buffer: Buffer): Promise<{ valid: boolean; detectedType?: string; error?: string }> {
+export async function validateFileBuffer(
+  buffer: Buffer
+): Promise<{ valid: boolean; detectedType?: string; error?: string }> {
   const type = await fileTypeFromBuffer(buffer);
   if (!type) {
     return { valid: false, error: "无法识别文件类型或文件内容为空" };
   }
   if (!uploadConfig.allowedTypes.includes(type.mime)) {
-    return { valid: false, detectedType: type.mime, error: `不支持的文件类型: ${type.mime}。支持的类型: ${uploadConfig.allowedTypes.join(", ")}` };
+    return {
+      valid: false,
+      detectedType: type.mime,
+      error: `不支持的文件类型: ${type.mime}。支持的类型: ${uploadConfig.allowedTypes.join(", ")}`,
+    };
   }
   return { valid: true, detectedType: type.mime };
 }

@@ -99,10 +99,7 @@ export function Modal({
           <div className="flex shrink-0 items-start justify-between border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
             <div>
               {title && (
-                <h2
-                  id="modal-title"
-                  className="text-base font-semibold text-gray-900 sm:text-lg"
-                >
+                <h2 id="modal-title" className="text-base font-semibold text-gray-900 sm:text-lg">
                   {title}
                 </h2>
               )}
@@ -133,4 +130,3 @@ export function Modal({
   // 使用 Portal 渲染到 body，避免被父容器的 transform/transition 影响
   return createPortal(modalContent, document.body);
 }
-

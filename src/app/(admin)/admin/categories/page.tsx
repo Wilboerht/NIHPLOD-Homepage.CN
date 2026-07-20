@@ -93,9 +93,7 @@ export default function AdminCategoriesPage() {
 
       // 更新本地状态
       setCategories((prev) =>
-        prev.map((cat) =>
-          cat.id === category.id ? { ...cat, visible: !category.visible } : cat
-        )
+        prev.map((cat) => (cat.id === category.id ? { ...cat, visible: !category.visible } : cat))
       );
       success(category.visible ? "分类已隐藏" : "分类已显示");
     } catch (err) {
@@ -150,7 +148,7 @@ export default function AdminCategoriesPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
       </div>
     );
   }
@@ -200,7 +198,7 @@ export default function AdminCategoriesPage() {
                 onDragEnd={handleDragEnd}
                 className={cn(
                   "grid grid-cols-12 gap-4 px-6 py-4 transition-colors",
-                  dragOverItem === index && "bg-brand-gold/5",
+                  dragOverItem === index && "bg-brand-primary/5",
                   "hover:bg-gray-50"
                 )}
               >
@@ -215,7 +213,7 @@ export default function AdminCategoriesPage() {
                 <div className="col-span-1 flex items-center">
                   {category.icon ? (
                     <div
-                      className="h-8 w-8 text-brand-gold"
+                      className="h-8 w-8 text-brand-primary"
                       dangerouslySetInnerHTML={{ __html: sanitizeSvg(category.icon) }}
                     />
                   ) : (
@@ -258,9 +256,13 @@ export default function AdminCategoriesPage() {
                     title={category.visible ? "点击隐藏" : "点击显示"}
                   >
                     {category.visible ? (
-                      <><Eye className="h-3.5 w-3.5" /> 显示</>
+                      <>
+                        <Eye className="h-3.5 w-3.5" /> 显示
+                      </>
                     ) : (
-                      <><EyeOff className="h-3.5 w-3.5" /> 隐藏</>
+                      <>
+                        <EyeOff className="h-3.5 w-3.5" /> 隐藏
+                      </>
                     )}
                   </button>
                 </div>

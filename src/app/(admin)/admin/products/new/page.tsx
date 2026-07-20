@@ -24,7 +24,7 @@ export default function NewProductPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
       </div>
     );
   }
@@ -36,4 +36,3 @@ export default function NewProductPage() {
     </div>
   );
 }
-

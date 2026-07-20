@@ -23,7 +23,10 @@ interface OrderItem {
   createdAt: string;
 }
 
-const ORDER_STATUS_MAP: Record<string, { label: string; color: "default" | "warning" | "success" | "danger" | "primary" }> = {
+const ORDER_STATUS_MAP: Record<
+  string,
+  { label: string; color: "default" | "warning" | "success" | "danger" | "primary" }
+> = {
   PENDING: { label: "待付款", color: "warning" },
   PAID: { label: "已支付", color: "primary" },
   PROCESSING: { label: "处理中", color: "primary" },
@@ -64,11 +67,14 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGet<{ orders: OrderItem[]; pagination: typeof _pagination }>("/api/admin/orders", {
-        page,
-        status,
-        search,
-      });
+      const data = await apiGet<{ orders: OrderItem[]; pagination: typeof _pagination }>(
+        "/api/admin/orders",
+        {
+          page,
+          status,
+          search,
+        }
+      );
       setOrders(data.orders);
       setPagination(data.pagination);
     } catch {
@@ -78,7 +84,9 @@ export default function AdminOrdersPage() {
     }
   }, [page, status, search]);
 
-  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const updateParams = (newParams: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -98,13 +106,13 @@ export default function AdminOrdersPage() {
           <p className="mt-1 text-sm text-gray-500">管理所有客户订单</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchOrders}>
-          <RefreshCw className="h-4 w-4 mr-1" /> 刷新
+          <RefreshCw className="mr-1 h-4 w-4" /> 刷新
         </Button>
       </div>
 
       {/* 筛选栏 */}
       <div className="flex flex-wrap gap-4 rounded-xl bg-white p-4 shadow-sm">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -124,7 +132,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* 订单列表 */}
-      <div className="rounded-xl bg-white shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
@@ -139,34 +147,51 @@ export default function AdminOrdersPage() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">加载中...</td></tr>
-            ) : orders.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">暂无订单</td></tr>
-            ) : orders.map((order) => (
-              <tr key={order.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs">{order.orderNo}</td>
-                <td className="px-4 py-3">{order.user.nickname || order.user.phone || "-"}</td>
-                <td className="px-4 py-3 truncate max-w-[150px]">{order.items[0]?.productName || "-"}</td>
-                <td className="px-4 py-3 text-pink-500 font-medium">¥{Number(order.payAmount).toFixed(2)}</td>
-                <td className="px-4 py-3">
-                  <Badge variant={ORDER_STATUS_MAP[order.status]?.color || "default"}>
-                    {ORDER_STATUS_MAP[order.status]?.label || order.status}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-gray-400">{new Date(order.createdAt).toLocaleDateString("zh-CN")}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <Link href={`/admin/orders/${order.id}`}>
-                      <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
-                    </Link>
-                  </div>
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  加载中...
                 </td>
               </tr>
-            ))}
+            ) : orders.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  暂无订单
+                </td>
+              </tr>
+            ) : (
+              orders.map((order) => (
+                <tr key={order.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-mono text-xs">{order.orderNo}</td>
+                  <td className="px-4 py-3">{order.user.nickname || order.user.phone || "-"}</td>
+                  <td className="max-w-[150px] truncate px-4 py-3">
+                    {order.items[0]?.productName || "-"}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-pink-500">
+                    ¥{Number(order.payAmount).toFixed(2)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={ORDER_STATUS_MAP[order.status]?.color || "default"}>
+                      {ORDER_STATUS_MAP[order.status]?.label || order.status}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-gray-400">
+                    {new Date(order.createdAt).toLocaleDateString("zh-CN")}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <Link href={`/admin/orders/${order.id}`}>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
     </div>
   );
 }
-

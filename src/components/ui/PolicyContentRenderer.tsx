@@ -32,7 +32,11 @@ interface ContentParagraphProps {
   showHighlights?: boolean;
 }
 
-export function ContentParagraph({ text, isFirst = false, showHighlights = false }: ContentParagraphProps) {
+export function ContentParagraph({
+  text,
+  isFirst = false,
+  showHighlights = false,
+}: ContentParagraphProps) {
   const lines = text.split(/\r?\n/);
 
   return (
@@ -51,7 +55,7 @@ export function ContentParagraph({ text, isFirst = false, showHighlights = false
           return (
             <div
               key={trimmed.substring(0, 32)}
-              className="text-sm bg-zinc-50 p-4 rounded-lg border border-zinc-100 text-zinc-600 leading-7"
+              className="rounded-lg border border-zinc-100 bg-zinc-50 p-4 text-sm leading-7 text-zinc-600"
             >
               <strong className="font-bold text-zinc-900">重要提示：</strong>
               <span>{trimmed.replace("【重要提示】", "")}</span>
@@ -64,7 +68,7 @@ export function ContentParagraph({ text, isFirst = false, showHighlights = false
           return (
             <h4
               key={trimmed.substring(0, 32)}
-              className="text-lg font-medium text-zinc-800 mt-8 mb-0 font-sans"
+              className="mb-0 mt-8 font-sans text-lg font-medium text-zinc-800"
             >
               {formatText(trimmed)}
             </h4>
@@ -76,7 +80,7 @@ export function ContentParagraph({ text, isFirst = false, showHighlights = false
           return (
             <h3
               key={trimmed.substring(0, 32)}
-              className="text-xl font-medium text-zinc-900 mt-10 mb-2 font-sans tracking-wide"
+              className="mb-2 mt-10 font-sans text-xl font-medium tracking-wide text-zinc-900"
             >
               {formatText(trimmed)}
             </h3>
@@ -88,7 +92,7 @@ export function ContentParagraph({ text, isFirst = false, showHighlights = false
           return (
             <h4
               key={trimmed.substring(0, 32)}
-              className="text-lg font-medium text-zinc-800 mt-8 mb-0 font-sans"
+              className="mb-0 mt-8 font-sans text-lg font-medium text-zinc-800"
             >
               {formatText(trimmed)}
             </h4>
@@ -102,10 +106,7 @@ export function ContentParagraph({ text, isFirst = false, showHighlights = false
           /^\-[\s]/.test(trimmed)
         ) {
           return (
-            <p
-              key={trimmed.substring(0, 32)}
-              className="text-sm leading-7 text-zinc-600"
-            >
+            <p key={trimmed.substring(0, 32)} className="text-sm leading-7 text-zinc-600">
               {formatText(trimmed)}
             </p>
           );
@@ -113,10 +114,7 @@ export function ContentParagraph({ text, isFirst = false, showHighlights = false
 
         // 普通段落
         return (
-          <p
-            key={trimmed.substring(0, 32)}
-            className="text-base text-zinc-600 leading-8"
-          >
+          <p key={trimmed.substring(0, 32)} className="text-base leading-8 text-zinc-600">
             {formatText(trimmed)}
           </p>
         );

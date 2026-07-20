@@ -12,8 +12,8 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         brand: {
-          gold: "#00263E",
-          "gold-dark": "#001525",
+          primary: "#00263E",
+          "primary-dark": "#001525",
           cream: "#FBF8F0",
           charcoal: "#00263E",
           "charcoal-light": "#4A6272",
@@ -22,12 +22,7 @@ const config: Config = {
       },
       fontFamily: {
         serif: ["PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
-        sans: [
-          "PingFang SC",
-          "Source Han Sans",
-          "Microsoft YaHei",
-          "sans-serif",
-        ],
+        sans: ["PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
         playfair: ["var(--font-playfair)", "serif"],
         songti: [
           "SimSun",
@@ -50,10 +45,10 @@ const config: Config = {
         "fade-in": "fadeIn 0.5s ease-out",
         "slide-up": "slideUp 0.5s ease-out",
         "scale-in": "scaleIn 0.3s ease-out",
-        "shimmer": "shimmer 2s infinite",
+        shimmer: "shimmer 2s infinite",
         "pulse-soft": "pulseSoft 2s ease-in-out infinite",
-        "float": "float 3s ease-in-out infinite",
-        "marquee": "marquee 40s linear infinite",
+        float: "float 3s ease-in-out infinite",
+        marquee: "marquee 40s linear infinite",
         "orbit-spin-slow": "orbitSpin 24s linear infinite",
         "orbit-spin-slower": "orbitSpin 36s linear infinite reverse",
       },
@@ -92,7 +87,7 @@ const config: Config = {
         },
       },
       transitionTimingFunction: {
-        "luxury": "cubic-bezier(0.4, 0, 0.2, 1)",
+        luxury: "cubic-bezier(0.4, 0, 0.2, 1)",
         "bounce-soft": "cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
     },

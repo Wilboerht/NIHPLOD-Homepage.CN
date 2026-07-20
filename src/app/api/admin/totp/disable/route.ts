@@ -23,7 +23,10 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     const result = disableSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message },
+        },
         { status: 400 }
       );
     }

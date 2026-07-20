@@ -99,11 +99,14 @@ export default function AuditLogsPage() {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGet<{ items: AuditLogItem[]; pagination: typeof pagination }>("/api/admin/audit-logs", {
-        page,
-        action: action || undefined,
-        targetType: targetType || undefined,
-      });
+      const data = await apiGet<{ items: AuditLogItem[]; pagination: typeof pagination }>(
+        "/api/admin/audit-logs",
+        {
+          page,
+          action: action || undefined,
+          targetType: targetType || undefined,
+        }
+      );
       setLogs(data.items);
       setPagination(data.pagination);
     } catch {
@@ -144,7 +147,7 @@ export default function AuditLogsPage() {
           <p className="mt-1 text-sm text-gray-500">记录管理端关键操作，便于追溯和合规审计</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchLogs}>
-          <RefreshCw className="h-4 w-4 mr-1" /> 刷新
+          <RefreshCw className="mr-1 h-4 w-4" /> 刷新
         </Button>
       </div>
 
@@ -177,7 +180,7 @@ export default function AuditLogsPage() {
       </div>
 
       {/* 日志列表 */}
-      <div className="rounded-xl bg-white shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
@@ -207,10 +210,10 @@ export default function AuditLogsPage() {
               logs.map((log) => (
                 <tr
                   key={log.id}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="cursor-pointer hover:bg-gray-50"
                   onClick={() => openDetail(log)}
                 >
-                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-4 py-3 text-gray-400">
                     {formatDate(log.createdAt)}
                   </td>
                   <td className="px-4 py-3">
@@ -240,7 +243,14 @@ export default function AuditLogsPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-400">{log.ipAddress || "-"}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openDetail(log); }}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDetail(log);
+                      }}
+                    >
                       <Eye className="h-4 w-4" />
                     </Button>
                   </td>
@@ -258,7 +268,7 @@ export default function AuditLogsPage() {
             <button
               key={i + 1}
               onClick={() => updateParams({ page: String(i + 1) })}
-              className={`px-3 py-1 rounded ${
+              className={`rounded px-3 py-1 ${
                 page === i + 1 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
               }`}
             >
@@ -269,12 +279,7 @@ export default function AuditLogsPage() {
       )}
 
       {/* 详情模态框 */}
-      <Modal
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        title="审计日志详情"
-        size="lg"
-      >
+      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title="审计日志详情" size="lg">
         {selectedLog ? (
           <div className="space-y-5">
             {/* 操作摘要 */}
@@ -289,41 +294,45 @@ export default function AuditLogsPage() {
               <span className="text-sm text-gray-500">
                 {TARGET_TYPE_LABELS[selectedLog.targetType] || selectedLog.targetType}
                 {selectedLog.targetId && (
-                  <span className="ml-1 font-mono text-xs text-gray-400">({selectedLog.targetId})</span>
+                  <span className="ml-1 font-mono text-xs text-gray-400">
+                    ({selectedLog.targetId})
+                  </span>
                 )}
               </span>
             </div>
 
             {/* 基本信息 */}
-            <div className="grid gap-3 md:grid-cols-2 text-sm">
+            <div className="grid gap-3 text-sm md:grid-cols-2">
               <div className="rounded-lg bg-gray-50 p-3">
-                <dt className="text-gray-500 mb-1">操作人</dt>
+                <dt className="mb-1 text-gray-500">操作人</dt>
                 <dd className="font-medium">
-                  {selectedLog.admin ? `${selectedLog.admin.name} (${selectedLog.admin.email})` : "-"}
+                  {selectedLog.admin
+                    ? `${selectedLog.admin.name} (${selectedLog.admin.email})`
+                    : "-"}
                 </dd>
               </div>
               <div className="rounded-lg bg-gray-50 p-3">
-                <dt className="text-gray-500 mb-1">操作时间</dt>
+                <dt className="mb-1 text-gray-500">操作时间</dt>
                 <dd className="font-medium">{formatDate(selectedLog.createdAt)}</dd>
               </div>
               <div className="rounded-lg bg-gray-50 p-3">
-                <dt className="text-gray-500 mb-1">IP 地址</dt>
-                <dd className="font-medium font-mono">{selectedLog.ipAddress || "-"}</dd>
+                <dt className="mb-1 text-gray-500">IP 地址</dt>
+                <dd className="font-mono font-medium">{selectedLog.ipAddress || "-"}</dd>
               </div>
               <div className="rounded-lg bg-gray-50 p-3">
-                <dt className="text-gray-500 mb-1">User-Agent</dt>
-                <dd className="font-medium text-xs break-all">{selectedLog.userAgent || "-"}</dd>
+                <dt className="mb-1 text-gray-500">User-Agent</dt>
+                <dd className="break-all text-xs font-medium">{selectedLog.userAgent || "-"}</dd>
               </div>
             </div>
 
             {/* JSON 详情 */}
             {selectedLog.detail ? (
               <div>
-                <h4 className="mb-2 text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                <h4 className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-900">
                   <FileJson className="h-4 w-4" />
                   操作详情
                 </h4>
-                <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-4 overflow-auto max-h-80 border border-gray-100">
+                <pre className="max-h-80 overflow-auto rounded-lg border border-gray-100 bg-gray-50 p-4 text-xs text-gray-600">
                   {JSON.stringify(selectedLog.detail, null, 2)}
                 </pre>
               </div>

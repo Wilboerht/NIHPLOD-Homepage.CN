@@ -34,7 +34,8 @@ export function CouponsPanel() {
   const fetchCoupons = async (status?: string) => {
     setLoading(true);
     try {
-      const url = status && status !== "all" ? `/api/user/coupons?status=${status}` : "/api/user/coupons";
+      const url =
+        status && status !== "all" ? `/api/user/coupons?status=${status}` : "/api/user/coupons";
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
@@ -56,7 +57,7 @@ export function CouponsPanel() {
     if (uc.displayStatus === "USED") {
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-          <CheckCircle className="w-3 h-3" />
+          <CheckCircle className="h-3 w-3" />
           已使用
         </span>
       );
@@ -64,14 +65,14 @@ export function CouponsPanel() {
     if (uc.displayStatus === "EXPIRED" || uc.isExpired) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">
-          <XCircle className="w-3 h-3" />
+          <XCircle className="h-3 w-3" />
           已过期
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-        <Clock className="w-3 h-3" />
+        <Clock className="h-3 w-3" />
         未使用
       </span>
     );
@@ -86,23 +87,25 @@ export function CouponsPanel() {
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6 md:px-10 md:py-8">
-      <div className="flex items-center gap-3 mb-6">
-        <Ticket className="w-5 h-5 text-[#A69374]" strokeWidth={1.5} />
+      <div className="mb-6 flex items-center gap-3">
+        <Ticket className="h-5 w-5 text-[#A69374]" strokeWidth={1.5} />
         <h2 className="text-lg font-medium text-[#00263E]">我的优惠券</h2>
       </div>
 
       {/* 筛选 */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-        {([
-          { key: "all", label: "全部" },
-          { key: "UNUSED", label: "未使用" },
-          { key: "USED", label: "已使用" },
-          { key: "EXPIRED", label: "已过期" },
-        ] as { key: FilterStatus; label: string }[]).map((f) => (
+      <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
+        {(
+          [
+            { key: "all", label: "全部" },
+            { key: "UNUSED", label: "未使用" },
+            { key: "USED", label: "已使用" },
+            { key: "EXPIRED", label: "已过期" },
+          ] as { key: FilterStatus; label: string }[]
+        ).map((f) => (
           <button
             key={f.key}
             onClick={() => handleFilterChange(f.key)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               filter === f.key
                 ? "bg-[#A69374] text-white"
                 : "bg-[#FBF8F0] text-[#4A6272] hover:bg-[#FBF8F0]"
@@ -115,11 +118,11 @@ export function CouponsPanel() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 text-[#A69374] animate-spin" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#A69374]" />
         </div>
       ) : coupons.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-[#4A6272]">
-          <Ticket className="w-10 h-10 mb-3 opacity-30" strokeWidth={1.5} />
+          <Ticket className="mb-3 h-10 w-10 opacity-30" strokeWidth={1.5} />
           <p className="text-sm">暂无优惠券</p>
         </div>
       ) : (
@@ -129,25 +132,23 @@ export function CouponsPanel() {
               key={uc.id}
               className={`relative rounded-xl border p-4 transition-all ${
                 uc.displayStatus === "EXPIRED" || uc.isExpired
-                  ? "bg-gray-50/50 border-gray-200 opacity-70"
+                  ? "border-gray-200 bg-gray-50/50 opacity-70"
                   : uc.displayStatus === "USED"
-                  ? "bg-green-50/30 border-green-100"
-                  : "bg-white border-[#E8E3DC] hover:border-[#A69374]/40"
+                    ? "border-green-100 bg-green-50/30"
+                    : "border-[#E8E3DC] bg-white hover:border-[#A69374]/40"
               }`}
             >
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-[#00263E] truncate">
-                      {uc.coupon.name}
-                    </span>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="truncate font-medium text-[#00263E]">{uc.coupon.name}</span>
                     {uc.coupon.code && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FBF8F0] text-[#4A6272] font-mono">
+                      <span className="rounded bg-[#FBF8F0] px-1.5 py-0.5 font-mono text-[10px] text-[#4A6272]">
                         {uc.coupon.code}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-baseline gap-2 mb-2">
+                  <div className="mb-2 flex items-baseline gap-2">
                     <span className="text-xl font-bold text-[#A69374]">
                       {getCouponValueText(uc)}
                     </span>
@@ -163,9 +164,7 @@ export function CouponsPanel() {
                       : `有效期至：${new Date(uc.expiresAt).toLocaleDateString("zh-CN")}`}
                   </div>
                 </div>
-                <div className="shrink-0 ml-3">
-                  {getStatusBadge(uc)}
-                </div>
+                <div className="ml-3 shrink-0">{getStatusBadge(uc)}</div>
               </div>
             </div>
           ))}

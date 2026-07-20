@@ -122,8 +122,7 @@ const getCachedStats = unstable_cache(
   { revalidate: 300, tags: ["admin-stats"] }
 );
 
-const maskPhone = (phone: string) =>
-  phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
+const maskPhone = (phone: string) => phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
 
 /**
  * 获取管理员仪表盘统计数据

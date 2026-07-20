@@ -28,5 +28,3 @@ export function formatPrice(price: number): string {
 export function isCurrentPage(pathname: string, href: string): boolean {
   return href === pathname || (href !== "/" && pathname.startsWith(href));
 }
-
-

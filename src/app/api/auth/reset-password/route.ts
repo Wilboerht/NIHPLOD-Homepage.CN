@@ -35,10 +35,16 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   // IP 速率限制：必须在 CSRF 检查之前，防止攻击者通过不带 CSRF token 的请求绕过限流
   const ip = getClientIP(request);
-  const ipLimit = await rateLimit(ip, "reset-password", { maxRequests: 5, windowMs: 15 * 60 * 1000 });
+  const ipLimit = await rateLimit(ip, "reset-password", {
+    maxRequests: 5,
+    windowMs: 15 * 60 * 1000,
+  });
   if (!ipLimit.success) {
     return NextResponse.json(
-      { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请 15 分钟后再试" } },
+      {
+        success: false,
+        error: { code: "RATE_LIMITED", message: "请求过于频繁，请 15 分钟后再试" },
+      },
       { status: 429 }
     );
   }

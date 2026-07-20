@@ -24,7 +24,8 @@ const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
 ];
 
 export function UserCenterModal() {
-  const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } = useAuth();
+  const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } =
+    useAuth();
   const [mounted, setMounted] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -42,8 +43,8 @@ export function UserCenterModal() {
         setShowMobileDetail(false);
       }
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // 禁止背景滚动
@@ -150,76 +151,81 @@ export function UserCenterModal() {
             aria-modal="true"
             aria-label="用户中心"
             tabIndex={-1}
-            className="relative z-10 w-full max-w-[95%] md:max-w-[1100px] md:h-[680px] flex items-center justify-center transition-all duration-300"
+            className="relative z-10 flex w-full max-w-[95%] items-center justify-center transition-all duration-300 md:h-[680px] md:max-w-[1100px]"
           >
-            <div className="relative w-full h-[85vh] md:h-full overflow-hidden rounded-[2.5rem] shadow-none md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex items-stretch p-0">
+            <div className="relative flex h-[85vh] w-full items-stretch overflow-hidden rounded-[2.5rem] p-0 shadow-none md:h-full md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
               {/* 底层基础色 */}
               <div className="absolute inset-0 z-0 bg-[#FBF8F0]" />
 
               {/* 背景动态装饰层 (位于模糊层之下) */}
-              <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
+              <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
                 <m.div
                   animate={{
                     x: ["-30%", "40%", "10%", "-30%"],
                     y: ["-30%", "20%", "40%", "-30%"],
                     rotate: [0, 180, 360],
-                    scale: [1, 1.4, 1.2, 1]
+                    scale: [1, 1.4, 1.2, 1],
                   }}
-                  transition={{ 
-                    duration: 25, 
-                    repeat: Infinity, 
-                    ease: "linear" 
+                  transition={{
+                    duration: 25,
+                    repeat: Infinity,
+                    ease: "linear",
                   }}
-                  className="absolute w-[120%] h-[120%] bg-brand-gold/10 blur-[150px] rounded-full"
+                  className="absolute h-[120%] w-[120%] rounded-full bg-brand-primary/10 blur-[150px]"
                 />
                 <m.div
                   animate={{
                     x: ["40%", "-20%", "30%", "40%"],
                     y: ["40%", "10%", "-30%", "40%"],
                     rotate: [0, -180, -360],
-                    scale: [1, 1.3, 1.1, 1]
+                    scale: [1, 1.3, 1.1, 1],
                   }}
-                  transition={{ 
-                    duration: 35, 
-                    repeat: Infinity, 
-                    ease: "linear" 
+                  transition={{
+                    duration: 35,
+                    repeat: Infinity,
+                    ease: "linear",
                   }}
-                  className="absolute w-[110%] h-[110%] bg-stone-400/15 blur-[130px] rounded-full"
+                  className="absolute h-[110%] w-[110%] rounded-full bg-stone-400/15 blur-[130px]"
                 />
               </div>
 
               {/* 模糊与纹理盖层 (在此之下的内容会被模糊) */}
-              <div className="absolute inset-0 z-20 backdrop-blur-[40px] bg-white/5" />
-              <div className="absolute inset-0 z-20 bg-[url('/textures/mineral-grain.png')] opacity-[0.05] mix-blend-overlay pointer-events-none" />
+              <div className="absolute inset-0 z-20 bg-white/5 backdrop-blur-[40px]" />
+              <div className="pointer-events-none absolute inset-0 z-20 bg-[url('/textures/mineral-grain.png')] opacity-[0.05] mix-blend-overlay" />
 
               {/* 内容区域容器 (最上层) */}
-              <div className="relative z-30 w-full flex flex-col md:flex-row items-stretch">
+              <div className="relative z-30 flex w-full flex-col items-stretch md:flex-row">
                 {/* 仅在移动端详情页时不显示侧边栏 */}
-                <div className={`w-full md:w-72 shrink-0 flex flex-col transition-all duration-300 border-r border-stone-200/60 ${showMobileDetail ? 'hidden md:flex' : 'flex'
-                  }`}>
+                <div
+                  className={`flex w-full shrink-0 flex-col border-r border-stone-200/60 transition-all duration-300 md:w-72 ${
+                    showMobileDetail ? "hidden md:flex" : "flex"
+                  }`}
+                >
                   {/* 用户头像区域 */}
-                  <div className="px-16 pt-12 pb-4">
+                  <div className="px-16 pb-4 pt-12">
                     <div className="flex flex-col items-start gap-4 text-left">
-                      <div className="w-16 h-16 rounded-full bg-[#FBF8F0]/40 flex items-center justify-center overflow-hidden shrink-0 object-cover">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FBF8F0]/40 object-cover">
                         {user.avatar ? (
-                          <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                          <img
+                            src={user.avatar}
+                            alt="Avatar"
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
-                          <User className="w-6 h-6 text-stone-500" strokeWidth={1.5} />
+                          <User className="h-6 w-6 text-stone-500" strokeWidth={1.5} />
                         )}
                       </div>
                       <div className="flex flex-col justify-center">
-                        <p className="text-stone-800 text-[15px] font-medium truncate">
+                        <p className="truncate text-[15px] font-medium text-stone-800">
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
-                        <p className="text-stone-400 text-xs font-light mt-1">
-                          普通会员
-                        </p>
+                        <p className="mt-1 text-xs font-light text-stone-400">普通会员</p>
                       </div>
                     </div>
                   </div>
 
                   {/* 菜单列表 */}
-                  <nav className="flex-1 w-full space-y-1 overflow-y-auto scrollbar-hide py-2 flex flex-col justify-start items-start relative px-16">
+                  <nav className="scrollbar-hide relative flex w-full flex-1 flex-col items-start justify-start space-y-1 overflow-y-auto px-16 py-2">
                     {MENU_ITEMS.map((item) => {
                       const Icon = item.icon;
                       const isActive = userCenterView === item.id;
@@ -232,22 +238,28 @@ export function UserCenterModal() {
                               setShowMobileDetail(true);
                             }
                           }}
-                          className={`relative w-full flex items-center justify-start gap-5 py-3.5 px-4 -mx-4 rounded-2xl transition-all group ${isActive
-                            ? "text-stone-800 font-medium"
-                            : "text-stone-400 font-light hover:text-stone-800 hover:bg-white/30"
-                            }`}
+                          className={`group relative -mx-4 flex w-full items-center justify-start gap-5 rounded-2xl px-4 py-3.5 transition-all ${
+                            isActive
+                              ? "font-medium text-stone-800"
+                              : "font-light text-stone-400 hover:bg-white/30 hover:text-stone-800"
+                          }`}
                         >
                           {isActive && (
-                            <div className="absolute inset-y-0 left-0 hidden md:flex items-center pointer-events-none">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 hidden items-center md:flex">
                               <m.div
                                 layoutId="activeSideMenu"
-                                className="w-[2px] h-[18px] bg-stone-800 rounded-full"
+                                className="h-[18px] w-[2px] rounded-full bg-stone-800"
                                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                               />
                             </div>
                           )}
-                          <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? 'md:text-stone-800 text-stone-800' : 'md:text-stone-400 text-stone-800 group-hover:text-stone-800'}`} strokeWidth={1.5} />
-                          <span className={`text-[13px] transition-colors ${isActive ? 'md:text-stone-800 md:font-medium text-stone-800 font-light' : 'md:text-stone-400 text-stone-800 font-light group-hover:text-stone-800'}`}>
+                          <Icon
+                            className={`h-[18px] w-[18px] shrink-0 transition-colors ${isActive ? "text-stone-800 md:text-stone-800" : "text-stone-800 group-hover:text-stone-800 md:text-stone-400"}`}
+                            strokeWidth={1.5}
+                          />
+                          <span
+                            className={`text-[13px] transition-colors ${isActive ? "font-light text-stone-800 md:font-medium md:text-stone-800" : "font-light text-stone-800 group-hover:text-stone-800 md:text-stone-400"}`}
+                          >
                             {item.label}
                           </span>
                         </button>
@@ -258,37 +270,39 @@ export function UserCenterModal() {
                   <div className="mt-auto px-12 py-8">
                     <button
                       onClick={handleLogout}
-                      className="group w-full flex items-center justify-start gap-5 py-3.5 px-4 -mx-4 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-white/40 transition-all"
+                      className="group -mx-4 flex w-full items-center justify-start gap-5 rounded-2xl px-4 py-3.5 text-stone-600 transition-all hover:bg-white/40 hover:text-stone-900"
                     >
-                      <LogOut className="w-[18px] h-[18px] transition-colors" strokeWidth={1.5} />
+                      <LogOut className="h-[18px] w-[18px] transition-colors" strokeWidth={1.5} />
                       <span className="text-[13px] font-medium tracking-wide">退出登录</span>
                     </button>
                   </div>
                 </div>
 
-                  {/* 内容卡片 - 仅在移动端有详情时显示，PC 端始终显示 */}
-                <div className={`flex-1 relative transition-all duration-300 ${showMobileDetail ? 'flex' : 'hidden md:flex'
-                  }`}>
-
+                {/* 内容卡片 - 仅在移动端有详情时显示，PC 端始终显示 */}
+                <div
+                  className={`relative flex-1 transition-all duration-300 ${
+                    showMobileDetail ? "flex" : "hidden md:flex"
+                  }`}
+                >
                   {/* 移动端统一 Header (重工业级网格强对称) */}
-                  <div className="absolute top-0 left-0 right-0 z-50 h-14 md:hidden grid grid-cols-[3.5rem_1fr_3.5rem] items-center bg-[#FBF8F0]/80 backdrop-blur-md border-b border-stone-200/40">
+                  <div className="absolute left-0 right-0 top-0 z-50 grid h-14 grid-cols-[3.5rem_1fr_3.5rem] items-center border-b border-stone-200/40 bg-[#FBF8F0]/80 backdrop-blur-md md:hidden">
                     <div className="flex h-full w-full items-center justify-center">
                       <button
                         onClick={() => setShowMobileDetail(false)}
-                        className="flex h-10 w-10 items-center justify-center text-stone-500 hover:text-stone-800 transition-colors"
+                        className="flex h-10 w-10 items-center justify-center text-stone-500 transition-colors hover:text-stone-800"
                       >
                         <ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
                       </button>
                     </div>
-                    
-                    <h2 className="text-[15px] font-medium text-stone-800 tracking-wide text-center truncate">
-                      {MENU_ITEMS.find(i => i.id === userCenterView)?.label || "个人动态"}
+
+                    <h2 className="truncate text-center text-[15px] font-medium tracking-wide text-stone-800">
+                      {MENU_ITEMS.find((i) => i.id === userCenterView)?.label || "个人动态"}
                     </h2>
 
                     <div className="flex h-full w-full items-center justify-center">
                       <button
                         onClick={closeUserCenter}
-                        className="flex h-10 w-10 items-center justify-center text-stone-500 hover:text-stone-800 transition-colors"
+                        className="flex h-10 w-10 items-center justify-center text-stone-500 transition-colors hover:text-stone-800"
                       >
                         <X className="h-5 w-5" strokeWidth={1.5} />
                       </button>
@@ -299,7 +313,7 @@ export function UserCenterModal() {
                   <button
                     onClick={closeUserCenter}
                     aria-label="关闭用户中心"
-                    className="absolute right-10 top-10 z-50 hidden md:flex h-9 w-9 items-center justify-center text-stone-400 hover:text-stone-800 transition-colors"
+                    className="absolute right-10 top-10 z-50 hidden h-9 w-9 items-center justify-center text-stone-400 transition-colors hover:text-stone-800 md:flex"
                   >
                     <X className="h-5 w-5" strokeWidth={1} />
                   </button>
@@ -322,10 +336,13 @@ export function UserCenterModal() {
 // 内容面板路由
 function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
-    case "orders": return <OrdersPanel />;
-    case "addresses": return <AddressesPanel />;
-    case "coupons": return <CouponsPanel />;
-    default: return <ProfilePanel />;
+    case "orders":
+      return <OrdersPanel />;
+    case "addresses":
+      return <AddressesPanel />;
+    case "coupons":
+      return <CouponsPanel />;
+    default:
+      return <ProfilePanel />;
   }
 }
-

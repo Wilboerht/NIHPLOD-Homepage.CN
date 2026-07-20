@@ -101,11 +101,7 @@ export function OrbitalIcons({ className, children }: OrbitalIconsProps) {
   return (
     <div className={cn("relative flex items-center justify-center", className)}>
       {/* 中心内容（登录卡片） */}
-      {children && (
-        <div className="relative z-10">
-          {children}
-        </div>
-      )}
+      {children && <div className="relative z-10">{children}</div>}
 
       {/* 轨道环 */}
       {rings.map((ring, i) => (

@@ -58,10 +58,7 @@ function maskIdentifier(identifier?: string): string | undefined {
 /**
  * 记录认证事件
  */
-export function logAuthEvent(
-  event: AuthEventType,
-  context: AuthLogContext
-): void {
+export function logAuthEvent(event: AuthEventType, context: AuthLogContext): void {
   const { identifier, success, ip, ua, reason, ...rest } = context;
 
   const logPayload: Record<string, unknown> = {

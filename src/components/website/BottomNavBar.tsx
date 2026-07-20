@@ -51,13 +51,17 @@ function DesktopStoryNav({ pathname }: { pathname: string }) {
         <Icon
           className={cn(
             "h-6 w-6 transition-all duration-300 group-hover:scale-105",
-            isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
+            isActive
+              ? "text-brand-primary"
+              : "text-brand-charcoal-light group-hover:text-brand-primary"
           )}
         />
         <span
           className={cn(
             "text-[15px] font-medium tracking-wide transition-colors duration-300",
-            isActive ? "text-brand-charcoal" : "text-brand-charcoal/60 group-hover:text-brand-charcoal"
+            isActive
+              ? "text-brand-charcoal"
+              : "text-brand-charcoal/60 group-hover:text-brand-charcoal"
           )}
         >
           {storyNavItem.label}
@@ -77,13 +81,8 @@ function DesktopStoryNav({ pathname }: { pathname: string }) {
 export function BottomNavBar() {
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
-  const {
-    isDrawerOpen,
-    setDrawerOpen,
-    isNavMenuOpen,
-    setNavMenuOpen,
-    isDrawerAnimating,
-  } = useLayout();
+  const { isDrawerOpen, setDrawerOpen, isNavMenuOpen, setNavMenuOpen, isDrawerAnimating } =
+    useLayout();
   const { activeModal, userCenterOpen } = useAuth();
 
   const currentPage = useMemo(
@@ -192,7 +191,7 @@ export function BottomNavBar() {
                           className="group flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.97] active:bg-brand-charcoal/[0.05]"
                         >
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/40 transition-colors group-hover:bg-white/60">
-                            <Icon className="h-5 w-5 text-brand-gold" />
+                            <Icon className="h-5 w-5 text-brand-primary" />
                           </div>
                           <div className="flex flex-col">
                             <span
@@ -240,11 +239,11 @@ export function BottomNavBar() {
                 {isPrimaryActive && (
                   <span
                     aria-hidden="true"
-                    className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-brand-gold"
+                    className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-brand-primary"
                   />
                 )}
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40">
-                  <PrimaryIcon className="h-6 w-6 text-brand-gold" />
+                  <PrimaryIcon className="h-6 w-6 text-brand-primary" />
                 </div>
                 <div className="flex flex-col">
                   <span
@@ -281,7 +280,7 @@ export function BottomNavBar() {
                       exit={{ opacity: 0, rotate: 90 }}
                       transition={iconTransition}
                     >
-                      <X className="h-5 w-5 text-brand-gold" />
+                      <X className="h-5 w-5 text-brand-primary" />
                     </m.div>
                   ) : (
                     <m.div
@@ -291,14 +290,17 @@ export function BottomNavBar() {
                       exit={{ opacity: 0, rotate: -90 }}
                       transition={iconTransition}
                     >
-                      <Menu className="h-5 w-5 text-brand-gold" />
+                      <Menu className="h-5 w-5 text-brand-primary" />
                     </m.div>
                   )}
                 </AnimatePresence>
               </button>
 
               {/* 桌面端右侧固定导航列表 */}
-              <div data-testid="desktop-nav-list" className="hidden items-center gap-1 lg:flex xl:gap-2">
+              <div
+                data-testid="desktop-nav-list"
+                className="hidden items-center gap-1 lg:flex xl:gap-2"
+              >
                 {allNavItems
                   .filter((item) => item.href !== "/about")
                   .map((item) => {
@@ -325,7 +327,9 @@ export function BottomNavBar() {
                           <Icon
                             className={cn(
                               "h-6 w-6 transition-all duration-300 ease-out group-hover:scale-105",
-                              isActive ? "text-brand-gold" : "text-brand-charcoal-light group-hover:text-brand-gold"
+                              isActive
+                                ? "text-brand-primary"
+                                : "text-brand-charcoal-light group-hover:text-brand-primary"
                             )}
                           />
                           <span>{item.label}</span>

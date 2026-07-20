@@ -31,13 +31,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
+      "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
 
     const variantStyles = {
-      primary: "bg-brand-gold text-white hover:bg-brand-gold/90",
+      primary: "bg-brand-primary text-white hover:bg-brand-primary/90",
       secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200",
-      outline:
-        "border border-gray-300 text-gray-700 bg-white hover:bg-gray-50",
+      outline: "border border-gray-300 text-gray-700 bg-white hover:bg-gray-50",
       ghost: "text-gray-700 hover:bg-gray-100",
       danger: "bg-red-600 text-white hover:bg-red-700",
     };

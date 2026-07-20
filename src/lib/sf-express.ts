@@ -26,7 +26,9 @@ function getConfig(): SFConfig | null {
  * verifyCode = Base64(MD5(xml + checkWord))
  */
 function generateVerifyCode(xmlBody: string, checkWord: string): string {
-  const md5Hash = createHash("md5").update(xmlBody + checkWord).digest();
+  const md5Hash = createHash("md5")
+    .update(xmlBody + checkWord)
+    .digest();
   return Buffer.from(md5Hash).toString("base64");
 }
 

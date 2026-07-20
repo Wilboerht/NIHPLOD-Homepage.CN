@@ -136,7 +136,9 @@ export async function applyRefund(
       data: {
         status: OrderStatus.REFUNDING,
         previousStatus: order.status, // 记录退款前状态
-        remark: order.remark ? `${order.remark}\n[退款申请] ${safeReason}` : `[退款申请] ${safeReason}`,
+        remark: order.remark
+          ? `${order.remark}\n[退款申请] ${safeReason}`
+          : `[退款申请] ${safeReason}`,
       },
     });
 
@@ -177,9 +179,10 @@ export async function processRefund(
 
     if (approved) {
       // 优先使用用户申请的部分退款金额，若未申请则全额退款
-      const refundAmount = order.refundAmount != null
-        ? Math.min(Number(order.refundAmount), Number(order.payAmount))
-        : Number(order.payAmount);
+      const refundAmount =
+        order.refundAmount != null
+          ? Math.min(Number(order.refundAmount), Number(order.payAmount))
+          : Number(order.payAmount);
       let refundNo: string | null = null;
       let refundInfo = "";
 

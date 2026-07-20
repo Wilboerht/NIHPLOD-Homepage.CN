@@ -17,12 +17,12 @@ const addCartSchema = z.object({
 
 // 获取购物车
 // 强制动态渲染，禁止静态预渲染
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);
-    
+
     if (!payload) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const payload = await verifyUserAuth(request);
-    
+
     if (!payload) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
@@ -102,11 +102,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    
+
     const result = addCartSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: result.error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }
@@ -128,7 +131,10 @@ export async function POST(request: NextRequest) {
     // 检查是否允许站内购买
     if (!product.allowDirectBuy) {
       return NextResponse.json(
-        { success: false, error: { code: "DIRECT_BUY_NOT_ALLOWED", message: "该商品不支持站内购买" } },
+        {
+          success: false,
+          error: { code: "DIRECT_BUY_NOT_ALLOWED", message: "该商品不支持站内购买" },
+        },
         { status: 400 }
       );
     }
@@ -175,7 +181,10 @@ export async function POST(request: NextRequest) {
         }
         if (txError.message === "DIRECT_BUY_NOT_ALLOWED") {
           return NextResponse.json(
-            { success: false, error: { code: "DIRECT_BUY_NOT_ALLOWED", message: "该商品不支持站内购买" } },
+            {
+              success: false,
+              error: { code: "DIRECT_BUY_NOT_ALLOWED", message: "该商品不支持站内购买" },
+            },
             { status: 400 }
           );
         }
@@ -201,4 +210,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

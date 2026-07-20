@@ -18,7 +18,8 @@ import { randomInt } from "./random";
  * 使用 phone + code + type 组合，增加彩虹表攻击难度
  */
 export function hashVerifyCode(phone: string, code: string, type: string): string {
-  return crypto.createHmac("sha256", process.env.JWT_SECRET || "default-secret")
+  return crypto
+    .createHmac("sha256", process.env.JWT_SECRET || "default-secret")
     .update(`${phone}:${code}:${type}`)
     .digest("hex");
 }
@@ -176,7 +177,7 @@ function generateAliyunSignature(params: Record<string, string>, secret: string)
 
   // 2. 构建规范化查询字符串
   const canonicalizedQueryString = sortedKeys
-    .map(key => `${percentEncode(key)}=${percentEncode(params[key])}`)
+    .map((key) => `${percentEncode(key)}=${percentEncode(params[key])}`)
     .join("&");
 
   // 3. 构建待签名字符串
@@ -192,10 +193,7 @@ function generateAliyunSignature(params: Record<string, string>, secret: string)
  * 特殊 URL 编码（阿里云要求）
  */
 function percentEncode(str: string): string {
-  return encodeURIComponent(str)
-    .replace(/\+/g, "%20")
-    .replace(/\*/g, "%2A")
-    .replace(/%7E/g, "~");
+  return encodeURIComponent(str).replace(/\+/g, "%20").replace(/\*/g, "%2A").replace(/%7E/g, "~");
 }
 
 /**
@@ -263,7 +261,7 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
       apiConsole.error("[Tencent SMS] 发送失败:", res.SendStatusSet?.[0]);
       return {
         success: false,
-        error: res.SendStatusSet?.[0]?.Message || "发送失败"
+        error: res.SendStatusSet?.[0]?.Message || "发送失败",
       };
     }
   } catch (error: unknown) {
@@ -320,4 +318,3 @@ export async function sendPasswordChangedNotification(phone: string): Promise<vo
 export function generateVerifyCode(): string {
   return randomInt(100000, 1000000).toString();
 }
-

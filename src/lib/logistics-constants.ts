@@ -5,7 +5,4 @@
 
 // 物流公司列表
 // 物流公司列表
-export const LOGISTICS_COMPANIES = [
-  { code: "SF", name: "顺丰速运" },
-];
-
+export const LOGISTICS_COMPANIES = [{ code: "SF", name: "顺丰速运" }];

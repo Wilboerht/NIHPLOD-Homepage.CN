@@ -145,10 +145,7 @@ export function verifyInternalApiSignature(
     const signatureBuf = Buffer.from(signature, "hex");
     const expectedBuf = Buffer.from(expected, "hex");
 
-    if (
-      signatureBuf.length !== expectedBuf.length ||
-      !timingSafeEqual(signatureBuf, expectedBuf)
-    ) {
+    if (signatureBuf.length !== expectedBuf.length || !timingSafeEqual(signatureBuf, expectedBuf)) {
       return null;
     }
   } catch {

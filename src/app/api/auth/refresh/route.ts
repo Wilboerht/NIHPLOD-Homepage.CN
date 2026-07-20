@@ -9,8 +9,18 @@
  * 不再接受请求 body 中的 refreshToken 参数。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyRefreshToken, signUserToken, signRefreshToken, getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
-import { atomicallyRotateRefreshToken, revokeRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import {
+  verifyRefreshToken,
+  signUserToken,
+  signRefreshToken,
+  getTokenExpiresAt,
+  getRefreshTokenExpiresAt,
+} from "@/lib/jwt";
+import {
+  atomicallyRotateRefreshToken,
+  revokeRefreshToken,
+  extractDeviceInfo,
+} from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import {
   USER_ACCESS_COOKIE_OPTIONS,
@@ -125,7 +135,11 @@ export async function POST(request: NextRequest) {
 
     if (!rotation.valid) {
       // Refresh Token 重用检测：JWT 签名有效但原子轮换失败
-      if (rotation.reason === "revoked" || rotation.reason === "missing" || rotation.reason === "concurrent_rotation") {
+      if (
+        rotation.reason === "revoked" ||
+        rotation.reason === "missing" ||
+        rotation.reason === "concurrent_rotation"
+      ) {
         logAuthEvent("refresh_token_reuse_detected", {
           userId: payload.id,
           identifier: payload.phone,

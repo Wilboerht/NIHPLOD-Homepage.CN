@@ -14,15 +14,15 @@ import { LRUCache } from "lru-cache";
 const TOKEN_BLACKLIST_TTL_MS = 15 * 60 * 1000; // 15 分钟
 
 const blacklistCache = new LRUCache<string, { reason: string; timestamp: number }>({
-    max: 10000,
-    ttl: TOKEN_BLACKLIST_TTL_MS,
+  max: 10000,
+  ttl: TOKEN_BLACKLIST_TTL_MS,
 });
 
 /**
  * 将用户加入 access token 黑名单（封禁/冻结时调用）
  */
 export function blacklistUserTokens(userId: string, reason: string): void {
-    blacklistCache.set(userId, { reason, timestamp: Date.now() });
+  blacklistCache.set(userId, { reason, timestamp: Date.now() });
 }
 
 /**
@@ -30,14 +30,14 @@ export function blacklistUserTokens(userId: string, reason: string): void {
  * @returns null 表示不在黑名单，否则返回封禁原因
  */
 export function isTokenBlacklisted(userId: string): { reason: string } | null {
-    const entry = blacklistCache.get(userId);
-    if (!entry) return null;
-    return { reason: entry.reason };
+  const entry = blacklistCache.get(userId);
+  if (!entry) return null;
+  return { reason: entry.reason };
 }
 
 /**
  * 从黑名单中移除用户（解封时调用）
  */
 export function removeFromBlacklist(userId: string): void {
-    blacklistCache.delete(userId);
+  blacklistCache.delete(userId);
 }

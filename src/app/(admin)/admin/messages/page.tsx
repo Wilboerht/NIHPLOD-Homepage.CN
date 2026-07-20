@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import {
-  Search,
-  Mail,
-  MailOpen,
-  Trash2,
-  Clock,
-} from "lucide-react";
+import { Search, Mail, MailOpen, Trash2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
@@ -61,7 +55,11 @@ export default function AdminMessagesPage() {
   const fetchMessages = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGet<{ items: Message[]; pagination: { total: number }; unreadCount: number }>("/api/admin/messages", {
+      const data = await apiGet<{
+        items: Message[];
+        pagination: { total: number };
+        unreadCount: number;
+      }>("/api/admin/messages", {
         page,
         pageSize: 20,
         search,
@@ -95,9 +93,7 @@ export default function AdminMessagesPage() {
 
     try {
       await apiPatch(`/api/admin/messages/${message.id}`, { read: true });
-      setDetailMessage((prev) =>
-        prev && prev.id === message.id ? { ...prev, read: true } : prev
-      );
+      setDetailMessage((prev) => (prev && prev.id === message.id ? { ...prev, read: true } : prev));
       fetchMessages();
     } catch {
       showError("标记失败");
@@ -192,9 +188,7 @@ export default function AdminMessagesPage() {
           <p className="mt-1 text-sm text-gray-500">
             共 {total} 条留言
             {unreadCount > 0 && (
-              <span className="ml-2 text-brand-gold">
-                ({unreadCount} 条未读)
-              </span>
+              <span className="ml-2 text-brand-primary">({unreadCount} 条未读)</span>
             )}
           </p>
         </div>
@@ -210,7 +204,7 @@ export default function AdminMessagesPage() {
               placeholder="搜索留言..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-60 rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold"
+              className="h-9 w-60 rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
           <Select
@@ -231,18 +225,10 @@ export default function AdminMessagesPage() {
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">已选 {selectedIds.size} 项</span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBatchAction("read")}
-            >
+            <Button size="sm" variant="outline" onClick={() => handleBatchAction("read")}>
               标记已读
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBatchAction("unread")}
-            >
+            <Button size="sm" variant="outline" onClick={() => handleBatchAction("unread")}>
               标记未读
             </Button>
             <Button
@@ -261,7 +247,7 @@ export default function AdminMessagesPage() {
       <div className="rounded-xl bg-white shadow-sm">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center text-gray-400">
@@ -291,7 +277,7 @@ export default function AdminMessagesPage() {
                   key={message.id}
                   className={cn(
                     "flex items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50",
-                    !message.read && "bg-brand-gold/5"
+                    !message.read && "bg-brand-primary/5"
                   )}
                 >
                   {/* 选择框 */}
@@ -312,7 +298,7 @@ export default function AdminMessagesPage() {
 
                   {/* 留言内容 */}
                   <div
-                    className="flex-1 min-w-0 cursor-pointer"
+                    className="min-w-0 flex-1 cursor-pointer"
                     onClick={() => viewDetail(message)}
                   >
                     <div className="flex items-center gap-3">
@@ -321,12 +307,12 @@ export default function AdminMessagesPage() {
                           "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium",
                           message.read
                             ? "bg-gray-100 text-gray-600"
-                            : "bg-brand-gold/10 text-brand-gold"
+                            : "bg-brand-primary/10 text-brand-primary"
                         )}
                       >
                         {message.name.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span
                             className={cn(
@@ -336,9 +322,7 @@ export default function AdminMessagesPage() {
                           >
                             {message.name}
                           </span>
-                          <span className="text-sm text-gray-400">
-                            {message.phone}
-                          </span>
+                          <span className="text-sm text-gray-400">{message.phone}</span>
                           {message.type && (
                             <Badge variant="secondary" size="sm">
                               {MESSAGE_TYPE_LABELS[message.type] || message.type}
@@ -350,26 +334,24 @@ export default function AdminMessagesPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="mt-1 truncate text-sm text-gray-500">
-                          {message.content}
-                        </p>
+                        <p className="mt-1 truncate text-sm text-gray-500">{message.content}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* 联系方式 */}
-                  <div className="hidden w-32 text-sm text-gray-500 sm:flex items-center">
+                  <div className="hidden w-32 items-center text-sm text-gray-500 sm:flex">
                     {message.phone}
                   </div>
 
                   {/* 时间 */}
-                  <div className="hidden w-32 text-sm text-gray-500 md:flex items-center gap-1">
+                  <div className="hidden w-32 items-center gap-1 text-sm text-gray-500 md:flex">
                     <Clock className="h-3.5 w-3.5" />
                     {formatDate(message.createdAt)}
                   </div>
 
                   {/* 操作按钮 */}
-                  <div className="flex items-center gap-1 w-24">
+                  <div className="flex w-24 items-center gap-1">
                     <button
                       onClick={() => toggleRead(message)}
                       className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -399,12 +381,7 @@ export default function AdminMessagesPage() {
       {/* 分页 */}
       {total > 20 && (
         <div className="flex justify-center">
-          <Pagination
-            page={page}
-            pageSize={20}
-            total={total}
-            onChange={setPage}
-          />
+          <Pagination page={page} pageSize={20} total={total} onChange={setPage} />
         </div>
       )}
 
@@ -419,23 +396,23 @@ export default function AdminMessagesPage() {
           <div className="space-y-6">
             {/* 发送者信息 */}
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-gold/10 text-lg font-medium text-brand-gold">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-primary/10 text-lg font-medium text-brand-primary">
                 {detailMessage.name.charAt(0).toUpperCase()}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">
-                    {detailMessage.name}
-                  </span>
+                  <span className="font-medium text-gray-900">{detailMessage.name}</span>
                   {detailMessage.read ? (
-                    <Badge variant="default" size="sm">已读</Badge>
+                    <Badge variant="default" size="sm">
+                      已读
+                    </Badge>
                   ) : (
-                    <Badge variant="warning" size="sm">未读</Badge>
+                    <Badge variant="warning" size="sm">
+                      未读
+                    </Badge>
                   )}
                 </div>
-                <span className="text-sm text-gray-500">
-                  {detailMessage.phone}
-                </span>
+                <span className="text-sm text-gray-500">{detailMessage.phone}</span>
               </div>
             </div>
 
@@ -454,20 +431,14 @@ export default function AdminMessagesPage() {
 
             {/* 留言内容 */}
             <div className="rounded-lg bg-gray-50 p-4">
-              <p className="whitespace-pre-wrap text-gray-700">
-                {detailMessage.content}
-              </p>
+              <p className="whitespace-pre-wrap text-gray-700">{detailMessage.content}</p>
             </div>
 
             {/* 操作按钮 */}
             <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => toggleRead(detailMessage)}
-              >
+              <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
                 {detailMessage.read ? "标记为未读" : "标记为已读"}
               </Button>
-
             </div>
           </div>
         )}

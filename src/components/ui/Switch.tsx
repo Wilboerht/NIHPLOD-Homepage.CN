@@ -31,9 +31,9 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
           onClick={handleChange}
           className={cn(
             "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200",
-            "focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-offset-2",
+            "focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            checked ? "bg-brand-gold" : "bg-gray-200"
+            checked ? "bg-brand-primary" : "bg-gray-200"
           )}
         >
           <span
@@ -69,9 +69,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
                 {label}
               </label>
             )}
-            {description && (
-              <p className="text-sm text-gray-500">{description}</p>
-            )}
+            {description && <p className="text-sm text-gray-500">{description}</p>}
           </div>
         )}
       </div>
@@ -80,4 +78,3 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
 );
 
 Switch.displayName = "Switch";
-

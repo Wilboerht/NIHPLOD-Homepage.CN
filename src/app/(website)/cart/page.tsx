@@ -9,7 +9,8 @@ import CartContent from "./CartContent";
 
 export const metadata: Metadata = {
   title: "购物车",
-  description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+  description:
+    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
   alternates: {
     canonical: "/cart",
   },
@@ -28,7 +29,7 @@ interface CartPageProps {
 export default async function CartPage({ searchParams }: CartPageProps) {
   const params = await searchParams;
   const user = await getCurrentLoginUser();
-  
+
   if (!user) {
     redirect("/login?redirect=/cart");
   }
@@ -75,18 +76,14 @@ export default async function CartPage({ searchParams }: CartPageProps) {
   const autoOpenCheckout = params.openCheckout === "1";
 
   return (
-    <div className="animate-fade-in min-h-dvh bg-gray-50">
-      <div className="bg-white border-b sticky top-0 z-10">
+    <div className="min-h-dvh animate-fade-in bg-gray-50">
+      <div className="sticky top-0 z-10 border-b bg-white">
         <div className="container mx-auto px-4 py-4">
           <h1 className="text-lg font-semibold text-gray-900">购物车</h1>
         </div>
       </div>
 
-      <CartContent 
-        initialItems={items}
-        autoOpenCheckout={autoOpenCheckout}
-      />
+      <CartContent initialItems={items} autoOpenCheckout={autoOpenCheckout} />
     </div>
   );
 }
-

@@ -118,24 +118,24 @@ export function CouponsContent() {
   };
 
   return (
-    <div className="min-h-dvh bg-[#FBF8F0] py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-dvh bg-[#FBF8F0] px-4 py-12">
+      <div className="mx-auto max-w-4xl">
         {/* 头部 */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#A69374]/10 mb-4">
-            <Gift className="w-7 h-7 text-[#A69374]" />
+        <div className="mb-10 text-center">
+          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#A69374]/10">
+            <Gift className="h-7 w-7 text-[#A69374]" />
           </div>
-          <h1 className="text-2xl font-bold text-[#00263E] mb-2">领券中心</h1>
+          <h1 className="mb-2 text-2xl font-bold text-[#00263E]">领券中心</h1>
           <p className="text-sm text-[#4A6272]">领取优惠券，享受更多购物优惠</p>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-[#A69374] animate-spin" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#A69374]" />
           </div>
         ) : coupons.length === 0 ? (
-          <div className="text-center py-20 text-[#4A6272]">
-            <Ticket className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <div className="py-20 text-center text-[#4A6272]">
+            <Ticket className="mx-auto mb-3 h-12 w-12 opacity-30" />
             <p>暂无可用优惠券</p>
           </div>
         ) : (
@@ -148,37 +148,39 @@ export function CouponsContent() {
               return (
                 <div
                   key={coupon.id}
-                  className={`relative rounded-2xl border p-5 flex items-center gap-4 transition-all ${
+                  className={`relative flex items-center gap-4 rounded-2xl border p-5 transition-all ${
                     disabled
-                      ? "bg-gray-50 border-gray-200 opacity-60"
-                      : "bg-white border-[#E8E3DC] hover:border-[#A69374]/40 hover:shadow-sm"
+                      ? "border-gray-200 bg-gray-50 opacity-60"
+                      : "border-[#E8E3DC] bg-white hover:border-[#A69374]/40 hover:shadow-sm"
                   }`}
                 >
                   {/* 左侧面值 */}
-                  <div className="shrink-0 w-20 text-center">
+                  <div className="w-20 shrink-0 text-center">
                     <div className="text-2xl font-bold text-[#A69374]">{getValueText(coupon)}</div>
-                    <div className="text-[10px] text-[#4A6272] mt-0.5">
+                    <div className="mt-0.5 text-[10px] text-[#4A6272]">
                       {Number(coupon.minAmount) > 0 ? `满¥${coupon.minAmount}` : "无门槛"}
                     </div>
                   </div>
 
                   {/* 分隔线 */}
-                  <div className="w-px h-14 bg-[#FBF8F0]" />
+                  <div className="h-14 w-px bg-[#FBF8F0]" />
 
                   {/* 右侧信息 */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-[#00263E] text-sm mb-1 truncate">{coupon.name}</h3>
-                    <div className="flex items-center gap-1 text-xs text-[#4A6272] mb-2">
-                      <Clock className="w-3 h-3" />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="mb-1 truncate text-sm font-medium text-[#00263E]">
+                      {coupon.name}
+                    </h3>
+                    <div className="mb-2 flex items-center gap-1 text-xs text-[#4A6272]">
+                      <Clock className="h-3 w-3" />
                       {getValidityText(coupon)}
                     </div>
                     {!started && (
-                      <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-600">
                         即将开始
                       </span>
                     )}
                     {ended && (
-                      <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
                         已结束
                       </span>
                     )}
@@ -188,21 +190,21 @@ export function CouponsContent() {
                   <button
                     onClick={() => handleAcquire(coupon)}
                     disabled={disabled}
-                    className={`shrink-0 px-4 py-2 rounded-xl text-xs font-medium transition-colors ${
+                    className={`shrink-0 rounded-xl px-4 py-2 text-xs font-medium transition-colors ${
                       acquiredIds.has(coupon.id)
-                        ? "bg-green-50 text-green-700 cursor-default"
+                        ? "cursor-default bg-green-50 text-green-700"
                         : disabled
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-[#A69374] text-white hover:bg-[#4A6272]"
+                          ? "cursor-not-allowed bg-gray-100 text-gray-400"
+                          : "bg-[#A69374] text-white hover:bg-[#4A6272]"
                     }`}
                   >
                     {acquiredIds.has(coupon.id) ? (
                       <span className="flex items-center gap-1">
-                        <Check className="w-3 h-3" />
+                        <Check className="h-3 w-3" />
                         已领取
                       </span>
                     ) : acquiring === coupon.id ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
                       "领取"
                     )}

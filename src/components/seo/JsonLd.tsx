@@ -13,7 +13,7 @@ function JsonLdScript({ data }: { data: object }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, '\\u003c') }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
     />
   );
 }
@@ -27,43 +27,60 @@ export function OrganizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${baseUrl}/#organization`,
-    "name": "NIHPLOD 旎柏官方网站",
-    "legalName": "旎柏 (NIHPLOD) 中国",
-    "alternateName": [
-      "旎柏", "NIHPLOD China", "尼柏", "Niphlod", "Niphold",
-      "Nihplad", "Nihplood", "旎白", "旎珀", "旎泊"
+    name: "NIHPLOD 旎柏官方网站",
+    legalName: "旎柏 (NIHPLOD) 中国",
+    alternateName: [
+      "旎柏",
+      "NIHPLOD China",
+      "尼柏",
+      "Niphlod",
+      "Niphold",
+      "Nihplad",
+      "Nihplood",
+      "旎白",
+      "旎珀",
+      "旎泊",
     ],
-    "url": baseUrl,
-    "logo": {
+    url: baseUrl,
+    logo: {
       "@type": "ImageObject",
-      "url": `${baseUrl}/images/NIHPLOD-logo.svg`,
-      "width": 200,
-      "height": 60,
+      url: `${baseUrl}/images/NIHPLOD-logo.svg`,
+      width: 200,
+      height: 60,
     },
-    "description": "NIHPLOD 旎柏官方网站，源自摩纳哥的高端护肤品牌。作为中国区唯一官方授权线上平台，为您提供真脂质体专利技术 (Dolphin-Skin) 驱动的奢华护肤体验。",
-    "slogan": "逆转时光",
-    "foundingDate": "2008",
-    "foundingLocation": {
+    description:
+      "NIHPLOD 旎柏官方网站，源自摩纳哥的高端护肤品牌。作为中国区唯一官方授权线上平台，为您提供真脂质体专利技术 (Dolphin-Skin) 驱动的奢华护肤体验。",
+    slogan: "逆转时光",
+    foundingDate: "2008",
+    foundingLocation: {
       "@type": "Place",
-      "name": "摩纳哥",
+      name: "摩纳哥",
     },
-    "sameAs": [
+    sameAs: [
       "https://weibo.com/nihplod",
       "https://www.xiaohongshu.com/user/nihplod",
       "https://nihplod.cn",
       "https://weixin.qq.com/",
       "https://www.douyin.com/",
     ],
-    "contactPoint": {
+    contactPoint: {
       "@type": "ContactPoint",
-      "contactType": "customer service",
-      "email": "contact@nihplod.cn",
-      "availableLanguage": ["Chinese", "English"],
+      contactType: "customer service",
+      email: "contact@nihplod.cn",
+      availableLanguage: ["Chinese", "English"],
     },
-    "knowsAbout": [
-      "高端护肤", "抗衰老科技", "真脂质体技术", "Liposome技术",
-      "Dolphin-Skin", "修护面霜", "焕活身体乳", "奢华护肤品",
-      "摩纳哥护肤品牌", "精准护肤方案", "贵妇级护肤"
+    knowsAbout: [
+      "高端护肤",
+      "抗衰老科技",
+      "真脂质体技术",
+      "Liposome技术",
+      "Dolphin-Skin",
+      "修护面霜",
+      "焕活身体乳",
+      "奢华护肤品",
+      "摩纳哥护肤品牌",
+      "精准护肤方案",
+      "贵妇级护肤",
     ],
   };
 
@@ -293,7 +310,8 @@ export function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
     description: job.description,
     datePosted: new Date().toISOString().split("T")[0],
     validThrough: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    employmentType: job.type === "full-time" ? "FULL_TIME" : job.type === "part-time" ? "PART_TIME" : "OTHER",
+    employmentType:
+      job.type === "full-time" ? "FULL_TIME" : job.type === "part-time" ? "PART_TIME" : "OTHER",
     hiringOrganization: {
       "@type": "Organization",
       name: "NIHPLOD 旎柏",
@@ -322,4 +340,3 @@ export function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
 
   return <JsonLdScript data={data} />;
 }
-

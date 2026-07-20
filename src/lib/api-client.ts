@@ -89,7 +89,10 @@ async function getCSRFToken(): Promise<string | null> {
 /**
  * 发送 API 请求
  */
-export async function apiRequest<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function apiRequest<T = unknown>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<T> {
   const { method = "GET", body, params, headers: customHeaders } = options;
   const url = buildUrl(path, params);
 
@@ -159,7 +162,10 @@ export async function apiRequest<T = unknown>(path: string, options: RequestOpti
 /**
  * 便捷方法：GET 请求
  */
-export function apiGet<T = unknown>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+export function apiGet<T = unknown>(
+  path: string,
+  params?: Record<string, string | number | undefined>
+): Promise<T> {
   return apiRequest<T>(path, { method: "GET", params });
 }
 

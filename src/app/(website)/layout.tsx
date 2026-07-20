@@ -5,8 +5,6 @@ interface WebsiteLayoutProps {
   children: ReactNode;
 }
 
-
-
 import { WebsiteLayoutClient } from "@/components/website/WebsiteLayoutClient";
 
 /**
@@ -20,17 +18,15 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
         跳转到主要内容
       </a>
 
-
       {/* Graphite Kinetic Grid 全局背景 */}
       <KineticBackground />
-
 
       {/* 主内容区域，包含 NavBar 逻辑 */}
       <WebsiteLayoutClient>
         <main
           id="main-content"
           tabIndex={-1}
-          className="relative z-10 pointer-events-none pb-28 lg:pb-24 [&>*]:pointer-events-auto"
+          className="pointer-events-none relative z-10 pb-28 lg:pb-24 [&>*]:pointer-events-auto"
         >
           {children}
         </main>

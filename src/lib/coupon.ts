@@ -9,7 +9,11 @@ import { apiConsole } from "@/lib/logger";
 /**
  * 自动将已过期的 UNUSED 优惠券标记为 EXPIRED
  */
-export async function autoExpireUserCoupons(): Promise<{ success: boolean; expiredCount: number; error?: string }> {
+export async function autoExpireUserCoupons(): Promise<{
+  success: boolean;
+  expiredCount: number;
+  error?: string;
+}> {
   try {
     const now = new Date();
 
