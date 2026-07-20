@@ -686,7 +686,7 @@ export function StoryContent() {
                             className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/25 bg-[#FCF9F2] p-6 transition-all duration-500 hover:border-[#00263e]/50 lg:p-8 xl:p-10"
                           >
                             {/* 悬浮显示的背景图 */}
-                            <div className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+                            <div className="absolute inset-0 z-0 opacity-[0.03] transition-opacity duration-500 group-hover:opacity-100">
                               <Image
                                 src={award.image}
                                 alt={award.title}
