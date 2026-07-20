@@ -444,7 +444,7 @@ export function AuthModal() {
   const pcInputClass =
     "w-full bg-transparent border-0 border-b border-brand-charcoal/20 rounded-none py-4 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/40 placeholder:text-sm placeholder:tracking-wider placeholder:uppercase focus:outline-none focus:border-brand-charcoal/40 transition-colors";
   const pcBtnClass =
-    "w-full py-4 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40 flex items-center justify-center gap-2";
+    "w-full py-4 text-sm font-light tracking-[0.15em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40 flex items-center justify-center gap-2";
 
   // ===== 移动端输入框通用样式 =====
   const mobileInputBase =
@@ -452,7 +452,7 @@ export function AuthModal() {
   const mobileInputClass = `w-full ${mobileInputBase}`;
   const mobileInputFlexClass = `flex-1 ${mobileInputBase}`;
   const mobileBtnClass =
-    "w-full py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40";
+    "w-full py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40";
 
   return (
     <AnimatePresence>
@@ -552,7 +552,7 @@ export function AuthModal() {
                             type="button"
                             onClick={handleSendLoginCode}
                             disabled={loginCodeSending || loginCodeCountdown > 0 || !loginPhone}
-                            className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-medium tracking-wider text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
+                            className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
                           >
                             {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
                           </button>
@@ -677,7 +677,7 @@ export function AuthModal() {
                         type="button"
                         onClick={handleWechatLogin}
                         disabled={loading}
-                        className={`flex w-full items-center justify-center gap-2 border border-brand-charcoal/25 py-4 text-sm font-medium tracking-[0.2em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40 ${!mobileAgreed && !loading ? "cursor-not-allowed opacity-40" : ""}`}
+                        className={`flex w-full items-center justify-center gap-2 border border-brand-charcoal/25 py-4 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40 ${!mobileAgreed && !loading ? "cursor-not-allowed opacity-40" : ""}`}
                       >
                         <svg
                           className="h-5 w-5 text-[#07C160]"
@@ -750,7 +750,7 @@ export function AuthModal() {
                           type="button"
                           onClick={handleSendRegCode}
                           disabled={regCodeSending || regCountdown > 0 || !regPhone || !inviteCode}
-                          className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-medium tracking-wider text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
+                          className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
                         >
                           {regCountdown > 0 ? `${regCountdown}s` : "获取"}
                         </button>
@@ -950,7 +950,7 @@ export function AuthModal() {
                       </form>
                     ) : (
                       <form onSubmit={handleSendResetLink} className="space-y-10">
-                        <p className="text-center text-sm tracking-wide text-brand-charcoal/60">
+                        <p className="text-center text-[14px] font-light tracking-[0.08em] text-brand-charcoal/60">
                           请输入您的注册手机号，我们将向您发送重置密码的验证码。
                         </p>
                         <div className="relative">
@@ -1017,7 +1017,7 @@ export function AuthModal() {
                           type="button"
                           onClick={handleSendRegCode}
                           disabled={regCodeSending || regCountdown > 0 || !regPhone}
-                          className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-medium tracking-wider text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
+                          className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
                         >
                           {regCountdown > 0 ? `${regCountdown}s` : "获取"}
                         </button>
@@ -1147,7 +1147,7 @@ export function AuthModal() {
                             disabled={
                               loginCodeCountdown > 0 || loginPhone.length !== 11 || loginCodeSending
                             }
-                            className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-medium tracking-wider text-brand-charcoal/60 transition-all disabled:opacity-30"
+                            className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all disabled:opacity-30"
                           >
                             {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
                           </button>
@@ -1248,7 +1248,7 @@ export function AuthModal() {
                         type="submit"
                         form="mobile-login-form"
                         disabled={loading}
-                        className={`min-h-12 w-full border border-brand-charcoal/25 py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40 ${!mobileAgreed && !loading ? "cursor-not-allowed opacity-40" : ""}`}
+                        className={`min-h-12 w-full border border-brand-charcoal/25 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40 ${!mobileAgreed && !loading ? "cursor-not-allowed opacity-40" : ""}`}
                       >
                         <span className="relative z-10 flex items-center justify-center gap-2">
                           {loading ? (
@@ -1276,7 +1276,7 @@ export function AuthModal() {
                       type="button"
                       onClick={handleWechatLogin}
                       disabled={loading}
-                      className={`flex w-full items-center justify-center gap-2 border border-brand-charcoal/25 py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40 ${!mobileAgreed && !loading ? "cursor-not-allowed opacity-40" : ""}`}
+                      className={`flex w-full items-center justify-center gap-2 border border-brand-charcoal/25 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40 ${!mobileAgreed && !loading ? "cursor-not-allowed opacity-40" : ""}`}
                     >
                       <svg
                         className="h-5 w-5 text-[#07C160]"
@@ -1305,7 +1305,7 @@ export function AuthModal() {
               {view === "register" && (
                 <div className="flex flex-col gap-10">
                   <div className="pb-4 pt-[6px] text-center">
-                    <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">
+                    <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">
                       注册会员
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -1363,7 +1363,7 @@ export function AuthModal() {
                         type="button"
                         onClick={handleSendRegCode}
                         disabled={regCodeSending || regCountdown > 0 || !regPhone || !inviteCode}
-                        className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-medium tracking-wider text-brand-charcoal/60 transition-all disabled:opacity-30"
+                        className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all disabled:opacity-30"
                       >
                         {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
                       </button>
@@ -1470,7 +1470,7 @@ export function AuthModal() {
                   className="flex flex-col gap-14"
                 >
                   <div className="pb-4 pt-[6px] text-center">
-                    <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">
+                    <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">
                       找回密码
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -1526,7 +1526,7 @@ export function AuthModal() {
                           <button
                             type="button"
                             onClick={switchToLogin}
-                            className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-medium tracking-[0.2em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
+                            className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
                           >
                             返回登录
                           </button>
@@ -1540,12 +1540,12 @@ export function AuthModal() {
                               setMobileForgotStep("password");
                             }}
                             disabled={resetCode.length !== 6}
-                            className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-medium tracking-[0.2em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40"
+                            className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40"
                           >
                             下一步
                           </button>
                         </div>
-                        <p className="text-center text-xs font-medium text-brand-charcoal/50">
+                        <p className="text-center text-xs font-light text-brand-charcoal/50">
                           {resetCountdown > 0 ? (
                             `${resetCountdown}秒后可重新发送`
                           ) : (
@@ -1614,7 +1614,7 @@ export function AuthModal() {
                         <button
                           type="button"
                           onClick={switchToLogin}
-                          className="w-full border border-brand-charcoal/25 py-3.5 text-sm font-medium tracking-[0.2em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
+                          className="w-full border border-brand-charcoal/25 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
                         >
                           返回登录
                         </button>
@@ -1639,7 +1639,7 @@ export function AuthModal() {
               {view === "wechat-bind" && (
                 <div className="flex flex-col gap-10">
                   <div className="pb-4 pt-[6px] text-center">
-                    <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">
+                    <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">
                       绑定手机号
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -1677,7 +1677,7 @@ export function AuthModal() {
                         type="button"
                         onClick={handleSendRegCode}
                         disabled={regCodeSending || regCountdown > 0 || !regPhone}
-                        className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-3 py-1 text-xs font-medium tracking-wider text-brand-charcoal/60 transition-all disabled:opacity-30"
+                        className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-3 py-1 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all disabled:opacity-30"
                       >
                         {regCountdown > 0 ? `${regCountdown}s` : "获取"}
                       </button>

@@ -1206,10 +1206,10 @@
 /* 统一的标题层级 */
 .kinetic-title-sm {
   font-size: 1.4rem;
-  font-weight: 500;
+  font-weight: 300;
   line-height: 1.3;
   margin-bottom: 12px;
-  letter-spacing: 0;
+  letter-spacing: 0.12em;
   color: var(--kinetic-text-primary);
   font-family:
     "PingFang SC",
@@ -1261,6 +1261,7 @@
 
 .kinetic-desc {
   font-size: 0.85rem;
+  font-weight: 300;
   line-height: 1.5;
   letter-spacing: 0.12em;
   color: var(--kinetic-text-secondary);
