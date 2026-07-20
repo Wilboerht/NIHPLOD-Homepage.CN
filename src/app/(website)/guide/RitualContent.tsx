@@ -1207,7 +1207,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     {selectedModule !== "portable" ? (
                       <div className="mb-10 flex flex-col items-center">
                         <div className="mb-6 text-center">
-                          <h2 className="text-3xl font-medium tracking-widest text-[#00263E]">
+<h2 className="text-3xl font-light tracking-[0.15em] text-[#00263E]">
                             {selectedScheme.name}
                           </h2>
 
@@ -1568,7 +1568,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             const isRestricted = supportText.includes("不支持");
                             return (
                               <div className="flex w-full flex-col items-center gap-3 px-6">
-                                <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#00263E]/40">
+<span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/40">
                                   特殊时期支持
                                 </span>
                                 <div
@@ -1884,7 +1884,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       <header className="mb-8 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                         {/* 左侧标题组 */}
                         <div className="flex flex-row items-end gap-5">
-                          <h1 className="font-sans text-[48px] font-light leading-none tracking-wide text-brand-charcoal">
+                          <h1 className="font-sans text-[48px] font-light leading-none tracking-[0.08em] text-brand-charcoal">
                             {selectedModule === "portable" || selectedModule === "professional"
                               ? modules.find((m) => m.id === selectedModule)?.label
                               : selectedScheme.name}
