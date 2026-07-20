@@ -534,7 +534,7 @@ export function StoryContent() {
                       <span className="mb-4 block text-sm uppercase tracking-[3px] text-[#00263e]/60">
                         Since 2008 | Monaco
                       </span>
-                      <h2 className="mt-8 mb-8 font-sans text-3xl font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:mt-10 md:mb-10 md:text-4xl md:tracking-[6px] lg:text-[42px]">
+                      <h2 className="mt-8 mb-8 font-sans text-2xl font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:mt-10 md:mb-10 md:text-3xl md:tracking-[6px] lg:text-[36px]">
                         来自大自然的
                         <br />
                         神奇修复力
@@ -578,10 +578,10 @@ export function StoryContent() {
                           <span className="mb-4 block text-[12px] uppercase tracking-[4px] text-brand-charcoal/60">
                             公司使命
                           </span>
-                          <h2 className="mb-8 font-sans text-[28px] font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:text-[32px] md:tracking-[6px] lg:text-[36px]">
-                            化繁为简
-                            <br />
-                            逆转时光
+                             <h2 className="mt-6 mb-6 font-sans text-2xl font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:mt-8 md:mb-8 md:text-3xl md:tracking-[6px] lg:text-[36px]">
+                             化繁为简
+                             <br />
+                             逆转时光
                           </h2>
                           <p className="max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
                             旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
