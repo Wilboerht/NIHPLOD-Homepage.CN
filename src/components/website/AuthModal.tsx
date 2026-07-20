@@ -703,10 +703,10 @@ export function AuthModal() {
                 {/* ====== REGISTER ====== */}
                 {view === "register" && (
                   <>
-                    <h1 className="mb-12 text-center text-[2rem] font-light tracking-[0.15em] text-brand-charcoal">
+                    <h1 className="mb-14 text-center text-[2rem] font-light tracking-[0.15em] text-brand-charcoal">
                       注册会员
                     </h1>
-                    <form onSubmit={handleRegister} className="space-y-8">
+                    <form onSubmit={handleRegister} className="space-y-10">
                       <input
                         type="text"
                         required
@@ -837,7 +837,7 @@ export function AuthModal() {
                       </div>
                     </form>
 
-                    <div className="mt-10 text-center">
+                    <div className="mt-6 text-center">
                       <button
                         onClick={switchToLogin}
                         className="text-xs tracking-wider text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
