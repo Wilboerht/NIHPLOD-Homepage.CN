@@ -628,17 +628,19 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 15px 42px;
-  border: 1px solid rgba(0, 38, 62, 0.35);
+  padding: 16px 48px;
+  border: 1px solid rgba(0, 38, 62, 0.5);
   background-color: transparent;
   color: var(--home-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.08em;
   border-radius: 0;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .home-container .home-explore-btn:focus-visible {
@@ -649,7 +651,6 @@
 .home-container .home-explore-btn:hover {
   border-color: rgba(0, 38, 62, 0.85);
   color: #00263e;
-  letter-spacing: 0.26em;
 }
 
 .home-container .home-explore-btn svg {
@@ -667,20 +668,26 @@
 
 /* 首页纯文字链接按钮 */
 .home-container .home-text-link {
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: 0.15em;
-  color: var(--home-text-secondary);
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: var(--brand-charcoal-light);
   cursor: pointer;
-  transition: color 0.3s ease;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: transparent;
+  transition:
+    color 0.3s ease,
+    text-decoration-color 0.3s ease;
 }
 
 .home-container .home-text-link:hover {
-  color: var(--home-text-primary);
+  color: var(--brand-charcoal);
+  text-decoration-color: currentColor;
 }
 
 .home-container .home-text-link:focus-visible {
-  outline: 1px solid var(--home-text-primary);
+  outline: 1px solid var(--brand-charcoal);
   outline-offset: 3px;
 }
 
@@ -809,10 +816,10 @@
 /* 响应式 - 将断点提升至包含 iPad mini (820px) */
 @media (max-width: 820px) {
   .home-container .home-explore-btn {
-    padding: 13px 32px;
-    font-size: 12px;
+    padding: 14px 36px;
+    font-size: 14px;
     font-weight: 500;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.08em;
   }
 
   .home-container .btn-secondary {
@@ -828,10 +835,10 @@
 /* 极窄屏（三星 Galaxy S9+ 等 320px 设备）专项修复 */
 @media (max-width: 360px) {
   .home-container .home-explore-btn {
-    padding: 12px 24px;
-    font-size: 11px;
+    padding: 14px 28px;
+    font-size: 14px;
     font-weight: 500;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.08em;
   }
 }
 
