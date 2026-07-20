@@ -239,6 +239,15 @@ const FOOTER_LINKS = [
   { href: "/contact", label: "联系我们" },
 ];
 
+const lineVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
 interface HomeClientProps {
   content?: HomePageContent;
 }
@@ -347,7 +356,6 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   className="logo"
                   priority
                 />
-                <div className="logo-divider" aria-hidden="true" />
               </m.div>
 
               {/* 品牌文案 - 统一语义，响应式切换行数 */}
@@ -365,50 +373,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 }}
               >
                 <h1 className="title">
-                  <span className="block min-[820px]:hidden">
-                    {[
-                      "海豚的肌肤，拥有每两小时",
-                      "自我更新的神奇能力，",
-                      "这种「逆转时光」的动物本能，",
-                      "是我们灵感的来源。",
-                    ].map((line, i) => (
-                      <m.span
-                        key={i}
-                        className="block"
-                        variants={{
-                          hidden: { opacity: 0, y: 15 },
-                          visible: {
-                            opacity: 1,
-                            y: 0,
-                            transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-                          },
-                        }}
-                      >
-                        {line}
-                      </m.span>
-                    ))}
-                  </span>
-                  <span className="hidden min-[820px]:block">
-                    {[
-                      "海豚的肌肤，拥有每两小时自我更新的神奇能力，",
-                      "这种「逆转时光」的动物本能，是我们灵感的来源。",
-                    ].map((line, i) => (
-                      <m.span
-                        key={i}
-                        className="block"
-                        variants={{
-                          hidden: { opacity: 0, y: 15 },
-                          visible: {
-                            opacity: 1,
-                            y: 0,
-                            transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-                          },
-                        }}
-                      >
-                        {line}
-                      </m.span>
-                    ))}
-                  </span>
+                  <m.span className="block" variants={lineVariants}>
+                    海豚的肌肤，拥有每两小时自我更新的神奇能力，
+                    <br className="hidden md:block" />
+                    这种「逆转时光」的动物本能，是我们灵感的来源。
+                  </m.span>
                 </h1>
               </m.div>
 
