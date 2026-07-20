@@ -32,7 +32,7 @@ export function TermsContent({ content }: TermsContentProps) {
   });
 
   return (
-    <div className="min-h-screen animate-fade-in bg-[#fefcf8] pb-0 pt-16 md:pt-24">
+    <div className="min-h-dvh animate-fade-in bg-[#fefcf8] pt-16 md:pt-24">
       {/* Header Section */}
       <div className="container mx-auto mb-8 px-6 md:mb-16 md:px-8 lg:px-12 xl:px-16">
         <div className="max-w-4xl">
