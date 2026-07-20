@@ -212,7 +212,7 @@ export function KineticBackground() {
                   e.stopPropagation();
                   openUserCenter();
                 }}
-                className="group flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/20 bg-white/50 text-sm font-medium tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:bg-brand-charcoal hover:text-white active:scale-[0.98]"
+                className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/80 px-4 text-sm font-medium tracking-[0.15em] text-brand-charcoal shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-brand-charcoal/30 hover:bg-brand-charcoal hover:text-white active:scale-[0.98]"
               >
                 <span>进入会员中心</span>
                 <ChevronRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5" />
@@ -221,9 +221,9 @@ export function KineticBackground() {
               <button
                 type="button"
                 onClick={handleLoginClick}
-                className="group flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/20 bg-white/50 text-sm font-medium tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:bg-brand-charcoal hover:text-white active:scale-[0.98]"
+                className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/80 px-4 text-sm font-medium tracking-[0.15em] text-brand-charcoal shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-brand-charcoal/30 hover:bg-brand-charcoal hover:text-white active:scale-[0.98]"
               >
-                <span>立即登录</span>
+                <span>会员登录</span>
                 <ChevronRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5" />
               </button>
             )}
