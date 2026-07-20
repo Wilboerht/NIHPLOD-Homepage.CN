@@ -295,7 +295,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
-                    className="mb-8 flex-shrink-0"
+                    className="flex-shrink-0"
                   >
                     <h1 className="text-2xl font-light tracking-[0.15em] text-[#00263E]">
                       当季热卖

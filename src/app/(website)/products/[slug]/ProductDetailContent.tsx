@@ -283,7 +283,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
               <div className="lg:grid lg:h-full lg:grid-cols-2 lg:gap-12">
                 {/* 左侧：图片轮播区域 */}
                 <div className="lg:flex lg:flex-col lg:justify-center lg:overflow-y-auto lg:px-0 lg:py-8">
-                  <div className="mx-4 w-[calc(100%-2rem)] max-w-4xl md:m-0 md:mx-auto md:w-full lg:mx-0 lg:w-auto">
+                  <div className="mx-4 w-[calc(100%-2rem)] max-w-4xl md:m-0 md:mx-auto md:w-full lg:mx-auto lg:w-full lg:max-w-lg">
                 <div
                   ref={containerRef}
                   className="relative aspect-[3/4] w-full touch-pan-y overflow-hidden rounded-2xl bg-brand-beige/30"
