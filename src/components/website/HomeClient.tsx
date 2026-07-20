@@ -472,34 +472,41 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     <Link
                       href="https://beian.miit.gov.cn/"
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="flex !min-h-0 !min-w-0 items-center transition-colors hover:text-brand-primary"
                     >
                       沪ICP备2026014764号-1
                     </Link>
-                    <span className="text-brand-charcoal/20">|</span>
+                    <span className="text-brand-charcoal/20" aria-hidden="true">
+                      |
+                    </span>
                     <Link
                       href="http://www.beian.gov.cn/portal/registerSystemInfo"
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="flex !min-h-0 !min-w-0 items-center gap-1 transition-colors hover:text-brand-primary"
                     >
                       <Image
                         src="/images/beian.webp"
-                        alt="公安部备案图标"
+                        alt=""
                         width={12}
                         height={12}
                         className="shrink-0 opacity-80"
                       />
                       <span>沪公网安备31010702010178号</span>
                     </Link>
-                    <span className="hidden text-brand-charcoal/20 md:inline">|</span>
+                    <span className="hidden text-brand-charcoal/20 md:inline" aria-hidden="true">
+                      |
+                    </span>
                     <Link
                       href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="hidden !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-primary md:flex"
                     >
                       <Image
                         src="/images/aic_icon.png"
-                        alt="电子营业执照"
+                        alt=""
                         width={12}
                         height={12}
                         className="shrink-0 opacity-50"
