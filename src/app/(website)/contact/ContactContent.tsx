@@ -409,7 +409,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
               <h2 className="mb-2 text-xl font-medium text-brand-charcoal">留言已提交</h2>
               <p className="text-brand-charcoal/60">感谢您的留言，我们会尽快回复</p>
-              <Link href="/" className="mt-6 inline-block text-sm text-[#00263E] hover:underline">
+              <Link href="/" className="mt-6 inline-block text-[15px] font-light tracking-[0.12em] text-[#00263E] hover:underline">
                 返回首页
               </Link>
             </div>
@@ -432,7 +432,7 @@ export function ContactContent({ content }: ContactContentProps) {
                 <div>
                   <label
                     htmlFor="name"
-                    className="mb-1.5 block text-sm text-brand-charcoal/70 md:text-base"
+                    className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]"
                   >
                     称呼 <span className="text-red-400">*</span>
                   </label>
@@ -446,7 +446,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     autoComplete="name"
                     maxLength={50}
                     className={cn(
-                      "w-full rounded-lg border px-4 py-3.5 text-sm outline-none transition-all placeholder:text-sm placeholder:text-brand-charcoal/40 md:text-base md:placeholder:text-base",
+                      "w-full rounded-lg border px-4 py-3.5 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:text-[15px]",
                       errors.name
                         ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                         : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
@@ -457,7 +457,7 @@ export function ContactContent({ content }: ContactContentProps) {
                 <div>
                   <label
                     htmlFor="phone"
-                    className="mb-1.5 block text-sm text-brand-charcoal/70 md:text-base"
+                    className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]"
                   >
                     手机号 <span className="text-red-400">*</span>
                   </label>
@@ -472,7 +472,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     inputMode="tel"
                     maxLength={11}
                     className={cn(
-                      "w-full rounded-lg border px-4 py-3.5 text-sm outline-none transition-all placeholder:text-sm placeholder:text-brand-charcoal/40 md:text-base md:placeholder:text-base",
+                      "w-full rounded-lg border px-4 py-3.5 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:text-[15px]",
                       errors.phone
                         ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                         : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
@@ -484,14 +484,14 @@ export function ContactContent({ content }: ContactContentProps) {
 
               {/* Message Type Dropdown */}
               <div ref={typeDropdownRef} className="relative">
-                <label className="mb-1.5 block text-sm text-brand-charcoal/70 md:text-base">
+                <label className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]">
                   留言类型 <span className="text-red-400">*</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-lg border px-4 py-3.5 text-left text-sm outline-none transition-all md:text-base",
+                    "flex w-full items-center justify-between rounded-lg border px-4 py-3.5 text-left text-[15px] font-light outline-none transition-all md:text-[15px]",
                     !formData.type && "text-brand-charcoal/40",
                     errors.type
                       ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
@@ -544,7 +544,7 @@ export function ContactContent({ content }: ContactContentProps) {
                                 if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
                               }}
                               className={cn(
-                                "flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm transition-colors md:text-base",
+                                "flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-light transition-colors md:text-[15px]",
                                 isSelected
                                   ? "bg-[#00263E]/5 text-[#00263E]"
                                   : "text-brand-charcoal/70 hover:bg-brand-charcoal/5",
@@ -575,7 +575,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <div>
                 <label
                   htmlFor="content"
-                  className="mb-1.5 block text-sm text-brand-charcoal/70 md:text-base"
+                  className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]"
                 >
                   留言内容 <span className="text-red-400">*</span>
                 </label>
@@ -588,7 +588,7 @@ export function ContactContent({ content }: ContactContentProps) {
                   rows={4}
                   maxLength={2000}
                   className={cn(
-                    "w-full resize-none rounded-lg border px-4 py-3.5 text-sm outline-none transition-all placeholder:text-sm placeholder:text-brand-charcoal/40 md:text-base md:placeholder:text-base",
+                    "w-full resize-none rounded-lg border px-4 py-3.5 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:text-[15px]",
                     errors.content
                       ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                       : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
@@ -601,7 +601,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00263E]/30 px-6 py-3.5 text-sm font-medium text-[#00263E] transition-colors hover:border-[#00263E] hover:bg-[#00263E]/5 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00263E]/30 px-6 py-3.5 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:border-[#00263E] hover:bg-[#00263E]/5 disabled:opacity-50"
               >
                 {status === "loading" ? (
                   <>
@@ -623,7 +623,7 @@ export function ContactContent({ content }: ContactContentProps) {
       {/* Page Footer */}
       <footer className="border-t border-brand-charcoal/10">
         <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
-          <p className="text-xs tracking-wider text-brand-charcoal/50">
+          <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>
         </div>
