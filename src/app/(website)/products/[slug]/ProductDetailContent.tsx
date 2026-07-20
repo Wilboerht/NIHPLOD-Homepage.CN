@@ -213,7 +213,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.6 }}
-      className="relative flex min-h-dvh flex-col bg-[#FBF8F0]"
+      className="relative flex min-h-dvh flex-col bg-[#FBF8F0] mb-[-7rem] lg:mb-[-6rem]"
     >
       {/* 手机端背景水印 */}
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden lg:hidden">
@@ -277,15 +277,16 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
         {/* 分割线 - 仅桌面端 */}
         <div className="mx-auto hidden w-full max-w-7xl border-b border-brand-charcoal/10 lg:block" />
 
-        {/* 内容区域 */}
-        <div className="relative min-h-0 flex-1">
-          <main className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div>
-              {/* 图片轮播区域 + 指示器 */}
-              <div className="mx-4 w-[calc(100%-2rem)] max-w-4xl md:m-0 md:mx-auto md:w-full">
+          {/* 内容区域 */}
+          <div className="relative min-h-0 flex-1">
+            <main className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-hidden [&::-webkit-scrollbar]:hidden">
+              <div className="lg:grid lg:h-full lg:grid-cols-2 lg:gap-12">
+                {/* 左侧：图片轮播区域 */}
+                <div className="lg:flex lg:flex-col lg:justify-center lg:overflow-y-auto lg:px-0 lg:py-8">
+                  <div className="mx-4 w-[calc(100%-2rem)] max-w-4xl md:m-0 md:mx-auto md:w-full lg:mx-0 lg:w-auto">
                 <div
                   ref={containerRef}
-                  className="relative aspect-[3/4] w-full touch-pan-y overflow-hidden rounded-2xl bg-brand-beige/30 lg:aspect-[16/9]"
+                  className="relative aspect-[3/4] w-full touch-pan-y overflow-hidden rounded-2xl bg-brand-beige/30"
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
@@ -331,7 +332,11 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
                 )}
               </div>
 
-              {/* 产品信息 */}
+                </div>
+
+                {/* 右侧：产品信息 + 购买 */}
+                <div className="lg:overflow-y-auto lg:px-4 lg:py-8">
+                  {/* 产品信息 */}
               <m.div
                 className="mx-auto max-w-2xl px-6 pb-0 pt-7 max-lg:px-4"
                 initial={{ opacity: 0, y: 20 }}
@@ -360,7 +365,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
 
                 {/* 功效标签 */}
                 {product.benefits.length > 0 && (
-                  <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
+                  <div className="mt-6 flex flex-wrap gap-2">
                     {product.benefits.map((benefit, index) => (
                       <span
                         key={index}
@@ -442,8 +447,8 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
                 className="mx-auto flex max-w-2xl flex-col gap-1 px-6 pb-7 max-lg:px-4"
               />
 
-              {/* 购买按钮区域 */}
-              <div className="mx-auto max-w-2xl px-6 pb-3 max-lg:px-4">
+              {/* 购买按钮区域 - 桌面端内联 */}
+              <div className="mx-auto max-w-2xl px-6 pb-3 max-lg:hidden">
                 <div className="flex flex-col gap-3">
                   {product.allowDirectBuy && (
                     <>
@@ -503,7 +508,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
 
               {/* 相关产品推荐 */}
               {relatedProducts.length > 0 && (
-                <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pt-8 max-lg:px-4">
+                <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pt-8 pb-24 max-lg:px-4">
                   <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E]">
                     相关推荐
                   </h2>
@@ -530,12 +535,33 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </main>
         </div>
 
+        {/* 移动端底部固定购买栏 */}
+        {product.allowDirectBuy && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#FBF8F0]/95 px-4 py-3 backdrop-blur-md lg:hidden">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <QuantitySelector
+                  stock={product.stock}
+                  quantity={quantity}
+                  onChange={setQuantity}
+                />
+              </div>
+              <AddToCartButton
+                productId={product.id}
+                stock={product.stock}
+                quantity={quantity}
+              />
+            </div>
+          </div>
+        )}
+
         {/* 底部版权信息 */}
-        <div className="mx-6 mt-auto border-t border-brand-charcoal/5 pb-4 pt-4 text-center max-lg:border-0 max-lg:pt-4 sm:pt-6 lg:mx-12 lg:pt-8">
+        <div className="mx-6 mt-auto border-t border-brand-charcoal/5 pb-4 pt-4 text-center max-lg:border-0 max-lg:pb-20 max-lg:pt-4 sm:pt-6 lg:mx-12 lg:pt-8">
           <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>

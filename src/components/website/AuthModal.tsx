@@ -533,6 +533,7 @@ export function AuthModal() {
                           value={loginPhone}
                           onChange={(e) => setLoginPhone(e.target.value)}
                           className={pcInputClass}
+                          maxLength={11}
                           placeholder="手机号"
                         />
                       </div>
@@ -567,6 +568,7 @@ export function AuthModal() {
                             value={loginPassword}
                             onChange={(e) => setLoginPassword(e.target.value)}
                             className={`${pcInputClass} pr-10`}
+                            maxLength={64}
                             placeholder="密码"
                           />
                           <button
@@ -733,7 +735,8 @@ export function AuthModal() {
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value)}
                         className={pcInputClass}
-                        placeholder="手机号"
+                        maxLength={11}
+                          placeholder="手机号"
                       />
                       <div className="relative flex gap-3">
                         <input
@@ -764,7 +767,8 @@ export function AuthModal() {
                           value={regPassword}
                           onChange={(e) => setRegPassword(e.target.value)}
                           className={`${pcInputClass} pr-10`}
-                          placeholder="密码（8位且含大写/小写/数字）"
+                          maxLength={64}
+                            placeholder="密码（8位且含大写/小写/数字）"
                         />
                         <button
                           type="button"
@@ -784,6 +788,7 @@ export function AuthModal() {
                           value={regConfirmPassword}
                           onChange={(e) => setRegConfirmPassword(e.target.value)}
                           className={`${pcInputClass} pr-10`}
+                          maxLength={64}
                           placeholder="确认密码"
                         />
                         <button
@@ -898,6 +903,7 @@ export function AuthModal() {
                             value={resetNewPassword}
                             onChange={(e) => setResetNewPassword(e.target.value)}
                             className={`${pcInputClass} pr-10`}
+                            maxLength={64}
                             placeholder="新密码（8位且含大写/小写/数字）"
                           />
                           <button
@@ -917,6 +923,7 @@ export function AuthModal() {
                           value={regConfirmPassword}
                           onChange={(e) => setRegConfirmPassword(e.target.value)}
                           className={`${pcInputClass} pr-10`}
+                          maxLength={64}
                           placeholder="确认密码"
                         />
                         <button
@@ -961,7 +968,8 @@ export function AuthModal() {
                             value={forgotPhone}
                             onChange={(e) => setForgotPhone(e.target.value)}
                             className={`${pcInputClass} pl-8`}
-                            placeholder="手机号"
+                            maxLength={11}
+                          placeholder="手机号"
                           />
                         </div>
                         <button type="submit" disabled={loading} className={pcBtnClass}>
@@ -1001,7 +1009,8 @@ export function AuthModal() {
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value)}
                         className={pcInputClass}
-                        placeholder="手机号"
+                        maxLength={11}
+                          placeholder="手机号"
                       />
                       <div className="relative flex gap-3">
                         <input
@@ -1030,7 +1039,8 @@ export function AuthModal() {
                           value={regPassword}
                           onChange={(e) => setRegPassword(e.target.value)}
                           className={`${pcInputClass} pr-10`}
-                          placeholder="密码（8位且含大写/小写/数字）"
+                          maxLength={64}
+                            placeholder="密码（8位且含大写/小写/数字）"
                         />
                         <button
                           type="button"
@@ -1121,7 +1131,8 @@ export function AuthModal() {
                         onChange={(e) =>
                           setLoginPhone(e.target.value.replace(/\D/g, "").slice(0, 11))
                         }
-                        placeholder="手机号"
+                        maxLength={11}
+                          placeholder="手机号"
                         className={mobileInputClass}
                       />
                     </div>
@@ -1164,7 +1175,7 @@ export function AuthModal() {
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
                           placeholder="密码"
-                          maxLength={32}
+                          maxLength={64}
                           className={mobileInputClass}
                         />
                       </div>
@@ -1344,7 +1355,8 @@ export function AuthModal() {
                         onChange={(e) =>
                           setRegPhone(e.target.value.replace(/\D/g, "").slice(0, 11))
                         }
-                        placeholder="手机号"
+                        maxLength={11}
+                          placeholder="手机号"
                         className={mobileInputClass}
                       />
                     </div>
@@ -1377,7 +1389,7 @@ export function AuthModal() {
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
                         placeholder="密码（8位且含大写/小写/数字）"
-                        maxLength={32}
+                        maxLength={64}
                         className={mobileInputClass}
                       />
                     </div>
@@ -1390,7 +1402,7 @@ export function AuthModal() {
                         value={regConfirmPassword}
                         onChange={(e) => setRegConfirmPassword(e.target.value)}
                         placeholder="确认密码"
-                        maxLength={32}
+                        maxLength={64}
                         className={mobileInputClass}
                       />
                     </div>
@@ -1489,7 +1501,8 @@ export function AuthModal() {
                             onChange={(e) =>
                               setForgotPhone(e.target.value.replace(/\D/g, "").slice(0, 11))
                             }
-                            placeholder="手机号"
+                            maxLength={11}
+                          placeholder="手机号"
                             className={mobileInputClass}
                           />
                         </div>
@@ -1571,7 +1584,7 @@ export function AuthModal() {
                             value={resetNewPassword}
                             onChange={(e) => setResetNewPassword(e.target.value)}
                             placeholder="新密码（8位且含大写/小写/数字）"
-                            maxLength={32}
+                            maxLength={64}
                             className={mobileInputClass}
                           />
                         </div>
@@ -1583,7 +1596,7 @@ export function AuthModal() {
                             value={resetConfirmPassword}
                             onChange={(e) => setResetConfirmPassword(e.target.value)}
                             placeholder="确认新密码"
-                            maxLength={32}
+                            maxLength={64}
                             className={mobileInputClass}
                           />
                         </div>
@@ -1659,7 +1672,8 @@ export function AuthModal() {
                         onChange={(e) =>
                           setRegPhone(e.target.value.replace(/\D/g, "").slice(0, 11))
                         }
-                        placeholder="手机号"
+                        maxLength={11}
+                          placeholder="手机号"
                         className={mobileInputClass}
                       />
                     </div>
@@ -1690,7 +1704,7 @@ export function AuthModal() {
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
                         placeholder="密码（8位且含大写/小写/数字）"
-                        maxLength={32}
+                        maxLength={64}
                         className={mobileInputClass}
                       />
                     </div>
