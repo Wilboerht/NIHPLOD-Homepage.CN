@@ -362,7 +362,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       ease: [0.16, 1, 0.3, 1],
                     }}
                   >
-                    海豚的肌肤，拥有每两小时自我更新的神奇能力，
+                    海豚的肌肤，拥有每两小时
+                    <br className="md:hidden" />
+                    自我更新的神奇能力，
                     <br className="hidden md:block" />
                     这种「逆转时光」的动物本能，是我们灵感的来源。
                   </m.span>

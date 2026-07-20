@@ -600,6 +600,14 @@
   height: auto;
 }
 
+@media (max-width: 767px) {
+  .home-container .title {
+    font-size: 1.05rem;
+    line-height: 1.5;
+    letter-spacing: 0.08em;
+  }
+}
+
 /* 品牌文案 - 高奢护肤品调性 */
 .home-container .title {
   font-family: "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
