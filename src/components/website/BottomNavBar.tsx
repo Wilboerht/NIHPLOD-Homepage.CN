@@ -116,12 +116,20 @@ export function BottomNavBar() {
   // 服务入口页面在移动端隐藏底部导航栏（实现全屏效果）
   const isServicesPage = pathname === "/services";
 
+  // 招聘页面为独立全屏布局，隐藏底部导航栏
+  const isCareersPage = pathname === "/careers";
+
   // 产品详情页隐藏底部导航栏
   const isProductDetailPage = pathname.startsWith("/products/") && pathname !== "/products";
 
   // 当抽屉展开、动画中、登录弹窗、用户中心面板或联系我们弹窗激活时，隐藏导航栏
   const isVisible =
-    !isDrawerOpen && !isDrawerAnimating && !activeModal && !userCenterOpen && !isProductDetailPage;
+    !isDrawerOpen &&
+    !isDrawerAnimating &&
+    !activeModal &&
+    !userCenterOpen &&
+    !isProductDetailPage &&
+    !isCareersPage;
 
   // 尊重用户减少动画偏好
   const dockTransition = shouldReduceMotion
@@ -160,7 +168,8 @@ export function BottomNavBar() {
             transition={dockTransition}
             className={cn(
               "pointer-events-none fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
-              isServicesPage && "max-lg:hidden"
+              isServicesPage && "max-lg:hidden",
+              isCareersPage && "hidden"
             )}
           >
             {/* 移动端弹出菜单 */}

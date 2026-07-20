@@ -97,7 +97,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
   return (
     <>
-      <div className="flex min-h-dvh flex-col bg-[#fefcf8] mb-[-7rem] pb-28 lg:mb-[-6rem] lg:pb-24">
+      <div className="flex min-h-dvh flex-col bg-[#fefcf8] mb-[-7rem] lg:mb-[-6rem]">
         {/* Top Bar */}
         <nav
           className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
