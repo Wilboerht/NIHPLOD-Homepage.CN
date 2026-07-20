@@ -174,7 +174,7 @@ export function FAQContent() {
         <div className="flex flex-1 flex-col overflow-hidden pb-4 sm:px-10 lg:px-[15%] xl:px-[20%]">
           {/* Page Title - Desktop */}
           <div className="mb-6 mt-8 hidden justify-center sm:flex">
-            <h1 className="relative inline-block text-[24px] font-medium uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-[#00263e]/20">
+              <h1 className="relative inline-block text-[24px] font-light tracking-[0.15em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-[#00263e]/20">
               常见问题
             </h1>
           </div>
@@ -184,7 +184,7 @@ export function FAQContent() {
             {/* Page Title - Mobile */}
             <div className="mb-7 flex flex-col items-center pb-2 pt-2 sm:hidden">
               <h1
-                className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
+                className="text-[24px] font-light tracking-[0.15em] text-[#00263E]"
                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
               >
                 常见问题
@@ -209,9 +209,9 @@ export function FAQContent() {
                   >
                     <span
                       className={cn(
-                        "flex-1 text-[14px] font-normal leading-snug tracking-wide text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
+                        "flex-1 text-[14px] font-light leading-snug tracking-[0.12em] text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
                         openIndex === index
-                          ? "font-medium text-brand-charcoal"
+                          ? "text-brand-charcoal"
                           : "group-hover:text-brand-charcoal"
                       )}
                       style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
@@ -240,7 +240,7 @@ export function FAQContent() {
                       >
                         <div style={{ overflow: "hidden" }}>
                           <div
-                            className="border-l border-brand-charcoal/20 pb-5 pl-4 pr-4 pt-5 text-[14px] font-normal leading-[1.7] text-brand-charcoal/80 sm:border-l-0 sm:pb-8 sm:pl-6 sm:pr-6 sm:pt-0 lg:pr-12 lg:text-[15px] lg:leading-[1.8]"
+                            className="border-l border-brand-charcoal/20 pb-5 pl-4 pr-4 pt-5 text-[14px] font-light leading-[1.7] text-brand-charcoal/80 sm:border-l-0 sm:pb-8 sm:pl-6 sm:pr-6 sm:pt-0 lg:pr-12 lg:text-[15px] lg:leading-[1.8]"
                             style={{
                               fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                             }}
@@ -260,15 +260,15 @@ export function FAQContent() {
               <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/60 sm:mb-4 sm:flex lg:h-12 lg:w-12">
                 <MessageCircle className="h-5 w-5 lg:h-6 lg:w-6" strokeWidth={1.2} />
               </div>
-              <h3 className="hidden sm:mb-2 sm:block sm:text-[15px] sm:font-normal sm:tracking-wide sm:text-brand-charcoal/90 lg:text-[17px]">
+              <h3 className="hidden sm:mb-2 sm:block sm:text-[15px] sm:font-light sm:tracking-[0.12em] sm:text-brand-charcoal/90 lg:text-[17px]">
                 没有找到想要的答案？
               </h3>
-              <p className="hidden sm:mb-6 sm:block sm:text-[13px] sm:font-light sm:tracking-wide sm:text-brand-charcoal/60 lg:text-sm">
+              <p className="hidden sm:mb-6 sm:block sm:text-[14px] sm:font-light sm:tracking-[0.12em] sm:text-brand-charcoal/60 lg:text-sm">
                 我们的支持团队随时候命，为您解答任何疑问。
               </p>
               <button
                 onClick={() => router.push("/contact?type=support")}
-                className="flex items-center gap-2 rounded-full bg-[#FFFFFF] px-7 py-3 text-[14px] font-medium tracking-[0.2em] text-[#4A6272] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:font-medium sm:tracking-widest sm:text-brand-charcoal/80 sm:transition-all sm:hover:border-[#4A6272]/30 sm:hover:bg-brand-primary/15 sm:hover:text-[#4A6272] sm:hover:shadow-lg sm:hover:backdrop-blur-md sm:active:scale-95 lg:text-[16px]"
+                className="flex items-center gap-2 rounded-full bg-[#FFFFFF] px-7 py-3 text-[14px] font-light tracking-[0.15em] text-[#4A6272] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:tracking-[0.15em] sm:text-brand-charcoal/80 sm:transition-all sm:hover:border-[#4A6272]/30 sm:hover:bg-brand-primary/15 sm:hover:text-[#4A6272] sm:hover:shadow-lg sm:hover:backdrop-blur-md sm:active:scale-95 lg:text-[16px]"
                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
               >
                 <span>更多疑问</span>

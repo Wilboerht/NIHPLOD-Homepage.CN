@@ -341,7 +341,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
       {/* Page Footer */}
       <footer className="border-t border-brand-charcoal/10">
         <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
-          <p className="text-xs tracking-wider text-brand-charcoal/50">
+          <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>
         </div>
