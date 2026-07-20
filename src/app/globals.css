@@ -603,8 +603,8 @@
 /* 品牌文案 - 高奢护肤品调性 */
 .home-container .title {
   font-family: "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
-  font-size: clamp(1.1rem, 2.6vw, 1.35rem);
-  font-weight: 200;
+  font-size: clamp(1.15rem, 2.8vw, 1.45rem);
+  font-weight: 300;
   line-height: 1.7;
   letter-spacing: 0.06em;
   color: var(--foreground);
