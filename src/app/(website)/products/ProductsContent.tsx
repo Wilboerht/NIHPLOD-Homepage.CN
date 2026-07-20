@@ -188,15 +188,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           </m.div>
         ))}
       </div>
-      {/* 移动端版权信息 - 与指南页保持一致 */}
-      <footer className="relative z-20 flex shrink-0 flex-col items-center pb-1 pt-3">
-        <p
-          className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)]"
-          style={{ fontFamily: "'Futura', sans-serif" }}
-        >
+      {/* Footer Info */}
+      <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-4">
+        <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
         </p>
-      </footer>
+      </div>
     </div>
   );
 
@@ -242,7 +239,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         {/* 内容区域 */}
         <div
           className={cn(
-            "relative z-10 flex h-full flex-col overflow-hidden pb-3 transition-opacity duration-300",
+            "relative z-10 flex h-full flex-col overflow-hidden transition-opacity duration-300",
             isDrawerOpen ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
           )}
         >
@@ -364,12 +361,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   </section>
                 </div>
 
-                {/* 桌面端页脚 - 紧凑排版 */}
-                <footer className="flex shrink-0 flex-col items-center pb-4 pt-10 opacity-30">
-                  <p className="text-[10px] font-light uppercase tracking-widest text-[#00263E]">
+                {/* Footer Info */}
+                <div className="flex shrink-0 flex-col items-center justify-center gap-2">
+                  <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
                     &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                   </p>
-                </footer>
+                </div>
               </div>
             </div>
           </div>

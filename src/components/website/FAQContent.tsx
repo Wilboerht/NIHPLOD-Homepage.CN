@@ -281,11 +281,8 @@ export function FAQContent() {
           </div>
 
           {/* Footer Info */}
-          <div className="flex flex-col items-center justify-center pb-1 pt-3 sm:shrink-0 sm:gap-2 sm:pb-2 sm:pt-4">
-            <p
-              className="text-[10px] font-medium tracking-[0.12em] text-[rgba(0,38,62,0.3)] sm:text-center sm:text-[12px] sm:font-light sm:tracking-widest sm:text-brand-charcoal/60"
-              style={{ fontFamily: "'Futura', sans-serif" }}
-            >
+          <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
+            <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>
           </div>
