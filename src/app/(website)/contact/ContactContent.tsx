@@ -91,6 +91,8 @@ export function ContactContent({ content }: ContactContentProps) {
   const typeDropdownRef = useRef<HTMLDivElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const typeParam = searchParams.get("type");
@@ -124,6 +126,21 @@ export function ContactContent({ content }: ContactContentProps) {
       };
     }
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        desktopMenuRef.current &&
+        !desktopMenuRef.current.contains(event.target as Node)
+      ) {
+        setDesktopMenuOpen(false);
+      }
+    };
+    if (desktopMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [desktopMenuOpen]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -192,24 +209,95 @@ export function ContactContent({ content }: ContactContentProps) {
           </Link>
 
           {/* Desktop nav links */}
-          <div className="hidden items-center gap-10 md:flex">
+          <div className="hidden items-center gap-1 md:flex">
             <Link
               href="/terms"
-              className="text-sm tracking-wider text-[#00263E] transition-colors hover:text-brand-charcoal-light"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               服务条款
+              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
             </Link>
             <Link
               href="/privacy"
-              className="text-sm tracking-wider text-[#00263E] transition-colors hover:text-brand-charcoal-light"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               隐私政策
+              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
             </Link>
+
+            {/* Desktop More Menu */}
+            <div ref={desktopMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setDesktopMenuOpen((prev) => !prev)}
+                className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                aria-expanded={desktopMenuOpen}
+              >
+                菜单
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-500 ${desktopMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              <AnimatePresence>
+                {desktopMenuOpen && (
+                  <m.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-brand-charcoal/5 bg-[#FBF8F0] p-2 shadow-[0_2px_4px_-1px_rgba(0,38,62,0.05),0_8px_16px_-2px_rgba(0,38,62,0.08),0_24px_48px_-6px_rgba(0,38,62,0.06)]"
+                  >
+                    <Link
+                      href="/products"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      产品系列
+                    </Link>
+                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
+                    <Link
+                      href="/guide"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      护肤指南
+                    </Link>
+                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
+                    <Link
+                      href="/faq"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      常见问题
+                    </Link>
+                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
+                    <Link
+                      href="/about"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      品牌故事
+                    </Link>
+                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
+                    <Link
+                      href="/contact"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      联系我们
+                    </Link>
+                  </m.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <Link
               href="/"
-              className="inline-flex items-center gap-1 text-sm tracking-wider text-[#00263E] transition-colors hover:text-brand-charcoal-light"
+              className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
             >
-              <Home className="h-3.5 w-3.5" /> 返回首页
+              <Home className="h-4 w-4" /> 返回首页
+              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
             </Link>
           </div>
 
