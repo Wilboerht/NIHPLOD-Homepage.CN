@@ -222,7 +222,7 @@ function MobileFooterMenu({
         type="button"
         onClick={() => setIsOpen(true)}
         whileTap={{ scale: 0.95 }}
-        className="pointer-events-auto relative z-[30] flex min-h-0 min-w-0 cursor-pointer flex-col items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-brand-charcoal/40 transition-all hover:text-brand-charcoal/70"
+        className="pointer-events-auto relative z-[30] flex min-h-0 min-w-0 cursor-pointer flex-col items-center gap-2 text-xs uppercase tracking-[0.25em] text-brand-charcoal/40 transition-all hover:text-brand-charcoal/70"
       >
         <span>更多</span>
         <div className="h-px w-5 bg-current opacity-40" />
@@ -238,15 +238,6 @@ const FOOTER_LINKS = [
   { href: "/careers", label: "加入我们" },
   { href: "/contact", label: "联系我们" },
 ];
-
-const lineVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] as const },
-  },
-};
 
 interface HomeClientProps {
   content?: HomePageContent;
@@ -350,7 +341,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               >
                 <Image
                   src="/images/NIHPLOD-logo.svg"
-                  alt="NIHPLOD 旎柏官方网站"
+                  alt="NIHPLOD 旎柏 Logo"
                   width={200}
                   height={72}
                   className="logo"
@@ -359,31 +350,28 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               </m.div>
 
               {/* 品牌文案 - 统一语义，响应式切换行数 */}
-              <m.div
-                className="content-wrapper"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  visible: {
-                    transition: {
-                      staggerChildren: 0.25,
-                      delayChildren: 0.6,
-                    },
-                  },
-                }}
-              >
+              <div className="content-wrapper">
                 <h1 className="title">
-                  <m.span className="block" variants={lineVariants}>
+                  <m.span
+                    className="block"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 1.2,
+                      delay: 0.6,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
+                  >
                     海豚的肌肤，拥有每两小时自我更新的神奇能力，
                     <br className="hidden md:block" />
                     这种「逆转时光」的动物本能，是我们灵感的来源。
                   </m.span>
                 </h1>
-              </m.div>
+              </div>
 
               {/* 按钮组 - 增加触压反馈 */}
               <m.div
-                className="button-group flex gap-6"
+                className="button-group flex"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1.2, delay: 1.2 }}
