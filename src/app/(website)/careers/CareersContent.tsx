@@ -286,21 +286,21 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 <Link
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   联系我们
                 </Link>
                 <Link
                   href="/terms"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   服务条款
                 </Link>
                 <Link
                   href="/privacy"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   隐私政策
                 </Link>
@@ -309,7 +309,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
               >
                 <Home className="h-5 w-5" />
                 返回首页
@@ -326,7 +326,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
             {title.zh}
           </h1>
-          <p className="mx-auto max-w-md text-[15px] font-light tracking-[0.12em] text-brand-charcoal/60 md:text-base">{description}</p>
+          <p className="mx-auto max-w-2xl text-[15px] font-light tracking-[0.12em] text-brand-charcoal/60 md:text-base">{description}</p>
         </div>
 
         {/* Filter Tabs */}
@@ -357,7 +357,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             {filteredJobs.length === 0 ? (
               <div className="flex min-h-[30vh] flex-col items-center justify-center text-center">
                 <Briefcase className="mx-auto mb-3 h-10 w-10 text-[#E4DFD9]" />
-                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">暂无开放职位，请稍后再来查看</p>
+                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">暂无开放职位</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">
@@ -444,7 +444,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
       className="w-full rounded-xl border border-zinc-200/60 p-5 text-left transition-all duration-200 hover:border-[#00263E]/30 hover:bg-white/50"
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-medium text-zinc-900">{job.title}</h3>
+        <h3 className="text-lg font-light tracking-[0.12em] text-[#00263E]">{job.title}</h3>
         <svg
           width="18"
           height="18"
@@ -459,8 +459,8 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
           <path d="m6 9 6 6 6-6" />
         </svg>
       </div>
-      <div className="mt-2.5 flex items-center gap-2.5 text-sm text-zinc-500">
-        <span className="font-medium text-[#00263E]/60">{typeInfo.label}</span>
+      <div className="mt-2.5 flex items-center gap-2.5 font-light text-brand-charcoal/70">
+        <span className="font-light text-[#00263E]/60">{typeInfo.label}</span>
         <span className="text-zinc-300">|</span>
         {job.salary && (
           <>
@@ -631,8 +631,8 @@ function JobModal({
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-6">
           <div>
-            <h2 className="text-xl font-medium text-zinc-900">{job.title}</h2>
-            <div className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
+            <h2 className="text-xl font-light tracking-[0.12em] text-[#00263E]">{job.title}</h2>
+            <div className="mt-2 flex items-center gap-2 font-light text-brand-charcoal/70">
               <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
                 {typeInfo.label}
               </span>
@@ -660,9 +660,9 @@ function JobModal({
 
           {/* Description */}
           <div>
-            <h3 className="mb-3 text-base font-medium text-zinc-900">职位描述</h3>
+            <h3 className="mb-3 text-base font-light tracking-[0.12em] text-[#00263E]">职位描述</h3>
             <div
-              className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
+              className="prose prose-sm max-w-none font-light text-brand-charcoal/80 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(descriptionHtml),
               }}
@@ -672,9 +672,9 @@ function JobModal({
           {/* Requirements */}
           {job.requirements && (
             <div>
-              <h3 className="mb-3 text-base font-medium text-zinc-900">任职要求</h3>
+              <h3 className="mb-3 text-base font-light tracking-[0.12em] text-[#00263E]">任职要求</h3>
               <div
-                className="prose prose-sm max-w-none text-zinc-600 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
+                className="prose prose-sm max-w-none font-light text-brand-charcoal/80 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
                 dangerouslySetInnerHTML={{
                   __html: DOMPurify.sanitize(requirementsHtml),
                 }}
@@ -684,19 +684,19 @@ function JobModal({
 
           {/* Application Form */}
           <div className="border-t border-zinc-100 pt-6">
-            <h3 className="mb-4 text-base font-medium text-zinc-900">投递简历</h3>
-            <p className="mb-4 whitespace-pre-line text-sm text-zinc-500">{submitTip?.content}</p>
+            <h3 className="mb-4 text-base font-light tracking-[0.12em] text-[#00263E]">投递简历</h3>
+            <p className="mb-4 whitespace-pre-line font-light text-brand-charcoal/70">{submitTip?.content}</p>
 
             {submitStatus === "success" ? (
               <div className="rounded-xl bg-green-50 p-6 text-center">
-                <p className="font-medium text-green-700">投递成功！</p>
+                <p className="font-light text-green-700">投递成功！</p>
                 <p className="mt-1 text-sm text-green-600">我们会尽快查看您的简历</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1.5 block text-sm text-zinc-600">姓名 *</label>
+                    <label className="mb-1.5 block font-light text-brand-charcoal/60">姓名 *</label>
                     <input
                       type="text"
                       value={formData.name}
@@ -706,7 +706,7 @@ function JobModal({
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm text-zinc-600">电话 *</label>
+                    <label className="mb-1.5 block font-light text-brand-charcoal/60">电话 *</label>
                     <input
                       type="tel"
                       value={formData.phone}
@@ -718,7 +718,7 @@ function JobModal({
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm text-zinc-600">简历 *</label>
+                  <label className="mb-1.5 block font-light text-brand-charcoal/60">简历 *</label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -729,7 +729,7 @@ function JobModal({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-sm text-zinc-500 transition-colors hover:border-[#00263E]/40 hover:text-[#00263E]"
+                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 font-light text-brand-charcoal/70 transition-colors hover:border-[#00263E]/40 hover:text-[#00263E]"
                   >
                     {resumeFile ? (
                       <>
@@ -750,7 +750,7 @@ function JobModal({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00263E] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#00263E]/90 disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00263E] px-6 py-3 text-sm font-light tracking-[0.15em] text-white transition-colors hover:bg-[#00263E]/90 disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
