@@ -87,8 +87,6 @@ export function ContactContent({ content }: ContactContentProps) {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { success: toastSuccess, error: toastError } = useToast();
-  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
-  const typeDropdownRef = useRef<HTMLDivElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
@@ -101,16 +99,6 @@ export function ContactContent({ content }: ContactContentProps) {
       if (match) setFormData((prev) => ({ ...prev, type: typeParam }));
     }
   }, [searchParams, messageTypesData]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target as Node)) {
-        setIsTypeDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -483,91 +471,35 @@ export function ContactContent({ content }: ContactContentProps) {
               </div>
 
               {/* Message Type Dropdown */}
-              <div ref={typeDropdownRef} className="relative">
-                <label className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]">
+              <div>
+                <label
+                  htmlFor="type"
+                  className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]"
+                >
                   留言类型 <span className="text-red-400">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                <select
+                  id="type"
+                  name="type"
+                  value={formData.type}
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, type: e.target.value }));
+                    if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
+                  }}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-lg border px-4 py-3.5 text-left text-[15px] font-light outline-none transition-all md:text-[15px]",
+                    "w-full rounded-lg border px-4 py-3.5 text-[15px] font-light outline-none transition-all appearance-none",
                     !formData.type && "text-brand-charcoal/40",
                     errors.type
                       ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                      : "border-brand-charcoal/20 hover:border-[#00263E]/40 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10",
-                    isTypeDropdownOpen &&
-                      !errors.type &&
-                      "border-[#00263E]/40 ring-4 ring-[#00263E]/10"
+                      : "border-brand-charcoal/20 hover:border-[#00263E]/40 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
                   )}
                 >
-                  <span className="flex items-center gap-2.5">
-                    {formData.type &&
-                      (() => {
-                        const selected = messageTypes.find((t) => t.value === formData.type);
-                        if (selected) return <selected.icon className="h-4 w-4 text-[#00263E]" />;
-                        return null;
-                      })()}
-                    <span className={formData.type ? "text-brand-charcoal" : ""}>
-                      {messageTypes.find((t) => t.value === formData.type)?.label ||
-                        "请选择留言类型"}
-                    </span>
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-brand-charcoal/40 transition-transform duration-200",
-                      isTypeDropdownOpen && "rotate-180"
-                    )}
-                  />
-                </button>
-                <AnimatePresence>
-                  {isTypeDropdownOpen && (
-                    <m.div
-                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-lg border border-brand-charcoal/20 bg-white shadow-lg"
-                    >
-                      {messageTypes
-                        .filter((t) => t.value !== "")
-                        .map((type, index) => {
-                          const Icon = type.icon;
-                          const isSelected = formData.type === type.value;
-                          return (
-                            <button
-                              key={type.value}
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({ ...prev, type: type.value }));
-                                setIsTypeDropdownOpen(false);
-                                if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
-                              }}
-                              className={cn(
-                                "flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-light transition-colors md:text-[15px]",
-                                isSelected
-                                  ? "bg-[#00263E]/5 text-[#00263E]"
-                                  : "text-brand-charcoal/70 hover:bg-brand-charcoal/5",
-                                index !== messageTypes.filter((t) => t.value !== "").length - 1 &&
-                                  "border-b border-brand-charcoal/10"
-                              )}
-                            >
-                              <Icon
-                                className={cn(
-                                  "h-4 w-4",
-                                  isSelected ? "text-[#00263E]" : "text-brand-charcoal/40"
-                                )}
-                              />
-                              <span>{type.label}</span>
-                              {isSelected && (
-                                <CheckCircle className="ml-auto h-4 w-4 text-[#00263E]" />
-                              )}
-                            </button>
-                          );
-                        })}
-                    </m.div>
-                  )}
-                </AnimatePresence>
+                  {messageTypes.map((type) => (
+                    <option key={type.value} value={type.value} disabled={type.value === ""}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
                 {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
               </div>
 
