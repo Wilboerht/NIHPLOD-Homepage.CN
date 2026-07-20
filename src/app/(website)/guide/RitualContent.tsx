@@ -1663,7 +1663,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
             {/* 移动端版权信息 - 紧凑型固定底栏 */}
             <footer className="relative z-20 flex shrink-0 flex-col items-center py-4">
-              <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60">
+              <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
             </footer>
@@ -2506,7 +2506,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
             {/* Desktop Footer Copyright */}
             <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
-              <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
+              <p className="text-center text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
             </div>
