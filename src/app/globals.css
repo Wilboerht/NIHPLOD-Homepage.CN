@@ -604,9 +604,9 @@
 .home-container .title {
   font-family: "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
   font-size: clamp(1rem, 2.6vw, 1.375rem);
-  font-weight: 300;
-  line-height: 1.75;
-  letter-spacing: 0.04em;
+  font-weight: 200;
+  line-height: 1.7;
+  letter-spacing: 0.06em;
   color: var(--foreground);
   max-width: 28em;
   margin-inline: auto;
