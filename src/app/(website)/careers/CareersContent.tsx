@@ -337,10 +337,10 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 <button
                   key={item.id}
                   onClick={() => setFilterType(item.id)}
-                  className={`rounded-full px-4 py-2 text-sm transition-colors ${
+                  className={`rounded-full px-4 py-2 text-[15px] font-light tracking-[0.12em] transition-colors ${
                     filterType === item.id
                       ? "bg-[#00263E]/10 text-[#00263E]"
-                      : "text-zinc-500 hover:text-zinc-700"
+                      : "text-brand-charcoal/50 hover:text-brand-charcoal/70"
                   }`}
                 >
                   {item.label}
@@ -356,8 +356,8 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           <div className="mx-auto max-w-2xl">
             {filteredJobs.length === 0 ? (
               <div className="flex min-h-[30vh] flex-col items-center justify-center text-center">
-                <Briefcase className="mx-auto mb-3 h-10 w-10 text-zinc-300" />
-                <p className="text-zinc-400">暂无开放职位，请稍后再来查看</p>
+                <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-charcoal/20" />
+                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">暂无开放职位，请稍后再来查看</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">
@@ -372,7 +372,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         {/* Page Footer */}
         <footer className="border-t border-brand-charcoal/10">
           <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
-            <p className="text-xs tracking-wider text-brand-charcoal/50">
+            <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>
           </div>
