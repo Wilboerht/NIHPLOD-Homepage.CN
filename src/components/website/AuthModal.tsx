@@ -82,6 +82,7 @@ export function AuthModal() {
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [regCodeSending, setRegCodeSending] = useState(false);
   const [regCountdown, setRegCountdown] = useState(0);
+  const [inviteCode, setInviteCode] = useState("");
 
   // Forgot Password Fields
   const [forgotPhone, setForgotPhone] = useState("");
@@ -232,6 +233,7 @@ export function AuthModal() {
         code: regCode,
         password: regPassword,
         confirmPassword: regConfirmPassword,
+        inviteCode,
       });
       toast.success("注册成功！");
       await handleAuthSuccess();
@@ -710,6 +712,15 @@ export function AuthModal() {
                       <input
                         type="text"
                         required
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value)}
+                        className={pcInputClass}
+                        placeholder="邀请码"
+                      />
+                      <input
+                        type="text"
+                        required
+                        disabled={!inviteCode}
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
                         className={pcInputClass}
@@ -718,6 +729,7 @@ export function AuthModal() {
                       <input
                         type="tel"
                         required
+                        disabled={!inviteCode}
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value)}
                         className={pcInputClass}
@@ -727,6 +739,7 @@ export function AuthModal() {
                         <input
                           type="text"
                           required
+                          disabled={!inviteCode}
                           maxLength={6}
                           value={regCode}
                           onChange={(e) => setRegCode(e.target.value)}
@@ -736,7 +749,7 @@ export function AuthModal() {
                         <button
                           type="button"
                           onClick={handleSendRegCode}
-                          disabled={regCodeSending || regCountdown > 0 || !regPhone}
+                          disabled={regCodeSending || regCountdown > 0 || !regPhone || !inviteCode}
                           className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-medium tracking-wider text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
                         >
                           {regCountdown > 0 ? `${regCountdown}s` : "获取"}
@@ -746,6 +759,7 @@ export function AuthModal() {
                         <input
                           type={showPassword ? "text" : "password"}
                           required
+                          disabled={!inviteCode}
                           minLength={PASSWORD_MIN_LENGTH}
                           value={regPassword}
                           onChange={(e) => setRegPassword(e.target.value)}
@@ -754,6 +768,7 @@ export function AuthModal() {
                         />
                         <button
                           type="button"
+                          disabled={!inviteCode}
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
                         >
@@ -764,6 +779,7 @@ export function AuthModal() {
                         <input
                           type={showPassword ? "text" : "password"}
                           required
+                          disabled={!inviteCode}
                           minLength={PASSWORD_MIN_LENGTH}
                           value={regConfirmPassword}
                           onChange={(e) => setRegConfirmPassword(e.target.value)}
@@ -772,6 +788,7 @@ export function AuthModal() {
                         />
                         <button
                           type="button"
+                          disabled={!inviteCode}
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
                         >
@@ -789,6 +806,7 @@ export function AuthModal() {
                           <div className="relative flex-shrink-0">
                             <input
                               type="checkbox"
+                              disabled={!inviteCode}
                               checked={mobileAgreed}
                               onChange={(e) => setMobileAgreed(e.target.checked)}
                               className="peer sr-only"
@@ -825,7 +843,7 @@ export function AuthModal() {
                     <div className="pt-4">
                         <button
                           type="submit"
-                          disabled={loading || !mobileAgreed}
+                          disabled={loading || !mobileAgreed || !inviteCode}
                           className={pcBtnClass}
                         >
                           {loading ? (
@@ -892,16 +910,18 @@ export function AuthModal() {
                         </div>
                         <div className="relative">
                           <input
-                            type={showPassword ? "text" : "password"}
-                            required
-                            minLength={PASSWORD_MIN_LENGTH}
-                            value={resetConfirmPassword}
-                            onChange={(e) => setResetConfirmPassword(e.target.value)}
-                            className={`${pcInputClass} pr-10`}
-                            placeholder="确认新密码"
-                          />
-                          <button
-                            type="button"
+                          type={showPassword ? "text" : "password"}
+                          required
+                          disabled={!inviteCode}
+                          minLength={PASSWORD_MIN_LENGTH}
+                          value={regConfirmPassword}
+                          onChange={(e) => setRegConfirmPassword(e.target.value)}
+                          className={`${pcInputClass} pr-10`}
+                          placeholder="确认密码"
+                        />
+                        <button
+                          type="button"
+                          disabled={!inviteCode}
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
                           >
@@ -1295,6 +1315,17 @@ export function AuthModal() {
                       <input
                         type="text"
                         required
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value)}
+                        placeholder="邀请码"
+                        className={mobileInputClass}
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        required
+                        disabled={!inviteCode}
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
                         placeholder="姓名"
@@ -1308,6 +1339,7 @@ export function AuthModal() {
                         pattern="[0-9]*"
                         autoComplete="tel"
                         required
+                        disabled={!inviteCode}
                         value={regPhone}
                         onChange={(e) =>
                           setRegPhone(e.target.value.replace(/\D/g, "").slice(0, 11))
@@ -1320,6 +1352,7 @@ export function AuthModal() {
                       <input
                         type="text"
                         required
+                        disabled={!inviteCode}
                         maxLength={6}
                         value={regCode}
                         onChange={(e) => setRegCode(e.target.value)}
@@ -1329,7 +1362,7 @@ export function AuthModal() {
                       <button
                         type="button"
                         onClick={handleSendRegCode}
-                        disabled={regCodeSending || regCountdown > 0 || !regPhone}
+                        disabled={regCodeSending || regCountdown > 0 || !regPhone || !inviteCode}
                         className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-medium tracking-wider text-brand-charcoal/60 transition-all disabled:opacity-30"
                       >
                         {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
@@ -1339,6 +1372,7 @@ export function AuthModal() {
                       <input
                         type="password"
                         required
+                        disabled={!inviteCode}
                         minLength={PASSWORD_MIN_LENGTH}
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
@@ -1351,6 +1385,7 @@ export function AuthModal() {
                       <input
                         type="password"
                         required
+                        disabled={!inviteCode}
                         minLength={PASSWORD_MIN_LENGTH}
                         value={regConfirmPassword}
                         onChange={(e) => setRegConfirmPassword(e.target.value)}
@@ -1364,6 +1399,7 @@ export function AuthModal() {
                       <div className="relative flex-shrink-0">
                         <input
                           type="checkbox"
+                          disabled={!inviteCode}
                           checked={mobileAgreed}
                           onChange={(e) => setMobileAgreed(e.target.checked)}
                           className="peer sr-only"
@@ -1399,7 +1435,7 @@ export function AuthModal() {
                     <div className="pt-2">
                       <button
                         type="submit"
-                        disabled={loading || !mobileAgreed}
+                        disabled={loading || !mobileAgreed || !inviteCode}
                         className={mobileBtnClass}
                       >
                         <span className="relative z-10 flex items-center justify-center gap-2">
