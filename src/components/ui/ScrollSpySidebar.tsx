@@ -123,14 +123,14 @@ export default function ScrollSpySidebar({ sections, label = "目录导航" }: S
               className={`group flex flex-col border-l px-4 py-3 text-left transition-all duration-200 ${
                 activeId === section.id
                   ? "border-[#00263E]"
-                  : "border-zinc-200 hover:border-[#00263E]"
+                  : "border-brand-charcoal/20 hover:border-brand-charcoal/40"
               }`}
             >
               <span
-                className={`text-sm font-medium transition-colors ${
+                className={`text-sm font-light tracking-[0.12em] transition-colors ${
                   activeId === section.id
-                    ? "text-zinc-900"
-                    : "text-zinc-500 group-hover:text-zinc-900"
+                    ? "text-brand-charcoal"
+                    : "text-brand-charcoal/50 group-hover:text-brand-charcoal"
                 }`}
               >
                 {section.title}

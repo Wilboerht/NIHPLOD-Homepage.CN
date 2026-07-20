@@ -188,7 +188,7 @@ export function PrivacyContent() {
       {/* Header Section */}
       <div className="container mx-auto mb-8 px-6 md:mb-16 md:px-8 lg:px-12 xl:px-16">
         <div className="max-w-4xl">
-          <h1 className="mb-6 text-4xl font-normal text-zinc-900 md:text-5xl">隐私政策</h1>
+          <h1 className="mb-6 text-4xl font-light tracking-[0.12em] text-brand-charcoal md:text-5xl">隐私政策</h1>
         </div>
       </div>
 
@@ -203,10 +203,10 @@ export function PrivacyContent() {
           <ScrollSpySidebar sections={sections} label="隐私政策目录导航" />
 
           {/* Main Content */}
-          <main className="max-w-4xl flex-1 space-y-16 break-words font-songti leading-relaxed text-zinc-800">
+          <main className="max-w-4xl flex-1 space-y-16 break-words font-songti leading-relaxed text-brand-charcoal/80">
             {sections.map((section) => (
               <section key={section.id} id={section.id} className="scroll-mt-32">
-                <h2 className="mb-8 font-sans text-2xl font-medium tracking-wide text-zinc-900">
+                <h2 className="mb-8 font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                   {section.title}
                 </h2>
                 <div className="space-y-6">
@@ -221,20 +221,20 @@ export function PrivacyContent() {
       </div>
 
       {/* Page Footer */}
-      <footer className="mt-16 border-t border-zinc-200 md:mt-24">
+      <footer className="mt-16 border-t border-brand-charcoal/10 md:mt-24">
         <div className="container mx-auto px-6 py-10 text-center md:px-8 lg:px-12 xl:px-16">
-          <p className="text-xs tracking-wide text-zinc-500">
+          <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
             &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
           </p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-light text-brand-charcoal/[0.48]">
             <Link
               href="https://beian.miit.gov.cn/"
               target="_blank"
-              className="transition-colors hover:text-zinc-600"
+              className="transition-colors hover:text-brand-charcoal"
             >
               沪ICP备2026014764号-1
             </Link>
-            <span className="text-zinc-300">|</span>
+            <span className="text-brand-charcoal/15">|</span>
             <Link
               href="http://www.beian.gov.cn/portal/registerSystemInfo"
               target="_blank"
@@ -249,7 +249,7 @@ export function PrivacyContent() {
               />
               <span>沪公网安备31010702010178号</span>
             </Link>
-            <span className="text-zinc-300">|</span>
+            <span className="text-brand-charcoal/15">|</span>
             <Link
               href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
               target="_blank"
