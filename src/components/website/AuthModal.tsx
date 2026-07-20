@@ -855,11 +855,11 @@ export function AuthModal() {
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ duration: 0.5, ease: [0.8, 0, 0.13, 1] }}
                   >
-                    <h1 className="mb-12 text-center text-[2rem] font-light tracking-[0.15em] text-brand-charcoal">
+                    <h1 className="mb-14 text-center text-[2rem] font-light tracking-[0.15em] text-brand-charcoal">
                       {forgotSubmitted ? "重置密码" : "找回密码"}
                     </h1>
                     {forgotSubmitted ? (
-                      <form onSubmit={handleResetPassword} className="space-y-8">
+                      <form onSubmit={handleResetPassword} className="space-y-10">
                         <p className="text-center text-sm tracking-wide text-brand-charcoal/60">
                           验证码已发送至 {forgotPhone.slice(0, 3)}****{forgotPhone.slice(-4)}
                         </p>
@@ -1431,7 +1431,7 @@ export function AuthModal() {
                   initial={{ x: 40, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ duration: 0.5, ease: [0.8, 0, 0.13, 1] }}
-                  className="flex flex-col gap-10"
+                  className="flex flex-col gap-14"
                 >
                   <div className="pb-4 pt-[6px] text-center">
                     <h2 className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]">
