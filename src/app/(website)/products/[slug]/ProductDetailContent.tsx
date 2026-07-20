@@ -340,7 +340,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
               >
                 {/* 产品名称 + 容量 */}
                 <div className="flex items-end justify-between">
-                  <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
+                  <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
                     {product.name}
                   </h1>
                   {product.capacity && (
@@ -352,10 +352,10 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
 
                 {/* 价格与产地 */}
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-[18px] font-normal text-brand-charcoal max-lg:text-[#00263E]">
+                  <span className="text-[18px] font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]">
                     {formatPrice(product.price)}
                   </span>
-                  <span className="text-xs text-[#00263E]/50">产地：法国</span>
+                  <span className="text-xs font-light text-[#00263E]/50">产地：法国</span>
                 </div>
 
                 {/* 功效标签 */}
@@ -389,7 +389,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
                         onClick={() => setActiveTab(tab.key)}
                         onKeyDown={handleTabKeyDown}
                         className={cn(
-                          "relative cursor-pointer pb-3 text-[14px] font-normal transition-colors",
+                          "relative cursor-pointer pb-3 text-[14px] font-light tracking-[0.12em] transition-colors",
                           activeTab === tab.key
                             ? "text-brand-charcoal"
                             : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
@@ -423,7 +423,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
                     >
                       {tabContent[tab.key] ? (
                         <div
-                          className="text-justify text-[14px] font-light leading-[1.8] tracking-wide text-[#00263e]/90"
+                          className="text-justify text-[14px] font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90"
                           dangerouslySetInnerHTML={{
                             __html: DOMPurify.sanitize(tabContent[tab.key]!),
                           }}
@@ -504,7 +504,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
               {/* 相关产品推荐 */}
               {relatedProducts.length > 0 && (
                 <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pt-8 max-lg:px-4">
-                  <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-medium max-lg:tracking-[0.2em] max-lg:text-[#00263E]">
+                  <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E]">
                     相关推荐
                   </h2>
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -536,7 +536,7 @@ export function ProductDetailContent({ product, relatedProducts }: ProductDetail
 
         {/* 底部版权信息 */}
         <div className="mx-6 mt-auto border-t border-brand-charcoal/5 pb-4 pt-4 text-center max-lg:border-0 max-lg:pt-4 sm:pt-6 lg:mx-12 lg:pt-8">
-          <p className="text-[10px] font-light tracking-widest text-brand-charcoal/60 max-lg:font-medium max-lg:tracking-[0.12em] max-lg:text-[#4A6272]/30 sm:text-[12px] lg:text-brand-charcoal/60">
+          <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>
         </div>
@@ -596,7 +596,7 @@ function AddToCartButton({
       onClick={handleAddToCart}
       disabled={loading || isOutOfStock}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
+        "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-light tracking-[0.12em] transition-colors",
         isOutOfStock
           ? "cursor-not-allowed bg-gray-300 text-gray-500"
           : "bg-brand-primary text-white hover:bg-brand-primary/90"
@@ -662,7 +662,7 @@ function DirectBuyButton({
       onClick={handleDirectBuy}
       disabled={loading || isOutOfStock}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-colors",
+        "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-light tracking-[0.12em] transition-colors",
         isOutOfStock
           ? "cursor-not-allowed bg-gray-300 text-gray-500"
           : "border border-brand-primary text-brand-primary hover:bg-brand-primary/10"
@@ -705,7 +705,7 @@ function QuantitySelector({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-brand-charcoal/60">数量</span>
+      <span className="text-sm font-light text-brand-charcoal/60">数量</span>
       <div className="flex items-center rounded-lg border border-brand-beige bg-[#FBF8F0]">
         <button
           type="button"

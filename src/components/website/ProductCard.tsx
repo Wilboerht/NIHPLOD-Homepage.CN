@@ -213,7 +213,7 @@ export function ProductCard({ product, onClick, priority = false, className }: P
           }}
           transition={{ duration: 0.2 }}
         >
-          <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-brand-charcoal backdrop-blur-sm">
+          <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-light text-brand-charcoal backdrop-blur-sm">
             {category.name}
           </span>
         </m.div>
@@ -245,7 +245,7 @@ export function ProductCard({ product, onClick, priority = false, className }: P
         {capacity && <p className="text-xs text-brand-charcoal/60">{capacity}</p>}
 
         {/* 价格 */}
-        <p className="pt-1 text-sm font-medium text-brand-charcoal md:text-base">
+        <p className="pt-1 text-sm font-light text-brand-charcoal md:text-base">
           {formatPrice(price)}
         </p>
       </div>
