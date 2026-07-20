@@ -100,7 +100,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       <div className="flex shrink-0 items-center justify-between px-5 pb-6 pt-2">
         <div className="flex flex-col items-start">
           <h2
-            className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
+            className="text-[24px] font-light tracking-[0.15em] text-[#00263E]"
             style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
           >
             {activeTab === "featured" ? "当季热卖" : "全部产品"}
@@ -110,7 +110,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         <button
           type="button"
           onClick={() => setIsCategoryMenuOpen(true)}
-          className="flex items-center gap-0.5 text-[13px] font-normal tracking-wide text-[#4A6272] transition-all active:scale-95"
+          className="flex items-center gap-0.5 text-[13px] font-light tracking-[0.12em] text-[#4A6272] transition-all active:scale-95"
           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
         >
           全部产品
@@ -144,7 +144,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               <div className="relative z-10 aspect-square w-full overflow-hidden bg-[#FBF8F0]">
                 {/* 容量标签 */}
                 {product.capacity && (
-                  <div className="absolute right-3 top-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-medium text-[#00263E] shadow-sm">
+                  <div className="absolute right-3 top-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-light text-[#00263E] shadow-sm">
                     {product.capacity}
                   </div>
                 )}
@@ -166,14 +166,14 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             >
               <div className="flex max-w-fit flex-col items-start gap-1">
                 <p
-                  className="line-clamp-1 text-left text-[16px] font-normal leading-[24px] text-[#00263e]"
+                  className="line-clamp-1 text-left text-[16px] font-light tracking-[0.08em] leading-[24px] text-[#00263e]"
                   style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                   title={product.name}
                 >
                   {product.name}
                 </p>
                 <p
-                  className="text-left text-[14px] font-light text-[#00263e]/90"
+                  className="text-left text-[14px] font-light tracking-[0.12em] text-[#00263e]/90"
                   style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                 >
                   {formatPrice(product.price)}
@@ -275,7 +275,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       const product = products.find((p) => p.categoryId === cat.id);
                       if (product) handleProductClick(product);
                     }}
-                    className="group relative py-1 text-[15px] font-medium tracking-[0.1em] text-[#00263E] transition-all hover:opacity-80"
+                    className="group relative py-1 text-[15px] font-light tracking-[0.12em] text-[#00263E] transition-all hover:opacity-80"
                   >
                     {cat.name}
                     <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-primary transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
@@ -297,7 +297,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
                     className="mb-8 flex-shrink-0"
                   >
-                    <h1 className="text-2xl font-light tracking-[0.2em] text-[#00263E]">
+                    <h1 className="text-2xl font-light tracking-[0.15em] text-[#00263E]">
                       当季热卖
                     </h1>
                   </m.header>
@@ -346,7 +346,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             )}
                           </div>
                           <div className="mt-3">
-                            <h2 className="text-sm font-medium tracking-wide text-[#00263E]">
+                            <h2 className="text-sm font-light tracking-[0.12em] text-[#00263E]">
                               {product.name}
                             </h2>
                             {product.capacity && (
@@ -431,7 +431,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               {/* 标题区域 */}
               <div className="pb-9 pt-[6px] text-center">
                 <h2
-                  className="text-[24px] font-medium tracking-[0.2em] text-[#00263E]"
+                  className="text-[24px] font-light tracking-[0.15em] text-[#00263E]"
                   style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                 >
                   全部产品
@@ -500,7 +500,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           </div>
                           <div className="flex flex-col items-start">
                             <span
-                              className="whitespace-nowrap text-center text-[15px] font-medium tracking-[0.1em] text-[#00263E]/90"
+                              className="whitespace-nowrap text-center text-[15px] font-light tracking-[0.12em] text-[#00263E]/90"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
