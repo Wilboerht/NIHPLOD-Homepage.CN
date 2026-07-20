@@ -32,7 +32,7 @@ export function TermsContent({ content }: TermsContentProps) {
   });
 
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] pb-28 pt-16 md:pt-24 lg:mb-[-6rem] lg:pb-24">
+    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] pt-16 md:pt-24 lg:mb-[-6rem]">
       {/* Header Section */}
       <div className="container mx-auto mb-8 px-6 md:mb-16 md:px-8 lg:px-12 xl:px-16">
         <div className="max-w-4xl">

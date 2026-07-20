@@ -113,8 +113,13 @@ export function BottomNavBar() {
   const PrimaryIcon = primaryNav.icon;
   const isPrimaryActive = isCurrentPage(pathname, primaryNav.href);
 
-  // 服务入口、招聘、联系页面为独立全屏布局，隐藏底部导航栏
-  const isStandalonePage = pathname === "/services" || pathname === "/careers" || pathname === "/contact";
+  // 独立全屏布局页面隐藏底部导航栏
+  const isStandalonePage =
+    pathname === "/services" ||
+    pathname === "/careers" ||
+    pathname === "/contact" ||
+    pathname === "/terms" ||
+    pathname === "/privacy";
 
   // 产品详情页隐藏底部导航栏
   const isProductDetailPage = pathname.startsWith("/products/") && pathname !== "/products";
