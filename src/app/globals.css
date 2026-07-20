@@ -632,9 +632,9 @@
   border: 1px solid rgba(0, 38, 62, 0.45);
   background-color: transparent;
   color: var(--home-text-primary);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
   border-radius: 0;
   cursor: pointer;
   white-space: nowrap;
