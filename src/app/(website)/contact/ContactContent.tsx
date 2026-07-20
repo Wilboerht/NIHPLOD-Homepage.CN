@@ -184,7 +184,7 @@ export function ContactContent({ content }: ContactContentProps) {
   };
 
   return (
-    <div className="flex min-h-screen animate-fade-in flex-col bg-[#fefcf8] pb-[env(safe-area-inset-bottom)]">
+    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] lg:mb-[-6rem]">
       {/* Top Bar */}
       <nav
         className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
@@ -396,7 +396,7 @@ export function ContactContent({ content }: ContactContentProps) {
         <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
           {title.zh}
         </h1>
-        <p className="mx-auto max-w-md text-sm text-brand-charcoal/60 md:text-base">
+        <p className="mx-auto max-w-md text-[15px] font-light tracking-[0.12em] text-brand-charcoal/60 md:text-base">
           {description}
         </p>
       </div>

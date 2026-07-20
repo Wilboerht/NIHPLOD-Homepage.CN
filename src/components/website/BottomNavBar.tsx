@@ -113,11 +113,8 @@ export function BottomNavBar() {
   const PrimaryIcon = primaryNav.icon;
   const isPrimaryActive = isCurrentPage(pathname, primaryNav.href);
 
-  // 服务入口页面在移动端隐藏底部导航栏（实现全屏效果）
-  const isServicesPage = pathname === "/services";
-
-  // 招聘页面为独立全屏布局，隐藏底部导航栏
-  const isCareersPage = pathname === "/careers";
+  // 服务入口、招聘、联系页面为独立全屏布局，隐藏底部导航栏
+  const isStandalonePage = pathname === "/services" || pathname === "/careers" || pathname === "/contact";
 
   // 产品详情页隐藏底部导航栏
   const isProductDetailPage = pathname.startsWith("/products/") && pathname !== "/products";
@@ -129,7 +126,7 @@ export function BottomNavBar() {
     !activeModal &&
     !userCenterOpen &&
     !isProductDetailPage &&
-    !isCareersPage;
+    !isStandalonePage;
 
   // 尊重用户减少动画偏好
   const dockTransition = shouldReduceMotion
@@ -168,8 +165,7 @@ export function BottomNavBar() {
             transition={dockTransition}
             className={cn(
               "pointer-events-none fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
-              isServicesPage && "max-lg:hidden",
-              isCareersPage && "hidden"
+              isStandalonePage && "hidden"
             )}
           >
             {/* 移动端弹出菜单 */}

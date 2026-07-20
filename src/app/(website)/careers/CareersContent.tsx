@@ -326,7 +326,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
             {title.zh}
           </h1>
-          <p className="mx-auto max-w-md text-sm text-zinc-500 md:text-base">{description}</p>
+          <p className="mx-auto max-w-md text-[15px] font-light tracking-[0.12em] text-brand-charcoal/60 md:text-base">{description}</p>
         </div>
 
         {/* Filter Tabs */}

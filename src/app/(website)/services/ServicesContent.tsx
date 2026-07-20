@@ -117,7 +117,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
   }, [desktopMenuOpen]);
 
   return (
-    <div className="flex min-h-screen animate-fade-in flex-col bg-[#fefcf8]">
+    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] lg:mb-[-6rem]">
       {/* Top Bar */}
       <nav
         aria-label="服务页导航"
@@ -324,7 +324,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
         <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
           {pageTitle.zh}
         </h1>
-        <p className="mb-12 text-sm text-zinc-500 md:mb-16 md:text-base">
+        <p className="mb-12 text-[15px] font-light tracking-[0.12em] text-brand-charcoal/60 md:mb-16 md:text-base">
           NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验
         </p>
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
