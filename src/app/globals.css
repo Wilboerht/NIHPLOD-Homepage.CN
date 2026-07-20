@@ -672,7 +672,7 @@
   font-size: 15px;
   font-weight: 500;
   letter-spacing: 0.2em;
-  color: #3d4430;
+  color: #333333;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -683,7 +683,7 @@
 }
 
 .home-container .home-text-link:hover {
-  color: #2f3526;
+  color: #1a1a1a;
   text-decoration-color: currentColor;
 }
 
