@@ -281,7 +281,7 @@ export function FAQContent() {
           </div>
 
           {/* Footer Info */}
-          <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
+          <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-4">
             <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>

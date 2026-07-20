@@ -126,7 +126,7 @@ export function StoryContent() {
 
         <div
           className={cn(
-            "relative z-10 flex h-full flex-col overflow-hidden pb-3 transition-opacity duration-300",
+            "relative z-10 flex h-full flex-col overflow-hidden pb-4 transition-opacity duration-300",
             isDrawerOpen ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
           )}
         >
@@ -442,7 +442,7 @@ export function StoryContent() {
             </div>
 
             {/* Mobile Footer Copyright */}
-            <div className="flex flex-col items-center justify-center pb-4 pt-3">
+            <div className="flex flex-col items-center justify-center pt-3">
               <p className="text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
@@ -743,7 +743,7 @@ export function StoryContent() {
             </div>
 
             {/* Desktop Footer Copyright */}
-            <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-4">
+            <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-4">
               <p className="text-center text-xs font-light leading-relaxed tracking-widest text-brand-charcoal/70 sm:text-sm">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
