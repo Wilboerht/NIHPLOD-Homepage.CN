@@ -398,13 +398,13 @@ export function StoryContent() {
                             </div>
 
                             <div className="flex flex-col items-center gap-2 p-6 text-center">
-                              <span className="text-[14px] font-normal leading-[21px] text-[#00263e]/60">
+                              <span className="text-[14px] font-light tracking-[0.10em] leading-[21px] text-[#00263e]/60">
                                 {award.org}
                               </span>
-                              <h3 className="text-[16px] font-medium leading-[24px] text-[#00263E]">
+                              <h3 className="text-[16px] font-light tracking-[0.12em] leading-[24px] text-[#00263E]">
                                 {award.title}
                               </h3>
-                              <span className="text-[14px] font-light leading-[21px] text-[#00263e]/60">
+                              <span className="text-[14px] font-light tracking-[0.10em] leading-[21px] text-[#00263e]/60">
                                 {award.year}
                               </span>
                             </div>
@@ -482,7 +482,7 @@ export function StoryContent() {
                         type="button"
                         onClick={() => setActiveSection(item.id)}
                         className={cn(
-                          "group relative px-1 py-1 text-[15px] font-medium tracking-[0.1em] transition-opacity duration-300",
+                          "group relative px-1 py-1 text-[15px] font-light tracking-[0.15em] transition-opacity duration-300",
                           activeSection === item.id
                             ? "text-[#00263E] opacity-100"
                             : "text-[#00263E] opacity-60 hover:opacity-80"
@@ -531,19 +531,19 @@ export function StoryContent() {
 
                     {/* 右侧文字区域 */}
                     <div className="pl-0 lg:pl-10">
-                      <span className="mb-4 block text-sm uppercase tracking-[3px] text-[#00263e]/60">
+                      <span className="mb-4 block text-sm font-light tracking-[0.15em] text-[#00263e]/60">
                         Since 2008 | Monaco
                       </span>
-                      <h2 className="mt-8 mb-8 font-sans text-2xl font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:mt-10 md:mb-10 md:text-3xl md:tracking-[6px] lg:text-[36px]">
+                      <h2 className="mt-8 mb-8 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mt-10 md:mb-10 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
                         来自大自然的
                         <br />
                         神奇修复力
                       </h2>
-                      <p className="max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-brand-charcoal/80">
+                      <p className="max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80">
                         海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。所以我们将「DOLPHIN」这个单词逆转，这就是
                         NIHPLOD。
                       </p>
-                      <p className="mt-6 max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-brand-charcoal/80">
+                      <p className="mt-6 max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80">
                         创始人 Dr. Stefan
                         和他的团队，将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
                       </p>
@@ -575,10 +575,10 @@ export function StoryContent() {
                       {/* 右侧悬浮卡片 */}
                       <div className="relative z-10 -ml-12 flex h-[460px] flex-1 flex-col justify-between bg-[#FCF9F2] p-8 shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] md:-ml-16 md:h-[500px] md:p-10 lg:-ml-24 lg:p-14">
                         <div>
-                          <span className="mb-4 block text-[12px] uppercase tracking-[4px] text-brand-charcoal/60">
+                          <span className="mb-4 block text-[12px] font-light tracking-[0.15em] text-brand-charcoal/60">
                             公司使命
                           </span>
-                             <h2 className="mt-6 mb-6 font-sans text-2xl font-light !leading-[1.3] tracking-[4px] text-brand-charcoal md:mt-8 md:mb-8 md:text-3xl md:tracking-[6px] lg:text-[36px]">
+                             <h2 className="mt-6 mb-6 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mt-8 md:mb-8 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
                              化繁为简
                              <br />
                              逆转时光
@@ -592,7 +592,7 @@ export function StoryContent() {
                         </div>
 
                         <div className="w-full border-t border-[#00263e]/15 pt-6">
-                          <span className="mb-1 block text-[10px] uppercase tracking-[3px] text-[#00263e]/50">
+                          <span className="mb-1 block text-[10px] font-light tracking-[0.12em] text-[#00263e]/50">
                             CEO
                           </span>
                           <div className="mt-1 text-left">
@@ -648,10 +648,10 @@ export function StoryContent() {
                       >
                         <span className="text-6xl font-thin text-[#00263e]/10">{item.num}</span>
                         <div>
-                          <h3 className="mb-3 text-lg tracking-[3px] text-[#00263e]">
+                          <h3 className="mb-3 text-lg font-light tracking-[0.15em] text-[#00263e]">
                             {item.title}
                           </h3>
-                          <p className="line-clamp-4 min-h-[112px] text-sm leading-[1.8] text-[#00263e]/80">
+                          <p className="line-clamp-4 min-h-[112px] text-sm font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/80">
                             {item.desc}
                           </p>
                         </div>
@@ -699,13 +699,13 @@ export function StoryContent() {
 
                             {/* 默认显示的文字内容 */}
                             <div className="relative z-10 flex flex-col items-start gap-2 transition-opacity duration-300 group-hover:opacity-0">
-                              <span className="block text-sm tracking-wide text-[#00263e]/60">
+                              <span className="block text-sm font-light tracking-[0.12em] text-[#00263e]/60">
                                 {award.org}
                               </span>
-                              <span className="text-left text-base font-medium leading-relaxed tracking-wide text-[#00263e] lg:text-lg">
+                              <span className="text-left text-base font-light leading-relaxed tracking-[0.12em] text-[#00263e] lg:text-lg">
                                 {award.title}
                               </span>
-                              <span className="text-xs tracking-normal text-[#00263e]/60 lg:text-sm">
+                              <span className="text-xs font-light tracking-[0.12em] text-[#00263e]/60 lg:text-sm">
                                 {award.year}
                               </span>
                             </div>

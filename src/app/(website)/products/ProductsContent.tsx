@@ -275,7 +275,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       const product = products.find((p) => p.categoryId === cat.id);
                       if (product) handleProductClick(product);
                     }}
-                    className="group relative py-1 text-[15px] font-light tracking-[0.12em] text-[#00263E] transition-all hover:opacity-80"
+                    className="group relative py-1 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-all hover:opacity-80"
                   >
                     {cat.name}
                     <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-primary transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
