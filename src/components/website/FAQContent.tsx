@@ -173,7 +173,7 @@ export function FAQContent() {
 
         <div className="flex flex-1 flex-col overflow-hidden pb-4 sm:px-10 lg:px-[15%] xl:px-[20%]">
           {/* Page Title - Desktop */}
-          <div className="mb-10 mt-12 hidden justify-center sm:flex">
+          <div className="mb-6 mt-8 hidden justify-center sm:flex">
             <h1 className="relative inline-block text-[24px] font-medium uppercase tracking-[0.2em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-[#00263e]/20">
               常见问题
             </h1>
