@@ -357,7 +357,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             {filteredJobs.length === 0 ? (
               <div className="flex min-h-[30vh] flex-col items-center justify-center text-center">
                 <Briefcase className="mx-auto mb-3 h-10 w-10 text-[#E4DFD9]" />
-                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">暂无开放职位</p>
+                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">暂无开放职位，请稍后再来查看</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">
@@ -459,7 +459,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
           <path d="m6 9 6 6 6-6" />
         </svg>
       </div>
-      <div className="mt-2.5 flex items-center gap-2.5 font-light text-brand-charcoal/70">
+      <div className="mt-2.5 flex items-center gap-2.5 text-[13px] font-light text-brand-charcoal/70">
         <span className="font-light text-[#00263E]/60">{typeInfo.label}</span>
         <span className="text-zinc-300">|</span>
         {job.salary && (
@@ -474,7 +474,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
         </span>
       </div>
       {descriptionSummary && (
-        <p className="mt-2.5 line-clamp-1 text-sm leading-relaxed text-zinc-400">
+        <p className="mt-2.5 line-clamp-1 text-[13px] leading-relaxed text-brand-charcoal/50">
           {descriptionSummary}
         </p>
       )}
@@ -632,7 +632,7 @@ function JobModal({
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-6">
           <div>
             <h2 className="text-xl font-light tracking-[0.12em] text-[#00263E]">{job.title}</h2>
-            <div className="mt-2 flex items-center gap-2 font-light text-brand-charcoal/70">
+            <div className="mt-2 flex items-center gap-2 text-[13px] font-light text-brand-charcoal/70">
               <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
                 {typeInfo.label}
               </span>
@@ -685,18 +685,18 @@ function JobModal({
           {/* Application Form */}
           <div className="border-t border-zinc-100 pt-6">
             <h3 className="mb-4 text-base font-light tracking-[0.12em] text-[#00263E]">投递简历</h3>
-            <p className="mb-4 whitespace-pre-line font-light text-brand-charcoal/70">{submitTip?.content}</p>
+            <p className="mb-4 whitespace-pre-line text-[14px] font-light text-brand-charcoal/70">{submitTip?.content}</p>
 
             {submitStatus === "success" ? (
               <div className="rounded-xl bg-green-50 p-6 text-center">
-                <p className="font-light text-green-700">投递成功！</p>
-                <p className="mt-1 text-sm text-green-600">我们会尽快查看您的简历</p>
+                <p className="text-[15px] font-light text-green-700">投递成功！</p>
+                <p className="mt-1 text-[13px] text-green-600">我们会尽快查看您的简历</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1.5 block font-light text-brand-charcoal/60">姓名 *</label>
+                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">姓名 *</label>
                     <input
                       type="text"
                       value={formData.name}
@@ -706,7 +706,7 @@ function JobModal({
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block font-light text-brand-charcoal/60">电话 *</label>
+                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">电话 *</label>
                     <input
                       type="tel"
                       value={formData.phone}
@@ -718,7 +718,7 @@ function JobModal({
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block font-light text-brand-charcoal/60">简历 *</label>
+                  <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">简历 *</label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -729,7 +729,7 @@ function JobModal({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 font-light text-brand-charcoal/70 transition-colors hover:border-[#00263E]/40 hover:text-[#00263E]"
+                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-[14px] font-light text-brand-charcoal/70 transition-colors hover:border-[#00263E]/40 hover:text-[#00263E]"
                   >
                     {resumeFile ? (
                       <>
