@@ -340,7 +340,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
           {/* 主内容 - 上/中/下三分区 */}
           <main className="main-content relative z-10 flex min-h-full flex-col justify-between px-6 py-8 text-center lg:py-12">
             {/* 中区：Logo + 文案 + CTA + 移动端服务菜单 */}
-            <div className="flex flex-1 flex-col items-center justify-center gap-8 md:gap-10">
+            <div className="flex flex-1 flex-col items-center justify-center gap-12">
               {/* Logo */}
               <m.div
                 className="flex flex-col items-center"
