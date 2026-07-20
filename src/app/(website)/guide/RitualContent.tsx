@@ -1022,7 +1022,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             <div className="mb-4">
                               <module.icon className="h-8 w-8 text-[#4A6272]" strokeWidth={1} />
                             </div>
-                            <span className="text-lg font-medium tracking-wide text-[#00263E]">
+                            <span className="text-lg font-light tracking-[0.12em] text-[#00263E]">
                               {module.label}
                             </span>
                             <div className="mt-3 h-[1px] w-8 bg-[#4A6272]/30" />
@@ -1143,11 +1143,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       className={cn(
                                         "relative flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
                                         isActive
-                                          ? "font-semibold text-[#00263E]"
+                                          ? " text-[#00263E]"
                                           : "text-[#00263E]/40 hover:text-[#00263E]/65"
                                       )}
                                     >
-                                      <span className="relative z-10 whitespace-nowrap text-[13px] tracking-wider">
+                                      <span className="relative z-10 whitespace-nowrap text-[13px] font-light tracking-[0.12em]">
                                         {subPlan.name}
                                       </span>
                                       {isActive && (
@@ -1177,11 +1177,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       className={cn(
                                         "relative flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
                                         isActive
-                                          ? "font-semibold text-[#00263E]"
+                                          ? " text-[#00263E]"
                                           : "text-[#00263E]/40 hover:text-[#00263E]/65"
                                       )}
                                     >
-                                      <span className="relative z-10 whitespace-nowrap text-[13px] tracking-wider">
+                                      <span className="relative z-10 whitespace-nowrap text-[13px] font-light tracking-[0.12em]">
                                         {scheme.name}
                                       </span>
                                       {isActive && (
@@ -1215,7 +1215,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           <div className="mb-2 mt-6 w-full">
                             <div className="mb-4 flex items-center justify-center gap-3">
                               <div className="h-px w-8 bg-[#00263E]/10" />
-                              <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#00263E]/40">
+                              <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/40">
                                 相关产品
                               </span>
                               <div className="h-px w-8 bg-[#00263E]/10" />
@@ -1270,7 +1270,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               <span className="mb-1 text-[10px] uppercase tracking-widest text-[#4A6272]/60">
                                 预计时长
                               </span>
-                              <span className="text-[14px] font-medium text-[#00263E]">
+                              <span className="text-[14px] font-light text-[#00263E]">
                                 {selectedScheme.totalDuration?.replace("min", "分钟") ||
                                   "15-20 分钟"}
                               </span>
@@ -1280,7 +1280,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               <span className="mb-1 text-[10px] uppercase tracking-widest text-[#4A6272]/60">
                                 护理阶段
                               </span>
-                              <span className="text-[14px] font-medium text-[#00263E]">
+                              <span className="text-[14px] font-light text-[#00263E]">
                                 {currentSteps.length} 个核心步骤
                               </span>
                             </div>
@@ -1289,7 +1289,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       </div>
                     ) : (
                       <div className="mb-4">
-                        <h2 className="text-3xl font-medium tracking-widest text-[#00263E]">
+                        <h2 className="text-3xl font-light tracking-[0.15em] text-[#00263E]">
                           {selectedScheme.name}
                         </h2>
                         <span className="mt-2 inline-block font-serif text-[10px] uppercase tracking-[0.2em] text-[#4A6272]">
@@ -1519,7 +1519,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                             {/* 文本描述区 */}
                             <div className="px-1 sm:px-3">
-                              <h4 className="mb-3 text-center text-lg font-medium tracking-wide text-[#00263E] sm:text-xl">
+                              <h4 className="mb-3 text-center text-lg font-light tracking-[0.12em] text-[#00263E] sm:text-xl">
                                 {step.title}
                               </h4>
                               <p className="text-left text-[13px] font-light leading-[1.8] text-[#00263E]/60 sm:text-[14px]">
@@ -1538,7 +1538,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         <div className="mb-4 flex flex-col items-center gap-7 sm:gap-14">
                           {/* 核心优势 */}
                           <div className="flex w-full flex-col items-center gap-3">
-                            <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#00263E]/40">
+                            <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/40">
                               核心优势
                             </span>
                             <div className="flex w-full flex-wrap justify-center gap-2 px-4">
@@ -1600,7 +1600,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Certifications (Quality Endorsement) */}
                           <div className="flex flex-col items-center gap-3">
-                            <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#00263E]/40">
+                            <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/40">
                               检测认证
                             </span>
                             <div className="flex items-center gap-6 opacity-60 mix-blend-multiply">
@@ -1884,7 +1884,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       <header className="mb-8 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
                         {/* 左侧标题组 */}
                         <div className="flex flex-row items-end gap-5">
-                          <h1 className="font-sans text-[48px] font-light leading-none tracking-[0.08em] text-brand-charcoal">
+                          <h1 className="font-sans text-[40px] font-light leading-none tracking-[0.08em] text-brand-charcoal">
                             {selectedModule === "portable" || selectedModule === "professional"
                               ? modules.find((m) => m.id === selectedModule)?.label
                               : selectedScheme.name}
@@ -1916,9 +1916,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       setCurrentStepIndex(0);
                                     }}
                                     className={cn(
-                                      "relative rounded-full px-6 py-1.5 text-[13px] tracking-widest transition-colors duration-300",
+                                      "relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300",
                                       isActive
-                                        ? "font-medium text-brand-charcoal"
+                                        ? "text-brand-charcoal"
                                         : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
                                     )}
                                   >
@@ -1949,9 +1949,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       type="button"
                                       onClick={() => selectScheme(scheme)}
                                       className={cn(
-                                        "relative rounded-full px-6 py-1.5 text-[13px] tracking-widest transition-colors duration-300",
+                                        "relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300",
                                         isActive
-                                          ? "font-medium text-brand-charcoal"
+                                          ? "text-brand-charcoal"
                                           : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
                                       )}
                                     >
@@ -1989,7 +1989,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         >
                           {/* Meta Item: Products */}
                           <div className="relative isolate flex flex-col">
-                            <h3 className="font-display z-10 mb-3 text-[15px] font-medium uppercase tracking-wide text-brand-charcoal">
+                            <h3 className="font-display z-10 mb-3 text-[14px] font-light tracking-[0.12em] text-brand-charcoal">
                               相关产品
                             </h3>
 
@@ -2042,7 +2042,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Meta Item: Benefits (Tags) */}
                           <div className="flex flex-col">
-                            <h3 className="font-display mb-3 text-[15px] font-medium uppercase tracking-wide text-brand-charcoal">
+                            <h3 className="font-display mb-3 text-[14px] font-light tracking-[0.12em] text-brand-charcoal">
                               核心优势
                             </h3>
                             <div className="flex flex-wrap gap-2">
@@ -2055,7 +2055,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     <span className="text-[10px] text-brand-charcoal-light transition-colors group-hover:text-brand-charcoal">
                                       ✦
                                     </span>
-                                    <span className="text-sm font-normal tracking-wide text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
+                                    <span className="text-sm font-light tracking-[0.12em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
                                       {tag}
                                     </span>
                                   </div>
@@ -2066,7 +2066,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Meta Item: Certifications */}
                           <div className="flex flex-col">
-                            <h3 className="font-display mb-3 text-[15px] font-medium uppercase tracking-wide text-brand-charcoal">
+                            <h3 className="font-display mb-3 text-[14px] font-light tracking-[0.12em] text-brand-charcoal">
                               检测认证
                             </h3>
                             <div className="flex items-center gap-5">
@@ -2100,7 +2100,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                             return (
                               <div className="flex flex-col">
-                                <h3 className="font-display mb-3 text-[15px] font-medium uppercase tracking-wide text-brand-charcoal">
+                                <h3 className="font-display mb-3 text-[14px] font-light tracking-[0.12em] text-brand-charcoal">
                                   特殊时期支持
                                 </h3>
                                 <div
@@ -2349,7 +2349,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     className="group relative w-[280px] flex-none"
                                   >
                                     {/* 步骤序号 */}
-                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/20 bg-[#FBF8F0] px-4 py-1 text-[10px] font-medium tracking-widest text-brand-charcoal shadow-sm">
+                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/20 bg-[#FBF8F0] px-4 py-1 text-[10px] font-light tracking-[0.12em] text-brand-charcoal shadow-sm">
                                       步骤 {String(index + 1).padStart(2, "0")}
                                     </div>
 
@@ -2371,10 +2371,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                         {/* 文字区域 */}
                                         <div className="flex flex-1 flex-col items-center">
-                                          <h2 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-medium text-brand-charcoal">
+                                          <h2 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                                             {step.title}
                                           </h2>
-                                          <p className="text-left text-sm leading-relaxed text-brand-charcoal/80">
+                                          <p className="text-left text-[14px] font-light tracking-[0.08em] text-brand-charcoal/80">
                                             {step.description}
                                           </p>
                                         </div>
@@ -2444,10 +2444,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                                 {/* 文字区域 */}
                                                 <div className="flex flex-1 flex-col items-center">
-                                                  <h2 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-medium text-brand-charcoal">
+                                                  <h2 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                                                     {step.title}
                                                   </h2>
-                                                  <p className="text-left text-sm leading-relaxed text-brand-charcoal/80">
+                                                  <p className="text-left text-[14px] font-light tracking-[0.08em] text-brand-charcoal/80">
                                                     {step.description}
                                                   </p>
 
