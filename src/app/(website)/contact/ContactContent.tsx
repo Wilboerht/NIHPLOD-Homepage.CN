@@ -267,14 +267,6 @@ export function ContactContent({ content }: ContactContentProps) {
                     >
                       品牌故事
                     </Link>
-                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
-                    <Link
-                      href="/contact"
-                      onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
-                    >
-                      联系我们
-                    </Link>
                   </m.div>
                 )}
               </AnimatePresence>
