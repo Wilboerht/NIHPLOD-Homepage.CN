@@ -143,39 +143,31 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             <div className="hidden items-center gap-1 md:flex">
               <Link
                 href="/contact"
-                className="group relative px-3 py-2 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
               >
                 联系我们
                 <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
               </Link>
               <Link
                 href="/terms"
-                className="group relative px-3 py-2 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
               >
                 服务条款
                 <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
               </Link>
               <Link
                 href="/privacy"
-                className="group relative px-3 py-2 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
               >
                 隐私政策
                 <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
               </Link>
-              <Link
-                href="/"
-                className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
-              >
-                <Home className="h-4 w-4" /> 返回首页
-                <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
-              </Link>
-
               {/* Desktop More Menu */}
               <div ref={desktopMenuRef} className="relative">
                 <button
                   type="button"
                   onClick={() => setDesktopMenuOpen((prev) => !prev)}
-                  className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                  className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
                   aria-expanded={desktopMenuOpen}
                   aria-controls="careers-desktop-menu"
                   aria-label="更多页面"
@@ -199,28 +191,31 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                       <Link
                         href="/products"
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                       >
                         产品系列
                       </Link>
+                      <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
                       <Link
                         href="/guide"
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                       >
                         护肤指南
                       </Link>
+                      <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
                       <Link
                         href="/faq"
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                       >
                         常见问题
                       </Link>
+                      <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
                       <Link
                         href="/about"
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                       >
                         品牌故事
                       </Link>
@@ -228,6 +223,14 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                   )}
                 </AnimatePresence>
               </div>
+
+              <Link
+                href="/"
+                className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              >
+                <Home className="h-4 w-4" /> 返回首页
+                <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
+              </Link>
             </div>
 
             <button
