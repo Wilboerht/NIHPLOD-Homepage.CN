@@ -1881,7 +1881,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   >
                     <div className="flex h-full w-full flex-col justify-center">
                       {/* Level 3 Header: 标题与切换器 */}
-                      <header className="mb-8 flex flex-shrink-0 items-end justify-between border-b border-brand-charcoal/10 pb-5">
+                      <header className="mb-8 flex flex-shrink-0 items-end justify-between pb-5">
                         {/* 左侧标题组 */}
                         <div className="flex flex-row items-end gap-5">
                           <h1 className="font-sans text-[40px] font-light leading-none tracking-[0.08em] text-brand-charcoal">
