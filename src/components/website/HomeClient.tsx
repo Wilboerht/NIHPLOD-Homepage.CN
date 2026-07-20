@@ -397,12 +397,15 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   <span>探索旎柏</span>
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </m.button>
-                {/* <m.div whileTap={{ scale: 0.96 }} className="flex">
-                        <Link href="https://advisor.nihplod.cn" className="btn btn-secondary">
-                          AI快速测肤
-                          <span className="badge-new">NEW</span>
-                        </Link>
-                      </m.div> */}
+                <m.a
+                  href="https://advisor.nihplod.cn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileTap={{ scale: 0.98 }}
+                  className="home-text-link"
+                >
+                  肌智派测肤礼遇
+                </m.a>
               </m.div>
 
               {/* 移动端辅助导航 - 上移到 CTA 下方，单手操作更友好 */}
