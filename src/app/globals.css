@@ -668,21 +668,22 @@
 
 /* 首页纯文字链接按钮 */
 .home-container .home-text-link {
-  font-size: 14px;
-  font-weight: 300;
-  letter-spacing: 0.02em;
-  color: var(--brand-charcoal-light);
+  position: relative;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  color: #3d4430;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 4px;
   text-decoration-color: transparent;
   transition:
-    color 0.3s ease,
-    text-decoration-color 0.3s ease;
+    color 0.5s ease,
+    text-decoration-color 0.5s ease;
 }
 
 .home-container .home-text-link:hover {
-  color: var(--brand-charcoal);
+  color: #2f3526;
   text-decoration-color: currentColor;
 }
 
