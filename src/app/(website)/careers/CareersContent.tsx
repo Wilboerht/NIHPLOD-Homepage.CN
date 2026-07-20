@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, m } from "framer-motion";
-import { MapPin, Briefcase, X, Upload, FileText, Send, Loader2, Home, Menu } from "lucide-react";
+import { MapPin, Briefcase, X, Upload, FileText, Send, Loader2, Home, Menu, ChevronDown } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { apiPost, ApiError } from "@/lib/api-client";
 
@@ -76,6 +76,26 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
   const [filterType, setFilterType] = useState<string>("all");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        desktopMenuRef.current &&
+        !desktopMenuRef.current.contains(event.target as Node)
+      ) {
+        setDesktopMenuOpen(false);
+      }
+    };
+
+    if (desktopMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [desktopMenuOpen]);
 
   const title = content?.title || { en: "JOIN US", zh: "加入我们" };
   const description =
@@ -149,6 +169,65 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 <Home className="h-4 w-4" /> 返回首页
                 <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
               </Link>
+
+              {/* Desktop More Menu */}
+              <div ref={desktopMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setDesktopMenuOpen((prev) => !prev)}
+                  className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                  aria-expanded={desktopMenuOpen}
+                  aria-controls="careers-desktop-menu"
+                  aria-label="更多页面"
+                >
+                  菜单
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-500 ${desktopMenuOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {desktopMenuOpen && (
+                    <m.div
+                      id="careers-desktop-menu"
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                      className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-brand-charcoal/5 bg-[#FBF8F0] p-2 shadow-[0_2px_4px_-1px_rgba(0,38,62,0.05),0_8px_16px_-2px_rgba(0,38,62,0.08),0_24px_48px_-6px_rgba(0,38,62,0.06)]"
+                    >
+                      <Link
+                        href="/products"
+                        onClick={() => setDesktopMenuOpen(false)}
+                        className="block rounded-xl px-4 py-3 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      >
+                        产品系列
+                      </Link>
+                      <Link
+                        href="/guide"
+                        onClick={() => setDesktopMenuOpen(false)}
+                        className="block rounded-xl px-4 py-3 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      >
+                        护肤指南
+                      </Link>
+                      <Link
+                        href="/faq"
+                        onClick={() => setDesktopMenuOpen(false)}
+                        className="block rounded-xl px-4 py-3 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      >
+                        常见问题
+                      </Link>
+                      <Link
+                        href="/about"
+                        onClick={() => setDesktopMenuOpen(false)}
+                        className="block rounded-xl px-4 py-3 text-[15px] font-medium tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      >
+                        品牌故事
+                      </Link>
+                    </m.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             <button
