@@ -596,7 +596,7 @@
 
 /* Logo - 更精致的高端尺寸 */
 .home-container .logo {
-  width: clamp(120px, 15vw, 170px);
+  width: clamp(130px, 16vw, 185px);
   height: auto;
 }
 
