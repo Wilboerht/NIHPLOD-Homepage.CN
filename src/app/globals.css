@@ -606,7 +606,7 @@
   font-size: clamp(1.15rem, 2.8vw, 1.45rem);
   font-weight: 300;
   line-height: 1.7;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
   color: var(--foreground);
   max-width: 28em;
   margin-inline: auto;
