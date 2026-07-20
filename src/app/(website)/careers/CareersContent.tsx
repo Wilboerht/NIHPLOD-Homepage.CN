@@ -356,7 +356,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           <div className="mx-auto max-w-2xl">
             {filteredJobs.length === 0 ? (
               <div className="flex min-h-[30vh] flex-col items-center justify-center text-center">
-                <Briefcase className="mx-auto mb-3 h-10 w-10 text-brand-charcoal/20" />
+                <Briefcase className="mx-auto mb-3 h-10 w-10 text-[#E4DFD9]" />
                 <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">暂无开放职位，请稍后再来查看</p>
               </div>
             ) : (
