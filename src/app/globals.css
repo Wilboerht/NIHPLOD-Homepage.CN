@@ -770,6 +770,8 @@
 .home-container .footer-beian a,
 .home-container .footer-beian span {
   font-weight: 300;
+  font-size: 11px;
+  letter-spacing: 0.12em;
   color: var(--home-text-secondary);
   transition: color 0.3s ease;
 }
@@ -787,14 +789,11 @@
   }
 
   .home-container .footer-links a {
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    letter-spacing: 0.15em;
   }
 }
 
 .home-container .footer-copyright {
-  font-size: 11px;
   letter-spacing: 0.15em;
 }
 
@@ -804,8 +803,7 @@
   justify-content: center;
   align-items: center;
   gap: 0.5rem 1rem;
-  font-size: 10px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.12em;
 }
 
 /* 响应式 - 将断点提升至包含 iPad mini (820px) */
