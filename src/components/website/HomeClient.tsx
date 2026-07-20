@@ -421,7 +421,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               animate={{ opacity: 1 }}
               transition={{ duration: 1.2, delay: 1 }}
             >
-              <div className="flex w-full flex-col items-center gap-4 px-6 pb-2 pt-6">
+              <div className="flex w-full flex-col items-center gap-3 py-3">
                 {/* 辅助链接 - 桌面端 (静态列表) */}
                 <div className="footer-links hidden items-center gap-6 md:flex">
                   {FOOTER_LINKS.map((link) => (
