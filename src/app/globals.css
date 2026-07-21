@@ -1333,7 +1333,7 @@
 /* ========== 登录卡片样式 ========== */
 
 .kinetic-login-cell {
-  background: #fbf8f0;
+  background: #f8f1e4;
   justify-content: center;
   align-items: flex-start;
   border: none;
@@ -1546,7 +1546,7 @@
 /* ========== 自定义彩色卡片样式 ========== */
 
 .kinetic-cell-yellow {
-  background: #fbf8f0;
+  background: #efe4d4;
   box-shadow: 0 4px 20px -8px rgba(0, 38, 62, 0.08);
 }
 
