@@ -106,7 +106,11 @@ export default function LoginPage() {
       setIsLoading(true);
 
       try {
-        await apiPost("/api/admin/login", { email, password, totpCode });
+        await apiPost("/api/admin/login", {
+          email,
+          password,
+          ...(totpCode ? { totpCode } : {}),
+        });
         // 使用 window.location.href 而不是 router.push，确保是 top-level 导航，
         // 浏览器会带上 SameSite=Strict 的 admin_token Cookie，避免 middleware 拦截。
         window.location.href = redirectTo;
