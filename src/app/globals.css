@@ -1333,7 +1333,7 @@
 /* ========== 登录卡片样式 ========== */
 
 .kinetic-login-cell {
-  background: #f8f1e4;
+  background: #fbf8f0;
   justify-content: center;
   align-items: flex-start;
   border: none;
@@ -1570,7 +1570,7 @@
 }
 
 .kinetic-cell-orange {
-  background: #fbf8f0;
+  background: #f8f1e4;
   box-shadow: 0 4px 20px -8px rgba(0, 38, 62, 0.08);
 }
 
