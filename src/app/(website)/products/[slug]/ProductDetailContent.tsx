@@ -648,11 +648,11 @@ export function ProductDetailContent({
       {/* 固定顶栏占位 */}
       <div className="h-[62px] shrink-0 md:h-[88px]" />
 
-      <div className="relative z-10 flex flex-1 flex-col p-4 pb-28 sm:p-6 lg:w-[80%] lg:mx-auto lg:p-8 lg:pb-8">
+      <div className="relative z-10 flex flex-1 flex-col pb-28 lg:w-[80%] lg:mx-auto lg:pb-8">
 
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative min-h-0 flex-1">
-          <div className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-hidden [&::-webkit-scrollbar]:hidden">
+          <div className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="lg:grid lg:h-full lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
               <div className="lg:flex lg:flex-col lg:justify-center lg:overflow-y-auto lg:py-8">
@@ -1038,13 +1038,16 @@ export function ProductDetailContent({
           </div>
         )}
 
-        {/* 底部版权信息 */}
-        <div className="mx-6 mt-auto border-t border-brand-charcoal/5 pb-4 pt-4 text-center max-lg:border-0 max-lg:pb-24 max-lg:pt-4 sm:pt-6 lg:mx-12 lg:pt-8">
+      </div>
+
+      {/* 底部版权信息 */}
+      <footer className="mt-auto border-t border-brand-charcoal/10 max-lg:border-0">
+        <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16 max-lg:pb-24">
           <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>
         </div>
-      </div>
+      </footer>
 
       {/* 图片灯箱 */}
       <AnimatePresence>
