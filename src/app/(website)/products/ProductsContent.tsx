@@ -1,4 +1,4 @@
-﻿/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
@@ -297,7 +297,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
                     className="flex-shrink-0"
                   >
-                    <h1 className="text-2xl font-light tracking-[0.15em] text-[#00263E]">
+                    <h1 className="mb-6 text-2xl font-light tracking-[0.15em] text-[#00263E]">
                       当季热卖
                     </h1>
                   </m.header>
