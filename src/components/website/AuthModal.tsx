@@ -505,7 +505,7 @@ export function AuthModal() {
             )}
 
             {/* 内容区域 */}
-            <div className="flex flex-1 flex-col overflow-y-auto px-6">
+            <div className="flex flex-1 flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <div className="m-auto w-full max-w-[480px] py-12">
                 {/* Logo */}
                 <div className="mb-14 flex justify-center">
