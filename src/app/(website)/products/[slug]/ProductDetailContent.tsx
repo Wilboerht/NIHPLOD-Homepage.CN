@@ -570,10 +570,10 @@ export function ProductDetailContent({
 
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative w-full lg:flex lg:items-center lg:justify-center">
-          <div className="scroll-smooth overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+          <div className="w-full scroll-smooth overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
             <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
-              <div className="lg:flex lg:flex-col lg:justify-center lg:overflow-y-auto lg:py-8">
+              <div className="lg:flex lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-y-auto lg:py-8">
                 <div className="w-full md:mx-auto md:w-full lg:max-w-lg">
                   <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
                     {/* 桌面端缩略图列 */}
@@ -656,7 +656,7 @@ export function ProductDetailContent({
               </div>
 
               {/* 右侧：产品信息 + 购买 */}
-              <div className="lg:overflow-y-auto lg:py-8">
+              <div className="lg:min-w-0 lg:overflow-y-auto lg:py-8">
                 <div className="mx-auto max-w-2xl px-4 sm:px-0">
                   {/* 产品信息 */}
                   <m.div
