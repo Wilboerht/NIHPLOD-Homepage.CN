@@ -648,15 +648,15 @@ export function ProductDetailContent({
       {/* 固定顶栏占位 */}
       <div className="h-[62px] shrink-0 md:h-[88px]" />
 
-      <div className="relative z-10 flex flex-1 flex-col p-4 pb-28 sm:p-6 lg:p-8 lg:pb-8">
+      <div className="relative z-10 flex flex-1 flex-col p-4 pb-28 sm:p-6 lg:w-[80%] lg:mx-auto lg:p-8 lg:pb-8">
 
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative min-h-0 flex-1">
           <div className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-hidden [&::-webkit-scrollbar]:hidden">
-            <div className="lg:grid lg:h-full lg:grid-cols-2 lg:gap-12">
+            <div className="lg:grid lg:h-full lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
-              <div className="lg:flex lg:flex-col lg:justify-center lg:overflow-y-auto lg:px-0 lg:py-8">
-                <div className="mx-4 w-[calc(100%-2rem)] max-w-4xl md:m-0 md:mx-auto md:w-full lg:mx-auto lg:w-full lg:max-w-lg">
+              <div className="lg:flex lg:flex-col lg:justify-center lg:overflow-y-auto lg:py-8">
+                <div className="w-full md:mx-auto md:w-full lg:max-w-lg">
                   <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
                     {/* 桌面端缩略图列 */}
                     {product.images.length > 1 && (
@@ -738,14 +738,15 @@ export function ProductDetailContent({
               </div>
 
               {/* 右侧：产品信息 + 购买 */}
-              <div className="lg:overflow-y-auto lg:px-4 lg:py-8">
-                {/* 产品信息 */}
-                <m.div
-                  className="mx-auto max-w-2xl px-6 pb-0 pt-7 max-lg:px-4"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                >
+              <div className="lg:overflow-y-auto lg:py-8">
+                <div className="mx-auto max-w-2xl px-4 sm:px-0">
+                  {/* 产品信息 */}
+                  <m.div
+                    className="pt-6"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  >
                   {/* 面包屑导航 */}
                   <nav aria-label="面包屑导航" className="mb-3">
                     <ol className="flex flex-wrap items-center gap-1.5 text-xs font-light tracking-wide">
@@ -814,7 +815,7 @@ export function ProductDetailContent({
 
                   {/* 价格、产地、销量 */}
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[18px] font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]">
+                    <span className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]">
                       {formatPrice(product.price)}
                     </span>
                     <div className="flex flex-col items-end gap-0.5 text-xs font-light text-[#00263E]/50">
@@ -845,7 +846,7 @@ export function ProductDetailContent({
                       {product.benefits.map((benefit, index) => (
                         <span
                           key={index}
-                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[14px] font-light text-[#00263E]"
+                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-sm font-light text-[#00263E]"
                         >
                           {benefit}
                         </span>
@@ -855,10 +856,10 @@ export function ProductDetailContent({
                 </m.div>
 
                 {/* Tab 区域 */}
-                <div className="mx-auto max-w-2xl px-6 py-7 max-lg:px-4">
+                <div className="py-8">
                   {/* Tab 切换 */}
                   <div className="border-b border-brand-beige">
-                    <div className="flex justify-start gap-8" role="tablist" aria-label="产品信息">
+                    <div className="flex justify-start gap-6" role="tablist" aria-label="产品信息">
                       {tabs.map((tab) => (
                         <div
                           key={tab.key}
@@ -870,7 +871,7 @@ export function ProductDetailContent({
                           onClick={() => setActiveTab(tab.key)}
                           onKeyDown={handleTabKeyDown}
                           className={cn(
-                            "relative cursor-pointer pb-3 text-[14px] font-light tracking-[0.12em] transition-colors",
+                            "relative cursor-pointer pb-3 text-sm font-light tracking-[0.12em] transition-colors",
                             activeTab === tab.key
                               ? "text-brand-charcoal"
                               : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
@@ -889,7 +890,7 @@ export function ProductDetailContent({
                   </div>
 
                   {/* Tab 内容 */}
-                  <div className="mt-4">
+                  <div className="mt-6">
                     {tabs.map((tab) => (
                       <div
                         key={tab.key}
@@ -904,13 +905,13 @@ export function ProductDetailContent({
                       >
                         {tabContent[tab.key] ? (
                           <div
-                            className="text-left text-[14px] font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90"
+                            className="text-left text-sm font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90"
                             dangerouslySetInnerHTML={{
                               __html: DOMPurify.sanitize(tabContent[tab.key]!),
                             }}
                           />
                         ) : (
-                          <p className="text-[14px] font-light text-[#00263e]/40">暂无内容</p>
+                          <p className="text-sm font-light text-[#00263e]/40">暂无内容</p>
                         )}
                       </div>
                     ))}
@@ -920,11 +921,11 @@ export function ProductDetailContent({
                 {/* 小红书链接 */}
                 <XiaohongshuLink
                   categoryName={product.category.name}
-                  className="mx-auto flex max-w-2xl flex-col gap-1 px-6 pb-7 max-lg:px-4"
+                  className="flex flex-col gap-1 pb-7"
                 />
 
                 {/* 购买按钮区域 - 桌面端内联 */}
-                <div className="mx-auto max-w-2xl px-6 pb-3 max-lg:hidden">
+                <div className="pb-3 max-lg:hidden">
                   <div className="flex flex-col gap-3">
                     {product.allowDirectBuy && (
                       <>
@@ -973,7 +974,7 @@ export function ProductDetailContent({
                         </a>
                       ) : (
                         !product.allowDirectBuy && (
-                          <span className="text-[14px] font-light text-[#00263e]/50">
+                          <span className="text-sm font-light text-[#00263e]/50">
                             暂无购买链接
                           </span>
                         )
@@ -981,10 +982,11 @@ export function ProductDetailContent({
                     </div>
                   </div>
                 </div>
+                </div>
 
                 {/* 相关产品推荐 */}
                 {relatedProducts.length > 0 && (
-                  <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pb-24 pt-8 max-lg:px-4">
+                  <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-4 pt-8 sm:px-0 pb-24">
                     <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E]">
                       相关推荐
                     </h2>
