@@ -252,7 +252,7 @@ export function ProductCard({ product, onClick, priority = false, className }: P
         </h3>
 
         {/* 容量（如有） */}
-        {capacity && <p className="text-xs text-brand-charcoal/60">{capacity}</p>}
+        {capacity && <p className="text-xs leading-relaxed text-brand-charcoal/60">{capacity}</p>}
 
         {/* 价格 */}
         <p className="pt-1 text-sm font-light text-brand-charcoal md:text-base">

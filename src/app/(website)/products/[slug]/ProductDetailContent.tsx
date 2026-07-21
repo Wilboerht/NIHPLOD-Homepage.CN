@@ -683,7 +683,7 @@ export function ProductDetailContent({
 
                   {/* 产地/规格 */}
                   {(product.origin || product.capacity) && (
-                    <div className="mt-2 flex items-center gap-3 text-xs font-normal text-[#00263E]">
+                    <div className="mt-2 flex items-center gap-3 text-xs font-normal leading-relaxed text-[#00263E]">
                       {product.origin && <span>产地：{product.origin}</span>}
                       {product.capacity && <span>规格：{product.capacity}</span>}
                     </div>
@@ -764,7 +764,7 @@ export function ProductDetailContent({
                         >
                           {tabContent[tab.key] ? (
                             <div
-                              className="text-left text-base font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90"
+                              className="text-left text-base font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90 [&_p+p]:mt-3"
                               dangerouslySetInnerHTML={{
                                 __html: DOMPurify.sanitize(tabContent[tab.key]!),
                               }}
