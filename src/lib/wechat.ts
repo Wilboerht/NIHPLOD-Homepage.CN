@@ -245,7 +245,7 @@ export function getWechatOAuthUrl(redirectUri: string, state?: string): string {
 }
 
 /**
- * 生成微信公众号网页授权 URL
+ * 生成微信服务号网页授权 URL
  * 用于微信内 H5 授权登录
  */
 export function getWechatMpOAuthUrl(
@@ -256,7 +256,7 @@ export function getWechatMpOAuthUrl(
   const appId = process.env.WECHAT_MP_APP_ID || process.env.WECHAT_APP_ID;
 
   if (!appId) {
-    throw new Error("微信公众号 AppID 未配置");
+    throw new Error("微信服务号 AppID 未配置");
   }
 
   const encodedRedirect = encodeURIComponent(redirectUri);
@@ -268,7 +268,7 @@ export function getWechatMpOAuthUrl(
 /**
  * 通过 code 获取 Access Token 和 OpenID
  * @param code 微信回调的 code
- * @param type 登录类型: open(开放平台) | mp(公众号)
+ * @param type 登录类型: open(开放平台) | mp(服务号)
  */
 export async function getWechatOAuthToken(
   code: string,

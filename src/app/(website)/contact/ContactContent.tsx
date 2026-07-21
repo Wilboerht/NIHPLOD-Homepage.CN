@@ -553,10 +553,10 @@ export function ContactContent({ content }: ContactContentProps) {
             </span>
             <span className="text-[11px] font-light text-brand-charcoal/20">|</span>
             <div className="group relative inline-flex cursor-pointer">
-              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">公众号</span>
+              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">服务号</span>
               <Image
                 src="/images/wechat-qrcode.jpg"
-                alt="NIHPLOD 微信公众号"
+                alt="NIHPLOD 微信服务号"
                 width={160}
                 height={160}
                 unoptimized

@@ -60,7 +60,7 @@ export default function ScrollSpySidebar({ sections, label = "目录导航" }: S
         rafRef.current = requestAnimationFrame(selectActive);
       },
       {
-        rootMargin: "-96px 0px -40% 0px",
+        rootMargin: "-120px 0px -40% 0px",
         threshold: 0,
       }
     );
@@ -79,7 +79,7 @@ export default function ScrollSpySidebar({ sections, label = "目录导航" }: S
         rafRef.current = requestAnimationFrame(selectActive);
       },
       {
-        rootMargin: "-96px 0px 0px 0px",
+        rootMargin: "-120px 0px 0px 0px",
         threshold: 0,
       }
     );
@@ -107,7 +107,7 @@ export default function ScrollSpySidebar({ sections, label = "目录导航" }: S
     <aside className="hidden w-72 shrink-0 lg:block">
       <div
         ref={navRef}
-        className="scrollbar-hide sticky top-32 max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain"
+        className="scrollbar-hide sticky top-[120px] md:top-32 max-h-[calc(100vh-8rem)] overflow-y-auto overscroll-contain"
       >
         <nav className="flex flex-col space-y-1" aria-label={label}>
           {sections.map((section) => (

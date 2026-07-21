@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     let authUrl: string;
 
     if (isWechat) {
-      // 微信内使用公众号网页授权
+      // 微信内使用服务号网页授权
       authUrl = getWechatMpOAuthUrl(oauthCallbackUrl, state, "snsapi_userinfo");
     } else {
       // PC 或其他浏览器使用开放平台扫码登录

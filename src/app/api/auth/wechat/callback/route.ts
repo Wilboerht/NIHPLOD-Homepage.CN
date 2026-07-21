@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // 获取 Access Token（根据 state 中的 type 选择开放平台或公众号）
+    // 获取 Access Token（根据 state 中的 type 选择开放平台或服务号）
     const tokenData = await getWechatOAuthToken(code, loginType);
 
     // 获取用户信息

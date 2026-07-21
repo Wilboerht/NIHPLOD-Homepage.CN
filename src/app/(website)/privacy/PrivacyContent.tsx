@@ -1,6 +1,6 @@
 import TableOfContents from "@/components/ui/TableOfContents";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
-import { BackToHome } from "@/components/ui/BackToHome";
+import { StandaloneNav } from "@/components/ui/StandaloneNav";
 import { ContentParagraph } from "@/components/ui/PolicyContentRenderer";
 import Link from "next/link";
 import Image from "next/image";
@@ -24,7 +24,7 @@ const privacyData: Record<string, SectionContent> = {
   ch2: {
     title: "二、本隐私政策范围",
     content: [
-      "二、本隐私政策范围\n\n本隐私政策适用于我们通过以下渠道向您提供产品、服务或活动时涉及的个人信息处理活动：\n\n（1）我们的官方网站（nihplod.cn 及其子域名，包括 AI 素颜测肤独立网站 advisor.nihplod.cn）\n（2）我们的官方微信小程序（包括「NIHPLOD 官方商城」小程序及「NIHPLOD 预约服务」小程序）\n（3）我们的 AI 素颜测肤独立网站（advisor.nihplod.cn 及其子域名）\n（4）我们在天猫、京东等第三方电商平台开设的品牌官方旗舰店\n（5）我们的官方第三方社交媒体账号（如微信公众号、小红书、微博官方账号等）\n（6）我们的电子邮箱及线下实体店铺（包括百货专柜、免税店、美妆集合店等授权经销商）\n（7）其他经我们确认的线上和线下渠道\n\n本隐私政策是 NIHPLOD 旎柏《服务条款》不可分割的组成部分。就个人信息处理事项，如本隐私政策与《服务条款》之间存在任何理解上的冲突，除非另有明确说明，以本隐私政策为准。\n\n本隐私政策不适用于以下情形：\n\n（1）第三方向您提供的服务，该等服务适用第三方向您另行说明的个人信息处理规则；\n（2）我们的员工、实习生或外包人员的个人信息处理，该等处理适用我们的内部人力资源管理制度和员工个人信息处理规则。\n\n若某项产品、服务或活动有单独的个人信息处理规则（包括隐私政策、告知文案、现场说明、系统弹窗等），该单独规则中未涵盖的内容，以本隐私政策为准；该单独规则对本隐私政策中内容有特殊约定的，以单独规则相关内容为准。上述适用规则以不降低法律规定的告知和同意标准为前提——若单独规则的告知内容不符合法律强制性要求，则仍以法律规定的完整告知内容为准。\n\n随着业务发展，我们可能推出新的服务或功能，或调整现有的个人信息处理活动。如处理目的、处理方式或处理的个人信息种类发生变更，我们将更新本隐私政策并在显著位置提示您阅读。对于重大变更，我们将依法重新征求您的同意。",
+      "二、本隐私政策范围\n\n本隐私政策适用于我们通过以下渠道向您提供产品、服务或活动时涉及的个人信息处理活动：\n\n（1）我们的官方网站（nihplod.cn 及其子域名，包括 AI 素颜测肤独立网站 advisor.nihplod.cn）\n（2）我们的官方微信小程序（包括「NIHPLOD 官方商城」小程序及「NIHPLOD 预约服务」小程序）\n（3）我们的 AI 素颜测肤独立网站（advisor.nihplod.cn 及其子域名）\n（4）我们在天猫、京东等第三方电商平台开设的品牌官方旗舰店\n（5）我们的官方第三方社交媒体账号（如微信服务号、小红书、微博官方账号等）\n（6）我们的电子邮箱及线下实体店铺（包括百货专柜、免税店、美妆集合店等授权经销商）\n（7）其他经我们确认的线上和线下渠道\n\n本隐私政策是 NIHPLOD 旎柏《服务条款》不可分割的组成部分。就个人信息处理事项，如本隐私政策与《服务条款》之间存在任何理解上的冲突，除非另有明确说明，以本隐私政策为准。\n\n本隐私政策不适用于以下情形：\n\n（1）第三方向您提供的服务，该等服务适用第三方向您另行说明的个人信息处理规则；\n（2）我们的员工、实习生或外包人员的个人信息处理，该等处理适用我们的内部人力资源管理制度和员工个人信息处理规则。\n\n若某项产品、服务或活动有单独的个人信息处理规则（包括隐私政策、告知文案、现场说明、系统弹窗等），该单独规则中未涵盖的内容，以本隐私政策为准；该单独规则对本隐私政策中内容有特殊约定的，以单独规则相关内容为准。上述适用规则以不降低法律规定的告知和同意标准为前提——若单独规则的告知内容不符合法律强制性要求，则仍以法律规定的完整告知内容为准。\n\n随着业务发展，我们可能推出新的服务或功能，或调整现有的个人信息处理活动。如处理目的、处理方式或处理的个人信息种类发生变更，我们将更新本隐私政策并在显著位置提示您阅读。对于重大变更，我们将依法重新征求您的同意。",
     ],
   },
   ch3: {
@@ -184,15 +184,13 @@ const sections = sectionOrder.map((id) => ({
 
 export function PrivacyContent() {
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] pt-16 md:pt-24 lg:mb-[-6rem]">
-      {/* Header Section */}
-      <div className="container mx-auto mb-8 px-6 md:mb-16 md:px-8 lg:px-12 xl:px-16">
-        <div className="max-w-4xl">
-          <h1 className="mb-6 text-4xl font-light tracking-[0.12em] text-brand-charcoal md:text-5xl">隐私政策</h1>
-        </div>
-      </div>
+    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[120px] md:pt-32 mb-[-7rem] lg:mb-[-6rem]">
+      <StandaloneNav title="隐私政策" links={[
+        { href: "/contact", label: "联系我们" },
+        { href: "/terms", label: "服务条款" },
+      ]} />
 
-      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
+      <div className="container mx-auto px-6 md:px-20">
         <div className="flex flex-col gap-12 lg:flex-row lg:gap-24">
           {/* Mobile TOC - Dropdown */}
           <div className="mb-4 lg:hidden">
@@ -205,7 +203,7 @@ export function PrivacyContent() {
           {/* Main Content */}
           <main className="max-w-4xl flex-1 space-y-16 break-words font-songti leading-relaxed text-brand-charcoal/80">
             {sections.map((section) => (
-              <section key={section.id} id={section.id} className="scroll-mt-32">
+              <section key={section.id} id={section.id} className="scroll-mt-[120px] md:scroll-mt-32">
                 <h2 className="mb-8 font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                   {section.title}
                 </h2>
@@ -267,8 +265,6 @@ export function PrivacyContent() {
           </div>
         </div>
       </footer>
-
-      <BackToHome />
     </div>
   );
 }

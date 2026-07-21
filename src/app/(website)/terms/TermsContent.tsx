@@ -1,6 +1,6 @@
 import TableOfContents from "@/components/ui/TableOfContents";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
-import { BackToHome } from "@/components/ui/BackToHome";
+import { StandaloneNav } from "@/components/ui/StandaloneNav";
 import { ContentParagraph } from "@/components/ui/PolicyContentRenderer";
 import Link from "next/link";
 import Image from "next/image";
@@ -15,10 +15,6 @@ interface TermsContentProps {
 // ============================================
 
 export function TermsContent({ content }: TermsContentProps) {
-  const pageTitle = content.pageTitle || {
-    en: "TERMS OF SERVICE",
-    zh: "服务条款",
-  };
   const lastUpdated = content.lastUpdated || "2022年08月11日";
   const flatContent = content.tabs?.general?.content || [];
 
@@ -32,15 +28,13 @@ export function TermsContent({ content }: TermsContentProps) {
   });
 
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] pt-16 md:pt-24 lg:mb-[-6rem]">
-      {/* Header Section */}
-      <div className="container mx-auto mb-8 px-6 md:mb-16 md:px-8 lg:px-12 xl:px-16">
-        <div className="max-w-4xl">
-          <h1 className="mb-6 text-4xl font-light tracking-[0.12em] text-brand-charcoal md:text-5xl">{pageTitle.zh}</h1>
-        </div>
-      </div>
+    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[120px] md:pt-32 mb-[-7rem] lg:mb-[-6rem]">
+      <StandaloneNav title="服务条款" links={[
+        { href: "/contact", label: "联系我们" },
+        { href: "/privacy", label: "隐私政策" },
+      ]} />
 
-      <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
+      <div className="container mx-auto px-6 md:px-20">
         <div className="flex flex-col gap-12 lg:flex-row lg:gap-24">
           {/* Mobile TOC - Dropdown */}
           <div className="mb-4 lg:hidden">
@@ -53,7 +47,7 @@ export function TermsContent({ content }: TermsContentProps) {
           {/* Main Content */}
           <main className="max-w-4xl flex-1 space-y-16 font-songti leading-relaxed text-brand-charcoal/80">
             {sections.map((section, sIdx) => (
-              <section key={section.id} id={section.id} className="scroll-mt-32">
+              <section key={section.id} id={section.id} className="scroll-mt-[120px] md:scroll-mt-32">
                 <h2 className="mb-8 font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                   {section.title}
                 </h2>
@@ -129,8 +123,6 @@ export function TermsContent({ content }: TermsContentProps) {
           </div>
         </div>
       </footer>
-
-      <BackToHome />
     </div>
   );
 }
