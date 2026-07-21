@@ -11,7 +11,6 @@ import {
   ShoppingCart,
   CreditCard,
   Loader2,
-  Heart,
   Share2,
   ShieldCheck,
   Lock,
@@ -116,7 +115,6 @@ export function ProductDetailContent({
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [quantity, setQuantity] = useState(1);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const x = useMotionValue(0);
@@ -125,7 +123,6 @@ export function ProductDetailContent({
   const startTimeRef = useRef(0);
   const isDraggingRef = useRef(false);
   const justSwipedRef = useRef(false);
-  const { user, openLoginModal } = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -145,19 +142,6 @@ export function ProductDetailContent({
     }
   }, [mobileMenuOpen]);
 
-  // 收藏状态从 localStorage 恢复
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem(`product_favorite_${product.id}`);
-    if (stored) {
-      try {
-        setIsLiked(JSON.parse(stored));
-      } catch {
-        // 忽略损坏数据
-      }
-    }
-  }, [product.id]);
-
   const tabs: { key: TabType; label: string }[] = [
     { key: "description", label: "产品描述" },
     { key: "ingredients", label: "成分说明" },
@@ -169,6 +153,17 @@ export function ProductDetailContent({
     ingredients: product.ingredients,
     usage: product.usage,
   };
+
+  const debounceRef = useRef(false);
+
+  const handleTabChange = useCallback((key: TabType) => {
+    if (debounceRef.current || key === activeTab) return;
+    debounceRef.current = true;
+    setActiveTab(key);
+    setTimeout(() => {
+      debounceRef.current = false;
+    }, 150);
+  }, [activeTab]);
 
   const handleTabKeyDown = (e: React.KeyboardEvent) => {
     const currentIndex = tabs.findIndex((t) => t.key === activeTab);
@@ -185,7 +180,7 @@ export function ProductDetailContent({
       return;
     }
     e.preventDefault();
-    setActiveTab(tabs[nextIndex].key);
+    handleTabChange(tabs[nextIndex].key);
   };
 
   // 轮播容器宽度
@@ -344,19 +339,6 @@ export function ProductDetailContent({
       // 用户取消分享
     }
   }, [product.name, success]);
-
-  const handleFavorite = useCallback(() => {
-    if (!user) {
-      openLoginModal();
-      return;
-    }
-    const newState = !isLiked;
-    setIsLiked(newState);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(`product_favorite_${product.id}`, JSON.stringify(newState));
-    }
-    success(newState ? "已收藏" : "已取消收藏");
-  }, [isLiked, openLoginModal, product.id, success, user]);
 
   const handleThumbnailClick = (index: number) => {
     setCurrentImageIndex(index);
@@ -565,12 +547,12 @@ export function ProductDetailContent({
       {/* 固定顶栏占位 */}
       <div className="h-[62px] shrink-0 md:h-[88px]" />
 
-      <div className="relative z-10 flex flex-1 flex-col pb-28 lg:w-[80%] lg:mx-auto lg:pb-8">
+      <div className="relative z-10 flex flex-1 flex-col pb-28 lg:w-[80%] lg:mx-auto lg:justify-center lg:pb-8">
 
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
-        <div className="relative min-h-0 flex-1">
-          <div className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="lg:grid lg:h-full lg:grid-cols-[4fr_6fr] lg:gap-12">
+        <div className="relative w-full lg:flex lg:items-center lg:justify-center">
+          <div className="scroll-smooth overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+            <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
               <div className="lg:flex lg:flex-col lg:justify-center lg:overflow-y-auto lg:py-8">
                 <div className="w-full md:mx-auto md:w-full lg:max-w-lg">
@@ -664,34 +646,6 @@ export function ProductDetailContent({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
                   >
-                  {/* 面包屑导航 */}
-                  <nav aria-label="面包屑导航" className="mb-3">
-                    <ol className="flex flex-wrap items-center gap-1.5 text-xs font-light tracking-wide">
-                      {breadcrumbs.map((item, index) => {
-                        const isLast = index === breadcrumbs.length - 1;
-                        return (
-                          <li key={item.url} className="flex items-center gap-1.5">
-                            {index > 0 && (
-                              <span className="text-brand-charcoal/30" aria-hidden="true">
-                                &gt;
-                              </span>
-                            )}
-                            {isLast ? (
-                              <span className="text-brand-charcoal">{item.name}</span>
-                            ) : (
-                              <Link
-                                href={item.url}
-                                className="text-brand-charcoal/50 transition-colors hover:text-brand-charcoal/80"
-                              >
-                                {item.name}
-                              </Link>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </nav>
-
                   {/* 产品名称 + 容量 + 操作按钮 */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-1 items-end justify-between">
@@ -712,20 +666,6 @@ export function ProductDetailContent({
                         aria-label="分享"
                       >
                         <Share2 className="h-5 w-5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleFavorite}
-                        className={cn(
-                          "inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-                          isLiked
-                            ? "text-red-500 hover:bg-red-50"
-                            : "text-brand-charcoal/60 hover:bg-brand-beige hover:text-brand-charcoal"
-                        )}
-                        aria-label={isLiked ? "取消收藏" : "收藏"}
-                        aria-pressed={isLiked}
-                      >
-                        <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
                       </button>
                     </div>
                   </div>
@@ -785,7 +725,7 @@ export function ProductDetailContent({
                           aria-selected={activeTab === tab.key}
                           aria-controls={`panel-${tab.key}`}
                           tabIndex={activeTab === tab.key ? 0 : -1}
-                          onClick={() => setActiveTab(tab.key)}
+                          onClick={() => handleTabChange(tab.key)}
                           onKeyDown={handleTabKeyDown}
                           className={cn(
                             "relative cursor-pointer pb-3 text-sm font-light tracking-[0.12em] transition-colors",
