@@ -832,32 +832,32 @@ export function ProductDetailContent({
                       )}
                     </div>
                   </div>
-                </div>
 
-                {/* 肌智派素颜测肤推广 */}
-                <div className="pb-7">
-                  <a
-                    href="https://advisor.nihplod.cn"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group inline-flex items-center gap-1 text-xs font-light tracking-[0.12em] text-[#00263E] transition-opacity hover:opacity-70"
-                  >
-                    <span>
-                      参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤
-                    </span>
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-3 w-3 shrink-0 transition-transform group-hover:translate-x-1"
+                  {/* 肌智派素颜测肤推广 */}
+                  <div className="pb-7">
+                    <a
+                      href="https://advisor.nihplod.cn"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.12em] text-[#00263E] transition-opacity hover:opacity-70"
                     >
-                      <path d="M5 12h14" />
-                      <path d="m12 5 7 7-7 7" />
-                    </svg>
-                  </a>
+                      <span>
+                        参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤
+                      </span>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-3 w-3 shrink-0 transition-transform group-hover:translate-x-1"
+                      >
+                        <path d="M5 12h14" />
+                        <path d="m12 5 7 7-7 7" />
+                      </svg>
+                    </a>
+                  </div>
                 </div>
 
                 {/* 相关产品推荐 */}
