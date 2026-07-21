@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -76,6 +76,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
     const validated = CategorySchema.parse(body);

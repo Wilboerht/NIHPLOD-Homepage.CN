@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
+import { createAuditLog } from "@/lib/audit";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 
@@ -141,7 +142,6 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/products - 创建产品
 export async function POST(request: NextRequest) {
   try {
-    // 验证认证
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -150,7 +150,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 解析请求体
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const validated = ProductSchema.parse(body);
 

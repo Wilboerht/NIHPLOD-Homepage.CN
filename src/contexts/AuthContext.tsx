@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from "react";
 import { fetchWithAuth, refreshAccessToken, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { apiPost } from "@/lib/api-client";
 
@@ -217,41 +217,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(intervalId);
   }, [user]);
 
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      activeModal,
+      userCenterOpen,
+      userCenterView,
+      initialOrderId,
+      openUserCenter,
+      closeUserCenter,
+      setUserCenterView,
+      clearInitialOrderId,
+      checkoutOpen,
+      checkoutSelectedProductIds,
+      checkoutQuantities,
+      openCheckout,
+      closeCheckout,
+      payOpen,
+      payOrderId,
+      openPay,
+      closePay,
+      openLoginModal,
+      openRegisterModal,
+      openForgotPasswordModal,
+      openWechatBindModal,
+      closeModal,
+      switchToLogin,
+      switchToRegister,
+      switchToForgotPassword,
+      switchToWechatBind,
+      refreshUser,
+      logout,
+    }),
+    [
+      user,
+      isLoading,
+      activeModal,
+      userCenterOpen,
+      userCenterView,
+      initialOrderId,
+      openUserCenter,
+      closeUserCenter,
+      setUserCenterView,
+      clearInitialOrderId,
+      checkoutOpen,
+      checkoutSelectedProductIds,
+      checkoutQuantities,
+      openCheckout,
+      closeCheckout,
+      payOpen,
+      payOrderId,
+      openPay,
+      closePay,
+      openLoginModal,
+      openRegisterModal,
+      openForgotPasswordModal,
+      openWechatBindModal,
+      closeModal,
+      switchToLogin,
+      switchToRegister,
+      switchToForgotPassword,
+      switchToWechatBind,
+      refreshUser,
+      logout,
+    ]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        activeModal,
-        userCenterOpen,
-        userCenterView,
-        initialOrderId,
-        openUserCenter,
-        closeUserCenter,
-        setUserCenterView,
-        clearInitialOrderId,
-        checkoutOpen,
-        checkoutSelectedProductIds,
-        checkoutQuantities,
-        openCheckout,
-        closeCheckout,
-        payOpen,
-        payOrderId,
-        openPay,
-        closePay,
-        openLoginModal,
-        openRegisterModal,
-        openForgotPasswordModal,
-        openWechatBindModal,
-        closeModal,
-        switchToLogin,
-        switchToRegister,
-        switchToForgotPassword,
-        switchToWechatBind,
-        refreshUser,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

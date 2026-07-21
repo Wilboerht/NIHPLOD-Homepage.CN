@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/html-sanitize";
@@ -83,6 +83,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
     if (!validateCUID(id)) {
@@ -168,6 +171,9 @@ export async function DELETE(
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
 

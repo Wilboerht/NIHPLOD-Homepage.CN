@@ -1,6 +1,10 @@
 /**
- * Next.js Proxy（原 Middleware）
- * 保护管理后台路由，验证认证状态
+ * @deprecated 此文件已被 src/middleware.ts 取代。
+ * Next.js 中间件必须命名为 middleware.ts 并导出 middleware 函数。
+ * 此文件保留仅供历史参考，后续版本将删除。
+ *
+ * 迁移时间: 2026-07-21
+ * 替换文件: src/middleware.ts
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";

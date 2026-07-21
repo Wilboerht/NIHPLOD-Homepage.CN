@@ -4,10 +4,11 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { z } from "zod";
+import { createAuditLog } from "@/lib/audit";
 
 const adminNoteSchema = z
   .object({
@@ -78,6 +79,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await context.params;
     if (!validateCUID(id)) {
       return invalidIdResponse();
@@ -108,6 +112,19 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       where: { id },
       data: updateData,
     });
+
+    const auditSuccess = await createAuditLog({
+      action: "update_order",
+      targetType: "order",
+      targetId: id,
+      detail: updateData,
+      adminId: admin.id,
+      request,
+    });
+
+    if (!auditSuccess) {
+      apiConsole.error("[AdminOrderDetail] PATCH 审计日志写入失败，业务操作已执行");
+    }
 
     return NextResponse.json({
       success: true,

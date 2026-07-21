@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/html-sanitize";
@@ -113,6 +113,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
     const validated = CreateJobSchema.parse(body);

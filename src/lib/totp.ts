@@ -13,12 +13,14 @@ const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 
 /**
- * 从 JWT_SECRET 派生加密密钥
+ * 从专用密钥派生加密密钥。
+ * 优先使用 TOTP_ENCRYPTION_KEY，回退到 JWT_SECRET（兼容旧数据）。
+ * 使用独立密钥避免 JWT_SECRET 轮换导致已存储的 TOTP 密钥永久失效。
  */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.JWT_SECRET;
+  const secret = process.env.TOTP_ENCRYPTION_KEY || process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error("[TOTP] JWT_SECRET 环境变量未设置");
+    throw new Error("[TOTP] TOTP_ENCRYPTION_KEY 或 JWT_SECRET 环境变量未设置");
   }
   return createHash("sha256").update(secret).digest();
 }

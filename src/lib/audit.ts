@@ -11,6 +11,7 @@ export type AuditAction =
   | "login"
   | "logout"
   | "ship_order"
+  | "update_order"
   | "refund_approve"
   | "refund_reject"
   | "create_admin"

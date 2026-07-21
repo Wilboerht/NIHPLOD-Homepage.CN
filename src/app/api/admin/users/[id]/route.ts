@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
@@ -127,6 +127,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await context.params;
     if (!validateCUID(id)) {
       return invalidIdResponse();
@@ -220,6 +223,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await context.params;
     if (!validateCUID(id)) {

@@ -17,6 +17,7 @@ import {
 import { prisma } from "./prisma";
 import type { UserStatus, AdminStatus } from "@/generated/prisma/client";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -181,6 +182,38 @@ export function withRole<T extends NextRequest, C = unknown, R extends Response 
     }
     return handler(request, admin, context);
   });
+}
+
+// ============================================
+// 管理端写操作安全增强
+// ============================================
+
+/**
+ * 管理端写操作速率限制
+ * 防止管理后台 API 被爆破或 DoS
+ *
+ * @param key 可选的限流 key 后缀，默认为 "admin-write"
+ * @returns 通过时返回 null，超限时直接返回 429 Response
+ */
+export async function checkAdminRateLimit(
+  request: NextRequest,
+  key: string = "admin-write"
+): Promise<NextResponse | null> {
+  const ip = getClientIP(request);
+  const result = await rateLimit(`${key}:${ip}`, "default", {
+    maxRequests: 30,
+    windowMs: 60 * 1000,
+  });
+  if (!result.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: "RATE_LIMITED", message: "操作过于频繁，请稍后再试" },
+      },
+      { status: 429 }
+    );
+  }
+  return null;
 }
 
 // ============================================

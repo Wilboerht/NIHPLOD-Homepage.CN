@@ -4,7 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withRole } from "@/lib/auth";
+import { withRole, checkAdminRateLimit } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -15,6 +15,9 @@ export const DELETE = withRole(
   ["owner"],
   async (request, admin, { params }: { params: Promise<{ id: string }> }) => {
     try {
+      const rateLimitResponse = await checkAdminRateLimit(request);
+      if (rateLimitResponse) return rateLimitResponse;
+
       const { id } = await params;
       if (!validateCUID(id)) {
         return invalidIdResponse();

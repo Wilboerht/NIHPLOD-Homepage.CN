@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { processRefund } from "@/lib/refund";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
@@ -30,6 +30,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await context.params;
     if (!validateCUID(id)) {

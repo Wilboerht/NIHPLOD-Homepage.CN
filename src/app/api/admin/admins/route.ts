@@ -6,7 +6,7 @@
  */
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withRole } from "@/lib/auth";
+import { withRole, checkAdminRateLimit } from "@/lib/auth";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
@@ -92,6 +92,9 @@ export const GET = withRole(["owner"], async (request) => {
 // POST - 创建
 export const POST = withRole(["owner"], async (request, admin) => {
   try {
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const data = createSchema.parse(body);
 
@@ -140,6 +143,9 @@ export const POST = withRole(["owner"], async (request, admin) => {
 // PUT - 更新
 export const PUT = withRole(["owner"], async (request, admin) => {
   try {
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const data = updateSchema.parse(body);
 

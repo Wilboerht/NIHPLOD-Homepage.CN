@@ -56,6 +56,7 @@ model PurchaseLink {
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([productId])
 }
@@ -71,6 +72,8 @@ model Category {
   products  Product[] // 关联产品
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([visible, order])
 }
 
 model Image {
@@ -81,6 +84,7 @@ model Image {
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([productId])
 }
@@ -167,6 +171,7 @@ model ContactMessage {
   content   String   @db.Text // 留言内容
   read      Boolean  @default(false) // 是否已读
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([read, createdAt(sort: Desc)])
 }
@@ -580,6 +585,7 @@ model Coupon {
 
   isActive    Boolean   @default(true) // 上下架
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   userCoupons UserCoupon[]
 
