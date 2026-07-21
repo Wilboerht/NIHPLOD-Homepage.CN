@@ -10,6 +10,7 @@ import { X, CreditCard, Loader2, Clock, Check, AlertCircle } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { isWechatBrowser } from "@/lib/wechat";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { apiPost, ApiError } from "@/lib/api-client";
 
 // 纹理背景 - 与 CheckoutModal 保持一致的透明度
@@ -36,9 +37,20 @@ export default function PayModal() {
   const [countdown, setCountdown] = useState(0);
   const [payMethod, setPayMethod] = useState<PayMethod>("wechat");
 
+  useScrollLock(payOpen);
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // ESC 关闭
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePay();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [closePay]);
 
   const loadOrder = useCallback(async () => {
     if (!payOrderId) return;
@@ -185,7 +197,7 @@ export default function PayModal() {
   const content = (
     <AnimatePresence>
       {payOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           {/* 遮罩 - 支付流程中不允许点击遮罩关闭 */}
           <m.div
             initial={{ opacity: 0 }}

@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AnimatePresence, m } from "framer-motion";
 
 type ToastType = "success" | "error" | "warning" | "info" | "loading";
 
@@ -10,7 +11,8 @@ interface ToastItem {
   id: string;
   message: string;
   type: ToastType;
-  duration?: number;
+  /** >0 自动消失毫秒, 0 loading不消失, -1 标记退出动画中 */
+  duration: number;
 }
 
 interface ToastOptions {
@@ -64,13 +66,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const timersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const removeToast = useCallback((id: string) => {
-    // 清除定时器
     const timer = timersRef.current.get(id);
     if (timer) {
       clearTimeout(timer);
       timersRef.current.delete(id);
     }
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    // 标记为退出动画，300ms 后真正移除
+    setToasts((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, duration: -1 } : t))
+    );
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 300);
   }, []);
 
   const addToast = useCallback(
@@ -107,15 +114,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               ...(options.type && { type: options.type }),
             };
 
-            // 如果更新了类型且不是 loading，设置自动消失
+            // 始终清除旧定时器
+            const oldTimer = timersRef.current.get(id);
+            if (oldTimer) clearTimeout(oldTimer);
+
+            // 非 loading 类型设置自动消失
             if (options.type && options.type !== "loading") {
               const duration = options.duration ?? 3000;
-              // 清除旧定时器
-              const oldTimer = timersRef.current.get(id);
-              if (oldTimer) clearTimeout(oldTimer);
-              // 设置新定时器
               const timer = setTimeout(() => removeToast(id), duration);
               timersRef.current.set(id, timer);
+            } else if (options.type === "loading") {
+              timersRef.current.delete(id);
             }
 
             return updated;
@@ -161,33 +170,38 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {/* Toast 容器 - 顶部居中显示 - 极高层级确保不被遮挡 */}
       <div className="fixed left-1/2 top-10 z-[100000] flex -translate-x-1/2 flex-col gap-2 md:top-16">
-        {toasts.map((toast, index) => {
-          const Icon = iconMap[toast.type];
-          return (
-            <div
-              key={toast.id}
-              className={cn(
-                "flex min-w-[280px] max-w-[400px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg",
-                "animate-in slide-in-from-top-4 fade-in duration-300",
-                typeStyles[toast.type]
-              )}
-              style={{ zIndex: 100 + index }}
-              role="alert"
-            >
-              <Icon className={cn("h-5 w-5 flex-shrink-0", iconStyles[toast.type])} />
-              <span className="flex-1 text-sm font-medium">{toast.message}</span>
-              {toast.type !== "loading" && (
-                <button
-                  onClick={() => removeToast(toast.id)}
-                  className="ml-2 rounded p-0.5 opacity-70 transition-opacity hover:opacity-100"
-                  aria-label="关闭"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          );
-        })}
+        <AnimatePresence>
+          {toasts.map((toast) => {
+            const Icon = iconMap[toast.type];
+            const isRemoving = toast.duration === -1;
+            return (
+              <m.div
+                key={toast.id}
+                initial={{ opacity: 0, y: -16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                transition={{ duration: 0.2 }}
+                className={cn(
+                  "flex min-w-[280px] max-w-[400px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg",
+                  typeStyles[toast.type]
+                )}
+                role="alert"
+              >
+                <Icon className={cn("h-5 w-5 flex-shrink-0", iconStyles[toast.type])} />
+                <span className="flex-1 text-sm font-medium">{toast.message}</span>
+                {toast.type !== "loading" && (
+                  <button
+                    onClick={() => removeToast(toast.id)}
+                    className="ml-2 rounded p-0.5 opacity-70 transition-opacity hover:opacity-100"
+                    aria-label="关闭"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </m.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );

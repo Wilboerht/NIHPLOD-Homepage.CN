@@ -128,32 +128,41 @@ export function DataTable<T extends object>({
       )}
     >
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200" aria-label={emptyText || "数据表格"}>
           <thead className="bg-gray-50">
             <tr>
-              {columns.map((column) => (
-                <th
-                  key={String(column.key)}
-                  style={{ width: column.width }}
-                  className={cn(
-                    "px-6 py-3 text-xs font-medium uppercase tracking-wider text-gray-500",
-                    alignStyles[column.align || "left"],
-                    column.sortable && "cursor-pointer select-none hover:bg-gray-100"
-                  )}
-                  onClick={() => handleSort(column)}
-                >
-                  <div
+              {columns.map((column) => {
+                const sortState =
+                  sortConfig?.key === String(column.key)
+                    ? sortConfig.order === "asc"
+                      ? ("ascending" as const)
+                      : ("descending" as const)
+                    : ("none" as const);
+                return (
+                  <th
+                    key={String(column.key)}
+                    style={{ width: column.width }}
                     className={cn(
-                      "flex items-center gap-1",
-                      column.align === "center" && "justify-center",
-                      column.align === "right" && "justify-end"
+                      "px-6 py-3 text-xs font-medium uppercase tracking-wider text-gray-500",
+                      alignStyles[column.align || "left"],
+                      column.sortable && "cursor-pointer select-none hover:bg-gray-100"
                     )}
+                    aria-sort={column.sortable ? sortState : undefined}
+                    onClick={() => handleSort(column)}
                   >
-                    <span>{column.title}</span>
-                    {getSortIcon(column)}
-                  </div>
-                </th>
-              ))}
+                    <div
+                      className={cn(
+                        "flex items-center gap-1",
+                        column.align === "center" && "justify-center",
+                        column.align === "right" && "justify-end"
+                      )}
+                    >
+                      <span>{column.title}</span>
+                      {getSortIcon(column)}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">

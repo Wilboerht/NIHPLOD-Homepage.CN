@@ -7,6 +7,7 @@ import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { formatPrice } from "@/lib/utils";
 
 export function CartDrawer() {
@@ -14,12 +15,23 @@ export function CartDrawer() {
   const { isOpen, closeCart, items, totalItems, fetchCart, updateQuantity, removeItem } =
     useCartStore();
 
+  useScrollLock(isOpen);
+
   useEffect(() => {
     // 仅在登录状态下获取购物车数据
     if (user) {
       fetchCart();
     }
   }, [fetchCart, user]);
+
+  // ESC 关闭
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeCart();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [closeCart]);
 
   // 计算总价
   const totalPrice = items.reduce(
@@ -52,7 +64,7 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-md flex-col bg-[#FBF8F0] shadow-2xl sm:w-[450px]"
+            className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-md flex-col bg-[#FBF8F0] pt-[env(safe-area-inset-top,0px)] shadow-2xl sm:w-[450px]"
           >
             {/* Header */}
             <div className="border-brand-brown/10 flex items-center justify-between border-b px-6 py-5">

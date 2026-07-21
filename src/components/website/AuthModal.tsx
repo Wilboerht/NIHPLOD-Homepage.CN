@@ -7,6 +7,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import {
   X,
   Eye,
@@ -22,7 +23,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, ApiError } from "@/lib/api-client";
-import { useIsMobile } from "@/hooks/useMediaQuery";
 
 // 密码强度规则（与后端 lib/password.ts 保持一致，客户端内联避免打包 bcryptjs）
 const PASSWORD_MIN_LENGTH = 8;
@@ -53,6 +53,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function AuthModal() {
+  const _isMobile = useIsMobile();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const {
     activeModal,
     closeModal,
@@ -456,7 +460,7 @@ export function AuthModal() {
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && (!mounted || !_isMobile) && (
         <>
           <m.div
             key="backdrop"
@@ -1067,7 +1071,7 @@ export function AuthModal() {
           </m.div>
         </>
       )}
-      {isOpen && (
+      {isOpen && (!mounted || _isMobile) && (
         <m.div
           key={`mobile-modal-${view}`}
           initial={{ x: "100%" }}

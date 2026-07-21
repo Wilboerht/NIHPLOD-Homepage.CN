@@ -1,14 +1,14 @@
 "use client";
 
-import { InputHTMLAttributes, forwardRef } from "react";
+import { TextareaHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, id, disabled, ...props }, ref) => {
     return (
       <div className="w-full">
@@ -17,7 +17,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
+        <textarea
           ref={ref}
           id={id}
           disabled={disabled}
@@ -39,4 +39,4 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   }
 );
 
-Input.displayName = "Input";
+Textarea.displayName = "Textarea";

@@ -10,6 +10,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { X, MapPin, ChevronRight, ShoppingBag, FileText, Loader2, Check } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { formatPrice } from "@/lib/utils";
 import { apiPost, ApiError } from "@/lib/api-client";
 
@@ -79,17 +80,7 @@ export function CheckoutModal() {
     setMounted(true);
   }, []);
 
-  // 禁止背景滚动
-  useEffect(() => {
-    if (checkoutOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [checkoutOpen]);
+  useScrollLock(checkoutOpen);
 
   // ESC 关闭
   useEffect(() => {
@@ -174,7 +165,6 @@ export function CheckoutModal() {
       });
 
       closeCheckout();
-      // 直接打开支付模态框，而不是跳转页面
       openPay(result.orderId);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -187,15 +177,15 @@ export function CheckoutModal() {
     }
   };
 
-  if (!mounted) return null;
-
-  // 未登录时打开登录弹窗 — 必须在 useEffect 中，不能在 render 期间调 setState
+  // 未登录时打开登录弹窗 — 必须放在 return null 之前，遵循 hooks 顺序规则
   useEffect(() => {
     if (checkoutOpen && !user) {
       openLoginModal();
       closeCheckout();
     }
   }, [checkoutOpen, user, openLoginModal, closeCheckout]);
+
+  if (!mounted) return null;
 
   const _selectedAddress = data?.addresses.find((a) => a.id === selectedAddressId);
 
@@ -223,7 +213,8 @@ export function CheckoutModal() {
             {/* 关闭按钮 */}
             <button
               onClick={closeCheckout}
-              className="absolute right-4 top-4 z-10 rounded-full p-2 text-[#4A6272] transition-colors hover:bg-[#FBF8F0] hover:text-[#00263E]"
+              className="absolute right-4 z-10 rounded-full p-2 text-[#4A6272] transition-colors hover:bg-[#FBF8F0] hover:text-[#00263E]"
+              style={{ top: `calc(1rem + env(safe-area-inset-top, 0px))` }}
             >
               <X className="h-5 w-5" />
             </button>

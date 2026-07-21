@@ -5,7 +5,7 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bold,
   Italic,
@@ -64,6 +64,7 @@ export function RichTextEditor({
     ],
     content: value,
     onUpdate: ({ editor }) => {
+      isInternalChange.current = true;
       onChange(editor.getHTML());
     },
     onFocus: () => setIsFocused(true),
@@ -85,11 +86,14 @@ export function RichTextEditor({
     immediatelyRender: false,
   });
 
-  // 同步外部值
+  const isInternalChange = useRef(false);
+
+  // 同步外部值 — 仅在外部变更时更新，避免覆盖编辑器内部状态
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
+    if (editor && value !== editor.getHTML() && !isInternalChange.current) {
       editor.commands.setContent(value);
     }
+    isInternalChange.current = false;
   }, [value, editor]);
 
   // 设置链接
