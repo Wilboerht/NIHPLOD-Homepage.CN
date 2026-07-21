@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import DOMPurify from "isomorphic-dompurify";
 import { Link } from "next-view-transitions";
-import { useRouter } from "next/navigation";
 import { m, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import {
   ChevronLeft,
@@ -17,7 +16,10 @@ import {
   ShieldCheck,
   Lock,
   Truck,
+  Menu,
   X,
+  ChevronDown,
+  Home,
 } from "lucide-react";
 import { ProductCard, PlatformIcon, XiaohongshuLink } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
@@ -93,7 +95,6 @@ export function ProductDetailContent({
   relatedProducts,
   breadcrumbs,
 }: ProductDetailContentProps) {
-  const router = useRouter();
   const { setDrawerOpen } = useLayout();
   const { success } = useToast();
 
@@ -122,6 +123,41 @@ export function ProductDetailContent({
   const isDraggingRef = useRef(false);
   const justSwipedRef = useRef(false);
   const { user, openLoginModal } = useAuth();
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      return () => {
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        desktopMenuRef.current &&
+        !desktopMenuRef.current.contains(event.target as Node)
+      ) {
+        setDesktopMenuOpen(false);
+      }
+    };
+    if (desktopMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [desktopMenuOpen]);
 
   // 收藏状态从 localStorage 恢复
   useEffect(() => {
@@ -336,14 +372,6 @@ export function ProductDetailContent({
     success(newState ? "已收藏" : "已取消收藏");
   }, [isLiked, openLoginModal, product.id, success, user]);
 
-  const handleBack = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/products");
-    }
-  }, [router]);
-
   const handleThumbnailClick = (index: number) => {
     setCurrentImageIndex(index);
   };
@@ -415,50 +443,212 @@ export function ProductDetailContent({
         }}
       />
 
-      <div className="relative z-10 flex flex-1 flex-col p-4 pb-28 sm:p-6 lg:p-8 lg:pb-8">
-        {/* 顶栏 / Logo 区 */}
-        <header className="flex-shrink-0 text-center sm:px-4 sm:pb-6 sm:pt-2 lg:pb-8 lg:pt-4">
-          {/* 手机端顶部栏 */}
-          <div className="pointer-events-auto relative flex h-[88px] w-full flex-shrink-0 items-center justify-center lg:hidden">
-            <button
-              onClick={handleBack}
-              className="absolute bottom-0 left-0 top-0 flex items-center justify-center px-4 py-[10px]"
-              aria-label="返回"
-            >
-              <ChevronLeft className="h-6 w-6 text-[#00263E]" />
-            </button>
-            <Link href="/" className="flex items-center justify-center py-[30px]">
-              <div className="relative h-[28px] w-[100px]">
-                <Image
-                  src="/images/NIHPLOD-logo.svg"
-                  alt="NIHPLOD Logo"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            </Link>
-          </div>
-          {/* Logo - 桌面端 */}
-          <m.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="hidden justify-center lg:flex"
-          >
-            <div className="relative h-[32px] w-[152px] sm:h-10 sm:w-[200px]">
+      {/* 固定顶栏导航 */}
+      <nav
+        aria-label="产品页导航"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#FBF8F0]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
+        style={{ pointerEvents: "none" }}
+      >
+        <div
+          className="relative flex w-full items-center justify-center md:justify-between"
+          style={{ pointerEvents: "auto" }}
+        >
+          {/* Logo */}
+          <Link href="/">
+            <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
               <Image
                 src="/images/NIHPLOD-logo.svg"
-                alt="公司标志"
+                alt="NIHPLOD"
                 fill
-                className="object-contain"
+                className="object-contain object-center md:object-left"
                 priority
               />
             </div>
-          </m.div>
-        </header>
+          </Link>
 
-        {/* 分割线 - 仅桌面端 */}
-        <div className="mx-auto hidden w-full max-w-7xl border-b border-brand-charcoal/10 lg:block" />
+          {/* 桌面端导航链接 */}
+          <div className="hidden items-center gap-1 md:flex">
+            <Link
+              href="/contact"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+            >
+              联系我们
+              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
+            </Link>
+            <Link
+              href="/terms"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+            >
+              服务条款
+              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
+            </Link>
+            <Link
+              href="/privacy"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+            >
+              隐私政策
+              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
+            </Link>
+
+            {/* 桌面端下拉菜单 */}
+            <div ref={desktopMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setDesktopMenuOpen((prev) => !prev)}
+                className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                aria-expanded={desktopMenuOpen}
+              >
+                菜单
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-500 ${desktopMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              <AnimatePresence>
+                {desktopMenuOpen && (
+                  <m.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-brand-charcoal/5 bg-[#FBF8F0] p-2 shadow-[0_2px_4px_-1px_rgba(0,38,62,0.05),0_8px_16px_-2px_rgba(0,38,62,0.08),0_24px_48px_-6px_rgba(0,38,62,0.06)]"
+                  >
+                    <Link
+                      href="/products"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      产品系列
+                    </Link>
+                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
+                    <Link
+                      href="/guide"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      护肤指南
+                    </Link>
+                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
+                    <Link
+                      href="/faq"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      常见问题
+                    </Link>
+                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
+                    <Link
+                      href="/about"
+                      onClick={() => setDesktopMenuOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    >
+                      品牌故事
+                    </Link>
+                  </m.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <Link
+              href="/"
+              className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+            >
+              <Home className="h-4 w-4" /> 返回首页
+              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
+            </Link>
+          </div>
+
+          {/* 手机端汉堡菜单按钮 */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+            aria-label="打开菜单"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="product-detail-nav-panel"
+          >
+            <Menu className="h-5 w-5 text-[#00263E]" />
+          </button>
+        </div>
+      </nav>
+
+      {/* 手机端滑出菜单面板 */}
+      <div
+        id="product-detail-nav-panel"
+        ref={mobileMenuRef}
+        role="dialog"
+        aria-modal={mobileMenuOpen}
+        aria-label="导航菜单"
+        className={`fixed inset-0 z-[100] transition-all duration-500 md:hidden ${mobileMenuOpen ? "visible opacity-100" : "invisible opacity-0"}`}
+      >
+        <div
+          className="absolute inset-0 bg-[#00263E]/20 backdrop-blur-sm"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+        <div
+          className={`absolute left-0 top-0 h-full w-[min(300px,80vw)] transform rounded-r-3xl bg-[#FBF8F0] pb-[calc(1.25rem+env(safe-area-inset-bottom,16px))] pt-[calc(1.25rem+env(safe-area-inset-top,0px))] shadow-2xl transition-transform duration-500 ease-out ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+        >
+          <div className="flex h-full flex-col px-6">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="mb-8 flex h-10 w-10 items-center justify-center self-end rounded-full transition-colors hover:bg-brand-charcoal/5"
+              aria-label="关闭菜单"
+            >
+              <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
+            </button>
+
+            <Link href="/" onClick={() => setMobileMenuOpen(false)} className="mb-10">
+              <div className="relative h-[30px] w-[130px]">
+                <Image
+                  src="/images/NIHPLOD-logo.svg"
+                  alt="NIHPLOD"
+                  fill
+                  className="object-contain object-center md:object-left"
+                />
+              </div>
+            </Link>
+
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+              >
+                联系我们
+              </Link>
+              <Link
+                href="/terms"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+              >
+                服务条款
+              </Link>
+              <Link
+                href="/privacy"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+              >
+                隐私政策
+              </Link>
+            </div>
+
+            <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+            >
+              <Home className="h-5 w-5" />
+              返回首页
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 固定顶栏占位 */}
+      <div className="h-[62px] shrink-0 md:h-[88px]" />
+
+      <div className="relative z-10 flex flex-1 flex-col p-4 pb-28 sm:p-6 lg:p-8 lg:pb-8">
 
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative min-h-0 flex-1">

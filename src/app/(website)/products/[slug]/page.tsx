@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
 import { generateProductFaqs } from "@/config/geo-faq";
+import { mockProducts } from "../mock-data";
 
 // ISR: 产品详情页每60秒重新验证一次
 export const revalidate = 60;
@@ -14,6 +15,8 @@ export const dynamicParams = true;
 // 基础 URL
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
 
+const isDev = process.env.NODE_ENV === "development";
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
@@ -23,6 +26,10 @@ type PageProps = {
  * 在构建时尝试预渲染产品页面，如果数据库不可用则返回空数组
  */
 export async function generateStaticParams() {
+  if (isDev) {
+    return mockProducts.map((p) => ({ slug: p.slug }));
+  }
+
   try {
     const products = await prisma.product.findMany({
       where: { published: true },
@@ -44,6 +51,30 @@ export async function generateStaticParams() {
  */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+
+  if (isDev) {
+    const mockProduct = mockProducts.find((p) => p.slug === slug);
+    if (!mockProduct) {
+      return { title: "产品未找到" };
+    }
+    return {
+      title: mockProduct.name,
+      description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌。",
+      keywords: [mockProduct.name, mockProduct.nameEn, "NIHPLOD", "旎柏", ...mockProduct.benefits],
+      alternates: { canonical: `/products/${slug}` },
+      openGraph: {
+        title: `${mockProduct.name} | NIHPLOD 旎柏`,
+        description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌。",
+        images: [{ url: `${baseUrl}/images/og-image.png`, width: 1200, height: 630, alt: mockProduct.name }],
+      },
+      twitter: {
+        card: "summary",
+        title: `${mockProduct.name} | NIHPLOD 旎柏`,
+        description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌。",
+        images: [`${baseUrl}/images/og-image.png`],
+      },
+    };
+  }
 
   const product = await prisma.product.findUnique({
     where: { slug, published: true },
@@ -102,6 +133,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
  * 获取产品详情
  */
 async function getProduct(slug: string) {
+  if (isDev) {
+    const product = mockProducts.find((p) => p.slug === slug);
+    if (!product) return null;
+    return {
+      ...product,
+      origin: null as string | null,
+      salesCount: 0,
+      geoFaqs: undefined,
+      images: product.images.map((img, i) => ({ ...img, id: `mock-img-${i}` })),
+    };
+  }
+
   const product = await prisma.product.findUnique({
     where: { slug, published: true },
     include: {
@@ -132,6 +175,17 @@ async function getProduct(slug: string) {
  * 获取相关产品（同分类）
  */
 async function getRelatedProducts(categoryId: string, currentProductId: string) {
+  if (isDev) {
+    return mockProducts
+      .filter((p) => p.categoryId === categoryId && p.id !== currentProductId)
+      .slice(0, 4)
+      .map((p) => ({
+        ...p,
+        category: { name: p.category.name },
+        images: p.images.slice(0, 2),
+      }));
+  }
+
   const products = await prisma.product.findMany({
     where: {
       published: true,
