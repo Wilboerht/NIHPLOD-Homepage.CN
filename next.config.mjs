@@ -27,7 +27,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://*.amap.com https://www.googletagmanager.com https://hm.baidu.com blob:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
       // 收紧 img-src：禁止任意 https: 通配，只允许已知域名，并统一使用 https
-      "img-src 'self' data: blob: https://*.nihplod.cn https://*.aliyuncs.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
+      "img-src 'self' data: blob: https://**.nihplod.cn https://**.aliyuncs.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' https://api.openai.com https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
       "worker-src 'self' blob:",
@@ -98,6 +98,9 @@ const nextConfig = {
       {
         pathname: '/images/**',
       },
+      {
+        pathname: '/uploads/**',
+      },
     ],
     // 允许的图片域名
     remotePatterns: [
@@ -119,7 +122,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.aliyuncs.com',
+        hostname: '**.aliyuncs.com',
       },
     ],
     // 启用的图片格式 (自托管服务器不使用 AVIF，避免实时编码开销)
