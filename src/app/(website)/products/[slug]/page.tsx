@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
 import { generateProductFaqs } from "@/config/geo-faq";
-import { mockProducts } from "../mock-data";
+import { mockCategories, mockProducts } from "../mock-data";
 
 // ISR: 产品详情页每60秒重新验证一次
 export const revalidate = 60;
@@ -213,6 +213,43 @@ async function getRelatedProducts(categoryId: string, currentProductId: string) 
 }
 
 /**
+ * 获取分类列表（供顶部导航使用）
+ */
+async function getCategories() {
+  if (isDev) {
+    return mockCategories;
+  }
+  try {
+    return await prisma.category.findMany({
+      where: { visible: true },
+      orderBy: { order: "asc" },
+      select: { id: true, name: true, nameEn: true, slug: true, icon: true },
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 获取所有产品（供分类导航使用）
+ */
+async function getNavProducts() {
+  if (isDev) {
+    return mockProducts;
+  }
+  try {
+    const products = await prisma.product.findMany({
+      where: { published: true },
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      select: { id: true, slug: true, categoryId: true },
+    });
+    return products;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * 产品详情页
  */
 export default async function ProductDetailPage({ params }: PageProps) {
@@ -225,6 +262,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
   }
 
   const relatedProducts = await getRelatedProducts(product.categoryId, product.id);
+  const categories = await getCategories();
+  const navProducts = await getNavProducts();
 
   // 面包屑导航数据
   const breadcrumbs = [
@@ -256,6 +295,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
         product={product}
         relatedProducts={relatedProducts}
         breadcrumbs={breadcrumbs}
+        categories={categories}
+        navProducts={navProducts}
       />
     </>
   );

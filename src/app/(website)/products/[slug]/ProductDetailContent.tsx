@@ -18,7 +18,6 @@ import {
   Truck,
   Menu,
   X,
-  ChevronDown,
   Home,
 } from "lucide-react";
 import { ProductCard, PlatformIcon, XiaohongshuLink } from "@/components/website";
@@ -82,6 +81,8 @@ interface ProductDetailContentProps {
   product: Product;
   relatedProducts: RelatedProduct[];
   breadcrumbs: BreadcrumbItem[];
+  categories: { id: string; name: string; slug: string }[];
+  navProducts: { id: string; slug: string; categoryId: string }[];
 }
 
 type TabType = "description" | "ingredients" | "usage";
@@ -94,6 +95,8 @@ export function ProductDetailContent({
   product,
   relatedProducts,
   breadcrumbs,
+  categories,
+  navProducts,
 }: ProductDetailContentProps) {
   const { setDrawerOpen } = useLayout();
   const { success } = useToast();
@@ -126,8 +129,6 @@ export function ProductDetailContent({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
-  const desktopMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -143,21 +144,6 @@ export function ProductDetailContent({
       };
     }
   }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        desktopMenuRef.current &&
-        !desktopMenuRef.current.contains(event.target as Node)
-      ) {
-        setDesktopMenuOpen(false);
-      }
-    };
-    if (desktopMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [desktopMenuOpen]);
 
   // 收藏状态从 localStorage 恢复
   useEffect(() => {
@@ -446,11 +432,11 @@ export function ProductDetailContent({
       {/* 固定顶栏导航 */}
       <nav
         aria-label="产品页导航"
-        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#FBF8F0]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#FBF8F0]/80 px-6 py-3 backdrop-blur-md md:grid md:grid-cols-[160px_1fr_160px] md:px-20 md:py-6"
         style={{ pointerEvents: "none" }}
       >
         <div
-          className="relative flex w-full items-center justify-center md:justify-between"
+          className="relative flex w-full items-center justify-center md:contents"
           style={{ pointerEvents: "auto" }}
         >
           {/* Logo */}
@@ -466,94 +452,32 @@ export function ProductDetailContent({
             </div>
           </Link>
 
-          {/* 桌面端导航链接 */}
-          <div className="hidden items-center gap-1 md:flex">
-            <Link
-              href="/contact"
-              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
-            >
-              联系我们
-              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
-            </Link>
-            <Link
-              href="/terms"
-              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
-            >
-              服务条款
-              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
-            </Link>
-            <Link
-              href="/privacy"
-              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
-            >
-              隐私政策
-              <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
-            </Link>
+          {/* 桌面端分类导航 */}
+          <div className="hidden items-center justify-center gap-1 md:flex">
+            {categories.map((cat) => {
+              const catProduct = navProducts.find((p) => p.categoryId === cat.id);
+              if (!catProduct) return null;
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/products/${catProduct.slug}`}
+                  className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                >
+                  {cat.name}
+                  <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
+                </Link>
+              );
+            })}
+          </div>
 
-            {/* 桌面端下拉菜单 */}
-            <div ref={desktopMenuRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setDesktopMenuOpen((prev) => !prev)}
-                className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
-                aria-expanded={desktopMenuOpen}
-              >
-                菜单
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-500 ${desktopMenuOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              <AnimatePresence>
-                {desktopMenuOpen && (
-                  <m.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-brand-charcoal/5 bg-[#FBF8F0] p-2 shadow-[0_2px_4px_-1px_rgba(0,38,62,0.05),0_8px_16px_-2px_rgba(0,38,62,0.08),0_24px_48px_-6px_rgba(0,38,62,0.06)]"
-                  >
-                    <Link
-                      href="/products"
-                      onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
-                    >
-                      产品系列
-                    </Link>
-                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
-                    <Link
-                      href="/guide"
-                      onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
-                    >
-                      护肤指南
-                    </Link>
-                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
-                    <Link
-                      href="/faq"
-                      onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
-                    >
-                      常见问题
-                    </Link>
-                    <div className="h-px origin-top scale-y-50 bg-brand-charcoal/[0.04]" />
-                    <Link
-                      href="/about"
-                      onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
-                    >
-                      品牌故事
-                    </Link>
-                  </m.div>
-                )}
-              </AnimatePresence>
-            </div>
-
+          {/* 桌面端返回产品页按钮 */}
+          <div className="hidden items-center justify-end md:flex">
             <Link
-              href="/"
+              href="/products"
               className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
             >
-              <Home className="h-4 w-4" /> 返回首页
+              <ChevronLeft className="h-4 w-4" />
+              返回产品页
               <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
             </Link>
           </div>
@@ -610,27 +534,20 @@ export function ProductDetailContent({
             </Link>
 
             <div className="flex flex-col gap-2">
-              <Link
-                href="/contact"
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
-              >
-                联系我们
-              </Link>
-              <Link
-                href="/terms"
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
-              >
-                服务条款
-              </Link>
-              <Link
-                href="/privacy"
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
-              >
-                隐私政策
-              </Link>
+              {categories.map((cat) => {
+                const catProduct = navProducts.find((p) => p.categoryId === cat.id);
+                if (!catProduct) return null;
+                return (
+                  <Link
+                    key={cat.id}
+                    href={`/products/${catProduct.slug}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                  >
+                    {cat.name}
+                  </Link>
+                );
+              })}
             </div>
 
             <Link
