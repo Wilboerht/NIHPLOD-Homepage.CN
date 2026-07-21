@@ -344,8 +344,6 @@ export function ProductDetailContent({
     }
   }, [router]);
 
-  const isOutOfStock = product.stock <= 0;
-
   const handleThumbnailClick = (index: number) => {
     setCurrentImageIndex(index);
   };
