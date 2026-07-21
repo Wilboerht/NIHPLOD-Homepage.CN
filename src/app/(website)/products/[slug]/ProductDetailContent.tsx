@@ -487,7 +487,7 @@ export function ProductDetailContent({
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+            className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
             aria-label="打开菜单"
             aria-expanded={mobileMenuOpen}
             aria-controls="product-detail-nav-panel"
@@ -517,7 +517,7 @@ export function ProductDetailContent({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="mb-8 flex h-10 w-10 items-center justify-center self-end rounded-full transition-colors hover:bg-brand-charcoal/5"
+              className="mb-8 flex h-11 w-11 items-center justify-center self-end rounded-full transition-colors hover:bg-brand-charcoal/5"
               aria-label="关闭菜单"
             >
               <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
@@ -673,7 +673,7 @@ export function ProductDetailContent({
                       <button
                         type="button"
                         onClick={handleShare}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal"
                         aria-label="分享"
                       >
                         <Share2 className="h-5 w-5" />
@@ -683,7 +683,7 @@ export function ProductDetailContent({
 
                   {/* 产地/规格 */}
                   {(product.origin || product.capacity) && (
-                    <div className="mt-2 flex items-center gap-3 text-xs font-light text-[#00263E]/50">
+                    <div className="mt-2 flex items-center gap-3 text-xs font-normal text-[#00263E]/50">
                       {product.origin && <span>产地：{product.origin}</span>}
                       {product.capacity && <span>规格：{product.capacity}</span>}
                     </div>
@@ -764,13 +764,13 @@ export function ProductDetailContent({
                         >
                           {tabContent[tab.key] ? (
                             <div
-                              className="text-left text-sm font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90"
+                              className="text-left text-base font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90"
                               dangerouslySetInnerHTML={{
                                 __html: DOMPurify.sanitize(tabContent[tab.key]!),
                               }}
                             />
                           ) : (
-                            <p className="text-sm font-light text-[#00263e]/40">暂无内容</p>
+                            <p className="text-base font-light text-[#00263e]/40">暂无内容</p>
                           )}
                         </div>
                       );
@@ -795,7 +795,7 @@ export function ProductDetailContent({
                         aria-label="官网购买"
                         className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
                       >
-                        <span className="text-xs font-light tracking-[0.12em] text-[#00263E]">官网</span>
+                        <span className="text-xs font-normal tracking-[0.12em] text-[#00263E]">官网</span>
                       </button>
                     )}
                     {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
@@ -886,7 +886,7 @@ export function ProductDetailContent({
       {/* 底部版权信息 */}
       <footer className="mt-auto border-t border-brand-charcoal/10 max-lg:border-0">
         <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16 max-lg:pb-24">
-          <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+          <p className="text-[11px] font-normal tracking-[0.15em] text-brand-charcoal/[0.48]">
             &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
           </p>
         </div>
