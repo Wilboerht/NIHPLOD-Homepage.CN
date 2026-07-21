@@ -3,9 +3,12 @@ import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { ProductsContent } from "./ProductsContent";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { mockCategories, mockProducts } from "./mock-data";
 
 // ISR: 产品列表页每60秒重新验证一次
 export const revalidate = 60;
+
+const isDev = process.env.NODE_ENV === "development";
 
 export const metadata: Metadata = {
   title: "产品系列",
@@ -46,6 +49,11 @@ export const metadata: Metadata = {
  * 获取所有可见的分类
  */
 async function getCategories() {
+  if (isDev) {
+    console.log("🔧 [DEV] 使用 Mock 分类数据");
+    return mockCategories;
+  }
+
   try {
     const categories = await prisma.category.findMany({
       where: { visible: true }, // 只获取在前台展示的分类
@@ -69,6 +77,11 @@ async function getCategories() {
  * 获取已发布的产品
  */
 async function getProducts() {
+  if (isDev) {
+    console.log("🔧 [DEV] 使用 Mock 产品数据");
+    return mockProducts;
+  }
+
   try {
     const products = await prisma.product.findMany({
       where: { published: true },

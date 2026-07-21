@@ -164,12 +164,11 @@ describe("BottomNavBar", () => {
     expect(container.querySelector("nav")).not.toBeInTheDocument();
   });
 
-  it("applies mobile-hidden class on the services page", () => {
+  it("hides the navigation on standalone pages like services", () => {
     setupMocks("/services");
     const { container } = render(<BottomNavBar />);
 
-    // 服务页在移动端通过 max-lg:hidden 隐藏整个 Dock 容器
-    const dockContainer = container.querySelector(".pointer-events-none.fixed.bottom-4");
-    expect(dockContainer).toHaveClass("max-lg:hidden");
+    // 独立全屏页面整体不渲染底部导航
+    expect(container.querySelector("nav")).not.toBeInTheDocument();
   });
 });
