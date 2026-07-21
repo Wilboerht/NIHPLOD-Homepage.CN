@@ -683,7 +683,7 @@ export function ProductDetailContent({
 
                   {/* 产地/规格 */}
                   {(product.origin || product.capacity) && (
-                    <div className="mt-2 flex items-center gap-3 text-xs font-normal text-[#00263E]/50">
+                    <div className="mt-2 flex items-center gap-3 text-xs font-normal text-[#00263E]">
                       {product.origin && <span>产地：{product.origin}</span>}
                       {product.capacity && <span>规格：{product.capacity}</span>}
                     </div>
@@ -727,10 +727,10 @@ export function ProductDetailContent({
                           onClick={() => handleTabChange(tab.key)}
                           onKeyDown={handleTabKeyDown}
                           className={cn(
-                            "relative cursor-pointer pb-3 text-sm font-light tracking-[0.12em] transition-colors",
+                            "relative cursor-pointer pb-3 text-sm tracking-[0.12em] transition-colors",
                             activeTab === tab.key
-                              ? "text-brand-charcoal"
-                              : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                              ? "font-normal text-brand-charcoal"
+                              : "font-light text-brand-charcoal hover:opacity-70"
                           )}
                         >
                           {tab.label}
