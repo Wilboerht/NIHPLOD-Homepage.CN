@@ -204,7 +204,7 @@ export function ProductCard({ product, onClick, priority = false, className }: P
         )}
 
         {/* 悬停 / 聚焦遮罩与 CTA */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-brand-charcoal/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-brand-charcoal/40 opacity-0 transition-opacity duration-300 group-focus-within:opacity-100 group-hover:opacity-100">
           <span
             className="rounded-full border border-white/60 bg-white/90 px-5 py-2 text-sm font-light tracking-wide text-brand-charcoal shadow-sm backdrop-blur-sm"
             aria-hidden="true"

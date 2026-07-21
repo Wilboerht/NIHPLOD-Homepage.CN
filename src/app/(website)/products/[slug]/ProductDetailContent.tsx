@@ -255,8 +255,18 @@ export function ProductDetailContent({
   };
 
   const handleMainImageClick = useCallback(() => {
-    if (justSwipedRef.current) return;
+    if (justSwipedRef.current) {
+      justSwipedRef.current = false;
+      return;
+    }
     setLightboxOpen(true);
+  }, []);
+
+  const handleMainImageKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setLightboxOpen(true);
+    }
   }, []);
 
   const handleLightboxPrev = useCallback(() => {
@@ -476,6 +486,7 @@ export function ProductDetailContent({
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                         onClick={handleMainImageClick}
+                        onKeyDown={handleMainImageKeyDown}
                         role="button"
                         aria-label="查看大图"
                         tabIndex={0}
@@ -577,7 +588,7 @@ export function ProductDetailContent({
 
                   {/* 产品名称 + 容量 + 操作按钮 */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-end justify-between flex-1">
+                    <div className="flex flex-1 items-end justify-between">
                       <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
                         {product.name}
                       </h1>
@@ -830,16 +841,8 @@ export function ProductDetailContent({
                 />
               </div>
               <div className="flex flex-1 flex-col gap-2">
-                <AddToCartButton
-                  productId={product.id}
-                  stock={product.stock}
-                  quantity={quantity}
-                />
-                <DirectBuyButton
-                  productId={product.id}
-                  stock={product.stock}
-                  quantity={quantity}
-                />
+                <AddToCartButton productId={product.id} stock={product.stock} quantity={quantity} />
+                <DirectBuyButton productId={product.id} stock={product.stock} quantity={quantity} />
               </div>
             </div>
           </div>
@@ -924,7 +927,7 @@ function ImageLightbox({
             e.stopPropagation();
             onPrev();
           }}
-          className="absolute left-2 top-1/2 z-10 -translate-y-1/2 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:left-4"
+          className="absolute left-2 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:left-4"
           aria-label="上一张"
         >
           <ChevronLeft className="h-6 w-6" />
@@ -956,7 +959,7 @@ function ImageLightbox({
             e.stopPropagation();
             onNext();
           }}
-          className="absolute right-2 top-1/2 z-10 -translate-y-1/2 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:right-4"
+          className="absolute right-2 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:right-4"
           aria-label="下一张"
         >
           <ChevronRight className="h-6 w-6" />
@@ -1094,11 +1097,7 @@ function DirectBuyButton({
           : "border border-brand-primary text-brand-primary hover:bg-brand-primary/10"
       )}
     >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <CreditCard className="h-4 w-4" />
-      )}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
       <span>{isOutOfStock ? "已售罄" : "直接购买"}</span>
     </button>
   );

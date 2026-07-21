@@ -578,7 +578,7 @@ export function StoryContent() {
                           <span className="mb-4 block text-[12px] font-light tracking-[0.15em] text-brand-charcoal/60">
                             公司使命
                           </span>
-                             <h2 className="mt-6 mb-6 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mt-8 md:mb-8 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
+                             <h2 className="mb-6 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mb-8 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
                              化繁为简
                              <br />
                              逆转时光
@@ -591,11 +591,11 @@ export function StoryContent() {
                           </p>
                         </div>
 
-                        <div className="w-full border-t border-[#00263e]/15 pt-6">
-                          <span className="mb-1 block text-[10px] font-light tracking-[0.12em] text-[#00263e]/50">
+                        <div className="mt-6 flex w-full flex-col gap-1">
+                          <span className="block text-[10px] font-light tracking-[0.12em] text-[#00263e]/50">
                             CEO
                           </span>
-                          <div className="mt-1 text-left">
+                          <div className="text-left">
                             <Image
                               src="/images/story/mission-decoration.svg"
                               alt="John Morrell"
