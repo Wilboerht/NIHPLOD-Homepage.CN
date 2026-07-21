@@ -5,7 +5,7 @@ interface WebsiteLayoutProps {
   children: ReactNode;
 }
 
-import { WebsiteLayoutClient } from "@/components/website/WebsiteLayoutClient";
+import { WebsiteLayoutClient, MainContent } from "@/components/website/WebsiteLayoutClient";
 
 /**
  * 前台网站布局
@@ -23,13 +23,7 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
 
       {/* 主内容区域，包含 NavBar 逻辑 */}
       <WebsiteLayoutClient>
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="pointer-events-none relative z-10 pb-28 lg:pb-24 [&>*]:pointer-events-auto"
-        >
-          {children}
-        </main>
+        <MainContent>{children}</MainContent>
       </WebsiteLayoutClient>
 
       {/* 全局模态框 */}

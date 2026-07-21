@@ -460,9 +460,9 @@ export function ProductDetailContent({
         {/* 分割线 - 仅桌面端 */}
         <div className="mx-auto hidden w-full max-w-7xl border-b border-brand-charcoal/10 lg:block" />
 
-        {/* 内容区域 */}
+        {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative min-h-0 flex-1">
-          <main className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-hidden [&::-webkit-scrollbar]:hidden">
+          <div className="h-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-hidden [&::-webkit-scrollbar]:hidden">
             <div className="lg:grid lg:h-full lg:grid-cols-2 lg:gap-12">
               {/* 左侧：图片轮播区域 */}
               <div className="lg:flex lg:flex-col lg:justify-center lg:overflow-y-auto lg:px-0 lg:py-8">
@@ -823,12 +823,12 @@ export function ProductDetailContent({
                 )}
               </div>
             </div>
-          </main>
+          </div>
         </div>
 
         {/* 移动端底部固定购买栏 */}
         {product.allowDirectBuy && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#FBF8F0]/95 px-4 py-3 backdrop-blur-md lg:hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#FBF8F0]/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
                 <QuantitySelector

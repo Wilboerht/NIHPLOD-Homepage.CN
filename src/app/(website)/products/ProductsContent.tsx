@@ -362,7 +362,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </div>
 
                 {/* Footer Info */}
-                <div className="flex shrink-0 flex-col items-center justify-center gap-2">
+                <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-4">
                   <p className="text-center text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
                     &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                   </p>

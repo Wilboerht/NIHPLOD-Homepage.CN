@@ -5,7 +5,7 @@ import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 import { Menu, X, Home, BookOpen, HelpCircle, ShoppingBag } from "lucide-react";
-import { cn, isCurrentPage } from "@/lib/utils";
+import { cn, isCurrentPage, isBottomNavHiddenRoute } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { AboutIcon } from "./icons/AboutIcon";
@@ -121,17 +121,13 @@ export function BottomNavBar() {
     pathname === "/terms" ||
     pathname === "/privacy";
 
-  // 产品详情页隐藏底部导航栏
-  const isProductDetailPage = pathname.startsWith("/products/") && pathname !== "/products";
-
   // 当抽屉展开、动画中、登录弹窗、用户中心面板或联系我们弹窗激活时，隐藏导航栏
   const isVisible =
     !isDrawerOpen &&
     !isDrawerAnimating &&
     !activeModal &&
     !userCenterOpen &&
-    !isProductDetailPage &&
-    !isStandalonePage;
+    !isBottomNavHiddenRoute(pathname);
 
   // 尊重用户减少动画偏好
   const dockTransition = shouldReduceMotion

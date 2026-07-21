@@ -28,3 +28,16 @@ export function formatPrice(price: number): string {
 export function isCurrentPage(pathname: string, href: string): boolean {
   return href === pathname || (href !== "/" && pathname.startsWith(href));
 }
+
+/**
+ * 判断当前路由是否隐藏全局底部导航栏
+ * 独立全屏页面与产品详情页不显示 BottomNavBar，
+ * 布局据此决定是否保留底部导航的占位 padding
+ */
+export function isBottomNavHiddenRoute(pathname: string): boolean {
+  const isStandalonePage = ["/services", "/careers", "/contact", "/terms", "/privacy"].includes(
+    pathname
+  );
+  const isProductDetailPage = pathname.startsWith("/products/") && pathname !== "/products";
+  return isStandalonePage || isProductDetailPage;
+}
