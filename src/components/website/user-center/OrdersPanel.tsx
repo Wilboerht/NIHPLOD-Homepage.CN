@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Package, ChevronRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
 import { m } from "framer-motion";
 
 interface OrderItem {
@@ -55,6 +56,7 @@ const TABS = [
 
 export function OrdersPanel() {
   const { initialOrderId, clearInitialOrderId } = useAuth();
+  const { error: showError } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
@@ -92,6 +94,7 @@ export function OrdersPanel() {
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         console.error("获取订单失败:", e);
+        showError("获取订单失败，请稍后重试");
       } finally {
         if (requestId !== requestIdRef.current) return;
         setLoading(false);

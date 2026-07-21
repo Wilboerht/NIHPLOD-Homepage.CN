@@ -75,14 +75,19 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       request,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         qrCode: qrCodeDataUrl,
-        secret, // 也返回明文 secret，方便用户手动输入
+        secret,
         backupCodes,
       },
     });
+
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    response.headers.set("Pragma", "no-cache");
+
+    return response;
   } catch (error) {
     console.error("[TOTP Setup] 异常:", error);
     return NextResponse.json(

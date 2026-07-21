@@ -8,7 +8,6 @@ import { OrderStatus } from "@/generated/prisma/client";
 import { formatMoney, moneyStrictEqual } from "./money";
 import { formatKey, validateKeyFormat } from "./crypto-utils";
 import { fetchWithTimeout } from "./fetch-utils";
-import { recordTransaction } from "./transaction";
 import { apiConsole } from "@/lib/logger";
 
 // 支付宝配置（延迟校验）
@@ -275,7 +274,10 @@ export async function handleAlipayNotify(
       capturedPayAmount = Number(order.payAmount);
 
       // 支付回调金额必须严格相等，不容忍任何差异
-      const notifyAmount = parseFloat(params.total_amount || "0");
+      if (!params.total_amount) {
+        throw new Error("MISSING_AMOUNT");
+      }
+      const notifyAmount = parseFloat(params.total_amount);
       if (!moneyStrictEqual(order.payAmount, notifyAmount)) {
         throw new Error("AMOUNT_MISMATCH");
       }
@@ -333,20 +335,22 @@ export async function handleAlipayNotify(
           data: { status: "USED", usedAt: new Date() },
         });
       }
-    });
 
-    // 记录交易流水（仅在成功更新订单时记录，避免重复流水）
-    if (shouldRecordTransaction && capturedOrderId && capturedPayAmount !== undefined) {
-      await recordTransaction({
-        orderId: capturedOrderId,
-        type: "PAYMENT",
-        gateway: "alipay",
-        amount: capturedPayAmount,
-        status: "SUCCESS",
-        gatewayTrxId: tradeNo,
-        rawData: JSON.stringify(params),
-      });
-    }
+      // 记录交易流水（在事务内，保证与订单状态更新原子化）
+      if (shouldRecordTransaction && capturedOrderId && capturedPayAmount !== undefined) {
+        await tx.transaction.create({
+          data: {
+            orderId: capturedOrderId,
+            type: "PAYMENT",
+            gateway: "alipay",
+            amount: capturedPayAmount,
+            status: "SUCCESS",
+            gatewayTrxId: tradeNo,
+            rawData: JSON.stringify(params),
+          },
+        });
+      }
+    });
 
     console.log(`[Alipay] 订单支付成功: ${orderNo}`);
     return { success: true };
@@ -426,7 +430,8 @@ export async function refundAlipayOrder(
         return { success: false, error: "退款响应格式异常" };
       }
     } else {
-      console.warn("[Alipay] 退款响应缺少签名字段");
+      apiConsole.error("[Alipay] 退款响应缺少签名字段，拒绝处理");
+      return { success: false, error: "退款响应签名缺失" };
     }
 
     const response = data.alipay_trade_refund_response;

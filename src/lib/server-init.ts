@@ -39,30 +39,29 @@ export async function initializeApp(): Promise<void> {
   console.log("\n✅ 应用初始化完成");
   console.log("========================================\n");
 
-  // 优雅关闭处理：仅注册一次，防止内存泄漏
+  // 优雅关闭：仅负责 cron 任务清理，不调用 process.exit
+  // prisma.ts 已注册完整的 DB 连接池关闭 + process.exit 逻辑
   if (typeof process !== "undefined" && !_handlersRegistered) {
     _handlersRegistered = true;
 
     process.on("SIGTERM", async () => {
-      console.log("\n📛 收到 SIGTERM 信号，开始优雅关闭...");
+      console.log("\n[Server] 收到 SIGTERM，停止定时任务...");
       try {
         const { stopCronTasks } = await import("./cron-tasks");
         stopCronTasks();
       } catch (error) {
-        apiConsole.error("关闭定时任务失败:", error);
+        apiConsole.error("[Server] 停止定时任务失败:", error);
       }
-      process.exit(0);
     });
 
     process.on("SIGINT", async () => {
-      console.log("\n📛 收到 SIGINT 信号，开始优雅关闭...");
+      console.log("\n[Server] 收到 SIGINT，停止定时任务...");
       try {
         const { stopCronTasks } = await import("./cron-tasks");
         stopCronTasks();
       } catch (error) {
-        apiConsole.error("关闭定时任务失败:", error);
+        apiConsole.error("[Server] 停止定时任务失败:", error);
       }
-      process.exit(0);
     });
   }
 }

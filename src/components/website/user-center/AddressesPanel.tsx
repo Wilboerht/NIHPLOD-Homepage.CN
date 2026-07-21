@@ -36,6 +36,7 @@ export function AddressesPanel() {
       setAddresses(data.addresses || []);
     } catch (e) {
       console.error("获取地址失败:", e);
+      showError("获取地址失败，请稍后重试");
     } finally {
       setLoading(false);
     }

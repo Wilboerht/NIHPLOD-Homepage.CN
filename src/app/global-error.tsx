@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Image from "next/image";
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
 import { logger } from "@/lib/logger";
+import "./globals.css";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };

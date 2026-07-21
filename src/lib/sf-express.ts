@@ -36,11 +36,17 @@ function generateVerifyCode(xmlBody: string, checkWord: string): string {
  * 构建顺丰查询路由 XML 请求体
  */
 function buildRouteRequestXml(trackingNo: string, customerCode: string): string {
+  const safeTrackingNo = trackingNo
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
   return `<?xml version="1.0" encoding="UTF-8" ?>
 <Request service="RouteService" lang="zh-CN">
   <Head>${customerCode}</Head>
   <Body>
-    <RouteRequest tracking_number="${trackingNo}"/>
+    <RouteRequest tracking_number="${safeTrackingNo}"/>
   </Body>
 </Request>`;
 }
@@ -70,6 +76,8 @@ export async function querySFExpressRoute(trackingNo: string): Promise<SFLogisti
     const xmlBody = buildRouteRequestXml(trackingNo, config.customerCode);
     const verifyCode = generateVerifyCode(xmlBody, config.checkWord);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(SF_API_URL, {
       method: "POST",
       headers: {
@@ -79,7 +87,9 @@ export async function querySFExpressRoute(trackingNo: string): Promise<SFLogisti
         xml: xmlBody,
         verifyCode,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       return { success: false, error: `顺丰API请求失败: ${response.status}` };

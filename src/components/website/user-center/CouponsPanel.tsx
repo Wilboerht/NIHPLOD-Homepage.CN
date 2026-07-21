@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Ticket, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 interface UserCoupon {
   id: string;
@@ -26,6 +27,7 @@ export function CouponsPanel() {
   const [coupons, setCoupons] = useState<UserCoupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>("all");
+  const { error: showError } = useToast();
 
   useEffect(() => {
     fetchCoupons();
@@ -43,6 +45,7 @@ export function CouponsPanel() {
       }
     } catch {
       console.error("获取优惠券失败");
+      showError("获取优惠券失败，请稍后重试");
     } finally {
       setLoading(false);
     }
@@ -160,8 +163,8 @@ export function CouponsPanel() {
                   </div>
                   <div className="text-xs text-[#4A6272]">
                     {uc.displayStatus === "USED" && uc.usedAt
-                      ? `使用时间：${new Date(uc.usedAt).toLocaleDateString("zh-CN")}`
-                      : `有效期至：${new Date(uc.expiresAt).toLocaleDateString("zh-CN")}`}
+                      ? `使用时间：${new Date(uc.usedAt).toISOString().split("T")[0]}`
+                      : `有效期至：${new Date(uc.expiresAt).toISOString().split("T")[0]}`}
                   </div>
                 </div>
                 <div className="ml-3 shrink-0">{getStatusBadge(uc)}</div>

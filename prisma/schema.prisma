@@ -213,9 +213,8 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  @@index([phone])
-  @@index([wechatOpenId])
   @@index([status])
+  // phone 和 wechatOpenId 已有 @unique 索引，无需重复 @@index
 }
 
 // ============================================
@@ -257,7 +256,7 @@ model RefreshToken {
 model LoginAttempt {
   id        String   @id @default(cuid())
   identifier String                            // 登录标识：手机号（C 端）或邮箱（管理员）
-  type      String   @default("password")      // password | sms | admin
+  type      String   @default("password")      // password | sms | admin — 应用层 Zod 约束，未用 Prisma enum 因保持灵活
   success   Boolean                            // 是否成功
   reason    String?                            // 失败原因（如：code_invalid、user_not_found 等）
   ipAddress String?                            // IP 地址
@@ -274,7 +273,7 @@ model PaymentNotification {
   gateway          String            // "wechat" 或 "alipay"
   notificationId   String            // 通知ID（微信: out_trade_no, 支付宝: trade_no）
   transactionId    String            // 交易ID（微信: transaction_id, 支付宝: trade_no）
-  amount           Int               // 金额（分）
+  amount           Int               // 金额（分）— 注意：支付网关返回单位为分，与项目其他字段的 Decimal(10,2)/元 不同
   status           String            @default("PENDING") // "PENDING" | "SUCCESS" | "FAILED"
   rawData          String            @db.Text // 原始通知数据（JSON）
   errorMessage     String?           // 错误信息
@@ -404,7 +403,6 @@ model Order {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([status, createdAt])
-  @@index([orderNo])
   @@index([paymentNo])
 }
 
@@ -519,6 +517,8 @@ model RateLimitRecord {
 // ============================================
 
 enum AdminRole {
+  // 注意：AdminRole 与其他 enum 大小写不一致（lowercase vs UPPERCASE），
+  // 由于已投入生产且有 DB 记录，保留当前值避免 breaking change
   owner
   admin
 }

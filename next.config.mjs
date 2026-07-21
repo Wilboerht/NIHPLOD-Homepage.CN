@@ -41,14 +41,19 @@ const securityHeaders = [
     key: 'Strict-Transport-Security',
     value: 'max-age=63072000; includeSubDomains; preload',
   },
-  {
-    key: 'Permissions-Policy',
+    {
+      key: 'Cross-Origin-Opener-Policy',
+      value: 'same-origin',
+    },
+    {
+      key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
   },
 ];
 
 const nextConfig = {
-  // 抑制 file-type 包的已知构建警告（动态依赖表达式，不影响运行时）
+  poweredByHeader: false,
+
   webpack: (config) => {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings || []),
@@ -118,7 +123,7 @@ const nextConfig = {
     // 固定尺寸图片断点
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     // 最小化缓存时间 (秒)
-    minimumCacheTTL: 60 * 60 * 24 * 30, // 30天
+    minimumCacheTTL: 60 * 60 * 24, // 1 天
     // 禁用静态导入 (使用动态导入优化)
     disableStaticImages: false,
   },

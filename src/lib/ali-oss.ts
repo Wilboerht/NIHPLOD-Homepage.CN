@@ -3,6 +3,7 @@
  * 用于生成直传签名和处理 OSS 相关操作
  */
 import OSS from "ali-oss";
+import crypto from "crypto";
 import { apiConsole } from "@/lib/logger";
 
 // OSS 配置检查
@@ -90,7 +91,7 @@ export async function generateUploadSignature(filename: string, type: string) {
 
   // 生成随机文件路径: uploads/日期/随机ID.ext
   const date = new Date().toISOString().split("T")[0];
-  const randomId = Math.random().toString(36).substring(2, 10);
+  const randomId = crypto.randomBytes(6).toString("hex");
   const objectName = `uploads/${date}/${randomId}.${ext}`;
 
   // 生成签名 URL，有效期 15 分钟 (900秒)

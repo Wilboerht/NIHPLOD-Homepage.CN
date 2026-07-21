@@ -189,12 +189,13 @@ export function CheckoutModal() {
 
   if (!mounted) return null;
 
-  // 未登录时打开登录弹窗
-  if (checkoutOpen && !user) {
-    openLoginModal();
-    closeCheckout();
-    return null;
-  }
+  // 未登录时打开登录弹窗 — 必须在 useEffect 中，不能在 render 期间调 setState
+  useEffect(() => {
+    if (checkoutOpen && !user) {
+      openLoginModal();
+      closeCheckout();
+    }
+  }, [checkoutOpen, user, openLoginModal, closeCheckout]);
 
   const _selectedAddress = data?.addresses.find((a) => a.id === selectedAddressId);
 

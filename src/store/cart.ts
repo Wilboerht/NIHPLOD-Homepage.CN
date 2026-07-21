@@ -14,6 +14,7 @@ interface CartState {
   isOpen: boolean;
   items: CartItem[];
   totalItems: number;
+  isLoading: boolean;
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
@@ -46,17 +47,18 @@ export const useCartStore = create<CartState>((set, get) => ({
   isOpen: false,
   items: [],
   totalItems: 0,
+  isLoading: false,
 
   openCart: () => set({ isOpen: true }),
   closeCart: () => set({ isOpen: false }),
   toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
 
   fetchCart: async () => {
-    // 未登录时跳过请求，避免产生 401
     if (typeof window !== "undefined" && !localStorage.getItem("auth_hint")) {
       return;
     }
 
+    set({ isLoading: true });
     try {
       const res = await fetch("/api/cart");
       if (res.status === 401) {
@@ -82,6 +84,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
     } catch (error) {
       console.error("Fetch cart error:", error);
+    } finally {
+      set({ isLoading: false });
     }
   },
 
