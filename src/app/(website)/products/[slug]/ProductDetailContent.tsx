@@ -834,16 +834,16 @@ export function ProductDetailContent({
                   </div>
                 </div>
 
-                {/* 素颜派肌肤测试推广 */}
+                {/* 肌智派素颜测肤推广 */}
                 <div className="pb-7">
                   <a
                     href="https://advisor.nihplod.cn"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group inline-flex items-center gap-1 text-[12px] font-normal text-[#00263E] transition-opacity hover:opacity-70"
+                    className="group inline-flex items-center gap-1 text-xs font-light tracking-[0.12em] text-[#00263E] transition-opacity hover:opacity-70"
                   >
                     <span>
-                      想知道自己需要什么产品？通过素颜派肌肤测试挑选最合适自己的产品——更少产品，科学护肤
+                      参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤
                     </span>
                     <svg
                       viewBox="0 0 24 24"
