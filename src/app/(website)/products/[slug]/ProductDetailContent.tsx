@@ -785,7 +785,7 @@ export function ProductDetailContent({
                 />
 
                 {/* 购买按钮区域 - 桌面端内联 */}
-                <div className="pb-3 max-lg:hidden">
+                <div className="pb-6 max-lg:hidden">
                   {/* 外部购买链接 - 图标形式 */}
                   <div className="flex flex-wrap items-center justify-start gap-4">
                     {product.allowDirectBuy && (
