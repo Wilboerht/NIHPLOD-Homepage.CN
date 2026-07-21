@@ -746,32 +746,36 @@ export function ProductDetailContent({
                     </div>
                   </div>
 
-                  {/* Tab 内容 */}
-                  <div className="mt-6">
-                    {tabs.map((tab) => (
-                      <div
-                        key={tab.key}
-                        role="tabpanel"
-                        id={`panel-${tab.key}`}
-                        aria-labelledby={`tab-${tab.key}`}
-                        tabIndex={0}
-                        className={cn(
-                          "transition-opacity duration-300",
-                          activeTab === tab.key ? "block opacity-100" : "hidden opacity-0"
-                        )}
-                      >
-                        {tabContent[tab.key] ? (
-                          <div
-                            className="text-left text-sm font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90"
-                            dangerouslySetInnerHTML={{
-                              __html: DOMPurify.sanitize(tabContent[tab.key]!),
-                            }}
-                          />
-                        ) : (
-                          <p className="text-sm font-light text-[#00263e]/40">暂无内容</p>
-                        )}
-                      </div>
-                    ))}
+                  {/* Tab 内容 - 所有面板叠放在同一 grid 格子中，容器高度恒为最高面板，切换时不抖动 */}
+                  <div className="mt-6 grid">
+                    {tabs.map((tab) => {
+                      const isActive = activeTab === tab.key;
+                      return (
+                        <div
+                          key={tab.key}
+                          role="tabpanel"
+                          id={`panel-${tab.key}`}
+                          aria-labelledby={`tab-${tab.key}`}
+                          aria-hidden={!isActive}
+                          tabIndex={isActive ? 0 : -1}
+                          className={cn(
+                            "col-start-1 row-start-1 transition-opacity duration-300",
+                            isActive ? "opacity-100" : "pointer-events-none invisible opacity-0"
+                          )}
+                        >
+                          {tabContent[tab.key] ? (
+                            <div
+                              className="text-left text-sm font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90"
+                              dangerouslySetInnerHTML={{
+                                __html: DOMPurify.sanitize(tabContent[tab.key]!),
+                              }}
+                            />
+                          ) : (
+                            <p className="text-sm font-light text-[#00263e]/40">暂无内容</p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
