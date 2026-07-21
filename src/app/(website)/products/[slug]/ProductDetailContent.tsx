@@ -839,7 +839,7 @@ export function ProductDetailContent({
                       href="https://advisor.nihplod.cn"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group inline-flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.12em] text-[#00263E] transition-opacity hover:opacity-70"
+                      className="group inline-flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.12em] text-brand-primary transition-opacity hover:opacity-70"
                     >
                       <span>
                         参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤
