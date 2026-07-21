@@ -123,6 +123,8 @@ async function getProduct(slug: string) {
   return {
     ...product,
     price: Number(product.price),
+    origin: product.origin,
+    salesCount: product.salesCount,
   };
 }
 
@@ -196,7 +198,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
         }
       />
 
-      <ProductDetailContent product={product} relatedProducts={relatedProducts} />
+      <ProductDetailContent
+        product={product}
+        relatedProducts={relatedProducts}
+        breadcrumbs={breadcrumbs}
+      />
     </>
   );
 }

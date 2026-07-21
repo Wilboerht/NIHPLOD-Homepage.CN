@@ -30,6 +30,7 @@ model Product {
   ingredients   String?        @db.Text // 成分说明
   usage         String?        @db.Text // 使用方法
   benefits      String[]       // 功效标签
+  origin        String?        // 产地
   order         Int            @default(0) // 排序（数字越小越靠前）
   featured      Boolean        @default(false) // 是否推荐
   published     Boolean        @default(false) // 是否发布

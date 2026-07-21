@@ -126,7 +126,7 @@ export function StoryContent() {
 
         <div
           className={cn(
-            "relative z-10 flex h-full flex-col overflow-hidden pb-4 transition-opacity duration-300",
+            "relative z-10 flex h-full flex-col overflow-hidden pb-6 transition-opacity duration-300",
             isDrawerOpen ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
           )}
         >
