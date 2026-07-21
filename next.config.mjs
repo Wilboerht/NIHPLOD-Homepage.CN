@@ -93,6 +93,12 @@ const nextConfig = {
 
   // 图片优化配置
   images: {
+    // 允许本地图片使用 query string （版本化缓存破坏）
+    localPatterns: [
+      {
+        pathname: '/images/**',
+      },
+    ],
     // 允许的图片域名
     remotePatterns: [
       {

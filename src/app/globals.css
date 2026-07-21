@@ -1187,13 +1187,13 @@
   /* 默认保持彩色，悬浮时轻微增强 */
   filter: saturate(1) contrast(1.02);
   transition:
-    transform 1.2s var(--kinetic-ease),
-    filter 0.8s var(--kinetic-ease);
+    transform 0.6s var(--kinetic-ease),
+    filter 0.6s var(--kinetic-ease);
 }
 
 .kinetic-cell:not(.no-hover-effect):hover .kinetic-cell-image {
-  transform: scale(1.05);
-  filter: saturate(1.05) contrast(1.05);
+  transform: scale(1.03);
+  filter: saturate(1.03) contrast(1.03);
 }
 
 /* 键盘焦点可访问性 - 白色 outline 适配深色/浅色各类卡片 */

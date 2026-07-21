@@ -108,7 +108,7 @@ export function KineticBackground() {
             src="/images/kinetic-product-hero.jpeg"
             alt="NIHPLOD 产品系列"
             fill
-            className="kinetic-cell-image transition-all duration-500 group-hover:scale-105"
+            className="kinetic-cell-image"
             style={{ objectPosition: "center 30%" }}
             sizes="(max-width: 600px) 100vw, 30vw"
             priority
@@ -144,7 +144,7 @@ export function KineticBackground() {
             src="/images/kinetic-guide.webp"
             alt="NIHPLOD 官方护肤指南"
             fill
-            className="kinetic-cell-image transition-all duration-500 group-hover:scale-105"
+            className="kinetic-cell-image"
             style={{ objectPosition: "center 40%" }}
             sizes="(max-width: 600px) 100vw, 50vw"
           />
@@ -159,18 +159,18 @@ export function KineticBackground() {
           <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
           {/* Desktop Image */}
           <Image
-            src="/images/kinetic-desktop.webp"
+            src="/images/kinetic-desktop.webp?v=2"
             alt="旎柏品牌故事 - 桌面端展示"
             fill
-            className="kinetic-cell-image hidden transition-all duration-500 group-hover:scale-105 xl:block"
+            className="kinetic-cell-image hidden xl:block"
             sizes="(max-width: 1280px) 100vw, 25vw"
           />
           {/* Mobile Image */}
           <Image
-            src="/images/kinetic-mobile.webp"
+            src="/images/kinetic-mobile.webp?v=2"
             alt="旎柏品牌故事 - 移动端展示"
             fill
-            className="kinetic-cell-image block transition-all duration-500 group-hover:scale-105 xl:hidden"
+            className="kinetic-cell-image block xl:hidden"
             sizes="100vw"
           />
         </div>
