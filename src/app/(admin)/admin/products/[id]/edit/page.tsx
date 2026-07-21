@@ -33,6 +33,7 @@ interface ProductData {
   categoryId: string;
   price: number;
   capacity: string | null;
+  origin: string | null;
   purchaseUrl: string | null;
   purchaseLinks: PurchaseLinkItem[];
   description: string;
@@ -75,6 +76,7 @@ export default function EditProductPage() {
           categoryId: data.categoryId,
           price: data.price,
           capacity: data.capacity || "",
+          origin: data.origin || "",
           purchaseUrl: data.purchaseUrl || "",
           purchaseLinks: (data.purchaseLinks || []).map(
             (link: PurchaseLinkItem, index: number) => ({

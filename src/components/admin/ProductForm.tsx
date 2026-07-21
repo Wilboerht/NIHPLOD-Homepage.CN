@@ -40,6 +40,7 @@ interface FormData {
   categoryId: string;
   price: number;
   capacity: string | null;
+  origin: string | null;
   purchaseUrl: string | null;
   purchaseLinks: PurchaseLinkItem[];
   description: string;
@@ -91,6 +92,7 @@ const defaultFormData: FormData = {
   categoryId: "",
   price: 0,
   capacity: "",
+  origin: "",
   purchaseUrl: "",
   purchaseLinks: [],
   description: "",
@@ -196,6 +198,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         ...formData,
         purchaseUrl: formData.purchaseUrl || null,
         capacity: formData.capacity || null,
+        origin: formData.origin || null,
         ingredients: formData.ingredients || null,
         usage: formData.usage || null,
       });
@@ -273,6 +276,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         purchaseLinks: validPurchaseLinks,
         purchaseUrl: formData.purchaseUrl || null,
         capacity: formData.capacity || null,
+        origin: formData.origin || null,
         ingredients: formData.ingredients || null,
         usage: formData.usage || null,
         published: publish ? true : formData.published,
@@ -374,6 +378,13 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               onChange={(e) => updateField("capacity", e.target.value)}
               error={errors.capacity}
               placeholder="如：30ml、50g"
+            />
+            <Input
+              label="产地"
+              value={formData.origin || ""}
+              onChange={(e) => updateField("origin", e.target.value)}
+              error={errors.origin}
+              placeholder="如：摩纳哥"
             />
           </div>
         </section>

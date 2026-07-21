@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
         description: sanitized.description,
         price: sanitized.price,
         capacity: sanitized.capacity,
+        origin: sanitized.origin,
         purchaseUrl: sanitized.purchaseUrl,
         ingredients: sanitized.ingredients,
         usage: sanitized.usage,

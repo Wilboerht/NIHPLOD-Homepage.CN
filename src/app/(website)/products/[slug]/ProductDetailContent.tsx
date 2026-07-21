@@ -12,9 +12,6 @@ import {
   CreditCard,
   Loader2,
   Share2,
-  ShieldCheck,
-  Lock,
-  Truck,
   Menu,
   X,
   Home,
@@ -98,7 +95,9 @@ export function ProductDetailContent({
   navProducts,
 }: ProductDetailContentProps) {
   const { setDrawerOpen } = useLayout();
-  const { success } = useToast();
+  const { success, error: showError } = useToast();
+  const { addToCart } = useCartStore();
+  const { user, openLoginModal } = useAuth();
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -113,7 +112,6 @@ export function ProductDetailContent({
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
-  const [quantity, setQuantity] = useState(1);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -339,6 +337,27 @@ export function ProductDetailContent({
       // 用户取消分享
     }
   }, [product.name, success]);
+
+  const handleOfficialBuy = useCallback(async () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    if (product.stock <= 0) {
+      showError("商品已售罄");
+      return;
+    }
+    try {
+      const result = await addToCart(product.id, 1);
+      if (result) {
+        success("已加入购物车");
+      } else {
+        showError("添加失败，请重试");
+      }
+    } catch {
+      showError("网络错误，请重试");
+    }
+  }, [user, openLoginModal, product.id, product.stock, addToCart, success, showError]);
 
   const handleThumbnailClick = (index: number) => {
     setCurrentImageIndex(index);
@@ -641,23 +660,15 @@ export function ProductDetailContent({
                 <div className="mx-auto max-w-2xl px-4 sm:px-0">
                   {/* 产品信息 */}
                   <m.div
-                    className="pt-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
                   >
-                  {/* 产品名称 + 容量 + 操作按钮 */}
+                  {/* 产品名称 + 操作按钮 */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex flex-1 items-end justify-between">
-                      <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
-                        {product.name}
-                      </h1>
-                      {product.capacity && (
-                        <span className="ml-3 shrink-0 text-sm font-light text-[#00263E]/60">
-                          {product.capacity}
-                        </span>
-                      )}
-                    </div>
+                    <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
+                      {product.name}
+                    </h1>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -670,30 +681,18 @@ export function ProductDetailContent({
                     </div>
                   </div>
 
-                  {/* 价格、产地、销量 */}
-                  <div className="mt-2 flex items-center justify-between">
+                  {/* 产地/规格 */}
+                  {(product.origin || product.capacity) && (
+                    <div className="mt-2 flex items-center gap-3 text-xs font-light text-[#00263E]/50">
+                      {product.origin && <span>产地：{product.origin}</span>}
+                      {product.capacity && <span>规格：{product.capacity}</span>}
+                    </div>
+                  )}
+
+                  {/* 价格 */}
+                  <div className="mt-4">
                     <span className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]">
                       {formatPrice(product.price)}
-                    </span>
-                    <div className="flex flex-col items-end gap-0.5 text-xs font-light text-[#00263E]/50">
-                      {product.origin && <span>产地：{product.origin}</span>}
-                      <span>已售出 {product.salesCount} 件</span>
-                    </div>
-                  </div>
-
-                  {/* 信任标识 */}
-                  <div className="mt-4 flex flex-wrap items-center gap-4">
-                    <span className="flex items-center gap-1.5 text-xs font-light text-brand-charcoal-light">
-                      <ShieldCheck className="h-4 w-4" />
-                      正品保证
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs font-light text-brand-charcoal-light">
-                      <Lock className="h-4 w-4" />
-                      安全支付
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs font-light text-brand-charcoal-light">
-                      <Truck className="h-4 w-4" />
-                      快速发货
                     </span>
                   </div>
 
@@ -787,62 +786,52 @@ export function ProductDetailContent({
 
                 {/* 购买按钮区域 - 桌面端内联 */}
                 <div className="pb-3 max-lg:hidden">
-                  <div className="flex flex-col gap-3">
+                  {/* 外部购买链接 - 图标形式 */}
+                  <div className="flex flex-wrap items-center justify-start gap-4">
                     {product.allowDirectBuy && (
-                      <>
-                        <QuantitySelector
-                          stock={product.stock}
-                          quantity={quantity}
-                          onChange={setQuantity}
-                        />
-                        <AddToCartButton
-                          productId={product.id}
-                          stock={product.stock}
-                          quantity={quantity}
-                        />
-                        <DirectBuyButton
-                          productId={product.id}
-                          stock={product.stock}
-                          quantity={quantity}
-                        />
-                      </>
+                      <button
+                        type="button"
+                        onClick={handleOfficialBuy}
+                        aria-label="官网购买"
+                        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
+                      >
+                        <span className="text-xs font-light tracking-[0.12em] text-[#00263E]">官网</span>
+                      </button>
                     )}
-
-                    {/* 外部购买链接 - 图标形式 */}
-                    <div className="flex flex-wrap items-center justify-start gap-4">
-                      {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
-                        product.purchaseLinks.map((link) => (
-                          <a
-                            key={link.id}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`在${link.platform}购买`}
-                            className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
-                          >
-                            <PlatformIcon platform={link.platform} />
-                          </a>
-                        ))
-                      ) : product.purchaseUrl ? (
+                    {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+                      product.purchaseLinks
+                        .filter((link) => link.platform !== "官方商城")
+                        .map((link) => (
                         <a
-                          href={product.purchaseUrl}
+                          key={link.id}
+                          href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          aria-label="在官网购买"
+                          aria-label={`在${link.platform}购买`}
                           className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
                         >
-                          <PlatformIcon platform="官网" />
+                          <PlatformIcon platform={link.platform} />
                         </a>
-                      ) : (
-                        !product.allowDirectBuy && (
-                          <span className="text-sm font-light text-[#00263e]/50">
+                      ))
+                    ) : product.purchaseUrl ? (
+                      <a
+                        href={product.purchaseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="在官网购买"
+                        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
+                      >
+                        <PlatformIcon platform="官网" />
+                      </a>
+                    ) : (
+                      !product.allowDirectBuy && (
+                        <span className="text-sm font-light text-[#00263e]/50">
                             暂无购买链接
                           </span>
                         )
                       )}
                     </div>
                   </div>
-                </div>
                 </div>
 
                 {/* 相关产品推荐 */}
@@ -882,20 +871,13 @@ export function ProductDetailContent({
         {/* 移动端底部固定购买栏 */}
         {product.allowDirectBuy && (
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#FBF8F0]/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden">
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                <QuantitySelector
-                  stock={product.stock}
-                  quantity={quantity}
-                  onChange={setQuantity}
-                  compact
-                />
-              </div>
-              <div className="flex flex-1 flex-col gap-2">
-                <AddToCartButton productId={product.id} stock={product.stock} quantity={quantity} />
-                <DirectBuyButton productId={product.id} stock={product.stock} quantity={quantity} />
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={handleOfficialBuy}
+              className="w-full rounded-lg bg-brand-primary py-3 text-center text-sm font-light tracking-[0.12em] text-white transition-colors hover:bg-brand-primary/90"
+            >
+              官网购买
+            </button>
           </div>
         )}
 

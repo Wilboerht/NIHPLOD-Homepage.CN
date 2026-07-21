@@ -242,6 +242,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           description: sanitized.description,
           price: sanitized.price,
           capacity: sanitized.capacity,
+          origin: sanitized.origin,
           purchaseUrl: sanitized.purchaseUrl,
           ingredients: sanitized.ingredients,
           usage: sanitized.usage,
