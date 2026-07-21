@@ -834,6 +834,32 @@ export function ProductDetailContent({
                   </div>
                 </div>
 
+                {/* 素颜派肌肤测试推广 */}
+                <div className="pb-7">
+                  <a
+                    href="https://advisor.nihplod.cn"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center gap-1 text-[12px] font-normal text-[#00263E] transition-opacity hover:opacity-70"
+                  >
+                    <span>
+                      想知道自己需要什么产品？通过素颜派肌肤测试挑选最合适自己的产品——更少产品，科学护肤
+                    </span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-3 w-3 shrink-0 transition-transform group-hover:translate-x-1"
+                    >
+                      <path d="M5 12h14" />
+                      <path d="m12 5 7 7-7 7" />
+                    </svg>
+                  </a>
+                </div>
+
                 {/* 相关产品推荐 */}
                 {relatedProducts.length > 0 && (
                   <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-4 pt-8 sm:px-0 pb-24">
