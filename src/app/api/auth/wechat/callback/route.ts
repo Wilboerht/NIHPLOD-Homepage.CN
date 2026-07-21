@@ -190,10 +190,10 @@ export async function GET(request: NextRequest) {
       if (!statusCheck.valid) {
         const disabledUrl = new URL(baseRedirectUrl);
         disabledUrl.searchParams.set("wechat_auth", "error");
-        disabledUrl.searchParams.set("code", "ACCOUNT_DISABLED");
+        disabledUrl.searchParams.set("code", "WECHAT_AUTH_FAILED");
         disabledUrl.searchParams.set(
           "message",
-          encodeURIComponent(statusCheck.reason || "账号状态异常")
+          encodeURIComponent("微信登录失败，请重试")
         );
         const response = NextResponse.redirect(disabledUrl, 302);
         response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {

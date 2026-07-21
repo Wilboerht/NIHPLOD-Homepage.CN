@@ -33,7 +33,7 @@ import { z } from "zod";
 // 请求参数验证
 const loginSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  password: z.string().min(6, "密码至少6位").max(32, "密码最多32位"),
+  password: z.string().min(8, "密码至少8位").max(32, "密码最多32位"),
 });
 
 // 强制动态渲染，禁止静态预渲染
@@ -42,6 +42,22 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
+  }
+
+  // 1. 项目级速率限制（防止滥用，必须在 body 解析之前）
+  const clientIP = getRateLimitClientIP(request);
+  const ipLimit = await rateLimit(clientIP, "login");
+  if (!ipLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: "登录尝试过于频繁，请稍后再试",
+        },
+      },
+      { status: 429 }
+    );
   }
 
   try {
@@ -63,22 +79,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone, password } = result.data;
-
-    // 1. 项目级速率限制（防止滥用）
-    const clientIP = getRateLimitClientIP(request);
-    const ipLimit = await rateLimit(clientIP, "login");
-    if (!ipLimit.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "TOO_MANY_REQUESTS",
-            message: "登录尝试过于频繁，请稍后再试",
-          },
-        },
-        { status: 429 }
-      );
-    }
 
     // 2. 检查账户是否被锁定（防爆破）
     const { locked, remainingMinutes } = await checkAccountLockout(phone);

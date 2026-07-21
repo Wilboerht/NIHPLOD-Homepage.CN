@@ -37,7 +37,9 @@ export function getClientIP(
       process.env.VERCEL === "1");
 
   if (!trustProxy) {
-    return "unknown";
+    // 非代理环境：回退到 socket 直连地址，避免所有限流共用 "unknown" 桶
+    const directIP = (request as Request & { socket?: { remoteAddress?: string } }).socket?.remoteAddress;
+    return directIP || "unknown";
   }
 
   const forwardedFor = headers.get("x-forwarded-for");

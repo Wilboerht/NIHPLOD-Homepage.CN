@@ -122,7 +122,7 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     });
 
     // 资料变更后失效缓存
-    revalidateTag("admin-stats", "max");
+    revalidateTag(USER_PROFILE_TAG, "max");
 
     return NextResponse.json({ success: true, data: { user } });
   } catch (error) {

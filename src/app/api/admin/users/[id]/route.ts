@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { UserStatus } from "@/generated/prisma/client";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -113,6 +114,10 @@ const updateUserSchema = z.object({
 
 // PATCH /api/admin/users/:id - 修改用户状态
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -203,6 +208,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 // DELETE /api/admin/users/:id - 软删除用户（GDPR 合规）
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const admin = await verifyAuth(request);
     if (!admin) {

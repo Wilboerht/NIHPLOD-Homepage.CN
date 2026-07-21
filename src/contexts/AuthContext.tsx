@@ -193,13 +193,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 定时主动刷新 Access Token（每 14 分钟一次，Access Token 15 分钟过期）
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // 即使 user 为 null，如果存在 auth_hint 则仍尝试恢复登录态
+      if (typeof window !== "undefined" && localStorage.getItem("auth_hint")) {
+        const intervalId = setInterval(
+          () => {
+            refreshAccessToken().catch(() => {});
+          },
+          14 * 60 * 1000
+        );
+        return () => clearInterval(intervalId);
+      }
+      return;
+    }
 
     const intervalId = setInterval(
       () => {
-        refreshAccessToken().catch(() => {
-          // 静默处理：若刷新失败，下次请求 401 时会触发 logout
-        });
+        refreshAccessToken().catch(() => {});
       },
       14 * 60 * 1000
     );

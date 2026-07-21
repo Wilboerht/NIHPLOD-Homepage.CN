@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     // 5. 查询用户状态
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, status: true, phone: true, updatedAt: true },
+      select: { id: true, status: true, updatedAt: true },
     });
 
     if (!user) {
@@ -138,7 +138,6 @@ export async function POST(request: NextRequest) {
       data: {
         userId: user.id,
         status: user.status,
-        phone: user.phone,
         updatedAt: user.updatedAt.toISOString(),
       },
     });

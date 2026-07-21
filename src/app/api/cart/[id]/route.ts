@@ -73,7 +73,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     }
 
     const cartItem = await prisma.cartItem.update({
-      where: { id },
+      where: { id, userId: payload.id },
       data: {
         ...(quantity !== undefined && { quantity }),
       },
@@ -121,7 +121,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
-    await prisma.cartItem.delete({ where: { id } });
+    await prisma.cartItem.delete({ where: { id, userId: payload.id } });
 
     return NextResponse.json({
       success: true,

@@ -72,6 +72,9 @@ export async function getWechatAccessToken(): Promise<string> {
       const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
 
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Access Token 请求失败: HTTP ${response.status}`);
+      }
       const data = await response.json();
 
       if (data.errcode) {
@@ -119,6 +122,9 @@ async function getJsApiTicket(): Promise<string> {
       const url = `https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=${accessToken}&type=jsapi`;
 
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`JSApi Ticket 请求失败: HTTP ${response.status}`);
+      }
       const data = await response.json();
 
       if (data.errcode !== 0) {
@@ -293,6 +299,9 @@ export async function getWechatOAuthToken(
   const url = `https://api.weixin.qq.com/sns/oauth2/access_token?appid=${appId}&secret=${appSecret}&code=${code}&grant_type=authorization_code`;
 
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`微信 OAuth Token 请求失败: HTTP ${response.status}`);
+  }
   const data = await response.json();
 
   if (data.errcode) {
@@ -319,6 +328,9 @@ export async function getWechatUserInfo(
   const url = `https://api.weixin.qq.com/sns/userinfo?access_token=${accessToken}&openid=${openid}&lang=zh_CN`;
 
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`微信用户信息请求失败: HTTP ${response.status}`);
+  }
   const data = await response.json();
 
   if (data.errcode) {

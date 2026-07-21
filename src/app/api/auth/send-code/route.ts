@@ -154,8 +154,8 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: {
-            code: "CODE_SENT",
-            message: "验证码已发送（如手机号已注册）",
+            code: "SMS_SENT_MASKED",
+            message: "如该手机号已注册，验证码将发送至手机",
           },
         },
         { status: 200 }

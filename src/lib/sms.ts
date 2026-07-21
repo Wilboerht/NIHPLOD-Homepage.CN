@@ -246,12 +246,13 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
     // 例如 login code 模板参数 { code: "1234" } -> ["1234"]
     const templateParams = Object.values(options.params);
 
+    const countryCode = process.env.SMS_COUNTRY_CODE || "+86";
     const res = await client.SendSms({
       SmsSdkAppId: appId,
       SignName: signName,
       TemplateId: templateId,
       TemplateParamSet: templateParams,
-      PhoneNumberSet: [`+86${options.phone}`],
+      PhoneNumberSet: [`${countryCode}${options.phone}`],
     });
 
     if (res.SendStatusSet && res.SendStatusSet[0].Code === "Ok") {

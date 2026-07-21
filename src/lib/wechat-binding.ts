@@ -19,6 +19,7 @@ import { checkUserStatus } from "@/lib/auth";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
 import { verifyCode } from "@/lib/sms";
 import { logAuthEvent } from "@/lib/auth-logger";
+import { getClientIP } from "@/lib/client-ip";
 import type { NextRequest } from "next/server";
 
 export interface WechatBindingInput {
@@ -102,80 +103,101 @@ export async function resolveWechatBinding(
 
   const hashedPassword = await hashPassword(password);
 
-  // 3. 查找现有微信用户与手机号用户
-  const oldWechatUser = await prisma.user.findFirst({
-    where: wechatInfo.unionid
-      ? { OR: [{ wechatUnionId: wechatInfo.unionid }, { wechatOpenId: wechatInfo.openid }] }
-      : { wechatOpenId: wechatInfo.openid },
-  });
+  // 3-5. 在事务中原子化执行用户查找、冲突解决、创建/更新，消除竞态窗口
+  let user;
+  try {
+    user = await prisma.$transaction(async (tx) => {
+      const oldWechatUser = await tx.user.findFirst({
+        where: wechatInfo.unionid
+          ? { OR: [{ wechatUnionId: wechatInfo.unionid }, { wechatOpenId: wechatInfo.openid }] }
+          : { wechatOpenId: wechatInfo.openid },
+      });
 
-  let user = await prisma.user.findUnique({ where: { phone } });
+      let foundUser = await tx.user.findUnique({ where: { phone } });
 
-  // 4. 处理账户冲突
-  if (oldWechatUser) {
-    if (oldWechatUser.phone.startsWith("wx_")) {
-      if (user && user.id !== oldWechatUser.id) {
-        // 旧临时账户与新手机号账户冲突，清理旧账户
-        await prisma.user.update({
-          where: { id: oldWechatUser.id },
+      // 4. 处理账户冲突
+      if (oldWechatUser) {
+        if (oldWechatUser.phone.startsWith("wx_")) {
+          if (foundUser && foundUser.id !== oldWechatUser.id) {
+            // 旧临时账户与新手机号账户冲突，清理旧账户
+            await tx.user.update({
+              where: { id: oldWechatUser.id },
+              data: {
+                wechatOpenId: `unbound_${oldWechatUser.id}_${wechatInfo.openid}`,
+                wechatUnionId: oldWechatUser.wechatUnionId
+                  ? `unbound_${oldWechatUser.id}_${oldWechatUser.wechatUnionId}`
+                  : null,
+              },
+            });
+          } else if (!foundUser) {
+            // 旧临时账户升级为真实账户
+            foundUser = await tx.user.update({
+              where: { id: oldWechatUser.id },
+              data: {
+                phone,
+                phoneVerified: true,
+                password: hashedPassword,
+                nickname: oldWechatUser.nickname?.startsWith("wx_")
+                  ? wechatInfo.nickname || `用户_${phone.slice(-4)}`
+                  : oldWechatUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
+                avatar: oldWechatUser.avatar || wechatInfo.avatar || null,
+                wechatOpenId: wechatInfo.openid,
+                wechatUnionId: wechatInfo.unionid || oldWechatUser.wechatUnionId,
+              },
+            });
+          }
+        } else {
+          // 微信已绑定到真实账户
+          if (!foundUser || foundUser.id !== oldWechatUser.id) {
+            throw new Error("WECHAT_ALREADY_BOUND");
+          }
+          // 同手机号重新绑定：后续步骤更新资料
+        }
+      }
+
+      // 5. 更新或创建用户
+      // 需要更新的场景：无旧微信账户 或 旧账户为临时账户 或 同账户重新绑定
+      const shouldUpdate =
+        !oldWechatUser ||
+        oldWechatUser.phone.startsWith("wx_") ||
+        foundUser?.id === oldWechatUser.id;
+
+      if (foundUser && shouldUpdate) {
+        foundUser = await tx.user.update({
+          where: { id: foundUser.id },
           data: {
-            wechatOpenId: `unbound_${oldWechatUser.id}_${wechatInfo.openid}`,
-            wechatUnionId: oldWechatUser.wechatUnionId
-              ? `unbound_${oldWechatUser.id}_${oldWechatUser.wechatUnionId}`
-              : null,
+            wechatOpenId: wechatInfo.openid,
+            wechatUnionId: wechatInfo.unionid || foundUser.wechatUnionId,
+            password: hashedPassword,
+            nickname: foundUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
+            avatar: foundUser.avatar || wechatInfo.avatar || null,
           },
         });
-      } else if (!user) {
-        // 旧临时账户升级为真实账户
-        user = await prisma.user.update({
-          where: { id: oldWechatUser.id },
+      } else if (!foundUser) {
+        foundUser = await tx.user.create({
           data: {
             phone,
-            phoneVerified: true,
             password: hashedPassword,
-            nickname: oldWechatUser.nickname?.startsWith("wx_")
-              ? wechatInfo.nickname || `用户_${phone.slice(-4)}`
-              : oldWechatUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-            avatar: oldWechatUser.avatar || wechatInfo.avatar || null,
+            phoneVerified: true,
+            nickname: wechatInfo.nickname || `用户_${phone.slice(-4)}`,
+            avatar: wechatInfo.avatar || null,
+            wechatOpenId: wechatInfo.openid,
+            wechatUnionId: wechatInfo.unionid || null,
           },
         });
       }
-    } else if (user && user.id !== oldWechatUser.id) {
+
+      return foundUser;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "WECHAT_ALREADY_BOUND") {
       return {
         success: false,
         code: "WECHAT_ALREADY_BOUND",
         message: "此微信已绑定其他账号，请使用绑定的手机号登录",
       };
     }
-  }
-
-  // 5. 更新或创建用户
-  if (
-    user &&
-    (!oldWechatUser || (oldWechatUser.phone.startsWith("wx_") && user.id !== oldWechatUser.id))
-  ) {
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        wechatOpenId: wechatInfo.openid,
-        wechatUnionId: wechatInfo.unionid || user.wechatUnionId,
-        password: hashedPassword,
-        nickname: user.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-        avatar: user.avatar || wechatInfo.avatar || null,
-      },
-    });
-  } else if (!user) {
-    user = await prisma.user.create({
-      data: {
-        phone,
-        password: hashedPassword,
-        phoneVerified: true,
-        nickname: wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-        avatar: wechatInfo.avatar || null,
-        wechatOpenId: wechatInfo.openid,
-        wechatUnionId: wechatInfo.unionid || null,
-      },
-    });
+    throw error;
   }
 
   // 6. 校验账号状态
@@ -188,17 +210,6 @@ export async function resolveWechatBinding(
     };
   }
 
-  // 7. 更新微信信息
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      wechatOpenId: wechatInfo.openid,
-      wechatUnionId: wechatInfo.unionid || undefined,
-      nickname: user.nickname || wechatInfo.nickname || null,
-      avatar: user.avatar || wechatInfo.avatar || null,
-    },
-  });
-
   // 8. 签发双 Token
   const accessToken = await signUserToken({ id: user.id, phone: user.phone });
   const refreshToken = await signRefreshToken({ id: user.id, phone: user.phone });
@@ -209,7 +220,7 @@ export async function resolveWechatBinding(
     userId: user.id,
     identifier: user.phone,
     success: true,
-    ip: "internal-api",
+    ip: getClientIP(request),
   });
 
   return {

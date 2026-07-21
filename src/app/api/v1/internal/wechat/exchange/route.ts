@@ -284,7 +284,7 @@ async function finalizeLogin(
     identifier: user.phone,
     success: true,
     method: "wechat",
-    ip: "internal-api",
+    ip: getClientIP(request),
   });
 
   if (exchangeToken) {
