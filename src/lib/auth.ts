@@ -3,7 +3,7 @@
  * 服务端认证验证和会话管理
  */
 import { cookies } from "next/headers";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, verifyUserToken } from "./jwt";
 import { validateCSRFToken, csrfForbiddenResponse } from "./csrf";
 import {
@@ -141,19 +141,16 @@ export function withAuth<T extends NextRequest, C = unknown, R extends Response 
     const admin = await verifyAuth(request);
 
     if (!admin) {
-      return new Response(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: false,
           error: {
             code: "UNAUTHORIZED",
             message: "未授权访问",
           },
-        }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        }
-      ) as R;
+        },
+        { status: 401 }
+      ) as unknown as R;
     }
 
     return handler(request, admin, context);
@@ -171,19 +168,16 @@ export function withRole<T extends NextRequest, C = unknown, R extends Response 
 ): (request: T, context: C) => Promise<R> {
   return withAuth(async (request, admin, context) => {
     if (!allowedRoles.includes(admin.role)) {
-      return new Response(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: false,
           error: {
             code: "FORBIDDEN",
             message: "权限不足，无法执行此操作",
           },
-        }),
-        {
-          status: 403,
-          headers: { "Content-Type": "application/json" },
-        }
-      ) as R;
+        },
+        { status: 403 }
+      ) as unknown as R;
     }
     return handler(request, admin, context);
   });
@@ -329,18 +323,15 @@ export function withUserAuth<T extends NextRequest>(
     const user = await verifyUserAuth(request);
 
     if (!user) {
-      return new Response(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: false,
           error: {
             code: "UNAUTHORIZED",
             message: "请先登录",
           },
-        }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        }
+        },
+        { status: 401 }
       );
     }
 

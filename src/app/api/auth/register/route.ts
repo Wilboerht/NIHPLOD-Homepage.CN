@@ -15,7 +15,7 @@ import {
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
-import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import { saveRefreshToken, extractDeviceInfo, recordLoginAttempt } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
+      await recordLoginAttempt(phone, false, request, "phone_exists", "sms");
       return NextResponse.json(
         {
           success: false,
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!smsCode) {
+      await recordLoginAttempt(phone, false, request, "code_expired", "sms");
       return NextResponse.json(
         {
           success: false,
@@ -127,6 +129,7 @@ export async function POST(request: NextRequest) {
 
     // 验证码校验
     if (!verifyCode(phone, code, "register", smsCode.codeHash)) {
+      await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
       return NextResponse.json(
         {
           success: false,
@@ -145,6 +148,7 @@ export async function POST(request: NextRequest) {
       data: { used: true },
     });
     if (consumeResult.count === 0) {
+      await recordLoginAttempt(phone, false, request, "code_already_used", "sms");
       return NextResponse.json(
         {
           success: false,

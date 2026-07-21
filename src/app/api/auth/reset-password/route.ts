@@ -195,8 +195,8 @@ export async function POST(request: NextRequest) {
       data: { revokedAt: new Date() },
     });
 
-    // 清除失败记录
-    await clearLoginAttempts(phone);
+    // 清除当前类型的失败记录
+    await clearLoginAttempts(phone, "sms");
 
     // 向用户发送安全通知：密码已被重置
     sendPasswordChangedNotification(phone).catch((err) => {

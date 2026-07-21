@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 头像变更后失效缓存
-    revalidateTag("admin-stats", "max");
+    revalidateTag(USER_PROFILE_TAG, "max");
 
     return NextResponse.json({
       success: true,

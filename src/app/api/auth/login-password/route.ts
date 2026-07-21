@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: "PASSWORD_NOT_SET",
-            message: "该账号未设置密码，请使用验证码登录后设置密码",
+            message: "该账号未设置密码，请使用验证码登录后，在个人中心设置密码",
           },
         },
         { status: 400 }
@@ -176,8 +176,8 @@ export async function POST(request: NextRequest) {
     // 6. 记录成功登录
     await recordLoginAttempt(phone, true, request, undefined, "password", user.id);
 
-    // 7. 清除失败登录记录（成功登录后重置）
-    await clearLoginAttempts(phone);
+    // 7. 清除当前类型的失败登录记录（成功登录后重置）
+    await clearLoginAttempts(phone, "password");
 
     // 8. 签发 Access Token（短期，15分钟）
     const accessToken = await signUserToken({

@@ -152,11 +152,13 @@ export async function checkAccountLockout(
 
 /**
  * 清除特定用户的登录尝试记录（成功登录后清除）
+ * @param identifier 登录标识
+ * @param type 限制清除的登录类型（password | sms），不传则清除所有
  */
-export async function clearLoginAttempts(identifier: string): Promise<void> {
+export async function clearLoginAttempts(identifier: string, type?: string): Promise<void> {
   try {
     await prisma.loginAttempt.deleteMany({
-      where: { identifier },
+      where: { identifier, ...(type ? { type } : {}) },
     });
   } catch (error) {
     apiConsole.error("[ClearLoginAttempts] 清除失败:", error);
