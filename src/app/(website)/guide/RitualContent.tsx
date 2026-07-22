@@ -282,7 +282,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 1.05 }}
-                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     className="flex flex-1 flex-col justify-start"
                   >
                     <div className="mb-7 flex flex-col items-center pb-2 pt-2">
@@ -941,7 +941,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0, x: -30 }}
-                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     className="absolute inset-0 flex items-center justify-center overflow-visible px-10 xl:px-[8%]"
                   >
                     <div className="flex h-full w-full flex-col justify-center py-8">
@@ -1007,7 +1007,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     className="absolute inset-0 flex items-center justify-center overflow-visible p-5"
                   >
                     <div className="flex w-full max-w-5xl items-center justify-center gap-8 lg:gap-12">
@@ -1084,7 +1084,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     initial={{ opacity: 0, x: 50 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -30 }}
-                    transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
+                    transition={{ duration: 0.35, ease: [0.19, 1, 0.22, 1] }}
                     className="absolute inset-0 flex flex-col px-10 xl:px-[8%]"
                   >
                     <div className="flex h-full w-full flex-col pt-10">
@@ -1180,7 +1180,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           className="flex w-[25%] flex-shrink-0 flex-col gap-10 overflow-y-auto pr-4 pt-4 min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                           initial={{ opacity: 0, x: -30 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.8, delay: 0.1, ease: [0.19, 1, 0.22, 1] }}
+                          transition={{ duration: 0.4, delay: 0.05, ease: [0.19, 1, 0.22, 1] }}
                         >
                           {/* Meta Item: Products */}
                           <div className="relative isolate flex flex-col">

@@ -247,21 +247,6 @@ export function PrivacyContent() {
               />
               <span>沪公网安备31010702010178号</span>
             </Link>
-            <span className="text-brand-charcoal/15">|</span>
-            <Link
-              href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
-              target="_blank"
-              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
-            >
-              <Image
-                src="/images/aic_icon.png"
-                alt="电子营业执照"
-                width={12}
-                height={12}
-                className="opacity-50"
-              />
-              <span>电子营业执照</span>
-            </Link>
           </div>
         </div>
       </footer>
