@@ -80,7 +80,7 @@ export const DEFAULT_ICONS = [
  * 护肤仪式页面内容组件
  * 三层级交互式布局：Level 1 模块选择 -> Level 2 方案选择 -> Level 3 详细步骤
  */
-// 添加 products 到 props
+  // 添加 products 到 props
 interface RitualContentProps {
   products?: ProductData[];
 }
@@ -301,7 +301,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           viewport={{ once: true, margin: "-20px" }}
                           transition={{ delay: index * 0.1 }}
                           onClick={() => selectModule(module.id)}
-                          className="relative flex h-full flex-col justify-center overflow-hidden rounded-2xl border border-brand-beige/40 bg-gradient-to-b from-[#FCF9F2] to-white/50 p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97] active:bg-white/80"
+                          className="relative flex h-full flex-col justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
                         >
                           <div className="relative z-10 flex flex-col">
                             <module.icon className="h-8 w-8 text-[#B8A47B] mb-4" strokeWidth={1} />
@@ -388,7 +388,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           rel="noopener noreferrer"
                           className="group inline-flex items-center gap-1.5 text-sm font-light leading-relaxed tracking-[0.05em] text-[#4A6272] transition-colors hover:text-[#00263E]"
                         >
-                          精简护肤，从了解自己的肌肤开始
+                          肌智派素颜测肤
                           <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                         </a>
                       </div>
@@ -917,7 +917,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       rel="noopener noreferrer"
                       className="group flex items-center gap-1.5 text-sm font-light tracking-wide text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
                     >
-                      AI 护肤顾问
+肌智派素颜测肤
                       <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
                     </a>
                   </m.div>
@@ -973,7 +973,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             onClick={() => selectModule(module.id)}
                             onMouseEnter={() => setHoveredIndex(index)}
                             onMouseLeave={() => setHoveredIndex(null)}
-                            className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/40 bg-gradient-to-b from-[#FCF9F2] to-white/50 shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out hover:-translate-y-[2px] hover:border-brand-beige/70 hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30"
+                            className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out hover:-translate-y-[2px] hover:border-brand-beige/70 hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30"
                             initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{
