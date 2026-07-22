@@ -106,7 +106,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       nameEn: true,
       description: true,
       benefits: true,
-      images: { take: 1, select: { url: true } },
+      images: { take: 1, orderBy: { order: "asc" }, select: { url: true } },
     },
   });
 
@@ -116,8 +116,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const description =
-    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。";
+  const description = toMetaDescription(
+    product.description,
+    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。"
+  );
   const productKeywords = [
     product.name,
     product.nameEn,
@@ -129,7 +131,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     "脂质体护肤",
   ];
 
-  const ogImageUrl = `${baseUrl}/images/og-image.png`;
+  const ogImageUrl = toOgImageUrl(product.images[0]?.url);
 
   return {
     title: product.name,
@@ -141,7 +143,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title: `${product.name} | NIHPLOD 旎柏`,
       description: description,
-      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: product.name }],
+      images: [{ url: ogImageUrl, alt: product.name }],
     },
     twitter: {
       card: "summary",
