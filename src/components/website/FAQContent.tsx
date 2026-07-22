@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { Plus, MessageCircle, ArrowRight } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
@@ -257,25 +257,18 @@ export function FAQContent() {
 
             {/* Contact Support Section */}
             <div className="mb-7 mt-7 flex flex-col items-center justify-center text-center sm:mt-12 sm:px-4">
-              <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/60 sm:mb-4 sm:flex lg:h-12 lg:w-12">
-                <MessageCircle className="h-5 w-5 lg:h-6 lg:w-6" strokeWidth={1.2} />
-              </div>
-              <h3 className="hidden sm:mb-2 sm:block sm:text-[15px] sm:font-light sm:tracking-[0.12em] sm:text-brand-charcoal/90 lg:text-[17px]">
+              <h3 className="mb-2 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 sm:text-[15px]">
                 没有找到想要的答案？
               </h3>
-              <p className="hidden sm:mb-6 sm:block sm:text-[14px] sm:font-light sm:tracking-[0.12em] sm:text-brand-charcoal/60 lg:text-sm">
+              <p className="mb-5 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/50 sm:mb-6 sm:text-[14px]">
                 我们的支持团队随时候命，为您解答任何疑问。
               </p>
               <button
                 onClick={() => router.push("/contact?type=support")}
-                className="flex items-center gap-2 rounded-full bg-[#FFFFFF] px-7 py-3 text-[14px] font-light tracking-[0.15em] text-[#4A6272] sm:border sm:border-brand-charcoal/10 sm:bg-white/60 sm:px-6 sm:py-2.5 sm:tracking-[0.15em] sm:text-brand-charcoal/80 sm:transition-all sm:hover:border-[#4A6272]/30 sm:hover:bg-brand-primary/15 sm:hover:text-[#4A6272] sm:hover:shadow-lg sm:hover:backdrop-blur-md sm:active:scale-95 lg:text-[16px]"
+                className="rounded-full border border-brand-beige/60 px-6 py-2.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 hover:border-brand-charcoal/20 hover:text-brand-charcoal active:scale-[0.97]"
                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
               >
-                <span>更多疑问</span>
-                <ArrowRight
-                  size={14}
-                  className="sm:transition-transform sm:group-hover:translate-x-0.5"
-                />
+                联系我们
               </button>
             </div>
           </div>
