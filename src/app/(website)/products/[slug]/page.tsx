@@ -294,7 +294,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <ProductDetailContent
         product={product}
         relatedProducts={relatedProducts}
-        breadcrumbs={breadcrumbs}
         categories={categories}
         navProducts={navProducts}
       />

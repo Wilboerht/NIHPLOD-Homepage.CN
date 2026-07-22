@@ -66,15 +66,9 @@ interface RelatedProduct {
   images: { url: string; alt: string | null }[];
 }
 
-interface BreadcrumbItem {
-  name: string;
-  url: string;
-}
-
 interface ProductDetailContentProps {
   product: Product;
   relatedProducts: RelatedProduct[];
-  breadcrumbs: BreadcrumbItem[];
   categories: { id: string; name: string; slug: string }[];
   navProducts: { id: string; slug: string; categoryId: string }[];
 }
@@ -88,7 +82,6 @@ type TabType = "description" | "ingredients" | "usage";
 export function ProductDetailContent({
   product,
   relatedProducts,
-  breadcrumbs,
   categories,
   navProducts,
 }: ProductDetailContentProps) {
@@ -578,28 +571,6 @@ export function ProductDetailContent({
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative w-full lg:flex lg:items-center lg:justify-center">
           <div className="w-full scroll-smooth overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
-            {/* 面包屑导航 */}
-            <nav aria-label="面包屑" className="mb-4 px-4 sm:px-6 lg:mb-6 lg:px-0">
-              <ol className="flex flex-wrap items-center gap-1.5 text-xs font-light tracking-[0.08em] text-[#00263E]/60">
-                {breadcrumbs.map((item, index) => (
-                  <li key={item.url} className="flex items-center gap-1.5">
-                    {index > 0 && <span aria-hidden="true">/</span>}
-                    {index === breadcrumbs.length - 1 ? (
-                      <span aria-current="page" className="text-[#00263E]">
-                        {item.name}
-                      </span>
-                    ) : (
-                      <Link
-                        href={item.url}
-                        className="transition-colors hover:text-[#00263E]"
-                      >
-                        {item.name}
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </nav>
             <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
               <div className="lg:flex lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-y-auto lg:py-8">
