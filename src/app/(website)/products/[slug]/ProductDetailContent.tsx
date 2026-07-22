@@ -712,7 +712,7 @@ export function ProductDetailContent({
                   >
                   {/* 产品名称 + 操作按钮 */}
                   <div className="flex items-start justify-between gap-3">
-                    <h1 className="font-serif text-[24px] leading-snug text-brand-charcoal max-lg:font-light max-lg:tracking-[0.1em] max-lg:text-[#00263E] lg:text-[28px]">
+                    <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
                       {product.name}
                     </h1>
                     <div className="flex items-center gap-1">
@@ -729,7 +729,7 @@ export function ProductDetailContent({
 
                   {/* 产地/规格 */}
                   {(product.origin || product.capacity) && (
-                    <dl className="mt-2 flex items-center gap-3 text-sm font-normal leading-relaxed text-[#00263E]">
+                    <dl className="mt-2 flex items-center gap-3 text-xs font-normal leading-relaxed text-[#00263E]">
                       {product.origin && (
                         <div className="flex gap-0">
                           <dt>产地：</dt>
@@ -749,7 +749,7 @@ export function ProductDetailContent({
                   <div className="mt-4">
                     <data
                       value={product.price}
-                      className="text-xl font-normal tabular-nums tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E] lg:text-2xl"
+                      className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]"
                     >
                       {formatPrice(product.price)}
                     </data>
@@ -824,13 +824,13 @@ export function ProductDetailContent({
                         >
                           {tabContent[tab.key] ? (
                             <div
-                              className="text-left text-base font-normal leading-[1.8] tracking-[0.05em] text-[#00263e]/90 [&_p+p]:mt-3"
+                              className="text-left text-base font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90 [&_p+p]:mt-3"
                               dangerouslySetInnerHTML={{
                                 __html: DOMPurify.sanitize(tabContent[tab.key]!),
                               }}
                             />
                           ) : (
-                            <p className="text-base font-normal text-[#00263e]/60">暂无内容</p>
+                            <p className="text-base font-light text-[#00263e]/40">暂无内容</p>
                           )}
                         </div>
                       );
@@ -880,7 +880,7 @@ export function ProductDetailContent({
                       href="https://advisor.nihplod.cn"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group inline-flex items-center gap-1 text-[13px] font-normal leading-[1.8] tracking-[0.12em] text-brand-primary transition-opacity hover:opacity-70"
+                      className="group inline-flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.12em] text-brand-primary transition-opacity hover:opacity-70"
                     >
                       <span>
                         参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤
