@@ -1158,7 +1158,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
                     className="absolute inset-0 flex flex-col px-10 xl:px-[8%]"
                   >
-                    <div className="flex h-full w-full flex-col justify-center pt-10">
+                    <div className="flex h-full w-full flex-col pt-10">
                       {/* Level 3 Header: 标题与切换器 */}
                       <header className="flex flex-shrink-0 items-center pb-4">
                         {/* 左侧标题组 */}
@@ -1180,10 +1180,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       </header>
 
                       {/* 内容主体：左侧边栏 + 右侧网格 */}
-                      <div className="flex max-h-[75vh] w-full flex-row items-start gap-12">
+                      <div className="flex min-h-0 flex-1 w-full flex-row gap-12">
                         {/* 左侧：信息侧边栏 (Info Sidebar) */}
                         <m.aside
-                          className="scrollbar-thin flex w-[25%] flex-shrink-0 flex-col gap-10 overflow-y-auto pr-4 pt-4"
+                          className="flex w-[25%] flex-shrink-0 flex-col gap-10 overflow-y-auto pr-4 pt-4 min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                           initial={{ opacity: 0, x: -30 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.8, delay: 0.1, ease: [0.19, 1, 0.22, 1] }}
