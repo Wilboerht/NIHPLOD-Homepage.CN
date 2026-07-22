@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { RitualContent } from "./RitualContent";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 
@@ -99,7 +100,10 @@ export default async function RitualPage() {
   return (
     <>
       <BreadcrumbJsonLd items={breadcrumbs} />
-      <RitualContent products={products} />
+      {/* useSearchParams 需要在 Suspense 边界内（与 contact 页一致） */}
+      <Suspense fallback={null}>
+        <RitualContent products={products} />
+      </Suspense>
     </>
   );
 }

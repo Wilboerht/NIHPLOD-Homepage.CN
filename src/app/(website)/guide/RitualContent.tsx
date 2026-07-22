@@ -1684,11 +1684,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   >
                     <button
                       type="button"
-                      onClick={() => {
-                        setCurrentLevel(1);
-                        setSelectedModule(null);
-                        setSelectedScheme(null);
-                      }}
+                      onClick={goHome}
                       className="group flex items-center gap-1.5 text-sm font-medium tracking-wide text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
                     >
                       <ChevronLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
