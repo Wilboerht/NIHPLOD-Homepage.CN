@@ -113,15 +113,15 @@ export function KineticBackground() {
             sizes="(max-width: 600px) 100vw, 30vw"
             priority
           />
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-            <span className="border-b-2 border-white/60 pb-1.5 text-2xl font-bold tracking-[0.25em] text-white">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#D4C4A8]/95 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+            <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
               探索产品
             </span>
           </div>
         </div>
 
         {/* Row 1, Col 2: 文字卡 */}
-        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect text-center">
+        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect">
           <div className="kinetic-title-sm">
             更少步骤
             <br />
@@ -148,8 +148,8 @@ export function KineticBackground() {
             style={{ objectPosition: "center 40%" }}
             sizes="(max-width: 600px) 100vw, 50vw"
           />
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-            <span className="border-b-2 border-white/60 pb-1.5 text-2xl font-bold tracking-[0.25em] text-white">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+            <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
               官方指南
             </span>
           </div>
@@ -173,6 +173,11 @@ export function KineticBackground() {
             className="kinetic-cell-image block xl:hidden"
             sizes="100vw"
           />
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#DECCB0]/95 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+            <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
+              品牌故事
+            </span>
+          </div>
         </div>
 
         {/* Row 2, Col 3: 文字卡 */}
