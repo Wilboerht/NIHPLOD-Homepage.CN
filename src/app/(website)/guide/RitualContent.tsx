@@ -891,79 +891,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 </div>
               </button>
 
-              {/* 中间：Level 3 子方案 Tab */}
-              <div className="flex flex-1 items-center justify-center">
-                <AnimatePresence mode="wait">
-                  {currentLevel === 3 && selectedScheme && selectedModule && (
-                    <m.nav
-                      key="topbar-tabs"
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                      className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1"
-                    >
-                      <LayoutGroup id="topbar-activeTab">
-                        {selectedScheme.subPlans && selectedScheme.subPlans.length > 0
-                        ? selectedScheme.subPlans.map((subPlan) => {
-                            const isActive = selectedSubPlan?.id === subPlan.id;
-                            return (
-                              <button
-                                key={subPlan.id}
-                                type="button"
-                                onClick={() => selectSubPlan(subPlan)}
-                                className={`relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300 ${
-                                  isActive
-                                    ? "text-brand-charcoal"
-                                    : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                                }`}
-                              >
-                                <span className="relative z-10">{subPlan.name}</span>
-                                {isActive && (
-                                  <m.div
-                                    layoutId="topbar-activeTab"
-                                    className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
-                                    initial={false}
-                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                  />
-                                )}
-                              </button>
-                            );
-                          })
-                        : ["portable", "professional", "spa"].includes(selectedModule) &&
-                          moduleData[selectedModule].map((scheme) => {
-                            const isActive = scheme.id === selectedScheme.id;
-                            return (
-                              <button
-                                key={scheme.id}
-                                type="button"
-                                onClick={() => selectScheme(scheme)}
-                                className={`relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300 ${
-                                  isActive
-                                    ? "text-brand-charcoal"
-                                    : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                                }`}
-                              >
-                                <span className="relative z-10">{scheme.name}</span>
-                                {isActive && (
-                                  <m.div
-                                    layoutId="topbar-activeTab"
-                                    className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
-                                    initial={false}
-                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                  />
-                                )}
-                              </button>
-                            );
-                          })}
-                      </LayoutGroup>
-                    </m.nav>
-                  )}
-                </AnimatePresence>
-              </div>
-
               {/* 右侧 */}
-              <div className="flex shrink-0 items-center">
+              <div className="ml-auto flex items-center">
                 <AnimatePresence mode="wait">
                   {currentLevel === 1 ? (
                     <m.div
@@ -1017,11 +946,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   >
                     <div className="flex h-full w-full flex-col justify-center py-8">
                       {/* 页面标题区 - 与移动端 Level 1 保持一致 */}
-                      <div className="mb-4 flex shrink-0 flex-col items-center text-center">
+                      <div className="mb-6 flex shrink-0 flex-col items-center text-center">
                         <h2 className="font-sans text-3xl font-light tracking-[0.15em] text-brand-charcoal">
                           护肤仪式指南
                         </h2>
-                        <div className="mt-4 h-px w-10 rounded-full bg-brand-charcoal-light/20" />
+                        <div className="mt-6 h-px w-10 rounded-full bg-brand-charcoal-light/20" />
                       </div>
 
                       <div className="flex max-h-[520px] w-full flex-1 flex-row gap-8">
@@ -1177,6 +1106,71 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </div>
                           )}
                         </div>
+
+                        {/* 右侧子方案 Tab */}
+                        {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
+                          <nav className="ml-auto flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
+                            <LayoutGroup id={`desktop-tab-${selectedModule}`}>
+                              {selectedScheme.subPlans.map((subPlan) => {
+                                const isActive = selectedSubPlan?.id === subPlan.id;
+                                return (
+                                  <button
+                                    key={subPlan.id}
+                                    type="button"
+                                    onClick={() => selectSubPlan(subPlan)}
+                                    className={`relative rounded-full px-5 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300 ${
+                                      isActive
+                                        ? "text-brand-charcoal"
+                                        : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                                    }`}
+                                  >
+                                    <span className="relative z-10">{subPlan.name}</span>
+                                    {isActive && (
+                                      <m.div
+                                        layoutId={`desktop-activeTab-${selectedModule}`}
+                                        className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
+                                        initial={false}
+                                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                      />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </LayoutGroup>
+                          </nav>
+                        ) : (
+                          selectedModule !== "daily" && (
+                            <nav className="ml-auto flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
+                              <LayoutGroup id={`desktop-tab-${selectedModule}`}>
+                                {moduleData[selectedModule].map((scheme) => {
+                                  const isActive = scheme.id === selectedScheme.id;
+                                  return (
+                                    <button
+                                      key={scheme.id}
+                                      type="button"
+                                      onClick={() => selectScheme(scheme)}
+                                      className={`relative rounded-full px-5 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300 ${
+                                        isActive
+                                          ? "text-brand-charcoal"
+                                          : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                                      }`}
+                                    >
+                                      <span className="relative z-10">{scheme.name}</span>
+                                      {isActive && (
+                                        <m.div
+                                          layoutId={`desktop-activeTab-${selectedModule}`}
+                                          className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
+                                          initial={false}
+                                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                        />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </LayoutGroup>
+                            </nav>
+                          )
+                        )}
                       </header>
 
                       {/* 内容主体：左侧边栏 + 右侧网格 */}
