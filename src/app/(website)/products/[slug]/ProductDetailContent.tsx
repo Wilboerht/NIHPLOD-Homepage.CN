@@ -162,15 +162,9 @@ export function ProductDetailContent({
     usage: product.usage,
   };
 
-  const debounceRef = useRef(false);
-
   const handleTabChange = useCallback((key: TabType) => {
-    if (debounceRef.current || key === activeTab) return;
-    debounceRef.current = true;
+    if (key === activeTab) return;
     setActiveTab(key);
-    setTimeout(() => {
-      debounceRef.current = false;
-    }, 150);
   }, [activeTab]);
 
   const handleTabKeyDown = (e: React.KeyboardEvent) => {
@@ -584,6 +578,28 @@ export function ProductDetailContent({
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative w-full lg:flex lg:items-center lg:justify-center">
           <div className="w-full scroll-smooth overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+            {/* 面包屑导航 */}
+            <nav aria-label="面包屑" className="mb-4 px-4 sm:px-6 lg:mb-6 lg:px-0">
+              <ol className="flex flex-wrap items-center gap-1.5 text-xs font-light tracking-[0.08em] text-[#00263E]/60">
+                {breadcrumbs.map((item, index) => (
+                  <li key={item.url} className="flex items-center gap-1.5">
+                    {index > 0 && <span aria-hidden="true">/</span>}
+                    {index === breadcrumbs.length - 1 ? (
+                      <span aria-current="page" className="text-[#00263E]">
+                        {item.name}
+                      </span>
+                    ) : (
+                      <Link
+                        href={item.url}
+                        className="transition-colors hover:text-[#00263E]"
+                      >
+                        {item.name}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </nav>
             <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
               <div className="lg:flex lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-y-auto lg:py-8">
@@ -606,9 +622,8 @@ export function ProductDetailContent({
                         onTouchEnd={handleTouchEnd}
                         onClick={handleMainImageClick}
                         onKeyDown={handleMainImageKeyDown}
-                        role="group"
-                        aria-roledescription="carousel"
-                        aria-label="产品图片轮播"
+                        role="button"
+                        aria-label={`${product.name} 图片轮播，共 ${product.images.length} 张，回车查看大图，左右方向键切换`}
                         tabIndex={0}
                       >
                         <m.div
@@ -697,31 +712,44 @@ export function ProductDetailContent({
 
                   {/* 产地/规格 */}
                   {(product.origin || product.capacity) && (
-                    <div className="mt-2 flex items-center gap-3 text-xs font-normal leading-relaxed text-[#00263E]">
-                      {product.origin && <span>产地：{product.origin}</span>}
-                      {product.capacity && <span>规格：{product.capacity}</span>}
-                    </div>
+                    <dl className="mt-2 flex items-center gap-3 text-xs font-normal leading-relaxed text-[#00263E]">
+                      {product.origin && (
+                        <div className="flex gap-0">
+                          <dt>产地：</dt>
+                          <dd>{product.origin}</dd>
+                        </div>
+                      )}
+                      {product.capacity && (
+                        <div className="flex gap-0">
+                          <dt>规格：</dt>
+                          <dd>{product.capacity}</dd>
+                        </div>
+                      )}
+                    </dl>
                   )}
 
                   {/* 价格 */}
                   <div className="mt-4">
-                    <span className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]">
+                    <data
+                      value={product.price}
+                      className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]"
+                    >
                       {formatPrice(product.price)}
-                    </span>
+                    </data>
                   </div>
 
                   {/* 功效标签 */}
                   {product.benefits.length > 0 && (
-                    <div className="mt-6 flex flex-wrap gap-2">
+                    <ul className="mt-6 flex flex-wrap gap-2">
                       {product.benefits.map((benefit, index) => (
-                        <span
+                        <li
                           key={index}
                           className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-sm font-light text-[#00263E]"
                         >
                           {benefit}
-                        </span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   )}
                 </m.div>
 
@@ -731,8 +759,9 @@ export function ProductDetailContent({
                   <div className="border-b border-brand-beige">
                     <div className="flex justify-start gap-6" role="tablist" aria-label="产品信息">
                       {tabs.map((tab) => (
-                        <div
+                        <button
                           key={tab.key}
+                          type="button"
                           role="tab"
                           id={`tab-${tab.key}`}
                           aria-selected={activeTab === tab.key}
@@ -754,7 +783,7 @@ export function ProductDetailContent({
                               layoutId="tab-indicator"
                             />
                           )}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
