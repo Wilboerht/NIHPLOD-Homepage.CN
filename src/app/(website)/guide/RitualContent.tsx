@@ -330,16 +330,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     className="flex h-full flex-col overflow-hidden py-2"
                   >
                     <div className="flex flex-1 flex-col justify-center">
-                      {/* 标题部分 - 与卡片组统一居中，避免大屏幕下方空洞 */}
-                      <div className="mb-6 shrink-0 text-center">
-                        <h2 className="text-2xl font-medium tracking-[0.15em] text-[#00263E]">
-                          {modules.find((m) => m.id === selectedModule)?.label}
-                        </h2>
-                        <div className="mt-2 flex justify-center">
-                          <div className="h-px w-10 rounded-full bg-brand-charcoal-light/20" />
-                        </div>
-                      </div>
-
                       {/* 模块引导文案 */}
                       <div className="mb-6 px-4 text-center">
                         <p className="text-sm font-light leading-relaxed tracking-[0.05em] text-[#4A6272]/80">
@@ -882,8 +872,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
           {/* ========== 桌面端布局 - 保持原有样式 ========== */}
           <div className="hidden h-full flex-col sm:flex">
             {/* 顶部栏：LOGO + 面包屑/用户按钮 */}
-            <div className="flex h-[88px] flex-shrink-0 items-center justify-between border-b border-brand-charcoal/[0.05] px-10 xl:px-[8%]">
-              {/* 左侧：LOGO - 点击返回 Level 1 */}
+            <div className="flex h-[88px] flex-shrink-0 items-center border-b border-brand-charcoal/[0.05] px-10 xl:px-[8%]">
+              {/* 左侧：LOGO */}
               <button
                 type="button"
                 onClick={goHome}
@@ -901,46 +891,44 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 </div>
               </button>
 
-              {/* 右侧：Level 1 显示用户按钮，Level 2/3 显示面包屑 */}
-              <AnimatePresence mode="wait">
-                {currentLevel === 1 ? (
-                  <m.div
-                    key="user-button"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    <a
-                      href="https://advisor.nihplod.cn"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center gap-1.5 text-sm font-light tracking-wide text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+              {/* 右侧 */}
+              <div className="ml-auto flex items-center gap-5">
+                <AnimatePresence mode="wait">
+                  {currentLevel === 1 ? (
+                    <m.div
+                      key="advisor-link"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     >
-肌智派素颜测肤
-                      <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-                    </a>
-                  </m.div>
-                ) : currentLevel >= 2 ? (
-                  <m.nav
-                    key="breadcrumb"
-                    className="flex items-center gap-2 text-sm text-brand-charcoal/50"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    <button
+                      <a
+                        href="https://advisor.nihplod.cn"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-1.5 text-sm font-light tracking-wide text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+                      >
+                        肌智派素颜测肤
+                        <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                      </a>
+                    </m.div>
+                  ) : currentLevel >= 2 ? (
+                    <m.button
+                      key="back-btn"
                       type="button"
-                      onClick={goHome}
-                      className="group flex items-center gap-1.5 text-sm font-medium tracking-wide text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+                      onClick={goBack}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex items-center gap-1 text-[13px] font-light tracking-[0.1em] text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
                     >
-                      <ChevronLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
                       <span>返回</span>
-                    </button>
-                  </m.nav>
-                ) : null}
-              </AnimatePresence>
+                      <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+                    </m.button>
+                  ) : null}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* 视口容器 - 三层级切换 */}
