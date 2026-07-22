@@ -189,7 +189,7 @@ export function KineticBackground() {
         {/* Row 2, Col 4: 登录/CTA卡 */}
         <div
           className="kinetic-cell kinetic-login-cell kinetic-cell-login cursor-pointer no-hover-effect"
-          onClick={user ? openUserCenter : handleLoginClick}
+          onClick={user ? () => openUserCenter() : handleLoginClick}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? openUserCenter() : handleLoginClick(); } }}
