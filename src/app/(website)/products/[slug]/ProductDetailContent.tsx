@@ -1057,7 +1057,7 @@ function ImageLightbox({
           alt={imgAlt}
           width={2048}
           height={2048}
-          className="max-h-[90vh] w-auto max-w-full object-contain"
+          className="max-h-[90vh] h-auto w-auto max-w-full object-contain"
           sizes="100vw"
           priority
         />
