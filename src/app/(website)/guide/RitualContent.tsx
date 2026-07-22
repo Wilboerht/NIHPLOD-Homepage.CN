@@ -958,7 +958,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           onClick={() => selectModule(module.id)}
                           onMouseEnter={() => setHoveredIndex(index)}
                           onMouseLeave={() => setHoveredIndex(null)}
-                          className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#00263E]/15 bg-[#FCF9F2] shadow-sm transition-all duration-500 hover:border-[#00263e]/30"
+                          className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/40 bg-gradient-to-b from-[#FCF9F2] to-white/50 shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out hover:-translate-y-[2px] hover:border-brand-beige/70 hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)]"
                           initial={{ opacity: 0, y: 15 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{
@@ -969,26 +969,31 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         >
                           {/* 内容区域 - 居中展示 */}
                           <div className="relative z-10 flex w-full flex-col items-center justify-center p-8 text-center text-[#00263e]">
+                            {/* 模块编号 */}
+                            <span className="mb-6 font-serif text-[11px] tracking-[0.2em] text-brand-charcoal/25 transition-colors duration-500 group-hover:text-brand-charcoal/40">
+                              {module.number}
+                            </span>
+
                             {/* 模块图标 */}
                             <div className="mb-8 transition-transform duration-500 group-hover:scale-110">
                               <module.icon
-                                className="h-12 w-12 text-brand-charcoal-light group-hover:text-brand-charcoal"
+                                className="h-12 w-12 text-[#C3BC9F] transition-colors duration-500 group-hover:text-[#B8A47B]"
                                 strokeWidth={1}
                               />
                             </div>
 
                             {/* 标题 */}
-                            <h2 className="mb-4 font-sans text-xl font-light tracking-[0.12em] text-brand-charcoal lg:text-2xl">
+                            <h2 className="mb-3 font-sans text-xl font-light tracking-[0.12em] text-brand-charcoal lg:text-2xl">
                               {module.label}
                             </h2>
 
                             {/* 描述/副标题 */}
-                            <p className="max-w-[220px] text-xs font-light leading-relaxed tracking-wide text-brand-charcoal/80 transition-opacity duration-300 group-hover:opacity-100 lg:text-sm">
+                            <p className="max-w-[220px] text-[13px] font-light leading-relaxed tracking-wide text-brand-charcoal/45 transition-colors duration-500 group-hover:text-brand-charcoal/60 lg:text-sm">
                               {module.description}
                             </p>
 
-                            {/* 装饰线 - hover时变宽 */}
-                            <div className="mt-8 h-[1px] w-12 bg-[#4A6272]/30 transition-all duration-700 ease-out group-hover:w-20 group-hover:bg-[#4A6272]/40" />
+                            {/* 装饰线 */}
+                            <div className="mt-8 h-[1px] w-14 bg-brand-beige/50 transition-all duration-700 ease-out group-hover:w-24 group-hover:bg-brand-beige/80" />
                           </div>
                         </m.button>
                       ))}
