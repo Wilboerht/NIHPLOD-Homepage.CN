@@ -17,6 +17,24 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
 
 const isDev = process.env.NODE_ENV === "development";
 
+/**
+ * 从产品富文本描述生成 meta description：剥离 HTML 标签并截取前 80 字
+ */
+function toMetaDescription(html: string | null | undefined, fallback: string): string {
+  if (!html) return fallback;
+  const text = html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  if (!text) return fallback;
+  return text.length > 80 ? `${text.slice(0, 80).trimEnd()}…` : text;
+}
+
+/**
+ * 生成 OG 图片绝对 URL：优先产品首图，无图时用通用品牌图
+ */
+function toOgImageUrl(url: string | null | undefined): string {
+  if (!url) return `${baseUrl}/images/og-image.png`;
+  return url.startsWith("http") ? url : `${baseUrl}${url}`;
+}
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
@@ -57,21 +75,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     if (!mockProduct) {
       return { title: "产品未找到" };
     }
+    const mockDescription = toMetaDescription(
+      mockProduct.description,
+      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌。"
+    );
+    const mockOgImageUrl = toOgImageUrl(mockProduct.images[0]?.url);
     return {
       title: mockProduct.name,
-      description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌。",
+      description: mockDescription,
       keywords: [mockProduct.name, mockProduct.nameEn, "NIHPLOD", "旎柏", ...mockProduct.benefits],
       alternates: { canonical: `/products/${slug}` },
       openGraph: {
         title: `${mockProduct.name} | NIHPLOD 旎柏`,
-        description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌。",
-        images: [{ url: `${baseUrl}/images/og-image.png`, width: 1200, height: 630, alt: mockProduct.name }],
+        description: mockDescription,
+        images: [{ url: mockOgImageUrl, alt: mockProduct.name }],
       },
       twitter: {
         card: "summary",
         title: `${mockProduct.name} | NIHPLOD 旎柏`,
-        description: "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌。",
-        images: [`${baseUrl}/images/og-image.png`],
+        description: mockDescription,
+        images: [mockOgImageUrl],
       },
     };
   }
