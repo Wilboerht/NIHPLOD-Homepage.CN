@@ -878,7 +878,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 type="button"
                 onClick={goHome}
                 aria-label="返回护肤指南首页"
-                className="block opacity-90 transition-opacity hover:opacity-70"
+                className="block shrink-0 opacity-90 transition-opacity hover:opacity-70"
               >
                 <div className="relative h-9 w-[150px]">
                   <Image
@@ -891,8 +891,79 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 </div>
               </button>
 
+              {/* 中间：Level 3 子方案 Tab */}
+              <div className="flex flex-1 items-center justify-center">
+                <AnimatePresence mode="wait">
+                  {currentLevel === 3 && selectedScheme && selectedModule && (
+                    <m.nav
+                      key="topbar-tabs"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1"
+                    >
+                      <LayoutGroup id="topbar-activeTab">
+                        {selectedScheme.subPlans && selectedScheme.subPlans.length > 0
+                        ? selectedScheme.subPlans.map((subPlan) => {
+                            const isActive = selectedSubPlan?.id === subPlan.id;
+                            return (
+                              <button
+                                key={subPlan.id}
+                                type="button"
+                                onClick={() => selectSubPlan(subPlan)}
+                                className={`relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300 ${
+                                  isActive
+                                    ? "text-brand-charcoal"
+                                    : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                                }`}
+                              >
+                                <span className="relative z-10">{subPlan.name}</span>
+                                {isActive && (
+                                  <m.div
+                                    layoutId="topbar-activeTab"
+                                    className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
+                                    initial={false}
+                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                  />
+                                )}
+                              </button>
+                            );
+                          })
+                        : ["portable", "professional", "spa"].includes(selectedModule) &&
+                          moduleData[selectedModule].map((scheme) => {
+                            const isActive = scheme.id === selectedScheme.id;
+                            return (
+                              <button
+                                key={scheme.id}
+                                type="button"
+                                onClick={() => selectScheme(scheme)}
+                                className={`relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300 ${
+                                  isActive
+                                    ? "text-brand-charcoal"
+                                    : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                                }`}
+                              >
+                                <span className="relative z-10">{scheme.name}</span>
+                                {isActive && (
+                                  <m.div
+                                    layoutId="topbar-activeTab"
+                                    className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
+                                    initial={false}
+                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                  />
+                                )}
+                              </button>
+                            );
+                          })}
+                      </LayoutGroup>
+                    </m.nav>
+                  )}
+                </AnimatePresence>
+              </div>
+
               {/* 右侧 */}
-              <div className="ml-auto flex items-center gap-5">
+              <div className="flex shrink-0 items-center">
                 <AnimatePresence mode="wait">
                   {currentLevel === 1 ? (
                     <m.div
@@ -1106,92 +1177,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </div>
                           )}
                         </div>
-
-                        {/* 右侧切换器 - subPlan Tab 或 scheme 切换（优雅日常无subPlans时隐藏） */}
-                        {/* Tab navigation */}
-                        {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
-                          <nav
-                            className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1"
-                            role="tablist"
-                            aria-label="子方案切换"
-                          >
-                            <LayoutGroup id={`tab-${selectedModule}`}>
-                              {/* 显示子方案 Tab */}
-                              {selectedScheme.subPlans.map((subPlan) => {
-                                const isActive = selectedSubPlan?.id === subPlan.id;
-                                return (
-                                  <button
-                                    key={subPlan.id}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={isActive}
-                                    onClick={() => selectSubPlan(subPlan)}
-                                    className={cn(
-                                      "relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300",
-                                      isActive
-                                        ? "text-brand-charcoal"
-                                        : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                                    )}
-                                  >
-                                    <span className="relative z-10">{subPlan.name}</span>
-                                    {isActive && (
-                                      <m.div
-                                        layoutId={`activeTabBackground-${selectedModule}`}
-                                        className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
-                                        initial={false}
-                                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                      />
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </LayoutGroup>
-                          </nav>
-                        ) : (
-                          selectedModule !== "daily" && (
-                            /* 非"优雅日常"模块：显示情景切换 Tab */
-                            <nav
-                              className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1"
-                              role="tablist"
-                              aria-label="情景切换"
-                            >
-                              <LayoutGroup id={`tab-${selectedModule}`}>
-                                {moduleData[selectedModule].map((scheme) => {
-                                  const isActive = scheme.id === selectedScheme.id;
-                                  return (
-                                    <button
-                                      key={scheme.id}
-                                      type="button"
-                                      role="tab"
-                                      aria-selected={isActive}
-                                      onClick={() => selectScheme(scheme)}
-                                      className={cn(
-                                        "relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300",
-                                        isActive
-                                          ? "text-brand-charcoal"
-                                          : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                                      )}
-                                    >
-                                      <span className="relative z-10">{scheme.name}</span>
-                                      {isActive && (
-                                        <m.div
-                                          layoutId={`activeTabBackground-${selectedModule}`}
-                                          className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
-                                          initial={false}
-                                          transition={{
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 30,
-                                          }}
-                                        />
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                              </LayoutGroup>
-                            </nav>
-                          )
-                        )}
                       </header>
 
                       {/* 内容主体：左侧边栏 + 右侧网格 */}
