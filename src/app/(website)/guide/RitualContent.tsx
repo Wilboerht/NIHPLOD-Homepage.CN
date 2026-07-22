@@ -1160,10 +1160,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   >
                     <div className="flex h-full w-full flex-col justify-center">
                       {/* Level 3 Header: 标题与切换器 */}
-                      <header className="flex flex-shrink-0 items-end justify-between pb-5">
+                      <header className="flex flex-shrink-0 items-center pb-4">
                         {/* 左侧标题组 */}
                         <div className="flex flex-row items-center gap-5">
-                          <h2 className="relative pb-4 font-sans text-[36px] font-light leading-none tracking-[0.08em] text-[#00263E] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-[#00263E]/20">
+                          <h2 className="relative pb-4 font-sans text-3xl font-light leading-none tracking-[0.08em] text-[#00263E] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-brand-beige/60">
                             {selectedModule === "portable" || selectedModule === "professional"
                               ? modules.find((m) => m.id === selectedModule)?.label
                               : selectedScheme.name}
