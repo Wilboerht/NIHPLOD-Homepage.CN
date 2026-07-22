@@ -125,6 +125,7 @@ export function ProductDetailContent({
   const justSwipedRef = useRef(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [buying, setBuying] = useState(false);
   const mobileTrapRef = useFocusTrap(mobileMenuOpen);
   const lightboxTrapRef = useFocusTrap(lightboxOpen);
 
@@ -339,6 +340,7 @@ export function ProductDetailContent({
   }, [product.name, success]);
 
   const handleOfficialBuy = useCallback(async () => {
+    if (buying) return;
     if (!user) {
       openLoginModal();
       return;
@@ -347,6 +349,7 @@ export function ProductDetailContent({
       showError("商品已售罄");
       return;
     }
+    setBuying(true);
     try {
       const result = await addToCart(product.id, 1);
       if (result) {
@@ -356,8 +359,10 @@ export function ProductDetailContent({
       }
     } catch {
       showError("网络错误，请重试");
+    } finally {
+      setBuying(false);
     }
-  }, [user, openLoginModal, product.id, product.stock, addToCart, success, showError]);
+  }, [buying, user, openLoginModal, product.id, product.stock, addToCart, success, showError]);
 
   const handleThumbnailClick = (index: number) => {
     setCurrentImageIndex(index);
@@ -397,6 +402,47 @@ export function ProductDetailContent({
       ))}
     </div>
   );
+
+  // 外部购买链接（不含官网直购按钮，桌面/移动端共用）
+  const renderExternalPurchaseLinks = () =>
+    product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+      product.purchaseLinks
+        .filter((link) => link.platform !== "官方商城")
+        .map((link) => (
+          <a
+            key={link.id}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`在${link.platform}购买`}
+            className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
+          >
+            <PlatformIcon platform={link.platform} />
+          </a>
+        ))
+    ) : product.purchaseUrl ? (
+      <a
+        href={product.purchaseUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="在官网购买"
+        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
+      >
+        <PlatformIcon platform="官网" />
+      </a>
+    ) : (
+      !product.allowDirectBuy && (
+        <span className="text-sm font-light text-[#00263e]/50">
+          暂无购买链接
+        </span>
+      )
+    );
+
+  // 移动端是否展示外部购买链接区域（官网直购已有底部固定栏，此处只补外部渠道）
+  const showMobilePurchaseLinks =
+    (product.purchaseLinks && product.purchaseLinks.length > 0) ||
+    !!product.purchaseUrl ||
+    !product.allowDirectBuy;
 
   return (
     <m.div
@@ -666,7 +712,7 @@ export function ProductDetailContent({
                   >
                   {/* 产品名称 + 操作按钮 */}
                   <div className="flex items-start justify-between gap-3">
-                    <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
+                    <h1 className="font-serif text-[24px] leading-snug text-brand-charcoal max-lg:font-light max-lg:tracking-[0.1em] max-lg:text-[#00263E] lg:text-[28px]">
                       {product.name}
                     </h1>
                     <div className="flex items-center gap-1">
@@ -683,7 +729,7 @@ export function ProductDetailContent({
 
                   {/* 产地/规格 */}
                   {(product.origin || product.capacity) && (
-                    <dl className="mt-2 flex items-center gap-3 text-xs font-normal leading-relaxed text-[#00263E]">
+                    <dl className="mt-2 flex items-center gap-3 text-sm font-normal leading-relaxed text-[#00263E]">
                       {product.origin && (
                         <div className="flex gap-0">
                           <dt>产地：</dt>
@@ -703,7 +749,7 @@ export function ProductDetailContent({
                   <div className="mt-4">
                     <data
                       value={product.price}
-                      className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]"
+                      className="text-xl font-normal tabular-nums tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E] lg:text-2xl"
                     >
                       {formatPrice(product.price)}
                     </data>
@@ -778,13 +824,13 @@ export function ProductDetailContent({
                         >
                           {tabContent[tab.key] ? (
                             <div
-                              className="text-left text-base font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90 [&_p+p]:mt-3"
+                              className="text-left text-base font-normal leading-[1.8] tracking-[0.05em] text-[#00263e]/90 [&_p+p]:mt-3"
                               dangerouslySetInnerHTML={{
                                 __html: DOMPurify.sanitize(tabContent[tab.key]!),
                               }}
                             />
                           ) : (
-                            <p className="text-base font-light text-[#00263e]/40">暂无内容</p>
+                            <p className="text-base font-normal text-[#00263e]/60">暂无内容</p>
                           )}
                         </div>
                       );
@@ -806,46 +852,27 @@ export function ProductDetailContent({
                       <button
                         type="button"
                         onClick={handleOfficialBuy}
+                        disabled={buying}
                         aria-label="官网购买"
-                        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
+                        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <span className="text-xs font-normal tracking-[0.12em] text-[#00263E]">官网</span>
+                        <span className="text-xs font-normal tracking-[0.12em] text-[#00263E]">
+                          {buying ? "加入中…" : "官网"}
+                        </span>
                       </button>
                     )}
-                    {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
-                      product.purchaseLinks
-                        .filter((link) => link.platform !== "官方商城")
-                        .map((link) => (
-                        <a
-                          key={link.id}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`在${link.platform}购买`}
-                          className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
-                        >
-                          <PlatformIcon platform={link.platform} />
-                        </a>
-                      ))
-                    ) : product.purchaseUrl ? (
-                      <a
-                        href={product.purchaseUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="在官网购买"
-                        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
-                      >
-                        <PlatformIcon platform="官网" />
-                      </a>
-                    ) : (
-                      !product.allowDirectBuy && (
-                        <span className="text-sm font-light text-[#00263e]/50">
-                            暂无购买链接
-                          </span>
-                        )
-                      )}
+                    {renderExternalPurchaseLinks()}
                     </div>
                   </div>
+
+                {/* 购买链接区域 - 移动端（外部渠道，官网直购见底部固定栏） */}
+                {showMobilePurchaseLinks && (
+                  <div className="pb-6 lg:hidden">
+                    <div className="flex flex-wrap items-center justify-start gap-4">
+                      {renderExternalPurchaseLinks()}
+                    </div>
+                  </div>
+                )}
 
                   {/* 肌智派素颜测肤推广 */}
                   <div className="pb-7">
@@ -853,7 +880,7 @@ export function ProductDetailContent({
                       href="https://advisor.nihplod.cn"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group inline-flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.12em] text-brand-primary transition-opacity hover:opacity-70"
+                      className="group inline-flex items-center gap-1 text-[13px] font-normal leading-[1.8] tracking-[0.12em] text-brand-primary transition-opacity hover:opacity-70"
                     >
                       <span>
                         参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤
@@ -914,9 +941,10 @@ export function ProductDetailContent({
             <button
               type="button"
               onClick={handleOfficialBuy}
-              className="w-full rounded-lg bg-brand-primary py-3 text-center text-sm font-light tracking-[0.12em] text-white transition-colors hover:bg-brand-primary/90"
+              disabled={buying}
+              className="w-full rounded-lg bg-brand-primary py-3 text-center text-sm font-light tracking-[0.12em] text-white transition-colors hover:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              官网购买
+              {buying ? "加入中…" : "官网购买"}
             </button>
           </div>
         )}
