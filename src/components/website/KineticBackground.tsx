@@ -155,7 +155,7 @@ export function KineticBackground() {
           </div>
         </div>
 
-        <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer">
+        <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer no-hover-effect">
           <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
           {/* Desktop Image */}
           <Image
