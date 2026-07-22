@@ -906,7 +906,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         href="https://advisor.nihplod.cn"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group flex items-center gap-1.5 text-sm font-light tracking-wide text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+                        className="group flex items-center gap-1.5 text-sm font-light tracking-[0.08em] text-brand-charcoal/60 transition-all duration-300 hover:text-brand-charcoal"
                       >
                         肌智派素颜测肤
                         <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
