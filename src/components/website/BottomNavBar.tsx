@@ -251,16 +251,13 @@ export function BottomNavBar() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40">
                   <PrimaryIcon className="h-6 w-6 text-brand-primary" />
                 </div>
-                <div className="flex flex-col">
-                  <span
-                    className="text-[15px] font-light leading-[22px] text-brand-charcoal"
-                    style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
-                  >
-                    {primaryNav.label}
-                  </span>
-                  <span className="text-[11px] font-light uppercase tracking-wide text-brand-charcoal/60">
-                    {primaryNav.labelEn}
-                  </span>
+                  <div className="flex flex-col">
+                    <span
+                      className="text-[13px] font-light leading-[22px] text-brand-charcoal"
+                      style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                    >
+                      {primaryNav.label}
+                    </span>
                 </div>
               </Link>
 

@@ -6,7 +6,7 @@ import { Link } from "next-view-transitions";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { X, ArrowRight } from "lucide-react";
+import { X } from "lucide-react";
 import type { HomePageContent } from "@/types/page-content";
 // import { UserButton } from "./UserButton";
 import { cn } from "@/lib/utils";
@@ -382,10 +382,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   type="button"
                   onClick={handleCollapse}
                   whileTap={{ scale: 0.96 }}
-                  className="home-explore-btn group min-h-0 min-w-0"
+                  className="home-explore-btn group min-h-0 min-w-0 px-8"
                 >
-                  <span>探索旎柏</span>
-                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                  <span className="tracking-[0.15em]">探索旎柏</span>
                 </m.button>
                 <m.a
                   href="https://advisor.nihplod.cn"
@@ -456,25 +455,6 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                         className="shrink-0 opacity-80"
                       />
                       <span>沪公网安备31010702010178号</span>
-                    </Link>
-                    <span className="hidden text-brand-charcoal/20 md:inline" aria-hidden="true">
-                      |
-                    </span>
-                    <Link
-                      href="https://wap.scjgj.sh.gov.cn/businessCheck/verifKey.do?showType=extShow&serial=YOUR_SERIAL&signData=YOUR_SIGN_DATA"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hidden !min-h-0 !min-w-0 items-center gap-0.5 transition-colors hover:text-brand-primary md:flex"
-                    >
-                      <Image
-                        src="/images/aic_icon.png"
-                        alt=""
-                        width={12}
-                        height={12}
-                        className="shrink-0 opacity-50"
-                        unoptimized
-                      />
-                      电子营业执照
                     </Link>
                   </div>
                 </footer>
