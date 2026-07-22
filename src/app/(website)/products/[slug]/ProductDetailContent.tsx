@@ -8,14 +8,12 @@ import { m, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
-  ShoppingCart,
-  CreditCard,
-  Loader2,
   Share2,
   Menu,
   X,
   Home,
 } from "lucide-react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { ProductCard, PlatformIcon, XiaohongshuLink } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -115,6 +113,17 @@ export function ProductDetailContent({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerWidth(el.offsetWidth);
+    const observer = new ResizeObserver(() => {
+      setContainerWidth(el.offsetWidth);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const x = useMotionValue(0);
   const animationRef = useRef<ReturnType<typeof animate> | null>(null);
   const startXRef = useRef(0);
@@ -123,7 +132,8 @@ export function ProductDetailContent({
   const justSwipedRef = useRef(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileTrapRef = useFocusTrap(mobileMenuOpen);
+  const lightboxTrapRef = useFocusTrap(lightboxOpen);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -181,18 +191,6 @@ export function ProductDetailContent({
     handleTabChange(tabs[nextIndex].key);
   };
 
-  // 轮播容器宽度
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.offsetWidth);
-      }
-    };
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, []);
-
   // 索引变化时吸附到目标位置
   useEffect(() => {
     if (containerWidth === 0) return;
@@ -205,6 +203,7 @@ export function ProductDetailContent({
   }, [currentImageIndex, containerWidth, x]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (!e.touches.length) return;
     if (animationRef.current) animationRef.current.stop();
     startXRef.current = e.touches[0].clientX;
     startTimeRef.current = Date.now();
@@ -213,7 +212,7 @@ export function ProductDetailContent({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDraggingRef.current || containerWidth === 0) return;
+    if (!isDraggingRef.current || containerWidth === 0 || !e.touches.length) return;
     const currentX = e.touches[0].clientX;
     const diff = startXRef.current - currentX;
 
@@ -236,7 +235,11 @@ export function ProductDetailContent({
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
 
-    const endX = e.changedTouches[0].clientX;
+    const endX = e.changedTouches[0]?.clientX;
+    if (endX === undefined) {
+      isDraggingRef.current = false;
+      return;
+    }
     const diff = startXRef.current - endX;
     const duration = Date.now() - startTimeRef.current;
     const velocity = Math.abs(diff) / Math.max(duration, 1);
@@ -278,18 +281,28 @@ export function ProductDetailContent({
   }, []);
 
   const handleMainImageKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : prev));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setCurrentImageIndex((prev) =>
+        prev < product.images.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       setLightboxOpen(true);
     }
-  }, []);
-
-  const handleLightboxPrev = useCallback(() => {
-    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : product.images.length - 1));
   }, [product.images.length]);
 
+  const handleLightboxPrev = useCallback(() => {
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : prev));
+  }, []);
+
   const handleLightboxNext = useCallback(() => {
-    setCurrentImageIndex((prev) => (prev < product.images.length - 1 ? prev + 1 : 0));
+    setCurrentImageIndex((prev) =>
+      prev < product.images.length - 1 ? prev + 1 : prev
+    );
   }, [product.images.length]);
 
   const handleLightboxKeyDown = useCallback(
@@ -500,7 +513,7 @@ export function ProductDetailContent({
       {/* 手机端滑出菜单面板 */}
       <div
         id="product-detail-nav-panel"
-        ref={mobileMenuRef}
+        ref={mobileTrapRef}
         role="dialog"
         aria-modal={mobileMenuOpen}
         aria-label="导航菜单"
@@ -593,8 +606,9 @@ export function ProductDetailContent({
                         onTouchEnd={handleTouchEnd}
                         onClick={handleMainImageClick}
                         onKeyDown={handleMainImageKeyDown}
-                        role="button"
-                        aria-label="查看大图"
+                        role="group"
+                        aria-roledescription="carousel"
+                        aria-label="产品图片轮播"
                         tabIndex={0}
                       >
                         <m.div
@@ -605,15 +619,15 @@ export function ProductDetailContent({
                           transition={{ duration: 0.4 }}
                         >
                           {product.images.map((img, index) => (
-                            <div key={img.id} className="relative h-full w-full flex-shrink-0">
+                            <div key={img.id} className="relative h-full w-full flex-shrink-0" role="group" aria-roledescription="slide" aria-label={`第 ${index + 1} 张，共 ${product.images.length} 张`}>
                               <Image
                                 src={img.url}
-                                alt={img.alt || product.name}
+                                alt={img.alt || `${product.name} 图片 ${index + 1}`}
                                 fill
                                 priority={index === 0}
                                 loading={index === 0 ? undefined : "lazy"}
                                 className="object-cover"
-                                sizes="(max-width: 1024px) 100vw, 50vw"
+                                sizes="(max-width: 1024px) 100vw, 512px"
                               />
                             </div>
                           ))}
@@ -928,6 +942,7 @@ export function ProductDetailContent({
             onClose={() => setLightboxOpen(false)}
             onPrev={handleLightboxPrev}
             onNext={handleLightboxNext}
+            trapRef={lightboxTrapRef}
           />
         )}
       </AnimatePresence>
@@ -945,6 +960,7 @@ function ImageLightbox({
   onClose,
   onPrev,
   onNext,
+  trapRef,
 }: {
   images: ProductImage[];
   productName: string;
@@ -952,12 +968,18 @@ function ImageLightbox({
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
+  trapRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const currentImage = images[currentIndex];
   if (!currentImage) return null;
 
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex < images.length - 1;
+  const imgAlt = currentImage.alt || `${productName} 图片 ${currentIndex + 1}`;
+
   return (
     <m.div
+      ref={trapRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -966,7 +988,7 @@ function ImageLightbox({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="图片预览"
+      aria-label={`${imgAlt} — 第 ${currentIndex + 1} 张，共 ${images.length} 张`}
     >
       {/* 关闭按钮 */}
       <button
@@ -976,13 +998,13 @@ function ImageLightbox({
           onClose();
         }}
         className="absolute right-4 top-4 z-10 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20"
-        aria-label="关闭"
+        aria-label="关闭图片预览"
       >
         <X className="h-6 w-6" />
       </button>
 
       {/* 上一张 */}
-      {images.length > 1 && (
+      {hasPrev && (
         <button
           type="button"
           onClick={(e) => {
@@ -1004,7 +1026,7 @@ function ImageLightbox({
         <div className="relative aspect-[3/4] w-full">
           <Image
             src={currentImage.url}
-            alt={currentImage.alt || productName}
+            alt={imgAlt}
             fill
             className="object-contain"
             sizes="100vw"
@@ -1014,7 +1036,7 @@ function ImageLightbox({
       </div>
 
       {/* 下一张 */}
-      {images.length > 1 && (
+      {hasNext && (
         <button
           type="button"
           onClick={(e) => {
@@ -1033,210 +1055,5 @@ function ImageLightbox({
         {currentIndex + 1} / {images.length}
       </div>
     </m.div>
-  );
-}
-
-/**
- * 加入购物车按钮组件
- */
-function AddToCartButton({
-  productId,
-  stock,
-  quantity,
-}: {
-  productId: string;
-  stock: number;
-  quantity: number;
-}) {
-  const [loading, setLoading] = useState(false);
-  const { user, openLoginModal } = useAuth();
-  const { success, error: showError } = useToast();
-  const { addToCart } = useCartStore();
-
-  const handleAddToCart = async () => {
-    if (!user) {
-      openLoginModal();
-      return;
-    }
-
-    if (stock <= 0) {
-      showError("商品已售罄");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await addToCart(productId, quantity);
-      if (result) {
-        success("已加入购物车");
-      } else {
-        showError("添加失败，请重试");
-      }
-    } catch {
-      showError("网络错误，请重试");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isOutOfStock = stock <= 0;
-
-  return (
-    <button
-      type="button"
-      onClick={handleAddToCart}
-      disabled={loading || isOutOfStock}
-      className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-light tracking-[0.12em] transition-colors",
-        isOutOfStock
-          ? "cursor-not-allowed bg-gray-300 text-gray-500"
-          : "bg-brand-primary text-white hover:bg-brand-primary/90"
-      )}
-    >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <ShoppingCart className="h-4 w-4" />
-      )}
-      <span>{isOutOfStock ? "已售罄" : "加入购物车"}</span>
-    </button>
-  );
-}
-
-/**
- * 直接购买按钮组件 - 不经购物车直接结算
- */
-function DirectBuyButton({
-  productId,
-  stock,
-  quantity,
-}: {
-  productId: string;
-  stock: number;
-  quantity: number;
-}) {
-  const [loading, setLoading] = useState(false);
-  const { user, openCheckout, openLoginModal } = useAuth();
-  const { error: showError } = useToast();
-
-  const handleDirectBuy = () => {
-    if (!user) {
-      openLoginModal();
-      return;
-    }
-
-    if (stock <= 0) {
-      showError("商品已售罄");
-      return;
-    }
-
-    if (quantity > stock) {
-      showError(`库存不足，仅剩 ${stock} 件`);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      openCheckout([productId], { [productId]: quantity });
-    } catch {
-      showError("网络错误，请重试");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isOutOfStock = stock <= 0;
-
-  return (
-    <button
-      type="button"
-      onClick={handleDirectBuy}
-      disabled={loading || isOutOfStock}
-      className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-lg py-3 font-light tracking-[0.12em] transition-colors",
-        isOutOfStock
-          ? "cursor-not-allowed bg-gray-300 text-gray-500"
-          : "border border-brand-primary text-brand-primary hover:bg-brand-primary/10"
-      )}
-    >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-      <span>{isOutOfStock ? "已售罄" : "直接购买"}</span>
-    </button>
-  );
-}
-
-/**
- * 数量选择器组件
- */
-function QuantitySelector({
-  stock,
-  quantity,
-  onChange,
-  compact = false,
-}: {
-  stock: number;
-  quantity: number;
-  onChange: (q: number) => void;
-  compact?: boolean;
-}) {
-  const handleDecrease = () => {
-    if (quantity > 1) onChange(quantity - 1);
-  };
-  const handleIncrease = () => {
-    if (quantity < stock) onChange(quantity + 1);
-  };
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value, 10);
-    if (!isNaN(val) && val >= 1 && val <= stock) {
-      onChange(val);
-    }
-  };
-
-  const canDecrease = quantity > 1;
-  const canIncrease = quantity < stock;
-
-  return (
-    <div className="flex items-center gap-3">
-      {!compact && (
-        <label htmlFor="product-quantity" className="text-sm font-light text-brand-charcoal/60">
-          数量
-        </label>
-      )}
-      <div className="flex items-center rounded-lg border border-brand-beige bg-[#FBF8F0]">
-        <button
-          type="button"
-          onClick={handleDecrease}
-          disabled={!canDecrease}
-          aria-disabled={!canDecrease}
-          className="flex h-9 w-9 items-center justify-center rounded-l-lg text-brand-charcoal/60 transition-colors hover:bg-brand-beige disabled:cursor-not-allowed disabled:opacity-30"
-          aria-label="减少数量"
-        >
-          -
-        </button>
-        <input
-          id="product-quantity"
-          type="number"
-          min={1}
-          max={stock}
-          value={quantity}
-          onChange={handleInputChange}
-          aria-describedby="stock-hint"
-          className="h-9 w-12 border-x border-brand-beige bg-transparent text-center text-sm text-brand-charcoal outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        />
-        <button
-          type="button"
-          onClick={handleIncrease}
-          disabled={!canIncrease}
-          aria-disabled={!canIncrease}
-          className="flex h-9 w-9 items-center justify-center rounded-r-lg text-brand-charcoal/60 transition-colors hover:bg-brand-beige disabled:cursor-not-allowed disabled:opacity-30"
-          aria-label="增加数量"
-        >
-          +
-        </button>
-      </div>
-      <span id="stock-hint" className="text-xs text-brand-charcoal/40">
-        库存 {stock} 件
-      </span>
-    </div>
   );
 }
