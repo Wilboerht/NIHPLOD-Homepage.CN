@@ -1091,16 +1091,16 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       {/* Level 3 Header: 标题与切换器 */}
                       <header className="flex flex-shrink-0 items-end justify-between pb-5">
                         {/* 左侧标题组 */}
-                        <div className="flex flex-row items-end gap-5">
+                        <div className="flex flex-row items-center gap-5">
                           <h2 className="relative pb-4 font-sans text-[36px] font-light leading-none tracking-[0.08em] text-[#00263E] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-[#00263E]/20">
                             {selectedModule === "portable" || selectedModule === "professional"
                               ? modules.find((m) => m.id === selectedModule)?.label
                               : selectedScheme.name}
                           </h2>
                           {selectedModule !== "portable" && selectedModule !== "professional" && (
-                            <div className="flex items-center justify-center gap-1.5 rounded-full border border-[#00263e]/25 bg-white/50 px-3 py-1">
-                              <Clock className="h-3 w-3 text-brand-charcoal/60" />
-                              <span className="font-sans text-xs tabular-nums tracking-widest text-brand-charcoal/70">
+                            <div className="flex items-center gap-2 text-brand-charcoal/50">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span className="font-sans text-sm tracking-[0.1em]">
                                 {selectedScheme.totalDuration || "5-10分钟"}
                               </span>
                             </div>
