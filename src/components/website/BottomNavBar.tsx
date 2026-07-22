@@ -58,7 +58,7 @@ function DesktopStoryNav({ pathname }: { pathname: string }) {
         />
         <span
           className={cn(
-            "text-[15px] font-light tracking-wide transition-colors duration-300",
+            "text-[14px] font-light tracking-[0.08em] transition-colors duration-300",
             isActive
               ? "text-brand-charcoal"
               : "text-brand-charcoal/60 group-hover:text-brand-charcoal"
@@ -201,15 +201,12 @@ export function BottomNavBar() {
                           </div>
                           <div className="flex flex-col">
                             <span
-                              className="text-[15px] font-light leading-[21px] text-brand-charcoal"
+                              className="text-[14px] font-light leading-[21px] tracking-[0.08em] text-brand-charcoal"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
                             >
                               {item.label}
-                            </span>
-                            <span className="text-[11px] font-light uppercase tracking-wide text-brand-charcoal/60">
-                              {item.labelEn}
                             </span>
                           </div>
                         </Link>
@@ -253,7 +250,7 @@ export function BottomNavBar() {
                 </div>
                   <div className="flex flex-col">
                     <span
-                      className="text-[13px] font-light leading-[22px] text-brand-charcoal"
+                      className="text-[14px] font-light leading-[22px] tracking-[0.08em] text-brand-charcoal"
                       style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                     >
                       {primaryNav.label}
@@ -321,7 +318,7 @@ export function BottomNavBar() {
                           aria-current={isActive ? "page" : undefined}
                           aria-describedby={isActive ? "current-page-hint" : undefined}
                           className={cn(
-                            "group flex items-center gap-2 rounded-xl px-3 py-2 text-[15px] font-light transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-charcoal",
+                            "group flex items-center gap-2 rounded-xl px-3 py-2 text-[14px] font-light tracking-[0.08em] transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-charcoal",
                             isActive
                               ? "bg-brand-charcoal/[0.05] text-brand-charcoal"
                               : "text-brand-charcoal/60 hover:bg-brand-charcoal/[0.03] hover:text-brand-charcoal"

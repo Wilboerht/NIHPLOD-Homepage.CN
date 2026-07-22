@@ -1269,7 +1269,7 @@
 }
 
 .kinetic-desc {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 300;
   line-height: 1.5;
   letter-spacing: 0.12em;
@@ -1290,9 +1290,10 @@
 }
 
 .kinetic-body-sm {
-  font-size: 0.85rem;
-  line-height: 1.6;
-  letter-spacing: 0.08em;
+  font-size: 0.875rem;
+  font-weight: 300;
+  line-height: 1.5;
+  letter-spacing: 0.12em;
   color: var(--kinetic-text-secondary);
   font-family:
     "PingFang SC",
@@ -1302,7 +1303,9 @@
     "Segoe UI",
     Roboto,
     sans-serif;
-  transition: color 0.4s ease;
+  transition:
+    color 0.4s ease,
+    letter-spacing 0.4s ease;
   position: relative;
   z-index: 2;
 }

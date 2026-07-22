@@ -121,7 +121,7 @@ export function KineticBackground() {
         </div>
 
         {/* Row 1, Col 2: 文字卡 */}
-        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect">
+        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect text-center">
           <div className="kinetic-title-sm">
             更少步骤
             <br />
@@ -176,16 +176,22 @@ export function KineticBackground() {
         </div>
 
         {/* Row 2, Col 3: 文字卡 */}
-        <div className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect">
+        <div className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect text-center">
           <div className="kinetic-title-sm">逆转时光</div>
           <div className="kinetic-desc">REVERSE TIME</div>
         </div>
 
         {/* Row 2, Col 4: 登录/CTA卡 */}
-        <div className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect">
-          <div className="kinetic-btn-group">
+        <div
+          className="kinetic-cell kinetic-login-cell kinetic-cell-login cursor-pointer no-hover-effect"
+          onClick={user ? openUserCenter : handleLoginClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? openUserCenter() : handleLoginClick(); } }}
+        >
+          <div className="kinetic-btn-group pointer-events-none">
             <div className="mb-2 flex w-full items-center justify-center">
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/30 transition-all duration-300 hover:scale-105 hover:border-brand-charcoal/40 sm:h-20 sm:w-20">
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/30 sm:h-20 sm:w-20">
                 {user?.avatar ? (
                   <Image
                     src={user.avatar}
@@ -206,26 +212,14 @@ export function KineticBackground() {
               </div>
             </div>
             {user ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openUserCenter();
-                }}
-                className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/80 px-4 text-sm font-medium tracking-[0.15em] text-brand-charcoal shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-brand-charcoal/30 hover:bg-brand-charcoal hover:text-white active:scale-[0.98]"
-              >
+              <div className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/80 px-4 text-[14px] font-light tracking-[0.08em] text-brand-charcoal shadow-sm backdrop-blur-sm">
                 <span>进入会员中心</span>
-                <ChevronRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5" />
-              </button>
+                <ChevronRight className="h-4 w-4 opacity-70" />
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={handleLoginClick}
-                className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-white/40 px-4 text-sm font-light tracking-[0.15em] text-brand-charcoal/70 transition-all duration-300 hover:bg-white/70 hover:text-brand-charcoal active:scale-[0.98]"
-              >
+              <div className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-white/40 px-4 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70">
                 <span>会员登录</span>
-                <ChevronRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5" />
-              </button>
+              </div>
             )}
           </div>
         </div>
