@@ -703,8 +703,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         {currentSteps.map((step, index) => (
                           <div key={index} className="group relative flex flex-col">
                             {/* 图片展示区 + 胶囊定位容器 */}
-                            <div className="relative mb-5 sm:mb-7">
-                              {/* 步骤胶囊 - 挂在卡片顶部正中间 */}
+                             <div className="relative mb-5 sm:mb-7">
+                              {/* 步骤胶囊 */}
                               <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-[#00263E]/20 bg-[#FBF8F0] px-4 py-1 text-xs font-medium tracking-widest text-[#00263E] shadow-sm">
                                 步骤 {String(index + 1).padStart(2, "0")}
                               </div>
@@ -1454,7 +1454,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             /* <= 3 步骤：直接展示卡片 (无折叠逻辑) */
                             <m.section
                               key={`${selectedModule}-simple`}
-                              className="relative flex h-[530px] w-full items-start justify-center"
+                              className="relative flex h-[530px] w-full items-center justify-center"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
