@@ -192,7 +192,7 @@ export function KineticBackground() {
           onClick={user ? () => openUserCenter() : handleLoginClick}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? openUserCenter() : handleLoginClick(); } }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? openUserCenter() : switchToLogin(); } }}
         >
           <div className="kinetic-btn-group pointer-events-none">
             <div className="mb-2 flex w-full items-center justify-center">
