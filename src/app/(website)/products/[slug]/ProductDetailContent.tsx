@@ -1048,19 +1048,19 @@ function ImageLightbox({
 
       {/* 当前图片 */}
       <div
-        className="relative max-h-[90vh] w-full max-w-4xl px-4"
+        className="relative flex max-h-[90vh] w-full max-w-4xl items-center justify-center px-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative aspect-[3/4] w-full">
-          <Image
-            src={currentImage.url}
-            alt={imgAlt}
-            fill
-            className="object-contain"
-            sizes="100vw"
-            priority
-          />
-        </div>
+        <Image
+          key={currentImage.id}
+          src={currentImage.url}
+          alt={imgAlt}
+          width={2048}
+          height={2048}
+          className="max-h-[90vh] w-auto max-w-full object-contain"
+          sizes="100vw"
+          priority
+        />
       </div>
 
       {/* 下一张 */}
