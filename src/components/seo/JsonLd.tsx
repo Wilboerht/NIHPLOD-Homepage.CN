@@ -340,3 +340,41 @@ export function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
 
   return <JsonLdScript data={data} />;
 }
+
+/**
+ * HowTo Schema - 护肤指南步骤
+ * 让搜索引擎理解 /guide 各方案的分步指南内容（这些内容在客户端按层级渲染，不在初始 HTML 中）
+ */
+interface HowToGuideStep {
+  title: string;
+  description: string;
+  imageUrl?: string;
+}
+
+interface HowToGuide {
+  name: string;
+  description?: string;
+  steps: HowToGuideStep[];
+}
+
+export function GuideHowToJsonLd({ guides }: { guides: HowToGuide[] }) {
+  const data = {
+    "@context": "https://schema.org",
+    "@graph": guides.map((guide) => ({
+      "@type": "HowTo",
+      name: guide.name,
+      ...(guide.description && { description: guide.description }),
+      step: guide.steps.map((step, index) => ({
+        "@type": "HowToStep",
+        position: index + 1,
+        name: step.title,
+        text: step.description,
+        ...(step.imageUrl && {
+          image: step.imageUrl.startsWith("http") ? step.imageUrl : `${baseUrl}${step.imageUrl}`,
+        }),
+      })),
+    })),
+  };
+
+  return <JsonLdScript data={data} />;
+}

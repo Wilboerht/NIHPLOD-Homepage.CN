@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,11 +10,6 @@ import {
   Info,
   ChevronLeft,
   ChevronRight,
-  Sun,
-  Home,
-  ShoppingBag,
-  SoapDispenserDroplet,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -22,6 +17,17 @@ import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { getCategoryIconPath } from "@/lib/product-icons";
+import {
+  defaultModuleData,
+  defaultRelatedProducts,
+  getProfessionalCards,
+  hotelLogoNumbers,
+  modules,
+  type ModuleId,
+  type RitualProductRef,
+  type Scheme,
+  type SubPlan,
+} from "./guide-data";
 
 // 查找匹配的图标，否则使用默认图标
 export const DEFAULT_ICONS = [
@@ -70,630 +76,6 @@ export const DEFAULT_ICONS = [
   </svg>,
 ];
 
-// 模块配置 - 4个护肤仪式模块
-type ModuleId = "daily" | "portable" | "spa" | "professional";
-
-interface ModuleConfig {
-  id: ModuleId;
-  number: string;
-  label: string;
-  subtitle: string;
-  description: string;
-  image: string;
-  icon: LucideIcon;
-}
-
-const modules: ModuleConfig[] = [
-  {
-    id: "daily",
-    number: "01",
-    label: "优雅日常",
-    subtitle: "告别繁琐, 轻松护理",
-    description: "每日专属的精简守护",
-    image: "/images/ritual-daily-cover.webp",
-    icon: Sun,
-  },
-  {
-    id: "spa",
-    number: "02",
-    label: "居家仪式",
-    subtitle: "让生活充满仪式感",
-    description: "享受DIY的美好时光",
-    image: "/images/ritual-spa-home-cover.webp",
-    icon: Home,
-  },
-  {
-    id: "portable",
-    number: "03",
-    label: "单品好物",
-    subtitle: "外出 / 通勤 / 旅行 / 多效芳疗",
-    description: "随时随地按需使用",
-    image: "/images/ritual-portable-cover.webp",
-    icon: ShoppingBag,
-  },
-  {
-    id: "professional",
-    number: "04",
-    label: "专业水疗",
-    subtitle: "让身心重拾活力与平衡",
-    description: "沉静式悦己体验",
-    image: "/images/ritual-professional-cover.webp",
-    icon: SoapDispenserDroplet,
-  },
-];
-
-// 护肤步骤类型
-interface RitualStep {
-  title: string;
-  description: string;
-  duration?: string; // 时长，如 "1-2分钟"
-  tips?: string; // 技巧提示
-  dosage?: string; // 用量建议
-  imageUrl?: string;
-}
-
-// 子方案类型 (用于 Tab 切换)
-interface SubPlan {
-  id: string;
-  name: string; // 如 "精简方案", "外出方案"
-  steps: RitualStep[];
-  products?: string; // 该子方案涉及的产品
-  benefits?: string[];
-  specialSupport?: string;
-  duration?: string;
-}
-
-// 情景类型 (如 "晨间焕活", "晚间呵护")
-interface Scheme {
-  id: string;
-  name: string;
-  tag?: string;
-  desc?: string;
-  steps: RitualStep[]; // 保留原有 steps，兼容没有子方案的情景
-  subPlans?: SubPlan[]; // 新增：子方案列表（可选）
-  totalDuration?: string;
-  products?: string;
-  benefits?: string[];
-  specialSupport?: string;
-  nameEn?: string;
-  icon?: React.ReactNode;
-  heroImage?: string;
-}
-
-// 模块数据类型
-type ModuleData = Record<ModuleId, Scheme[]>;
-
-// 默认模块数据
-const defaultModuleData: ModuleData = {
-  daily: [
-    {
-      id: "d1",
-      name: "晨间焕活",
-      // nameEn: "MORNING VITALITY RITUAL", // Removed
-      // desc: "开启一天的透亮肌底", // Removed
-      icon: (
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <g clipPath="url(#clip0_1328_320)">
-            <path
-              d="M12 18.5C15.5898 18.5 18.5 15.5898 18.5 12C18.5 8.41015 15.5898 5.5 12 5.5C8.41015 5.5 5.5 8.41015 5.5 12C5.5 15.5898 8.41015 18.5 12 18.5Z"
-              fill="#C3BC9F"
-              stroke="#C3BC9F"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M12 3C12.6904 3 13.25 2.44036 13.25 1.75C13.25 1.05964 12.6904 0.5 12 0.5C11.3097 0.5 10.75 1.05964 10.75 1.75C10.75 2.44036 11.3097 3 12 3Z"
-              fill="#C3BC9F"
-            />
-            <path
-              d="M19.25 6C19.9404 6 20.5 5.44035 20.5 4.75C20.5 4.05964 19.9404 3.5 19.25 3.5C18.5597 3.5 18 4.05964 18 4.75C18 5.44035 18.5597 6 19.25 6Z"
-              fill="#C3BC9F"
-            />
-            <path
-              d="M22.25 13.25C22.9404 13.25 23.5 12.6904 23.5 12C23.5 11.3097 22.9404 10.75 22.25 10.75C21.5597 10.75 21 11.3097 21 12C21 12.6904 21.5597 13.25 22.25 13.25Z"
-              fill="#C3BC9F"
-            />
-            <path
-              d="M19.25 20.5C19.9404 20.5 20.5 19.9404 20.5 19.25C20.5 18.5597 19.9404 18 19.25 18C18.5597 18 18 18.5597 18 19.25C18 19.9404 18.5597 20.5 19.25 20.5Z"
-              fill="#C3BC9F"
-            />
-            <path
-              d="M12 23.5C12.6904 23.5 13.25 22.9404 13.25 22.25C13.25 21.5597 12.6904 21 12 21C11.3097 21 10.75 21.5597 10.75 22.25C10.75 22.9404 11.3097 23.5 12 23.5Z"
-              fill="#C3BC9F"
-            />
-            <path
-              d="M4.75 20.5C5.44035 20.5 6 19.9404 6 19.25C6 18.5597 5.44035 18 4.75 18C4.05964 18 3.5 18.5597 3.5 19.25C3.5 19.9404 4.05964 20.5 4.75 20.5Z"
-              fill="#C3BC9F"
-            />
-            <path
-              d="M1.75 13.25C2.44036 13.25 3 12.6904 3 12C3 11.3097 2.44036 10.75 1.75 10.75C1.05964 10.75 0.5 11.3097 0.5 12C0.5 12.6904 1.05964 13.25 1.75 13.25Z"
-              fill="#C3BC9F"
-            />
-            <path
-              d="M4.75 6C5.44035 6 6 5.44035 6 4.75C6 4.05964 5.44035 3.5 4.75 3.5C4.05964 3.5 3.5 4.05964 3.5 4.75C3.5 5.44035 4.05964 6 4.75 6Z"
-              fill="#C3BC9F"
-            />
-          </g>
-          <defs>
-            <clipPath id="clip0_1328_320">
-              <rect width="24" height="24" fill="white" />
-            </clipPath>
-          </defs>
-        </svg>
-      ),
-      totalDuration: "5-15分钟",
-      products: "洁面、面霜",
-      benefits: ["保湿锁水", "过敏修护", "抗初老", "维稳舒缓"],
-      specialSupport: "孕期、月子期、轻医美术后",
-      // 原有 steps 作为默认显示
-      steps: [
-        {
-          title: "净肤",
-          description:
-            "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
-          duration: "30秒",
-          tips: "温水洗净，避免过冷或过热刺激。",
-          imageUrl: "/images/ritual-step-cleanse.webp",
-        },
-        {
-          title: "焕活",
-          description:
-            "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
-          duration: "1-2分钟",
-          tips: "掌心温热后按压效果更佳。",
-          imageUrl: "/images/ritual-step-revitalize.webp",
-        },
-      ],
-      // 新增子方案 Tab
-      subPlans: [
-        {
-          id: "simple",
-          name: "精简方案",
-          products: "洁面、面霜",
-          duration: "5-10分钟",
-          steps: [
-            {
-              title: "净肤",
-              description:
-                "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
-              duration: "30秒",
-              tips: "温水洗净，避免过冷或过热刺激。",
-              imageUrl: "/images/ritual-step-cleanse.webp",
-            },
-            {
-              title: "焕活",
-              description:
-                "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
-              duration: "1-2分钟",
-              tips: "掌心温热后按压效果更佳。",
-              imageUrl: "/images/ritual-step-revitalize.webp",
-            },
-          ],
-        },
-        {
-          id: "outing",
-          name: "外出方案",
-          products: "洁面、面霜 (可选)、防晒",
-          duration: "10-15分钟",
-          steps: [
-            {
-              title: "净肤",
-              description:
-                "取适量洁面慕斯，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
-              duration: "30秒",
-              imageUrl: "/images/ritual-step-cleanse.webp",
-            },
-            {
-              title: "焕活",
-              description:
-                "取适量面霜于掌心，展匀后，由内向外、由下向上在脸部及眼周涂抹并推开；有效的形成水油平衡保护，减缓并调理肌肤的临时不适。",
-              duration: "1-2分钟",
-              imageUrl: "/images/ritual-step-revitalize.webp",
-            },
-            {
-              title: "防护",
-              description:
-                "在面部完全干爽后，取足量防晒霜，点涂于面部及颈部，顺着皮肤纹理均匀涂抹。防晒剂提供即时自然提亮效果。",
-              duration: "1分钟",
-              imageUrl: "/images/ritual-step-protect.webp",
-            },
-          ],
-          benefits: ["保湿锁水", "过敏修护", "抗初老", "维稳舒缓", "SPF30", "PA+++"],
-          specialSupport: "",
-        },
-      ],
-    },
-    {
-      id: "n1",
-      name: "晚间呵护",
-      // nameEn: "NIGHT REPAIR RITUAL", // Removed
-      // desc: "利用黄金睡眠期修护", // Removed
-      icon: (
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M13.8237 3.18488C11.3623 3.82663 9.54547 6.06477 9.54547 8.72728C9.54547 11.8904 12.1096 14.4545 15.2727 14.4545C17.9352 14.4545 20.1734 12.6377 20.8151 10.1763C20.9363 10.7652 21 11.3752 21 12C21 16.9706 16.9706 21 12 21C7.02943 21 3 16.9706 3 12C3 7.02943 7.02943 3 12 3C12.6248 3 13.2348 3.06367 13.8237 3.18488Z"
-            fill="#C3BC9F"
-            stroke="#C3BC9F"
-            strokeWidth="1.44"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
-      totalDuration: "15-20分钟",
-      products: "洁面、精华露 (可选)、面膜、面霜、身体乳 (可选)",
-      benefits: ["保湿锁水", "屏障增强", "抗初老", "维稳舒缓", "紧致提拉", "润泽提亮"],
-      specialSupport: "孕期、月子期、轻医美术后",
-      steps: [
-        {
-          title: "净肤",
-          description:
-            "取适量洁面，温和打圈按摩全脸30秒，随后用温水洗净；通过清除夜间代谢，唤醒肌肤微循环。",
-          duration: "30秒",
-          imageUrl: "/images/ritual-step-cleanse.webp",
-        },
-        {
-          title: "渗透肌底（可选）",
-          description:
-            "取适量精华于指腹，请点脸颊、眼周或颈部区域后，以打圈的方式轻轻按摩；让多重营养和修复因子渗入肌肤。",
-          duration: "2分钟",
-          imageUrl: "/images/ritual-step-penetrate.webp",
-        },
-        {
-          title: "膜法封存",
-          description:
-            "通过面膜的贴合覆盖，达到有效锁水，强化肌肤天然屏障和免疫力，帮助面部肌肤更好地应对偶尔出现的失衡状态。（若后续无涂抹身体乳的计划，本步骤建议用面霜代替。）",
-          duration: "10-15分钟",
-          imageUrl: "/images/ritual-step-seal.webp",
-        },
-        {
-          title: "滋养全身（可选）",
-          description:
-            "取适量身体乳涂抹于周身，增强全身肌肤的天然防御机制，有效滋养和保湿；修复轻微皮肤损伤，保持肌肤健康光泽。",
-          duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-nourish.webp",
-        },
-      ],
-      subPlans: [],
-    },
-  ],
-  portable: [
-    {
-      id: "t1",
-      name: "日常外出",
-      nameEn: "DAILY COMMUTE",
-      tag: "通勤",
-      desc: "富含多重功效的防晒，能有效抵御紫外线伤害，预防光老化；同时使用护手霜则能滋养双手，抵御干燥和外界刺激，让您的双手亦时刻保持健康与舒适。",
-      totalDuration: "3-5分钟",
-      products: "护手霜、防晒",
-      benefits: ["保湿锁水", "屏障增强", "SPF30", "PA+++"],
-      heroImage: "/images/portable-travel-hero.webp",
-      steps: [
-        {
-          title: "防晒防护",
-          description: "出门前快速涂抹防晒，抵御紫外线。",
-          duration: "1分钟",
-          tips: "均匀涂抹于面部及裸露肌肤。",
-          imageUrl: "/images/ritual-step-1.webp",
-        },
-        {
-          title: "随时补水",
-          description: "感觉干燥时喷洒舒缓喷雾。",
-          duration: "10秒",
-          tips: "按需使用。",
-          imageUrl: "/images/ritual-step-2.webp",
-        },
-      ],
-    },
-    {
-      id: "t2",
-      name: "轻悦旅行",
-      nameEn: "LIGHT TRAVEL",
-      tag: "中短途",
-      desc: "你的便携式“旅行护肤急救箱”- 氨基酸洁面慕斯温和清洁，防晒霜抵御光损伤，护手霜随时滋润干燥双手，莱赛尔贴片面膜为肌肤快速“充电+修护+维稳”；按需携带，让你在紧凑行程中也能时刻容光焕发。",
-      totalDuration: "10分钟",
-      products: "洁面、面膜、防晒、护手霜",
-      benefits: ["轻便卸妆", "保湿锁水", "维稳舒缓", "SPF30", "PA+++"],
-      heroImage: "/images/portable-hero-update.webp",
-      steps: [
-        {
-          title: "深层清洁",
-          description: "彻底清洁旅途中的尘埃与油脂。",
-          duration: "2分钟",
-          tips: "温水洗净。",
-          imageUrl: "/images/ritual-step-1.webp",
-        },
-        {
-          title: "密集修护",
-          description: "敷一片面膜，舒缓旅途疲劳。",
-          duration: "15分钟",
-          tips: "静享放松时刻。",
-          imageUrl: "/images/ritual-step-2.webp",
-        },
-      ],
-    },
-    {
-      id: "t3",
-      name: "多效芳疗",
-      nameEn: "MULTI-EFFECT AROMATHERAPY",
-      tag: "芳疗",
-      desc: "这款奢华护理油是您私人 SPA 的核心，在泡澡时滴入数滴，便可瞬间将浴室升华为芳香疗愈场，让卓越的润肤力包裹并环绕您的全身；而干燥时节，只需将其与任意面霜、精华或身体乳混合，即可定制出加倍润泽的顶级护理体验。",
-      totalDuration: "自由",
-      products: "护理油",
-      benefits: ["滋润加强", "维稳舒缓", "疗愈焕颜"],
-      heroImage: "/images/portable-aroma-hero.webp",
-      steps: [
-        {
-          title: "沐浴体验",
-          description: "泡澡时滴入数滴，享受芳香疗愈。",
-          duration: "15分钟",
-          tips: "水温适宜。",
-          imageUrl: "/images/ritual-step-1.webp",
-        },
-        {
-          title: "加倍滋润",
-          description: "混合面霜或身体乳使用。",
-          duration: "1分钟",
-          tips: "按需调配。",
-          imageUrl: "/images/ritual-step-2.webp",
-        },
-      ],
-    },
-  ],
-  spa: [
-    {
-      id: "s1",
-      name: "面部方案",
-      nameEn: "FACE RITUAL",
-      desc: "仅需 4 个步骤",
-      totalDuration: "20-30分钟",
-      products: "洁面、磨砂膏、护理油、面霜、面膜",
-      benefits: ["保湿锁水", "屏障增强", "过敏修护", "抗初老", "维稳舒缓"],
-      specialSupport: "孕期、月子期、轻医美术后",
-      steps: [
-        {
-          title: "基础净肤",
-          description:
-            "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
-          duration: "2分钟",
-          imageUrl: "/images/ritual-step-cleanse.webp",
-        },
-        {
-          title: "深层清理",
-          description:
-            "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
-          duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-deep-cleanse.webp",
-        },
-        {
-          title: "混油养肤",
-          description:
-            "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。",
-          duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-oil-nourish.webp",
-        },
-        {
-          title: "膜法封存",
-          description:
-            "承接上个步骤，无需对面部做额外清理，将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养，有效提亮肤质、增强肌肤免疫力。",
-          duration: "10-15分钟",
-          imageUrl: "/images/ritual-step-seal.webp",
-        },
-      ],
-    },
-    {
-      id: "s2",
-      name: "全身方案",
-      nameEn: "FULL BODY RITUAL",
-      desc: "仅需 6 个步骤",
-      totalDuration: "30-45分钟",
-      products: "洁面、磨砂膏、护理油、面霜、面膜、身体乳",
-      benefits: ["保湿锁水", "屏障增强", "抗初老", "维稳舒缓", "紧致提拉", "润泽提亮"],
-      specialSupport: "孕期、月子期、轻医美术后",
-      steps: [
-        {
-          title: "基础净肤",
-          description:
-            "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
-          duration: "2分钟",
-          imageUrl: "/images/ritual-step-cleanse.webp",
-        },
-        {
-          title: "深层清理",
-          description:
-            "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
-          duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-deep-cleanse.webp",
-        },
-        {
-          title: "芳香浸愈 (可选)",
-          description:
-            "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。",
-          duration: "15-20分钟",
-          imageUrl: "/images/ritual-step-aroma.webp",
-        },
-        {
-          title: "膜法守护",
-          description:
-            "取一片面膜完整贴合面部，静享 10-15 分钟后移除膜布 (可与泡澡环节同时进行)；确保珍贵成分能有效被面部吸收。",
-          duration: "10-15分钟",
-          imageUrl: "/images/ritual-step-seal.webp",
-        },
-        {
-          title: "全身滋养",
-          description:
-            "取适量身体乳，于掌心混合温热，从四肢向心脏方向进行长推式按摩，重点护理颈部、小腿、手臂及腹部；若所处的外部环境湿度/温度较低，建议额外按照 1:5 比例混合护理油加强滋润效果。",
-          duration: "5分钟",
-          imageUrl: "/images/ritual-step-nourish.webp",
-        },
-        {
-          title: "面部呵护",
-          description:
-            "取适量面霜，以由下至上、由内而外的手法进行全脸提拉按摩，重点按压眼周、法令纹及额头区域；确保全身及面部被完全呵护，实现更全面的修护及滋养，有效提亮肤质和弹性、延缓衰老、增强肌肤免疫力。",
-          duration: "5分钟",
-          imageUrl: "/images/ritual-step-revitalize.webp",
-        },
-      ],
-    },
-  ],
-  professional: [
-    {
-      id: "p1",
-      name: "面部护理套餐",
-      nameEn: "FACIAL CARE",
-      desc: "仅需 4 个步骤",
-      totalDuration: "20-30分钟",
-      products: "洁面、磨砂膏、护理油、精华露、面霜、面膜",
-      benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
-      specialSupport: "",
-
-      steps: [
-        {
-          title: "基础净肤",
-          description:
-            "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
-          duration: "2分钟",
-          imageUrl: "/images/ritual-step-cleanse.webp",
-        },
-        {
-          title: "深层清理",
-          description:
-            "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
-          duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-deep-cleanse.webp",
-        },
-        {
-          title: "混油养肤",
-          description:
-            "取适量护理油及面霜，于掌心混合温热，以由下而上，由内而外的手法进行脸部及眼周按摩；确保珍贵成分能有效渗入肌肤。",
-          duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-oil-nourish.webp",
-        },
-        {
-          title: "膜法封存",
-          description:
-            "承接上个步骤，无需对面部做额外清理，将面膜完整贴合面部，静享 10-15 分钟后移除膜布；通过旎柏系产品的组合效应，实现对面部的多重修护及滋养，有效提亮肤质、增强肌肤免疫力。",
-          duration: "10-15分钟",
-          imageUrl: "/images/ritual-step-seal.webp",
-        },
-      ],
-    },
-    {
-      id: "p2",
-      name: "全身护理套餐",
-      nameEn: "FULL BODY CARE",
-      desc: "仅需 6 个步骤",
-      totalDuration: "30-45分钟",
-      products: "洁面、磨砂膏、护理油、精华露、面霜、面膜、身体乳",
-      benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
-      specialSupport: "",
-
-      steps: [
-        {
-          title: "基础净肤",
-          description:
-            "取适量洁面慕斯，用手温和打圈按摩全脸，随后用温水洗净；清除杂质及代谢，使肌底回归自然。",
-          duration: "2分钟",
-          imageUrl: "/images/ritual-step-cleanse.webp",
-        },
-        {
-          title: "深层清理",
-          description:
-            "取适量磨砂膏均匀涂抹于面部，轻柔按压T区、两颊并打圈，随后用温水洗净；唤醒肌肤微循环。",
-          duration: "3-5分钟",
-          imageUrl: "/images/ritual-step-deep-cleanse.webp",
-        },
-        {
-          title: "芳香浸愈 (可选)",
-          description:
-            "将适量美容油滴入温热的浴缸水中。泡澡时，缓慢深呼吸，并将注意力集中在呼吸上从而放松身心。",
-          duration: "15-20分钟",
-          imageUrl: "/images/ritual-step-aroma.webp",
-        },
-        {
-          title: "膜法守护",
-          description:
-            "取一片面膜完整贴合面部，静享 10-15 分钟后移除膜布 (可与泡澡环节同时进行)；确保珍贵成分能有效被面部吸收。",
-          duration: "10-15分钟",
-          imageUrl: "/images/ritual-step-seal.webp",
-        },
-        {
-          title: "全身滋养",
-          description:
-            "取适量身体乳，于掌心混合温热，从四肢向心脏方向进行长推式按摩，重点护理颈部、小腿、手臂及腹部；若所处的外部环境湿度/温度较低，建议额外按照 1:5 比例混合护理油加强滋润效果。",
-          duration: "5分钟",
-          imageUrl: "/images/ritual-step-nourish.webp",
-        },
-        {
-          title: "面部呵护",
-          description:
-            "取适量面霜，以由下至上、由内而外的手法进行全脸提拉按摩，重点按压眼周、法令纹及额头区域；确保全身及面部被完全呵护，实现更全面的修护及滋养，有效提亮肤质和弹性、延缓衰老、增强肌肤免疫力。",
-          duration: "5分钟",
-          imageUrl: "/images/ritual-step-revitalize.webp",
-        },
-      ],
-    },
-  ],
-};
-
-/**
- * 计算步骤总时长
- * @param steps 步骤数组
- * @returns 格式化的总时长字符串
- */
-function _calculateTotalDuration(steps: RitualStep[]): string {
-  let minTotal = 0;
-  let maxTotal = 0;
-
-  steps.forEach((step) => {
-    if (step.duration) {
-      // 解析时长字符串，如 "1-2分钟", "30秒", "10-15分钟"
-      const durationStr = step.duration.replace(/分钟|秒/g, "");
-      const isSeconds = step.duration.includes("秒");
-
-      if (durationStr.includes("-")) {
-        const [min, max] = durationStr.split("-").map(Number);
-        if (isSeconds) {
-          minTotal += min / 60;
-          maxTotal += max / 60;
-        } else {
-          minTotal += min;
-          maxTotal += max;
-        }
-      } else {
-        const value = Number(durationStr);
-        if (isSeconds) {
-          minTotal += value / 60;
-          maxTotal += value / 60;
-        } else {
-          minTotal += value;
-          maxTotal += value;
-        }
-      }
-    }
-  });
-
-  // 四舍五入
-  minTotal = Math.round(minTotal);
-  maxTotal = Math.round(maxTotal);
-
-  if (minTotal === maxTotal) {
-    return `约 ${minTotal} 分钟`;
-  }
-  return `约 ${minTotal}-${maxTotal} 分钟`;
-}
-
 /**
  * 护肤仪式页面内容组件
  * 三层级交互式布局：Level 1 模块选择 -> Level 2 方案选择 -> Level 3 详细步骤
@@ -729,62 +111,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   const { isDrawerOpen } = useLayout();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  // 轮播导航状态
+  // 轮播导航状态（桌面端步骤分页）
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const stepsContainerRef = useRef<HTMLDivElement>(null);
 
   // 获取当前应该显示的步骤（优先使用子方案的步骤）
   const currentSteps = selectedSubPlan?.steps || selectedScheme?.steps || [];
   // 获取当前应该显示的产品（优先使用子方案的产品）
-  const currentProducts = selectedSubPlan?.products || selectedScheme?.products || "洁面慕斯、面霜";
-
-  // 轮播导航函数 - 滚动到指定步骤 (暂未使用，保留逻辑)
-  // const scrollToStep = useCallback((index: number) => {
-  //   if (!stepsContainerRef.current) return;
-  //   const container = stepsContainerRef.current;
-  //   const stepWidth = 260 + 52; // 卡片宽度 + 间距
-  //   const scrollPosition = index * stepWidth;
-  //   container.scrollTo({
-  //     left: scrollPosition,
-  //     behavior: "smooth"
-  //   });
-  //   setCurrentStepIndex(index);
-  // }, []);
-
-  // 上一步 (暂未使用，保留逻辑)
-  // const goToPrevStep = useCallback(() => {
-  //   if (currentStepIndex > 0) {
-  //     scrollToStep(currentStepIndex - 1);
-  //   }
-  // }, [currentStepIndex, scrollToStep]);
-
-  // 下一步 (暂未使用，保留逻辑)
-  // const goToNextStep = useCallback((totalSteps: number) => {
-  //   // 当可见区域显示约3张卡片时，最大可滚动索引为 totalSteps - 3
-  //   if (currentStepIndex < totalSteps - 3) {
-  //     scrollToStep(currentStepIndex + 1);
-  //   }
-  // }, [currentStepIndex, scrollToStep]);
-
-  // 展开的步骤索引（用于显示技巧提示）
-  const [_expandedStepIndex, _setExpandedStepIndex] = useState<number | null>(null);
-
-  // 自动播放控制 (已禁用)
-  // const [isPaused, setIsPaused] = useState(false);
-
-  // 步骤自动轮播逻辑 (已禁用)
-  // useEffect(() => {
-  //   // 仅在 Level 3 的手风琴模式下运行
-  //   const isAccordionMode = currentLevel === 3 && currentSteps.length > 3 && selectedModule !== "professional" && selectedModule !== "portable";
-
-  //   if (!isAccordionMode || isPaused) return;
-
-  //   const timer = setInterval(() => {
-  //     setCurrentStepIndex((prev) => (prev + 1) % currentSteps.length);
-  //   }, 3000);
-
-  //   return () => clearInterval(timer);
-  // }, [currentLevel, currentSteps.length, currentStepIndex, isPaused, selectedModule]);
+  const currentProducts: RitualProductRef[] =
+    selectedSubPlan?.products || selectedScheme?.products || defaultRelatedProducts;
 
   // 产品详情弹窗状态
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
@@ -882,30 +216,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
     router.push("/guide", { scroll: false });
   };
 
-  // 监听滚动事件，同步轮播索引 (用户手动滚动时更新)
-  useEffect(() => {
-    const container = stepsContainerRef.current;
-    if (!container) return;
-
-    let scrollTimeout: NodeJS.Timeout;
-
-    const handleScroll = () => {
-      // 使用防抖，避免与点击事件竞争
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        const stepWidth = 260 + 52; // 卡片宽度 + 间距
-        const newIndex = Math.round(container.scrollLeft / stepWidth);
-        setCurrentStepIndex(Math.max(0, newIndex));
-      }, 50);
-    };
-
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      clearTimeout(scrollTimeout);
-    };
-  }, []); // 移除 currentStepIndex 依赖，避免重复绑定
-
   return (
     <>
       <DrawerPageContainer wrapperClassName="!top-0 !pointer-events-none">
@@ -920,6 +230,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
             isDrawerOpen ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
           )}
         >
+          {/* 页面主标题（视觉隐藏，三级视图共用，保证全页面唯一 h1） */}
+          <h1 className="sr-only">护肤仪式指南</h1>
+
           {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
           <div className="flex h-full flex-col bg-[#FBF8F0] sm:hidden">
             {/* 移动端 Header - 完全按照 FAQ 顶部栏样式 */}
@@ -973,12 +286,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     className="flex flex-1 flex-col justify-start"
                   >
                     <div className="mb-7 flex flex-col items-center pb-2 pt-2">
-                      <h1
+                      <h2
                         className="text-[24px] font-light tracking-[0.15em] text-[#00263E]"
                         style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                       >
                         护肤仪式指南
-                      </h1>
+                      </h2>
                       <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                     </div>
 
@@ -1103,7 +416,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         ["portable", "professional", "spa"].includes(selectedModule) &&
                         moduleData[selectedModule].length > 1)) && (
                       <div className="relative mb-10 flex w-full max-w-[400px] flex-col items-center px-6">
-                        <div className="flex w-full items-center rounded-full bg-[#00263E]/[0.05] p-1">
+                        <div
+                          className="flex w-full items-center rounded-full bg-[#00263E]/[0.05] p-1"
+                          role="tablist"
+                          aria-label="方案切换"
+                        >
                           <LayoutGroup id={`mobile-tab-${selectedModule}`}>
                             {/* 1. subPlans existing condition (such as daily) */}
                             {selectedScheme.subPlans && selectedScheme.subPlans.length > 0
@@ -1112,6 +429,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   return (
                                     <button
                                       key={subPlan.id}
+                                      type="button"
+                                      role="tab"
+                                      aria-selected={isActive}
                                       onClick={() => selectSubPlan(subPlan)}
                                       className={cn(
                                         "relative flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
@@ -1146,6 +466,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   return (
                                     <button
                                       key={scheme.id}
+                                      type="button"
+                                      role="tab"
+                                      aria-selected={isActive}
                                       onClick={() => selectScheme(scheme)}
                                       className={cn(
                                         "relative flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
@@ -1188,20 +511,20 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           <div className="mb-2 mt-6 w-full">
                             <div className="mb-4 flex items-center justify-center gap-3">
                               <div className="h-px w-8 bg-[#00263E]/10" />
-                              <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/40">
+                              <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/60">
                                 相关产品
                               </span>
                               <div className="h-px w-8 bg-[#00263E]/10" />
                             </div>
                             <div className="w-full px-6 text-center">
                               <div className="flex flex-wrap justify-center gap-x-8 gap-y-6 pb-4">
-                                {currentProducts.split("、").map((product, index) => {
-                                  const isOptional = product.includes("(可选)");
-                                  const cleanName = product.replace("(可选)", "").trim();
+                                {currentProducts.map((product, index) => {
+                                  const cleanName = product.name;
+                                  const isOptional = !!product.optional;
 
                                   return (
                                     <button
-                                      key={product}
+                                      key={cleanName}
                                       type="button"
                                       onClick={() => handleProductClick(cleanName)}
                                       className="flex flex-col items-center gap-2"
@@ -1226,7 +549,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           {cleanName}
                                         </span>
                                         {isOptional && (
-                                          <span className="text-[9px] tracking-wider text-[#00263E]/40">
+                                          <span className="text-[10px] tracking-wider text-[#00263E]/60">
                                             可选
                                           </span>
                                         )}
@@ -1281,6 +604,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             src={selectedScheme.heroImage || "/images/portable-hero-update.webp"}
                             alt={selectedScheme.name}
                             fill
+                            sizes="100vw"
                             className="object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-[#00263E]/80 via-transparent to-transparent opacity-80" />
@@ -1316,13 +640,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               核心单品搭配
                             </span>
                             <div className="flex flex-wrap gap-2">
-                              {selectedScheme.products?.split("、").map((prod, i) => (
+                              {selectedScheme.products?.map((prod) => (
                                 <div
-                                  key={i}
+                                  key={prod.name}
                                   className="flex items-center gap-1.5 rounded-md border border-[#00263E]/5 bg-white px-3 py-1.5 shadow-sm"
                                 >
                                   <div className="h-1.5 w-1.5 rounded-full bg-[#4A6272]/40" />
-                                  <span className="text-xs text-[#00263E]/90">{prod}</span>
+                                  <span className="text-xs text-[#00263E]/90">{prod.name}</span>
                                 </div>
                               ))}
                             </div>
@@ -1332,73 +656,31 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     ) : selectedModule === "professional" ? (
                       <div className="animate-in fade-in flex w-full flex-col pb-6 duration-500">
                         <div className="mb-2 flex items-center gap-3 px-1">
-                          <h2 className="text-[26px] font-normal tracking-wide text-[#00263E]">
+                          <h3 className="text-[26px] font-normal tracking-wide text-[#00263E]">
                             {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
-                          </h2>
+                          </h3>
                           <span className="rounded-sm bg-[#E6DCC3] px-1.5 py-0.5 text-[10px] font-medium text-[#00263E]">
                             招牌
                           </span>
                         </div>
                         <div className="mb-8 flex flex-col px-1">
-                          <h3 className="mb-3 font-sans text-xs font-light tracking-[0.1em] text-[#00263E]/60">
+                          <p className="mb-3 font-sans text-xs font-light tracking-[0.1em] text-[#00263E]/60">
                             {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
-                          </h3>
+                          </p>
                         </div>
 
                         {/* 中间卡片区 - 纵向列表 */}
                         <div className="mb-12 flex flex-col gap-6">
-                          {(selectedScheme?.id === "p1"
-                            ? // 面部方案
-                              [
-                                {
-                                  title: "基础护理",
-                                  duration: "45 min",
-                                  tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
-                                  image: "/images/spa-basic.webp",
-                                },
-                                {
-                                  title: "高级护理",
-                                  duration: "60 min",
-                                  tags: "基础护理 + 特色手法提拉",
-                                  image: "/images/spa-advanced.webp",
-                                },
-                                {
-                                  title: "奢华护理",
-                                  duration: "75 min",
-                                  tags: "高级护理 + 肩颈护理",
-                                  image: "/images/spa-luxury.webp",
-                                },
-                              ]
-                            : // 全身方案
-                              [
-                                {
-                                  title: "基础护理",
-                                  duration: "45 min",
-                                  tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
-                                  image: "/images/body-spa-1.webp",
-                                },
-                                {
-                                  title: "高级护理",
-                                  duration: "60 min",
-                                  tags: "基础护理 + 特色手法提拉",
-                                  image: "/images/body-spa-2.webp",
-                                },
-                                {
-                                  title: "奢华护理",
-                                  duration: "75 min",
-                                  tags: "高级护理 + 肩颈护理",
-                                  image: "/images/body-spa-3.webp",
-                                },
-                              ]
-                          ).map((item, idx) => (
+                          {getProfessionalCards(selectedScheme?.id).map((item) => (
                             <div
-                              key={idx}
+                              key={item.image}
                               className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-[#00263E]/5 shadow-sm"
                             >
                               <Image
                                 src={item.image}
                                 alt={item.title}
                                 fill
+                                sizes="100vw"
                                 className="z-0 object-cover"
                               />
                               {/* 渐变遮罩 */}
@@ -1425,48 +707,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         </div>
 
                         {/* 底部 Logo 栏 - 无限滚动 */}
-                        <div className="relative -mx-5 overflow-hidden border-t border-[#00263E]/10 px-5 pb-4 pt-6">
-                          {/* 左侧渐变遮罩 */}
-                          <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-8 bg-gradient-to-r from-[#FBF8F0] to-transparent" />
-                          {/* 右侧渐变遮罩 */}
-                          <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-8 bg-gradient-to-l from-[#FBF8F0] to-transparent" />
-
-                          {/* 滚动容器 */}
-                          <div className="flex w-max animate-marquee items-center">
-                            {/* 第一组 Logo */}
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                              <div
-                                key={`logo-m-a-${num}`}
-                                className="mx-4 flex h-[28px] flex-shrink-0 items-center justify-center"
-                              >
-                                <Image
-                                  src={`/images/hotels/hotel${num}.svg`}
-                                  alt={`Hotel Partner ${num}`}
-                                  width={90}
-                                  height={20}
-                                  className="h-[28px] w-auto object-contain opacity-70 mix-blend-multiply"
-                                  style={{ maxHeight: "28px" }}
-                                />
-                              </div>
-                            ))}
-                            {/* 第二组 Logo (无缝循环) */}
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                              <div
-                                key={`logo-m-b-${num}`}
-                                className="mx-4 flex h-[28px] flex-shrink-0 items-center justify-center"
-                              >
-                                <Image
-                                  src={`/images/hotels/hotel${num}.svg`}
-                                  alt={`Hotel Partner ${num}`}
-                                  width={90}
-                                  height={20}
-                                  className="h-[28px] w-auto object-contain opacity-70 mix-blend-multiply"
-                                  style={{ maxHeight: "28px" }}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        <HotelLogoMarquee variant="mobile" />
                       </div>
                     ) : (
                       /* Regular Steps Waterfall Layout (daily, spa) */
@@ -1485,6 +726,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
                                   alt={step.title}
                                   fill
+                                  sizes="100vw"
                                   className="object-contain p-4 mix-blend-multiply sm:p-8"
                                 />
                               </div>
@@ -1492,9 +734,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                             {/* 文本描述区 */}
                             <div className="px-1 sm:px-3">
-                              <h4 className="mb-3 text-center text-lg font-light tracking-[0.12em] text-[#00263E] sm:text-xl">
+                              <h3 className="mb-3 text-center text-lg font-light tracking-[0.12em] text-[#00263E] sm:text-xl">
                                 {step.title}
-                              </h4>
+                              </h3>
                               <p className="text-left text-[13px] font-light leading-[1.8] text-[#00263E]/60 sm:text-[14px]">
                                 {step.description}
                               </p>
@@ -1511,7 +753,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         <div className="mb-4 flex flex-col items-center gap-7 sm:gap-14">
                           {/* 核心优势 */}
                           <div className="flex w-full flex-col items-center gap-3">
-                            <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/40">
+                            <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/60">
                               核心优势
                             </span>
                             <div className="flex w-full flex-wrap justify-center gap-2 px-4">
@@ -1523,7 +765,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   key={tag}
                                   className="flex items-center gap-1.5 rounded-full border border-[#4A6272]/10 bg-[#4A6272]/5 px-3 py-1"
                                 >
-                                  <span className="text-[9px] text-[#4A6272]/60">✦</span>
+                                  <span className="text-[10px] text-[#4A6272]/60">✦</span>
                                   <span className="text-[11px] font-light tracking-widest text-[#00263E]/70">
                                     {tag}
                                   </span>
@@ -1541,7 +783,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             const isRestricted = supportText.includes("不支持");
                             return (
                               <div className="flex w-full flex-col items-center gap-3 px-6">
-<span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/40">
+<span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/60">
                                   特殊时期支持
                                 </span>
                                 <div
@@ -1573,7 +815,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Certifications (Quality Endorsement) */}
                           <div className="flex flex-col items-center gap-3">
-                            <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/40">
+                            <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/60">
                               检测认证
                             </span>
                             <div className="flex items-center gap-6 opacity-60 mix-blend-multiply">
@@ -1600,12 +842,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               <Info className="mr-2 mt-0.5 h-4 w-4 shrink-0 text-[#4A6272]/60" />
                               <p className="text-[12px] font-light leading-[1.6] tracking-wide text-[#00263E]/70">
                                 找不到您所在城市的门店？银卡级别以上会员可
-                                <span
-                                  onClick={() => router.push("/contact?type=cooperation")}
-                                  className="mx-1 cursor-pointer font-medium text-[#4A6272] underline decoration-[#4A6272]/40 underline-offset-2 active:opacity-70"
+                                <Link
+                                  href="/contact?type=cooperation"
+                                  className="mx-1 font-medium text-[#4A6272] underline decoration-[#4A6272]/40 underline-offset-2 active:opacity-70"
                                 >
                                   申请入驻
-                                </span>
+                                </Link>
                                 您所在的城市。
                               </p>
                             </div>
@@ -1846,11 +1088,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       <header className="flex flex-shrink-0 items-end justify-between pb-5">
                         {/* 左侧标题组 */}
                         <div className="flex flex-row items-end gap-5">
-                          <h1 className="relative pb-4 font-sans text-[36px] font-light leading-none tracking-[0.08em] text-[#00263E] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-[#00263E]/20">
+                          <h2 className="relative pb-4 font-sans text-[36px] font-light leading-none tracking-[0.08em] text-[#00263E] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-[#00263E]/20">
                             {selectedModule === "portable" || selectedModule === "professional"
                               ? modules.find((m) => m.id === selectedModule)?.label
                               : selectedScheme.name}
-                          </h1>
+                          </h2>
                           {selectedModule !== "portable" && selectedModule !== "professional" && (
                             <div className="flex items-center justify-center gap-1.5 rounded-full border border-[#00263e]/25 bg-white/50 px-3 py-1">
                               <Clock className="h-3 w-3 text-brand-charcoal/60" />
@@ -1864,7 +1106,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         {/* 右侧切换器 - subPlan Tab 或 scheme 切换（优雅日常无subPlans时隐藏） */}
                         {/* Tab navigation */}
                         {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
-                          <nav className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
+                          <nav
+                            className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1"
+                            role="tablist"
+                            aria-label="子方案切换"
+                          >
                             <LayoutGroup id={`tab-${selectedModule}`}>
                               {/* 显示子方案 Tab */}
                               {selectedScheme.subPlans.map((subPlan) => {
@@ -1873,6 +1119,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   <button
                                     key={subPlan.id}
                                     type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
                                     onClick={() => selectSubPlan(subPlan)}
                                     className={cn(
                                       "relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300",
@@ -1898,7 +1146,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         ) : (
                           selectedModule !== "daily" && (
                             /* 非"优雅日常"模块：显示情景切换 Tab */
-                            <nav className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
+                            <nav
+                              className="flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1"
+                              role="tablist"
+                              aria-label="情景切换"
+                            >
                               <LayoutGroup id={`tab-${selectedModule}`}>
                                 {moduleData[selectedModule].map((scheme) => {
                                   const isActive = scheme.id === selectedScheme.id;
@@ -1906,6 +1158,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     <button
                                       key={scheme.id}
                                       type="button"
+                                      role="tab"
+                                      aria-selected={isActive}
                                       onClick={() => selectScheme(scheme)}
                                       className={cn(
                                         "relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300",
@@ -1937,7 +1191,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       </header>
 
                       {/* 内容主体：左侧边栏 + 右侧网格 */}
-                      {/* 内容主体：左侧边栏 + 右侧网格 */}
                       <div className="flex max-h-[75vh] w-full flex-row items-start gap-12">
                         {/* 左侧：信息侧边栏 (Info Sidebar) */}
                         <m.aside
@@ -1953,16 +1206,16 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </h3>
 
                             <div className="flex flex-wrap gap-x-6 gap-y-8">
-                              {currentProducts.split("、").map((product, index) => {
+                              {currentProducts.map((product, index) => {
                                 // 产品图标占位符映射 - 根据产品名匹配或按索引循环
 
-                                const isOptional = product.includes("(可选)");
-                                const cleanName = product.replace("(可选)", "").trim();
+                                const isOptional = !!product.optional;
+                                const cleanName = product.name;
                                 const iconPath = getCategoryIconPath(cleanName);
 
                                 return (
                                   <button
-                                    key={product}
+                                    key={cleanName}
                                     type="button"
                                     onClick={() => handleProductClick(cleanName)}
                                     className="group flex flex-col items-center gap-3 transition-transform hover:-translate-y-1"
@@ -2098,30 +1351,30 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {/* 顶部标题区 */}
                               <header className="mb-8">
                                 <div className="mb-1 flex items-center gap-3">
-                                  <h2 className="text-3xl font-normal tracking-wide text-brand-charcoal">
+                                  <h3 className="text-3xl font-normal tracking-wide text-brand-charcoal">
                                     {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
-                                  </h2>
+                                  </h3>
                                   <span className="rounded-sm bg-[#E6DCC3] px-1.5 py-0.5 text-xs font-medium text-brand-charcoal">
                                     招牌
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <h3 className="font-sans text-sm font-light tracking-[0.1em] text-brand-charcoal/60">
+                                  <p className="font-sans text-sm font-light tracking-[0.1em] text-brand-charcoal/60">
                                     {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
-                                  </h3>
+                                  </p>
                                   <p className="flex items-center text-[12px] font-normal tracking-wide text-brand-charcoal/70">
                                     <Info className="mr-1.5 h-3.5 w-3.5 text-brand-charcoal/40" />
                                     找不到您所在城市的门店？银卡级别以上会员可
-                                    <span
-                                      onClick={() => router.push("/contact?type=cooperation")}
-                                      className="group relative mx-1.5 cursor-pointer overflow-hidden px-2 py-0.5"
+                                    <Link
+                                      href="/contact?type=cooperation"
+                                      className="group relative mx-1.5 overflow-hidden px-2 py-0.5"
                                     >
                                       <span className="relative z-10 font-semibold transition-colors duration-500 group-hover:text-brand-charcoal">
                                         申请入驻
                                       </span>
                                       <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
                                       <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />
-                                    </span>
+                                    </Link>
                                     您所在的城市。
                                   </p>
                                 </div>
@@ -2129,52 +1382,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                               {/* 中间卡片区 - Grid Layout */}
                               <div className="mb-8 grid grid-cols-3 gap-x-6 gap-y-10">
-                                {(selectedScheme?.id === "p1"
-                                  ? // 面部方案
-                                    [
-                                      {
-                                        title: "基础护理",
-                                        duration: "45 min",
-                                        tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
-                                        image: "/images/spa-basic.webp",
-                                      },
-                                      {
-                                        title: "高级护理",
-                                        duration: "60 min",
-                                        tags: "基础护理 + 特色手法提拉",
-                                        image: "/images/spa-advanced.webp",
-                                      },
-                                      {
-                                        title: "奢华护理",
-                                        duration: "75 min",
-                                        tags: "高级护理 + 肩颈护理",
-                                        image: "/images/spa-luxury.webp",
-                                      },
-                                    ]
-                                  : // 全身方案
-                                    [
-                                      {
-                                        title: "基础护理",
-                                        duration: "45 min",
-                                        tags: "清洁舒缓 + 特色理疗 + 锁水嫩肤",
-                                        image: "/images/body-spa-1.webp",
-                                      },
-                                      {
-                                        title: "高级护理",
-                                        duration: "60 min",
-                                        tags: "基础护理 + 特色手法提拉",
-                                        image: "/images/body-spa-2.webp",
-                                      },
-                                      {
-                                        title: "奢华护理",
-                                        duration: "75 min",
-                                        tags: "高级护理 + 肩颈护理",
-                                        image: "/images/body-spa-3.webp",
-                                      },
-                                    ]
-                                ).map((item, idx) => (
+                                {getProfessionalCards(selectedScheme?.id).map((item) => (
                                   <div
-                                    key={idx}
+                                    key={item.image}
                                     className="group relative flex h-full w-full cursor-pointer flex-col"
                                   >
                                     {/* 图片区域 - 包含所有内容 */}
@@ -2183,6 +1393,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                         src={item.image}
                                         alt={item.title}
                                         fill
+                                        sizes="25vw"
                                         className="z-0 object-cover transition-transform duration-700 group-hover:scale-105"
                                       />
 
@@ -2217,48 +1428,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               </div>
 
                               {/* 底部 Logo 栏 - 无限滚动 */}
-                              <div className="relative mb-6 overflow-hidden border-t border-brand-charcoal/10 pt-8">
-                                {/* 左侧渐变遮罩 */}
-                                <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-16 bg-gradient-to-r from-[#FBF8F0] to-transparent" />
-                                {/* 右侧渐变遮罩 */}
-                                <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-16 bg-gradient-to-l from-[#FBF8F0] to-transparent" />
-
-                                {/* 滚动容器 */}
-                                <div className="flex animate-marquee items-center hover:[animation-play-state:paused]">
-                                  {/* 第一组 Logo */}
-                                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                                    <div
-                                      key={`logo-a-${num}`}
-                                      className="mx-6 flex h-[36px] flex-shrink-0 items-center justify-center"
-                                    >
-                                      <Image
-                                        src={`/images/hotels/hotel${num}.svg`}
-                                        alt={`Hotel Partner ${num}`}
-                                        width={120}
-                                        height={24}
-                                        className="h-[36px] w-auto object-contain"
-                                        style={{ maxHeight: "36px" }}
-                                      />
-                                    </div>
-                                  ))}
-                                  {/* 第二组 Logo (用于无缝循环) */}
-                                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                                    <div
-                                      key={`logo-b-${num}`}
-                                      className="mx-6 flex h-[36px] flex-shrink-0 items-center justify-center"
-                                    >
-                                      <Image
-                                        src={`/images/hotels/hotel${num}.svg`}
-                                        alt={`Hotel Partner ${num}`}
-                                        width={120}
-                                        height={24}
-                                        className="h-[36px] w-auto object-contain"
-                                        style={{ maxHeight: "36px" }}
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                              <HotelLogoMarquee variant="desktop" />
                             </m.section>
                           ) : selectedModule === "portable" ? (
                             <m.section
@@ -2277,13 +1447,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   }
                                   alt="Portable Ritual"
                                   fill
+                                  sizes="75vw"
                                   className="object-cover"
                                 />
                                 {/* Fallback color/pattern if image missing */}
                                 <div className="absolute inset-0 -z-10 bg-gradient-to-br from-brand-beige/20 to-brand-charcoal/5" />
                               </div>
 
-                              {/* Text Content */}
                               {/* Text Content */}
                               <div className="relative mt-2 h-[48px] w-full overflow-y-auto pr-2">
                                 <p className="text-sm font-light leading-relaxed tracking-wide text-brand-charcoal/80">
@@ -2320,19 +1490,20 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           <Image
                                             src={
                                               step.imageUrl ||
-                                              "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"
+                                              "/images/ritual-step-placeholder.webp"
                                             }
                                             alt={step.title}
                                             fill
+                                            sizes="280px"
                                             className="object-contain mix-blend-multiply"
                                           />
                                         </div>
 
                                         {/* 文字区域 */}
                                         <div className="flex flex-1 flex-col items-center">
-                                          <h2 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
+                                          <h3 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                                             {step.title}
-                                          </h2>
+                                          </h3>
                                           <p className="text-left text-[14px] font-light tracking-[0.08em] text-brand-charcoal/80">
                                             {step.description}
                                           </p>
@@ -2393,19 +1564,20 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                   <Image
                                                     src={
                                                       step.imageUrl ||
-                                                      "https://wp-cdn.4ce.cn/v2/sSNhrfD.png"
+                                                      "/images/ritual-step-placeholder.webp"
                                                     }
                                                     alt={step.title}
                                                     fill
+                                                    sizes="280px"
                                                     className="object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
                                                   />
                                                 </div>
 
                                                 {/* 文字区域 */}
                                                 <div className="flex flex-1 flex-col items-center">
-                                                  <h2 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
+                                                  <h3 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                                                     {step.title}
-                                                  </h2>
+                                                  </h3>
                                                   <p className="text-left text-[14px] font-light tracking-[0.08em] text-brand-charcoal/80">
                                                     {step.description}
                                                   </p>
@@ -2485,5 +1657,71 @@ export function RitualContent({ products = [] }: RitualContentProps) {
         product={selectedProduct}
       />
     </>
+  );
+}
+
+/**
+ * 合作酒店 Logo 无限滚动条（移动端/桌面端共用）
+ * 第二组 Logo 仅用于无缝循环视觉，对屏幕阅读器隐藏
+ */
+function HotelLogoMarquee({ variant }: { variant: "mobile" | "desktop" }) {
+  const isMobile = variant === "mobile";
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden border-t",
+        isMobile
+          ? "-mx-5 border-[#00263E]/10 px-5 pb-4 pt-6"
+          : "mb-6 border-brand-charcoal/10 pt-8"
+      )}
+    >
+      {/* 左右渐变遮罩 */}
+      <div
+        className={cn(
+          "pointer-events-none absolute bottom-0 left-0 top-0 z-10 bg-gradient-to-r from-[#FBF8F0] to-transparent",
+          isMobile ? "w-8" : "w-16"
+        )}
+      />
+      <div
+        className={cn(
+          "pointer-events-none absolute bottom-0 right-0 top-0 z-10 bg-gradient-to-l from-[#FBF8F0] to-transparent",
+          isMobile ? "w-8" : "w-16"
+        )}
+      />
+
+      {/* 滚动容器（prefers-reduced-motion 时动画由全局 CSS 禁用） */}
+      <div
+        className={cn(
+          "flex animate-marquee items-center",
+          isMobile ? "w-max" : "hover:[animation-play-state:paused]"
+        )}
+      >
+        {[0, 1].map((group) => (
+          <div key={group} className="flex items-center" aria-hidden={group === 1}>
+            {hotelLogoNumbers.map((num) => (
+              <div
+                key={num}
+                className={cn(
+                  "flex flex-shrink-0 items-center justify-center",
+                  isMobile ? "mx-4 h-[28px]" : "mx-6 h-[36px]"
+                )}
+              >
+                <Image
+                  src={`/images/hotels/hotel${num}.svg`}
+                  alt={`Hotel Partner ${num}`}
+                  width={isMobile ? 90 : 120}
+                  height={isMobile ? 20 : 24}
+                  className={cn(
+                    "w-auto object-contain",
+                    isMobile ? "h-[28px] opacity-70 mix-blend-multiply" : "h-[36px]"
+                  )}
+                  style={{ maxHeight: isMobile ? "28px" : "36px" }}
+                />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

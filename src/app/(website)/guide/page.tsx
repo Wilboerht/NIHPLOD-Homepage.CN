@@ -1,7 +1,8 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
 import { RitualContent } from "./RitualContent";
-import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { BreadcrumbJsonLd, GuideHowToJsonLd } from "@/components/seo/JsonLd";
+import { defaultModuleData, modules } from "./guide-data";
 
 // ISR: 护肤仪式页面每60秒重新验证一次
 export const revalidate = 60;
@@ -95,11 +96,31 @@ export default async function RitualPage() {
   // 并行获取数据
   const [products] = await Promise.all([getProducts()]);
 
-  // 只有在页面已发布时才使用配置的背景图
+  // 所有方案的分步指南（供 HowTo 结构化数据：Level 3 内容在客户端按层级渲染，
+  // 不在初始 HTML 中，通过 JSON-LD 让搜索引擎可抓取）
+  const moduleLabels = new Map(modules.map((m) => [m.id, m.label]));
+  const howToGuides = Object.entries(defaultModuleData).flatMap(([moduleId, schemes]) => {
+    const moduleLabel = moduleLabels.get(moduleId as keyof typeof defaultModuleData) ?? "";
+    return schemes.flatMap((scheme) => {
+      if (scheme.subPlans && scheme.subPlans.length > 0) {
+        return scheme.subPlans
+          .filter((subPlan) => subPlan.steps.length > 0)
+          .map((subPlan) => ({
+            name: `${moduleLabel} · ${scheme.name} · ${subPlan.name}`,
+            description: scheme.desc,
+            steps: subPlan.steps,
+          }));
+      }
+      return scheme.steps.length > 0
+        ? [{ name: `${moduleLabel} · ${scheme.name}`, description: scheme.desc, steps: scheme.steps }]
+        : [];
+    });
+  });
 
   return (
     <>
       <BreadcrumbJsonLd items={breadcrumbs} />
+      <GuideHowToJsonLd guides={howToGuides} />
       {/* useSearchParams 需要在 Suspense 边界内（与 contact 页一致） */}
       <Suspense fallback={null}>
         <RitualContent products={products} />
