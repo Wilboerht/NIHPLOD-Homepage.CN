@@ -234,9 +234,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
           <h1 className="sr-only">护肤仪式指南</h1>
 
           {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
-          <div className="flex h-full flex-col bg-[#FBF8F0] sm:hidden">
+          <div className="flex h-full flex-col bg-brand-cream sm:hidden">
             {/* 移动端 Header - 完全按照 FAQ 顶部栏样式 */}
-            <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-[#FBF8F0]/95 px-6 backdrop-blur-sm transition-all">
+            <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-brand-cream/95 px-6 backdrop-blur-sm transition-all">
               <AnimatePresence>
                 {currentLevel > 1 && (
                   <m.button
@@ -246,7 +246,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     type="button"
                     onClick={goBack}
                     aria-label="返回上一级"
-                    className="absolute left-6 flex h-full items-center text-[#00263E]/60 active:text-[#00263E]"
+                    className="absolute left-6 flex h-full items-center text-brand-charcoal/60 active:text-brand-charcoal"
                   >
                     <ChevronLeft className="h-6 w-6" />
                   </m.button>
@@ -286,36 +286,34 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     className="flex flex-1 flex-col justify-start"
                   >
                     <div className="mb-7 flex flex-col items-center pb-2 pt-2">
-                      <h2
-                        className="text-[24px] font-light tracking-[0.15em] text-[#00263E]"
-                        style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
-                      >
+                      <h2 className="font-sans text-[24px] font-light tracking-[0.15em] text-brand-charcoal">
                         护肤仪式指南
                       </h2>
-                      <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                      <div className="mt-2 h-px w-10 rounded-full bg-brand-charcoal-light/20" />
                     </div>
 
-                    <div className="grid flex-1 grid-cols-2 grid-rows-2 gap-4">
+                    <div className="grid flex-1 grid-cols-2 gap-4">
                       {modules.map((module, index) => (
                         <m.button
                           key={module.id}
-                          whileTap={{ scale: 0.96 }}
                           initial={{ opacity: 0, y: 20 }}
                           whileInView={{ opacity: 1, y: 0 }}
                           viewport={{ once: true, margin: "-20px" }}
                           transition={{ delay: index * 0.1 }}
                           onClick={() => selectModule(module.id)}
-                          className="relative flex h-full flex-col justify-end overflow-hidden rounded-[2rem] border border-[#00263E]/15 bg-[#FCF9F2] p-5 pb-6 text-left shadow-[0_8px_32px_-4px_rgba(0,38,62,0.06)] transition-all active:scale-[0.98]"
+                          className="relative flex h-full flex-col justify-center overflow-hidden rounded-2xl border border-brand-beige/40 bg-gradient-to-b from-[#FCF9F2] to-white/50 p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97] active:bg-white/80"
                         >
                           <div className="relative z-10 flex flex-col">
-                            <div className="mb-4">
-                              <module.icon className="h-8 w-8 text-[#4A6272]" strokeWidth={1} />
-                            </div>
-                            <span className="text-lg font-light tracking-[0.12em] text-[#00263E]">
+                            <module.icon className="h-8 w-8 text-[#B8A47B] mb-4" strokeWidth={1} />
+                            <span className="text-lg font-light tracking-[0.12em] text-brand-charcoal">
                               {module.label}
                             </span>
-                            <div className="mt-3 h-[1px] w-8 bg-[#4A6272]/30" />
+                            <p className="mt-1.5 text-[11px] font-light leading-relaxed text-brand-charcoal/50">
+                              {module.description}
+                            </p>
+                            <div className="mt-3 h-[1px] w-8 bg-brand-beige/50" />
                           </div>
+                          <ChevronRight className="absolute bottom-4 right-4 h-4 w-4 text-brand-charcoal/20" />
                         </m.button>
                       ))}
                     </div>
@@ -338,7 +336,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           {modules.find((m) => m.id === selectedModule)?.label}
                         </h2>
                         <div className="mt-2 flex justify-center">
-                          <div className="h-px w-10 rounded-full bg-[#4A6272]/20" />
+                          <div className="h-px w-10 rounded-full bg-brand-charcoal-light/20" />
                         </div>
                       </div>
 
@@ -913,7 +911,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     exit={{ opacity: 0, x: 10 }}
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    <div className="w-24" />
+                    <a
+                      href="https://advisor.nihplod.cn"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center gap-1.5 text-sm font-light tracking-wide text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+                    >
+                      AI 护肤顾问
+                      <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    </a>
                   </m.div>
                 ) : currentLevel >= 2 ? (
                   <m.nav
@@ -950,53 +956,58 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     className="absolute inset-0 flex items-center justify-center overflow-visible px-10 xl:px-[8%]"
                   >
-                    <div className="flex h-full w-full flex-row gap-8 py-8 xl:py-14">
-                      {modules.map((module, index) => (
-                        <m.button
-                          key={module.id}
-                          type="button"
-                          onClick={() => selectModule(module.id)}
-                          onMouseEnter={() => setHoveredIndex(index)}
-                          onMouseLeave={() => setHoveredIndex(null)}
-                          className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/40 bg-gradient-to-b from-[#FCF9F2] to-white/50 shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out hover:-translate-y-[2px] hover:border-brand-beige/70 hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)]"
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            duration: 0.7,
-                            delay: 0.1 + index * 0.05,
-                            ease: [0.16, 1, 0.3, 1],
-                          }}
-                        >
-                          {/* 内容区域 - 居中展示 */}
-                          <div className="relative z-10 flex w-full flex-col items-center justify-center p-8 text-center text-[#00263e]">
-                            {/* 模块编号 */}
-                            <span className="mb-6 font-serif text-[11px] tracking-[0.2em] text-brand-charcoal/25 transition-colors duration-500 group-hover:text-brand-charcoal/40">
-                              {module.number}
-                            </span>
+                    <div className="flex h-full w-full flex-col justify-center py-8">
+                      {/* 页面标题区 - 与移动端 Level 1 保持一致 */}
+                      <div className="mb-4 flex shrink-0 flex-col items-center text-center">
+                        <h2 className="font-sans text-3xl font-light tracking-[0.15em] text-brand-charcoal">
+                          护肤仪式指南
+                        </h2>
+                        <div className="mt-4 h-px w-10 rounded-full bg-brand-charcoal-light/20" />
+                      </div>
 
-                            {/* 模块图标 */}
-                            <div className="mb-8 transition-transform duration-500 group-hover:scale-110">
-                              <module.icon
-                                className="h-12 w-12 text-[#C3BC9F] transition-colors duration-500 group-hover:text-[#B8A47B]"
-                                strokeWidth={1}
-                              />
+                      <div className="flex max-h-[520px] w-full flex-1 flex-row gap-8">
+                        {modules.map((module, index) => (
+                          <m.button
+                            key={module.id}
+                            type="button"
+                            onClick={() => selectModule(module.id)}
+                            onMouseEnter={() => setHoveredIndex(index)}
+                            onMouseLeave={() => setHoveredIndex(null)}
+                            className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/40 bg-gradient-to-b from-[#FCF9F2] to-white/50 shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out hover:-translate-y-[2px] hover:border-brand-beige/70 hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30"
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                              duration: 0.7,
+                              delay: 0.1 + index * 0.05,
+                              ease: [0.16, 1, 0.3, 1],
+                            }}
+                          >
+                            {/* 内容区域 - 居中展示 */}
+                            <div className="relative z-10 flex w-full flex-col items-center justify-center p-8 text-center text-brand-charcoal">
+                              {/* 模块图标 */}
+                              <div className="mb-8 transition-transform duration-500 group-hover:scale-110">
+                                <module.icon
+                                  className="h-12 w-12 text-[#B8A47B] transition-colors duration-500"
+                                  strokeWidth={1}
+                                />
+                              </div>
+
+                              {/* 标题 */}
+                              <h2 className="mb-3 font-sans text-xl font-light tracking-[0.12em] text-brand-charcoal lg:text-2xl">
+                                {module.label}
+                              </h2>
+
+                              {/* 描述/副标题 */}
+                              <p className="max-w-[220px] text-[13px] font-light leading-relaxed tracking-wide text-brand-charcoal/60 transition-colors duration-500 group-hover:text-brand-charcoal/75 lg:text-sm">
+                                {module.description}
+                              </p>
+
+                              {/* 装饰线 */}
+                              <div className="mt-8 h-[1px] w-14 bg-brand-beige/50 transition-all duration-700 ease-out group-hover:w-24 group-hover:bg-brand-beige/80" />
                             </div>
-
-                            {/* 标题 */}
-                            <h2 className="mb-3 font-sans text-xl font-light tracking-[0.12em] text-brand-charcoal lg:text-2xl">
-                              {module.label}
-                            </h2>
-
-                            {/* 描述/副标题 */}
-                            <p className="max-w-[220px] text-[13px] font-light leading-relaxed tracking-wide text-brand-charcoal/45 transition-colors duration-500 group-hover:text-brand-charcoal/60 lg:text-sm">
-                              {module.description}
-                            </p>
-
-                            {/* 装饰线 */}
-                            <div className="mt-8 h-[1px] w-14 bg-brand-beige/50 transition-all duration-700 ease-out group-hover:w-24 group-hover:bg-brand-beige/80" />
-                          </div>
-                        </m.button>
-                      ))}
+                          </m.button>
+                        ))}
+                      </div>
                     </div>
                   </m.div>
                 )}
