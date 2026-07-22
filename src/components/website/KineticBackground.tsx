@@ -102,7 +102,7 @@ export function KineticBackground() {
         </Link>
 
         {/* 左侧大卡片 - 跨两行 */}
-        <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes group relative cursor-pointer">
+        <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes group relative cursor-pointer no-hover-effect">
           <Link href="/products" className="absolute inset-0 z-20" aria-label="了解产品" />
           <Image
             src="/images/kinetic-product-hero.jpeg"
@@ -136,7 +136,7 @@ export function KineticBackground() {
 
         {/* Row 1, Col 3-4: 官方指南宽图片卡 */}
         <div
-          className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer"
+          className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer no-hover-effect"
           style={{ gridColumn: "span 2", aspectRatio: "auto" }}
         >
           <Link href="/guide" className="absolute inset-0 z-20" aria-label="官方指南" />
