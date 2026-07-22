@@ -384,7 +384,7 @@ export function ProductDetailContent({
             "relative flex-shrink-0 overflow-hidden rounded-lg transition-all",
             orientation === "vertical" ? "h-20 w-16" : "h-16 w-12",
             currentImageIndex === index
-              ? "ring-2 ring-brand-primary"
+              ? "ring-1 ring-[#00263E]"
               : "ring-1 ring-brand-beige hover:ring-brand-charcoal/30"
           )}
           aria-label={`切换到第 ${index + 1} 张图片`}
