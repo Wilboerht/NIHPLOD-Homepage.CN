@@ -499,7 +499,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           <div className="mb-2 mt-6 w-full">
                             <div className="mb-4 flex items-center justify-center gap-3">
                               <div className="h-px w-8 bg-[#00263E]/10" />
-                              <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/60">
+                              <span className="text-[10px] uppercase tracking-[0.2em] text-[#00263E]/40">
                                 相关产品
                               </span>
                               <div className="h-px w-8 bg-[#00263E]/10" />
@@ -741,7 +741,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         <div className="mb-4 flex flex-col items-center gap-7 sm:gap-14">
                           {/* 核心优势 */}
                           <div className="flex w-full flex-col items-center gap-3">
-                            <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/60">
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-[#00263E]/40">
                               核心优势
                             </span>
                             <div className="flex w-full flex-wrap justify-center gap-2 px-4">
@@ -771,7 +771,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             const isRestricted = supportText.includes("不支持");
                             return (
                               <div className="flex w-full flex-col items-center gap-3 px-6">
-<span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/60">
+<span className="text-[10px] uppercase tracking-[0.2em] text-[#00263E]/40">
                                   特殊时期支持
                                 </span>
                                 <div
@@ -803,7 +803,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Certifications (Quality Endorsement) */}
                           <div className="flex flex-col items-center gap-3">
-                            <span className="text-[11px] font-light tracking-[0.12em] text-[#00263E]/60">
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-[#00263E]/40">
                               检测认证
                             </span>
                             <div className="flex items-center gap-6 opacity-60 mix-blend-multiply">
@@ -1158,7 +1158,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
                     className="absolute inset-0 flex flex-col overflow-hidden px-10 xl:px-[8%]"
                   >
-                    <div className="flex h-full w-full flex-col justify-center">
+                    <div className="flex h-full w-full flex-col justify-center pt-6">
                       {/* Level 3 Header: 标题与切换器 */}
                       <header className="flex flex-shrink-0 items-center pb-4">
                         {/* 左侧标题组 */}
@@ -1180,17 +1180,17 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       </header>
 
                       {/* 内容主体：左侧边栏 + 右侧网格 */}
-                      <div className="flex max-h-[75vh] w-full flex-row items-start gap-12">
+                      <div className="flex h-full max-h-[75vh] w-full flex-row items-start gap-12">
                         {/* 左侧：信息侧边栏 (Info Sidebar) */}
                         <m.aside
-                          className="scrollbar-thin flex w-[25%] flex-shrink-0 flex-col gap-8 overflow-y-auto pr-4 pt-2"
+                          className="scrollbar-thin flex w-[25%] flex-shrink-0 flex-col gap-10 overflow-y-auto pr-4 pt-4"
                           initial={{ opacity: 0, x: -30 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.8, delay: 0.1, ease: [0.19, 1, 0.22, 1] }}
                         >
                           {/* Meta Item: Products */}
                           <div className="relative isolate flex flex-col">
-                            <h3 className="font-display z-10 mb-3 text-[11px] uppercase tracking-[0.2em] text-brand-charcoal/50">
+                            <h3 className="font-display z-10 mb-4 text-[11px] uppercase tracking-[0.2em] text-brand-charcoal">
                               相关产品
                             </h3>
 
@@ -1243,31 +1243,29 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Meta Item: Benefits (Tags) */}
                           <div className="flex flex-col">
-                            <h3 className="font-display text-[13px] font-medium tracking-[0.12em] text-brand-charcoal/80">
+                            <h3 className="font-display mb-4 text-[11px] uppercase tracking-[0.2em] text-brand-charcoal">
                               核心优势
                             </h3>
-                            <div className="flex flex-wrap gap-2">
-                              <div className="flex flex-wrap gap-x-6 gap-y-3">
-                                {(
-                                  selectedSubPlan?.benefits ||
-                                  selectedScheme.benefits || ["保湿锁水", "屏障增强"]
-                                ).map((tag) => (
-                                  <div key={tag} className="group flex items-center gap-2">
-                                    <span className="text-[10px] text-brand-charcoal-light transition-colors group-hover:text-brand-charcoal">
-                                      ✦
-                                    </span>
-                                    <span className="text-sm font-light tracking-[0.12em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
-                                      {tag}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                            <div className="flex flex-wrap gap-x-6 gap-y-3">
+                              {(
+                                selectedSubPlan?.benefits ||
+                                selectedScheme.benefits || ["保湿锁水", "屏障增强"]
+                              ).map((tag) => (
+                                <div key={tag} className="group flex items-center gap-2">
+                                  <span className="text-[10px] text-brand-charcoal/25">
+                                    ✦
+                                  </span>
+                                  <span className="text-sm font-light tracking-[0.12em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
+                                    {tag}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
                           </div>
 
                           {/* Meta Item: Certifications */}
                           <div className="flex flex-col">
-                            <h3 className="font-display text-[13px] font-medium tracking-[0.12em] text-brand-charcoal/80">
+                            <h3 className="font-display mb-4 text-[11px] uppercase tracking-[0.2em] text-brand-charcoal">
                               检测认证
                             </h3>
                             <div className="flex items-center gap-5">
@@ -1301,7 +1299,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                             return (
                               <div className="flex flex-col">
-                                <h3 className="font-display text-[13px] font-medium tracking-[0.12em] text-brand-charcoal/80">
+                                <h3 className="font-display mb-4 text-[11px] uppercase tracking-[0.2em] text-brand-charcoal">
                                   特殊时期支持
                                 </h3>
                                 <div
