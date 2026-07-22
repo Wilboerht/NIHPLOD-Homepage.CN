@@ -1020,10 +1020,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           onMouseLeave={() => setHoveredIndex(null)}
                           className={cn(
                             // Bento Box 样式：正方形卡片，宽高固定
-                            "group relative flex aspect-square w-full max-w-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-0 shadow-sm transition-all duration-500 active:scale-[0.98]",
+                            "group relative flex aspect-square w-full max-w-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out",
                             hoveredIndex === index
-                              ? "scale-[1.03] bg-[#FCF9F2] shadow-xl ring-1 ring-brand-charcoal/10"
-                              : "bg-[#FCF9F2]/70 hover:bg-[#FCF9F2]/90 hover:shadow-md"
+                              ? "scale-[1.02] border-brand-beige hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)]"
+                              : "hover:border-brand-beige/70 hover:shadow-md"
                           )}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -1032,44 +1032,44 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         >
                           {/* 标签 - 仅存在时显示 */}
                           {scheme.tag && (
-                            <span className="mb-6 rounded-full border border-brand-charcoal/20 px-4 py-1 text-[11px] tracking-widest text-brand-charcoal/60">
+                            <span className="mb-6 text-[11px] tracking-[0.15em] text-brand-charcoal/50">
                               {scheme.tag}
                             </span>
                           )}
 
                           {/* 图标 - 仅存在时显示 */}
                           {scheme.icon && (
-                            <div className="mb-6 text-brand-charcoal/80 [&>svg]:h-14 [&>svg]:w-14 [&>svg]:stroke-[1.2]">
+                            <div className="mb-6 text-[#B8A47B] [&>svg]:h-12 [&>svg]:w-12 [&>svg]:stroke-[1]">
                               {scheme.icon}
                             </div>
                           )}
 
                           {/* 标题 */}
-                          <h3 className="mb-5 text-center text-2xl font-light tracking-[0.15em] text-brand-charcoal">
+                          <h3 className="mb-3 text-center text-2xl font-light tracking-[0.12em] text-brand-charcoal">
                             {scheme.name}
                           </h3>
 
                           {/* 英文标题 (如果有) */}
                           {scheme.nameEn && (
-                            <span className="mb-5 text-[11px] font-medium uppercase tracking-[0.2em] text-brand-charcoal/50">
+                            <span className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-brand-charcoal/40">
                               {scheme.nameEn}
                             </span>
                           )}
 
-                          {/* 分隔线 - 仅在有描述时显示 */}
-                          {scheme.desc && <div className="mb-5 h-px w-10 bg-brand-charcoal/10" />}
+                          {/* 分隔线 */}
+                          {scheme.desc && <div className="mb-5 h-px w-10 bg-brand-beige/50" />}
 
                           {/* 描述文字 - 仅在有描述时显示 */}
                           {scheme.desc && (
-                            <p className="mb-7 max-w-[260px] px-2 text-center text-[13px] leading-relaxed tracking-wide text-brand-charcoal/65">
+                            <p className="mb-7 max-w-[260px] px-2 text-center text-[13px] font-light leading-relaxed tracking-wide text-brand-charcoal/55">
                               {scheme.desc}
                             </p>
                           )}
 
                           {/* 预计用时 */}
-                          <div className="flex items-center gap-2 rounded-full bg-brand-charcoal/5 px-4 py-1.5 text-[11px] tracking-wide text-brand-charcoal/55 transition-colors group-hover:bg-brand-charcoal/10 group-hover:text-brand-charcoal/75">
+                          <div className="flex items-center gap-2 text-brand-charcoal/45">
                             <Clock className="h-3.5 w-3.5" />
-                            <span>预计用时 {scheme.totalDuration}</span>
+                            <span className="text-[13px] font-light tracking-[0.1em]">{scheme.totalDuration}</span>
                           </div>
                         </m.button>
                       ))}
