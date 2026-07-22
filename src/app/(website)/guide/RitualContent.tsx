@@ -1190,7 +1190,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         >
                           {/* Meta Item: Products */}
                           <div className="relative isolate flex flex-col">
-                            <h3 className="font-display z-10 mb-3 text-[14px] font-light tracking-[0.12em] text-brand-charcoal">
+                            <h3 className="font-display z-10 mb-3 text-[11px] uppercase tracking-[0.2em] text-brand-charcoal/50">
                               相关产品
                             </h3>
 
@@ -1243,7 +1243,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Meta Item: Benefits (Tags) */}
                           <div className="flex flex-col">
-                            <h3 className="font-display mb-3 text-[14px] font-light tracking-[0.12em] text-brand-charcoal">
+                            <h3 className="font-display text-[13px] font-medium tracking-[0.12em] text-brand-charcoal/80">
                               核心优势
                             </h3>
                             <div className="flex flex-wrap gap-2">
@@ -1267,7 +1267,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Meta Item: Certifications */}
                           <div className="flex flex-col">
-                            <h3 className="font-display mb-3 text-[14px] font-light tracking-[0.12em] text-brand-charcoal">
+                            <h3 className="font-display text-[13px] font-medium tracking-[0.12em] text-brand-charcoal/80">
                               检测认证
                             </h3>
                             <div className="flex items-center gap-5">
@@ -1301,7 +1301,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                             return (
                               <div className="flex flex-col">
-                                <h3 className="font-display mb-3 text-[14px] font-light tracking-[0.12em] text-brand-charcoal">
+                                <h3 className="font-display text-[13px] font-medium tracking-[0.12em] text-brand-charcoal/80">
                                   特殊时期支持
                                 </h3>
                                 <div
