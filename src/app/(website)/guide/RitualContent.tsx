@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
   Clock,
@@ -704,14 +704,27 @@ interface RitualContentProps {
 }
 
 export function RitualContent({ products = [] }: RitualContentProps) {
-  // 当前层级: 1=模块选择, 2=方案选择, 3=步骤详情
-  const [currentLevel, setCurrentLevel] = useState(1);
-  // 选中的模块
-  const [selectedModule, setSelectedModule] = useState<ModuleId | null>(null);
+  // 层级导航状态由 URL searchParams 驱动，刷新/分享链接/浏览器后退均可恢复
+  // /guide -> Level 1；?module=xx -> Level 2；?module=xx&scheme=xx -> Level 3；&sub=xx -> 子方案 Tab
+  const searchParams = useSearchParams();
+  const moduleParam = searchParams.get("module");
+  const schemeParam = searchParams.get("scheme");
+  const subParam = searchParams.get("sub");
+
+  // 选中的模块（非法参数按未选中处理）
+  const selectedModule: ModuleId | null =
+    moduleParam && moduleParam in defaultModuleData ? (moduleParam as ModuleId) : null;
   // 选中的方案
-  const [selectedScheme, setSelectedScheme] = useState<Scheme | null>(null);
-  // 选中的子方案（Tab）
-  const [selectedSubPlan, setSelectedSubPlan] = useState<SubPlan | null>(null);
+  const selectedScheme: Scheme | null = selectedModule
+    ? (defaultModuleData[selectedModule].find((s) => s.id === schemeParam) ?? null)
+    : null;
+  // 选中的子方案（Tab），未指定时默认第一个
+  const selectedSubPlan: SubPlan | null =
+    selectedScheme?.subPlans?.find((sp) => sp.id === subParam) ??
+    selectedScheme?.subPlans?.[0] ??
+    null;
+  // 当前层级: 1=模块选择, 2=方案选择, 3=步骤详情
+  const currentLevel = !selectedModule ? 1 : !selectedScheme ? 2 : 3;
   // 悬停的模块索引
   const { isDrawerOpen } = useLayout();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -828,64 +841,45 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   // 使用默认数据
   const moduleData = defaultModuleData;
 
-  // 选择模块
+  // 选择模块：单品好物 (portable)、专业水疗 (professional)、居家仪式 (spa) 直接进入 Level 3 首个方案
   const selectModule = (moduleId: ModuleId) => {
-    setSelectedModule(moduleId);
-
-    // 特殊处理：单品好物 (portable), 专业水疗 (professional) 和 居家仪式 (spa) 直接进入 Level 3
-    if (moduleId === "portable" || moduleId === "professional" || moduleId === "spa") {
-      const schemes = moduleData[moduleId];
-      if (schemes && schemes.length > 0) {
-        setSelectedScheme(schemes[0]);
-        // 如果有子方案，自动选中第一个
-        if (schemes[0].subPlans && schemes[0].subPlans.length > 0) {
-          setSelectedSubPlan(schemes[0].subPlans[0]);
-        } else {
-          setSelectedSubPlan(null);
-        }
-        setCurrentLevel(3);
-      } else {
-        setCurrentLevel(2);
-      }
+    const schemes = moduleData[moduleId];
+    if (
+      (moduleId === "portable" || moduleId === "professional" || moduleId === "spa") &&
+      schemes &&
+      schemes.length > 0
+    ) {
+      router.push(`/guide?module=${moduleId}&scheme=${schemes[0].id}`, { scroll: false });
     } else {
-      setCurrentLevel(2);
+      router.push(`/guide?module=${moduleId}`, { scroll: false });
     }
   };
 
   // 选择方案（情景）
   const selectScheme = (scheme: Scheme) => {
-    setSelectedScheme(scheme);
+    if (!selectedModule) return;
     setCurrentStepIndex(0); // 重置轮播索引
-    // 如果有子方案，自动选中第一个
-    if (scheme.subPlans && scheme.subPlans.length > 0) {
-      setSelectedSubPlan(scheme.subPlans[0]);
-    } else {
-      setSelectedSubPlan(null);
-    }
-    setCurrentLevel(3);
+    router.push(`/guide?module=${selectedModule}&scheme=${scheme.id}`, { scroll: false });
   };
 
-  // 返回上一级
-  const _goBack = () => {
-    if (currentLevel === 3) {
-      // 如果是单品好物、专业水疗或居家仪式，直接返回 Level 1
-      if (
-        selectedModule === "portable" ||
-        selectedModule === "professional" ||
-        selectedModule === "spa"
-      ) {
-        setSelectedScheme(null);
-        setSelectedSubPlan(null);
-        setSelectedModule(null);
-        setCurrentLevel(1);
-      } else {
-        setSelectedScheme(null);
-        setCurrentLevel(2);
-      }
-    } else if (currentLevel === 2) {
-      setSelectedModule(null);
-      setCurrentLevel(1);
-    }
+  // 选择子方案（Tab）：用 replace，避免 Tab 切换堆叠浏览器历史
+  const selectSubPlan = (subPlan: SubPlan) => {
+    if (!selectedModule || !selectedScheme) return;
+    setCurrentStepIndex(0);
+    router.replace(
+      `/guide?module=${selectedModule}&scheme=${selectedScheme.id}&sub=${subPlan.id}`,
+      { scroll: false }
+    );
+  };
+
+  // 返回上一级（与浏览器后退行为一致）
+  const goBack = () => {
+    router.back();
+  };
+
+  // 返回 Level 1 模块选择
+  const goHome = () => {
+    router.push("/guide", { scroll: false });
   };
 
   // 监听滚动事件，同步轮播索引 (用户手动滚动时更新)
@@ -937,26 +931,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
                     type="button"
-                    onClick={() => {
-                      if (currentLevel === 3) {
-                        if (
-                          selectedModule === "portable" ||
-                          selectedModule === "professional" ||
-                          selectedModule === "spa"
-                        ) {
-                          setSelectedScheme(null);
-                          setSelectedSubPlan(null);
-                          setSelectedModule(null);
-                          setCurrentLevel(1);
-                        } else {
-                          setSelectedScheme(null);
-                          setCurrentLevel(2);
-                        }
-                      } else if (currentLevel === 2) {
-                        setSelectedModule(null);
-                        setCurrentLevel(1);
-                      }
-                    }}
+                    onClick={goBack}
+                    aria-label="返回上一级"
                     className="absolute left-6 flex h-full items-center text-[#00263E]/60 active:text-[#00263E]"
                   >
                     <ChevronLeft className="h-6 w-6" />
@@ -1136,10 +1112,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   return (
                                     <button
                                       key={subPlan.id}
-                                      onClick={() => {
-                                        setSelectedSubPlan(subPlan);
-                                        setCurrentStepIndex(0);
-                                      }}
+                                      onClick={() => selectSubPlan(subPlan)}
                                       className={cn(
                                         "relative flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
                                         isActive
@@ -1640,11 +1613,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         </div>
                       )}
                       <button
-                        onClick={() => {
-                          setSelectedScheme(null);
-                          setSelectedModule(null);
-                          setCurrentLevel(1);
-                        }}
+                        onClick={goHome}
                         className={cn(
                           "mt-6 w-full max-w-[280px] rounded-full py-3.5 text-[13px] font-medium tracking-[0.2em] transition-all duration-300 sm:mt-8 sm:py-4",
                           "border border-[#4A6272]/30 bg-brand-primary/15 text-[#4A6272] shadow-[0_4px_15px_-3px_rgba(0,38,62,0.1)] backdrop-blur-[4px]",
@@ -1677,11 +1646,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
               {/* 左侧：LOGO - 点击返回 Level 1 */}
               <button
                 type="button"
-                onClick={() => {
-                  setCurrentLevel(1);
-                  setSelectedModule(null);
-                  setSelectedScheme(null);
-                }}
+                onClick={goHome}
+                aria-label="返回护肤指南首页"
                 className="block opacity-90 transition-opacity hover:opacity-70"
               >
                 <div className="relative h-9 w-[150px]">
@@ -1911,10 +1877,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   <button
                                     key={subPlan.id}
                                     type="button"
-                                    onClick={() => {
-                                      setSelectedSubPlan(subPlan);
-                                      setCurrentStepIndex(0);
-                                    }}
+                                    onClick={() => selectSubPlan(subPlan)}
                                     className={cn(
                                       "relative rounded-full px-6 py-1.5 text-[13px] font-light tracking-[0.12em] transition-colors duration-300",
                                       isActive
