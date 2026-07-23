@@ -253,7 +253,7 @@ export function BottomNavBar() {
             exit={{ y: 100, opacity: 0 }}
             transition={dockTransition}
             className={cn(
-              "pointer-events-none fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[92%] pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
+              "pointer-events-none fixed bottom-3 left-0 right-0 z-50 mx-auto w-full max-w-[92%] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
               isStandalonePage && "hidden"
             )}
           >

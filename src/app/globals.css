@@ -898,7 +898,7 @@
 /* 手机端主按钮适当加宽，提升点击舒适度 */
 @media (max-width: 767px) {
   .home-container .home-explore-btn {
-    padding: 14px 56px;
+    padding: 14px 40px;
   }
 }
 
@@ -915,9 +915,6 @@
 
   .home-container .home-explore-btn {
     padding: 14px 28px;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
   }
 
   .home-container .footer-links {
