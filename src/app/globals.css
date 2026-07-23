@@ -1594,6 +1594,22 @@
     transform: none !important;
     box-shadow: 0 10px 25px -5px rgba(120, 90, 50, 0.08) !important;
   }
+
+  /* 禁用图片缩放、边框发光、文字变色等 hover 效果 */
+  .kinetic-cell:not(.no-hover-effect):hover .kinetic-cell-image {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .kinetic-cell:not(.no-hover-effect):hover::before {
+    opacity: 0 !important;
+  }
+
+  .kinetic-text-cell:not(.no-hover-effect):hover .kinetic-description,
+  .kinetic-text-cell:not(.no-hover-effect):hover .kinetic-body-sm {
+    color: inherit !important;
+    letter-spacing: inherit !important;
+  }
 }
 
 /* ========== 自定义彩色卡片样式 ========== */
