@@ -361,15 +361,15 @@ export function StoryContent() {
                           whileInView={{ opacity: 1, y: 0 }}
                           viewport={{ once: true, margin: "-20px" }}
                           transition={{ duration: 0.4, delay: idx * 0.1, ease: "easeOut" }}
-                          className="flex flex-col justify-start gap-2 rounded-lg bg-[#FFFFFF] p-5"
+                          className="flex flex-col justify-start gap-2 rounded-lg border border-brand-charcoal/[0.05] bg-[#FFFFFF] p-5"
                         >
-                          <span className="text-[12px] font-light text-brand-charcoal/60">
+                          <span className="text-[16px] font-light tracking-[0.1em] text-brand-charcoal/35">
                             {item.num}
                           </span>
                           <h3 className="text-[14px] font-normal leading-[22px] text-[#00263E]">
                             {item.title}
                           </h3>
-                          <p className="text-[13px] font-light leading-[22px] text-[#00263E]">
+                          <p className="text-[13px] font-light leading-[22px] text-[#00263E]/70">
                             {item.desc}
                           </p>
                         </m.div>
@@ -455,8 +455,8 @@ export function StoryContent() {
                 </section>
               )}
 
-              {/* Mobile Footer Copyright - 置于滚动内容末尾；pt-10 为收尾间距，底部留白由移动端容器 pb-6 统一提供 */}
-              <div className="flex flex-col items-center justify-center pt-10">
+              {/* Mobile Footer Copyright - mt-auto 保证内容不足一屏时版权贴底、内容超长时跟在文末；pt-10 为收尾间距，底部留白由移动端容器 pb-6 统一提供 */}
+              <div className="mt-auto flex flex-col items-center justify-center pt-10">
                 <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
