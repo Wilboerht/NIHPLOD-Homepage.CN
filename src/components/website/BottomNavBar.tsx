@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useEffect, useRef } from "react";
 
 import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Link } from "next-view-transitions";
@@ -110,6 +110,63 @@ export function BottomNavBar() {
     [pathname, setDrawerOpen]
   );
 
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuPanelRef = useRef<HTMLDivElement>(null);
+
+  // 路由变化时关闭菜单（兼容系统手势返回）
+  useEffect(() => {
+    setNavMenuOpen(false);
+  }, [pathname, setNavMenuOpen]);
+
+  // 抽屉展开时关闭菜单，防止收起后菜单状态残留
+  useEffect(() => {
+    if (isDrawerOpen) {
+      setNavMenuOpen(false);
+    }
+  }, [isDrawerOpen, setNavMenuOpen]);
+
+  // 菜单打开时：焦点移入、Escape 关闭、Tab 循环
+  useEffect(() => {
+    if (!isNavMenuOpen) return;
+
+    const panel = menuPanelRef.current;
+    if (!panel) return;
+
+    const getFocusables = () => Array.from(panel.querySelectorAll<HTMLElement>("a"));
+
+    const raf = requestAnimationFrame(() => {
+      getFocusables()[0]?.focus();
+    });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setNavMenuOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (e.key === "Tab") {
+        const items = getFocusables();
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isNavMenuOpen, setNavMenuOpen]);
+
   const PrimaryIcon = primaryNav.icon;
   const isPrimaryActive = isCurrentPage(pathname, primaryNav.href);
 
@@ -150,6 +207,7 @@ export function BottomNavBar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={menuTransition}
+            aria-hidden="true"
             className="fixed inset-0 z-40 bg-brand-charcoal/30 backdrop-blur-sm lg:hidden"
             onClick={() => setNavMenuOpen(false)}
           />
@@ -165,7 +223,7 @@ export function BottomNavBar() {
             exit={{ y: 100, opacity: 0 }}
             transition={dockTransition}
             className={cn(
-              "pointer-events-none fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[95%] pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
+              "pointer-events-none fixed bottom-4 left-0 right-0 z-50 mx-auto w-full max-w-[92%] pb-[env(safe-area-inset-bottom)] lg:bottom-6 lg:max-w-[700px] xl:max-w-[800px] 2xl:max-w-[1200px]",
               isStandalonePage && "hidden"
             )}
           >
@@ -173,13 +231,16 @@ export function BottomNavBar() {
             <AnimatePresence>
               {isNavMenuOpen && (
                 <m.div
+                  ref={menuPanelRef}
                   data-testid="mobile-nav-menu"
                   id="mobile-nav-menu"
+                  role="dialog"
+                  aria-label="导航菜单"
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={menuTransition}
-                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-56 rounded-2xl bg-brand-cream p-2 shadow-[0_8px_30px_-8px_theme(colors.brand.charcoal/0.1)] lg:hidden"
+                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-60 rounded-2xl bg-brand-cream p-2 shadow-[0_8px_30px_-8px_theme(colors.brand.charcoal/0.1)] lg:hidden"
                 >
                   {/* 指向下方的三角箭头 */}
                   <div
@@ -194,14 +255,14 @@ export function BottomNavBar() {
                           key={item.href}
                           href={item.href}
                           onClick={() => setNavMenuOpen(false)}
-                          className="group flex items-center gap-3 rounded-2xl bg-transparent px-3 py-3 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.97] active:bg-brand-charcoal/[0.05]"
+                          className="group flex items-center gap-3 rounded-xl bg-transparent px-3 py-2.5 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.97] active:bg-brand-charcoal/[0.05]"
                         >
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/40 transition-colors group-hover:bg-white/60">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/60 transition-colors group-hover:bg-white/80">
                             <Icon className="h-5 w-5 text-brand-primary" />
                           </div>
                           <div className="flex flex-col">
                             <span
-                              className="text-[14px] font-light leading-[21px] tracking-[0.08em] text-brand-charcoal"
+                              className="text-[13px] font-normal leading-[20px] tracking-[0.06em] text-brand-charcoal"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
@@ -220,8 +281,8 @@ export function BottomNavBar() {
             <nav
               className={cn(
                 "pointer-events-auto flex items-center justify-between",
-                "rounded-2xl bg-brand-cream px-4 py-3 shadow-[0_1px_1px_theme(colors.brand.charcoal/0.02),0_8px_24px_-6px_theme(colors.brand.charcoal/0.08)]",
-                "lg:h-[76px] lg:rounded-[20px] lg:px-8 lg:py-0",
+                "rounded-full bg-brand-cream/90 px-2 py-1.5 shadow-[0_2px_16px_-6px_theme(colors.brand.charcoal/0.16)] backdrop-blur-md",
+                "lg:h-[76px] lg:rounded-[20px] lg:bg-brand-cream lg:px-8 lg:py-0 lg:shadow-[0_1px_1px_theme(colors.brand.charcoal/0.02),0_8px_24px_-6px_theme(colors.brand.charcoal/0.08)] lg:backdrop-blur-none",
                 "xl:px-10"
               )}
               aria-label="主要导航"
@@ -233,29 +294,15 @@ export function BottomNavBar() {
                 onClick={(e) => handleNavClick(primaryNav.href, e)}
                 aria-current={isPrimaryActive ? "page" : undefined}
                 aria-describedby={isPrimaryActive ? "current-page-hint" : undefined}
-                className={cn(
-                  "group relative flex items-center gap-2 rounded-xl px-2 py-2 transition-all active:scale-[0.97] active:opacity-70 lg:hidden",
-                  isPrimaryActive ? "bg-brand-charcoal/[0.05]" : "hover:bg-brand-charcoal/[0.03]"
-                )}
+                className="flex items-center gap-2 rounded-full py-3 pl-3 pr-2.5 transition-all active:scale-[0.97] active:opacity-70 lg:hidden"
               >
-                {/* 当前位置左侧金色竖条 */}
-                {isPrimaryActive && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-brand-primary"
-                  />
-                )}
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/40">
-                  <PrimaryIcon className="h-6 w-6 text-brand-primary" />
-                </div>
-                  <div className="flex flex-col">
-                    <span
-                      className="text-[14px] font-light leading-[22px] tracking-[0.08em] text-brand-charcoal"
-                      style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
-                    >
-                      {primaryNav.label}
-                    </span>
-                </div>
+                <PrimaryIcon className="h-5 w-5 text-brand-primary" />
+                <span
+                  className="text-[13px] font-normal leading-[20px] tracking-[0.06em] text-brand-charcoal"
+                  style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+                >
+                  {primaryNav.label}
+                </span>
               </Link>
 
               {/* 桌面端左侧固定导航 */}
@@ -263,13 +310,14 @@ export function BottomNavBar() {
 
               {/* 移动端：菜单按钮 */}
               <button
+                ref={menuButtonRef}
                 data-testid="mobile-menu-button"
                 type="button"
                 onClick={() => setNavMenuOpen(!isNavMenuOpen)}
                 aria-expanded={isNavMenuOpen}
                 aria-controls="mobile-nav-menu"
                 aria-label={isNavMenuOpen ? "关闭菜单" : "打开菜单"}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-charcoal/10 bg-transparent transition-colors active:bg-brand-beige/50 lg:hidden"
+                className="flex h-11 w-11 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/[0.06] lg:hidden"
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {isNavMenuOpen ? (
