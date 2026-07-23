@@ -79,11 +79,6 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: [
       'lucide-react',
-      'echarts',
-      'echarts-for-react',
-      'recharts',
-      'three',
-      '@react-three/fiber',
       'framer-motion',
       '@tiptap/react',
       '@tiptap/starter-kit',
