@@ -1793,6 +1793,8 @@
   .kinetic-ambient-badge {
     width: min(60vw, 260px);
     z-index: 4;
+    pointer-events: auto;
+    cursor: pointer;
   }
 
   .kinetic-ambient-badge-img {

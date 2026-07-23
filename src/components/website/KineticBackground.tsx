@@ -10,7 +10,7 @@ import { animate, m, useMotionValue } from "framer-motion";
 /** 移动端氛围层 Slogan 轮播数据 */
 const AMBIENT_SLOGANS = [
   { zh: "逆转时光", en: "REVERSE TIME" },
-  { zh: "更少步骤，更多呵护", en: "LESS STEPS, MORE CARE" },
+  { zh: "更少步骤\n更多呵护", en: "LESS STEPS, MORE CARE" },
   { zh: "美丽不该复杂", en: "BEAUTY WITHOUT COMPLEXITY" },
   { zh: "源自海豚的灵感", en: "INSPIRED BY DOLPHINS" },
 ];
@@ -160,7 +160,7 @@ export function KineticBackground() {
               })}
             </m.div>
           </div>
-          <div className="kinetic-ambient-badge">
+          <Link href="/products" className="kinetic-ambient-badge" aria-label="探索产品系列">
             <Image
               src="/images/gift-badge.webp"
               alt="NIHPLOD 护肤系列全家福"
@@ -168,7 +168,7 @@ export function KineticBackground() {
               height={163}
               className="kinetic-ambient-badge-img"
             />
-          </div>
+          </Link>
         </div>
       </div>
 
