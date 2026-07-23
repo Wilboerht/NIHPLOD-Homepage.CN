@@ -155,9 +155,9 @@ export function FAQContent() {
         )}
       >
         {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
-        <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-[#FBF8F0]/95 px-6 backdrop-blur-sm transition-all sm:justify-start sm:border-brand-charcoal/5 sm:px-[8%]">
+        <div className="sticky top-0 z-50 flex h-[56px] shrink-0 items-center justify-center border-b border-transparent bg-[#FBF8F0]/95 px-6 backdrop-blur-sm transition-all sm:h-[88px] sm:justify-start sm:border-brand-charcoal/5 sm:px-[8%]">
           <Link href="/" className="mt-1 flex items-center justify-center">
-            <div className="relative h-[42px] w-[150px] sm:h-9 sm:w-[150px]">
+            <div className="relative h-[28px] w-[100px] sm:h-9 sm:w-[150px]">
               <Image
                 src="/images/NIHPLOD-logo.svg"
                 alt="NIHPLOD"
@@ -180,11 +180,11 @@ export function FAQContent() {
           </div>
 
           {/* Scrollable Question List */}
-          <div className="min-h-0 flex-1 scroll-pb-6 overflow-y-auto px-4 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
+          <div className="min-h-0 flex-1 scroll-pb-6 overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
             {/* Page Title - Mobile */}
             <div className="mb-7 flex flex-col items-center pb-2 pt-2 sm:hidden">
               <h1
-                className="text-[24px] font-light tracking-[0.15em] text-[#00263E]"
+                className="text-[22px] font-medium tracking-[0.15em] text-[#00263E]"
                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
               >
                 常见问题
@@ -197,10 +197,10 @@ export function FAQContent() {
                   key={index}
                   className={cn(
                     "group transition-colors duration-500 ease-out",
-                    "mb-3 rounded-lg p-4 sm:mb-0 sm:overflow-visible sm:rounded-none sm:border-b sm:border-l-[1.5px] sm:border-brand-charcoal/10 sm:border-l-transparent sm:p-0",
+                    "mb-3 rounded-lg border border-brand-charcoal/8 p-4 sm:mb-0 sm:overflow-visible sm:rounded-none sm:border-b sm:border-l-[1.5px] sm:border-brand-charcoal/10 sm:border-l-transparent sm:border-t-0 sm:border-r-0 sm:p-0",
                     openIndex === index
                       ? "bg-[#FFFFFF] sm:border-l-[#B5AC88] sm:bg-[#FFFFFF]/40"
-                      : "ring-[1.5px] ring-inset ring-[#FFFFFF] sm:ring-0 sm:hover:bg-white/20"
+                      : "sm:ring-0 sm:hover:bg-white/20"
                   )}
                 >
                   <button
@@ -209,7 +209,7 @@ export function FAQContent() {
                   >
                     <span
                       className={cn(
-                        "flex-1 text-[14px] font-light leading-snug tracking-[0.12em] text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
+                        "flex-1 text-[14px] font-normal leading-snug tracking-[0.08em] text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
                         openIndex === index
                           ? "text-brand-charcoal"
                           : "group-hover:text-brand-charcoal"
@@ -240,7 +240,7 @@ export function FAQContent() {
                       >
                         <div style={{ overflow: "hidden" }}>
                           <div
-                            className="border-l border-brand-charcoal/20 pb-5 pl-4 pr-4 pt-5 text-[14px] font-light leading-[1.7] text-brand-charcoal/80 sm:border-l-0 sm:pb-8 sm:pl-6 sm:pr-6 sm:pt-0 lg:pr-12 lg:text-[15px] lg:leading-[1.8]"
+                            className="border-l border-brand-charcoal/20 pb-5 pl-4 pr-4 pt-5 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/80 sm:border-l-0 sm:pb-8 sm:pl-6 sm:pr-6 sm:pt-0 lg:pr-12 lg:text-[15px] lg:leading-[1.8]"
                             style={{
                               fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                             }}
@@ -265,7 +265,7 @@ export function FAQContent() {
               </p>
               <button
                 onClick={() => router.push("/contact?type=support")}
-                className="rounded-full border border-brand-beige/60 px-6 py-2.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 hover:border-brand-charcoal/20 hover:text-brand-charcoal active:scale-[0.97]"
+                className="rounded-full border border-brand-beige/60 px-6 py-3.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 hover:border-brand-charcoal/20 hover:text-brand-charcoal active:scale-[0.97]"
                 style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
               >
                 联系我们
@@ -274,8 +274,8 @@ export function FAQContent() {
           </div>
 
           {/* Footer Info */}
-          <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-4">
-            <p className="text-center text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+          <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-10">
+            <p className="text-center text-[12px] font-light tracking-[0.1em] text-brand-charcoal/[0.48]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>
           </div>
