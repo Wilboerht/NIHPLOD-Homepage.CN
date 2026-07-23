@@ -821,6 +821,40 @@
   letter-spacing: 0.12em;
 }
 
+/* 手机端 footer 排版优化：增加分隔细线，备案信息垂直堆叠 */
+@media (max-width: 767px) {
+  .home-container .home-footer {
+    position: relative;
+    gap: 0.625rem;
+    padding-top: 1.25rem;
+    width: 100%;
+  }
+
+  .home-container .home-footer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 1px;
+    background-color: rgba(0, 38, 62, 0.12);
+  }
+
+  .home-container .footer-copyright {
+    letter-spacing: 0.1em;
+  }
+
+  .home-container .footer-beian {
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .home-container .footer-beian > span[aria-hidden="true"] {
+    display: none;
+  }
+}
+
 /* 响应式 - 将断点提升至包含 iPad mini (820px) */
 @media (max-width: 820px) {
   .home-container .home-explore-btn {
