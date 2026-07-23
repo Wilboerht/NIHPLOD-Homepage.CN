@@ -146,7 +146,7 @@ export function KineticBackground() {
           </div>
           <div className="kinetic-ambient-slogan">
             <m.div className="kinetic-ambient-slogan-track" style={{ y: sloganY }}>
-              {[...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS].map((s, i) => {
+              {LOOP_SLOGANS.map((s, i) => {
                 const d = i - sloganIndex;
                 const level = Math.min(Math.abs(d), 2);
                 return (
