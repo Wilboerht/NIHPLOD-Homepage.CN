@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, useId, type ReactNode } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useId, type ReactNode, type CSSProperties } from "react";
 import { m } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -25,7 +25,7 @@ const SLIDE_TRANSITION = {
 export function DrawerPageContainer({
   children,
   defaultExpanded = false,
-  buttonWidth = "w-[140px] lg:w-[160px]",
+  buttonWidth = "px-5 lg:w-[160px] lg:px-0",
   shadowOpacity = 0.2,
   wrapperClassName = "!-top-[1px] !pointer-events-none",
   onCollapse,
@@ -100,10 +100,13 @@ export function DrawerPageContainer({
         className="pointer-events-none h-full"
       >
         <div
-          className="pointer-events-none flex h-full flex-col items-center"
-          style={{
-            filter: `drop-shadow(4px 2px 1px rgba(0, 38, 62, ${shadowOpacity}))`,
-          }}
+          className="pointer-events-none flex h-full flex-col items-center [filter:var(--drawer-shadow-sm)] lg:[filter:var(--drawer-shadow-lg)]"
+          style={
+            {
+              "--drawer-shadow-sm": `drop-shadow(0 6px 16px rgba(0, 38, 62, ${(shadowOpacity * 0.35).toFixed(3)}))`,
+              "--drawer-shadow-lg": `drop-shadow(4px 2px 1px rgba(0, 38, 62, ${shadowOpacity}))`,
+            } as CSSProperties
+          }
         >
           <m.div
             className="relative z-20 flex h-full w-full flex-col"
@@ -134,11 +137,13 @@ export function DrawerPageContainer({
               aria-controls={contentId}
               aria-label={isDrawerOpen ? "收起页面内容" : "展开页面内容"}
               className={cn(
-                "group pointer-events-auto relative z-30 -mt-[1px] flex items-center justify-center self-center overflow-hidden rounded-b-2xl bg-[#FBF8F0] py-3 lg:py-3.5",
+                "group pointer-events-auto relative z-30 flex items-center justify-center self-center overflow-hidden",
+                "mt-2 rounded-full bg-brand-cream/90 py-3 shadow-[0_2px_16px_-6px_rgba(0,38,62,0.16)] backdrop-blur-md",
+                "lg:-mt-[1px] lg:rounded-t-none lg:rounded-b-2xl lg:bg-[#FBF8F0] lg:py-3.5 lg:shadow-none lg:backdrop-blur-none",
                 buttonWidth
               )}
             >
-              <div className="texture-overlay absolute inset-0 rounded-b-2xl" />
+              <div className="texture-overlay absolute inset-0 hidden rounded-b-2xl lg:block" />
               <m.div
                 className="relative z-10 flex flex-col items-center"
                 animate={{ rotate: isDrawerOpen ? 180 : 0, scale: 1 }}
@@ -146,8 +151,8 @@ export function DrawerPageContainer({
                 whileTap={{ scale: 0.95 }}
                 transition={TRANSITION}
               >
-                <ChevronDown className="h-7 w-7 text-brand-primary" />
-                <ChevronDown className="-mt-5 h-7 w-7 text-brand-primary" />
+                <ChevronDown className="h-5 w-5 text-brand-primary lg:h-7 lg:w-7" />
+                <ChevronDown className="-mt-5 hidden h-7 w-7 text-brand-primary lg:block" />
               </m.div>
             </button>
           </m.div>
