@@ -222,7 +222,7 @@ function MobileFooterMenu({
         type="button"
         onClick={() => setIsOpen(true)}
         whileTap={{ scale: 0.95 }}
-        className="pointer-events-auto relative z-[30] flex min-h-0 min-w-0 cursor-pointer items-center text-[13px] tracking-[0.25em] text-brand-primary transition-all hover:text-brand-primary-dark"
+        className="pointer-events-auto relative z-[30] flex min-h-0 min-w-0 cursor-pointer items-center text-[14px] font-medium tracking-[0.08em] text-brand-primary transition-all hover:text-brand-primary-dark"
       >
         <span>更多</span>
       </m.button>
