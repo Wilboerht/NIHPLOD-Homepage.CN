@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { calculateShippingFee } from "@/lib/shipping-config";
 import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
@@ -271,10 +272,8 @@ export async function GET(request: NextRequest) {
       expiresAt: uc.expiresAt.toISOString(),
     }));
 
-    // 运费计算（简单策略：满 99 元包邮，否则 10 元）
-    const FREE_SHIPPING_THRESHOLD = 99;
-    const BASE_SHIPPING_FEE = 10;
-    const shippingFee = totalPrice >= FREE_SHIPPING_THRESHOLD ? 0 : BASE_SHIPPING_FEE;
+    // 运费计算（从 Setting 表读取配置，默认免运费）
+    const shippingFee = await calculateShippingFee(totalPrice);
 
     return NextResponse.json({
       success: true,

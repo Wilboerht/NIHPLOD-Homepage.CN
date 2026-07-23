@@ -3,14 +3,14 @@
  *
  * 统一项目中所有 IP 获取逻辑，避免不同模块因取法不一致导致安全策略被绕过。
  *
- * 在反向代理架构中（Vercel/Nginx/ALB），X-Forwarded-For 格式为：
+ * 在反向代理架构中（Nginx/ALB），X-Forwarded-For 格式为：
  *   client, proxy1, proxy2, ..., lastProxy
  *
  * 通过 TRUST_PROXY_HOPS 环境变量控制取第 N 个 IP（从客户端开始计数）。
- * 例如：经过 2 层反向代理（Nginx + Vercel），则设置 TRUST_PROXY_HOPS=2，取第 2 个 IP。
+ * 例如：经过 2 层反向代理，则设置 TRUST_PROXY_HOPS=2，取第 2 个 IP。
  *
  * 默认行为：
- * - 信任代理头（TRUST_PROXY=true / development / Vercel）时，按 TRUST_PROXY_HOPS 取 IP
+ * - 信任代理头（TRUST_PROXY=true / development）时，按 TRUST_PROXY_HOPS 取 IP
  * - 否则返回 "unknown"
  */
 
@@ -33,8 +33,7 @@ export function getClientIP(
   const trustProxy =
     options.trustProxy ??
     (process.env.TRUST_PROXY === "true" ||
-      process.env.NODE_ENV === "development" ||
-      process.env.VERCEL === "1");
+      process.env.NODE_ENV === "development");
 
   if (!trustProxy) {
     // 非代理环境：回退到 socket 直连地址，避免所有限流共用 "unknown" 桶

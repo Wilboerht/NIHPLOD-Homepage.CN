@@ -67,7 +67,7 @@ const nextConfig = {
   // build 脚本已默认传递 --webpack 标志（见 package.json）。
   // 追踪：待 Tailwind 升级到 v4 后可移除 webpack 配置并改用 Turbopack。
 
-  // 优化: 将大型服务端依赖外部化，避免打包进每个 serverless function
+  // 将大型服务端依赖外部化，避免打包进每个路由 bundle
   serverExternalPackages: [
     'sharp',
     '@prisma/client',

@@ -179,11 +179,11 @@ export async function confirmReceipt(
       return { success: false, error: "订单状态不正确" };
     }
 
-    // 更新订单状态：SHIPPED → DELIVERED（已签收）
+    // 更新订单状态：SHIPPED → COMPLETED（用户确认收货即完成）
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: OrderStatus.DELIVERED,
+        status: OrderStatus.COMPLETED,
         receivedAt: new Date(),
       },
     });

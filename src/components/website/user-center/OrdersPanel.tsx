@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { Package, ChevronRight, Loader2 } from "lucide-react";
+import { Package, ChevronRight, Loader2, Truck, XCircle, CheckCircle, RotateCcw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { m } from "framer-motion";
 
 interface OrderItem {
@@ -252,16 +253,84 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
 
 function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
   const { openPay, closeUserCenter } = useAuth();
-  const status = STATUS_CONFIG[order.status] || {
-    label: order.status,
+  const { success: showSuccess, error: showError } = useToast();
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [currentStatus, setCurrentStatus] = useState(order.status);
+  const status = STATUS_CONFIG[currentStatus] || {
+    label: currentStatus,
     color: "text-brand-charcoal/50 bg-black/5 border-black/5",
   };
 
   const handlePay = () => {
-    // 先打开支付模态框，再关闭用户中心（避免组件卸载导致的闭包问题）
     openPay(order.id);
     closeUserCenter();
   };
+
+  const handleCancel = useCallback(async () => {
+    if (!window.confirm("确定要取消该订单吗？")) return;
+    setActionLoading("cancel");
+    try {
+      const res = await fetchWithAuth(`/api/orders/${order.id}/cancel`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        showSuccess("订单已取消");
+        setCurrentStatus("CANCELLED");
+      } else {
+        showError(data.error?.message || "取消失败");
+      }
+    } catch {
+      showError("网络错误，请稍后重试");
+    } finally {
+      setActionLoading(null);
+    }
+  }, [order.id, showSuccess, showError]);
+
+  const handleConfirmReceipt = useCallback(async () => {
+    if (!window.confirm("确认已收到商品吗？")) return;
+    setActionLoading("confirm");
+    try {
+      const res = await fetchWithAuth(`/api/orders/${order.id}/confirm`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        showSuccess("已确认收货");
+        setCurrentStatus("COMPLETED");
+      } else {
+        showError(data.error?.message || "操作失败");
+      }
+    } catch {
+      showError("网络错误，请稍后重试");
+    } finally {
+      setActionLoading(null);
+    }
+  }, [order.id, showSuccess, showError]);
+
+  const handleRefund = useCallback(async () => {
+    const reason = window.prompt("请输入退款原因：");
+    if (reason === null) return;
+    if (!reason.trim()) {
+      showError("请填写退款原因");
+      return;
+    }
+    setActionLoading("refund");
+    try {
+      const res = await fetchWithAuth(`/api/orders/${order.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showSuccess("退款申请已提交");
+        setCurrentStatus("REFUNDING");
+      } else {
+        showError(data.error?.message || "申请失败");
+      }
+    } catch {
+      showError("网络错误，请稍后重试");
+    } finally {
+      setActionLoading(null);
+    }
+  }, [order.id, showSuccess, showError]);
 
   return (
     <div className="flex h-full flex-col pt-6 md:pt-10">
@@ -362,15 +431,79 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
           </div>
         </div>
 
-        {/* 待付款订单显示付款按钮 */}
-        {order.status === "PENDING" && (
-          <button
-            onClick={handlePay}
-            className="mt-8 w-full rounded-xl bg-brand-primary py-4 text-[15px] font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-primary/20 transition-all hover:scale-[1.02] hover:bg-brand-primary-dark active:scale-[0.98]"
-          >
-            立即付款
-          </button>
-        )}
+        {/* 订单操作按钮 */}
+        <div className="mt-8 space-y-3">
+          {/* 待付款：付款 + 取消 */}
+          {(currentStatus === "PENDING" || currentStatus === "PAYING") && (
+            <>
+              <button
+                onClick={handlePay}
+                disabled={actionLoading !== null}
+                className="w-full rounded-xl bg-brand-primary py-4 text-[15px] font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-primary/20 transition-all hover:scale-[1.02] hover:bg-brand-primary-dark active:scale-[0.98] disabled:opacity-50"
+              >
+                立即付款
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={actionLoading !== null}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-300/60 py-3.5 text-[14px] font-medium tracking-wide text-stone-500 transition-all hover:border-stone-400 hover:text-stone-700 disabled:opacity-50"
+              >
+                {actionLoading === "cancel" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+                取消订单
+              </button>
+            </>
+          )}
+
+          {/* 已发货：确认收货 + 申请退款 */}
+          {currentStatus === "SHIPPED" && (
+            <>
+              <button
+                onClick={handleConfirmReceipt}
+                disabled={actionLoading !== null}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary py-4 text-[15px] font-bold tracking-[0.15em] text-white shadow-lg shadow-brand-primary/20 transition-all hover:scale-[1.02] hover:bg-brand-primary-dark active:scale-[0.98] disabled:opacity-50"
+              >
+                {actionLoading === "confirm" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4" />
+                )}
+                确认收货
+              </button>
+              <button
+                onClick={handleRefund}
+                disabled={actionLoading !== null}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-300/60 py-3.5 text-[14px] font-medium tracking-wide text-stone-500 transition-all hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+              >
+                {actionLoading === "refund" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-4 w-4" />
+                )}
+                申请退款
+              </button>
+            </>
+          )}
+
+          {/* 已付款/处理中：申请退款 */}
+          {(currentStatus === "PAID" || currentStatus === "PROCESSING") && (
+            <button
+              onClick={handleRefund}
+              disabled={actionLoading !== null}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-300/60 py-3.5 text-[14px] font-medium tracking-wide text-stone-500 transition-all hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+            >
+              {actionLoading === "refund" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+              申请退款
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

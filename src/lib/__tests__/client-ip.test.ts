@@ -17,7 +17,6 @@ describe("getClientIP", () => {
     if (typeof process !== "undefined") {
       delete process.env.TRUST_PROXY;
       delete process.env.TRUST_PROXY_HOPS;
-      delete process.env.VERCEL;
     }
   });
 
@@ -72,9 +71,9 @@ describe("getClientIP", () => {
     expect(getClientIP(request)).toBe("9.9.9.9");
   });
 
-  it("Vercel 环境自动信任代理", () => {
+  it("开发环境自动信任代理", () => {
     process.env.TRUST_PROXY = "false";
-    process.env.VERCEL = "1";
+    process.env.NODE_ENV = "development";
 
     const request = createRequest({
       "x-forwarded-for": "1.2.3.4",

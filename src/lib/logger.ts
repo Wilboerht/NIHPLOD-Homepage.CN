@@ -94,7 +94,7 @@ function createLogger(module: string) {
       context,
     };
 
-    // 生产环境下使用 JSON 格式，以便被云端日志服务（如 Vercel, AWS CloudWatch, ELK）自动解析
+    // 生产环境下使用 JSON 格式，以便被日志服务（如 PM2 + ELK、CloudWatch）自动解析
     if (process.env.NODE_ENV === "production") {
       const jsonLog = JSON.stringify({
         ...entry,

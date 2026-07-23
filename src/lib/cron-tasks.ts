@@ -1,7 +1,7 @@
 /**
  * 定时任务管理器
- * 自托管服务器上运行周期性任务
- * 使用 node-cron 替代 Vercel Cron
+ * 自托管服务器上使用 node-cron 运行周期性任务
+ * 通过 ENABLE_LOCAL_CRON=true 环境变量启用
  */
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
@@ -120,10 +120,8 @@ let isInitialized = false;
 
 /**
  * 初始化所有定时任务
- * 在应用启动时调用
- *
- * 注意：Vercel 部署请使用 HTTP Cron 端点（/api/cron/*），
- * 自托管服务器可设置 ENABLE_LOCAL_CRON=true 启用 node-cron
+ * 在应用启动时调用（通过 instrumentation.ts → server-init.ts）
+ * 设置 ENABLE_LOCAL_CRON=true 启用 node-cron 进程内定时任务
  */
 export function isLocalCronEnabled(): boolean {
   return process.env.ENABLE_LOCAL_CRON === "true";

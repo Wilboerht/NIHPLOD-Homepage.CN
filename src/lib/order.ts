@@ -6,6 +6,7 @@ import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { ensureMoneyPrecision } from "./money";
 import { randomInt } from "./random";
+import { calculateShippingFee } from "./shipping-config";
 import { apiConsole } from "@/lib/logger";
 
 /**
@@ -223,8 +224,11 @@ export async function createOrder(
         }
       }
 
-      // 4. 创建订单
-      const payAmount = ensureMoneyPrecision(Math.max(0, totalAmount - discountAmount));
+      // 4. 计算运费（从 Setting 表读取配置，默认免运费）
+      const shippingFee = await calculateShippingFee(totalAmount);
+
+      // 5. 创建订单
+      const payAmount = ensureMoneyPrecision(Math.max(0, totalAmount + shippingFee - discountAmount));
       const orderNo = generateOrderNo();
 
       const order = await tx.order.create({
@@ -233,6 +237,7 @@ export async function createOrder(
           userId,
           status: OrderStatus.PENDING,
           totalAmount,
+          shippingFee,
           discountAmount,
           payAmount,
           // 收货信息快照
@@ -258,7 +263,7 @@ export async function createOrder(
         },
       });
 
-      // 5. 清除购物车中已购买的商品（仅购物车结算时清理，直接购买不清理）
+      // 6. 清除购物车中已购买的商品（仅购物车结算时清理，直接购买不清理）
       if (source !== "direct_buy") {
         const productIds = items.map((i) => i.productId);
         await tx.cartItem.deleteMany({
@@ -419,6 +424,7 @@ export async function autoCancelExpiredOrders(
 /**
  * 自动完成（确认收货）超时未确认的已发货订单
  * 默认 15 天后自动收货
+ * 同时处理 SHIPPED 和 DELIVERED 状态的订单（兼容历史数据）
  */
 export async function autoCompleteShippedOrders(
   days = 15
@@ -428,7 +434,7 @@ export async function autoCompleteShippedOrders(
 
     const result = await prisma.order.updateMany({
       where: {
-        status: OrderStatus.SHIPPED,
+        status: { in: [OrderStatus.SHIPPED, OrderStatus.DELIVERED] },
         shippedAt: {
           lt: expiredTime,
         },
@@ -436,7 +442,6 @@ export async function autoCompleteShippedOrders(
       data: {
         status: OrderStatus.COMPLETED,
         receivedAt: new Date(),
-        // Prisma 不允许在 updateMany 中基于已有字段做字符串拼接，所以暂时不更新 adminNote
       },
     });
 
