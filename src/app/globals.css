@@ -1624,9 +1624,9 @@
     display: none !important;
   }
 
-  /* 水印提亮 - 作为氛围层的主视觉元素 */
+  /* 水印提亮 - 深色水印在浅色背景上形成品牌纹理 */
   .kinetic-watermark-mobile {
-    opacity: 0.32;
+    opacity: 0.06;
   }
 
   /* 氛围层容器 - 呼吸渐变 + 浮动光点 */
@@ -1646,20 +1646,21 @@
     inset: -20%;
     background: radial-gradient(
       ellipse at 50% 38%,
-      rgba(251, 248, 240, 0.5) 0%,
-      rgba(212, 196, 168, 0.12) 45%,
+      rgba(212, 196, 168, 0.25) 0%,
+      rgba(180, 160, 130, 0.08) 45%,
       transparent 72%
     );
     animation: kinetic-ambient-breathe 8s ease-in-out infinite;
   }
 
-  /* 浮动光点 - 模拟水中微粒 */
+  /* 浮动光点 - 模拟水中微粒（暖棕色，在浅色背景上可见） */
   .kinetic-ambient-particle {
     position: absolute;
     border-radius: 50%;
     background: radial-gradient(
       circle,
-      rgba(251, 248, 240, 0.55) 0%,
+      rgba(139, 115, 85, 0.4) 0%,
+      rgba(139, 115, 85, 0.1) 50%,
       transparent 70%
     );
     animation: kinetic-ambient-float linear infinite;
@@ -1667,28 +1668,28 @@
   }
 
   .kinetic-ambient-particle-1 {
-    width: 5px;
-    height: 5px;
+    width: 8px;
+    height: 8px;
     left: 22%;
-    bottom: -8px;
+    bottom: -12px;
     animation-duration: 14s;
     animation-delay: 0s;
   }
 
   .kinetic-ambient-particle-2 {
-    width: 3px;
-    height: 3px;
+    width: 6px;
+    height: 6px;
     left: 58%;
-    bottom: -8px;
+    bottom: -12px;
     animation-duration: 18s;
     animation-delay: -6s;
   }
 
   .kinetic-ambient-particle-3 {
-    width: 4px;
-    height: 4px;
+    width: 7px;
+    height: 7px;
     left: 78%;
-    bottom: -8px;
+    bottom: -12px;
     animation-duration: 16s;
     animation-delay: -10s;
   }
@@ -1717,18 +1718,18 @@
     transform: translateY(0) translateX(0);
     opacity: 0;
   }
-  8% {
-    opacity: 0.5;
+  5% {
+    opacity: 0.7;
   }
   50% {
-    transform: translateY(-50vh) translateX(10px);
-    opacity: 0.3;
+    transform: translateY(-50vh) translateX(12px);
+    opacity: 0.4;
   }
-  92% {
+  95% {
     opacity: 0;
   }
   100% {
-    transform: translateY(-105vh) translateX(-6px);
+    transform: translateY(-105vh) translateX(-8px);
     opacity: 0;
   }
 }

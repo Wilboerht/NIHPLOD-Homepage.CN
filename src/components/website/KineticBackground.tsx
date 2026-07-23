@@ -74,10 +74,10 @@ export function KineticBackground() {
             unoptimized
           />
         </div>
-        {/* 移动端水印 - 竖版，opacity 由 CSS 控制以便移动端提亮 */}
+        {/* 移动端水印 - 竖版，深色水印在浅色背景上形成品牌纹理 */}
         <div
           className="kinetic-watermark-mobile absolute inset-0 block md:hidden"
-          style={{ filter: "brightness(0) invert(0.95)" }}
+          style={{ filter: "brightness(0)" }}
         >
           <Image
             src="/images/watermark-mobile.webp"
