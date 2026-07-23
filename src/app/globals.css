@@ -606,12 +606,6 @@
     padding: 2.5rem 0 1.5rem;
   }
 
-  .home-container .title {
-    font-size: 1.1rem;
-    line-height: 1.75;
-    letter-spacing: 0.08em;
-  }
-
   .home-container .button-group {
     gap: 1.25rem;
   }
@@ -620,13 +614,22 @@
 /* 品牌文案 - 高奢护肤品调性 */
 .home-container .title {
   font-family: "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
-  font-size: clamp(1.15rem, 2.8vw, 1.4rem);
+  font-size: clamp(1.15rem, 4vw, 1.375rem);
   font-weight: 300;
   line-height: 1.7;
   letter-spacing: 0.12em;
   color: var(--foreground);
   max-width: 28em;
   margin-inline: auto;
+}
+
+/* 移动端品牌文案 - 层叠顺序在全局规则之后，确保覆盖生效 */
+@media (max-width: 767px) {
+  .home-container .title {
+    font-size: 1rem;
+    line-height: 1.8;
+    letter-spacing: 0.06em;
+  }
 }
 
 /* 按钮组 */
