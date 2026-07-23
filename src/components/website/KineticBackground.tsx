@@ -74,10 +74,10 @@ export function KineticBackground() {
             unoptimized
           />
         </div>
-        {/* 移动端水印 - 竖版 SVG */}
+        {/* 移动端水印 - 竖版，opacity 由 CSS 控制以便移动端提亮 */}
         <div
-          className="absolute inset-0 block md:hidden"
-          style={{ filter: "brightness(0) invert(0.95)", opacity: 0.22 }}
+          className="kinetic-watermark-mobile absolute inset-0 block md:hidden"
+          style={{ filter: "brightness(0) invert(0.95)" }}
         >
           <Image
             src="/images/watermark-mobile.webp"
@@ -87,6 +87,13 @@ export function KineticBackground() {
             style={{ objectFit: "cover" }}
           />
         </div>
+      </div>
+
+      {/* 移动端全屏氛围层 - 替代便当盒网格 */}
+      <div className="kinetic-ambient-mobile" aria-hidden="true">
+        <div className="kinetic-ambient-particle kinetic-ambient-particle-1" />
+        <div className="kinetic-ambient-particle kinetic-ambient-particle-2" />
+        <div className="kinetic-ambient-particle kinetic-ambient-particle-3" />
       </div>
 
       <div className="kinetic-container">

@@ -1038,6 +1038,11 @@
   .kinetic-cell-image {
     transition: none !important;
   }
+
+  .kinetic-ambient-mobile::before,
+  .kinetic-ambient-particle {
+    animation: none !important;
+  }
 }
 
 /* ========== Bento Grid 便当盒卡片布局 ========== */
@@ -1609,6 +1614,122 @@
   .kinetic-text-cell:not(.no-hover-effect):hover .kinetic-body-sm {
     color: inherit !important;
     letter-spacing: inherit !important;
+  }
+}
+
+/* ========== 移动端全屏氛围背景（替代便当盒网格） ========== */
+@media (max-width: 819px) {
+  /* 隐藏便当盒网格与 Logo，改由氛围层接管 */
+  .kinetic-container {
+    display: none !important;
+  }
+
+  /* 水印提亮 - 作为氛围层的主视觉元素 */
+  .kinetic-watermark-mobile {
+    opacity: 0.32;
+  }
+
+  /* 氛围层容器 - 呼吸渐变 + 浮动光点 */
+  .kinetic-ambient-mobile {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* 呼吸渐变 - 模拟水下光线的明暗变化 */
+  .kinetic-ambient-mobile::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    background: radial-gradient(
+      ellipse at 50% 38%,
+      rgba(251, 248, 240, 0.5) 0%,
+      rgba(212, 196, 168, 0.12) 45%,
+      transparent 72%
+    );
+    animation: kinetic-ambient-breathe 8s ease-in-out infinite;
+  }
+
+  /* 浮动光点 - 模拟水中微粒 */
+  .kinetic-ambient-particle {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(251, 248, 240, 0.55) 0%,
+      transparent 70%
+    );
+    animation: kinetic-ambient-float linear infinite;
+    will-change: transform, opacity;
+  }
+
+  .kinetic-ambient-particle-1 {
+    width: 5px;
+    height: 5px;
+    left: 22%;
+    bottom: -8px;
+    animation-duration: 14s;
+    animation-delay: 0s;
+  }
+
+  .kinetic-ambient-particle-2 {
+    width: 3px;
+    height: 3px;
+    left: 58%;
+    bottom: -8px;
+    animation-duration: 18s;
+    animation-delay: -6s;
+  }
+
+  .kinetic-ambient-particle-3 {
+    width: 4px;
+    height: 4px;
+    left: 78%;
+    bottom: -8px;
+    animation-duration: 16s;
+    animation-delay: -10s;
+  }
+}
+
+/* 桌面端隐藏氛围层 */
+@media (min-width: 820px) {
+  .kinetic-ambient-mobile {
+    display: none;
+  }
+}
+
+@keyframes kinetic-ambient-breathe {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes kinetic-ambient-float {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-50vh) translateX(10px);
+    opacity: 0.3;
+  }
+  92% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(-105vh) translateX(-6px);
+    opacity: 0;
   }
 }
 
