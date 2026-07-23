@@ -222,10 +222,9 @@ function MobileFooterMenu({
         type="button"
         onClick={() => setIsOpen(true)}
         whileTap={{ scale: 0.95 }}
-        className="pointer-events-auto relative z-[30] flex min-h-0 min-w-0 cursor-pointer flex-col items-center gap-2 text-xs uppercase tracking-[0.25em] text-brand-charcoal/40 transition-all hover:text-brand-charcoal/70"
+        className="pointer-events-auto relative z-[30] flex min-h-0 min-w-0 cursor-pointer items-center text-xs uppercase tracking-[0.25em] text-brand-charcoal/40 transition-all hover:text-brand-charcoal/70"
       >
         <span>更多</span>
-        <div className="h-px w-5 bg-current opacity-40" />
       </m.button>
     </div>
   );
@@ -423,7 +422,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 </div>
 
                 {/* 移动端辅助导航 - 下放到 footer 区域，与法律/服务信息语义归拢 */}
-                <div className="md:hidden">
+                <div className="mb-2.5 md:mb-0 md:hidden">
                   <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
                 </div>
 
