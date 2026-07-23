@@ -15,14 +15,6 @@ const AMBIENT_SLOGANS = [
   { zh: "源自海豚的灵感", en: "INSPIRED BY DOLPHINS" },
 ];
 
-/** 循环 Slogan：首尾各补一条，保证 3 行视图始终有上一句/下一句 */
-const LOOP_SLOGANS = [
-  AMBIENT_SLOGANS[AMBIENT_SLOGANS.length - 1],
-  ...AMBIENT_SLOGANS,
-  ...AMBIENT_SLOGANS,
-  ...AMBIENT_SLOGANS,
-];
-
 /**
  * Kinetic Grid 全局背景组件
  *
@@ -33,10 +25,10 @@ const LOOP_SLOGANS = [
 export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { user, switchToLogin, openUserCenter } = useAuth();
-  const [sloganIndex, setSloganIndex] = useState(1);
+  const [sloganIndex, setSloganIndex] = useState(0);
   // 轨道位移 MotionValue：手动控制，确保循环回位为物理级瞬间跳变（.set），绝无反向动画
   const ROW_H = 44;
-  const sloganY = useMotionValue(0);
+  const sloganY = useMotionValue(ROW_H * 2);
 
   // Slogan 轮播定时器：只负责推进索引
   useEffect(() => {
@@ -47,11 +39,11 @@ export function KineticBackground() {
   // 轨道位移：正常步进平滑上移；一个循环结束时 .set() 瞬间回位（三倍轨道内容等价，视觉零感知）
   useEffect(() => {
     const next = sloganIndex + 1;
-    if (next >= AMBIENT_SLOGANS.length * 2 + 1) {
-      sloganY.set(0);
-      setSloganIndex(1);
+    if (next >= AMBIENT_SLOGANS.length * 2) {
+      sloganY.set(ROW_H * 2);
+      setSloganIndex(0);
     } else {
-      void animate(sloganY, ROW_H * (1 - sloganIndex), {
+      void animate(sloganY, ROW_H * (2 - next), {
         duration: 1.2,
         ease: [0.16, 1, 0.3, 1],
       });
@@ -145,9 +137,9 @@ export function KineticBackground() {
           </div>
           <div className="kinetic-ambient-slogan">
             <m.div className="kinetic-ambient-slogan-track" style={{ y: sloganY }}>
-              {LOOP_SLOGANS.map((s, i) => {
+              {[...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS].map((s, i) => {
                 const d = i - sloganIndex;
-                const level = Math.min(Math.abs(d), 1);
+                const level = Math.min(Math.abs(d), 2);
                 return (
                   <div
                     key={i}

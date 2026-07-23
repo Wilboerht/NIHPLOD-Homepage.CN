@@ -1742,7 +1742,7 @@
   /* Slogan 诗意堆叠 - 固定视口 + 轨道平移，上下对称无抖动 */
   .kinetic-ambient-slogan {
     --slogan-row-h: 44px;
-    height: calc(var(--slogan-row-h) * 3);
+    height: calc(var(--slogan-row-h) * 5);
     overflow: hidden;
     width: 88vw;
   }
@@ -1779,7 +1779,14 @@
   .kinetic-ambient-slogan-row--1 {
     font-size: 14px;
     letter-spacing: 0.15em;
-    color: rgba(0, 38, 62, 0.12);
+    color: rgba(0, 38, 62, 0.14);
+  }
+
+  /* 最远行 - 极淡呼吸纹理（景深第三层） */
+  .kinetic-ambient-slogan-row--2 {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: rgba(0, 38, 62, 0.07);
   }
 
   /* 产品全家福展台 - flex 子元素 */
