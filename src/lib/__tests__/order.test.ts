@@ -481,6 +481,8 @@ describe("订单服务", () => {
       const result = await autoCancelExpiredOrders(30);
 
       expect(result.success).toBe(true);
+      // CAS 失败的订单不应计入 canceledCount
+      expect(result.canceledCount).toBe(1);
       // CAS 失败的订单不应触发库存恢复
       expect(mockPrisma.product.update).toHaveBeenCalledTimes(1);
       expect(mockPrisma.product.update).toHaveBeenCalledWith(

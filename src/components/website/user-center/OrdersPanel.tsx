@@ -55,7 +55,7 @@ const TABS = [
   { key: "COMPLETED", label: "已完成" },
 ];
 
-export function OrdersPanel() {
+export function OrdersPanel({ debounceMs = 250 }: { debounceMs?: number }) {
   const { initialOrderId, clearInitialOrderId } = useAuth();
   const { error: showError } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -100,13 +100,13 @@ export function OrdersPanel() {
         if (requestId !== requestIdRef.current) return;
         setLoading(false);
       }
-    }, 250);
+    }, debounceMs);
 
     return () => {
       clearTimeout(debounceTimer);
       controller.abort();
     };
-  }, [activeTab, initialOrderId, clearInitialOrderId]);
+  }, [activeTab, initialOrderId, clearInitialOrderId, debounceMs]);
 
   if (selectedOrder) {
     return <OrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} />;

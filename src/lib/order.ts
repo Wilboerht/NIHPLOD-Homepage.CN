@@ -376,7 +376,7 @@ export async function autoCancelExpiredOrders(
 
     for (const order of expiredOrders) {
       try {
-        await prisma.$transaction(async (tx) => {
+        const didCancel = await prisma.$transaction(async (tx) => {
           // CAS 乐观锁：只有 PENDING 或 PAYING 状态的订单才能被取消
           const canceled = await tx.order.updateMany({
             where: { id: order.id, status: { in: [OrderStatus.PENDING, OrderStatus.PAYING] } },
@@ -388,7 +388,7 @@ export async function autoCancelExpiredOrders(
             },
           });
           if (canceled.count === 0) {
-            return; // 已被其他流程处理
+            return false; // 已被其他流程处理
           }
 
           // 恢复库存
@@ -406,8 +406,9 @@ export async function autoCancelExpiredOrders(
               data: { status: "UNUSED", usedAt: null, orderId: null },
             });
           }
+          return true;
         });
-        canceledCount++;
+        if (didCancel) canceledCount++;
       } catch (err) {
         apiConsole.error(`[Order] 自动取消订单 ${order.id} 失败:`, err);
       }

@@ -79,16 +79,16 @@ function makeOrder(overrides = {}) {
 
 let mockFetch: ReturnType<typeof vi.fn>;
 
-/** 渲染并等待防抖 + 数据加载完成 */
+/** 渲染并等待数据加载完成（debounceMs=0 消除防抖延迟） */
 async function renderAndLoad(orders: unknown[] = []) {
   mockFetch = vi.fn().mockResolvedValue({
     json: () => Promise.resolve({ success: true, data: { orders } }),
   });
   vi.stubGlobal("fetch", mockFetch);
 
-  const utils = render(<OrdersPanel />);
+  const utils = render(<OrdersPanel debounceMs={0} />);
 
-  // 等待 250ms 防抖 + fetch resolve
+  // 等待 fetch resolve
   await waitFor(
     () => {
       expect(mockFetch).toHaveBeenCalled();
