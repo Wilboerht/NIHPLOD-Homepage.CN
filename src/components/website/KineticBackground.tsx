@@ -1,10 +1,19 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
 import { ChevronRight } from "lucide-react";
+import { m } from "framer-motion";
+
+/** 移动端氛围层 Slogan 轮播数据 */
+const AMBIENT_SLOGANS = [
+  { zh: "逆转时光", en: "REVERSE TIME" },
+  { zh: "更少步骤\n更多呵护", en: "LESS STEPS, MORE CARE" },
+  { zh: "美丽不该复杂", en: "BEAUTY WITHOUT COMPLEXITY" },
+  { zh: "源自海豚的灵感", en: "INSPIRED BY DOLPHINS" },
+];
 
 /**
  * Kinetic Grid 全局背景组件
@@ -16,6 +25,23 @@ import { ChevronRight } from "lucide-react";
 export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { user, switchToLogin, openUserCenter } = useAuth();
+  const [sloganIndex, setSloganIndex] = useState(0);
+  const wrappingRef = useRef(false);
+
+  // Slogan 轮播定时器（轨道平移，无 DOM 增删）
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSloganIndex((prev) => {
+        const next = prev + 1;
+        if (next >= AMBIENT_SLOGANS.length * 2) {
+          wrappingRef.current = true;
+          return 0; // 三倍轨道内容等价，瞬间回位无感知
+        }
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -94,6 +120,40 @@ export function KineticBackground() {
         <div className="kinetic-ambient-particle kinetic-ambient-particle-1" />
         <div className="kinetic-ambient-particle kinetic-ambient-particle-2" />
         <div className="kinetic-ambient-particle kinetic-ambient-particle-3" />
+        <div className="kinetic-ambient-particle kinetic-ambient-particle-4" />
+        <div className="kinetic-ambient-particle kinetic-ambient-particle-5" />
+
+        {/* Slogan 诗意堆叠 - 固定视口 + 轨道平移，上下对称无抖动 */}
+        <div className="kinetic-ambient-slogan">
+          <m.div
+            className="kinetic-ambient-slogan-track"
+            animate={{ y: `calc(var(--slogan-row-h) * ${2 - sloganIndex})` }}
+            transition={
+              wrappingRef.current
+                ? { duration: 0 }
+                : { duration: 1.2, ease: [0.16, 1, 0.3, 1] }
+            }
+          >
+            {[...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS].map(
+              (s, i) => {
+                const d = i - sloganIndex;
+                const level = Math.min(Math.abs(d), 2);
+                return (
+                  <div
+                    key={i}
+                    className={`kinetic-ambient-slogan-row kinetic-ambient-slogan-row--${level}`}
+                  >
+                    {s.zh}
+                  </div>
+                );
+              }
+            )}
+          </m.div>
+          {(() => {
+            wrappingRef.current = false;
+            return null;
+          })()}
+        </div>
       </div>
 
       <div className="kinetic-container">

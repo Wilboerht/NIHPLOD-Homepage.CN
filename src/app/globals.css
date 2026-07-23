@@ -1626,7 +1626,7 @@
 
   /* 水印提亮 - 深色水印在浅色背景上形成品牌纹理 */
   .kinetic-watermark-mobile {
-    opacity: 0.06;
+    opacity: 0.12;
   }
 
   /* 氛围层容器 - 呼吸渐变 + 浮动光点 */
@@ -1645,9 +1645,9 @@
     position: absolute;
     inset: -20%;
     background: radial-gradient(
-      ellipse at 50% 38%,
-      rgba(212, 196, 168, 0.25) 0%,
-      rgba(180, 160, 130, 0.08) 45%,
+      ellipse at 50% 42%,
+      rgba(212, 196, 168, 0.35) 0%,
+      rgba(180, 160, 130, 0.12) 45%,
       transparent 72%
     );
     animation: kinetic-ambient-breathe 8s ease-in-out infinite;
@@ -1692,6 +1692,79 @@
     bottom: -12px;
     animation-duration: 16s;
     animation-delay: -10s;
+  }
+
+  .kinetic-ambient-particle-4 {
+    width: 5px;
+    height: 5px;
+    left: 40%;
+    bottom: -12px;
+    animation-duration: 20s;
+    animation-delay: -3s;
+  }
+
+  .kinetic-ambient-particle-5 {
+    width: 6px;
+    height: 6px;
+    left: 65%;
+    bottom: -12px;
+    animation-duration: 15s;
+    animation-delay: -8s;
+  }
+
+  /* Slogan 诗意堆叠 - 固定视口 + 轨道平移，上下对称无抖动 */
+  .kinetic-ambient-slogan {
+    --slogan-row-h: 44px;
+    position: absolute;
+    top: 44%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    height: calc(var(--slogan-row-h) * 5);
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 3;
+    width: 88vw;
+  }
+
+  .kinetic-ambient-slogan-track {
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+  }
+
+  .kinetic-ambient-slogan-row {
+    height: var(--slogan-row-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "PingFang SC", "Source Han Sans", sans-serif;
+    font-weight: 300;
+    white-space: pre-line;
+    text-align: center;
+    transition:
+      color 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+      letter-spacing 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* 当前行 - 主视觉锚点 */
+  .kinetic-ambient-slogan-row--0 {
+    font-size: 20px;
+    letter-spacing: 0.22em;
+    color: rgba(0, 38, 62, 0.55);
+  }
+
+  /* 上下相邻行 - 退居二线 */
+  .kinetic-ambient-slogan-row--1 {
+    font-size: 14px;
+    letter-spacing: 0.18em;
+    color: rgba(0, 38, 62, 0.15);
+  }
+
+  /* 最远行 - 若隐若现 */
+  .kinetic-ambient-slogan-row--2 {
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    color: rgba(0, 38, 62, 0.06);
   }
 }
 
