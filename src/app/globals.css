@@ -836,9 +836,9 @@
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 40px;
+    width: 24px;
     height: 1px;
-    background-color: rgba(0, 38, 62, 0.12);
+    background-color: rgba(0, 38, 62, 0.08);
   }
 
   .home-container .footer-copyright {
