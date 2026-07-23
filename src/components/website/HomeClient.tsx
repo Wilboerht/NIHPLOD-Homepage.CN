@@ -112,7 +112,7 @@ function MobileFooterMenu({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
-                className="pointer-events-auto fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#FBF8F0]/95 backdrop-blur-xl"
+                className="pointer-events-auto fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-y-auto bg-[#FBF8F0]/95 backdrop-blur-xl"
               >
                 {/* 顶层背景纹理 */}
                 <div
@@ -249,7 +249,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
   // 鼠标视差效果
   useEffect(() => {
     // 移动端禁用鼠标视差
-    if (typeof window !== "undefined" && window.innerWidth <= 768) return;
+    if (typeof window !== "undefined" && window.innerWidth < 768) return;
 
     let rafId = 0;
     let pendingEvent: MouseEvent | null = null;
