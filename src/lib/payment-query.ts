@@ -3,12 +3,13 @@
  * 当第三方回调丢失或延迟时，主动查询网关订单状态并同步本地订单
  */
 import { prisma } from "./prisma";
-import { OrderStatus } from "@/generated/prisma/client";
+import { OrderStatus, type Prisma } from "@/generated/prisma/client";
 import { queryWechatPayment } from "./wechat-pay";
 import { queryAlipayOrder } from "./alipay";
 import { moneyStrictEqual } from "./money";
-import { recordTransaction } from "./transaction";
 import { apiConsole } from "@/lib/logger";
+
+type OrderWithItems = Prisma.OrderGetPayload<{ include: { items: true } }>;
 
 /**
  * 主动查询并同步订单支付状态
@@ -44,7 +45,7 @@ export async function queryAndFulfillOrderPayment(orderId: string): Promise<bool
       return false;
     }
 
-    return fulfillOrderAsPaid(order, result.transactionId || `QUERY_${Date.now()}"`, "wechat");
+    return fulfillOrderAsPaid(order, result.transactionId || `QUERY_${Date.now()}`, "wechat");
   }
 
   if (order.paymentMethod === "alipay") {
@@ -70,7 +71,7 @@ export async function queryAndFulfillOrderPayment(orderId: string): Promise<bool
  * 将订单标记为已支付（CAS 乐观锁）
  */
 async function fulfillOrderAsPaid(
-  order: Awaited<ReturnType<typeof prisma.order.findUnique>> & { items: Array<{ productId: string; quantity: number }> },
+  order: NonNullable<OrderWithItems>,
   paymentNo: string,
   gateway: "wechat" | "alipay"
 ): Promise<boolean> {
