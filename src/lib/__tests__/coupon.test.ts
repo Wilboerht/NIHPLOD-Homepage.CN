@@ -21,7 +21,7 @@ vi.mock("@/lib/logger", () => ({
 import { prisma } from "@/lib/prisma";
 import { autoExpireUserCoupons } from "@/lib/coupon";
 
-const mockUserCoupon = prisma.userCoupon as {
+const mockUserCoupon = prisma.userCoupon as unknown as {
   updateMany: ReturnType<typeof vi.fn>;
   findFirst: ReturnType<typeof vi.fn>;
   findMany: ReturnType<typeof vi.fn>;

@@ -24,7 +24,7 @@ vi.mock("@/lib/prisma", () => {
 
   const prisma = {
     ...tx,
-    $transaction: vi.fn(async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx)),
+    $transaction: vi.fn(async (callback: (txArg: typeof tx) => Promise<unknown>) => callback(tx)),
   };
 
   return { prisma };

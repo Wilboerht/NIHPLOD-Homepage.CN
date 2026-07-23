@@ -3,7 +3,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
-import { BottomNavBar } from "./BottomNavBar";
+import { BottomNavBar } from "@/components/website/BottomNavBar";
 
 const mockSetDrawerOpen = vi.fn();
 const mockSetNavMenuOpen = vi.fn();

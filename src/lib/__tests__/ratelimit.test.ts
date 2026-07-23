@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { rateLimit, dualRateLimit } from "../ratelimit";
+import { rateLimit, dualRateLimit } from "@/lib/ratelimit";
 import { prisma } from "@/lib/prisma";
 
 vi.mock("@/lib/prisma", () => ({

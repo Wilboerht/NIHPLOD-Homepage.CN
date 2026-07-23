@@ -25,7 +25,7 @@ import {
   type ShippingConfig,
 } from "@/lib/shipping-config";
 
-const mockSetting = prisma.setting as {
+const mockSetting = prisma.setting as unknown as {
   findUnique: ReturnType<typeof vi.fn>;
   upsert: ReturnType<typeof vi.fn>;
 };

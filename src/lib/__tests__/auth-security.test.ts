@@ -6,10 +6,10 @@ import {
   DEFAULT_BRUTE_FORCE_CONFIG,
   saveRefreshToken,
   extractDeviceInfo,
-} from "../auth-security";
+} from "@/lib/auth-security";
 
 // 模拟 prisma 模块，避免连接真实数据库
-vi.mock("../prisma", () => {
+vi.mock("@/lib/prisma", () => {
   const mockLoginAttempt = {
     count: vi.fn(),
     findFirst: vi.fn(),

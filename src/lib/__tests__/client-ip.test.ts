@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { getClientIP } from "../client-ip";
+import { getClientIP } from "@/lib/client-ip";
 
 function createRequest(headers: Record<string, string>): Request {
   return new Request("http://localhost", {
@@ -73,7 +73,7 @@ describe("getClientIP", () => {
 
   it("开发环境自动信任代理", () => {
     process.env.TRUST_PROXY = "false";
-    process.env.NODE_ENV = "development";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
 
     const request = createRequest({
       "x-forwarded-for": "1.2.3.4",

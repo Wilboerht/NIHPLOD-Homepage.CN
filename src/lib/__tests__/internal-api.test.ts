@@ -5,7 +5,7 @@ import {
   isTimestampValid,
   checkAndRecordNonce,
   hashRequestBody,
-} from "../internal-api";
+} from "@/lib/internal-api";
 
 describe("internal-api", () => {
   const originalEnv = process.env;

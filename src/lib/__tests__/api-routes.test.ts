@@ -85,7 +85,7 @@ const mockPrisma = prisma as unknown as {
 };
 
 function createRequest(url: string, options?: RequestInit) {
-  return new NextRequest(new URL(url, "http://localhost:3000"), options);
+  return new NextRequest(new URL(url, "http://localhost:3000"), options as never);
 }
 
 describe("API 路由集成测试", () => {

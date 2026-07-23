@@ -17,7 +17,7 @@ vi.mock("@/lib/prisma", () => {
 
   const prisma = {
     order: orderMock,
-    $transaction: vi.fn(async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx)),
+    $transaction: vi.fn(async (callback: (txArg: typeof tx) => Promise<unknown>) => callback(tx)),
   };
 
   return { prisma };
@@ -45,7 +45,7 @@ vi.mock("@/lib/logistics-constants", () => ({
 import { prisma } from "@/lib/prisma";
 import { shipOrder, queryLogistics, confirmReceipt } from "@/lib/logistics";
 
-const mockOrder = prisma.order as {
+const mockOrder = prisma.order as unknown as {
   findUnique: ReturnType<typeof vi.fn>;
   findFirst: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;

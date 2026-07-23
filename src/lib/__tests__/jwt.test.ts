@@ -6,7 +6,7 @@ import {
   verifyUserToken,
   signRefreshToken,
   verifyRefreshToken,
-} from "../jwt";
+} from "@/lib/jwt";
 
 const TEST_SECRET = "test-secret-key-at-least-32-characters-long";
 

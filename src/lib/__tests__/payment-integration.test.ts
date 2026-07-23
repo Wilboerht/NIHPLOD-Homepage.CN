@@ -29,7 +29,7 @@ vi.mock("@/lib/prisma", () => {
 
   const prisma = {
     ...tx,
-    $transaction: vi.fn(async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx)),
+    $transaction: vi.fn(async (callback: (txArg: typeof tx) => Promise<unknown>) => callback(tx)),
   };
 
   return { prisma };
@@ -89,7 +89,8 @@ vi.mock("wechatpay-axios-plugin", () => {
   };
 });
 
-function createBaseOrder() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function createBaseOrder(): Record<string, any> {
   return {
     id: "order-1",
     orderNo: "20240101000000123456",
@@ -100,13 +101,13 @@ function createBaseOrder() {
     discountAmount: 0,
     payAmount: 1,
     paymentMethod: "wechat",
-    paymentNo: null,
+    paymentNo: null as string | null,
     paymentTime: null,
     refundNo: null,
     refundAmount: 0,
     refundTime: null,
     refundStatus: null,
-    previousStatus: null,
+    previousStatus: null as string | null,
     adminNote: null,
     remark: null,
     recipientName: "Test",
@@ -134,7 +135,8 @@ function createBaseOrder() {
 }
 
 describe("支付链路集成测试", () => {
-  let mockPrisma: ReturnType<typeof import("@/lib/prisma")["prisma"]>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockPrisma: any;
   let wechatPay: typeof import("@/lib/wechat-pay");
   let paymentQuery: typeof import("@/lib/payment-query");
   let refund: typeof import("@/lib/refund");
@@ -491,7 +493,7 @@ describe("支付链路集成测试", () => {
 
       // finalizeRefund 用 id 更新状态；handleRefundNotify 用 orderNo 追加 adminNote
       const statusUpdateCall = mockPrisma.order.update.mock.calls.find(
-        (call) => call[0].data?.status === "REFUNDED"
+        (call: unknown[]) => (call[0] as { data?: { status?: string } }).data?.status === "REFUNDED"
       );
       expect(statusUpdateCall).toBeDefined();
       expect(statusUpdateCall![0]).toMatchObject({ where: { id: order.id } });
