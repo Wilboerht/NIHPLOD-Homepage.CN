@@ -206,7 +206,7 @@ export function StoryContent() {
             {/* Main Content Area */}
             <div
               ref={contentRef}
-              className="relative z-20 flex flex-1 flex-col overflow-y-auto px-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="relative z-20 flex flex-1 flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {/* 移动端 Section 1: 品牌故事 */}
               {activeSection === "story" && (
@@ -288,7 +288,7 @@ export function StoryContent() {
                         alt="Mission"
                         width={600}
                         height={800}
-                        sizes="(max-width: 640px) calc(100vw - 40px), 600px"
+                        sizes="(max-width: 640px) calc(100vw - 48px), 600px"
                         className="h-auto w-full object-contain"
                       />
                     </div>
@@ -405,7 +405,7 @@ export function StoryContent() {
                                 alt={award.title}
                                 width={600}
                                 height={400}
-                                sizes="(max-width: 640px) calc(100vw - 40px), 600px"
+                                sizes="(max-width: 640px) calc(100vw - 48px), 600px"
                                 className="h-auto w-full object-contain"
                               />
                             </div>
@@ -455,8 +455,8 @@ export function StoryContent() {
             </div>
 
             {/* Mobile Footer Copyright */}
-            <div className="flex flex-col items-center justify-center pt-3">
-              <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+            <div className="flex flex-col items-center justify-center py-3">
+              <p className="text-[12px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>
             </div>
