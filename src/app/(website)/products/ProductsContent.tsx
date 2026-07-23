@@ -397,7 +397,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             {/* 手机端背景水印 - 同联系我们 */}
             <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
               <Image
-                src="/images/watermark-mobile.png"
+                src="/images/watermark-mobile.webp"
                 alt=""
                 fill
                 className="object-cover"

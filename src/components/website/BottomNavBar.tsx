@@ -270,7 +270,7 @@ export function BottomNavBar() {
                   initial="hidden"
                   animate="visible"
                   exit="exit"
-                  className="pointer-events-auto absolute bottom-[calc(100%+10px)] right-0 z-50 w-48 origin-bottom-right rounded-3xl bg-brand-cream/95 p-1.5 shadow-[0_16px_48px_-16px_theme(colors.brand.charcoal/0.22)] backdrop-blur-md lg:hidden"
+                  className="pointer-events-auto absolute bottom-[calc(100%+10px)] right-0 z-50 w-48 origin-bottom-right rounded-3xl bg-brand-cream/95 p-1.5 shadow-[0_12px_40px_-12px_rgba(120,90,50,0.14)] backdrop-blur-md lg:hidden"
                 >
                   <div className="relative flex flex-col">
                     {otherNavItems.map((item) => {
@@ -303,7 +303,7 @@ export function BottomNavBar() {
             <nav
               className={cn(
                 "pointer-events-auto flex items-center justify-between",
-                "rounded-full bg-brand-cream/90 px-2 py-1.5 shadow-[0_2px_16px_-6px_theme(colors.brand.charcoal/0.16)] backdrop-blur-md",
+                "rounded-full bg-brand-cream/90 px-2 py-1.5 shadow-[0_2px_12px_-4px_rgba(120,90,50,0.10)] backdrop-blur-md",
                 "lg:h-[76px] lg:rounded-[20px] lg:bg-brand-cream lg:px-8 lg:py-0 lg:shadow-[0_1px_1px_theme(colors.brand.charcoal/0.02),0_8px_24px_-6px_theme(colors.brand.charcoal/0.08)] lg:backdrop-blur-none",
                 "xl:px-10"
               )}

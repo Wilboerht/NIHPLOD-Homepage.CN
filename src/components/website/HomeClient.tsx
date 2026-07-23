@@ -244,7 +244,7 @@ interface HomeClientProps {
 
 export default function HomeClient({ content: _content }: HomeClientProps) {
   const textureRef = useRef<HTMLDivElement>(null);
-  const { isDrawerOpen, setDrawerOpen, setNavMenuOpen } = useLayout();
+  const { isDrawerOpen, setDrawerOpen } = useLayout();
 
   // 鼠标视差效果
   useEffect(() => {
@@ -285,7 +285,6 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
   const handleCollapse = () => {
     setDrawerOpen(false);
-    setNavMenuOpen(true);
   };
 
   return (
@@ -329,8 +328,8 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
           {/* 主内容 - 上/中/下三分区（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
           <div className="main-content relative z-10 flex min-h-full flex-col justify-between px-6 py-8 text-center lg:py-12">
-            {/* 中区：Logo + 文案 + CTA + 移动端服务菜单 */}
-            <div className="flex flex-1 flex-col items-center justify-center gap-10 md:gap-14">
+            {/* 中区：Logo + 文案 + CTA + 移动端服务菜单（矮屏下允许内部滚动，防止裁切） */}
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-10 overflow-y-auto overscroll-contain md:gap-14">
               {/* Logo */}
               <m.div
                 className="flex flex-col items-center"
@@ -402,7 +401,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
 
             {/* 下区：桌面端 footer 链接 + 版权信息 */}
             <m.div
-              className="relative flex flex-col items-center"
+              className="relative flex shrink-0 flex-col items-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1.2, delay: 1 }}

@@ -80,7 +80,7 @@ export function KineticBackground() {
           style={{ filter: "brightness(0) invert(0.95)", opacity: 0.22 }}
         >
           <Image
-            src="/images/watermark-mobile.png"
+            src="/images/watermark-mobile.webp"
             alt="NIHPLOD 品牌水印"
             fill
             priority

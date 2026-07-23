@@ -461,7 +461,7 @@ export function ProductDetailContent({
       {/* 手机端背景水印 */}
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden lg:hidden">
         <Image
-          src="/images/watermark-mobile.png"
+          src="/images/watermark-mobile.webp"
           alt=""
           fill
           className="object-cover opacity-75 blur-[7.5px]"

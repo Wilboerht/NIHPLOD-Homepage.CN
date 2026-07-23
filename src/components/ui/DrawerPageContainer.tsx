@@ -104,7 +104,7 @@ export function DrawerPageContainer({
           style={
             {
               "--drawer-shadow-lg": `drop-shadow(4px 2px 1px rgba(0, 38, 62, ${shadowOpacity}))`,
-              "--drawer-panel-shadow": `0 12px 32px -12px rgba(0, 38, 62, ${shadowOpacity})`,
+              "--drawer-panel-shadow": `0 2px 8px -2px rgba(120, 90, 50, ${(shadowOpacity * 0.4).toFixed(3)}), 0 8px 24px -8px rgba(120, 90, 50, ${(shadowOpacity * 0.3).toFixed(3)})`,
             } as CSSProperties
           }
         >
@@ -138,7 +138,7 @@ export function DrawerPageContainer({
               aria-label={isDrawerOpen ? "收起页面内容" : "展开页面内容"}
               className={cn(
                 "group pointer-events-auto relative z-30 flex items-center justify-center self-center overflow-hidden",
-                "mt-3 rounded-full bg-brand-cream/90 py-3 shadow-[0_2px_16px_-6px_rgba(0,38,62,0.16)] backdrop-blur-md",
+                "mt-3 rounded-full bg-brand-cream/90 py-3 shadow-[0_2px_12px_-4px_rgba(120,90,50,0.10)] backdrop-blur-md",
                 "lg:-mt-[1px] lg:rounded-t-none lg:rounded-b-2xl lg:bg-[#FBF8F0] lg:py-3.5 lg:shadow-none lg:backdrop-blur-none",
                 buttonWidth
               )}
