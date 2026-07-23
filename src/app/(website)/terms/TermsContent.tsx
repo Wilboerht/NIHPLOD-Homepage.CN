@@ -15,7 +15,7 @@ interface TermsContentProps {
 // ============================================
 
 export function TermsContent({ content }: TermsContentProps) {
-  const lastUpdated = content.lastUpdated || "2022年08月11日";
+  const lastUpdated = content.lastUpdated || "";
   const flatContent = content.tabs?.general?.content || [];
 
   // 将平铺内容拆分为独立章节（每条内容的第一行为标题）

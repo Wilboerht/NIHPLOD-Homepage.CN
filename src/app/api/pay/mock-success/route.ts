@@ -86,12 +86,15 @@ export async function POST(request: NextRequest) {
 
       if (!orderWithItems) throw new Error("订单不存在");
 
+      const paymentNo = `MOCK_${Date.now()}`;
+
       // CAS 乐观锁：只有 PENDING 或 PAYING 状态的订单才能被模拟支付
       const updated = await tx.order.updateMany({
         where: { id: orderId, status: { in: [OrderStatus.PENDING, OrderStatus.PAYING] } },
         data: {
           status: OrderStatus.PAID,
-          paymentNo: `MOCK_${Date.now()}`,
+          paymentMethod: "mock",
+          paymentNo,
           paymentTime: new Date(),
         },
       });
@@ -117,6 +120,19 @@ export async function POST(request: NextRequest) {
           data: { status: "USED", usedAt: new Date() },
         });
       }
+
+      // 记录交易流水，与真实支付保持一致
+      await tx.transaction.create({
+        data: {
+          orderId,
+          type: "PAYMENT",
+          gateway: "mock",
+          amount: Number(orderWithItems.payAmount),
+          status: "SUCCESS",
+          gatewayTrxId: paymentNo,
+          rawData: JSON.stringify({ source: "mock_success", createdAt: new Date().toISOString() }),
+        },
+      });
     });
 
     if (process.env.NODE_ENV === "development")

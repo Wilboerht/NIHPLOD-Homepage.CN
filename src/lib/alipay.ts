@@ -1,20 +1,20 @@
 /**
  * 支付宝支付服务
- * 实现手机网站支付（H5）
+ * 实现手机网站支付（H5）、支付结果查询、退款
  */
 import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
-import { formatMoney, moneyStrictEqual } from "./money";
-import { formatKey, validateKeyFormat } from "./crypto-utils";
+import { formatMoney, moneyStrictEqual, ensureMoneyPrecision } from "./money";
+import { formatKey, validateKeyFormat, toPrivateKeyPem, toPublicKeyPem } from "./crypto-utils";
 import { fetchWithTimeout } from "./fetch-utils";
 import { apiConsole } from "@/lib/logger";
 
 // 支付宝配置（延迟校验）
 const ALIPAY_CONFIG = {
   appId: process.env.ALIPAY_APP_ID || "",
-  privateKey: formatKey(process.env.ALIPAY_PRIVATE_KEY),
-  alipayPublicKey: formatKey(process.env.ALIPAY_PUBLIC_KEY),
+  privateKey: toPrivateKeyPem(process.env.ALIPAY_PRIVATE_KEY),
+  alipayPublicKey: toPublicKeyPem(process.env.ALIPAY_PUBLIC_KEY),
   notifyUrl: process.env.ALIPAY_NOTIFY_URL || "",
   returnUrl: process.env.ALIPAY_RETURN_URL || "",
   gateway: "https://openapi.alipay.com/gateway.do",
@@ -58,28 +58,23 @@ function getBeijingTimestamp(): string {
 
 /**
  * RSA2 签名
+ * 支持传入完整 PEM 或纯 base64 body（已由 toPrivateKeyPem 统一格式化）
  */
-function signWithRSA2(content: string, privateKey: string): string {
+export function signWithRSA2(content: string, privateKey: string): string {
   const sign = crypto.createSign("RSA-SHA256");
   sign.update(content, "utf8");
-  return sign.sign(
-    `-----BEGIN RSA PRIVATE KEY-----\n${privateKey}\n-----END RSA PRIVATE KEY-----`,
-    "base64"
-  );
+  return sign.sign(privateKey, "base64");
 }
 
 /**
  * RSA2 验签
+ * 支持传入完整 PEM 或纯 base64 body（已由 toPublicKeyPem 统一格式化）
  */
 export function verifyWithRSA2(content: string, sign: string, publicKey: string): boolean {
   try {
     const verify = crypto.createVerify("RSA-SHA256");
     verify.update(content, "utf8");
-    return verify.verify(
-      `-----BEGIN PUBLIC KEY-----\n${publicKey}\n-----END PUBLIC KEY-----`,
-      sign,
-      "base64"
-    );
+    return verify.verify(publicKey, sign, "base64");
   } catch {
     return false;
   }
@@ -151,6 +146,77 @@ function extractResponseText(rawText: string, method: string): string | null {
 }
 
 /**
+ * 发起一次支付宝通用 API 请求（已签名、已验签响应）
+ */
+async function callAlipayApi(
+  method: string,
+  bizContent: Record<string, unknown>
+): Promise<{ success: boolean; data?: unknown; rawText: string; error?: string }> {
+  const params: Record<string, string> = {
+    app_id: ALIPAY_CONFIG.appId,
+    method,
+    format: "JSON",
+    charset: "utf-8",
+    sign_type: "RSA2",
+    timestamp: getBeijingTimestamp(),
+    version: "1.0",
+    biz_content: JSON.stringify(bizContent),
+  };
+
+  const signContent = buildSignContent(params);
+  params.sign = signWithRSA2(signContent, ALIPAY_CONFIG.privateKey);
+
+  const body = Object.keys(params)
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+    .join("&");
+
+  const res = await fetchWithTimeout(ALIPAY_CONFIG.gateway, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
+    body,
+    timeout: 30000,
+  });
+
+  const rawText = await res.text();
+
+  let data: { sign?: string } | undefined;
+  try {
+    data = JSON.parse(rawText) as { sign?: string };
+  } catch {
+    return { success: false, rawText, error: "响应解析失败" };
+  }
+
+  // 验证响应签名
+  if (data?.sign) {
+    const responseText = extractResponseText(rawText, method);
+    if (responseText) {
+      const verified = verifyWithRSA2(responseText, data.sign, ALIPAY_CONFIG.alipayPublicKey);
+      if (!verified) {
+        return { success: false, rawText, error: "响应签名验证失败" };
+      }
+    } else {
+      return { success: false, rawText, error: "无法提取响应内容用于验签" };
+    }
+  } else {
+    return { success: false, rawText, error: "响应缺少签名字段" };
+  }
+
+  const responseKey = method.replace(/\./g, "_") + "_response";
+  const response = (data as Record<string, unknown>)[responseKey];
+  const responseObj = response as { code?: string; sub_msg?: string; msg?: string } | undefined;
+
+  if (responseObj && responseObj.code === "10000") {
+    return { success: true, data: response, rawText };
+  }
+
+  return {
+    success: false,
+    rawText,
+    error: responseObj?.sub_msg || responseObj?.msg || `${method} 请求失败`,
+  };
+}
+
+/**
  * 创建支付宝支付（手机网站支付）
  */
 export async function createAlipayPayment(orderId: string): Promise<{
@@ -159,6 +225,10 @@ export async function createAlipayPayment(orderId: string): Promise<{
   error?: string;
 }> {
   try {
+    if (!ALIPAY_CONFIG.notifyUrl || !ALIPAY_CONFIG.returnUrl) {
+      return { success: false, error: "支付宝回调/返回地址未配置" };
+    }
+
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: { items: true },
@@ -210,6 +280,46 @@ export async function createAlipayPayment(orderId: string): Promise<{
   } catch (error) {
     apiConsole.error("[Alipay] 创建支付失败:", error);
     return { success: false, error: "支付创建失败" };
+  }
+}
+
+/**
+ * 查询支付宝订单状态
+ * 用于回调缺失时的主动兜底查询
+ */
+export async function queryAlipayOrder(orderNo: string): Promise<{
+  success: boolean;
+  paid?: boolean;
+  tradeNo?: string;
+  amount?: number;
+  error?: string;
+}> {
+  try {
+    const result = await callAlipayApi("alipay.trade.query", {
+      out_trade_no: orderNo,
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    const response = result.data as {
+      trade_status?: string;
+      trade_no?: string;
+      total_amount?: string;
+    };
+
+    const paid = response.trade_status === "TRADE_SUCCESS" || response.trade_status === "TRADE_FINISHED";
+
+    return {
+      success: true,
+      paid,
+      tradeNo: response.trade_no,
+      amount: response.total_amount ? parseFloat(response.total_amount) : undefined,
+    };
+  } catch (error) {
+    apiConsole.error("[Alipay] 查询订单失败:", error);
+    return { success: false, error: "查询失败" };
   }
 }
 
@@ -366,7 +476,8 @@ export async function handleAlipayNotify(
 export async function refundAlipayOrder(
   outTradeNo: string,
   refundAmount: number,
-  refundReason: string
+  refundReason: string,
+  maxAmount?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // 验证退款金额
@@ -380,69 +491,26 @@ export async function refundAlipayOrder(
       return { success: false, error: "退款金额过小，最小为0.01元" };
     }
 
-    const bizContent = {
+    // 防御性校验：退款金额不得超过订单实付金额
+    if (maxAmount !== undefined && refundAmount > ensureMoneyPrecision(maxAmount)) {
+      return { success: false, error: "退款金额不能超过订单实付金额" };
+    }
+
+    const safeRefundAmount = ensureMoneyPrecision(refundAmount);
+
+    const result = await callAlipayApi("alipay.trade.refund", {
       out_trade_no: outTradeNo,
-      refund_amount: refundAmount.toFixed(2),
+      refund_amount: safeRefundAmount.toFixed(2),
       refund_reason: refundReason,
-    };
-
-    const params: Record<string, string> = {
-      app_id: ALIPAY_CONFIG.appId,
-      method: "alipay.trade.refund",
-      format: "JSON",
-      charset: "utf-8",
-      sign_type: "RSA2",
-      timestamp: getBeijingTimestamp(),
-      version: "1.0",
-      biz_content: JSON.stringify(bizContent),
-    };
-
-    // 签名
-    const signContent = buildSignContent(params);
-    params.sign = signWithRSA2(signContent, ALIPAY_CONFIG.privateKey);
-
-    // 构建请求体（使用 POST）
-    const body = Object.keys(params)
-      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
-      .join("&");
-
-    const res = await fetchWithTimeout(ALIPAY_CONFIG.gateway, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-      body,
-      timeout: 30000,
     });
 
-    const rawText = await res.text();
-    const data = JSON.parse(rawText);
-
-    // 验证响应签名，防止中间人攻击
-    if (data.sign) {
-      const responseText = extractResponseText(rawText, "alipay.trade.refund");
-      if (responseText) {
-        const verified = verifyWithRSA2(responseText, data.sign, ALIPAY_CONFIG.alipayPublicKey);
-        if (!verified) {
-          apiConsole.error("[Alipay] 退款响应签名验证失败");
-          return { success: false, error: "退款响应签名验证失败" };
-        }
-      } else {
-        apiConsole.error("[Alipay] 无法提取退款响应内容用于验签");
-        return { success: false, error: "退款响应格式异常" };
-      }
-    } else {
-      apiConsole.error("[Alipay] 退款响应缺少签名字段，拒绝处理");
-      return { success: false, error: "退款响应签名缺失" };
+    if (!result.success) {
+      apiConsole.error("[Alipay] 退款失败:", result.error);
+      return { success: false, error: result.error || "退款失败" };
     }
 
-    const response = data.alipay_trade_refund_response;
-    if (response && response.code === "10000") {
-      console.log(`[Alipay] 退款成功: ${outTradeNo}, 退款金额: ${refundAmount}`);
-      return { success: true };
-    } else {
-      const errorMsg = response?.sub_msg || response?.msg || "退款失败";
-      apiConsole.error("[Alipay] 退款失败:", response);
-      return { success: false, error: errorMsg };
-    }
+    console.log(`[Alipay] 退款成功: ${outTradeNo}, 退款金额: ${safeRefundAmount}`);
+    return { success: true };
   } catch (e) {
     apiConsole.error("[Alipay] 退款异常:", e);
     return { success: false, error: "Alipay Refund API Error" };

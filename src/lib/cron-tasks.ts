@@ -5,6 +5,7 @@
  */
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
+import { queryAndFulfillExpiredPendingOrders } from "./payment-query";
 import { autoExpireUserCoupons } from "./coupon";
 import {
   cleanupExpiredRefreshTokens,
@@ -22,6 +23,19 @@ interface ScheduledTask {
 
 // 定义所有定时任务
 const tasks: ScheduledTask[] = [
+  {
+    name: "Query Expired Pending Orders",
+    cronExpression: "*/30 * * * *", // 每30分钟执行一次，在自动取消前兜底查询
+    handler: async () => {
+      try {
+        console.log("[Cron] 开始执行待支付订单主动查询任务...");
+        const result = await queryAndFulfillExpiredPendingOrders(25);
+        console.log(`[Cron] 主动查询完成: ${result.fulfilledCount} 个订单已支付`);
+      } catch (error) {
+        apiConsole.error("[Cron] 待支付订单主动查询任务失败:", error);
+      }
+    },
+  },
   {
     name: "Auto Cancel Expired Orders",
     cronExpression: "*/30 * * * *", // 每30分钟执行一次

@@ -20,8 +20,48 @@ export function formatKey(key?: string): string {
 }
 
 /**
+ * 判断一段密钥文本是否已经包含 PEM 标记
+ */
+function hasPemMarkers(key: string): boolean {
+  return /-----BEGIN [A-Z\s]+-----/.test(key) && /-----END [A-Z\s]+-----/.test(key);
+}
+
+/**
+ * 将密钥主体（base64）按每行 64 字符折叠成 PEM body
+ */
+function wrapPemBody(body: string): string {
+  const cleaned = body.replace(/\s/g, "");
+  return cleaned.match(/.{1,64}/g)?.join("\n") || cleaned;
+}
+
+/**
+ * 将私钥统一转换为标准 PEM 格式
+ * - 若已包含 PEM 标记，直接返回
+ * - 否则包装为 PKCS#1 RSA PRIVATE KEY
+ */
+export function toPrivateKeyPem(key?: string): string {
+  const formatted = formatKey(key);
+  if (!formatted) return "";
+  if (hasPemMarkers(formatted)) return formatted;
+  return `-----BEGIN RSA PRIVATE KEY-----\n${wrapPemBody(formatted)}\n-----END RSA PRIVATE KEY-----`;
+}
+
+/**
+ * 将公钥统一转换为标准 PEM 格式
+ * - 若已包含 PEM 标记，直接返回
+ * - 否则包装为 PUBLIC KEY
+ */
+export function toPublicKeyPem(key?: string): string {
+  const formatted = formatKey(key);
+  if (!formatted) return "";
+  if (hasPemMarkers(formatted)) return formatted;
+  return `-----BEGIN PUBLIC KEY-----\n${wrapPemBody(formatted)}\n-----END PUBLIC KEY-----`;
+}
+
+/**
  * 验证密钥格式
  * 在应用启动时调用，提前发现配置错误
+ * 支持完整 PEM 和纯 base64 body 两种写法
  */
 export function validateKeyFormat(
   key: string | undefined,
@@ -34,26 +74,18 @@ export function validateKeyFormat(
 
   const formatted = formatKey(key);
 
-  // 检查 PEM 标记
-  if (type === "private") {
-    if (!formatted.includes("PRIVATE KEY")) {
-      return { valid: false, error: `${name} 格式不正确：缺少 PRIVATE KEY 标记` };
+  // 检查 PEM 标记或长度（支持完整 PEM 或纯 body）
+  const hasMarkers = hasPemMarkers(formatted);
+  if (!hasMarkers) {
+    const body = formatted.replace(/\s/g, "");
+    if (body.length < 50) {
+      return { valid: false, error: `${name} 内容过短（${body.length} 字符），可能不完整或被截断` };
     }
   } else {
-    if (!formatted.includes("PUBLIC KEY")) {
-      return { valid: false, error: `${name} 格式不正确：缺少 PUBLIC KEY 标记` };
+    const expectedMarker = type === "private" ? "PRIVATE KEY" : "PUBLIC KEY";
+    if (!formatted.includes(expectedMarker)) {
+      return { valid: false, error: `${name} 格式不正确：缺少 ${expectedMarker} 标记` };
     }
-  }
-
-  // 检查密钥主体内容长度（去除标记和换行后）
-  const body = formatted
-    .replace(/-----BEGIN.*?-----/g, "")
-    .replace(/-----END.*?-----/g, "")
-    .replace(/\n/g, "")
-    .trim();
-
-  if (body.length < 50) {
-    return { valid: false, error: `${name} 内容过短（${body.length} 字符），可能不完整或被截断` };
   }
 
   // 检查是否包含未转义的换行符（环境变量中应为 \n，如果直接是换行符在某些平台可能有问题，但 formatKey 已处理）

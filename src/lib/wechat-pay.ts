@@ -1,14 +1,36 @@
 /**
- * 微信支付服务 (API v3) - 终极修复版
+ * 微信支付服务 (API v3)
  * 包含：延迟加载、严谨的证书解析、详细的错误日志、完整的 H5 风控场景
+ * 支持多平台证书与主动订单查询兜底
  */
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { Wechatpay, Rsa, Formatter, Aes } from "wechatpay-axios-plugin";
-import { yuanToFen, moneyStrictEqual } from "./money";
+import { yuanToFen, moneyStrictEqual, fenToYuan } from "./money";
 import { formatKey, validateKeyFormat } from "./crypto-utils";
 import { recordTransaction } from "./transaction";
 import { apiConsole } from "@/lib/logger";
+
+interface WechatPlatformCert {
+  serialNo: string;
+  publicKey: string;
+}
+
+function parsePlatformCerts(): WechatPlatformCert[] {
+  const certsEnv = process.env.WECHAT_PAY_PLATFORM_CERTS;
+  if (!certsEnv) return [];
+  try {
+    const parsed = JSON.parse(certsEnv) as WechatPlatformCert[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((c) => ({
+      serialNo: c.serialNo,
+      publicKey: formatKey(c.publicKey),
+    }));
+  } catch {
+    apiConsole.error("[WechatPay] WECHAT_PAY_PLATFORM_CERTS 解析失败");
+    return [];
+  }
+}
 
 const getConfig = () => ({
   appId: process.env.WECHAT_PAY_APP_ID || process.env.WECHAT_APP_ID || "",
@@ -19,9 +41,26 @@ const getConfig = () => ({
   privateKey: formatKey(process.env.WECHAT_PAY_KEY_PEM),
   platformPublicKey: formatKey(process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY),
   platformPublicKeyId: process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY_ID || "",
+  platformCerts: parsePlatformCerts(),
   siteUrl: process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn",
   siteName: process.env.NEXT_PUBLIC_APP_NAME || "NIHPLOD",
 });
+
+/**
+ * 获取当前有效的平台证书 Map（主证书 + 备用证书）
+ */
+function getCertsMap(config: ReturnType<typeof getConfig>): Record<string, string> {
+  const map: Record<string, string> = {};
+  if (config.platformPublicKeyId && config.platformPublicKey) {
+    map[config.platformPublicKeyId] = config.platformPublicKey;
+  }
+  for (const cert of config.platformCerts) {
+    if (cert.serialNo && cert.publicKey) {
+      map[cert.serialNo] = cert.publicKey;
+    }
+  }
+  return map;
+}
 
 let _wxpay: Wechatpay | null = null;
 function getWxPay() {
@@ -58,9 +97,7 @@ function getWxPay() {
       mchid: config.mchId,
       serial: config.serialNo,
       privateKey: config.privateKey,
-      certs: {
-        [config.platformPublicKeyId]: config.platformPublicKey,
-      },
+      certs: getCertsMap(config),
     });
   }
   return _wxpay;
@@ -178,7 +215,47 @@ export async function createPayment(
 }
 
 /**
+ * 主动查询微信支付订单状态
+ * 用于回调缺失时的兜底查询
+ */
+export async function queryWechatPayment(orderNo: string): Promise<{
+  success: boolean;
+  paid?: boolean;
+  transactionId?: string;
+  amount?: number;
+  error?: string;
+}> {
+  try {
+    const config = getConfig();
+    const wxpay = getWxPay();
+
+    const response = (await wxpay.v3.pay.transactions.outTradeNo[orderNo].get({
+      params: { mchid: config.mchId },
+    })) as {
+      data: {
+        trade_state?: string;
+        transaction_id?: string;
+        amount?: { total?: number };
+      };
+    };
+
+    const paid = response.data.trade_state === "SUCCESS";
+    return {
+      success: true,
+      paid,
+      transactionId: response.data.transaction_id,
+      amount: response.data.amount?.total,
+    };
+  } catch (error) {
+    const err = error as { response?: { data?: { message?: string } }; message?: string };
+    apiConsole.error(`[WechatPay] 查询订单失败 (${orderNo}):`, err.response?.data || err.message);
+    return { success: false, error: err.response?.data?.message || err.message || "查询失败" };
+  }
+}
+
+/**
  * 通用的验签与解密逻辑
+ * 支持多平台证书：根据 wechatpay-serial 选择对应公钥
  */
 async function verifyAndDecrypt(headers: Record<string, string>, rawBody: string) {
   const config = getConfig();
@@ -189,11 +266,6 @@ async function verifyAndDecrypt(headers: Record<string, string>, rawBody: string
 
   if (!signature || !timestamp || !nonce || !serial) throw new Error("MISSING_HEADERS");
 
-  // 校验证书序列号是否与配置的平台公钥ID匹配
-  if (serial !== config.platformPublicKeyId) {
-    throw new Error("INVALID_CERTIFICATE_SERIAL");
-  }
-
   // 校验时间戳 freshness，防止重放攻击（±5 分钟窗口）
   const now = Math.floor(Date.now() / 1000);
   const ts = parseInt(timestamp, 10);
@@ -201,11 +273,19 @@ async function verifyAndDecrypt(headers: Record<string, string>, rawBody: string
     throw new Error("TIMESTAMP_EXPIRED");
   }
 
+  // 从证书 Map 中选择对应序列号的平台公钥
+  const certsMap = getCertsMap(config);
+  const platformPublicKey = certsMap[serial];
+  if (!platformPublicKey) {
+    apiConsole.error(`[WechatPay] 找不到证书序列号对应的平台公钥: ${serial}`);
+    throw new Error("INVALID_CERTIFICATE_SERIAL");
+  }
+
   // 使用平台公钥验签原始文本
   const verified = Rsa.verify(
     Formatter.response(timestamp, nonce, rawBody),
     signature,
-    Rsa.from(config.platformPublicKey, Rsa.KEY_TYPE_PUBLIC)
+    Rsa.from(platformPublicKey, Rsa.KEY_TYPE_PUBLIC)
   );
 
   if (!verified) throw new Error("VERIFY_SIGNATURE_FAILED");
@@ -398,7 +478,7 @@ export async function handleRefundNotify(
       }
 
       // 退款金额校验：不能超过订单实付金额
-      const refundAmount = (data.amount?.refund || 0) / 100;
+      const refundAmount = fenToYuan(data.amount?.refund || 0);
       if (refundAmount <= 0 || refundAmount > Number(order.payAmount)) {
         apiConsole.error(`[WechatPay] 退款金额异常: ${refundAmount}, 订单金额: ${order.payAmount}`);
         return { success: false, message: "REFUND_AMOUNT_INVALID" };

@@ -1,15 +1,13 @@
 /**
  * 微信支付回调 API (v3)
  * POST /api/pay/notify
+ *
+ * 处理顺序：先验签 → 处理业务 → 成功后记录幂等
+ * 避免未验签就写入 PaymentNotification 表导致 DoS。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { handlePaymentNotify } from "@/lib/wechat-pay";
-import {
-  isNotificationProcessed,
-  recordNotification,
-  markNotificationSuccess,
-  markNotificationFailed,
-} from "@/lib/notification-idempotency";
+import { isNotificationProcessed, recordNotification, markNotificationSuccess } from "@/lib/notification-idempotency";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -17,10 +15,10 @@ import { apiConsole } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  // 速率限制：每个 IP 每分钟最多 60 次回调请求
+  // 速率限制：每个 IP 每分钟最多 120 次回调请求
   const clientIP = getClientIP(request);
   const limitResult = await rateLimit(clientIP, "pay-notify", {
-    maxRequests: 60,
+    maxRequests: 120,
     windowMs: 60_000,
   });
   if (!limitResult.success) {
@@ -44,30 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
     }
 
-    // 2. 先记录幂等性（占位 PENDING），防止并发重复处理
-    //    recordNotification 内部有唯一约束，并发请求第二个会返回 P2002 错误
-    let recordId: string | undefined;
-    try {
-      const recordResult = await recordNotification(
-        "wechat",
-        notifyId,
-        notifyData.out_trade_no || "",
-        0, // 金额在验签解密后才知道，先记 0
-        notifyData
-      );
-      if (!recordResult.success) {
-        // 并发请求：已被另一个请求先记录
-        if (process.env.NODE_ENV === "development")
-          console.log(`[PayNotify] 通知 ${notifyId} 正在被其他请求处理`);
-        return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
-      }
-      recordId = recordResult.recordId;
-    } catch (recordError) {
-      console.warn(`[PayNotify] 幂等记录失败 ${notifyId}:`, recordError);
-      // 记录失败不阻塞主流程，防止因幂等表故障导致支付失败
-    }
-
-    // 3. 提取签名相关的头部
+    // 2. 验签 + 处理业务（验签失败直接返回 FAIL，不会创建数据库记录）
     const headers = {
       "wechatpay-signature": request.headers.get("wechatpay-signature") || "",
       "wechatpay-timestamp": request.headers.get("wechatpay-timestamp") || "",
@@ -75,20 +50,27 @@ export async function POST(request: NextRequest) {
       "wechatpay-serial": request.headers.get("wechatpay-serial") || "",
     };
 
-    // 4. 验签 + 处理
     const result = await handlePaymentNotify(headers, rawBody);
     if (!result.success) {
-      // 处理失败：标记通知为 FAILED
-      if (recordId) {
-        await markNotificationFailed(recordId, result.message || "支付处理失败").catch(() => {});
-      }
       apiConsole.error("[PayNotify] 处理失败:", result.message);
       return NextResponse.json({ code: "FAIL", message: result.message }, { status: 400 });
     }
 
-    // 5. 处理成功：标记通知为 SUCCESS
-    if (recordId) {
-      await markNotificationSuccess(recordId).catch(() => {});
+    // 3. 业务处理成功后，再记录幂等性
+    try {
+      const recordResult = await recordNotification(
+        "wechat",
+        notifyId,
+        result.transactionId || "",
+        result.amount || 0,
+        notifyData
+      );
+      if (recordResult.success && recordResult.recordId) {
+        await markNotificationSuccess(recordResult.recordId);
+      }
+    } catch (recordError) {
+      console.warn(`[PayNotify] 幂等记录失败 ${notifyId}:`, recordError);
+      // 幂等记录失败不阻塞返回成功，避免微信因幂等表故障重复回调
     }
 
     return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });

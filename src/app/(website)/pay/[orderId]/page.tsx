@@ -35,9 +35,10 @@ export default async function PayPage({ params }: PayPageProps) {
     notFound();
   }
 
-  // 如果已支付，跳转到订单详情
-  if (order.status !== "PENDING") {
-    redirect(`/user/orders/${order.id}`);
+  // 只有待支付或支付中的订单才允许进入支付页
+  // 其他状态（已支付/已取消/已完成等）跳转回首页
+  if (order.status !== "PENDING" && order.status !== "PAYING") {
+    redirect("/");
   }
 
   return (

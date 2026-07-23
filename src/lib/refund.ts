@@ -178,11 +178,8 @@ export async function processRefund(
     }
 
     if (approved) {
-      // 优先使用用户申请的部分退款金额，若未申请则全额退款
-      const refundAmount =
-        order.refundAmount != null
-          ? Math.min(Number(order.refundAmount), Number(order.payAmount))
-          : Number(order.payAmount);
+      // 当前退款策略：全额退款。用户在前端仅提交退款原因，不填写部分退款金额。
+      const refundAmount = Number(order.payAmount);
       let refundNo: string | null = null;
       let refundInfo = "";
 
@@ -226,7 +223,8 @@ export async function processRefund(
         const refundRes = await refundAlipayOrder(
           order.orderNo,
           refundAmount,
-          adminRemark || "退款"
+          adminRemark || "退款",
+          Number(order.payAmount)
         );
 
         if (!refundRes.success) {
