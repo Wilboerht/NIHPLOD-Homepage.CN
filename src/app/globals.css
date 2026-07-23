@@ -602,10 +602,18 @@
 }
 
 @media (max-width: 767px) {
+  .home-container .main-content {
+    padding: 2.5rem 0 1.5rem;
+  }
+
   .home-container .title {
-    font-size: 1.15rem;
-    line-height: 1.6;
-    letter-spacing: 0.1em;
+    font-size: 1.1rem;
+    line-height: 1.75;
+    letter-spacing: 0.08em;
+  }
+
+  .home-container .button-group {
+    gap: 1.25rem;
   }
 }
 
@@ -647,8 +655,7 @@
   border-radius: 0;
   cursor: pointer;
   white-space: nowrap;
-  transition:
-    border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .home-container .home-explore-btn:focus-visible {
@@ -682,12 +689,11 @@
   color: rgba(139, 115, 85, 0.75);
   cursor: pointer;
   text-decoration: none;
-  transition:
-    color 0.5s ease;
+  transition: color 0.5s ease;
 }
 
 .home-container .home-text-link:hover {
-  color: #8B7355;
+  color: #8b7355;
 }
 
 .home-container .home-text-link:focus-visible {
@@ -831,6 +837,13 @@
   /* 移动端隐藏首页波浪背景 */
   .home-container .wave-container {
     display: none;
+  }
+}
+
+/* 手机端主按钮适当加宽，提升点击舒适度 */
+@media (max-width: 767px) {
+  .home-container .home-explore-btn {
+    padding: 14px 56px;
   }
 }
 

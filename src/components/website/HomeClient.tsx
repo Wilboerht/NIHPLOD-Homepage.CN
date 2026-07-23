@@ -331,7 +331,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
           {/* 主内容 - 上/中/下三分区（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
           <div className="main-content relative z-10 flex min-h-full flex-col justify-between px-6 py-8 text-center lg:py-12">
             {/* 中区：Logo + 文案 + CTA + 移动端服务菜单 */}
-            <div className="flex flex-1 flex-col items-center justify-center gap-14">
+            <div className="flex flex-1 flex-col items-center justify-center gap-10 md:gap-14">
               {/* Logo */}
               <m.div
                 className="flex flex-col items-center"
@@ -366,7 +366,10 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                     <br className="md:hidden" />
                     自我更新的神奇能力，
                     <br className="hidden md:block" />
-                    这种「逆转时光」的动物本能，是我们灵感的来源。
+                    <br className="md:hidden" />
+                    这种「逆转时光」的动物本能，
+                    <br className="md:hidden" />
+                    是我们灵感的来源。
                   </m.span>
                 </h1>
               </div>
