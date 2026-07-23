@@ -626,9 +626,9 @@
 /* 移动端品牌文案 - 层叠顺序在全局规则之后，确保覆盖生效 */
 @media (max-width: 767px) {
   .home-container .title {
-    font-size: 1rem;
+    font-size: 1.0625rem;
     line-height: 1.8;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
   }
 }
 
@@ -1015,11 +1015,11 @@
 /* 响应式调整 - 移动端缩小 Logo */
 @media (max-width: 768px) {
   .kinetic-logo {
-    top: -38px;
+    top: -48px;
   }
 
   .kinetic-logo-image {
-    height: 32px;
+    height: 36px;
   }
 
   /* 移动端关闭卡片过渡动画，防止地址栏收缩时触发残影 */
@@ -1472,9 +1472,9 @@
   @media (max-width: 819px) {
     .kinetic-container {
       /* 针对精简 4 卡片布局，宽度可以放宽到 40vh，总高度约为 60vh */
-      width: min(80vw, 36vh);
-      max-width: 400px;
-      gap: 14px;
+      width: min(86vw, 40vh);
+      max-width: 420px;
+      gap: 16px;
       top: 55%;
     }
 
@@ -1508,7 +1508,7 @@
   .kinetic-cell {
     padding: 16px;
     border-radius: 16px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 10px 25px -5px rgba(120, 90, 50, 0.08) !important;
   }
 
   /* 适配 iPad 的大文字与圆角 */
@@ -1592,7 +1592,7 @@
   .kinetic-login-cell:not(.no-hover-effect):hover,
   .kinetic-login-cell:not(.no-hover-effect):active {
     transform: none !important;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 10px 25px -5px rgba(120, 90, 50, 0.08) !important;
   }
 }
 
