@@ -12,8 +12,10 @@ import { animate, m, useMotionValue } from "framer-motion";
 /** 移动端氛围层 Slogan 轮播数据 */
 const AMBIENT_SLOGANS = [
   { zh: "逆转时光", en: "REVERSE TIME" },
-  { zh: "更少步骤\n更多呵护", en: "LESS STEPS, MORE CARE" },
+  { zh: "更少步骤", en: "LESS STEPS" },
+  { zh: "更多呵护", en: "MORE CARE" },
   { zh: "美丽不该复杂", en: "BEAUTY WITHOUT COMPLEXITY" },
+  { zh: "专注美好生活", en: "FOCUS ON BEAUTY" },
   { zh: "源自海豚的灵感", en: "INSPIRED BY DOLPHINS" },
 ];
 
