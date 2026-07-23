@@ -826,7 +826,7 @@
   .home-container .home-footer {
     position: relative;
     gap: 0.625rem;
-    padding-top: 1.25rem;
+    padding-top: 0.625rem;
     width: 100%;
   }
 

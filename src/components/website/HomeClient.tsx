@@ -97,7 +97,7 @@ function MobileFooterMenu({
   }, [isOpen]);
 
   return (
-    <div className="pointer-events-auto relative mb-2 flex flex-col items-center md:hidden">
+    <div className="pointer-events-auto relative flex flex-col items-center md:hidden">
       {mounted &&
         createPortal(
           <AnimatePresence>
@@ -399,11 +399,6 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                   肌智派测肤礼遇
                 </m.a>
               </m.div>
-
-              {/* 移动端辅助导航 - 上移到 CTA 下方，单手操作更友好 */}
-              <div className="md:hidden">
-                <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
-              </div>
             </div>
 
             {/* 下区：桌面端 footer 链接 + 版权信息 */}
@@ -413,7 +408,7 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
               animate={{ opacity: 1 }}
               transition={{ duration: 1.2, delay: 1 }}
             >
-              <div className="flex w-full flex-col items-center gap-3 py-3">
+              <div className="flex w-full flex-col items-center py-3 md:gap-3">
                 {/* 辅助链接 - 桌面端 (静态列表) */}
                 <div className="footer-links hidden items-center gap-6 md:flex">
                   {FOOTER_LINKS.map((link) => (
@@ -425,6 +420,11 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       {link.label}
                     </Link>
                   ))}
+                </div>
+
+                {/* 移动端辅助导航 - 下放到 footer 区域，与法律/服务信息语义归拢 */}
+                <div className="md:hidden">
+                  <MobileFooterMenu links={FOOTER_LINKS} onExploreClick={handleCollapse} />
                 </div>
 
                 {/* 版权文本 & 备案信息 */}
