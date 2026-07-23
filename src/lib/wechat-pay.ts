@@ -14,7 +14,12 @@ import { apiConsole } from "@/lib/logger";
 interface WechatPlatformCert {
   serialNo: string;
   publicKey: string;
+  effectiveTime?: string;
+  expireTime?: string;
 }
+
+// 自动下载的微信平台证书缓存
+let _downloadedCerts: WechatPlatformCert[] = [];
 
 function parsePlatformCerts(): WechatPlatformCert[] {
   const certsEnv = process.env.WECHAT_PAY_PLATFORM_CERTS;
@@ -47,7 +52,7 @@ const getConfig = () => ({
 });
 
 /**
- * 获取当前有效的平台证书 Map（主证书 + 备用证书）
+ * 获取当前有效的平台证书 Map（环境变量配置 + 自动下载缓存）
  */
 function getCertsMap(config: ReturnType<typeof getConfig>): Record<string, string> {
   const map: Record<string, string> = {};
@@ -59,7 +64,122 @@ function getCertsMap(config: ReturnType<typeof getConfig>): Record<string, strin
       map[cert.serialNo] = cert.publicKey;
     }
   }
+  for (const cert of _downloadedCerts) {
+    if (cert.serialNo && cert.publicKey) {
+      map[cert.serialNo] = cert.publicKey;
+    }
+  }
   return map;
+}
+
+/**
+ * 构造仅用于下载平台证书的临时客户端。
+ * 该接口返回的是加密证书，不需要平台公钥验签，因此绕过 SDK 的 responseVerifier。
+ */
+async function createCertDownloadClient() {
+  const config = getConfig();
+  const required = ["mchId", "serialNo", "privateKey", "apiV3Key"] as const;
+  const missing = required.filter((k) => !config[k]);
+  if (missing.length > 0) {
+    throw new Error(`WECHAT_PAY_NOT_CONFIGURED: ${missing.join(", ")}`);
+  }
+
+  return {
+    get: async (uri: string) => {
+      const method = "GET";
+      const payload = "";
+      const nonce = Formatter.nonce();
+      const timestamp = Formatter.timestamp();
+      const signature = Rsa.sign(
+        Formatter.request(method, uri, timestamp, nonce, payload),
+        Rsa.from(config.privateKey, Rsa.KEY_TYPE_PRIVATE)
+      );
+      const authorization = Formatter.authorization(config.mchId, nonce, signature, timestamp, config.serialNo);
+
+      const response = await fetch(`https://api.mch.weixin.qq.com${uri}`, {
+        method,
+        headers: {
+          Accept: "application/json",
+          Authorization: authorization,
+          "User-Agent": "WechatPay-Axios-Plugin",
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`微信证书下载失败: ${response.status} ${text}`);
+      }
+
+      return response.json();
+    },
+  };
+}
+
+/**
+ * 从微信支付 /v3/certificates 自动下载平台证书。
+ * 解密后按 serial_no 缓存，并重置已有的 Wechatpay 实例以便新证书生效。
+ */
+export async function downloadWechatPlatformCerts(): Promise<{
+  success: boolean;
+  count: number;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const config = getConfig();
+    if (!config.apiV3Key) {
+      return { success: false, count: 0, error: "WECHAT_PAY_API_V3_KEY 未配置" };
+    }
+
+    const client = await createCertDownloadClient();
+    const result = (await client.get("/v3/certificates")) as {
+      data: Array<{
+        serial_no: string;
+        effective_time?: string;
+        expire_time?: string;
+        encrypt_certificate: {
+          algorithm: string;
+          nonce: string;
+          associated_data: string;
+          ciphertext: string;
+        };
+      }>;
+    };
+
+    const certs: WechatPlatformCert[] = [];
+    for (const item of result.data || []) {
+      const { serial_no, effective_time, expire_time, encrypt_certificate } = item;
+      if (encrypt_certificate.algorithm !== "AEAD_AES_256_GCM") {
+        apiConsole.warn(`[WechatPay] 忽略未知算法证书: ${encrypt_certificate.algorithm}`);
+        continue;
+      }
+
+      const pem = Aes.AesGcm.decrypt(
+        encrypt_certificate.ciphertext,
+        config.apiV3Key,
+        encrypt_certificate.nonce,
+        encrypt_certificate.associated_data
+      );
+
+      certs.push({
+        serialNo: serial_no,
+        publicKey: formatKey(pem),
+        effectiveTime: effective_time,
+        expireTime: expire_time,
+      });
+    }
+
+    _downloadedCerts = certs;
+    // 平台证书更新后，必须重置已创建的实例，使新证书在下次验签时生效
+    _wxpay = null;
+
+    apiConsole.info(`[WechatPay] 成功下载并缓存 ${certs.length} 个平台证书`);
+    return { success: true, count: certs.length };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "未知错误";
+    apiConsole.error("[WechatPay] 下载平台证书失败:", message);
+    return { success: false, count: 0, error: message };
+  }
 }
 
 let _wxpay: Wechatpay | null = null;
@@ -69,35 +189,41 @@ function getWxPay() {
     // 密钥格式校验（在缺失检查之前，提前发现格式问题）
     const keyChecks = [
       validateKeyFormat(process.env.WECHAT_PAY_KEY_PEM, "private", "WECHAT_PAY_KEY_PEM"),
-      validateKeyFormat(
-        process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY,
-        "public",
-        "WECHAT_PAY_PLATFORM_PUBLIC_KEY"
-      ),
     ];
+    if (config.platformPublicKey) {
+      keyChecks.push(
+        validateKeyFormat(
+          process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY,
+          "public",
+          "WECHAT_PAY_PLATFORM_PUBLIC_KEY"
+        )
+      );
+    }
     for (const check of keyChecks) {
       if (!check.valid) {
         apiConsole.error(`[WechatPay] ${check.error}`);
       }
     }
 
-    const required = [
-      "privateKey",
-      "mchId",
-      "apiV3Key",
-      "platformPublicKey",
-      "platformPublicKeyId",
-    ];
+    const required = ["privateKey", "mchId", "apiV3Key"];
     const missing = required.filter((k) => !config[k as keyof typeof config]);
     if (missing.length > 0) {
       console.warn(`⚠️ 微信支付配置不完整，缺少: ${missing.join(", ")}`);
       throw new Error("WECHAT_PAY_NOT_CONFIGURED");
     }
+
+    // 必须至少有一个可用的平台证书（环境变量配置 或 自动下载缓存）
+    const certsMap = getCertsMap(config);
+    if (Object.keys(certsMap).length === 0) {
+      console.warn("⚠️ 微信支付平台证书未配置，请先配置或触发自动下载");
+      throw new Error("WECHAT_PAY_NOT_CONFIGURED");
+    }
+
     _wxpay = new Wechatpay({
       mchid: config.mchId,
       serial: config.serialNo,
       privateKey: config.privateKey,
-      certs: getCertsMap(config),
+      certs: certsMap,
     });
   }
   return _wxpay;
@@ -294,9 +420,9 @@ async function verifyAndDecrypt(headers: Record<string, string>, rawBody: string
   const { resource } = body;
 
   const result = Aes.AesGcm.decrypt(
-    resource.nonce,
-    config.apiV3Key,
     resource.ciphertext,
+    config.apiV3Key,
+    resource.nonce,
     resource.associated_data
   ) as string;
 

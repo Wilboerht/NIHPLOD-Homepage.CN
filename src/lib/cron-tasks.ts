@@ -6,6 +6,7 @@
 import cron from "node-cron";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
 import { queryAndFulfillExpiredPendingOrders } from "./payment-query";
+import { downloadWechatPlatformCerts } from "./wechat-pay";
 import { autoExpireUserCoupons } from "./coupon";
 import {
   cleanupExpiredRefreshTokens,
@@ -23,6 +24,23 @@ interface ScheduledTask {
 
 // 定义所有定时任务
 const tasks: ScheduledTask[] = [
+  {
+    name: "Refresh WechatPay Platform Certificates",
+    cronExpression: "0 1 * * *", // 每天凌晨 1 点刷新
+    handler: async () => {
+      try {
+        console.log("[Cron] 开始刷新微信支付平台证书...");
+        const result = await downloadWechatPlatformCerts();
+        if (result.success) {
+          console.log(`[Cron] 微信支付平台证书刷新完成: ${result.count} 个证书`);
+        } else {
+          apiConsole.error("[Cron] 微信支付平台证书刷新失败:", result.error);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 微信支付平台证书刷新任务失败:", error);
+      }
+    },
+  },
   {
     name: "Query Expired Pending Orders",
     cronExpression: "*/30 * * * *", // 每30分钟执行一次，在自动取消前兜底查询
@@ -152,6 +170,11 @@ export function initializeCronTasks(): void {
   }
 
   console.log("[Cron] 初始化定时任务...");
+
+  // 启动时立即刷新一次微信证书，避免重启后证书缓存为空导致回调验签失败
+  downloadWechatPlatformCerts().catch((error) => {
+    apiConsole.error("[Cron] 启动时刷新微信支付平台证书失败:", error);
+  });
 
   for (const task of tasks) {
     try {

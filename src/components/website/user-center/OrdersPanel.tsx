@@ -332,6 +332,26 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
     }
   }, [order.id, showSuccess, showError]);
 
+  const handleQueryPayment = useCallback(async () => {
+    setActionLoading("query");
+    try {
+      const res = await fetchWithAuth(`/api/orders/${order.id}/query-payment`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success && data.data?.fulfilled) {
+        showSuccess("订单已支付");
+        setCurrentStatus("PAID");
+      } else {
+        showError(data.data?.message || "订单尚未支付");
+      }
+    } catch {
+      showError("网络错误，请稍后重试");
+    } finally {
+      setActionLoading(null);
+    }
+  }, [order.id, showSuccess, showError]);
+
   return (
     <div className="flex h-full flex-col pt-6 md:pt-10">
       <div className="flex-shrink-0 border-b border-black/5 px-6 pb-5 md:border-white/30 md:px-10">
@@ -433,7 +453,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
 
         {/* 订单操作按钮 */}
         <div className="mt-8 space-y-3">
-          {/* 待付款：付款 + 取消 */}
+          {/* 待付款：付款 + 刷新支付状态 + 取消 */}
           {(currentStatus === "PENDING" || currentStatus === "PAYING") && (
             <>
               <button
@@ -442,6 +462,18 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
                 className="w-full rounded-xl bg-brand-primary py-4 text-[15px] font-bold uppercase tracking-[0.2em] text-white shadow-lg shadow-brand-primary/20 transition-all hover:scale-[1.02] hover:bg-brand-primary-dark active:scale-[0.98] disabled:opacity-50"
               >
                 立即付款
+              </button>
+              <button
+                onClick={handleQueryPayment}
+                disabled={actionLoading !== null}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-300/60 py-3.5 text-[14px] font-medium tracking-wide text-stone-500 transition-all hover:border-[#A69374] hover:text-[#A69374] disabled:opacity-50"
+              >
+                {actionLoading === "query" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-4 w-4" />
+                )}
+                刷新支付状态
               </button>
               <button
                 onClick={handleCancel}
