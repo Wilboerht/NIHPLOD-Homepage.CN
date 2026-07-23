@@ -15,6 +15,14 @@ const AMBIENT_SLOGANS = [
   { zh: "源自海豚的灵感", en: "INSPIRED BY DOLPHINS" },
 ];
 
+/** 循环 Slogan：首尾各补一条，保证 3 行视图始终有上一句/下一句 */
+const LOOP_SLOGANS = [
+  AMBIENT_SLOGANS[AMBIENT_SLOGANS.length - 1],
+  ...AMBIENT_SLOGANS,
+  ...AMBIENT_SLOGANS,
+  ...AMBIENT_SLOGANS,
+];
+
 /**
  * Kinetic Grid 全局背景组件
  *
@@ -25,10 +33,10 @@ const AMBIENT_SLOGANS = [
 export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { user, switchToLogin, openUserCenter } = useAuth();
-  const [sloganIndex, setSloganIndex] = useState(0);
+  const [sloganIndex, setSloganIndex] = useState(1);
   // 轨道位移 MotionValue：手动控制，确保循环回位为物理级瞬间跳变（.set），绝无反向动画
   const ROW_H = 44;
-  const sloganY = useMotionValue(ROW_H * 2);
+  const sloganY = useMotionValue(0);
 
   // Slogan 轮播定时器：只负责推进索引
   useEffect(() => {
@@ -39,11 +47,11 @@ export function KineticBackground() {
   // 轨道位移：正常步进平滑上移；一个循环结束时 .set() 瞬间回位（三倍轨道内容等价，视觉零感知）
   useEffect(() => {
     const next = sloganIndex + 1;
-    if (next >= AMBIENT_SLOGANS.length * 2) {
-      sloganY.set(ROW_H * 2);
-      setSloganIndex(0);
+    if (next >= AMBIENT_SLOGANS.length * 2 + 1) {
+      sloganY.set(0);
+      setSloganIndex(1);
     } else {
-      void animate(sloganY, ROW_H * (2 - next), {
+      void animate(sloganY, ROW_H * (1 - sloganIndex), {
         duration: 1.2,
         ease: [0.16, 1, 0.3, 1],
       });
@@ -133,33 +141,22 @@ export function KineticBackground() {
         {/* 品牌 Logo + Slogan + 产品全家福 - 整体居中于抽屉按钮与 Dock 之间 */}
         <div className="kinetic-ambient-center">
           <div className="kinetic-ambient-logo">
-            <Image
-              src="/images/NIHPLOD-logo.svg"
-              alt="NIHPLOD"
-              width={144}
-              height={36}
-              priority
-            />
+            <Image src="/images/NIHPLOD-logo.svg" alt="NIHPLOD" width={144} height={36} priority />
           </div>
           <div className="kinetic-ambient-slogan">
-            <m.div
-              className="kinetic-ambient-slogan-track"
-              style={{ y: sloganY }}
-            >
-              {[...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS].map(
-                (s, i) => {
-                  const d = i - sloganIndex;
-                  const level = Math.min(Math.abs(d), 2);
-                  return (
-                    <div
-                      key={i}
-                      className={`kinetic-ambient-slogan-row kinetic-ambient-slogan-row--${level}`}
-                    >
-                      {s.zh}
-                    </div>
-                  );
-                }
-              )}
+            <m.div className="kinetic-ambient-slogan-track" style={{ y: sloganY }}>
+              {LOOP_SLOGANS.map((s, i) => {
+                const d = i - sloganIndex;
+                const level = Math.min(Math.abs(d), 1);
+                return (
+                  <div
+                    key={i}
+                    className={`kinetic-ambient-slogan-row kinetic-ambient-slogan-row--${level}`}
+                  >
+                    {s.zh}
+                  </div>
+                );
+              })}
             </m.div>
           </div>
           <div className="kinetic-ambient-badge">
@@ -187,7 +184,7 @@ export function KineticBackground() {
         </Link>
 
         {/* 左侧大卡片 - 跨两行 */}
-        <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes group relative cursor-pointer no-hover-effect">
+        <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes no-hover-effect group relative cursor-pointer">
           <Link href="/products" className="absolute inset-0 z-20" aria-label="了解产品" />
           <Image
             src="/images/kinetic-product-hero.jpeg"
@@ -221,7 +218,7 @@ export function KineticBackground() {
 
         {/* Row 1, Col 3-4: 官方指南宽图片卡 */}
         <div
-          className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer no-hover-effect"
+          className="kinetic-cell kinetic-image-cell kinetic-cell-less no-hover-effect group relative cursor-pointer"
           style={{ gridColumn: "span 2", aspectRatio: "auto" }}
         >
           <Link href="/guide" className="absolute inset-0 z-20" aria-label="官方指南" />
@@ -240,7 +237,7 @@ export function KineticBackground() {
           </div>
         </div>
 
-        <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer no-hover-effect">
+        <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin no-hover-effect group relative cursor-pointer">
           <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
           {/* Desktop Image */}
           <Image
@@ -273,11 +270,16 @@ export function KineticBackground() {
 
         {/* Row 2, Col 4: 登录/CTA卡 */}
         <div
-          className="kinetic-cell kinetic-login-cell kinetic-cell-login cursor-pointer no-hover-effect"
+          className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect cursor-pointer"
           onClick={user ? () => openUserCenter() : handleLoginClick}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? openUserCenter() : switchToLogin(); } }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              user ? openUserCenter() : switchToLogin();
+            }
+          }}
         >
           <div className="kinetic-btn-group pointer-events-none">
             <div className="mb-2 flex w-full items-center justify-center">

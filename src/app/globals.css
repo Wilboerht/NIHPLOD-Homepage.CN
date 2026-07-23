@@ -1723,7 +1723,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 28px;
+    gap: 24px;
     pointer-events: none;
     z-index: 3;
   }
@@ -1742,7 +1742,7 @@
   /* Slogan 诗意堆叠 - 固定视口 + 轨道平移，上下对称无抖动 */
   .kinetic-ambient-slogan {
     --slogan-row-h: 44px;
-    height: calc(var(--slogan-row-h) * 5);
+    height: calc(var(--slogan-row-h) * 3);
     overflow: hidden;
     width: 88vw;
   }
@@ -1770,28 +1770,21 @@
 
   /* 当前行 - 主视觉锚点（纯色，无透明度） */
   .kinetic-ambient-slogan-row--0 {
-    font-size: 20px;
-    letter-spacing: 0.22em;
+    font-size: 22px;
+    letter-spacing: 0.2em;
     color: #00263e;
   }
 
-  /* 上下相邻行 - 可读的软预告（景深第二层） */
+  /* 上下相邻行 - 轻预告（景深第二层） */
   .kinetic-ambient-slogan-row--1 {
-    font-size: 15px;
-    letter-spacing: 0.18em;
-    color: rgba(0, 38, 62, 0.24);
-  }
-
-  /* 最远行 - 可见的呼吸纹理（景深第三层） */
-  .kinetic-ambient-slogan-row--2 {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 0.15em;
-    color: rgba(0, 38, 62, 0.11);
+    color: rgba(0, 38, 62, 0.12);
   }
 
   /* 产品全家福展台 - flex 子元素 */
   .kinetic-ambient-badge {
-    width: min(72vw, 300px);
+    width: min(60vw, 260px);
     z-index: 4;
   }
 
@@ -1810,7 +1803,8 @@
 }
 
 @keyframes kinetic-ambient-breathe {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.5;
     transform: scale(1);
   }
