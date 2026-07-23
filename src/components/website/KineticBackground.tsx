@@ -5,12 +5,12 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
 import { ChevronRight } from "lucide-react";
-import { m } from "framer-motion";
+import { animate, m, useMotionValue } from "framer-motion";
 
 /** 移动端氛围层 Slogan 轮播数据 */
 const AMBIENT_SLOGANS = [
   { zh: "逆转时光", en: "REVERSE TIME" },
-  { zh: "更少步骤\n更多呵护", en: "LESS STEPS, MORE CARE" },
+  { zh: "更少步骤，更多呵护", en: "LESS STEPS, MORE CARE" },
   { zh: "美丽不该复杂", en: "BEAUTY WITHOUT COMPLEXITY" },
   { zh: "源自海豚的灵感", en: "INSPIRED BY DOLPHINS" },
 ];
@@ -26,22 +26,29 @@ export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { user, switchToLogin, openUserCenter } = useAuth();
   const [sloganIndex, setSloganIndex] = useState(0);
-  const wrappingRef = useRef(false);
+  // 轨道位移 MotionValue：手动控制，确保循环回位为物理级瞬间跳变（.set），绝无反向动画
+  const ROW_H = 44;
+  const sloganY = useMotionValue(ROW_H * 2);
 
-  // Slogan 轮播定时器（轨道平移，无 DOM 增删）
+  // Slogan 轮播定时器：只负责推进索引
   useEffect(() => {
-    const id = setInterval(() => {
-      setSloganIndex((prev) => {
-        const next = prev + 1;
-        if (next >= AMBIENT_SLOGANS.length * 2) {
-          wrappingRef.current = true;
-          return 0; // 三倍轨道内容等价，瞬间回位无感知
-        }
-        return next;
-      });
-    }, 5000);
+    const id = setInterval(() => setSloganIndex((p) => p + 1), 5000);
     return () => clearInterval(id);
   }, []);
+
+  // 轨道位移：正常步进平滑上移；一个循环结束时 .set() 瞬间回位（三倍轨道内容等价，视觉零感知）
+  useEffect(() => {
+    const next = sloganIndex + 1;
+    if (next >= AMBIENT_SLOGANS.length * 2) {
+      sloganY.set(ROW_H * 2);
+      setSloganIndex(0);
+    } else {
+      void animate(sloganY, ROW_H * (2 - next), {
+        duration: 1.2,
+        ease: [0.16, 1, 0.3, 1],
+      });
+    }
+  }, [sloganIndex, sloganY]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -123,36 +130,47 @@ export function KineticBackground() {
         <div className="kinetic-ambient-particle kinetic-ambient-particle-4" />
         <div className="kinetic-ambient-particle kinetic-ambient-particle-5" />
 
-        {/* Slogan 诗意堆叠 - 固定视口 + 轨道平移，上下对称无抖动 */}
-        <div className="kinetic-ambient-slogan">
-          <m.div
-            className="kinetic-ambient-slogan-track"
-            animate={{ y: `calc(var(--slogan-row-h) * ${2 - sloganIndex})` }}
-            transition={
-              wrappingRef.current
-                ? { duration: 0 }
-                : { duration: 1.2, ease: [0.16, 1, 0.3, 1] }
-            }
-          >
-            {[...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS].map(
-              (s, i) => {
-                const d = i - sloganIndex;
-                const level = Math.min(Math.abs(d), 2);
-                return (
-                  <div
-                    key={i}
-                    className={`kinetic-ambient-slogan-row kinetic-ambient-slogan-row--${level}`}
-                  >
-                    {s.zh}
-                  </div>
-                );
-              }
-            )}
-          </m.div>
-          {(() => {
-            wrappingRef.current = false;
-            return null;
-          })()}
+        {/* 品牌 Logo + Slogan + 产品全家福 - 整体居中于抽屉按钮与 Dock 之间 */}
+        <div className="kinetic-ambient-center">
+          <div className="kinetic-ambient-logo">
+            <Image
+              src="/images/NIHPLOD-logo.svg"
+              alt="NIHPLOD"
+              width={144}
+              height={36}
+              priority
+            />
+          </div>
+          <div className="kinetic-ambient-slogan">
+            <m.div
+              className="kinetic-ambient-slogan-track"
+              style={{ y: sloganY }}
+            >
+              {[...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS, ...AMBIENT_SLOGANS].map(
+                (s, i) => {
+                  const d = i - sloganIndex;
+                  const level = Math.min(Math.abs(d), 2);
+                  return (
+                    <div
+                      key={i}
+                      className={`kinetic-ambient-slogan-row kinetic-ambient-slogan-row--${level}`}
+                    >
+                      {s.zh}
+                    </div>
+                  );
+                }
+              )}
+            </m.div>
+          </div>
+          <div className="kinetic-ambient-badge">
+            <Image
+              src="/images/gift-badge.webp"
+              alt="NIHPLOD 护肤系列全家福"
+              width={300}
+              height={163}
+              className="kinetic-ambient-badge-img"
+            />
+          </div>
         </div>
       </div>
 
