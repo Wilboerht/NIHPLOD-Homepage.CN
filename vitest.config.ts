@@ -13,9 +13,27 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules", ".next"],
     setupFiles: ["./vitest.setup.ts"],
+    testTimeout: 15000,
     env: {
       JWT_SECRET: "test-secret-key-at-least-32-characters-long",
       DATABASE_URL: "postgresql://test:test@localhost:5432/test",
+      TZ: "Asia/Shanghai",
+    },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov", "html"],
+      include: ["src/lib/**/*.ts"],
+      exclude: [
+        "src/lib/__tests__/**",
+        "src/generated/**",
+        "**/*.d.ts",
+      ],
+      thresholds: {
+        statements: 60,
+        branches: 60,
+        functions: 60,
+        lines: 60,
+      },
     },
   },
 });

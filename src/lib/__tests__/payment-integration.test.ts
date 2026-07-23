@@ -238,6 +238,95 @@ describe("支付链路集成测试", () => {
       expect(result.success).toBe(true);
       expect(mockPrisma.order.updateMany).not.toHaveBeenCalled();
     });
+
+    it("终态订单（CANCELLED）应忽略支付通知", async () => {
+      const order = { ...createBaseOrder(), status: "CANCELLED" };
+      mockPrisma.order.findUnique.mockResolvedValue(order);
+
+      const rawBody = JSON.stringify({
+        id: "notify-1",
+        resource: { nonce: "nonce", ciphertext: "cipher", associated_data: "ad" },
+      });
+      const headers = {
+        "wechatpay-signature": "sig",
+        "wechatpay-timestamp": `${Math.floor(Date.now() / 1000)}`,
+        "wechatpay-nonce": "nonce",
+        "wechatpay-serial": "PUB_SERIAL",
+      };
+
+      const result = await wechatPay.handlePaymentNotify(headers, rawBody);
+
+      expect(result.success).toBe(true);
+      expect(mockPrisma.order.updateMany).not.toHaveBeenCalled();
+      expect(mockPrisma.transaction.create).not.toHaveBeenCalled();
+    });
+
+    it("终态订单（COMPLETED）应忽略支付通知", async () => {
+      const order = { ...createBaseOrder(), status: "COMPLETED" };
+      mockPrisma.order.findUnique.mockResolvedValue(order);
+
+      const rawBody = JSON.stringify({
+        id: "notify-1",
+        resource: { nonce: "nonce", ciphertext: "cipher", associated_data: "ad" },
+      });
+      const headers = {
+        "wechatpay-signature": "sig",
+        "wechatpay-timestamp": `${Math.floor(Date.now() / 1000)}`,
+        "wechatpay-nonce": "nonce",
+        "wechatpay-serial": "PUB_SERIAL",
+      };
+
+      const result = await wechatPay.handlePaymentNotify(headers, rawBody);
+
+      expect(result.success).toBe(true);
+      expect(mockPrisma.order.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("并发 CAS 失败时不应记录交易流水", async () => {
+      const order = createBaseOrder();
+      mockPrisma.order.findUnique.mockResolvedValue(order);
+      // CAS 失败：其他进程已处理
+      mockPrisma.order.updateMany.mockResolvedValue({ count: 0 });
+
+      const rawBody = JSON.stringify({
+        id: "notify-1",
+        resource: { nonce: "nonce", ciphertext: "cipher", associated_data: "ad" },
+      });
+      const headers = {
+        "wechatpay-signature": "sig",
+        "wechatpay-timestamp": `${Math.floor(Date.now() / 1000)}`,
+        "wechatpay-nonce": "nonce",
+        "wechatpay-serial": "PUB_SERIAL",
+      };
+
+      const result = await wechatPay.handlePaymentNotify(headers, rawBody);
+
+      expect(result.success).toBe(true);
+      expect(mockPrisma.transaction.create).not.toHaveBeenCalled();
+      expect(mockPrisma.product.update).not.toHaveBeenCalled();
+    });
+
+    it("支付金额不匹配应拒绝处理", async () => {
+      const order = createBaseOrder();
+      order.payAmount = 999; // 本地 999 元，网关返回 1 元
+      mockPrisma.order.findUnique.mockResolvedValue(order);
+
+      const rawBody = JSON.stringify({
+        id: "notify-1",
+        resource: { nonce: "nonce", ciphertext: "cipher", associated_data: "ad" },
+      });
+      const headers = {
+        "wechatpay-signature": "sig",
+        "wechatpay-timestamp": `${Math.floor(Date.now() / 1000)}`,
+        "wechatpay-nonce": "nonce",
+        "wechatpay-serial": "PUB_SERIAL",
+      };
+
+      const result = await wechatPay.handlePaymentNotify(headers, rawBody);
+
+      expect(result.success).toBe(false);
+      expect(mockPrisma.order.updateMany).not.toHaveBeenCalled();
+    });
   });
 
   describe("微信支付主动查询兜底", () => {
@@ -294,6 +383,75 @@ describe("支付链路集成测试", () => {
   });
 
   describe("微信支付退款回调", () => {
+    it("已退款订单重复通知应幂等返回成功", async () => {
+      const order = createBaseOrder();
+      order.status = "REFUNDED";
+      order.paymentNo = "wx123";
+      mockPrisma.order.findUnique.mockResolvedValue(order);
+
+      (mockAes.AesGcm.decrypt as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+        JSON.stringify({
+          out_trade_no: order.orderNo,
+          refund_id: "R123",
+          refund_status: "SUCCESS",
+          success_time: "2024-01-01T00:00:00Z",
+          amount: { refund: 100 },
+        })
+      );
+
+      const rawBody = JSON.stringify({
+        id: "refund-notify-1",
+        resource: { nonce: "nonce", ciphertext: "cipher", associated_data: "ad" },
+      });
+      const headers = {
+        "wechatpay-signature": "sig",
+        "wechatpay-timestamp": `${Math.floor(Date.now() / 1000)}`,
+        "wechatpay-nonce": "nonce",
+        "wechatpay-serial": "PUB_SERIAL",
+      };
+
+      const result = await wechatPay.handleRefundNotify(headers, rawBody);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("订单已退款");
+      // 不应再次调用 finalizeRefund 中的更新
+      expect(mockPrisma.order.update).not.toHaveBeenCalled();
+    });
+
+    it("退款金额超过实付金额应拒绝", async () => {
+      const order = createBaseOrder();
+      order.status = "PAID";
+      order.payAmount = 1; // 实付 1 元
+      order.paymentNo = "wx123";
+      mockPrisma.order.findUnique.mockResolvedValue(order);
+
+      (mockAes.AesGcm.decrypt as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+        JSON.stringify({
+          out_trade_no: order.orderNo,
+          refund_id: "R999",
+          refund_status: "SUCCESS",
+          success_time: "2024-01-01T00:00:00Z",
+          amount: { refund: 200 }, // 退 2 元 > 实付 1 元
+        })
+      );
+
+      const rawBody = JSON.stringify({
+        id: "refund-notify-1",
+        resource: { nonce: "nonce", ciphertext: "cipher", associated_data: "ad" },
+      });
+      const headers = {
+        "wechatpay-signature": "sig",
+        "wechatpay-timestamp": `${Math.floor(Date.now() / 1000)}`,
+        "wechatpay-nonce": "nonce",
+        "wechatpay-serial": "PUB_SERIAL",
+      };
+
+      const result = await wechatPay.handleRefundNotify(headers, rawBody);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("REFUND_AMOUNT_INVALID");
+    });
+
     it("应将 PAID 订单更新为 REFUNDED 并恢复库存与销量", async () => {
       const order = createBaseOrder();
       order.status = "PAID";
