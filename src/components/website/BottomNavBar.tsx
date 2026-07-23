@@ -284,7 +284,7 @@ export function BottomNavBar() {
                           >
                             <Icon className="h-5 w-5 shrink-0 text-brand-primary" />
                             <span
-                              className="text-[13px] font-normal leading-[20px] tracking-[0.06em] text-brand-charcoal"
+                              className="text-[14px] font-normal leading-[20px] tracking-[0.06em] text-brand-charcoal"
                               style={{
                                 fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                               }}
@@ -320,7 +320,7 @@ export function BottomNavBar() {
               >
                 <PrimaryIcon className="h-5 w-5 text-brand-primary" />
                 <span
-                  className="text-[13px] font-normal leading-[20px] tracking-[0.06em] text-brand-charcoal"
+                  className="text-[14px] font-normal leading-[20px] tracking-[0.06em] text-brand-charcoal"
                   style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                 >
                   {primaryNav.label}

@@ -141,9 +141,9 @@ export function StoryContent() {
             />
 
             {/* Header - Mobile */}
-            <div className="relative z-50 flex h-[88px] shrink-0 items-center justify-center">
-              <Link href="/" className="mt-1 flex items-center justify-center">
-                <div className="relative h-[42px] w-[150px]">
+            <div className="relative z-50 flex h-[56px] shrink-0 items-center justify-center">
+              <Link href="/" className="flex items-center justify-center">
+                <div className="relative h-[28px] w-[100px]">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
                     alt="NIHPLOD Logo"
@@ -156,26 +156,39 @@ export function StoryContent() {
             </div>
 
             {/* Navigation - Mobile Tab Bar */}
-            <div className="relative z-40 shrink-0 px-4">
-              <nav className="flex h-[37px] items-center rounded-full bg-white/80 p-[4px]">
+            <div className="relative z-40 mt-2 shrink-0 px-5">
+              <nav
+                className="flex h-[40px] items-center rounded-full border border-[#00263e]/[0.06] bg-[#00263e]/[0.03] p-[3px]"
+                role="tablist"
+                aria-label="品牌故事导航"
+              >
                 {navItems.map((item) => {
                   const isActive = activeSection === item.id;
                   return (
                     <button
                       key={item.id}
                       type="button"
+                      role="tab"
+                      aria-selected={isActive}
                       onClick={() => {
                         setActiveSection(item.id);
                         contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                       }}
-                      className="relative flex flex-1 items-center justify-center"
+                      className="relative flex h-full flex-1 items-center justify-center"
                     >
+                      {isActive && (
+                        <m.span
+                          layoutId="about-tab-pill"
+                          className="absolute inset-0 rounded-full bg-white shadow-[0_1px_6px_rgba(0,38,62,0.08)]"
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        />
+                      )}
                       <span
                         className={cn(
-                          "whitespace-nowrap text-[13px] font-normal leading-[20px] transition-all duration-300",
+                          "relative z-10 whitespace-nowrap text-[13px] font-normal leading-[20px] tracking-[0.04em] transition-colors duration-300",
                           isActive
-                            ? "rounded-full bg-white px-2 py-[3px] text-[#00263E] shadow-[0_1px_4px_rgba(0,38,62,0.06)]"
-                            : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
+                            ? "text-[#00263E]"
+                            : "text-[#00263E]/45"
                         )}
                       >
                         {item.label}

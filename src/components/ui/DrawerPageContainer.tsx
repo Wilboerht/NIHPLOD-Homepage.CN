@@ -100,10 +100,9 @@ export function DrawerPageContainer({
         className="pointer-events-none h-full"
       >
         <div
-          className="pointer-events-none flex h-full flex-col items-center lg:[filter:var(--drawer-shadow-lg)]"
+          className="pointer-events-none flex h-full flex-col items-center"
           style={
             {
-              "--drawer-shadow-lg": `drop-shadow(4px 2px 1px rgba(0, 38, 62, ${shadowOpacity}))`,
               "--drawer-panel-shadow": `0 2px 8px -2px rgba(120, 90, 50, ${(shadowOpacity * 0.4).toFixed(3)}), 0 8px 24px -8px rgba(120, 90, 50, ${(shadowOpacity * 0.3).toFixed(3)})`,
             } as CSSProperties
           }
@@ -124,7 +123,7 @@ export function DrawerPageContainer({
             <div
               id={contentId}
               inert={!isDrawerOpen}
-              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FBF8F0] [box-shadow:var(--drawer-panel-shadow)] lg:rounded-b-3xl lg:[box-shadow:none]"
+              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FBF8F0] [box-shadow:var(--drawer-panel-shadow)] lg:rounded-b-3xl"
             >
               {children}
             </div>
