@@ -88,8 +88,8 @@ export function DrawerPageContainer({
   };
 
   const collapsedTransform = handleHeight
-    ? `translate3d(0, calc(-100% + ${handleHeight}px), 0)`
-    : "translate3d(0, -100%, 0)";
+    ? `translate3d(0, calc(-100% + ${handleHeight}px + var(--drawer-collapsed-gap, 0px)), 0)`
+    : "translate3d(0, calc(-100% + var(--drawer-collapsed-gap, 0px)), 0)";
 
   return (
     <m.div className={cn("safe-area-content", wrapperClassName)} transition={TRANSITION}>
@@ -100,16 +100,16 @@ export function DrawerPageContainer({
         className="pointer-events-none h-full"
       >
         <div
-          className="pointer-events-none flex h-full flex-col items-center [filter:var(--drawer-shadow-sm)] lg:[filter:var(--drawer-shadow-lg)]"
+          className="pointer-events-none flex h-full flex-col items-center lg:[filter:var(--drawer-shadow-lg)]"
           style={
             {
-              "--drawer-shadow-sm": `drop-shadow(0 6px 16px rgba(0, 38, 62, ${(shadowOpacity * 0.35).toFixed(3)}))`,
               "--drawer-shadow-lg": `drop-shadow(4px 2px 1px rgba(0, 38, 62, ${shadowOpacity}))`,
+              "--drawer-panel-shadow": `0 12px 32px -12px rgba(0, 38, 62, ${shadowOpacity})`,
             } as CSSProperties
           }
         >
           <m.div
-            className="relative z-20 flex h-full w-full flex-col"
+            className="relative z-20 flex h-full w-full flex-col [--drawer-collapsed-gap:12px] lg:[--drawer-collapsed-gap:0px]"
             initial={{
               transform: collapsedTransform,
             }}
@@ -124,7 +124,7 @@ export function DrawerPageContainer({
             <div
               id={contentId}
               inert={!isDrawerOpen}
-              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FBF8F0] lg:rounded-b-3xl"
+              className="pointer-events-auto relative min-h-0 w-full flex-1 overflow-hidden rounded-b-2xl bg-[#FBF8F0] [box-shadow:var(--drawer-panel-shadow)] lg:rounded-b-3xl lg:[box-shadow:none]"
             >
               {children}
             </div>
@@ -138,7 +138,7 @@ export function DrawerPageContainer({
               aria-label={isDrawerOpen ? "收起页面内容" : "展开页面内容"}
               className={cn(
                 "group pointer-events-auto relative z-30 flex items-center justify-center self-center overflow-hidden",
-                "mt-2 rounded-full bg-brand-cream/90 py-3 shadow-[0_2px_16px_-6px_rgba(0,38,62,0.16)] backdrop-blur-md",
+                "mt-3 rounded-full bg-brand-cream/90 py-3 shadow-[0_2px_16px_-6px_rgba(0,38,62,0.16)] backdrop-blur-md",
                 "lg:-mt-[1px] lg:rounded-t-none lg:rounded-b-2xl lg:bg-[#FBF8F0] lg:py-3.5 lg:shadow-none lg:backdrop-blur-none",
                 buttonWidth
               )}
