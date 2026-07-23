@@ -223,7 +223,7 @@ export function StoryContent() {
                   <div>
                     {/* 第一个内容块 */}
                     <div className="mb-6">
-                      <span className="block text-[17px] font-normal leading-snug tracking-[0.08em] text-[#00263e]">
+                      <span className="block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
                         来自大自然的神奇修复力
                       </span>
                       <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90">
@@ -252,7 +252,7 @@ export function StoryContent() {
                         />
                         2008 | 摩纳哥 | 联合实验室公司
                       </span>
-                      <span className="mt-4 block text-[17px] font-normal leading-snug tracking-[0.08em] text-[#00263e]">
+                      <span className="mt-4 block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
                         前沿科技赋能精简护理
                       </span>
                       <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90">
@@ -307,7 +307,7 @@ export function StoryContent() {
                     {/* CEO 签名 */}
                     <div className="flex flex-col items-end gap-2.5">
                       <span className="text-[12px] leading-[18px] text-[#00263e]/50">
-                        首席执行官
+                        CEO
                       </span>
                       <Image
                         src="/images/story/mission-decoration.svg"
