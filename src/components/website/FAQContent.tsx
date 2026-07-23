@@ -154,9 +154,9 @@ export function FAQContent() {
           isDrawerOpen ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
         )}
       >
-        {/* Fixed Header - Mobile aligned with Ritual, PC kept stable */}
-        <div className="sticky top-0 z-50 flex h-[56px] shrink-0 items-center justify-center border-b border-transparent bg-[#FBF8F0]/95 px-6 backdrop-blur-sm transition-all sm:h-[88px] sm:justify-start sm:border-brand-charcoal/5 sm:px-[8%]">
-          <Link href="/" className="mt-1 flex items-center justify-center">
+        {/* Header - Mobile aligned with About, PC kept stable */}
+        <div className="relative z-50 flex h-[56px] shrink-0 items-center justify-center sm:sticky sm:top-0 sm:h-[88px] sm:justify-start sm:border-b sm:border-brand-charcoal/5 sm:bg-[#FBF8F0]/95 sm:px-[8%] sm:backdrop-blur-sm sm:transition-all">
+          <Link href="/" className="flex items-center justify-center sm:mt-1">
             <div className="relative h-[28px] w-[100px] sm:h-9 sm:w-[150px]">
               <Image
                 src="/images/NIHPLOD-logo.svg"
@@ -167,8 +167,7 @@ export function FAQContent() {
               />
             </div>
           </Link>
-          {/* Texture Overlay for Header to match body */}
-          <div className="texture-overlay absolute inset-0 z-[-1]" />
+          <div className="texture-overlay absolute inset-0 z-[-1] hidden sm:block" />
         </div>
 
         <div className="flex flex-1 flex-col overflow-hidden pb-6 sm:px-10 lg:px-[15%] xl:px-[20%]">
@@ -191,28 +190,27 @@ export function FAQContent() {
               </h1>
               <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
             </div>
-            <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:gap-0">
+            <div className="mx-auto flex max-w-4xl flex-col gap-0">
               {FAQS.map((faq, index) => (
                 <div
                   key={index}
                   className={cn(
-                    "group transition-colors duration-500 ease-out",
-                    "mb-3 rounded-lg border border-brand-charcoal/8 p-4 sm:mb-0 sm:overflow-visible sm:rounded-none sm:border-b sm:border-l-[1.5px] sm:border-brand-charcoal/10 sm:border-l-transparent sm:border-t-0 sm:border-r-0 sm:p-0",
+                    "group border-b border-l-[1.5px] border-brand-charcoal/10 border-l-transparent border-t-0 border-r-0 transition-colors duration-500 ease-out",
                     openIndex === index
-                      ? "bg-[#FFFFFF] sm:border-l-[#B5AC88] sm:bg-[#FFFFFF]/40"
-                      : "sm:ring-0 sm:hover:bg-white/20"
+                      ? "bg-[#FFFFFF]/40 border-l-[#B5AC88]"
+                      : "sm:hover:bg-white/20"
                   )}
                 >
                   <button
                     onClick={() => toggleFAQ(index)}
-                    className="flex w-full items-center justify-between gap-4 px-0 py-3 text-left sm:px-4 sm:py-5 lg:px-6 lg:py-6"
+                    className="flex w-full items-center px-4 py-4 text-left sm:justify-between sm:gap-4 sm:py-5 lg:px-6 lg:py-6"
                   >
                     <span
                       className={cn(
-                        "flex-1 text-[14px] font-normal leading-snug tracking-[0.08em] text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
+                        "flex-1 text-[14px] font-light leading-snug tracking-[0.08em] text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
                         openIndex === index
                           ? "text-brand-charcoal"
-                          : "group-hover:text-brand-charcoal"
+                          : "sm:group-hover:text-brand-charcoal"
                       )}
                       style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
                     >
@@ -220,9 +218,9 @@ export function FAQContent() {
                     </span>
                     <span
                       className={cn(
-                        "-mr-1.5 shrink-0 p-1.5 text-brand-charcoal/30 transition-all duration-500 sm:rounded-full",
+                        "hidden shrink-0 rounded-full p-1.5 text-brand-charcoal/30 transition-all duration-500 sm:block",
                         openIndex === index
-                          ? "rotate-45 text-brand-charcoal/80 sm:bg-brand-charcoal/10"
+                          ? "rotate-45 text-brand-charcoal/80 bg-brand-charcoal/10"
                           : "group-hover:text-brand-charcoal/50 sm:group-hover:bg-brand-charcoal/[0.03]"
                       )}
                     >
@@ -240,7 +238,7 @@ export function FAQContent() {
                       >
                         <div style={{ overflow: "hidden" }}>
                           <div
-                            className="border-l border-brand-charcoal/20 pb-5 pl-4 pr-4 pt-5 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/80 sm:border-l-0 sm:pb-8 sm:pl-6 sm:pr-6 sm:pt-0 lg:pr-12 lg:text-[15px] lg:leading-[1.8]"
+                            className="pb-5 pl-4 pr-4 pt-5 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 sm:pb-8 sm:pl-6 sm:pr-6 sm:pt-0 lg:pr-12 lg:text-[15px]"
                             style={{
                               fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
                             }}

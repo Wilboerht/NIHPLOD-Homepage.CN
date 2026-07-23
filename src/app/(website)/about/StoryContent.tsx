@@ -140,23 +140,25 @@ export function StoryContent() {
               }}
             />
 
-            {/* Header - Mobile */}
-            <div className="relative z-50 flex h-[56px] shrink-0 items-center justify-center">
-              <Link href="/" className="flex items-center justify-center">
+            {/* Header - Mobile - 与 Guide 顶部栏样式一致 */}
+            <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-brand-cream/95 px-6 backdrop-blur-sm transition-all">
+              <Link href="/" className="mt-1 flex items-center justify-center">
                 <div className="relative h-[28px] w-[100px]">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
-                    alt="NIHPLOD Logo"
+                    alt="NIHPLOD"
                     fill
                     className="object-contain"
                     priority
                   />
                 </div>
               </Link>
+              {/* Texture Overlay for Header to match body */}
+              <div className="texture-overlay absolute inset-0 z-[-1]" />
             </div>
 
             {/* Navigation - Mobile Tab Bar */}
-            <div className="relative z-40 mt-2 shrink-0 px-5">
+            <div className="relative z-40 shrink-0 px-5">
               <nav
                 className="flex h-[40px] items-center rounded-full border border-[#00263e]/[0.06] bg-[#00263e]/[0.03] p-[3px]"
                 role="tablist"
@@ -212,7 +214,7 @@ export function StoryContent() {
               {activeSection === "story" && (
                 <section className="relative pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2 className="text-center text-[22px] font-medium tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
                       品牌故事
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -275,7 +277,7 @@ export function StoryContent() {
               {activeSection === "mission" && (
                 <section className="relative pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2 className="text-center text-[22px] font-medium tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
                       公司使命
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -323,7 +325,7 @@ export function StoryContent() {
               {activeSection === "philosophy" && (
                 <section className="relative pt-7">
                   <div className="mb-7 flex shrink-0 flex-col items-center">
-                    <h2 className="text-center text-[22px] font-medium tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
                       品牌哲学
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -381,7 +383,7 @@ export function StoryContent() {
               {activeSection === "awards" && (
                 <section className="relative pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2 className="text-center text-[22px] font-medium tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
                       媒体及获奖
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -455,7 +457,7 @@ export function StoryContent() {
 
               {/* Mobile Footer Copyright - 置于滚动内容末尾；pt-10 为收尾间距，底部留白由移动端容器 pb-6 统一提供 */}
               <div className="flex flex-col items-center justify-center pt-10">
-                <p className="text-[12px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+                <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
               </div>
