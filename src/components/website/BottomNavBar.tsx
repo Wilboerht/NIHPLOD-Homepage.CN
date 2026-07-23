@@ -238,7 +238,7 @@ export function BottomNavBar() {
             exit={{ opacity: 0 }}
             transition={menuTransition}
             aria-hidden="true"
-            className="fixed inset-0 z-40 bg-brand-charcoal/30 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-[rgba(60,45,30,0.12)] backdrop-blur-sm lg:hidden"
             onClick={() => setNavMenuOpen(false)}
           />
         )}
