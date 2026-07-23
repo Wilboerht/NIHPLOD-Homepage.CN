@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLayout } from "@/contexts/LayoutContext";
 import { Link } from "next-view-transitions";
 import { ChevronRight } from "lucide-react";
 import { animate, m, useMotionValue } from "framer-motion";
@@ -34,6 +36,8 @@ const LOOP_SLOGANS = [
 export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { user, switchToLogin, openUserCenter } = useAuth();
+  const pathname = usePathname();
+  const { setDrawerOpen } = useLayout();
   const [sloganIndex, setSloganIndex] = useState(2);
   // 轨道位移 MotionValue：手动控制，确保循环回位为物理级瞬间跳变（.set），绝无反向动画
   const ROW_H = 44;
@@ -160,7 +164,17 @@ export function KineticBackground() {
               })}
             </m.div>
           </div>
-          <Link href="/products" className="kinetic-ambient-badge" aria-label="探索产品系列">
+          <Link
+            href="/products"
+            className="kinetic-ambient-badge"
+            aria-label="探索产品系列"
+            onClick={(e) => {
+              if (pathname?.startsWith("/products")) {
+                e.preventDefault();
+                setDrawerOpen(true);
+              }
+            }}
+          >
             <Image
               src="/images/gift-badge.webp"
               alt="NIHPLOD 护肤系列全家福"

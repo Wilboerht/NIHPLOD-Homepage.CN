@@ -18,11 +18,10 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
         跳转到主要内容
       </a>
 
-      {/* Graphite Kinetic Grid 全局背景 */}
-      <KineticBackground />
-
-      {/* 主内容区域，包含 NavBar 逻辑 */}
+      {/* 主内容区域，包含 NavBar 逻辑 + 全局背景 */}
       <WebsiteLayoutClient>
+        {/* Graphite Kinetic Grid 全局背景 - 需在 LayoutProvider 内以访问抽屉状态 */}
+        <KineticBackground />
         <MainContent>{children}</MainContent>
       </WebsiteLayoutClient>
 
