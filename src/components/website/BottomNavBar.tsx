@@ -1,7 +1,7 @@
 "use client";
 import React, { useMemo, useCallback, useEffect, useRef } from "react";
 
-import { m, AnimatePresence, useReducedMotion } from "framer-motion";
+import { m, AnimatePresence, useReducedMotion, type Variants } from "framer-motion";
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 import { Menu, X, Home, BookOpen, HelpCircle, ShoppingBag } from "lucide-react";
@@ -197,6 +197,36 @@ export function BottomNavBar() {
 
   const iconTransition = shouldReduceMotion ? { duration: 0 } : { duration: 0.15 };
 
+  // 弹出面板：从菜单按钮位置（右下角）生长，子项逐个滑入
+  const menuPanelVariants: Variants = shouldReduceMotion
+    ? {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { duration: 0 } },
+        exit: { opacity: 0, transition: { duration: 0 } },
+      }
+    : {
+        hidden: { opacity: 0, y: 8, scale: 0.9 },
+        visible: {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          transition: {
+            duration: 0.22,
+            ease: [0.22, 1, 0.36, 1],
+            staggerChildren: 0.05,
+            delayChildren: 0.04,
+          },
+        },
+        exit: { opacity: 0, y: 8, scale: 0.9, transition: { duration: 0.16, ease: [0.4, 0, 0.2, 1] } },
+      };
+
+  const menuItemVariants: Variants = shouldReduceMotion
+    ? { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0 } } }
+    : {
+        hidden: { opacity: 0, x: 10 },
+        visible: { opacity: 1, x: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } },
+      };
+
   return (
     <>
       {/* 移动端菜单遮罩层 */}
@@ -236,31 +266,23 @@ export function BottomNavBar() {
                   id="mobile-nav-menu"
                   role="dialog"
                   aria-label="导航菜单"
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={menuTransition}
-                  className="pointer-events-auto absolute bottom-[calc(100%+12px)] right-0 z-50 w-60 rounded-2xl bg-brand-cream p-2 shadow-[0_8px_30px_-8px_theme(colors.brand.charcoal/0.1)] lg:hidden"
+                  variants={menuPanelVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="pointer-events-auto absolute bottom-[calc(100%+10px)] right-0 z-50 w-48 origin-bottom-right rounded-3xl bg-brand-cream/95 p-1.5 shadow-[0_16px_48px_-16px_theme(colors.brand.charcoal/0.22)] backdrop-blur-md lg:hidden"
                 >
-                  {/* 指向下方的三角箭头 */}
-                  <div
-                    className="absolute -bottom-1.5 right-4 h-3 w-3 rotate-45 bg-brand-cream"
-                    aria-hidden="true"
-                  />
-                  <div className="relative flex flex-col gap-1.5">
+                  <div className="relative flex flex-col">
                     {otherNavItems.map((item) => {
                       const Icon = item.icon;
                       return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setNavMenuOpen(false)}
-                          className="group flex items-center gap-3 rounded-xl bg-transparent px-3 py-2.5 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.97] active:bg-brand-charcoal/[0.05]"
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/60 transition-colors group-hover:bg-white/80">
-                            <Icon className="h-5 w-5 text-brand-primary" />
-                          </div>
-                          <div className="flex flex-col">
+                        <m.div key={item.href} variants={menuItemVariants}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setNavMenuOpen(false)}
+                            className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors active:bg-brand-charcoal/[0.06]"
+                          >
+                            <Icon className="h-5 w-5 shrink-0 text-brand-primary" />
                             <span
                               className="text-[13px] font-normal leading-[20px] tracking-[0.06em] text-brand-charcoal"
                               style={{
@@ -269,8 +291,8 @@ export function BottomNavBar() {
                             >
                               {item.label}
                             </span>
-                          </div>
-                        </Link>
+                          </Link>
+                        </m.div>
                       );
                     })}
                   </div>
