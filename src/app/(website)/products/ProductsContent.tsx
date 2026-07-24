@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
@@ -61,6 +61,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   // 状态管理
   const [mobileView, setMobileView] = useState<"products" | "categories" | string>("products");
   const [activeTab, _setActiveTab] = useState<"featured" | "all">("featured");
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const fadeMaskRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   const _tabItems = [
@@ -108,13 +110,21 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
       {/* Scroll Area Wrapper - 渐隐遮罩 + drill-down */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        {/* Top Fade Mask */}
+        {/* Top Fade Mask - 仅在滚动后显示，通过 ref 直接操作避免重渲染 */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6"
-          style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)" }}
+          ref={fadeMaskRef}
+          className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6 transition-opacity duration-300"
+          style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)", opacity: 0 }}
         />
 
-        <div className="relative z-20 flex h-full flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          ref={mobileScrollRef}
+          onScroll={() => {
+            const scrolled = (mobileScrollRef.current?.scrollTop ?? 0) > 8;
+            if (fadeMaskRef.current) fadeMaskRef.current.style.opacity = scrolled ? "1" : "0";
+          }}
+          className="relative z-20 flex h-full flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           <AnimatePresence mode="wait">
             {mobileView === "products" ? (
               /* --- 产品列表视图 --- */
@@ -127,7 +137,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 className="flex min-h-full flex-col"
               >
                 {/* Title */}
-                <div className="mb-7 flex flex-col items-center pt-4">
+                <div className="mb-7 flex flex-col items-center">
                   <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                     {activeTab === "featured" ? "当季热卖" : "全部产品"}
                   </h2>
@@ -200,7 +210,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 className="flex min-h-full flex-col"
               >
                 {/* Title */}
-                <div className="mb-7 flex flex-col items-center pt-4">
+                <div className="mb-7 flex flex-col items-center">
                   <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                     产品分类
                   </h2>
