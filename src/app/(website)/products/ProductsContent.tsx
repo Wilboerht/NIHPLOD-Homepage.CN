@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, ShoppingBag, LayoutGrid } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
@@ -84,13 +84,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       {/* Header - 与 FAQ 返回按钮模式一致 */}
       <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-brand-cream/95 px-6 backdrop-blur-sm transition-all">
         <AnimatePresence>
-          {mobileView !== "products" && (
+          {mobileView !== "products" && mobileView !== "categories" && (
             <m.button
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              onClick={() => setMobileView(mobileView === "categories" ? "products" : "categories")}
+              onClick={() => setMobileView("categories")}
               className="absolute left-4 flex items-center gap-0.5 text-[13px] font-light tracking-[0.04em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/70"
             >
               <ChevronLeft size={16} strokeWidth={1.5} />
@@ -128,18 +128,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               >
                 {/* Title */}
                 <div className="mb-7 flex flex-col items-center pt-4">
-                  <h2 className="text-[22px] font-normal tracking-[0.15em] text-brand-primary">
+                  <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                     {activeTab === "featured" ? "当季热卖" : "全部产品"}
                   </h2>
-                  <div className="mt-2 w-[70px] border-b-[1.5px] border-brand-primary" />
-                  <button
-                    type="button"
-                    onClick={() => setMobileView("categories")}
-                    className="mt-4 flex items-center gap-0.5 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/70"
-                  >
-                    全部分类
-                    <ChevronRight size={14} strokeWidth={1.5} />
-                  </button>
+                  <div className="mt-2 w-[70px] border-b border-brand-primary" />
                 </div>
 
                 {/* Product Cards */}
@@ -212,10 +204,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               >
                 {/* Title */}
                 <div className="mb-7 flex flex-col items-center pt-4">
-                  <h2 className="text-[22px] font-normal tracking-[0.15em] text-brand-primary">
+                  <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                     产品分类
                   </h2>
-                  <div className="mt-2 w-[70px] border-b-[1.5px] border-brand-primary" />
+                  <div className="mt-2 w-[70px] border-b border-brand-primary" />
                 </div>
 
                 {/* Category List - 与 FAQ 问题列表一致 */}
@@ -321,7 +313,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       </div>
 
                       {/* Copyright */}
-                      <div className="mt-auto flex flex-col items-center justify-center pt-10">
+                      <div className="mt-auto flex flex-col items-center justify-center pb-6 pt-10">
                         <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                         </p>
@@ -334,6 +326,34 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           </AnimatePresence>
         </div>
       </div>
+
+      {/* 底部 Tab 栏 - 仅在产品列表/分类列表时显示，详情态隐藏 */}
+      {mobileView !== "products" && mobileView !== "categories" ? null : (
+        <div className="flex shrink-0 items-center justify-center gap-8 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => setMobileView("products")}
+            className={cn(
+              "flex flex-col items-center gap-1 transition-colors",
+              mobileView === "products" ? "text-brand-primary" : "text-brand-charcoal/40"
+            )}
+          >
+            <ShoppingBag size={20} strokeWidth={1.5} />
+            <span className="text-[11px] font-light tracking-[0.06em]">推荐</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView("categories")}
+            className={cn(
+              "flex flex-col items-center gap-1 transition-colors",
+              mobileView === "categories" ? "text-brand-primary" : "text-brand-charcoal/40"
+            )}
+          >
+            <LayoutGrid size={20} strokeWidth={1.5} />
+            <span className="text-[11px] font-light tracking-[0.06em]">全部</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 

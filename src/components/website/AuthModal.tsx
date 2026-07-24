@@ -1323,7 +1323,7 @@ export function AuthModal() {
                     <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">
                       注册会员
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
                   </div>
                   <form onSubmit={handleRegister} className="w-full space-y-6">
                     <div>
@@ -1489,7 +1489,7 @@ export function AuthModal() {
                     <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">
                       找回密码
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
                   </div>
                   <div className="space-y-6">
                     {mobileForgotStep === "phone" && (
@@ -1659,7 +1659,7 @@ export function AuthModal() {
                     <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">
                       绑定手机号
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
                   </div>
                   <form onSubmit={handleWechatBind} className="w-full space-y-6">
                     <p className="text-center text-sm tracking-wide text-brand-charcoal/60">

@@ -221,10 +221,10 @@ export function StoryContent() {
               {activeSection === "story" && (
                 <section className="relative pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2 className="text-center text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                       品牌故事
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
                   </div>
 
                   <div>
@@ -284,10 +284,10 @@ export function StoryContent() {
               {activeSection === "mission" && (
                 <section className="relative pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2 className="text-center text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                       公司使命
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
                   </div>
 
                   <div className="flex flex-col gap-6">
@@ -332,10 +332,10 @@ export function StoryContent() {
               {activeSection === "philosophy" && (
                 <section className="relative pt-7">
                   <div className="mb-7 flex shrink-0 flex-col items-center">
-                    <h2 className="text-center text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                       品牌哲学
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -388,10 +388,10 @@ export function StoryContent() {
               {activeSection === "awards" && (
                 <section className="relative pt-7">
                   <div className="mb-7 flex flex-col items-center">
-                    <h2 className="text-center text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                       媒体及获奖
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
                   </div>
                     {/* 奖项列表 */}
                     <div className="flex flex-col gap-6">

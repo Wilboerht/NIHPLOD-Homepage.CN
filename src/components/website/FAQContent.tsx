@@ -215,10 +215,10 @@ export function FAQContent() {
                     >
                       {/* Page Title */}
                       <div className="mb-7 flex flex-col items-center pt-4">
-                        <h1 className="text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
+                        <h1 className="text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                           常见问题
                         </h1>
-                        <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                        <div className="mt-2 w-[70px] border-b border-[#00263E]" />
                       </div>
 
                       {/* Question List - no dividers, numbered */}
