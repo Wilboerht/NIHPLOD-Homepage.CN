@@ -357,65 +357,64 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 1.02 }}
-                    className="flex h-full flex-col overflow-hidden py-2"
+                    className="flex flex-col"
                   >
-                    <div className="flex flex-1 flex-col justify-center">
-                      {/* 模块引导文案 */}
-                      <div className="mb-6 px-4 text-center">
-                        <p className="text-sm font-light leading-relaxed tracking-[0.05em] text-[#4A6272]/80">
-                          {modules.find((m) => m.id === selectedModule)?.description}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col gap-3">
-                        {moduleData[selectedModule].map((scheme, idx) => (
-                          <m.button
-                            key={scheme.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true, margin: "-10px" }}
-                            transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
-                            onClick={() => selectScheme(scheme)}
-                            className="group relative flex items-center overflow-hidden rounded-2xl border border-[#00263E]/5 bg-white px-5 py-5 shadow-[0_4px_20px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
-                          >
-                            {/* 左侧装饰线 */}
-                            <div className="mr-4 h-10 w-[3px] shrink-0 rounded-full bg-[#4A6272]/20 transition-colors group-active:bg-[#4A6272]/40" />
-
-                            {/* 中间内容：标题 + 时长 */}
-                            <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-left">
-                              <h3 className="truncate text-lg font-medium tracking-[0.1em] text-[#00263E]">
-                                {scheme.name}
-                              </h3>
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="h-3 w-3 text-[#4A6272]/50" />
-                                <span className="text-[11px] font-medium tracking-wide text-[#4A6272]/70">
-                                  {scheme.totalDuration || "15分钟"}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* 右侧箭头 */}
-                            <ChevronRight className="ml-3 h-5 w-5 shrink-0 text-[#4A6272]/30 transition-colors group-active:text-[#4A6272]" />
-                          </m.button>
-                        ))}
-                      </div>
-
-                      {/* AI 护肤顾问引导 */}
-                      <div className="mt-6 text-center">
-                        <a
-                          href="https://advisor.nihplod.cn"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group inline-flex items-center gap-1.5 text-sm font-light leading-relaxed tracking-[0.05em] text-[#4A6272] transition-colors hover:text-[#00263E]"
-                        >
-                          肌智派素颜测肤
-                          <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                        </a>
-                      </div>
+                    {/* 模块标题 - 与 Level 1 统一风格 */}
+                    <div className="mb-8 flex flex-col items-center pt-3">
+                      <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
+                        {modules.find((m) => m.id === selectedModule)?.label}
+                      </h2>
+                      <div className="mt-2 w-[70px] border-b border-brand-primary" />
+                      <p className="mt-3 text-[13px] font-light leading-relaxed tracking-[0.06em] text-brand-charcoal/50">
+                        {modules.find((m) => m.id === selectedModule)?.description}
+                      </p>
                     </div>
 
-                    {/* 底部微调留白，确保不贴底 */}
-                    <div className="h-6 shrink-0" />
+                    <div className="flex flex-col gap-3">
+                      {moduleData[selectedModule].map((scheme, idx) => (
+                        <m.button
+                          key={scheme.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true, margin: "-10px" }}
+                          transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
+                          onClick={() => selectScheme(scheme)}
+                          className="group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-white/80 px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
+                        >
+                          {/* 左侧装饰线 */}
+                          <div className="mr-4 h-10 w-[2px] shrink-0 rounded-full bg-brand-beige/60 transition-colors group-active:bg-brand-beige" />
+
+                          {/* 中间内容：标题 + 时长 */}
+                          <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-left">
+                            <h3 className="truncate text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">
+                              {scheme.name}
+                            </h3>
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3 text-brand-charcoal/40" />
+                              <span className="text-[11px] font-light tracking-[0.06em] text-brand-charcoal/50">
+                                {scheme.totalDuration || "15分钟"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 右侧箭头 */}
+                          <ChevronRight className="ml-3 h-4 w-4 shrink-0 text-brand-charcoal/20 transition-colors group-active:text-brand-charcoal/50" />
+                        </m.button>
+                      ))}
+                    </div>
+
+                    {/* AI 护肤顾问引导 */}
+                    <div className="mt-8 text-center">
+                      <a
+                        href="https://advisor.nihplod.cn"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group inline-flex items-center gap-1.5 text-[13px] font-light leading-relaxed tracking-[0.06em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/70"
+                      >
+                        肌智派素颜测肤
+                        <ChevronRight className="h-3.5 w-3.5 transition-transform group-active:translate-x-0.5" />
+                      </a>
+                    </div>
                   </m.div>
                 )}
 
