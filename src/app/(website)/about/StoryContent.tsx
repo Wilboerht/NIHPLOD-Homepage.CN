@@ -201,15 +201,22 @@ export function StoryContent() {
               </nav>
             </div>
 
-            {/* 移动端内容区域 - 垂直滚动 */}
             {/* 页面主标题 - SEO用，视觉上隐藏 */}
             <h1 className="sr-only">关于 NIHPLOD 旎柏</h1>
 
-            {/* Main Content Area */}
-            <div
-              ref={contentRef}
-              className="relative z-20 flex flex-1 flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
+            {/* Scroll Area Wrapper - 承载顶部渐隐遮罩 */}
+            <div className="relative flex-1 overflow-hidden">
+              {/* Top Fade Mask - 由实到虚遮罩，柔化 Tab 栏与滚动内容的衔接并暗示可滚动 */}
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6"
+                style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)" }}
+              />
+
+              {/* Main Content Area */}
+              <div
+                ref={contentRef}
+                className="relative z-20 flex h-full flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
               {/* 移动端 Section 1: 品牌故事 */}
               {activeSection === "story" && (
                 <section className="relative pt-7">
@@ -390,7 +397,7 @@ export function StoryContent() {
                   </div>
                   <div className="relative">
                     {/* 奖项列表 */}
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-5">
                       {AWARDS_DATA.map(
                         (award, idx) => (
                           <m.div
@@ -413,14 +420,14 @@ export function StoryContent() {
                               />
                             </div>
 
-                            <div className="flex flex-col items-center gap-2.5 p-6 text-center">
+                            <div className="flex flex-col items-center border-t border-brand-charcoal/[0.05] px-5 py-5 text-center">
                               <span className="text-[13px] font-light tracking-[0.3em] leading-[20px] text-brand-charcoal/50">
                                 {award.year}
                               </span>
-                              <h3 className="text-[17px] font-normal tracking-[0.1em] leading-[26px] text-[#00263E]">
+                              <h3 className="mt-1.5 text-[15px] font-normal tracking-[0.08em] leading-[24px] text-brand-primary">
                                 {award.title}
                               </h3>
-                              <span className="text-[13px] font-light tracking-[0.08em] leading-[20px] text-[#00263e]/60">
+                              <span className="mt-3 text-[13px] font-light tracking-[0.08em] leading-[20px] text-brand-primary/60">
                                 {award.org}
                               </span>
                             </div>
@@ -437,6 +444,7 @@ export function StoryContent() {
                 <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
+              </div>
               </div>
             </div>
           </div>
