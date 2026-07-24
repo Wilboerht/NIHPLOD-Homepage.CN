@@ -391,14 +391,15 @@ export function StoryContent() {
                   <div className="relative">
                     {/* 奖项列表 */}
                     <div className="flex flex-col gap-4">
-                      {AWARDS_DATA.slice(currentAwardPage * 6, (currentAwardPage + 1) * 6).map(
+                      {AWARDS_DATA.map(
                         (award, idx) => (
                           <m.div
-                            key={`mobile-${currentAwardPage}-${idx}`}
+                            key={award.image}
                             initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
-                            className="flex flex-col border-[1.5px] border-[#00263e]/20 bg-[#FCF9F2]"
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, margin: "-40px" }}
+                            transition={{ duration: 0.45, delay: (idx % 2) * 0.08, ease: "easeOut" }}
+                            className="flex flex-col border border-brand-charcoal/[0.08] bg-white"
                           >
                             {/* Award Image */}
                             <div className="relative w-full overflow-hidden">
@@ -412,45 +413,21 @@ export function StoryContent() {
                               />
                             </div>
 
-                            <div className="flex flex-col items-center gap-2 p-6 text-center">
-                              <span className="text-[14px] font-light tracking-[0.10em] leading-[21px] text-[#00263e]/60">
-                                {award.org}
+                            <div className="flex flex-col items-center gap-2.5 p-6 text-center">
+                              <span className="text-[13px] font-light tracking-[0.3em] leading-[20px] text-brand-charcoal/50">
+                                {award.year}
                               </span>
-                              <h3 className="text-[16px] font-light tracking-[0.12em] leading-[24px] text-[#00263E]">
+                              <h3 className="text-[17px] font-normal tracking-[0.1em] leading-[26px] text-[#00263E]">
                                 {award.title}
                               </h3>
-                              <span className="text-[14px] font-light tracking-[0.10em] leading-[21px] text-[#00263e]/60">
-                                {award.year}
+                              <span className="text-[13px] font-light tracking-[0.08em] leading-[20px] text-[#00263e]/60">
+                                {award.org}
                               </span>
                             </div>
                           </m.div>
                         )
                       )}
                     </div>
-
-                    {/* 左右浮动箭头 */}
-                    {AWARDS_DATA.length > 6 && (
-                      <>
-                        <button
-                          onClick={() => setCurrentAwardPage((p) => Math.max(0, p - 1))}
-                          disabled={currentAwardPage === 0}
-                          className="absolute -left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0"
-                        >
-                          <ChevronLeft className="h-4 w-4 text-[#00263e]" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setCurrentAwardPage((p) =>
-                              Math.min(Math.ceil(AWARDS_DATA.length / 6) - 1, p + 1)
-                            )
-                          }
-                          disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
-                          className="absolute -right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0"
-                        >
-                          <ChevronRight className="h-4 w-4 text-[#00263e]" />
-                        </button>
-                      </>
-                    )}
                   </div>
                 </section>
               )}
