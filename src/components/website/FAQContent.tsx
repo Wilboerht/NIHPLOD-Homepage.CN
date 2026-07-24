@@ -124,7 +124,7 @@ const FAQS = [
           <span className="font-medium text-brand-charcoal">表现安全</span>
           ，不会对孕妇造成不适或不良反应。
         </p>
-        <p className="mt-2 text-xs italic text-brand-charcoal/50">
+        <p className="mt-2 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/50">
           * 若出于谨慎考虑，建议可咨询您的专属医生后再做决定。
         </p>
       </div>
@@ -157,6 +157,22 @@ export function FAQContent() {
       >
         {/* Header - Mobile 与 About/Guide 88px 标准对齐；sm+ 保持原有 PC 样式 */}
         <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-brand-cream/95 px-6 backdrop-blur-sm transition-all sm:justify-start sm:border-brand-charcoal/5 sm:px-[8%]">
+          {/* Mobile Back Button - 仅在详情态显示 */}
+          <AnimatePresence>
+            {mobileSelectedIndex !== null && (
+              <m.button
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                onClick={() => setMobileSelectedIndex(null)}
+                className="absolute left-4 flex items-center gap-0.5 text-[13px] font-light tracking-[0.04em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/80 sm:hidden"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                返回
+              </m.button>
+            )}
+          </AnimatePresence>
           <Link href="/" className="mt-1 flex items-center justify-center">
             <div className="relative h-[28px] w-[100px] sm:h-9 sm:w-[150px]">
               <Image
@@ -182,10 +198,10 @@ export function FAQContent() {
             />
 
             {/* Scrollable Content */}
-            <div className="h-full overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex h-full flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
               {/* ===== Mobile: Drill-down List/Detail ===== */}
-              <div className="sm:hidden">
+              <div className="flex flex-1 flex-col sm:hidden">
                 <AnimatePresence mode="wait">
                   {mobileSelectedIndex === null ? (
                     /* --- List View --- */
@@ -195,7 +211,7 @@ export function FAQContent() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                      className="px-6"
+                      className="flex min-h-full flex-col px-6"
                     >
                       {/* Page Title */}
                       <div className="mb-7 flex flex-col items-center pt-4">
@@ -211,12 +227,12 @@ export function FAQContent() {
                           <button
                             key={index}
                             onClick={() => setMobileSelectedIndex(index)}
-                            className="flex items-start gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-200 active:bg-brand-charcoal/[0.03]"
+                            className="flex items-center gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-200 active:bg-brand-charcoal/[0.03]"
                           >
-                            <span className="mt-0.5 shrink-0 text-[13px] font-light tracking-[0.1em] text-brand-primary/60">
-                              {String(index + 1).padStart(2, "0")}
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand-primary/70 text-[11px] font-normal text-brand-primary/80">
+                              {index + 1}
                             </span>
-                            <span className="flex-1 text-[14px] font-light leading-[1.6] tracking-[0.04em] text-[#00263E]">
+                            <span className="flex-1 truncate text-[14px] font-light leading-[1.6] tracking-[0.04em] text-[#00263E]">
                               {faq.question}
                             </span>
                           </button>
@@ -224,23 +240,25 @@ export function FAQContent() {
                       </div>
 
                       {/* Contact Support */}
-                      <div className="mt-8 flex flex-col items-center justify-center text-center">
-                        <h3 className="mb-2 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70">
+                      <div className="mt-7 flex flex-col items-center justify-center text-center">
+                        {/* Decorative Separator */}
+                        <div className="mb-7 w-[40px] border-b border-brand-charcoal/[0.12]" />
+                        <h3 className="mb-3 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70">
                           没有找到想要的答案？
                         </h3>
-                        <p className="mb-5 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/50">
+                        <p className="mb-6 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/50">
                           我们的支持团队随时候命，为您解答任何疑问。
                         </p>
                         <button
                           onClick={() => router.push("/contact?type=support")}
-                          className="rounded-full border border-brand-beige/60 px-6 py-3.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 active:scale-[0.97]"
+                          className="rounded-full border border-brand-charcoal/20 px-6 py-3.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 active:scale-[0.97]"
                         >
                           联系我们
                         </button>
                       </div>
 
                       {/* Mobile Footer Copyright */}
-                      <div className="mt-auto flex flex-col items-center justify-center pt-10 pb-2">
+                      <div className="mt-auto flex flex-col items-center justify-center pt-10">
                         <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                         </p>
@@ -254,30 +272,28 @@ export function FAQContent() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
                       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                      className="px-6"
+                      className="flex min-h-full flex-col px-6"
                     >
-                      {/* Back + Question */}
-                      <div className="pt-4">
-                        <button
-                          onClick={() => setMobileSelectedIndex(null)}
-                          className="mb-4 flex items-center gap-1 text-[13px] font-light tracking-[0.06em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/80"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          返回
-                        </button>
-                        <div className="flex items-start gap-3">
-                          <span className="mt-0.5 shrink-0 text-[15px] font-light tracking-[0.1em] text-brand-primary/60">
-                            {String(mobileSelectedIndex + 1).padStart(2, "0")}
-                          </span>
-                          <h2 className="flex-1 text-[17px] font-normal leading-[1.5] tracking-[0.06em] text-[#00263E]">
-                            {FAQS[mobileSelectedIndex].question}
-                          </h2>
-                        </div>
+                      {/* Question Title */}
+                      <div className="pt-6">
+                        <h2 className="text-[17px] font-normal leading-[1.6] tracking-[0.06em] text-brand-primary">
+                          {FAQS[mobileSelectedIndex].question}
+                        </h2>
                       </div>
 
+                      {/* Decorative Divider */}
+                      <div className="mx-auto mt-6 w-[40px] border-b border-brand-charcoal/[0.12]" />
+
                       {/* Answer */}
-                      <div className="mt-6 border-t border-brand-charcoal/[0.06] pt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
+                      <div className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
                         {FAQS[mobileSelectedIndex].answer}
+                      </div>
+
+                      {/* Mobile Footer Copyright */}
+                      <div className="mt-auto flex flex-col items-center justify-center pt-10">
+                        <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
+                          &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                        </p>
                       </div>
                     </m.div>
                   )}
@@ -371,7 +387,7 @@ export function FAQContent() {
           </div>
 
           {/* Footer Info - Desktop 固定页脚 */}
-          <div className="hidden shrink-0 flex-col items-center justify-center gap-2 pt-10 sm:flex">
+          <div className="hidden shrink-0 flex-col items-center justify-center gap-2 pt-10 pb-4 sm:flex">
             <p className="text-center text-[12px] font-light tracking-[0.1em] text-brand-charcoal/[0.48]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>
