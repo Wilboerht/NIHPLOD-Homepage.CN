@@ -97,7 +97,21 @@ export function StoryContent() {
   const [currentAwardPage, setCurrentAwardPage] = useState(0);
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const fadeMaskRef = useRef<HTMLDivElement>(null);
   const { isDrawerOpen } = useLayout();
+
+  // 渐隐遮罩：初始隐藏，滚动超过 8px 后淡入（ref 直操，无重渲染）
+  useEffect(() => {
+    const el = contentRef.current;
+    const mask = fadeMaskRef.current;
+    if (!el || !mask) return;
+    const sync = () => {
+      mask.style.opacity = el.scrollTop > 8 ? "1" : "0";
+    };
+    sync();
+    el.addEventListener("scroll", sync, { passive: true });
+    return () => el.removeEventListener("scroll", sync);
+  }, []);
 
   return (
     <>
@@ -206,10 +220,11 @@ export function StoryContent() {
 
             {/* Scroll Area Wrapper - 承载顶部渐隐遮罩 */}
             <div className="relative flex-1 overflow-hidden">
-              {/* Top Fade Mask - 由实到虚遮罩，柔化 Tab 栏与滚动内容的衔接并暗示可滚动 */}
+              {/* Top Fade Mask - 仅在滚动后显示 */}
               <div
-                className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6"
-                style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)" }}
+                ref={fadeMaskRef}
+                className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6 transition-opacity duration-300"
+                style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)", opacity: 0 }}
               />
 
               {/* Main Content Area */}
@@ -219,8 +234,8 @@ export function StoryContent() {
               >
               {/* 移动端 Section 1: 品牌故事 */}
               {activeSection === "story" && (
-                <section className="relative pt-7">
-                  <div className="mb-7 flex flex-col items-center">
+                <section className="relative pt-3">
+                  <div className="mb-8 flex flex-col items-center">
                     <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                       品牌故事
                     </h2>
@@ -282,8 +297,8 @@ export function StoryContent() {
 
               {/* 移动端 Section 2: 公司使命 */}
               {activeSection === "mission" && (
-                <section className="relative pt-7">
-                  <div className="mb-7 flex flex-col items-center">
+                <section className="relative pt-3">
+                  <div className="mb-8 flex flex-col items-center">
                     <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                       公司使命
                     </h2>
@@ -330,8 +345,8 @@ export function StoryContent() {
 
               {/* 移动端 Section 3: 品牌哲学 */}
               {activeSection === "philosophy" && (
-                <section className="relative pt-7">
-                  <div className="mb-7 flex shrink-0 flex-col items-center">
+                <section className="relative pt-3">
+                  <div className="mb-8 flex shrink-0 flex-col items-center">
                     <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                       品牌哲学
                     </h2>
@@ -386,8 +401,8 @@ export function StoryContent() {
 
               {/* 移动端 Section 4: 媒体获奖 */}
               {activeSection === "awards" && (
-                <section className="relative pt-7">
-                  <div className="mb-7 flex flex-col items-center">
+                <section className="relative pt-3">
+                  <div className="mb-8 flex flex-col items-center">
                     <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                       媒体及获奖
                     </h2>
