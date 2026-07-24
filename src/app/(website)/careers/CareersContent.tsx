@@ -322,7 +322,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         <div className="h-[88px] shrink-0 md:h-[88px]" />
 
         {/* Header */}
-        <div className="pb-6 pt-8 text-center md:pb-12 md:pt-20">
+        <div className="pb-8 pt-8 text-center md:pb-12 md:pt-20">
           <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-[#00263E] md:mb-4 md:text-4xl md:font-light md:tracking-wider">
             {title.zh}
           </h1>
@@ -353,7 +353,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         </div>
 
         {/* Job List */}
-        <main className="container mx-auto flex-1 px-6 pb-16 md:px-8 lg:px-12 xl:px-16">
+        <main className="container mx-auto flex-1 px-6 pb-10 md:px-8 md:pb-16 lg:px-12 xl:px-16">
           <div className="mx-auto max-w-2xl">
             {filteredJobs.length === 0 ? (
               <div className="flex min-h-[30vh] flex-col items-center justify-center text-center">
