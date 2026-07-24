@@ -357,7 +357,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 1.02 }}
-                    className="flex flex-col"
+                    className="flex flex-1 flex-col justify-center"
                   >
                     {/* 模块标题 - 与 Level 1 统一风格 */}
                     <div className="mb-8 flex flex-col items-center pt-3">
