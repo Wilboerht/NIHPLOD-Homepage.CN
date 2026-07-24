@@ -142,15 +142,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
-                      className="flex flex-col"
+                      className="flex flex-col border border-brand-charcoal/[0.06] bg-[#FFFDF9]"
                     >
                       <Link
                         href={`/products/${product.slug}`}
                         onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
-                        className="group relative flex w-full flex-col bg-white/60 backdrop-blur-md transition-all active:scale-[0.98]"
+                        className="group relative flex w-full flex-col transition-all active:scale-[0.98]"
                       >
                         <div className="texture-overlay pointer-events-none absolute inset-0 opacity-[0.03]" />
-                        <div className="relative z-10 aspect-square w-full overflow-hidden bg-[#FBF8F0]">
+                        <div className="relative z-10 aspect-[4/5] w-full overflow-hidden bg-[#FBF8F0]">
                           {product.capacity && (
                             <div className="absolute right-3 top-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-light text-brand-primary shadow-sm">
                               {product.capacity}
@@ -168,17 +168,14 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       <button
                         type="button"
                         onClick={() => handleProductClick(product)}
-                        className="flex w-full items-center justify-between pb-1 pt-3 text-left"
+                        className="flex w-full flex-col items-start gap-1.5 px-5 pb-5 pt-4 text-left"
                       >
-                        <div className="flex max-w-fit flex-col items-start gap-1">
-                          <p className="line-clamp-1 text-left text-[15px] font-normal tracking-[0.08em] leading-[24px] text-brand-primary" title={product.name}>
-                            {product.name}
-                          </p>
-                          <p className="text-left text-[14px] font-light tracking-[0.08em] text-brand-primary/60">
-                            {formatPrice(product.price)}
-                          </p>
-                        </div>
-                        <ChevronRight size={20} strokeWidth={1.5} className="shrink-0 text-brand-primary opacity-40" />
+                        <p className="line-clamp-1 text-[15px] font-light leading-[24px] tracking-[0.08em] text-brand-primary" title={product.name}>
+                          {product.name}
+                        </p>
+                        <p className="text-[13px] font-light tracking-[0.08em] text-brand-primary/50">
+                          {formatPrice(product.price)}
+                        </p>
                       </button>
                     </m.div>
                   ))}
