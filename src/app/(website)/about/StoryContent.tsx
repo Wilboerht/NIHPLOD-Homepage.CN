@@ -249,7 +249,7 @@ export function StoryContent() {
 
                     {/* 第二个内容块 */}
                     <div>
-                      <span className="mb-2.5 inline-flex items-center gap-1.5 text-[12px] text-[#00263e]/60">
+                      <span className="inline-flex items-center gap-1.5 text-[12px] text-[#00263e]/60">
                         <Image
                           src="/images/quote-icon.svg"
                           alt=""
@@ -259,7 +259,7 @@ export function StoryContent() {
                         />
                         2008 | 摩纳哥 | 联合实验室公司
                       </span>
-                      <span className="mt-4 block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
+                      <span className="mt-6 block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
                         前沿科技赋能精简护理
                       </span>
                       <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90">
@@ -290,7 +290,7 @@ export function StoryContent() {
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                   </div>
 
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-6">
                     <div className="relative w-full overflow-hidden border border-[#00263e]/10 bg-white/20 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)]">
                       <Image
                         src="/images/story/mission-image.webp"
@@ -338,8 +338,7 @@ export function StoryContent() {
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                   </div>
 
-                  <div className="flex flex-col justify-center">
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                       {[
                         {
                           num: "01",
@@ -380,9 +379,8 @@ export function StoryContent() {
                             {item.desc}
                           </p>
                         </m.div>
-                      ))}
+                    ))}
                     </div>
-                  </div>
                 </section>
               )}
 
@@ -395,9 +393,8 @@ export function StoryContent() {
                     </h2>
                     <div className="mx-auto mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
                   </div>
-                  <div className="relative">
                     {/* 奖项列表 */}
-                    <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-6">
                       {AWARDS_DATA.map(
                         (award, idx) => (
                           <m.div
@@ -421,21 +418,23 @@ export function StoryContent() {
                             </div>
 
                             <div className="flex flex-col items-center border-t border-brand-charcoal/[0.05] px-5 py-5 text-center">
-                              <span className="text-[13px] font-light tracking-[0.3em] leading-[20px] text-brand-charcoal/50">
-                                {award.year}
-                              </span>
-                              <h3 className="mt-1.5 text-[15px] font-normal tracking-[0.08em] leading-[24px] text-brand-primary">
+                              <h3 className="text-[15px] font-normal tracking-[0.08em] leading-[24px] text-brand-primary">
                                 {award.title}
                               </h3>
-                              <span className="mt-3 text-[13px] font-light tracking-[0.08em] leading-[20px] text-brand-primary/60">
-                                {award.org}
-                              </span>
+                              <div className="mt-1.5 flex items-center gap-1.5 text-[13px] font-light">
+                                <span className="tracking-[0.08em] leading-[20px] text-brand-primary/60">
+                                  {award.org}
+                                </span>
+                                <span className="text-brand-charcoal/25">·</span>
+                                <span className="tracking-[0.08em] leading-[20px] text-brand-charcoal/50">
+                                  {award.year}
+                                </span>
+                              </div>
                             </div>
                           </m.div>
                         )
                       )}
                     </div>
-                  </div>
                 </section>
               )}
 

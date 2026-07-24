@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
-import { Plus } from "lucide-react";
+import { Plus, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
@@ -134,6 +134,7 @@ const FAQS = [
 
 export function FAQContent() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [mobileSelectedIndex, setMobileSelectedIndex] = useState<number | null>(null);
   const { isDrawerOpen } = useLayout();
   const router = useRouter();
 
@@ -171,12 +172,6 @@ export function FAQContent() {
         </div>
 
         <div className="flex flex-1 flex-col overflow-hidden pb-6 sm:pb-0 sm:px-10 lg:px-[15%] xl:px-[20%]">
-          {/* Page Title - Desktop */}
-          <div className="mb-6 mt-8 hidden justify-center sm:flex">
-              <h1 className="relative inline-block text-[24px] font-light tracking-[0.15em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-[#00263e]/20">
-              常见问题
-            </h1>
-          </div>
 
           {/* Scroll Area Wrapper - 承载顶部渐隐遮罩 */}
           <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -186,102 +181,193 @@ export function FAQContent() {
               style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)" }}
             />
 
-            {/* Scrollable Question List */}
-            <div className="h-full scroll-pb-6 overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
-            {/* Page Title - Mobile */}
-            <div className="mb-7 flex flex-col items-center sm:hidden">
-              <h1 className="text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
-                常见问题
-              </h1>
-              <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
-            </div>
-            <div className="mx-auto flex max-w-4xl flex-col gap-0">
-              {FAQS.map((faq, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "group border-b border-l-[1.5px] border-brand-charcoal/10 border-l-transparent border-t-0 border-r-0 transition-colors duration-500 ease-out",
-                    openIndex === index
-                      ? "bg-[#FFFFFF]/40 border-l-[#B5AC88]"
-                      : "sm:hover:bg-white/20"
-                  )}
-                >
-                  <button
-                    onClick={() => toggleFAQ(index)}
-                    className="flex w-full items-center px-4 py-4 text-left sm:justify-between sm:gap-4 sm:py-5 lg:px-6 lg:py-6"
-                  >
-                    <span
-                      className={cn(
-                        "flex-1 text-[14px] font-light leading-snug tracking-[0.08em] text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
-                        openIndex === index
-                          ? "text-brand-charcoal"
-                          : "sm:group-hover:text-brand-charcoal"
-                      )}
-                      style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
+            {/* Scrollable Content */}
+            <div className="h-full overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+              {/* ===== Mobile: Drill-down List/Detail ===== */}
+              <div className="sm:hidden">
+                <AnimatePresence mode="wait">
+                  {mobileSelectedIndex === null ? (
+                    /* --- List View --- */
+                    <m.div
+                      key="faq-list"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                      className="px-6"
                     >
-                      {faq.question}
-                    </span>
-                    <span
-                      className={cn(
-                        "hidden shrink-0 rounded-full p-1.5 text-brand-charcoal/30 transition-all duration-500 sm:block",
-                        openIndex === index
-                          ? "rotate-45 text-brand-charcoal/80 bg-brand-charcoal/10"
-                          : "group-hover:text-brand-charcoal/50 sm:group-hover:bg-brand-charcoal/[0.03]"
-                      )}
-                    >
-                      <Plus className="h-5 w-5 stroke-[1.5]" />
-                    </span>
-                  </button>
-                  <AnimatePresence>
-                    {openIndex === index && (
-                      <m.div
-                        initial={{ gridTemplateRows: "0fr", opacity: 0 }}
-                        animate={{ gridTemplateRows: "1fr", opacity: 1 }}
-                        exit={{ gridTemplateRows: "0fr", opacity: 0 }}
-                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                        style={{ display: "grid" }}
-                      >
-                        <div style={{ overflow: "hidden" }}>
-                          <div
-                            className="pb-5 pl-4 pr-4 pt-5 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 sm:pb-8 sm:pl-6 sm:pr-6 sm:pt-0 lg:pr-12 lg:text-[15px]"
-                            style={{
-                              fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif",
-                            }}
+                      {/* Page Title */}
+                      <div className="mb-7 flex flex-col items-center pt-4">
+                        <h1 className="text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
+                          常见问题
+                        </h1>
+                        <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
+                      </div>
+
+                      {/* Question List - no dividers, numbered */}
+                      <div className="flex flex-col gap-1">
+                        {FAQS.map((faq, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setMobileSelectedIndex(index)}
+                            className="flex items-start gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-200 active:bg-brand-charcoal/[0.03]"
                           >
-                            {faq.answer}
-                          </div>
+                            <span className="mt-0.5 shrink-0 text-[13px] font-light tracking-[0.1em] text-brand-primary/60">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            <span className="flex-1 text-[14px] font-light leading-[1.6] tracking-[0.04em] text-[#00263E]">
+                              {faq.question}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Contact Support */}
+                      <div className="mt-8 flex flex-col items-center justify-center text-center">
+                        <h3 className="mb-2 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70">
+                          没有找到想要的答案？
+                        </h3>
+                        <p className="mb-5 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/50">
+                          我们的支持团队随时候命，为您解答任何疑问。
+                        </p>
+                        <button
+                          onClick={() => router.push("/contact?type=support")}
+                          className="rounded-full border border-brand-beige/60 px-6 py-3.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 active:scale-[0.97]"
+                        >
+                          联系我们
+                        </button>
+                      </div>
+
+                      {/* Mobile Footer Copyright */}
+                      <div className="mt-auto flex flex-col items-center justify-center pt-10 pb-2">
+                        <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
+                          &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                        </p>
+                      </div>
+                    </m.div>
+                  ) : (
+                    /* --- Detail View --- */
+                    <m.div
+                      key={`faq-detail-${mobileSelectedIndex}`}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                      className="px-6"
+                    >
+                      {/* Back + Question */}
+                      <div className="pt-4">
+                        <button
+                          onClick={() => setMobileSelectedIndex(null)}
+                          className="mb-4 flex items-center gap-1 text-[13px] font-light tracking-[0.06em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/80"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          返回
+                        </button>
+                        <div className="flex items-start gap-3">
+                          <span className="mt-0.5 shrink-0 text-[15px] font-light tracking-[0.1em] text-brand-primary/60">
+                            {String(mobileSelectedIndex + 1).padStart(2, "0")}
+                          </span>
+                          <h2 className="flex-1 text-[17px] font-normal leading-[1.5] tracking-[0.06em] text-[#00263E]">
+                            {FAQS[mobileSelectedIndex].question}
+                          </h2>
                         </div>
-                      </m.div>
-                    )}
-                  </AnimatePresence>
+                      </div>
+
+                      {/* Answer */}
+                      <div className="mt-6 border-t border-brand-charcoal/[0.06] pt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
+                        {FAQS[mobileSelectedIndex].answer}
+                      </div>
+                    </m.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* ===== PC: Accordion (unchanged) ===== */}
+              <div className="hidden sm:block">
+                {/* Page Title - Desktop */}
+                <div className="mb-6 mt-8 flex justify-center">
+                  <h1 className="relative inline-block text-[24px] font-light tracking-[0.15em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-[#00263e]/20">
+                    常见问题
+                  </h1>
                 </div>
-              ))}
-            </div>
 
-            {/* Contact Support Section */}
-            <div className="mb-7 mt-7 flex flex-col items-center justify-center text-center sm:mt-12 sm:px-4">
-              <h3 className="mb-2 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 sm:text-[15px]">
-                没有找到想要的答案？
-              </h3>
-              <p className="mb-5 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/50 sm:mb-6 sm:text-[14px]">
-                我们的支持团队随时候命，为您解答任何疑问。
-              </p>
-              <button
-                onClick={() => router.push("/contact?type=support")}
-                className="rounded-full border border-brand-beige/60 px-6 py-3.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 hover:border-brand-charcoal/20 hover:text-brand-charcoal active:scale-[0.97]"
-                style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
-              >
-                联系我们
-              </button>
-            </div>
+                <div className="mx-auto flex max-w-4xl flex-col gap-0">
+                  {FAQS.map((faq, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "group border-b border-l-[1.5px] border-brand-charcoal/10 border-l-transparent border-t-0 border-r-0 transition-colors duration-500 ease-out",
+                        openIndex === index
+                          ? "bg-[#FFFFFF]/40 border-l-[#B5AC88]"
+                          : "hover:bg-white/20"
+                      )}
+                    >
+                      <button
+                        onClick={() => toggleFAQ(index)}
+                        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left lg:py-6"
+                      >
+                        <span
+                          className={cn(
+                            "flex-1 text-[14px] font-light leading-snug tracking-[0.08em] text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
+                            openIndex === index
+                              ? "text-brand-charcoal"
+                              : "group-hover:text-brand-charcoal"
+                          )}
+                        >
+                          {faq.question}
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full p-1.5 text-brand-charcoal/30 transition-all duration-500",
+                            openIndex === index
+                              ? "rotate-45 text-brand-charcoal/80 bg-brand-charcoal/10"
+                              : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
+                          )}
+                        >
+                          <Plus className="h-5 w-5 stroke-[1.5]" />
+                        </span>
+                      </button>
+                      <AnimatePresence>
+                        {openIndex === index && (
+                          <m.div
+                            initial={{ gridTemplateRows: "0fr", opacity: 0 }}
+                            animate={{ gridTemplateRows: "1fr", opacity: 1 }}
+                            exit={{ gridTemplateRows: "0fr", opacity: 0 }}
+                            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                            style={{ display: "grid" }}
+                          >
+                            <div style={{ overflow: "hidden" }}>
+                              <div className="pb-8 pl-6 pr-6 pt-0 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 lg:pr-12 lg:text-[15px]">
+                                {faq.answer}
+                              </div>
+                            </div>
+                          </m.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+                </div>
 
-            {/* Mobile Footer Copyright - mt-auto 保证内容不足一屏时版权贴底；底部留白由容器 pb-6 统一提供 */}
-            <div className="mt-auto flex flex-col items-center justify-center pt-10 sm:hidden">
-              <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
-                &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-              </p>
+                {/* Contact Support - Desktop */}
+                <div className="mt-12 flex flex-col items-center justify-center px-4 text-center">
+                  <h3 className="mb-2 text-[15px] font-light tracking-[0.08em] text-brand-charcoal/70">
+                    没有找到想要的答案？
+                  </h3>
+                  <p className="mb-6 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/50">
+                    我们的支持团队随时候命，为您解答任何疑问。
+                  </p>
+                  <button
+                    onClick={() => router.push("/contact?type=support")}
+                    className="rounded-full border border-brand-beige/60 px-6 py-3.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 hover:border-brand-charcoal/20 hover:text-brand-charcoal active:scale-[0.97]"
+                  >
+                    联系我们
+                  </button>
+                </div>
+              </div>
+
             </div>
-          </div>
           </div>
 
           {/* Footer Info - Desktop 固定页脚 */}
