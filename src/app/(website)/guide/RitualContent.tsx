@@ -379,7 +379,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           viewport={{ once: true, margin: "-10px" }}
                           transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
                           onClick={() => selectScheme(scheme)}
-                          className="group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-white/80 px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
+                          className="group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-[#FFFDF9] px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
                         >
                           {/* 左侧装饰线 */}
                           <div className="mr-4 h-10 w-[2px] shrink-0 rounded-full bg-brand-beige/60 transition-colors group-active:bg-brand-beige" />
