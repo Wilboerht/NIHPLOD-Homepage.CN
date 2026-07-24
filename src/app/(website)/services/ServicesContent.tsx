@@ -131,7 +131,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
           style={{ pointerEvents: "auto" }}
         >
           <Link href="/">
-            <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
+            <div className="relative h-[30px] w-[107px] md:h-[40px] md:w-[143px]">
               <Image
                 src="/images/NIHPLOD-logo.svg"
                 alt="NIHPLOD"

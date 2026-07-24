@@ -128,7 +128,7 @@ export function StandaloneNav({ title, links = [], leftButton }: StandaloneNavPr
             <button
               type="button"
               onClick={leftButton.onClick}
-              className="absolute right-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+              className="absolute right-0 flex h-10 w-10 items-center justify-center md:hidden"
               aria-label={leftButton.label}
             >
               <BookOpen className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
@@ -139,7 +139,7 @@ export function StandaloneNav({ title, links = [], leftButton }: StandaloneNavPr
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+            className="absolute left-0 flex h-10 w-10 items-center justify-center md:hidden"
             aria-label="打开菜单"
           >
             <Menu className="h-5 w-5 text-[#00263E]" />
@@ -163,7 +163,7 @@ export function StandaloneNav({ title, links = [], leftButton }: StandaloneNavPr
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.3, ease: [0.8, 0, 0.13, 1] }}
-              className="fixed bottom-0 left-0 top-0 z-[70] w-[280px] bg-[#FBF8F0] p-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] shadow-2xl md:hidden"
+              className="fixed bottom-0 left-0 top-0 z-[70] w-[280px] rounded-r-3xl bg-[#FBF8F0] p-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] shadow-2xl md:hidden"
               role="dialog"
               aria-modal="true"
               aria-label="导航菜单"

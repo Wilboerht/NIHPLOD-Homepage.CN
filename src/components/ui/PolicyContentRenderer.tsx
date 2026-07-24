@@ -55,7 +55,7 @@ export function ContentParagraph({
           return (
             <div
               key={trimmed.substring(0, 32)}
-              className="rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-4 text-sm leading-7 text-brand-charcoal/80"
+              className="rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-4 text-[14px] leading-[1.8] text-brand-charcoal/90"
             >
               <strong className="font-bold text-brand-charcoal">重要提示：</strong>
               <span>{trimmed.replace("【重要提示】", "")}</span>
@@ -68,7 +68,7 @@ export function ContentParagraph({
           return (
             <h4
               key={trimmed.substring(0, 32)}
-              className="mb-0 mt-8 font-sans text-lg font-light tracking-[0.12em] text-brand-charcoal"
+              className="mb-0 mt-8 font-sans text-[15px] font-normal tracking-[0.08em] text-brand-charcoal md:text-lg md:font-light md:tracking-[0.12em]"
             >
               {formatText(trimmed)}
             </h4>
@@ -80,7 +80,7 @@ export function ContentParagraph({
           return (
             <h3
               key={trimmed.substring(0, 32)}
-              className="mb-2 mt-10 font-sans text-xl font-light tracking-[0.15em] text-brand-charcoal"
+              className="mb-2 mt-10 font-sans text-[17px] font-normal tracking-[0.1em] text-brand-charcoal md:text-xl md:font-light md:tracking-[0.15em]"
             >
               {formatText(trimmed)}
             </h3>
@@ -92,7 +92,7 @@ export function ContentParagraph({
           return (
             <h4
               key={trimmed.substring(0, 32)}
-              className="mb-0 mt-8 font-sans text-lg font-light tracking-[0.12em] text-brand-charcoal"
+              className="mb-0 mt-8 font-sans text-[15px] font-normal tracking-[0.08em] text-brand-charcoal md:text-lg md:font-light md:tracking-[0.12em]"
             >
               {formatText(trimmed)}
             </h4>
@@ -106,7 +106,7 @@ export function ContentParagraph({
           /^\-[\s]/.test(trimmed)
         ) {
           return (
-            <p key={trimmed.substring(0, 32)} className="text-sm leading-7 text-brand-charcoal/80">
+            <p key={trimmed.substring(0, 32)} className="text-[14px] leading-[1.8] text-brand-charcoal/90 md:text-sm md:leading-7 md:text-brand-charcoal/80">
               {formatText(trimmed)}
             </p>
           );
@@ -114,7 +114,7 @@ export function ContentParagraph({
 
         // 普通段落
         return (
-          <p key={trimmed.substring(0, 32)} className="text-base leading-8 text-brand-charcoal/80">
+          <p key={trimmed.substring(0, 32)} className="text-[14px] leading-[1.8] text-brand-charcoal/90 md:text-base md:leading-8 md:text-brand-charcoal/80">
             {formatText(trimmed)}
           </p>
         );
