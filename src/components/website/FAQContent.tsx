@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
@@ -135,8 +135,32 @@ const FAQS = [
 export function FAQContent() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [mobileSelectedIndex, setMobileSelectedIndex] = useState<number | null>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const fadeMaskRef = useRef<HTMLDivElement>(null);
   const { isDrawerOpen } = useLayout();
   const router = useRouter();
+
+  // PC端遮罩始终可见；移动端仅在滚动后显示
+  useEffect(() => {
+    const el = mobileScrollRef.current;
+    const mask = fadeMaskRef.current;
+    if (!el || !mask) return;
+    const mql = window.matchMedia("(min-width: 640px)");
+    const sync = () => {
+      if (mql.matches) {
+        mask.style.opacity = "1";
+      } else {
+        mask.style.opacity = el.scrollTop > 8 ? "1" : "0";
+      }
+    };
+    sync();
+    el.addEventListener("scroll", sync, { passive: true });
+    mql.addEventListener("change", sync);
+    return () => {
+      el.removeEventListener("scroll", sync);
+      mql.removeEventListener("change", sync);
+    };
+  }, []);
 
   // Toggle Accordion
   const toggleFAQ = (index: number) => {
@@ -191,14 +215,18 @@ export function FAQContent() {
 
           {/* Scroll Area Wrapper - 承载顶部渐隐遮罩 */}
           <div className="relative min-h-0 flex-1 overflow-hidden">
-            {/* Top Fade Mask - 由实到虚遮罩，柔化 Header 与滚动内容的衔接并暗示可滚动 */}
+            {/* Top Fade Mask - 仅在滚动后显示，通过 ref 直接操作避免重渲染 */}
             <div
-              className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6"
-              style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)" }}
+              ref={fadeMaskRef}
+              className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6 transition-opacity duration-300"
+              style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)", opacity: 0 }}
             />
 
             {/* Scrollable Content */}
-            <div className="flex h-full flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div
+              ref={mobileScrollRef}
+              className="flex h-full flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
 
               {/* ===== Mobile: Drill-down List/Detail ===== */}
               <div className="flex flex-1 flex-col sm:hidden">
@@ -214,7 +242,7 @@ export function FAQContent() {
                       className="flex min-h-full flex-col px-6"
                     >
                       {/* Page Title */}
-                      <div className="mb-7 flex flex-col items-center pt-4">
+                      <div className="mb-8 flex flex-col items-center pt-3">
                         <h1 className="text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
                           常见问题
                         </h1>

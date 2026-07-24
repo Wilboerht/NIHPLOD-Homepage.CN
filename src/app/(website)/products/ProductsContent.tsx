@@ -137,7 +137,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 className="flex min-h-full flex-col"
               >
                 {/* Title */}
-                <div className="mb-7 flex flex-col items-center pt-3">
+                <div className="mb-8 flex flex-col items-center pt-3">
                   <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                     {activeTab === "featured" ? "当季热卖" : "全部产品"}
                   </h2>
@@ -210,7 +210,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 className="flex min-h-full flex-col"
               >
                 {/* Title */}
-                <div className="mb-7 flex flex-col items-center pt-3">
+                <div className="mb-8 flex flex-col items-center pt-3">
                   <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                     产品分类
                   </h2>
