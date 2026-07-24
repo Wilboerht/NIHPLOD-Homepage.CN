@@ -331,14 +331,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           viewport={{ once: true, margin: "-20px" }}
                           transition={{ delay: index * 0.1 }}
                           onClick={() => selectModule(module.id)}
-                          className="relative flex h-full flex-col justify-start overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
+                          className="relative flex h-full flex-col items-start justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
                         >
                           <div className="relative z-10 flex flex-col">
                             <module.icon className="h-8 w-8 text-[#B8A47B] mb-4" strokeWidth={1} />
                             <span className="text-lg font-light tracking-[0.12em] text-brand-charcoal">
                               {module.label}
                             </span>
-                            <p className="mt-1.5 text-[11px] font-light leading-relaxed text-brand-charcoal/50">
+                            <p className="mt-1.5 line-clamp-1 text-[11px] font-light leading-relaxed text-brand-charcoal/50">
                               {module.description}
                             </p>
                             <div className="mt-3 h-[1px] w-8 bg-brand-beige/50" />
