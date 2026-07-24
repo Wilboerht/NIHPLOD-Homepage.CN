@@ -13,48 +13,49 @@ interface ServicesContentProps {
 
 const ICON_COLOR = "#C3BC9F";
 const ICON_HOVER_COLOR = "#B8A47B";
+const ICON_MOBILE_COLOR = "rgba(0, 38, 62, 0.35)";
 
-function VipIcon({ className, isHovered }: { className?: string; isHovered?: boolean }) {
+function VipIcon({ className, isHovered, color }: { className?: string; isHovered?: boolean; color?: string }) {
   return (
     <Crown
       className={className}
-      stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR}
+      stroke={color || (isHovered ? ICON_HOVER_COLOR : ICON_COLOR)}
       strokeWidth="1.6"
     />
   );
 }
 
-function AuthIcon({ className, isHovered }: { className?: string; isHovered?: boolean }) {
+function AuthIcon({ className, isHovered, color }: { className?: string; isHovered?: boolean; color?: string }) {
   return (
     <ShieldCheck
       className={className}
-      stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR}
+      stroke={color || (isHovered ? ICON_HOVER_COLOR : ICON_COLOR)}
       strokeWidth="1.6"
     />
   );
 }
 
-function InfluencerIcon({ className, isHovered }: { className?: string; isHovered?: boolean }) {
+function InfluencerIcon({ className, isHovered, color }: { className?: string; isHovered?: boolean; color?: string }) {
   return (
     <Users
       className={className}
-      stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR}
+      stroke={color || (isHovered ? ICON_HOVER_COLOR : ICON_COLOR)}
       strokeWidth="1.6"
     />
   );
 }
 
-function AdvisorIcon({ className, isHovered }: { className?: string; isHovered?: boolean }) {
+function AdvisorIcon({ className, isHovered, color }: { className?: string; isHovered?: boolean; color?: string }) {
   return (
     <ScanFace
       className={className}
-      stroke={isHovered ? ICON_HOVER_COLOR : ICON_COLOR}
+      stroke={color || (isHovered ? ICON_HOVER_COLOR : ICON_COLOR)}
       strokeWidth="1.6"
     />
   );
 }
 
-const iconMap: Record<string, React.FC<{ className?: string; isHovered?: boolean }>> = {
+const iconMap: Record<string, React.FC<{ className?: string; isHovered?: boolean; color?: string }>> = {
   vip: VipIcon,
   auth: AuthIcon,
   influencer: InfluencerIcon,
@@ -85,6 +86,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -121,7 +123,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
       {/* Top Bar */}
       <nav
         aria-label="服务页导航"
-        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:px-20"
         style={{ pointerEvents: "none" }}
       >
         <div
@@ -284,21 +286,21 @@ export function ServicesContent({ content }: ServicesContentProps) {
               <Link
                 href="/contact"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
               >
                 联系我们
               </Link>
               <Link
                 href="/terms"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
               >
                 服务条款
               </Link>
               <Link
                 href="/privacy"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
               >
                 隐私政策
               </Link>
@@ -307,7 +309,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+              className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
             >
               <Home className="h-5 w-5" />
               返回首页
@@ -317,21 +319,35 @@ export function ServicesContent({ content }: ServicesContentProps) {
       </div>
 
       {/* Spacer for fixed navbar */}
-      <div className="h-[62px] shrink-0 md:h-[88px]" />
+      <div className="h-[88px] shrink-0 md:h-[88px]" />
 
       {/* Services Grid - centered vertically */}
-      <main className="flex flex-1 flex-col items-center justify-center">
-        <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
+      <main className="flex flex-1 flex-col items-center justify-center px-6 md:px-0">
+        <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-[#00263E] md:mb-4 md:text-4xl md:font-light md:tracking-wider">
           {pageTitle.zh}
         </h1>
-        <p className="mb-12 text-[15px] font-light tracking-[0.12em] text-brand-charcoal/60 md:mb-16 md:text-base">
+        <div className="mb-4 w-[70px] border-b border-brand-primary md:hidden" />
+        <p className="mb-10 text-center text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/60 md:mb-16 md:text-base md:leading-normal md:tracking-[0.12em]">
           NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验
         </p>
-        <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
+        <div className="container mx-auto px-0 md:px-8 lg:px-12 xl:px-16">
           <div className="mx-auto max-w-4xl">
-            <div className="grid grid-cols-2 place-items-center gap-8 sm:gap-12 lg:grid-cols-4">
-              {services.map((service) => (
-                <ServiceCard key={service.id} service={service} />
+            {/* 移动端列表 - 已开放在上，未开放在下 */}
+            <div className="flex flex-col divide-y divide-brand-charcoal/[0.06] md:hidden">
+              {[...services]
+                .sort((a, b) => {
+                  const aDisabled = a.id === "vip" || a.id === "influencer";
+                  const bDisabled = b.id === "vip" || b.id === "influencer";
+                  return Number(aDisabled) - Number(bDisabled);
+                })
+                .map((service, index) => (
+                  <ServiceListItem key={service.id} service={service} index={index} />
+                ))}
+            </div>
+            {/* PC端网格 */}
+            <div className="hidden grid-cols-2 place-items-center gap-12 md:grid lg:grid-cols-4">
+              {services.map((service, index) => (
+                <ServiceCard key={service.id} service={service} index={index} />
               ))}
             </div>
           </div>
@@ -339,14 +355,23 @@ export function ServicesContent({ content }: ServicesContentProps) {
       </main>
 
       {/* Page Footer */}
-      <footer className="border-t border-brand-charcoal/10">
+      <footer className="md:border-t md:border-brand-charcoal/10">
         <div className="mx-auto overflow-visible px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
           <div className="flex items-center justify-center gap-3">
-            <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </span>
             <span className="text-[11px] font-light text-brand-charcoal/20">|</span>
-            <div className="group relative inline-flex cursor-pointer">
+            {/* 移动端：点击弹出模态框 */}
+            <button
+              type="button"
+              onClick={() => setQrModalOpen(true)}
+              className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] transition-colors active:text-brand-charcoal/70 md:hidden"
+            >
+              服务号
+            </button>
+            {/* PC端：hover 显示 */}
+            <div className="group relative hidden cursor-pointer md:inline-flex">
               <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">服务号</span>
               <Image
                 src="/images/wechat-qrcode.jpg"
@@ -360,32 +385,116 @@ export function ServicesContent({ content }: ServicesContentProps) {
           </div>
         </div>
       </footer>
+
+      {/* 移动端二维码模态框 */}
+      <AnimatePresence>
+        {qrModalOpen && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-brand-charcoal/30 backdrop-blur-sm md:hidden"
+            onClick={() => setQrModalOpen(false)}
+          >
+            <m.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+              className="mx-6 flex flex-col items-center rounded-2xl bg-white p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src="/images/wechat-qrcode.jpg"
+                alt="NIHPLOD 微信服务号"
+                width={200}
+                height={200}
+                unoptimized
+                className="h-[200px] w-[200px] rounded-lg"
+              />
+              <p className="mt-4 text-[13px] font-light tracking-[0.06em] text-brand-charcoal/60">
+                扫码关注 NIHPLOD 服务号
+              </p>
+              <button
+                type="button"
+                onClick={() => setQrModalOpen(false)}
+                className="mt-4 flex h-8 w-8 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
+                aria-label="关闭"
+              >
+                <X className="h-4 w-4 text-brand-charcoal/40" strokeWidth={1.5} />
+              </button>
+            </m.div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function ServiceCard({ service }: { service: ServiceDetail }) {
+function ServiceListItem({ service, index }: { service: ServiceDetail; index: number }) {
+  const Icon = getServiceIcon(service.id);
+  const isDisabled = service.id === "vip" || service.id === "influencer";
+  const targetLink = service.links?.find((l: ServiceLink) => !l.isAdmin) || service.links?.[0];
+
+  return (
+    <m.div
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-20px" }}
+      transition={{ duration: 0.4, delay: index * 0.06, ease: [0.4, 0, 0.2, 1] }}
+    >
+      <Link
+        href={isDisabled || !targetLink ? "#" : targetLink?.url || "#"}
+        target={isDisabled ? undefined : "_blank"}
+        rel={isDisabled ? undefined : "noopener noreferrer"}
+        onClick={(e) => isDisabled && e.preventDefault()}
+        className={`flex items-center gap-4 px-2 py-5 transition-all duration-200 active:scale-[0.98] active:bg-brand-charcoal/[0.03] ${
+          isDisabled ? "cursor-not-allowed opacity-40 grayscale" : ""
+        }`}
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+          <Icon className="h-7 w-7" isHovered={false} color={ICON_MOBILE_COLOR} />
+        </div>
+        <span className="text-[14px] font-light tracking-[0.08em] text-[#00263E]">{service.label}</span>
+        {!isDisabled && (
+          <ChevronDown className="ml-auto h-4 w-4 -rotate-90 text-brand-charcoal/30" />
+        )}
+      </Link>
+    </m.div>
+  );
+}
+
+function ServiceCard({ service, index }: { service: ServiceDetail; index: number }) {
   const [isHovered, setIsHovered] = useState(false);
   const Icon = getServiceIcon(service.id);
   const isDisabled = service.id === "vip" || service.id === "influencer";
   const targetLink = service.links?.find((l: ServiceLink) => !l.isAdmin) || service.links?.[0];
 
   return (
-    <Link
-      href={isDisabled || !targetLink ? "#" : targetLink?.url || "#"}
-      target={isDisabled ? undefined : "_blank"}
-      rel={isDisabled ? undefined : "noopener noreferrer"}
-      onClick={(e) => isDisabled && e.preventDefault()}
-      onMouseEnter={() => !isDisabled && setIsHovered(true)}
-      onMouseLeave={() => !isDisabled && setIsHovered(false)}
-      className={`group flex flex-col items-center justify-center gap-3 p-6 transition-colors duration-300 ${
-        isDisabled ? "cursor-not-allowed opacity-40 grayscale" : "hover:bg-white/50"
-      }`}
+    <m.div
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay: index * 0.08, ease: [0.4, 0, 0.2, 1] }}
+      className="w-full"
     >
-      <div className="flex h-16 w-16 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
-        <Icon className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16" isHovered={isHovered} />
-      </div>
-      <span className="text-[15px] font-light tracking-[0.15em] text-[#00263E]">{service.label}</span>
-    </Link>
+      <Link
+        href={isDisabled || !targetLink ? "#" : targetLink?.url || "#"}
+        target={isDisabled ? undefined : "_blank"}
+        rel={isDisabled ? undefined : "noopener noreferrer"}
+        onClick={(e) => isDisabled && e.preventDefault()}
+        onMouseEnter={() => !isDisabled && setIsHovered(true)}
+        onMouseLeave={() => !isDisabled && setIsHovered(false)}
+        className={`group flex flex-col items-center justify-center gap-2 p-4 transition-all duration-300 active:scale-[0.97] active:bg-brand-charcoal/[0.03] md:gap-3 md:p-6 ${
+          isDisabled ? "cursor-not-allowed opacity-40 grayscale" : "hover:bg-white/50"
+        }`}
+      >
+        <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
+          <Icon className="h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16" isHovered={isHovered} />
+        </div>
+        <span className="text-[13px] font-light tracking-[0.08em] text-[#00263E] md:text-[15px] md:tracking-[0.15em]">{service.label}</span>
+      </Link>
+    </m.div>
   );
 }

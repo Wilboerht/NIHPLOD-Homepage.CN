@@ -59,7 +59,7 @@ export function StandaloneNav({ title, links = [] }: StandaloneNavProps) {
   return (
     <>
       <nav
-        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:px-20"
         aria-label="主导航"
       >
         <div className="relative flex w-full items-center justify-center md:justify-between">
@@ -126,7 +126,7 @@ export function StandaloneNav({ title, links = [] }: StandaloneNavProps) {
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+            className="absolute right-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
             aria-label="打开菜单"
           >
             <Menu className="h-5 w-5 text-[#00263E]" />
@@ -182,7 +182,7 @@ export function StandaloneNav({ title, links = [] }: StandaloneNavProps) {
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileOpen(false)}
-                    className="rounded-xl px-4 py-3.5 text-[16px] font-light tracking-[0.12em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    className="rounded-xl px-4 py-3.5 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                   >
                     {link.label}
                   </Link>
@@ -191,7 +191,7 @@ export function StandaloneNav({ title, links = [] }: StandaloneNavProps) {
                 <Link
                   href="/"
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-xl px-4 py-3.5 text-[16px] font-light tracking-[0.12em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                  className="rounded-xl px-4 py-3.5 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   返回首页
                 </Link>

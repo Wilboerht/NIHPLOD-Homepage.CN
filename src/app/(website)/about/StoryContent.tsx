@@ -437,7 +437,7 @@ export function StoryContent() {
                     )}
                   >
                     <Icon size={20} strokeWidth={1.5} />
-                    <span className="text-[11px] font-light tracking-[0.06em]">{item.label}</span>
+                    <span className="text-[11px] font-light tracking-[0.06em]">{item.pcLabel}</span>
                   </button>
                 );
               })}

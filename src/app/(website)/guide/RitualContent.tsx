@@ -12,6 +12,10 @@ import {
   ChevronRight,
   Sun,
   Compass,
+  Sparkles,
+  Flower,
+  Heart,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -30,6 +34,19 @@ import {
   type Scheme,
   type SubPlan,
 } from "./guide-data";
+
+// 底部 Tab 栏图标语义映射
+const TAB_ICONS: Record<string, LucideIcon> = {
+  simple: Sun,      // 精简方案
+  outing: Compass,  // 外出方案
+  t1: Sun,          // 日常外出
+  t2: Compass,      // 轻悦旅行
+  t3: Sparkles,     // 多效芳疗
+  s1: Flower,       // 面部方案 (spa)
+  s2: Heart,        // 全身方案 (spa)
+  p1: Flower,       // 面部护理套餐
+  p2: Heart,        // 全身护理套餐
+};
 
 // 查找匹配的图标，否则使用默认图标
 export const DEFAULT_ICONS = [
@@ -439,71 +456,56 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         <div className="mt-2 w-[70px] border-b border-brand-primary" />
 
                           {/* 相关产品 */}
-                          <div className="mb-2 mt-6 w-full">
-                            <p className="mb-4 text-center text-[11px] font-light tracking-[0.12em] text-brand-charcoal/40">
-                              相关产品
-                            </p>
-                            <div className="w-full text-center">
-                              <div className="flex flex-wrap justify-center gap-x-6 gap-y-5 pb-4">
-                                {currentProducts.map((product, index) => {
-                                  const cleanName = product.name;
-                                  const isOptional = !!product.optional;
-
-                                  return (
-                                    <button
-                                      key={cleanName}
-                                      type="button"
-                                      onClick={() => handleProductClick(cleanName)}
-                                      className="flex flex-col items-center gap-1.5"
-                                    >
-                                      <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-brand-charcoal/[0.06] bg-[#FFFDF9] transition-transform active:scale-95">
-                                        <div className="flex h-8 w-8 items-center justify-center">
-                                          {getCategoryIconPath(cleanName) ? (
-                                            <Image
-                                              src={getCategoryIconPath(cleanName)!}
-                                              alt={cleanName}
-                                              width={32}
-                                              height={32}
-                                              className="h-8 w-8"
-                                            />
-                                          ) : (
-                                            DEFAULT_ICONS[index % DEFAULT_ICONS.length]
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex flex-col items-center">
-                                        <span className="max-w-[72px] truncate text-[11px] font-light leading-[16px] tracking-[0.06em] text-brand-charcoal/60">
-                                          {cleanName}
-                                        </span>
-                                        {isOptional && (
-                                          <span className="text-[10px] font-light tracking-[0.04em] text-brand-charcoal/35">
-                                            可选
-                                          </span>
-                                        )}
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                          <div className="mt-6 w-full">
+                            <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
+                              {currentProducts.map((product, index) => {
+                                const cleanName = product.name;
+                                const isOptional = !!product.optional;
+                                return (
+                                  <button
+                                    key={cleanName}
+                                    type="button"
+                                    onClick={() => handleProductClick(cleanName)}
+                                    className="flex flex-col items-center gap-1.5 transition-transform active:scale-95"
+                                  >
+                                    <div className="flex h-[52px] w-[52px] items-center justify-center">
+                                      {getCategoryIconPath(cleanName) ? (
+                                        <Image
+                                          src={getCategoryIconPath(cleanName)!}
+                                          alt={cleanName}
+                                          width={40}
+                                          height={40}
+                                          className="h-10 w-10"
+                                        />
+                                      ) : (
+                                        DEFAULT_ICONS[index % DEFAULT_ICONS.length]
+                                      )}
+                                    </div>
+                                    <span className="max-w-[68px] truncate text-[12px] font-light leading-[16px] tracking-[0.04em] text-brand-charcoal/60">
+                                      {cleanName}{isOptional ? " ·" : ""}
+                                    </span>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
 
-                          <div className="mt-6 flex items-center justify-center gap-5">
+                          <div className="mt-8 flex items-center justify-center gap-6">
                             <div className="flex flex-col items-center">
-                              <span className="mb-1 text-[10px] font-light tracking-[0.1em] text-brand-charcoal/35">
+                              <span className="mb-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50">
                                 预计时长
                               </span>
-                              <span className="text-[13px] font-light leading-[20px] tracking-[0.04em] text-brand-charcoal/70">
+                              <span className="text-[14px] font-normal leading-[22px] tracking-[0.04em] text-brand-charcoal/80">
                                 {selectedScheme.totalDuration?.replace("min", "分钟") ||
                                   "15-20 分钟"}
                               </span>
                             </div>
-                            <div className="h-5 w-px bg-brand-charcoal/[0.06]" />
+                            <div className="h-6 w-px bg-brand-charcoal/10" />
                             <div className="flex flex-col items-center">
-                              <span className="mb-1 text-[10px] font-light tracking-[0.1em] text-brand-charcoal/35">
+                              <span className="mb-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50">
                                 护理阶段
                               </span>
-                              <span className="text-[13px] font-light leading-[20px] tracking-[0.04em] text-brand-charcoal/70">
+                              <span className="text-[14px] font-normal leading-[22px] tracking-[0.04em] text-brand-charcoal/80">
                                 {currentSteps.length} 个核心步骤
                               </span>
                             </div>
@@ -515,11 +517,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           {selectedScheme.name}
                         </h2>
                         <div className="mt-2 w-[70px] border-b border-brand-primary" />
-                        {selectedScheme.nameEn && (
-                          <span className="mt-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40">
-                            {selectedScheme.nameEn}
-                          </span>
-                        )}
                       </div>
                     )}
 
@@ -542,7 +539,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {selectedScheme.benefits?.slice(0, 3).map((benefit, i) => (
                                 <span
                                   key={i}
-                                  className="rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-[10px] font-light tracking-[0.08em] text-white/90 backdrop-blur-sm"
+                                  className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-white/90 backdrop-blur-sm"
                                 >
                                   {benefit}
                                 </span>
@@ -553,53 +550,58 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     
                         {/* Description Content */}
                         <div>
-                          <p className="relative mb-6 text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/70">
-                            <span className="absolute -left-2 -top-1 font-serif text-2xl text-brand-charcoal/12">
-                              “
-                            </span>
+                          <p className="mb-4 text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/60">
                             {selectedScheme.desc}
-                            <span className="absolute -right-1 bottom-0 translate-y-1 font-serif text-2xl text-brand-charcoal/12">
-                              ”
-                            </span>
                           </p>
-                    
-                          {/* Products Meta */}
-                          <div className="flex flex-col gap-3 border-t border-brand-charcoal/[0.06] pt-4">
-                            <span className="text-[11px] font-light tracking-[0.1em] text-brand-charcoal/40">
-                              核心单品搭配
-                            </span>
-                            <div className="flex flex-wrap gap-2">
-                              {selectedScheme.products?.map((prod) => (
-                                <div
-                                  key={prod.name}
-                                  className="flex items-center gap-1.5 rounded-md border border-brand-charcoal/[0.06] bg-[#FFFDF9] px-3 py-1.5"
-                                >
-                                  <div className="h-1 w-1 rounded-full bg-brand-charcoal/30" />
-                                  <span className="text-[11px] font-light tracking-[0.04em] text-brand-charcoal/70">{prod.name}</span>
+
+                          {/* Products Meta - 图标+文字，无框线 */}
+                          <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 border-t border-brand-charcoal/[0.06] pt-4">
+                            {selectedScheme.products?.map((prod, idx) => (
+                              <button
+                                key={prod.name}
+                                type="button"
+                                onClick={() => handleProductClick(prod.name)}
+                                className="flex flex-col items-center gap-1.5 transition-transform active:scale-95"
+                              >
+                                <div className="flex h-[52px] w-[52px] items-center justify-center">
+                                  {getCategoryIconPath(prod.name) ? (
+                                    <Image
+                                      src={getCategoryIconPath(prod.name)!}
+                                      alt={prod.name}
+                                      width={40}
+                                      height={40}
+                                      className="h-10 w-10"
+                                    />
+                                  ) : (
+                                    DEFAULT_ICONS[idx % DEFAULT_ICONS.length]
+                                  )}
                                 </div>
-                              ))}
-                            </div>
+                                <span className="max-w-[68px] truncate text-[12px] font-light leading-[16px] tracking-[0.04em] text-brand-charcoal/60">
+                                  {prod.name}
+                                </span>
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </div>
                     ) : selectedModule === "professional" ? (
                       <div className="flex w-full flex-col">
-                        <div className="mb-2 flex items-center gap-2">
+                        <div className="mb-3 flex items-center gap-2">
                           <h3 className="text-[17px] font-normal tracking-[0.1em] text-brand-charcoal">
                             {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
                           </h3>
-                          <span className="rounded-sm bg-[#E6DCC3] px-1.5 py-0.5 text-[10px] font-light tracking-[0.06em] text-brand-charcoal/70">
+                          <span className="rounded-sm bg-[#E6DCC3] px-1.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-brand-charcoal/60">
                             招牌
                           </span>
                         </div>
                         <div className="mb-6">
-                          <p className="text-[10px] font-light tracking-[0.12em] text-brand-charcoal/35">
+                          <p className="text-[11px] font-light tracking-[0.12em] text-brand-charcoal/45">
                             {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
                           </p>
                         </div>
 
                         {/* 中间卡片区 - 纵向列表 */}
-                        <div className="mb-10 flex flex-col gap-5">
+                        <div className="mb-6 flex flex-col gap-6">
                           {getProfessionalCards(selectedScheme?.id).map((item) => (
                             <div
                               key={item.image}
@@ -626,7 +628,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   </span>
                                 </div>
                                 <div>
-                                  <span className="inline-block rounded-full border border-white/40 bg-white/10 px-2.5 py-1 text-[10px] font-light tracking-[0.06em] text-white/85 backdrop-blur-sm">
+                                  <span className="inline-block rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-light tracking-[0.06em] text-white/85 backdrop-blur-sm">
                                     {item.tags}
                                   </span>
                                 </div>
@@ -646,7 +648,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             {/* 图片展示区 + 胶囊定位容器 */}
                             <div className="relative mb-4">
                               {/* 步骤胶囊 */}
-                              <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/12 bg-brand-cream px-3.5 py-1 text-[11px] font-light tracking-[0.1em] text-brand-charcoal/60">
+                              <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/12 bg-brand-cream px-3.5 py-1 text-[11px] font-light tracking-[0.08em] text-brand-charcoal/50">
                                 步骤 {String(index + 1).padStart(2, "0")}
                               </div>
                               {/* 图片展示区 */}
@@ -666,7 +668,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               <h3 className="mb-2 text-center text-[15px] font-normal leading-[24px] tracking-[0.1em] text-brand-charcoal">
                                 {step.title}
                               </h3>
-                              <p className="text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/55">
+                              <p className="text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/60">
                                 {step.description}
                               </p>
                             </div>
@@ -675,121 +677,63 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       </div>
                     )}
 
-                    {/* 底部仪式感收尾 & 认证 */}
-                    <div className="mt-8 flex flex-col items-center text-center">
-                      <div className="mb-5 h-px w-12 bg-brand-charcoal/[0.08]" />
-                      {selectedModule !== "portable" && (
-                        <div className="mb-4 flex flex-col items-center gap-6">
-                          {/* 核心优势 */}
-                          <div className="flex w-full flex-col items-center gap-3">
-                            <span className="text-[10px] font-light tracking-[0.12em] text-brand-charcoal/35">
-                              核心优势
-                            </span>
-                            <div className="flex w-full flex-wrap justify-center gap-2">
-                              {(
-                                selectedSubPlan?.benefits ||
-                                selectedScheme.benefits || ["保湿锁水", "屏障增强"]
-                              ).map((tag) => (
-                                <div
-                                  key={tag}
-                                  className="flex items-center gap-1 rounded-full border border-brand-charcoal/[0.06] bg-brand-charcoal/[0.02] px-2.5 py-1"
-                                >
-                                  <span className="text-[9px] text-brand-charcoal/30">✦</span>
-                                  <span className="text-[11px] font-light leading-[16px] tracking-[0.06em] text-brand-charcoal/55">
-                                    {tag}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                    {/* 底部信息收尾 */}
+                    {selectedModule !== "portable" && (
+                    <div className="mt-10 flex flex-col items-center text-center">
+                        <div className="flex flex-col items-center gap-4">
+                          {/* 核心优势 - 纯文字 */}
+                          <p className="text-[12px] font-light leading-[20px] tracking-[0.06em] text-brand-charcoal/50">
+                            {(
+                              selectedSubPlan?.benefits ||
+                              selectedScheme.benefits || ["保湿锁水", "屏障增强"]
+                            ).join(" · ")}
+                          </p>
 
+                          {/* 特殊时期 + 认证 - 合并为一行辅助信息 */}
                           {(() => {
                             const supportText =
                               selectedSubPlan?.specialSupport !== undefined
                                 ? selectedSubPlan.specialSupport
                                 : (selectedScheme.specialSupport ?? "孕期、月子期、轻医美术后");
-                            if (!supportText) return null;
-                            const isRestricted = supportText.includes("不支持");
-                            return (
-                              <div className="flex w-full flex-col items-center gap-3">
-<span className="text-[10px] font-light tracking-[0.12em] text-brand-charcoal/35">
-                                  特殊时期支持
-                                </span>
-                                <div
-                                  className={cn(
-                                    "inline-flex items-center gap-2 rounded-lg border px-4 py-2",
-                                    isRestricted
-                                      ? "border-orange-900/10 bg-orange-50/30"
-                                      : "border-brand-charcoal/[0.08] bg-brand-charcoal/[0.03]"
-                                  )}
-                                >
-                                  <Info
-                                    className={cn(
-                                      "h-3.5 w-3.5",
-                                      isRestricted ? "text-orange-900/40" : "text-brand-charcoal/40"
-                                    )}
-                                  />
-                                  <span
-                                    className={cn(
-                                      "text-[11px] font-light tracking-[0.06em]",
-                                      isRestricted ? "text-orange-900/70" : "text-brand-charcoal/60"
-                                    )}
-                                  >
-                                    {supportText}
-                                  </span>
-                                </div>
-                              </div>
-                            );
+                            return supportText ? (
+                              <p className={cn(
+                                "text-[11px] font-light leading-[18px] tracking-[0.06em]",
+                                supportText.includes("不支持") ? "text-orange-900/50" : "text-brand-charcoal/45"
+                              )}>
+                                {supportText}
+                              </p>
+                            ) : null;
                           })()}
 
-                          {/* Certifications (Quality Endorsement) */}
-                          <div className="flex flex-col items-center gap-3">
-                            <span className="text-[10px] font-light tracking-[0.12em] text-brand-charcoal/35">
-                              检测认证
-                            </span>
-                            <div className="flex items-center gap-5 opacity-50 mix-blend-multiply">
-                              <Image
-                                src="/images/sgs.svg"
-                                alt="SGS"
-                                width={22}
-                                height={22}
-                                className="h-[22px] w-auto"
-                              />
-                              <Image
-                                src="/images/intertek-logo.svg"
-                                alt="Intertek"
-                                width={22}
-                                height={22}
-                                className="h-[20px] w-auto"
-                              />
-                            </div>
+                          {/* 认证 Logo */}
+                          <div className="flex items-center gap-4 pt-1 opacity-40 mix-blend-multiply">
+                            <Image src="/images/sgs.svg" alt="SGS" width={20} height={20} className="h-[18px] w-auto" />
+                            <Image src="/images/intertek-logo.svg" alt="Intertek" width={20} height={20} className="h-[16px] w-auto" />
                           </div>
 
-                          {/* 专业门店入驻提醒 - 特殊移动端位置 */}
+                          {/* 专业门店入驻 - 纯文字 */}
                           {selectedModule === "professional" && (
-                            <div className="mt-1 flex items-start rounded-lg border border-brand-charcoal/[0.06] bg-brand-charcoal/[0.02] p-3.5 text-left">
-                              <Info className="mr-2 mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-charcoal/30" />
-                              <p className="text-[12px] font-light leading-[1.7] tracking-[0.04em] text-brand-charcoal/55">
-                                找不到您所在城市的门店？银卡级别以上会员可
-                                <Link
-                                  href="/contact?type=cooperation"
-                                  className="mx-0.5 font-normal text-brand-charcoal/70 underline decoration-brand-charcoal/20 underline-offset-2 active:opacity-70"
-                                >
-                                  申请入驻
-                                </Link>
-                                您所在的城市。
-                              </p>
-                            </div>
+                            <p className="pt-1 text-[12px] font-light leading-[18px] tracking-[0.04em] text-brand-charcoal/50">
+                              找不到您所在城市的门店？
+                              <br />
+                              银卡级别以上会员可
+                              <Link
+                                href="/contact?type=cooperation"
+                                className="mx-0.5 text-brand-charcoal/60 underline decoration-brand-charcoal/15 underline-offset-2 active:opacity-70"
+                              >
+                                申请入驻
+                              </Link>
+                            </p>
                           )}
                         </div>
-                      )}
                     </div>
+                    )}
                   </m.div>
                 )}
               </AnimatePresence>
 
               {/* 移动端版权信息 - 滚动区内 mt-auto 贴底 */}
-              <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-10">
+              <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-4">
                 <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
@@ -805,9 +749,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   moduleData[selectedModule].length > 1)) && (
               <div className="flex shrink-0 items-center justify-center gap-8 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
                 {selectedScheme.subPlans && selectedScheme.subPlans.length > 1
-                  ? selectedScheme.subPlans.map((subPlan, idx) => {
+                  ? selectedScheme.subPlans.map((subPlan) => {
                       const isActive = selectedSubPlan?.id === subPlan.id;
-                      const Icon = idx === 0 ? Sun : Compass;
+                      const Icon = TAB_ICONS[subPlan.id] || Sun;
                       return (
                         <button
                           key={subPlan.id}
@@ -819,13 +763,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           )}
                         >
                           <Icon size={20} strokeWidth={1.5} />
-                          <span className="text-[11px] font-light tracking-[0.06em]">{subPlan.name}</span>
+                          <span className={cn("text-[11px] tracking-[0.06em]", isActive ? "font-normal" : "font-light")}>{subPlan.name}</span>
                         </button>
                       );
                     })
-                  : moduleData[selectedModule].map((scheme, idx) => {
+                  : moduleData[selectedModule].map((scheme) => {
                       const isActive = scheme.id === selectedScheme.id;
-                      const Icon = idx === 0 ? Sun : Compass;
+                      const Icon = TAB_ICONS[scheme.id] || Sun;
                       return (
                         <button
                           key={scheme.id}
@@ -837,7 +781,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           )}
                         >
                           <Icon size={20} strokeWidth={1.5} />
-                          <span className="text-[11px] font-light tracking-[0.06em]">{scheme.name}</span>
+                          <span className={cn("text-[11px] tracking-[0.06em]", isActive ? "font-normal" : "font-light")}>{scheme.name}</span>
                         </button>
                       );
                     })}
