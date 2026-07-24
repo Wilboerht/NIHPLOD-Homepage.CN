@@ -120,7 +120,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       <div className="flex min-h-dvh flex-col bg-[#fefcf8] mb-[-7rem] lg:mb-[-6rem]">
         {/* Top Bar */}
         <nav
-          className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
+          className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:px-20"
           style={{ pointerEvents: "none" }}
           aria-label="主导航"
         >
@@ -129,7 +129,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             style={{ pointerEvents: "auto" }}
           >
             <Link href="/">
-              <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
+              <div className="relative h-[30px] w-[107px] md:h-[40px] md:w-[143px]">
                 <Image
                   src="/images/NIHPLOD-logo.svg"
                   alt="NIHPLOD"
@@ -236,7 +236,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+              className="absolute left-0 flex h-10 w-10 items-center justify-center md:hidden"
               aria-label="打开菜单"
               aria-expanded={mobileMenuOpen}
               aria-controls="careers-nav-panel"
@@ -286,21 +286,21 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 <Link
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   联系我们
                 </Link>
                 <Link
                   href="/terms"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   服务条款
                 </Link>
                 <Link
                   href="/privacy"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                  className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                 >
                   隐私政策
                 </Link>
@@ -309,7 +309,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
               >
                 <Home className="h-5 w-5" />
                 返回首页
@@ -319,32 +319,33 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         </div>
 
         {/* Spacer */}
-        <div className="h-[62px] shrink-0 md:h-[88px]" />
+        <div className="h-[88px] shrink-0 md:h-[88px]" />
 
         {/* Header */}
-        <div className="pb-8 pt-12 text-center md:pb-12 md:pt-20">
-          <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
+        <div className="pb-6 pt-8 text-center md:pb-12 md:pt-20">
+          <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-[#00263E] md:mb-4 md:text-4xl md:font-light md:tracking-wider">
             {title.zh}
           </h1>
-          <p className="mx-auto max-w-2xl text-[15px] font-light tracking-[0.12em] text-brand-charcoal/60 md:text-base">{description}</p>
+          <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
+          <p className="mx-auto max-w-2xl px-6 text-[13px] font-light tracking-[0.06em] leading-[1.8] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">{description}</p>
         </div>
 
         {/* Filter Tabs */}
         <div className="container mx-auto px-6 md:px-8 lg:px-12 xl:px-16">
           <div className="mx-auto max-w-2xl">
-            <div className="mb-8 flex items-center justify-center gap-2">
+            <div className="mb-6 flex items-center justify-center gap-1.5 md:mb-8 md:gap-2">
               {filterItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setFilterType(item.id)}
-                  className={`rounded-full px-4 py-2 text-[15px] font-light tracking-[0.12em] transition-colors ${
+                  className={`rounded-full px-3 py-1.5 text-[13px] font-light tracking-[0.08em] transition-colors md:px-4 md:py-2 md:text-[15px] md:tracking-[0.12em] ${
                     filterType === item.id
                       ? "bg-[#00263E]/10 text-[#00263E]"
                       : "text-brand-charcoal/50 hover:text-brand-charcoal/70"
                   }`}
                 >
                   {item.label}
-                  <span className="ml-1.5 opacity-60">{item.count}</span>
+                  <span className="ml-1 opacity-60 md:ml-1.5">{item.count}</span>
                 </button>
               ))}
             </div>
@@ -370,9 +371,9 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
         </main>
 
         {/* Page Footer */}
-        <footer className="border-t border-brand-charcoal/10">
-          <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
-            <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+        <footer className="md:border-t md:border-brand-charcoal/10">
+          <div className="container mx-auto px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
+            <p className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>
           </div>
@@ -441,10 +442,10 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-xl border border-zinc-200/60 p-5 text-left transition-all duration-200 hover:border-[#00263E]/30 hover:bg-white/50"
+      className="w-full rounded-xl border border-zinc-200/60 p-4 text-left transition-all duration-200 active:scale-[0.98] active:bg-brand-charcoal/[0.02] md:p-5 md:hover:border-[#00263E]/30 md:hover:bg-white/50"
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-light tracking-[0.12em] text-[#00263E]">{job.title}</h3>
+        <h3 className="text-[15px] font-light tracking-[0.08em] text-[#00263E] md:text-lg md:tracking-[0.12em]">{job.title}</h3>
         <svg
           width="18"
           height="18"
@@ -618,20 +619,20 @@ function JobModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:p-4"
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <m.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        transition={{ duration: 0.2 }}
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+        className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-2xl md:rounded-2xl"
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-6">
+        <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-4 md:p-6">
           <div>
-            <h2 className="text-xl font-light tracking-[0.12em] text-[#00263E]">{job.title}</h2>
+            <h2 className="text-[17px] font-normal tracking-[0.08em] text-[#00263E] md:text-xl md:font-light md:tracking-[0.12em]">{job.title}</h2>
             <div className="mt-2 flex items-center gap-2 text-[13px] font-light text-brand-charcoal/70">
               <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
                 {typeInfo.label}
@@ -652,7 +653,7 @@ function JobModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 space-y-6 overflow-y-auto p-6">
+        <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
           {/* Map */}
           {job.location && (
             <div id={`map-${job.id}`} className="h-48 w-full rounded-xl border border-zinc-100" />

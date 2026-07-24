@@ -1,7 +1,11 @@
-import TableOfContents from "@/components/ui/TableOfContents";
+"use client";
+
+import { useState } from "react";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 import { StandaloneNav } from "@/components/ui/StandaloneNav";
 import { ContentParagraph } from "@/components/ui/PolicyContentRenderer";
+import { AnimatePresence, m } from "framer-motion";
+import { X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -183,28 +187,25 @@ const sections = sectionOrder.map((id) => ({
 // ============================================
 
 export function PrivacyContent() {
+  const [tocOpen, setTocOpen] = useState(false);
+
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[120px] md:pt-32 mb-[-7rem] lg:mb-[-6rem]">
+    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32 mb-[-7rem] lg:mb-[-6rem]">
       <StandaloneNav title="隐私政策" links={[
         { href: "/contact", label: "联系我们" },
         { href: "/terms", label: "服务条款" },
-      ]} />
+      ]} leftButton={{ label: "章节目录", onClick: () => setTocOpen(true) }} />
 
       <div className="container mx-auto px-6 md:px-20">
         <div className="flex flex-col gap-12 lg:flex-row lg:gap-24">
-          {/* Mobile TOC - Dropdown */}
-          <div className="mb-4 lg:hidden">
-            <TableOfContents sections={sections} />
-          </div>
-
           {/* Sticky Sidebar Navigation */}
           <ScrollSpySidebar sections={sections} label="隐私政策目录导航" />
 
           {/* Main Content */}
-          <main className="max-w-4xl flex-1 space-y-16 break-words font-songti leading-relaxed text-brand-charcoal/80">
+          <main className="max-w-4xl flex-1 space-y-10 break-words font-songti text-brand-charcoal/80 md:space-y-16 md:leading-relaxed">
             {sections.map((section) => (
-              <section key={section.id} id={section.id} className="scroll-mt-[120px] md:scroll-mt-32">
-                <h2 className="mb-8 font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
+              <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
+                <h2 className="mb-4 font-sans text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-8 md:text-2xl md:font-light md:tracking-[0.12em]">
                   {section.title}
                 </h2>
                 <div className="space-y-6">
@@ -219,9 +220,9 @@ export function PrivacyContent() {
       </div>
 
       {/* Page Footer */}
-      <footer className="mt-16 border-t border-brand-charcoal/10 md:mt-24">
-        <div className="container mx-auto px-6 py-10 text-center md:px-8 lg:px-12 xl:px-16">
-          <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+      <footer className="mt-12 md:mt-24 md:border-t md:border-brand-charcoal/10">
+        <div className="container mx-auto px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
+          <p className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
             &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-light text-brand-charcoal/[0.48]">
@@ -236,7 +237,7 @@ export function PrivacyContent() {
             <Link
               href="http://www.beian.gov.cn/portal/registerSystemInfo"
               target="_blank"
-              className="inline-flex items-center gap-1 transition-colors hover:text-zinc-600"
+              className="inline-flex items-center gap-1 transition-colors hover:text-brand-charcoal"
             >
               <Image
                 src="/images/beian.webp"
@@ -250,6 +251,53 @@ export function PrivacyContent() {
           </div>
         </div>
       </footer>
+
+      {/* 移动端章节目录模态框 */}
+      <AnimatePresence>
+        {tocOpen && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex flex-col bg-[#fefcf8] md:hidden"
+          >
+            {/* Header */}
+            <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-brand-charcoal/[0.06] px-6">
+              <span className="text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">章节目录</span>
+              <button
+                type="button"
+                onClick={() => setTocOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
+                aria-label="关闭目录"
+              >
+                <X className="h-4 w-4 text-brand-charcoal/50" strokeWidth={1.5} />
+              </button>
+            </div>
+            {/* List */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="flex flex-col gap-1">
+                {sections.map((section) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => {
+                      setTocOpen(false);
+                      setTimeout(() => {
+                        const el = document.getElementById(section.id);
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }, 300);
+                    }}
+                    className="rounded-lg px-4 py-3 text-left text-[14px] font-light leading-[1.6] tracking-[0.04em] text-brand-charcoal/70 transition-colors active:bg-brand-charcoal/[0.03]"
+                  >
+                    {section.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

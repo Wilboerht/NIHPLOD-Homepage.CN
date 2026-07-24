@@ -91,6 +91,7 @@ export function ContactContent({ content }: ContactContentProps) {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
 
   useEffect(() => {
     const typeParam = searchParams.get("type");
@@ -175,7 +176,7 @@ export function ContactContent({ content }: ContactContentProps) {
     <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] lg:mb-[-6rem]">
       {/* Top Bar */}
       <nav
-        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-3 backdrop-blur-md md:px-20 md:py-6"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:px-20"
         style={{ pointerEvents: "none" }}
         aria-label="主导航"
       >
@@ -185,7 +186,7 @@ export function ContactContent({ content }: ContactContentProps) {
         >
           {/* Logo - mobile centered, desktop left */}
           <Link href="/">
-            <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
+            <div className="relative h-[30px] w-[107px] md:h-[40px] md:w-[143px]">
               <Image
                 src="/images/NIHPLOD-logo.svg"
                 alt="NIHPLOD"
@@ -285,7 +286,7 @@ export function ContactContent({ content }: ContactContentProps) {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+            className="absolute left-0 flex h-10 w-10 items-center justify-center md:hidden"
             aria-label="打开菜单"
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-nav-panel"
@@ -342,14 +343,14 @@ export function ContactContent({ content }: ContactContentProps) {
               <Link
                 href="/terms"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
               >
                 服务条款
               </Link>
               <Link
                 href="/privacy"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
               >
                 隐私政策
               </Link>
@@ -359,7 +360,7 @@ export function ContactContent({ content }: ContactContentProps) {
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+              className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
             >
               <Home className="h-5 w-5" />
               返回首页
@@ -369,20 +370,21 @@ export function ContactContent({ content }: ContactContentProps) {
       </div>
 
       {/* Spacer */}
-      <div className="h-[62px] shrink-0 md:h-[88px]" />
+      <div className="h-[88px] shrink-0 md:h-[88px]" />
 
       {/* Header */}
-      <div className="pb-8 pt-12 text-center md:pb-12 md:pt-20">
-        <h1 className="mb-4 text-3xl font-light tracking-wider text-[#00263E] md:text-4xl">
+      <div className="pb-8 pt-8 text-center md:pb-12 md:pt-20">
+        <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-[#00263E] md:mb-4 md:text-4xl md:font-light md:tracking-wider">
           {title.zh}
         </h1>
-        <p className="mx-auto max-w-md text-[15px] font-light tracking-[0.12em] text-brand-charcoal/60 md:text-base">
+        <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
+        <p className="mx-auto max-w-md px-6 text-[13px] font-light tracking-[0.06em] leading-[1.8] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">
           {description}
         </p>
       </div>
 
       {/* Contact Form */}
-      <main className="container mx-auto flex-1 px-6 pb-16 pt-0 md:px-8 lg:px-12 xl:px-16">
+      <main className="container mx-auto flex-1 px-6 pb-10 pt-0 md:px-8 md:pb-16 lg:px-12 xl:px-16">
         <div className="mx-auto max-w-xl">
           {status === "success" ? (
             <div className="py-16 text-center">
@@ -394,7 +396,7 @@ export function ContactContent({ content }: ContactContentProps) {
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
               {/* Honeypot */}
               <input
                 type="text"
@@ -408,11 +410,11 @@ export function ContactContent({ content }: ContactContentProps) {
               />
 
               {/* Name + Phone */}
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 md:gap-5">
                 <div>
                   <label
                     htmlFor="name"
-                    className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]"
+                    className="mb-1 block text-[13px] font-light tracking-[0.06em] text-brand-charcoal/70 md:mb-1.5 md:text-[14px] md:tracking-[0.12em]"
                   >
                     称呼 <span className="text-red-400">*</span>
                   </label>
@@ -426,7 +428,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     autoComplete="name"
                     maxLength={50}
                     className={cn(
-                      "w-full rounded-lg border px-4 py-3.5 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:text-[15px]",
+                      "w-full rounded-lg border px-3 py-2 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:px-4 md:py-3.5",
                       errors.name
                         ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                         : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
@@ -437,7 +439,7 @@ export function ContactContent({ content }: ContactContentProps) {
                 <div>
                   <label
                     htmlFor="phone"
-                    className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]"
+                    className="mb-1 block text-[13px] font-light tracking-[0.06em] text-brand-charcoal/70 md:mb-1.5 md:text-[14px] md:tracking-[0.12em]"
                   >
                     手机号 <span className="text-red-400">*</span>
                   </label>
@@ -452,7 +454,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     inputMode="tel"
                     maxLength={11}
                     className={cn(
-                      "w-full rounded-lg border px-4 py-3.5 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:text-[15px]",
+                      "w-full rounded-lg border px-3 py-2 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:px-4 md:py-3.5",
                       errors.phone
                         ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                         : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
@@ -466,7 +468,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <div>
                 <label
                   htmlFor="type"
-                  className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]"
+                  className="mb-1 block text-[13px] font-light tracking-[0.06em] text-brand-charcoal/70 md:mb-1.5 md:text-[14px] md:tracking-[0.12em]"
                 >
                   留言类型 <span className="text-red-400">*</span>
                 </label>
@@ -479,7 +481,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
                   }}
                   className={cn(
-                    "w-full rounded-lg border px-4 py-3.5 text-[15px] font-light outline-none transition-all appearance-none",
+                    "w-full rounded-lg border px-3 py-2 text-[15px] font-light outline-none transition-all appearance-none md:px-4 md:py-3.5",
                     !formData.type && "text-brand-charcoal/40",
                     errors.type
                       ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
@@ -499,7 +501,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <div>
                 <label
                   htmlFor="content"
-                  className="mb-1.5 block text-[14px] font-light tracking-[0.12em] text-brand-charcoal/70 md:text-[15px]"
+                  className="mb-1 block text-[13px] font-light tracking-[0.06em] text-brand-charcoal/70 md:mb-1.5 md:text-[14px] md:tracking-[0.12em]"
                 >
                   留言内容 <span className="text-red-400">*</span>
                 </label>
@@ -512,7 +514,7 @@ export function ContactContent({ content }: ContactContentProps) {
                   rows={4}
                   maxLength={2000}
                   className={cn(
-                    "w-full resize-none rounded-lg border px-4 py-3.5 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:text-[15px]",
+                    "w-full resize-none rounded-lg border px-3 py-2 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:px-4 md:py-3.5",
                     errors.content
                       ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                       : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
@@ -525,7 +527,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00263E]/30 px-6 py-3.5 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:border-[#00263E] hover:bg-[#00263E]/5 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00263E]/30 px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:border-[#00263E] hover:bg-[#00263E]/5 disabled:opacity-50 md:py-3.5 md:tracking-[0.15em]"
               >
                 {status === "loading" ? (
                   <>
@@ -545,14 +547,23 @@ export function ContactContent({ content }: ContactContentProps) {
       </main>
 
       {/* Page Footer */}
-      <footer className="border-t border-brand-charcoal/10">
-        <div className="mx-auto overflow-visible px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16">
+      <footer className="md:border-t md:border-brand-charcoal/10">
+        <div className="mx-auto overflow-visible px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
           <div className="flex items-center justify-center gap-3">
-            <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
+            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </span>
             <span className="text-[11px] font-light text-brand-charcoal/20">|</span>
-            <div className="group relative inline-flex cursor-pointer">
+            {/* 移动端点击弹出二维码 */}
+            <button
+              type="button"
+              onClick={() => setQrModalOpen(true)}
+              className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] transition-colors active:text-brand-charcoal/70 md:hidden"
+            >
+              服务号
+            </button>
+            {/* PC 端 hover 展示 */}
+            <div className="group relative hidden cursor-pointer md:inline-flex">
               <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">服务号</span>
               <Image
                 src="/images/wechat-qrcode.jpg"
@@ -566,6 +577,47 @@ export function ContactContent({ content }: ContactContentProps) {
           </div>
         </div>
       </footer>
+
+      {/* 移动端二维码模态框 */}
+      <AnimatePresence>
+        {qrModalOpen && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-brand-charcoal/30 backdrop-blur-sm md:hidden"
+            onClick={() => setQrModalOpen(false)}
+          >
+            <m.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="mx-6 flex flex-col items-center rounded-2xl bg-white p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src="/images/wechat-qrcode.jpg"
+                alt="NIHPLOD 微信服务号"
+                width={200}
+                height={200}
+                unoptimized
+                className="h-[200px] w-[200px] rounded-lg"
+              />
+              <p className="mt-4 text-[13px] font-light tracking-[0.06em] text-brand-charcoal/60">扫码关注 NIHPLOD 服务号</p>
+              <button
+                type="button"
+                onClick={() => setQrModalOpen(false)}
+                className="mt-4 flex h-8 w-8 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
+                aria-label="关闭"
+              >
+                <X className="h-4 w-4 text-brand-charcoal/40" strokeWidth={1.5} />
+              </button>
+            </m.div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
