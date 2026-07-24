@@ -406,7 +406,7 @@ export function StoryContent() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true, margin: "-40px" }}
                             transition={{ duration: 0.45, delay: (idx % 2) * 0.08, ease: "easeOut" }}
-                            className="flex flex-col border border-brand-charcoal/[0.08] bg-white"
+                            className="flex flex-col border border-brand-charcoal/[0.08] bg-[#FFFDF9]"
                           >
                             {/* Award Image */}
                             <div className="relative w-full overflow-hidden">
