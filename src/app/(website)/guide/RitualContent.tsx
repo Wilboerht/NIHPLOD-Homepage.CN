@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -113,6 +113,30 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
   // 轮播导航状态（桌面端步骤分页）
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  // 移动端滚动容器 & 渐隐遮罩（ref 直操 DOM，避免重渲染抖动）
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const fadeMaskRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = mobileScrollRef.current;
+    const mask = fadeMaskRef.current;
+    if (!el || !mask) return;
+    const sync = () => {
+      mask.style.opacity = el.scrollTop > 8 ? "1" : "0";
+    };
+    sync();
+    el.addEventListener("scroll", sync, { passive: true });
+    return () => el.removeEventListener("scroll", sync);
+  }, []);
+
+  // 层级切换时重置滚动位置 & 遮罩
+  useEffect(() => {
+    const el = mobileScrollRef.current;
+    const mask = fadeMaskRef.current;
+    if (el) el.scrollTop = 0;
+    if (mask) mask.style.opacity = "0";
+  }, [currentLevel]);
 
   // 获取当前应该显示的步骤（优先使用子方案的步骤）
   const currentSteps = selectedSubPlan?.steps || selectedScheme?.steps || [];
@@ -246,9 +270,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     type="button"
                     onClick={goBack}
                     aria-label="返回上一级"
-                    className="absolute left-6 flex h-full items-center text-brand-charcoal/60 active:text-brand-charcoal"
+                    className="absolute left-4 flex items-center gap-0.5 text-[13px] font-light tracking-[0.04em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/70"
                   >
-                    <ChevronLeft className="h-6 w-6" />
+                    <ChevronLeft size={16} strokeWidth={1.5} />
+                    返回
                   </m.button>
                 )}
               </AnimatePresence>
@@ -268,11 +293,16 @@ export function RitualContent({ products = [] }: RitualContentProps) {
             </div>
 
             {/* 移动端内容区域 - 隐藏滚动条并移除多余 padding */}
-            <div
-              className={cn(
-                "relative z-10 flex-1 overflow-y-auto px-7 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                currentLevel === 1 && "flex flex-col"
-              )}
+            <div className="relative flex-1 overflow-hidden">
+              {/* Top Fade Mask - 仅在滚动后显示 */}
+              <div
+                ref={fadeMaskRef}
+                className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6 transition-opacity duration-300"
+                style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)", opacity: 0 }}
+              />
+              <div
+              ref={mobileScrollRef}
+              className="relative z-20 flex min-h-full flex-1 flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               <AnimatePresence mode="wait">
                 {/* Level 1: 模块选择 - 2x2 精致网格 */}
@@ -285,11 +315,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     className="flex flex-1 flex-col justify-start"
                   >
-                    <div className="mb-7 flex flex-col items-center pb-2 pt-2">
-                      <h2 className="font-sans text-[24px] font-light tracking-[0.15em] text-brand-charcoal">
+                    <div className="mb-8 flex flex-col items-center pt-3">
+                      <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                         护肤仪式指南
                       </h2>
-                      <div className="mt-2 h-px w-10 rounded-full bg-brand-charcoal-light/20" />
+                      <div className="mt-2 w-[70px] border-b border-brand-primary" />
                     </div>
 
                     <div className="grid flex-1 grid-cols-2 gap-4">
@@ -301,7 +331,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           viewport={{ once: true, margin: "-20px" }}
                           transition={{ delay: index * 0.1 }}
                           onClick={() => selectModule(module.id)}
-                          className="relative flex h-full flex-col justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
+                          className="relative flex h-full flex-col justify-start overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
                         >
                           <div className="relative z-10 flex flex-col">
                             <module.icon className="h-8 w-8 text-[#B8A47B] mb-4" strokeWidth={1} />
@@ -859,14 +889,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   </m.div>
                 )}
               </AnimatePresence>
-            </div>
 
-            {/* 移动端版权信息 - 紧凑型固定底栏 */}
-            <footer className="relative z-20 flex shrink-0 flex-col items-center py-4">
-              <p className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
-                &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-              </p>
-            </footer>
+              {/* 移动端版权信息 - 滚动区内 mt-auto 贴底 */}
+              <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-10">
+                <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
+                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                </p>
+              </div>
+            </div>
+            </div>
           </div>
 
           {/* ========== 桌面端布局 - 保持原有样式 ========== */}
