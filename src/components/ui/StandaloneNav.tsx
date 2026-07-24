@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, Home } from "lucide-react";
+import { Menu, X, Home, BookOpen } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 
 /**
@@ -19,9 +19,10 @@ interface NavLink {
 interface StandaloneNavProps {
   title?: string;
   links?: NavLink[];
+  leftButton?: { label: string; onClick: () => void };
 }
 
-export function StandaloneNav({ title, links = [] }: StandaloneNavProps) {
+export function StandaloneNav({ title, links = [], leftButton }: StandaloneNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -122,11 +123,23 @@ export function StandaloneNav({ title, links = [] }: StandaloneNavProps) {
             </Link>
           </div>
 
+          {/* Mobile left button (e.g. TOC) */}
+          {leftButton && (
+            <button
+              type="button"
+              onClick={leftButton.onClick}
+              className="absolute right-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+              aria-label={leftButton.label}
+            >
+              <BookOpen className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
+            </button>
+          )}
+
           {/* Mobile hamburger */}
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="absolute right-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+            className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
             aria-label="打开菜单"
           >
             <Menu className="h-5 w-5 text-[#00263E]" />

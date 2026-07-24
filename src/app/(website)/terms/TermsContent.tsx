@@ -1,7 +1,11 @@
-import TableOfContents from "@/components/ui/TableOfContents";
+"use client";
+
+import { useState } from "react";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 import { StandaloneNav } from "@/components/ui/StandaloneNav";
 import { ContentParagraph } from "@/components/ui/PolicyContentRenderer";
+import { AnimatePresence, m } from "framer-motion";
+import { X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import type { TermsPageContent } from "@/types/page-content";
@@ -17,6 +21,7 @@ interface TermsContentProps {
 export function TermsContent({ content }: TermsContentProps) {
   const lastUpdated = content.lastUpdated || "";
   const flatContent = content.tabs?.general?.content || [];
+  const [tocOpen, setTocOpen] = useState(false);
 
   // 将平铺内容拆分为独立章节（每条内容的第一行为标题）
   const sections = flatContent.map((text) => {
@@ -32,15 +37,10 @@ export function TermsContent({ content }: TermsContentProps) {
       <StandaloneNav title="服务条款" links={[
         { href: "/contact", label: "联系我们" },
         { href: "/privacy", label: "隐私政策" },
-      ]} />
+      ]} leftButton={{ label: "章节目录", onClick: () => setTocOpen(true) }} />
 
       <div className="container mx-auto px-6 md:px-20">
         <div className="flex flex-col gap-12 lg:flex-row lg:gap-24">
-          {/* Mobile TOC - Dropdown */}
-          <div className="mb-4 lg:hidden">
-            <TableOfContents sections={sections} />
-          </div>
-
           {/* Sticky Sidebar Navigation */}
           <ScrollSpySidebar sections={sections} label="服务条款目录导航" />
 
@@ -108,6 +108,53 @@ export function TermsContent({ content }: TermsContentProps) {
           </div>
         </div>
       </footer>
+
+      {/* 移动端章节目录模态框 */}
+      <AnimatePresence>
+        {tocOpen && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex flex-col bg-[#fefcf8] md:hidden"
+          >
+            {/* Header */}
+            <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-brand-charcoal/[0.06] px-6">
+              <span className="text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">章节目录</span>
+              <button
+                type="button"
+                onClick={() => setTocOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
+                aria-label="关闭目录"
+              >
+                <X className="h-4 w-4 text-brand-charcoal/50" strokeWidth={1.5} />
+              </button>
+            </div>
+            {/* List */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="flex flex-col gap-1">
+                {sections.map((section) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => {
+                      setTocOpen(false);
+                      setTimeout(() => {
+                        const el = document.getElementById(section.id);
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }, 300);
+                    }}
+                    className="rounded-lg px-4 py-3 text-left text-[14px] font-light leading-[1.6] tracking-[0.04em] text-brand-charcoal/70 transition-colors active:bg-brand-charcoal/[0.03]"
+                  >
+                    {section.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
