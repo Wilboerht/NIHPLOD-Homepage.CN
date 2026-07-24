@@ -10,6 +10,8 @@ import {
   Info,
   ChevronLeft,
   ChevronRight,
+  Sun,
+  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -302,8 +304,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
               />
               <div
               ref={mobileScrollRef}
-              className="relative z-20 flex min-h-full flex-1 flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="relative z-20 h-full overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
+              <div className="flex min-h-full flex-col">
               <AnimatePresence mode="wait">
                 {/* Level 1: 模块选择 - 2x2 精致网格 */}
                 {currentLevel === 1 && (
@@ -425,116 +428,23 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="flex flex-col py-2"
+                    className="flex flex-col"
                   >
-                    {/* Level 3: Mobile Scheme Switcher Tabs (Only for Professional/Spa/Portable) */}
-                    {((selectedScheme.subPlans && selectedScheme.subPlans.length > 1) ||
-                      (selectedModule &&
-                        ["portable", "professional", "spa"].includes(selectedModule) &&
-                        moduleData[selectedModule].length > 1)) && (
-                      <div className="relative mb-10 flex w-full max-w-[400px] flex-col items-center px-6">
-                        <div
-                          className="flex w-full items-center rounded-full bg-[#00263E]/[0.05] p-1"
-                          role="tablist"
-                          aria-label="方案切换"
-                        >
-                          <LayoutGroup id={`mobile-tab-${selectedModule}`}>
-                            {/* 1. subPlans existing condition (such as daily) */}
-                            {selectedScheme.subPlans && selectedScheme.subPlans.length > 0
-                              ? selectedScheme.subPlans.map((subPlan) => {
-                                  const isActive = selectedSubPlan?.id === subPlan.id;
-                                  return (
-                                    <button
-                                      key={subPlan.id}
-                                      type="button"
-                                      role="tab"
-                                      aria-selected={isActive}
-                                      onClick={() => selectSubPlan(subPlan)}
-                                      className={cn(
-                                        "relative flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
-                                        isActive
-                                          ? " text-[#00263E]"
-                                          : "text-[#00263E]/40 hover:text-[#00263E]/65"
-                                      )}
-                                    >
-                                      <span className="relative z-10 whitespace-nowrap text-[13px] font-light tracking-[0.12em]">
-                                        {subPlan.name}
-                                      </span>
-                                      {isActive && (
-                                        <m.div
-                                          layoutId={`active-mobile-tab-${selectedModule}`}
-                                          className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
-                                          initial={false}
-                                          transition={{
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 30,
-                                          }}
-                                        />
-                                      )}
-                                    </button>
-                                  );
-                                })
-                              : /* 2. Scheme level switching (for portable, professional, spa in level 3) */
-                                selectedModule &&
-                                ["portable", "professional", "spa"].includes(selectedModule) &&
-                                moduleData[selectedModule].map((scheme) => {
-                                  const isActive = scheme.id === selectedScheme.id;
-                                  return (
-                                    <button
-                                      key={scheme.id}
-                                      type="button"
-                                      role="tab"
-                                      aria-selected={isActive}
-                                      onClick={() => selectScheme(scheme)}
-                                      className={cn(
-                                        "relative flex min-h-0 min-w-0 flex-1 items-center justify-center rounded-full py-2.5 transition-colors duration-300",
-                                        isActive
-                                          ? " text-[#00263E]"
-                                          : "text-[#00263E]/40 hover:text-[#00263E]/65"
-                                      )}
-                                    >
-                                      <span className="relative z-10 whitespace-nowrap text-[13px] font-light tracking-[0.12em]">
-                                        {scheme.name}
-                                      </span>
-                                      {isActive && (
-                                        <m.div
-                                          layoutId={`active-mobile-tab-${selectedModule}`}
-                                          className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
-                                          initial={false}
-                                          transition={{
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 30,
-                                          }}
-                                        />
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                          </LayoutGroup>
-                        </div>
-                      </div>
-                    )}
                     {/* 顶部概览信息 (隐藏于 portable) */}
                     {selectedModule !== "portable" ? (
-                      <div className="mb-10 flex flex-col items-center">
-                        <div className="mb-6 text-center">
-<h2 className="text-3xl font-light tracking-[0.15em] text-[#00263E]">
-                            {selectedScheme.name}
-                          </h2>
+                      <div className="mb-8 flex flex-col items-center pt-3">
+                        <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
+                          {selectedScheme.name}
+                        </h2>
+                        <div className="mt-2 w-[70px] border-b border-brand-primary" />
 
-                          {/* 相关产品 - 横向滑动卡片 (Moved here) */}
+                          {/* 相关产品 */}
                           <div className="mb-2 mt-6 w-full">
-                            <div className="mb-4 flex items-center justify-center gap-3">
-                              <div className="h-px w-8 bg-[#00263E]/10" />
-                              <span className="text-[10px] uppercase tracking-[0.2em] text-[#00263E]/40">
-                                相关产品
-                              </span>
-                              <div className="h-px w-8 bg-[#00263E]/10" />
-                            </div>
-                            <div className="w-full px-6 text-center">
-                              <div className="flex flex-wrap justify-center gap-x-8 gap-y-6 pb-4">
+                            <p className="mb-4 text-center text-[11px] font-light tracking-[0.12em] text-brand-charcoal/40">
+                              相关产品
+                            </p>
+                            <div className="w-full text-center">
+                              <div className="flex flex-wrap justify-center gap-x-6 gap-y-5 pb-4">
                                 {currentProducts.map((product, index) => {
                                   const cleanName = product.name;
                                   const isOptional = !!product.optional;
@@ -544,17 +454,17 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       key={cleanName}
                                       type="button"
                                       onClick={() => handleProductClick(cleanName)}
-                                      className="flex flex-col items-center gap-2"
+                                      className="flex flex-col items-center gap-1.5"
                                     >
-                                      <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#00263E]/5 bg-white shadow-[0_2px_8px_-2px_rgba(0,38,62,0.06)] transition-transform active:scale-95">
-                                        <div className="flex h-10 w-10 items-center justify-center">
+                                      <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-brand-charcoal/[0.06] bg-[#FFFDF9] transition-transform active:scale-95">
+                                        <div className="flex h-8 w-8 items-center justify-center">
                                           {getCategoryIconPath(cleanName) ? (
                                             <Image
                                               src={getCategoryIconPath(cleanName)!}
                                               alt={cleanName}
-                                              width={40}
-                                              height={40}
-                                              className="h-10 w-10"
+                                              width={32}
+                                              height={32}
+                                              className="h-8 w-8"
                                             />
                                           ) : (
                                             DEFAULT_ICONS[index % DEFAULT_ICONS.length]
@@ -562,11 +472,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                         </div>
                                       </div>
                                       <div className="flex flex-col items-center">
-                                        <span className="whitespace-nowrap text-[11px] font-medium tracking-widest text-[#00263E]/70">
+                                        <span className="max-w-[72px] truncate text-[11px] font-light leading-[16px] tracking-[0.06em] text-brand-charcoal/60">
                                           {cleanName}
                                         </span>
                                         {isOptional && (
-                                          <span className="text-[10px] tracking-wider text-[#00263E]/60">
+                                          <span className="text-[10px] font-light tracking-[0.04em] text-brand-charcoal/35">
                                             可选
                                           </span>
                                         )}
@@ -578,45 +488,47 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </div>
                           </div>
 
-                          <div className="mt-8 flex items-center justify-center gap-6">
+                          <div className="mt-6 flex items-center justify-center gap-5">
                             <div className="flex flex-col items-center">
-                              <span className="mb-1 text-[10px] uppercase tracking-widest text-[#4A6272]/60">
+                              <span className="mb-1 text-[10px] font-light tracking-[0.1em] text-brand-charcoal/35">
                                 预计时长
                               </span>
-                              <span className="text-[14px] font-light text-[#00263E]">
+                              <span className="text-[13px] font-light leading-[20px] tracking-[0.04em] text-brand-charcoal/70">
                                 {selectedScheme.totalDuration?.replace("min", "分钟") ||
                                   "15-20 分钟"}
                               </span>
                             </div>
-                            <div className="h-6 w-px bg-[#00263E]/5" />
+                            <div className="h-5 w-px bg-brand-charcoal/[0.06]" />
                             <div className="flex flex-col items-center">
-                              <span className="mb-1 text-[10px] uppercase tracking-widest text-[#4A6272]/60">
+                              <span className="mb-1 text-[10px] font-light tracking-[0.1em] text-brand-charcoal/35">
                                 护理阶段
                               </span>
-                              <span className="text-[14px] font-light text-[#00263E]">
+                              <span className="text-[13px] font-light leading-[20px] tracking-[0.04em] text-brand-charcoal/70">
                                 {currentSteps.length} 个核心步骤
                               </span>
                             </div>
                           </div>
                         </div>
-                      </div>
                     ) : (
-                      <div className="mb-4">
-                        <h2 className="text-3xl font-light tracking-[0.15em] text-[#00263E]">
+                      <div className="mb-8 flex flex-col items-center pt-3">
+                        <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                           {selectedScheme.name}
                         </h2>
-                        <span className="mt-2 inline-block font-serif text-[10px] uppercase tracking-[0.2em] text-[#4A6272]">
-                          {selectedScheme.nameEn}
-                        </span>
+                        <div className="mt-2 w-[70px] border-b border-brand-primary" />
+                        {selectedScheme.nameEn && (
+                          <span className="mt-2 text-[10px] uppercase tracking-[0.2em] text-brand-charcoal/40">
+                            {selectedScheme.nameEn}
+                          </span>
+                        )}
                       </div>
                     )}
 
                     {/* Content Rendering based on Module */}
                     {selectedModule === "portable" ? (
                       // Portable Module Layout
-                      <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col duration-500">
+                      <div className="flex flex-col">
                         {/* Hero Image */}
-                        <div className="relative mb-6 aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-sm">
+                        <div className="relative mb-6 aspect-[4/3] w-full overflow-hidden rounded-xl">
                           <Image
                             src={selectedScheme.heroImage || "/images/portable-hero-update.webp"}
                             alt={selectedScheme.name}
@@ -624,13 +536,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             sizes="100vw"
                             className="object-cover"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#00263E]/80 via-transparent to-transparent opacity-80" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-brand-charcoal/70 via-transparent to-transparent opacity-80" />
                           <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               {selectedScheme.benefits?.slice(0, 3).map((benefit, i) => (
                                 <span
                                   key={i}
-                                  className="rounded-full border border-white/30 bg-white/20 px-2 py-0.5 text-[10px] font-light tracking-widest text-white backdrop-blur-md"
+                                  className="rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-[10px] font-light tracking-[0.08em] text-white/90 backdrop-blur-sm"
                                 >
                                   {benefit}
                                 </span>
@@ -638,32 +550,32 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </div>
                           </div>
                         </div>
-
+                    
                         {/* Description Content */}
-                        <div className="px-2">
-                          <p className="relative mb-8 text-sm font-light leading-[1.8] text-[#00263E]/80">
-                            <span className="absolute -left-3 -top-2 font-serif text-3xl text-[#4A6272]/20">
-                              "
+                        <div>
+                          <p className="relative mb-6 text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/70">
+                            <span className="absolute -left-2 -top-1 font-serif text-2xl text-brand-charcoal/12">
+                              “
                             </span>
                             {selectedScheme.desc}
-                            <span className="absolute -right-1 bottom-0 translate-y-1 font-serif text-3xl text-[#4A6272]/20">
-                              "
+                            <span className="absolute -right-1 bottom-0 translate-y-1 font-serif text-2xl text-brand-charcoal/12">
+                              ”
                             </span>
                           </p>
-
+                    
                           {/* Products Meta */}
-                          <div className="flex flex-col gap-3 border-t border-[#00263E]/10 py-4">
-                            <span className="text-[10px] font-medium uppercase tracking-widest text-[#4A6272]/80">
+                          <div className="flex flex-col gap-3 border-t border-brand-charcoal/[0.06] pt-4">
+                            <span className="text-[11px] font-light tracking-[0.1em] text-brand-charcoal/40">
                               核心单品搭配
                             </span>
                             <div className="flex flex-wrap gap-2">
                               {selectedScheme.products?.map((prod) => (
                                 <div
                                   key={prod.name}
-                                  className="flex items-center gap-1.5 rounded-md border border-[#00263E]/5 bg-white px-3 py-1.5 shadow-sm"
+                                  className="flex items-center gap-1.5 rounded-md border border-brand-charcoal/[0.06] bg-[#FFFDF9] px-3 py-1.5"
                                 >
-                                  <div className="h-1.5 w-1.5 rounded-full bg-[#4A6272]/40" />
-                                  <span className="text-xs text-[#00263E]/90">{prod.name}</span>
+                                  <div className="h-1 w-1 rounded-full bg-brand-charcoal/30" />
+                                  <span className="text-[11px] font-light tracking-[0.04em] text-brand-charcoal/70">{prod.name}</span>
                                 </div>
                               ))}
                             </div>
@@ -671,27 +583,27 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         </div>
                       </div>
                     ) : selectedModule === "professional" ? (
-                      <div className="animate-in fade-in flex w-full flex-col pb-6 duration-500">
-                        <div className="mb-2 flex items-center gap-3 px-1">
-                          <h3 className="text-[26px] font-normal tracking-wide text-[#00263E]">
+                      <div className="flex w-full flex-col">
+                        <div className="mb-2 flex items-center gap-2">
+                          <h3 className="text-[17px] font-normal tracking-[0.1em] text-brand-charcoal">
                             {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
                           </h3>
-                          <span className="rounded-sm bg-[#E6DCC3] px-1.5 py-0.5 text-[10px] font-medium text-[#00263E]">
+                          <span className="rounded-sm bg-[#E6DCC3] px-1.5 py-0.5 text-[10px] font-light tracking-[0.06em] text-brand-charcoal/70">
                             招牌
                           </span>
                         </div>
-                        <div className="mb-8 flex flex-col px-1">
-                          <p className="mb-3 font-sans text-xs font-light tracking-[0.1em] text-[#00263E]/60">
+                        <div className="mb-6">
+                          <p className="text-[10px] font-light tracking-[0.12em] text-brand-charcoal/35">
                             {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
                           </p>
                         </div>
 
                         {/* 中间卡片区 - 纵向列表 */}
-                        <div className="mb-12 flex flex-col gap-6">
+                        <div className="mb-10 flex flex-col gap-5">
                           {getProfessionalCards(selectedScheme?.id).map((item) => (
                             <div
                               key={item.image}
-                              className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-[#00263E]/5 shadow-sm"
+                              className="relative aspect-[4/3] w-full overflow-hidden rounded-xl"
                             >
                               <Image
                                 src={item.image}
@@ -701,20 +613,20 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 className="z-0 object-cover"
                               />
                               {/* 渐变遮罩 */}
-                              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
                               {/* 文字内容 */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 z-20 flex w-full flex-col gap-3 p-5">
-                                <div className="flex items-baseline gap-2 text-white">
-                                  <h4 className="text-[22px] font-normal tracking-wide text-white drop-shadow-sm">
+                              <div className="pointer-events-none absolute bottom-0 left-0 z-20 flex w-full flex-col gap-2 p-4">
+                                <div className="flex items-baseline gap-1.5 text-white">
+                                  <h4 className="text-[17px] font-normal tracking-[0.08em] text-white drop-shadow-sm">
                                     {item.title}
                                   </h4>
-                                  <span className="mx-0.5 text-sm font-light text-white/80">/</span>
-                                  <span className="font-sans text-[16px] font-light tracking-wide text-white/90 drop-shadow-sm">
+                                  <span className="text-[12px] font-light text-white/70">/</span>
+                                  <span className="text-[13px] font-light tracking-[0.06em] text-white/85 drop-shadow-sm">
                                     {item.duration}
                                   </span>
                                 </div>
                                 <div>
-                                  <span className="inline-block rounded-full border border-white/60 bg-white/10 px-3 py-1.5 text-[11px] font-light tracking-wider text-white/90 shadow-sm backdrop-blur-md">
+                                  <span className="inline-block rounded-full border border-white/40 bg-white/10 px-2.5 py-1 text-[10px] font-light tracking-[0.06em] text-white/85 backdrop-blur-sm">
                                     {item.tags}
                                   </span>
                                 </div>
@@ -728,33 +640,33 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       </div>
                     ) : (
                       /* Regular Steps Waterfall Layout (daily, spa) */
-                      <div className="space-y-10 sm:space-y-12">
+                      <div className="space-y-8">
                         {currentSteps.map((step, index) => (
                           <div key={index} className="group relative flex flex-col">
                             {/* 图片展示区 + 胶囊定位容器 */}
-                             <div className="relative mb-5 sm:mb-7">
+                            <div className="relative mb-4">
                               {/* 步骤胶囊 */}
-                              <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-[#00263E]/20 bg-[#FBF8F0] px-4 py-1 text-xs font-medium tracking-widest text-[#00263E] shadow-sm">
+                              <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/12 bg-brand-cream px-3.5 py-1 text-[11px] font-light tracking-[0.1em] text-brand-charcoal/60">
                                 步骤 {String(index + 1).padStart(2, "0")}
                               </div>
-                              {/* 图片展示区 - 极简白背景 */}
-                              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-white shadow-[0_4px_25px_-5px_rgba(0,38,62,0.04)] transition-transform duration-500 group-active:scale-[0.99] sm:aspect-square sm:rounded-[2rem]">
+                              {/* 图片展示区 */}
+                              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#FFFDF9] transition-transform duration-500 group-active:scale-[0.99]">
                                 <Image
                                   src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
                                   alt={step.title}
                                   fill
                                   sizes="100vw"
-                                  className="object-contain p-4 mix-blend-multiply sm:p-8"
+                                  className="object-contain p-4 mix-blend-multiply"
                                 />
                               </div>
                             </div>
 
                             {/* 文本描述区 */}
-                            <div className="px-1 sm:px-3">
-                              <h3 className="mb-3 text-center text-lg font-light tracking-[0.12em] text-[#00263E] sm:text-xl">
+                            <div>
+                              <h3 className="mb-2 text-center text-[15px] font-normal leading-[24px] tracking-[0.1em] text-brand-charcoal">
                                 {step.title}
                               </h3>
-                              <p className="text-left text-[13px] font-light leading-[1.8] text-[#00263E]/60 sm:text-[14px]">
+                              <p className="text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/55">
                                 {step.description}
                               </p>
                             </div>
@@ -764,26 +676,26 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     )}
 
                     {/* 底部仪式感收尾 & 认证 */}
-                    <div className="mt-4 flex flex-col items-center pb-10 text-center sm:mt-12">
-                      <div className="mb-5 h-px w-12 bg-[#4A6272]/20 sm:mb-10" />
+                    <div className="mt-8 flex flex-col items-center text-center">
+                      <div className="mb-5 h-px w-12 bg-brand-charcoal/[0.08]" />
                       {selectedModule !== "portable" && (
-                        <div className="mb-4 flex flex-col items-center gap-7 sm:gap-14">
+                        <div className="mb-4 flex flex-col items-center gap-6">
                           {/* 核心优势 */}
                           <div className="flex w-full flex-col items-center gap-3">
-                            <span className="text-[10px] uppercase tracking-[0.2em] text-[#00263E]/40">
+                            <span className="text-[10px] font-light tracking-[0.12em] text-brand-charcoal/35">
                               核心优势
                             </span>
-                            <div className="flex w-full flex-wrap justify-center gap-2 px-4">
+                            <div className="flex w-full flex-wrap justify-center gap-2">
                               {(
                                 selectedSubPlan?.benefits ||
                                 selectedScheme.benefits || ["保湿锁水", "屏障增强"]
                               ).map((tag) => (
                                 <div
                                   key={tag}
-                                  className="flex items-center gap-1.5 rounded-full border border-[#4A6272]/10 bg-[#4A6272]/5 px-3 py-1"
+                                  className="flex items-center gap-1 rounded-full border border-brand-charcoal/[0.06] bg-brand-charcoal/[0.02] px-2.5 py-1"
                                 >
-                                  <span className="text-[10px] text-[#4A6272]/60">✦</span>
-                                  <span className="text-[11px] font-light tracking-widest text-[#00263E]/70">
+                                  <span className="text-[9px] text-brand-charcoal/30">✦</span>
+                                  <span className="text-[11px] font-light leading-[16px] tracking-[0.06em] text-brand-charcoal/55">
                                     {tag}
                                   </span>
                                 </div>
@@ -799,8 +711,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             if (!supportText) return null;
                             const isRestricted = supportText.includes("不支持");
                             return (
-                              <div className="flex w-full flex-col items-center gap-3 px-6">
-<span className="text-[10px] uppercase tracking-[0.2em] text-[#00263E]/40">
+                              <div className="flex w-full flex-col items-center gap-3">
+<span className="text-[10px] font-light tracking-[0.12em] text-brand-charcoal/35">
                                   特殊时期支持
                                 </span>
                                 <div
@@ -808,19 +720,19 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     "inline-flex items-center gap-2 rounded-lg border px-4 py-2",
                                     isRestricted
                                       ? "border-orange-900/10 bg-orange-50/30"
-                                      : "border-[#4A6272]/10 bg-[#4A6272]/[0.03]"
+                                      : "border-brand-charcoal/[0.08] bg-brand-charcoal/[0.03]"
                                   )}
                                 >
                                   <Info
                                     className={cn(
                                       "h-3.5 w-3.5",
-                                      isRestricted ? "text-orange-900/40" : "text-[#4A6272]/40"
+                                      isRestricted ? "text-orange-900/40" : "text-brand-charcoal/40"
                                     )}
                                   />
                                   <span
                                     className={cn(
-                                      "text-[11px] font-light tracking-widest",
-                                      isRestricted ? "text-orange-900/70" : "text-[#00263E]/60"
+                                      "text-[11px] font-light tracking-[0.06em]",
+                                      isRestricted ? "text-orange-900/70" : "text-brand-charcoal/60"
                                     )}
                                   >
                                     {supportText}
@@ -832,36 +744,36 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* Certifications (Quality Endorsement) */}
                           <div className="flex flex-col items-center gap-3">
-                            <span className="text-[10px] uppercase tracking-[0.2em] text-[#00263E]/40">
+                            <span className="text-[10px] font-light tracking-[0.12em] text-brand-charcoal/35">
                               检测认证
                             </span>
-                            <div className="flex items-center gap-6 opacity-60 mix-blend-multiply">
+                            <div className="flex items-center gap-5 opacity-50 mix-blend-multiply">
                               <Image
                                 src="/images/sgs.svg"
                                 alt="SGS"
-                                width={18}
-                                height={18}
-                                className="h-[18px] w-auto"
+                                width={22}
+                                height={22}
+                                className="h-[22px] w-auto"
                               />
                               <Image
                                 src="/images/intertek-logo.svg"
                                 alt="Intertek"
-                                width={18}
-                                height={18}
-                                className="h-[16px] w-auto"
+                                width={22}
+                                height={22}
+                                className="h-[20px] w-auto"
                               />
                             </div>
                           </div>
 
                           {/* 专业门店入驻提醒 - 特殊移动端位置 */}
                           {selectedModule === "professional" && (
-                            <div className="mt-2 flex items-start rounded-xl border border-[#4A6272]/10 bg-[#4A6272]/5 p-4 text-left">
-                              <Info className="mr-2 mt-0.5 h-4 w-4 shrink-0 text-[#4A6272]/60" />
-                              <p className="text-[12px] font-light leading-[1.6] tracking-wide text-[#00263E]/70">
+                            <div className="mt-1 flex items-start rounded-lg border border-brand-charcoal/[0.06] bg-brand-charcoal/[0.02] p-3.5 text-left">
+                              <Info className="mr-2 mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-charcoal/30" />
+                              <p className="text-[12px] font-light leading-[1.7] tracking-[0.04em] text-brand-charcoal/55">
                                 找不到您所在城市的门店？银卡级别以上会员可
                                 <Link
                                   href="/contact?type=cooperation"
-                                  className="mx-1 font-medium text-[#4A6272] underline decoration-[#4A6272]/40 underline-offset-2 active:opacity-70"
+                                  className="mx-0.5 font-normal text-brand-charcoal/70 underline decoration-brand-charcoal/20 underline-offset-2 active:opacity-70"
                                 >
                                   申请入驻
                                 </Link>
@@ -871,19 +783,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           )}
                         </div>
                       )}
-                      <button
-                        onClick={goHome}
-                        className={cn(
-                          "mt-6 w-full max-w-[280px] rounded-full py-3.5 text-[13px] font-medium tracking-[0.2em] transition-all duration-300 sm:mt-8 sm:py-4",
-                          "border border-[#4A6272]/30 bg-brand-primary/15 text-[#4A6272] shadow-[0_4px_15px_-3px_rgba(0,38,62,0.1)] backdrop-blur-[4px]",
-                          "active:scale-[0.97] active:bg-brand-primary/25"
-                        )}
-                      >
-                        <div className="-ml-1 flex items-center justify-center gap-1.5">
-                          <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
-                          <span>返回</span>
-                        </div>
-                      </button>
                     </div>
                   </m.div>
                 )}
@@ -895,8 +794,55 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
               </div>
+              </div>
             </div>
             </div>
+
+            {/* Level 3 底部 Tab 栏 - 与 /products 移动端对齐 */}
+            {currentLevel === 3 && selectedModule && selectedScheme &&
+              ((selectedScheme.subPlans && selectedScheme.subPlans.length > 1) ||
+                (["portable", "professional", "spa"].includes(selectedModule) &&
+                  moduleData[selectedModule].length > 1)) && (
+              <div className="flex shrink-0 items-center justify-center gap-8 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
+                {selectedScheme.subPlans && selectedScheme.subPlans.length > 1
+                  ? selectedScheme.subPlans.map((subPlan, idx) => {
+                      const isActive = selectedSubPlan?.id === subPlan.id;
+                      const Icon = idx === 0 ? Sun : Compass;
+                      return (
+                        <button
+                          key={subPlan.id}
+                          type="button"
+                          onClick={() => selectSubPlan(subPlan)}
+                          className={cn(
+                            "flex flex-col items-center gap-1 transition-colors",
+                            isActive ? "text-brand-primary" : "text-brand-charcoal/40"
+                          )}
+                        >
+                          <Icon size={20} strokeWidth={1.5} />
+                          <span className="text-[11px] font-light tracking-[0.06em]">{subPlan.name}</span>
+                        </button>
+                      );
+                    })
+                  : moduleData[selectedModule].map((scheme, idx) => {
+                      const isActive = scheme.id === selectedScheme.id;
+                      const Icon = idx === 0 ? Sun : Compass;
+                      return (
+                        <button
+                          key={scheme.id}
+                          type="button"
+                          onClick={() => selectScheme(scheme)}
+                          className={cn(
+                            "flex flex-col items-center gap-1 transition-colors",
+                            isActive ? "text-brand-primary" : "text-brand-charcoal/40"
+                          )}
+                        >
+                          <Icon size={20} strokeWidth={1.5} />
+                          <span className="text-[11px] font-light tracking-[0.06em]">{scheme.name}</span>
+                        </button>
+                      );
+                    })}
+              </div>
+            )}
           </div>
 
           {/* ========== 桌面端布局 - 保持原有样式 ========== */}
