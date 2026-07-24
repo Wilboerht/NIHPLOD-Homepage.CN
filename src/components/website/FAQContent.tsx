@@ -154,9 +154,9 @@ export function FAQContent() {
           isDrawerOpen ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
         )}
       >
-        {/* Header - Mobile aligned with About, PC kept stable */}
-        <div className="relative z-50 flex h-[56px] shrink-0 items-center justify-center sm:sticky sm:top-0 sm:h-[88px] sm:justify-start sm:border-b sm:border-brand-charcoal/5 sm:bg-[#FBF8F0]/95 sm:px-[8%] sm:backdrop-blur-sm sm:transition-all">
-          <Link href="/" className="flex items-center justify-center sm:mt-1">
+        {/* Header - Mobile 与 About/Guide 88px 标准对齐；sm+ 保持原有 PC 样式 */}
+        <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-brand-cream/95 px-6 backdrop-blur-sm transition-all sm:justify-start sm:border-brand-charcoal/5 sm:px-[8%]">
+          <Link href="/" className="mt-1 flex items-center justify-center">
             <div className="relative h-[28px] w-[100px] sm:h-9 sm:w-[150px]">
               <Image
                 src="/images/NIHPLOD-logo.svg"
@@ -167,10 +167,10 @@ export function FAQContent() {
               />
             </div>
           </Link>
-          <div className="texture-overlay absolute inset-0 z-[-1] hidden sm:block" />
+          <div className="texture-overlay absolute inset-0 z-[-1]" />
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden pb-6 sm:px-10 lg:px-[15%] xl:px-[20%]">
+        <div className="flex flex-1 flex-col overflow-hidden pb-6 sm:pb-0 sm:px-10 lg:px-[15%] xl:px-[20%]">
           {/* Page Title - Desktop */}
           <div className="mb-6 mt-8 hidden justify-center sm:flex">
               <h1 className="relative inline-block text-[24px] font-light tracking-[0.15em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-[#00263e]/20">
@@ -178,14 +178,19 @@ export function FAQContent() {
             </h1>
           </div>
 
-          {/* Scrollable Question List */}
-          <div className="min-h-0 flex-1 scroll-pb-6 overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
+          {/* Scroll Area Wrapper - 承载顶部渐隐遮罩 */}
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            {/* Top Fade Mask - 由实到虚遮罩，柔化 Header 与滚动内容的衔接并暗示可滚动 */}
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6"
+              style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)" }}
+            />
+
+            {/* Scrollable Question List */}
+            <div className="h-full scroll-pb-6 overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
             {/* Page Title - Mobile */}
-            <div className="mb-7 flex flex-col items-center pb-2 pt-2 sm:hidden">
-              <h1
-                className="text-[22px] font-medium tracking-[0.15em] text-[#00263E]"
-                style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
-              >
+            <div className="mb-7 flex flex-col items-center sm:hidden">
+              <h1 className="text-[22px] font-normal tracking-[0.15em] text-[#00263E]">
                 常见问题
               </h1>
               <div className="mt-2 w-[70px] border-b-[1.5px] border-[#00263E]" />
@@ -269,10 +274,18 @@ export function FAQContent() {
                 联系我们
               </button>
             </div>
+
+            {/* Mobile Footer Copyright - mt-auto 保证内容不足一屏时版权贴底；底部留白由容器 pb-6 统一提供 */}
+            <div className="mt-auto flex flex-col items-center justify-center pt-10 sm:hidden">
+              <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
+                &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+              </p>
+            </div>
+          </div>
           </div>
 
-          {/* Footer Info */}
-          <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-10">
+          {/* Footer Info - Desktop 固定页脚 */}
+          <div className="hidden shrink-0 flex-col items-center justify-center gap-2 pt-10 sm:flex">
             <p className="text-center text-[12px] font-light tracking-[0.1em] text-brand-charcoal/[0.48]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>

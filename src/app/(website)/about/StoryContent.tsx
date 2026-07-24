@@ -368,7 +368,7 @@ export function StoryContent() {
                           whileInView={{ opacity: 1, y: 0 }}
                           viewport={{ once: true, margin: "-20px" }}
                           transition={{ duration: 0.4, delay: idx * 0.1, ease: "easeOut" }}
-                          className="flex flex-col justify-start gap-2 rounded-lg border border-brand-charcoal/[0.05] bg-[#FFFFFF] p-5"
+                          className="flex flex-col justify-start gap-2 rounded-lg border border-brand-charcoal/[0.05] bg-[#FFFDF9] p-5"
                         >
                           <span className="text-[16px] font-light tracking-[0.1em] text-brand-charcoal/35">
                             {item.num}
@@ -561,7 +561,7 @@ export function StoryContent() {
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                     className="relative flex h-full items-center justify-center"
                   >
-                    <div className="relative flex w-full max-w-[1000px] items-center">
+                    <div className="relative flex w-[80%] items-center">
                       {/* 左侧大图 - 基准高度 580px */}
                       <div className="relative z-0 h-[450px] w-[52%] shrink-0 overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,38,62,0.2)] md:h-[520px] lg:h-[580px]">
                         <Image
