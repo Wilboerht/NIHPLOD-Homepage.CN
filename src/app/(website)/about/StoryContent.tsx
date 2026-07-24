@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, Compass, Lightbulb, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
@@ -13,11 +13,11 @@ import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 type SectionId = "story" | "mission" | "philosophy" | "awards";
 
 // 导航项配置
-const navItems: { id: SectionId; label: string }[] = [
-  { id: "story", label: "品牌故事" },
-  { id: "mission", label: "公司使命" },
-  { id: "philosophy", label: "品牌哲学" },
-  { id: "awards", label: "奖项报导" },
+const navItems: { id: SectionId; label: string; pcLabel: string; icon: typeof BookOpen }[] = [
+  { id: "story", label: "故事", pcLabel: "品牌故事", icon: BookOpen },
+  { id: "mission", label: "使命", pcLabel: "公司使命", icon: Compass },
+  { id: "philosophy", label: "哲学", pcLabel: "品牌哲学", icon: Lightbulb },
+  { id: "awards", label: "奖项", pcLabel: "奖项报导", icon: Award },
 ];
 
 const Watermark = () => (
@@ -145,7 +145,7 @@ export function StoryContent() {
           )}
         >
           {/* ========== 移动端布局 - 参考 About us 移动端.html ========== */}
-          <div className="relative flex h-full flex-col overflow-hidden pb-6 lg:hidden">
+          <div className="relative flex h-full flex-col overflow-hidden lg:hidden">
             {/* Background Texture Overlay */}
             <div
               className="pointer-events-none fixed inset-0 z-[1] opacity-[0.04]"
@@ -169,50 +169,6 @@ export function StoryContent() {
               </Link>
               {/* Texture Overlay for Header to match body */}
               <div className="texture-overlay absolute inset-0 z-[-1]" />
-            </div>
-
-            {/* Navigation - Mobile Tab Bar */}
-            <div className="relative z-40 shrink-0 px-5">
-              <nav
-                className="flex h-[40px] items-center rounded-full border border-[#00263e]/[0.06] bg-[#00263e]/[0.03] p-[3px]"
-                role="tablist"
-                aria-label="品牌故事导航"
-              >
-                {navItems.map((item) => {
-                  const isActive = activeSection === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => {
-                        setActiveSection(item.id);
-                        contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                      className="relative flex h-full flex-1 items-center justify-center"
-                    >
-                      {isActive && (
-                        <m.span
-                          layoutId="about-tab-pill"
-                          className="absolute inset-0 rounded-full bg-white shadow-[0_1px_6px_rgba(0,38,62,0.08)]"
-                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                        />
-                      )}
-                      <span
-                        className={cn(
-                          "relative z-10 whitespace-nowrap text-[13px] font-normal leading-[20px] tracking-[0.04em] transition-colors duration-300",
-                          isActive
-                            ? "text-[#00263E]"
-                            : "text-[#00263E]/45"
-                        )}
-                      >
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </nav>
             </div>
 
             {/* 页面主标题 - SEO用，视觉上隐藏 */}
@@ -453,13 +409,38 @@ export function StoryContent() {
                 </section>
               )}
 
-              {/* Mobile Footer Copyright - mt-auto 保证内容不足一屏时版权贴底、内容超长时跟在文末；pt-10 为收尾间距，底部留白由移动端容器 pb-6 统一提供 */}
-              <div className="mt-auto flex flex-col items-center justify-center pt-10">
+              {/* Mobile Footer Copyright */}
+              <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-10">
                 <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                   &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                 </p>
               </div>
               </div>
+            </div>
+
+            {/* Bottom Tab Bar - 与 products 对齐 */}
+            <div className="flex shrink-0 items-center justify-center gap-6 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
+              {navItems.map((item) => {
+                const isActive = activeSection === item.id;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveSection(item.id);
+                      contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className={cn(
+                      "flex flex-col items-center gap-1 transition-colors",
+                      isActive ? "text-brand-primary" : "text-brand-charcoal/40"
+                    )}
+                  >
+                    <Icon size={20} strokeWidth={1.5} />
+                    <span className="text-[11px] font-light tracking-[0.06em]">{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -502,7 +483,7 @@ export function StoryContent() {
                             : "text-[#00263E] opacity-60 hover:opacity-80"
                         )}
                       >
-                        {item.label}
+                        {item.pcLabel}
                       </button>
                     ))}
                   </div>

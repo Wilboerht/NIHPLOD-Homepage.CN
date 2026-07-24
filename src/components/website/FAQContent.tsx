@@ -286,7 +286,7 @@ export function FAQContent() {
                       </div>
 
                       {/* Mobile Footer Copyright */}
-                      <div className="mt-auto flex flex-col items-center justify-center pt-10 pb-4">
+                      <div className="mt-auto flex flex-col items-center justify-center pt-10">
                         <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                         </p>
@@ -318,7 +318,7 @@ export function FAQContent() {
                       </div>
 
                       {/* Mobile Footer Copyright */}
-                      <div className="mt-auto flex flex-col items-center justify-center pt-10 pb-4">
+                      <div className="mt-auto flex flex-col items-center justify-center pt-10">
                         <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                         </p>

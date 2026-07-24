@@ -192,7 +192,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </div>
 
                 {/* Copyright */}
-                <div className="mt-auto flex flex-col items-center justify-center pt-10">
+                <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-10">
                   <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                     &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                   </p>
@@ -253,7 +253,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </div>
 
                 {/* Copyright */}
-                <div className="mt-auto flex flex-col items-center justify-center pt-10">
+                <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-10">
                   <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
                     &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
                   </p>

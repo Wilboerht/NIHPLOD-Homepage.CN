@@ -234,7 +234,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
           <h1 className="sr-only">护肤仪式指南</h1>
 
           {/* ========== 移动端布局 - 参考 Ritual 移动端.html ========== */}
-          <div className="flex h-full flex-col bg-brand-cream sm:hidden">
+          <div className="flex h-full flex-col bg-brand-cream lg:hidden">
             {/* 移动端 Header - 完全按照 FAQ 顶部栏样式 */}
             <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-brand-cream/95 px-6 backdrop-blur-sm transition-all">
               <AnimatePresence>
@@ -870,7 +870,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
           </div>
 
           {/* ========== 桌面端布局 - 保持原有样式 ========== */}
-          <div className="hidden h-full flex-col sm:flex">
+          <div className="hidden h-full flex-col lg:flex">
             {/* 顶部栏：LOGO + 面包屑/用户按钮 */}
             <div className="flex h-[88px] flex-shrink-0 items-center border-b border-brand-charcoal/[0.05] px-10 xl:px-[8%]">
               {/* 左侧：LOGO */}
