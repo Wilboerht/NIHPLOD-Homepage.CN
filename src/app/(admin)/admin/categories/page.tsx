@@ -8,7 +8,6 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CategoryForm } from "@/components/admin/CategoryForm";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
-import { sanitizeSvg } from "@/lib/svg-utils";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 
 // 分类类型
@@ -178,9 +177,8 @@ export default function AdminCategoriesPage() {
         ) : (
           <div className="divide-y divide-brand-charcoal/8">
             {/* 表头 */}
-            <div className="grid grid-cols-12 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
+            <div className="grid grid-cols-11 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <div className="col-span-1"></div>
-              <div className="col-span-1">图标</div>
               <div className="col-span-3">分类名称</div>
               <div className="col-span-2">URL 别名</div>
               <div className="col-span-1">产品数量</div>
@@ -197,7 +195,7 @@ export default function AdminCategoriesPage() {
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
                 className={cn(
-                  "grid grid-cols-12 gap-4 px-6 py-4 transition-colors",
+                  "grid grid-cols-11 gap-4 px-6 py-4 transition-colors",
                   dragOverItem === index && "bg-brand-primary/5",
                   "hover:bg-brand-charcoal/[0.03]"
                 )}
@@ -207,20 +205,6 @@ export default function AdminCategoriesPage() {
                   <button className="cursor-grab text-brand-charcoal/50 hover:text-brand-charcoal">
                     <GripVertical className="h-5 w-5" />
                   </button>
-                </div>
-
-                {/* 图标 */}
-                <div className="col-span-1 flex items-center">
-                  {category.icon ? (
-                    <div
-                      className="h-8 w-8 text-brand-primary"
-                      dangerouslySetInnerHTML={{ __html: sanitizeSvg(category.icon) }}
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded bg-brand-charcoal/8 text-xs text-brand-charcoal/50">
-                      无
-                    </div>
-                  )}
                 </div>
 
                 {/* 名称 */}
