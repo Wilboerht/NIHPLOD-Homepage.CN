@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Plus, Users, Pencil, Trash2, Power, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { apiConsole } from "@/lib/logger";
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return "";
