@@ -21,8 +21,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
-        sans: ["PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
+        serif: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
+        sans: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
         playfair: ["var(--font-playfair)", "serif"],
         songti: [
           "SimSun",
