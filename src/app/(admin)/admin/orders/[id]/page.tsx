@@ -4,12 +4,16 @@
  * 订单详情页面
  */
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Truck, XCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Select } from "@/components/ui/Select";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { LOGISTICS_COMPANIES } from "@/lib/logistics-constants";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, apiPatch } from "@/lib/api-client";
@@ -164,8 +168,51 @@ export default function OrderDetailPage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-brand-charcoal/50">加载中...</div>;
-  if (!order) return <div className="p-8 text-center text-brand-charcoal/50">订单不存在</div>;
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-9 w-20 rounded-lg" />
+          <Skeleton className="h-7 w-48 rounded" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <Skeleton className="mb-4 h-5 w-20 rounded" />
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-5 w-full rounded" />
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <Skeleton className="mb-4 h-5 w-20 rounded" />
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-5 w-full rounded" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-white p-6 shadow-sm">
+          <Skeleton className="mb-4 h-5 w-20 rounded" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="mb-3 h-5 w-full rounded" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (!order) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
+        <p className="text-lg font-medium text-brand-charcoal/60">订单不存在</p>
+        <p className="mt-1 text-sm">该订单可能已被删除或链接无效</p>
+        <Link href="/admin/orders" className="mt-4">
+          <Button variant="outline" size="sm">返回订单列表</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -177,7 +224,7 @@ export default function OrderDetailPage() {
               <ArrowLeft className="mr-1 h-4 w-4" /> 返回
             </Button>
           </Link>
-          <h1 className="text-xl font-semibold">订单 {order.orderNo}</h1>
+          <h1 className="text-xl font-semibold text-brand-charcoal">订单 {order.orderNo}</h1>
           <Badge variant={STATUS_MAP[order.status]?.color || "default"}>
             {STATUS_MAP[order.status]?.label || order.status}
           </Badge>
@@ -260,7 +307,7 @@ export default function OrderDetailPage() {
             {order.remark && (
               <div className="border-t pt-2">
                 <dt className="mb-1 text-brand-charcoal/50">用户备注</dt>
-                <dd className="rounded-lg bg-yellow-50 p-2 text-brand-charcoal/80">{order.remark}</dd>
+                <dd className="rounded-lg bg-brand-cream/50 p-2 text-brand-charcoal/80">{order.remark}</dd>
               </div>
             )}
             {order.refundStatus && (
@@ -324,7 +371,10 @@ export default function OrderDetailPage() {
               <div className="border-t pt-2">
                 <div className="flex justify-between">
                   <dt className="text-brand-charcoal/50">物流公司</dt>
-                  <dd>{order.shippingCompany}</dd>
+                  <dd>
+                    {LOGISTICS_COMPANIES.find((c) => c.code === order.shippingCompany)?.name ||
+                      order.shippingCompany}
+                  </dd>
                 </div>
                 {order.trackingNo && (
                   <div className="mt-1 flex justify-between">
@@ -344,10 +394,10 @@ export default function OrderDetailPage() {
         <table className="w-full text-sm">
           <thead className="border-b text-left text-brand-charcoal/50">
             <tr>
-              <th className="pb-2">商品</th>
-              <th className="pb-2">单价</th>
-              <th className="pb-2">数量</th>
-              <th className="pb-2">小计</th>
+              <th scope="col" className="pb-2">商品</th>
+              <th scope="col" className="pb-2">单价</th>
+              <th scope="col" className="pb-2">数量</th>
+              <th scope="col" className="pb-2">小计</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -356,7 +406,7 @@ export default function OrderDetailPage() {
                 <td className="py-3">{item.productName}</td>
                 <td className="py-3">¥{Number(item.price).toFixed(2)}</td>
                 <td className="py-3">{item.quantity}</td>
-                <td className="py-3 text-pink-500">
+                <td className="py-3 text-brand-primary">
                   ¥{(Number(item.price) * item.quantity).toFixed(2)}
                 </td>
               </tr>
@@ -380,14 +430,14 @@ export default function OrderDetailPage() {
                 <td colSpan={3} className="py-1 text-right text-brand-charcoal/50">
                   优惠 {order.userCoupon?.coupon.name ? `(${order.userCoupon.coupon.name})` : ""}
                 </td>
-                <td className="py-1 text-green-500">-¥{Number(order.discountAmount).toFixed(2)}</td>
+                <td className="py-1 text-brand-primary">-¥{Number(order.discountAmount).toFixed(2)}</td>
               </tr>
             )}
             <tr>
               <td colSpan={3} className="py-3 text-right font-medium">
                 实付金额
               </td>
-              <td className="py-3 text-lg font-bold text-pink-500">
+              <td className="py-3 text-lg font-bold text-brand-primary">
                 ¥{Number(order.payAmount).toFixed(2)}
               </td>
             </tr>
@@ -400,12 +450,11 @@ export default function OrderDetailPage() {
         <h2 className="mb-4 font-medium">管理备注</h2>
         {editingAdminNote ? (
           <div className="space-y-3">
-            <textarea
+            <Textarea
               value={adminNoteInput}
               onChange={(e) => setAdminNoteInput(e.target.value)}
               placeholder="输入内部备注信息..."
               rows={3}
-              className="w-full rounded-lg border p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
             <div className="flex justify-end gap-2">
               <Button
@@ -446,89 +495,67 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      {/* 发货弹窗 - 使用 Portal 渲染到 body，确保遮罩覆盖整个视口 */}
-      {showShipModal &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-              <h3 className="mb-4 text-lg font-medium">发货</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-sm text-brand-charcoal/60">物流公司</label>
-                  <select
-                    value={shipForm.logisticsCompany}
-                    onChange={(e) =>
-                      setShipForm((f) => ({ ...f, logisticsCompany: e.target.value }))
-                    }
-                    className="w-full rounded-lg border p-2"
-                  >
-                    {LOGISTICS_COMPANIES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm text-brand-charcoal/60">快递单号</label>
-                  <input
-                    type="text"
-                    value={shipForm.trackingNo}
-                    onChange={(e) => setShipForm((f) => ({ ...f, trackingNo: e.target.value }))}
-                    placeholder="请输入快递单号"
-                    className="w-full rounded-lg border p-2"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowShipModal(false)}>
-                  取消
-                </Button>
-                <Button onClick={handleShip} disabled={actionLoading || !shipForm.trackingNo}>
-                  {actionLoading ? "处理中..." : "确认发货"}
-                </Button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      {/* 发货弹窗 */}
+      <Modal
+        open={showShipModal}
+        onClose={() => setShowShipModal(false)}
+        title="发货"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Select
+            label="物流公司"
+            options={LOGISTICS_COMPANIES.map((c) => ({ value: c.code, label: c.name }))}
+            value={shipForm.logisticsCompany}
+            onChange={(e) => setShipForm((f) => ({ ...f, logisticsCompany: e.target.value }))}
+          />
+          <Input
+            label="快递单号"
+            value={shipForm.trackingNo}
+            onChange={(e) => setShipForm((f) => ({ ...f, trackingNo: e.target.value }))}
+            placeholder="请输入快递单号"
+          />
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setShowShipModal(false)}>
+            取消
+          </Button>
+          <Button onClick={handleShip} disabled={actionLoading || !shipForm.trackingNo} loading={actionLoading}>
+            确认发货
+          </Button>
+        </div>
+      </Modal>
 
       {/* 退款审批弹窗 */}
-      {showRefundModal &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-              <h3 className="mb-4 text-lg font-medium">{refundAction ? "同意退款" : "拒绝退款"}</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-sm text-brand-charcoal/60">备注（可选）</label>
-                  <textarea
-                    value={refundRemark}
-                    onChange={(e) => setRefundRemark(e.target.value)}
-                    placeholder="请输入退款备注..."
-                    rows={3}
-                    className="w-full rounded-lg border p-2 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowRefundModal(false)}>
-                  取消
-                </Button>
-                <Button
-                  variant={refundAction ? "primary" : "outline"}
-                  onClick={handleRefund}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? "处理中..." : refundAction ? "确认同意" : "确认拒绝"}
-                </Button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      <Modal
+        open={showRefundModal}
+        onClose={() => setShowRefundModal(false)}
+        title={refundAction ? "同意退款" : "拒绝退款"}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Textarea
+            label="备注（可选）"
+            value={refundRemark}
+            onChange={(e) => setRefundRemark(e.target.value)}
+            placeholder="请输入退款备注..."
+            rows={3}
+          />
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setShowRefundModal(false)}>
+            取消
+          </Button>
+          <Button
+            variant={refundAction ? "primary" : "outline"}
+            onClick={handleRefund}
+            disabled={actionLoading}
+            loading={actionLoading}
+          >
+            {refundAction ? "确认同意" : "确认拒绝"}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

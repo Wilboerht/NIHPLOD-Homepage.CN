@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { calculateShippingFee } from "@/lib/shipping-config";
+import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
 // 强制动态渲染，禁止静态预渲染
@@ -24,6 +25,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
+      );
+    }
+
+    // 速率限制：防止高频轮询敏感数据（地址、优惠券）
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await dualRateLimit(
+      clientIP,
+      payload.id,
+      "checkout-data",
+      "checkout-data-user"
+    );
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" },
+        },
+        { status: 429 }
       );
     }
 

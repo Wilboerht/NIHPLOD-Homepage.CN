@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Search, Mail, MailOpen, Trash2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
@@ -197,14 +198,13 @@ export default function AdminMessagesPage() {
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
-            <input
-              type="text"
+          <div className="relative w-60">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+            <Input
               placeholder="搜索留言..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-60 rounded-lg border border-brand-charcoal/15 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="pl-10"
             />
           </div>
           <Select

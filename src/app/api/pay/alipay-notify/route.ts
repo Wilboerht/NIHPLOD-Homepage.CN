@@ -40,13 +40,13 @@ export async function POST(request: NextRequest) {
     // 使用支付宝 notify_id 作为幂等 Key；若不存在则使用 out_trade_no + trade_status 组合
     const notifyId = params.notify_id || `${outTradeNo}_${params.trade_status || ""}`;
 
-    if (process.env.NODE_ENV === "development") console.log("[AlipayNotify] 收到回调:", outTradeNo);
+    if (process.env.NODE_ENV === "development") apiConsole.debug("[AlipayNotify] 收到回调:", outTradeNo);
 
     // 1. 只读幂等检查（不写入，防止 DoS 填满数据库）
     const idempotencyCheck = await isNotificationProcessed("alipay", notifyId);
     if (idempotencyCheck.processed && idempotencyCheck.status === "SUCCESS") {
       if (process.env.NODE_ENV === "development")
-        console.log(`[AlipayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
+        apiConsole.debug(`[AlipayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
       return new NextResponse("success", { status: 200 });
     }
 

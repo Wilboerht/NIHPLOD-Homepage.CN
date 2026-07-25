@@ -306,7 +306,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute right-4 top-4 z-[220] hidden h-8 w-8 items-center justify-center text-2xl font-light text-[#00263E] transition-opacity hover:opacity-60 lg:right-6 lg:top-6 lg:flex"
+                className="absolute right-4 top-4 z-[220] hidden h-8 w-8 items-center justify-center text-2xl font-light text-brand-charcoal transition-opacity hover:opacity-60 lg:right-6 lg:top-6 lg:flex"
                 aria-label="关闭"
               >
                 &times;
@@ -330,7 +330,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   onClick={onClose}
                   className="absolute bottom-0 left-0 top-0 flex items-center justify-center px-4 py-[10px]"
                 >
-                  <ChevronLeft className="h-6 w-6 text-[#00263E]" />
+                  <ChevronLeft className="h-6 w-6 text-brand-charcoal" />
                 </button>
                 <Link href="/" className="flex items-center justify-center py-[30px]">
                   <div className="relative h-[28px] w-[100px]">
@@ -368,7 +368,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                       />
                     </m.div>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-[#00263E]/30">
+                    <div className="flex h-full items-center justify-center text-brand-charcoal/30">
                       <span className="text-sm">暂无图片</span>
                     </div>
                   )}
@@ -380,14 +380,14 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     <button
                       type="button"
                       onClick={handlePrevImage}
-                      className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-[#00263E]/50 transition-all hover:text-[#00263E] lg:left-4"
+                      className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-brand-charcoal/50 transition-all hover:text-brand-charcoal lg:left-4"
                     >
                       <ChevronLeft className="h-6 w-6 lg:h-8 lg:w-8" />
                     </button>
                     <button
                       type="button"
                       onClick={handleNextImage}
-                      className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-[#00263E]/50 transition-all hover:text-[#00263E] lg:right-4"
+                      className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-brand-charcoal/50 transition-all hover:text-brand-charcoal lg:right-4"
                     >
                       <ChevronRight className="h-6 w-6 lg:h-8 lg:w-8" />
                     </button>
@@ -419,13 +419,13 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                   <div className="max-w-none">
                     {/* 基本信息 */}
                     <section className="mb-8">
-                      <h2 className="mb-3 text-2xl font-bold leading-tight text-[#00263E] lg:text-3xl">
+                      <h2 className="mb-3 text-2xl font-bold leading-tight text-brand-charcoal lg:text-3xl">
                         {product.name}
                       </h2>
-                      <div className="mb-3 text-xs tracking-wide text-[#00263E]/50">
+                      <div className="mb-3 text-xs tracking-wide text-brand-charcoal/50">
                         规格: {product.capacity || "N/A"} | 产地: 法国
                       </div>
-                      <div className="text-lg font-medium text-[#00263E]">
+                      <div className="text-lg font-medium text-brand-charcoal">
                         {formatPrice(product.price)}
                       </div>
                     </section>
@@ -433,7 +433,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     {/* 描述 */}
                     <section className="mb-8">
                       <div
-                        className="text-justify text-[15px] leading-[1.8] text-[#00263E]/70"
+                        className="text-justify text-[15px] leading-[1.8] text-brand-charcoal/70"
                         dangerouslySetInnerHTML={{
                           __html: DOMPurify.sanitize(product.description),
                         }}
@@ -446,13 +446,13 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     </section>
 
                     {/* 折叠面板 */}
-                    <section className="border-t border-[#00263E]/10">
+                    <section className="border-t border-brand-charcoal/10">
                       {product.ingredients && (
-                        <div className="border-b border-[#00263E]/10">
+                        <div className="border-b border-brand-charcoal/10">
                           <button
                             type="button"
                             onClick={() => toggleAccordion("ingredients")}
-                            className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-[#00263E]"
+                            className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-brand-charcoal"
                           >
                             <span>主要成分</span>
                             <span
@@ -473,7 +473,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                 className="overflow-hidden"
                               >
                                 <div
-                                  className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
+                                  className="pb-4 text-[15px] leading-[1.8] text-brand-charcoal/60"
                                   dangerouslySetInnerHTML={{
                                     __html: DOMPurify.sanitize(product.ingredients),
                                   }}
@@ -485,11 +485,11 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                       )}
 
                       {product.usage && (
-                        <div className="border-b border-[#00263E]/10">
+                        <div className="border-b border-brand-charcoal/10">
                           <button
                             type="button"
                             onClick={() => toggleAccordion("usage")}
-                            className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-[#00263E]"
+                            className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-brand-charcoal"
                           >
                             <span>使用方法</span>
                             <span
@@ -510,7 +510,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                 className="overflow-hidden"
                               >
                                 <div
-                                  className="pb-4 text-[15px] leading-[1.8] text-[#00263E]/60"
+                                  className="pb-4 text-[15px] leading-[1.8] text-brand-charcoal/60"
                                   dangerouslySetInnerHTML={{
                                     __html: DOMPurify.sanitize(product.usage),
                                   }}
@@ -523,7 +523,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
 
                       {/* 官方旗舰店 */}
                       <div className="py-4">
-                        <div className="mb-4 text-[15px] font-semibold text-[#00263E]">
+                        <div className="mb-4 text-[15px] font-semibold text-brand-charcoal">
                           官方旗舰店
                         </div>
 
@@ -556,7 +556,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                     onClose={onClose}
                                     compact
                                   />
-                                  <div className="my-1.5 border-t border-[#00263E]/5" />
+                                  <div className="my-1.5 border-t border-brand-charcoal/5" />
                                   <DrawerDirectBuyButton
                                     productId={product.id}
                                     stock={product.stock!}
@@ -582,7 +582,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                 </a>
                               ))
                             : !product.allowDirectBuy && (
-                                <span className="text-[14px] text-[#00263E]/50">暂无购买链接</span>
+                                <span className="text-[14px] text-brand-charcoal/50">暂无购买链接</span>
                               )}
                         </div>
                       </div>
@@ -597,18 +597,18 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                 >
                   {/* 标题与规格 */}
                   <div className="mb-1 flex items-start justify-between">
-                    <h2 className="text-xl font-medium text-[#00263E]">{product.name}</h2>
-                    <span className="mt-0.5 text-sm text-[#00263E]/60">
+                    <h2 className="text-xl font-medium text-brand-charcoal">{product.name}</h2>
+                    <span className="mt-0.5 text-sm text-brand-charcoal/60">
                       {product.capacity || "N/A"}
                     </span>
                   </div>
 
                   {/* 价格与产地 */}
                   <div className="mb-5 flex items-center justify-between">
-                    <span className="text-lg font-medium text-[#00263E]">
+                    <span className="text-lg font-medium text-brand-charcoal">
                       {formatPrice(product.price)}
                     </span>
-                    <span className="text-xs text-[#00263E]/50">产地：法国</span>
+                    <span className="text-xs text-brand-charcoal/50">产地：法国</span>
                   </div>
 
                   {/* Tab 切换 */}
@@ -620,7 +620,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         className={cn(
                           "relative flex flex-1 items-center justify-center whitespace-nowrap text-[13px] font-normal leading-[20px] transition-all duration-300",
                           activeTab === "description"
-                            ? "text-[#00263E]"
+                            ? "text-brand-charcoal"
                             : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
                         )}
                         style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
@@ -642,7 +642,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                           className={cn(
                             "relative flex flex-1 items-center justify-center whitespace-nowrap text-[13px] font-normal leading-[20px] transition-all duration-300",
                             activeTab === "ingredients"
-                              ? "text-[#00263E]"
+                              ? "text-brand-charcoal"
                               : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
                           )}
                           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
@@ -665,7 +665,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                           className={cn(
                             "relative flex flex-1 items-center justify-center whitespace-nowrap text-[13px] font-normal leading-[20px] transition-all duration-300",
                             activeTab === "usage"
-                              ? "text-[#00263E]"
+                              ? "text-brand-charcoal"
                               : "text-[#4A6272]/60 hover:text-[#4A6272]/80"
                           )}
                           style={{ fontFamily: "'Source Han Sans SC', 'PingFang SC', sans-serif" }}
@@ -689,7 +689,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     {activeTab === "description" && (
                       <>
                         <div
-                          className="mb-4 text-[13px] leading-[1.8] text-[#00263E]/70"
+                          className="mb-4 text-[13px] leading-[1.8] text-brand-charcoal/70"
                           dangerouslySetInnerHTML={{
                             __html: DOMPurify.sanitize(product.description),
                           }}
@@ -700,22 +700,22 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                     {activeTab === "ingredients" &&
                       (product.ingredients ? (
                         <div
-                          className="text-[13px] leading-[1.8] text-[#00263E]/70"
+                          className="text-[13px] leading-[1.8] text-brand-charcoal/70"
                           dangerouslySetInnerHTML={{
                             __html: DOMPurify.sanitize(product.ingredients),
                           }}
                         />
                       ) : (
-                        <p className="py-4 text-[13px] text-[#00263E]/40">暂无成分信息</p>
+                        <p className="py-4 text-[13px] text-brand-charcoal/40">暂无成分信息</p>
                       ))}
                     {activeTab === "usage" &&
                       (product.usage ? (
                         <div
-                          className="text-[13px] leading-[1.8] text-[#00263E]/70"
+                          className="text-[13px] leading-[1.8] text-brand-charcoal/70"
                           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
                         />
                       ) : (
-                        <p className="py-4 text-[13px] text-[#00263E]/40">暂无使用方法</p>
+                        <p className="py-4 text-[13px] text-brand-charcoal/40">暂无使用方法</p>
                       ))}
                   </div>
 
@@ -727,7 +727,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                           <button
                             type="button"
                             onClick={() => setPurchaseMenuOpen(!purchaseMenuOpen)}
-                            className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-[#00263E]"
+                            className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-brand-charcoal"
                           >
                             <span className="font-medium">NIHPLOD</span>
                           </button>
@@ -740,7 +740,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                 onClose={onClose}
                                 compact
                               />
-                              <div className="my-1.5 border-t border-[#00263E]/5" />
+                              <div className="my-1.5 border-t border-brand-charcoal/5" />
                               <DrawerDirectBuyButton
                                 productId={product.id}
                                 stock={product.stock!}
@@ -760,7 +760,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-[#00263E]"
+                            className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-brand-charcoal"
                           >
                             <PlatformIcon platform={link.platform} />
                             <span>{link.platform}</span>

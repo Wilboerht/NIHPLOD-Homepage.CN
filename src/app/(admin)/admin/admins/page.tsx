@@ -2,8 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, RefreshCw, Pencil, Trash2, Plus, X } from "lucide-react";
+import { Search, RefreshCw, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
@@ -35,6 +42,8 @@ export default function AdminAdminsPage() {
     role: "admin" as "owner" | "admin",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const page = parseInt(searchParams.get("page") || "1");
   const search = searchParams.get("search") || "";
@@ -50,6 +59,7 @@ export default function AdminAdminsPage() {
       setPagination(data.pagination);
     } catch {
       console.error("获取管理员失败");
+      error("加载失败，请刷新重试");
     } finally {
       setLoading(false);
     }
@@ -89,7 +99,6 @@ export default function AdminAdminsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 创建时必须设置密码；编辑时若填写了密码则校验强度
     if (!editing || form.password) {
       const strength = validatePasswordStrength(form.password);
       if (!strength.valid) {
@@ -118,14 +127,18 @@ export default function AdminAdminsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("确定删除该管理员吗？此操作不可撤销。")) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await apiDelete(`/api/admin/admins/${id}`);
+      await apiDelete(`/api/admin/admins/${deleteTarget.id}`);
       fetchAdmins();
       success("删除成功");
     } catch (err) {
       error(err instanceof Error ? err.message : "删除失败");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -137,11 +150,11 @@ export default function AdminAdminsPage() {
           <p className="mt-1 text-sm text-brand-charcoal/50">管理后台管理员账号</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchAdmins}>
-            <RefreshCw className="mr-1 h-4 w-4" /> 刷新
+          <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchAdmins}>
+            刷新
           </Button>
-          <Button variant="primary" size="sm" onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" /> 新增管理员
+          <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+            新增管理员
           </Button>
         </div>
       </div>
@@ -149,14 +162,13 @@ export default function AdminAdminsPage() {
       {/* 搜索栏 */}
       <div className="flex gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
-          <input
-            type="text"
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+          <Input
             placeholder="搜索邮箱/姓名..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
-            className="w-full rounded-lg border py-2 pl-10 pr-4 text-sm"
+            className="pl-10"
           />
         </div>
       </div>
@@ -164,49 +176,50 @@ export default function AdminAdminsPage() {
       {/* 列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-brand-charcoal/50">
-            <tr>
-              <th className="px-4 py-3">姓名</th>
-              <th className="px-4 py-3">邮箱</th>
-              <th className="px-4 py-3">角色</th>
-              <th className="px-4 py-3">创建时间</th>
-              <th className="px-4 py-3">操作</th>
+          <thead>
+            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">姓名</th>
+              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">邮箱</th>
+              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">角色</th>
+              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">创建时间</th>
+              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">操作</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-brand-charcoal/[0.06]">
             {loading ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-brand-charcoal/50">
-                  加载中...
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={5} />
+              ))
             ) : admins.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-brand-charcoal/50">
-                  暂无管理员
+                <td colSpan={5} className="px-5 py-12 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="text-brand-charcoal/50">暂无管理员</span>
+                    <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+                      新增管理员
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ) : (
               admins.map((admin) => (
-                <tr key={admin.id} className="hover:bg-brand-charcoal/[0.03]">
-                  <td className="px-4 py-3 font-medium">{admin.name}</td>
-                  <td className="px-4 py-3">{admin.email}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs ${admin.role === "owner" ? "bg-amber-50 text-amber-600" : "bg-brand-charcoal/8 text-brand-charcoal/60"}`}
-                    >
-                      {admin.role === "owner" ? "最高权限管理员" : "管理员"}
-                    </span>
+                <tr key={admin.id} className="transition-colors hover:bg-brand-charcoal/[0.02]">
+                  <td className="px-5 py-3.5 font-medium text-brand-charcoal">{admin.name}</td>
+                  <td className="px-5 py-3.5 text-brand-charcoal/80">{admin.email}</td>
+                  <td className="px-5 py-3.5">
+                    <Badge variant={admin.role === "owner" ? "warning" : "default"}>
+                      {admin.role === "owner" ? "最高权限" : "管理员"}
+                    </Badge>
                   </td>
-                  <td className="px-4 py-3 text-brand-charcoal/50">
+                  <td className="px-5 py-3.5 text-brand-charcoal/50">
                     {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5">
                     <div className="flex gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openEdit(admin)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(admin.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(admin)}>
                         <Trash2 className="h-4 w-4 text-red-400" />
                       </Button>
                     </div>
@@ -219,100 +232,75 @@ export default function AdminAdminsPage() {
       </div>
 
       {/* 分页 */}
-      {pagination.totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          {Array.from({ length: pagination.totalPages }, (_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => updateParams({ page: String(i + 1) })}
-              className={`rounded px-3 py-1 ${page === i + 1 ? "bg-pink-500 text-white" : "bg-brand-charcoal/8"}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex justify-center">
+        <Pagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          onChange={(p) => updateParams({ page: String(p) })}
+        />
+      </div>
 
       {/* 弹窗 */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{editing ? "编辑管理员" : "新增管理员"}</h3>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-brand-charcoal/50 hover:text-brand-charcoal/60"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">姓名</label>
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">邮箱</label>
-                <input
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
-                  密码 {editing && "（留空则不修改）"}
-                </label>
-                <input
-                  type="password"
-                  required={!editing}
-                  minLength={8}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">角色</label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value as "owner" | "admin" })}
-                  className="w-full rounded-lg border px-3 py-2 text-sm"
-                >
-                  <option value="admin">管理员</option>
-                  <option value="owner">最高权限管理员</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowModal(false)}
-                >
-                  取消
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  loading={submitting}
-                  disabled={submitting}
-                >
-                  {submitting ? "保存中..." : "保存"}
-                </Button>
-              </div>
-            </form>
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? "编辑管理员" : "新增管理员"}
+        size="sm"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="姓名"
+            required
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <Input
+            label="邮箱"
+            type="email"
+            required
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+          <Input
+            label={`密码${editing ? "（留空则不修改）" : ""}`}
+            type="password"
+            required={!editing}
+            minLength={8}
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+          <Select
+            label="角色"
+            options={[
+              { value: "admin", label: "管理员" },
+              { value: "owner", label: "最高权限管理员" },
+            ]}
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value as "owner" | "admin" })}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowModal(false)}>
+              取消
+            </Button>
+            <Button type="submit" size="sm" loading={submitting} disabled={submitting}>
+              保存
+            </Button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
+
+      {/* 删除确认 */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="删除管理员"
+        description={`确定要删除管理员「${deleteTarget?.name}」吗？此操作不可撤销。`}
+        type="danger"
+        confirmText="删除"
+        loading={deleting}
+      />
     </div>
   );
 }

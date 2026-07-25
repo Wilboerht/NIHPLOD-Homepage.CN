@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
@@ -8,6 +8,7 @@ import { DataTable, Column } from "@/components/admin";
 import { Badge, DotBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 
 // 产品类型
@@ -60,6 +61,7 @@ export function ProductsTable({
 }: ProductsTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const { error: showError } = useToast();
   const [deleteConfirm, setDeleteConfirm] = useState<{
     open: boolean;
     id?: string;
@@ -88,7 +90,7 @@ export function ProductsTable({
       await apiPatch(`/api/admin/products/${id}`, { published: !published });
       onRefresh();
     } catch (error) {
-      console.error("操作失败:", error);
+      showError("操作失败，请重试");
     } finally {
       setActionLoading(null);
     }
@@ -107,7 +109,7 @@ export function ProductsTable({
       }
       onRefresh();
     } catch (error) {
-      console.error("删除失败:", error);
+      showError("删除失败，请重试");
     } finally {
       setActionLoading(null);
       setDeleteConfirm({ open: false });
@@ -122,7 +124,7 @@ export function ProductsTable({
       setSelectedIds([]);
       onRefresh();
     } catch (error) {
-      console.error("批量操作失败:", error);
+      showError("批量操作失败，请重试");
     } finally {
       setActionLoading(null);
     }
@@ -138,7 +140,7 @@ export function ProductsTable({
   };
 
   // 表格列定义
-  const columns: Column<ProductItem>[] = [
+  const columns: Column<ProductItem>[] = useMemo(() => [
     {
       key: "select",
       title: (
@@ -261,7 +263,7 @@ export function ProductsTable({
         </div>
       ),
     },
-  ];
+  ], [selectedIds, products.length, actionLoading]);
 
   return (
     <div className="space-y-4">

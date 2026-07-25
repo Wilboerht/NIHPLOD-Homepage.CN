@@ -373,7 +373,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       const product = products.find((p) => p.categoryId === cat.id);
                       if (product) handleProductClick(product);
                     }}
-                    className="group relative py-1 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-all hover:opacity-80"
+                    className="group relative py-1 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-all hover:opacity-80"
                   >
                     {cat.name}
                     <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-primary transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
@@ -395,7 +395,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
                     className="flex-shrink-0"
                   >
-                    <h1 className="mb-6 text-2xl font-light tracking-[0.15em] text-[#00263E]">
+                    <h1 className="mb-6 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
                       当季热卖
                     </h1>
                   </m.header>
@@ -431,7 +431,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                                 : "aspect-[4/4.5] max-h-[42vh]"
                             )}
                           >
-                            <div className="pointer-events-none absolute inset-3 z-10 border border-[#00263E]/[0.08]" />
+                            <div className="pointer-events-none absolute inset-3 z-10 border border-brand-charcoal/[0.08]" />
                             {product.images[0] && (
                               <Image
                                 src={product.images[0].url}
@@ -444,11 +444,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             )}
                           </div>
                           <div className="mt-3">
-                            <h2 className="text-sm font-light tracking-[0.12em] text-[#00263E]">
+                            <h2 className="text-sm font-light tracking-[0.12em] text-brand-charcoal">
                               {product.name}
                             </h2>
                             {product.capacity && (
-                              <span className="mt-0.5 block text-[10px] text-[#00263E]/60">
+                              <span className="mt-0.5 block text-[10px] text-brand-charcoal/60">
                                 {product.capacity}
                               </span>
                             )}

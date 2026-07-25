@@ -29,11 +29,11 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
     <html lang="zh-CN">
       <body>
-        <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#F9F7F5] px-4 font-sans text-stone-800">
+        <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-brand-cream px-4 font-sans text-brand-charcoal">
           {/* 装饰背景 (硬编码颜色以确保不依赖外部 CSS) */}
           <div className="pointer-events-none absolute inset-0 opacity-5">
             <div className="absolute -left-20 -top-20 h-80 w-80 rounded-full bg-red-500 blur-3xl" />
-            <div className="absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-[#B8860B] blur-3xl" />
+            <div className="absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-brand-gold blur-3xl" />
           </div>
 
           {/* 内容区域 */}
@@ -61,7 +61,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
 
             {/* 文字说明 */}
             <h1 className="font-serif text-3xl font-medium md:text-4xl">系统遇到一点问题</h1>
-            <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-stone-500">
+            <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-brand-charcoal/60">
               我们正在经历一次严重的系统故障。
               <br />
               请尝试刷新页面重置系统。
@@ -79,14 +79,14 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button
                 onClick={() => reset()}
-                className="flex items-center gap-2 rounded-full bg-[#B8860B] px-8 py-3 text-sm font-medium text-white shadow-md transition-all hover:bg-[#A0750A] hover:shadow-lg"
+                className="flex items-center gap-2 rounded-full bg-brand-gold px-8 py-3 text-sm font-medium text-white shadow-md transition-all hover:bg-brand-gold-dark hover:shadow-lg"
               >
                 <RefreshCw className="h-4 w-4" />
                 重启应用
               </button>
               <a
                 href="/"
-                className="flex items-center gap-2 rounded-full border border-stone-200 px-8 py-3 text-sm font-medium text-stone-600 transition-all hover:border-[#B8860B] hover:bg-stone-50 hover:text-[#B8860B]"
+                className="flex items-center gap-2 rounded-full border border-brand-charcoal/20 px-8 py-3 text-sm font-medium text-brand-charcoal/60 transition-all hover:border-brand-gold hover:bg-brand-cream hover:text-brand-gold"
               >
                 <Home className="h-4 w-4" />
                 返回首页

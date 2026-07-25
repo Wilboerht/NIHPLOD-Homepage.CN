@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     // 生成验证码
     const code = generateVerifyCode();
     if (process.env.NODE_ENV === "development") {
-      console.log(`[DEV-SMS] 手机: ${phone} | 类型: ${type} | 验证码: ${code}`);
+      apiConsole.debug(`[DEV-SMS] 手机: ${phone} | 类型: ${type} | 验证码: ${code}`);
     }
     const expiresAt = new Date(Date.now() + CODE_EXPIRE_MINUTES * 60 * 1000);
     const codeHash = hashVerifyCode(phone, code, type);

@@ -195,7 +195,7 @@ export function ImageUploader({
       {uploadErrors.length > 0 && (
         <div className="mb-3 rounded-lg bg-red-50 p-3">
           {uploadErrors.map((err, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-red-600">
+            <div key={i} className="flex items-center gap-2 text-sm text-red-500">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <span>{err}</span>
             </div>

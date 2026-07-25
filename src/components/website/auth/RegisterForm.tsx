@@ -144,8 +144,8 @@ export function RegisterForm({
   return (
     <div className="flex flex-col gap-10">
       <div className="pb-4 pt-[6px] text-center">
-        <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">注册会员</h2>
-        <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
+        <h2 className="text-[24px] font-light tracking-[0.15em] text-brand-charcoal">注册会员</h2>
+        <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
       </div>
       <form onSubmit={onSubmit} className="w-full space-y-6">
         <div><input type="text" required value={inviteCode} onChange={(e) => onInviteCodeChange(e.target.value)} placeholder="邀请码" className={mobileInputClass} /></div>

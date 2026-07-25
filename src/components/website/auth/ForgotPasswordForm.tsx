@@ -126,8 +126,8 @@ export function ForgotPasswordForm({
       className="flex flex-col gap-14"
     >
       <div className="pb-4 pt-[6px] text-center">
-        <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">找回密码</h2>
-        <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
+        <h2 className="text-[24px] font-light tracking-[0.15em] text-brand-charcoal">找回密码</h2>
+        <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
       </div>
       <div className="space-y-6">
         {mobileForgotStep === "phone" && (

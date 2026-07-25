@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
@@ -83,6 +83,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await params;
     if (!validateCUID(id)) {
       return invalidIdResponse();
@@ -157,6 +160,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         { status: 401 }
       );
     }
+
+    const rateLimitResponse2 = await checkAdminRateLimit(request);
+    if (rateLimitResponse2) return rateLimitResponse2;
 
     const { id } = await params;
     if (!validateCUID(id)) {
@@ -356,6 +362,9 @@ export async function DELETE(
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
 

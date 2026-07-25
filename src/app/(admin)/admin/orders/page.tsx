@@ -6,10 +6,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, RefreshCw, Eye } from "lucide-react";
+import { Search, RefreshCw, Eye, Package } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Select, SelectOption } from "@/components/ui/Select";
+import { Select } from "@/components/ui/Select";
+import type { SelectOption } from "@/components/ui/Select";
+import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { Pagination } from "@/components/ui/Pagination";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/api-client";
 
 interface OrderItem {
@@ -57,7 +61,7 @@ export default function AdminOrdersPage() {
 
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [_pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
   const page = parseInt(searchParams.get("page") || "1");
   const status = searchParams.get("status") || "all";
@@ -67,7 +71,7 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGet<{ orders: OrderItem[]; pagination: typeof _pagination }>(
+      const data = await apiGet<{ orders: OrderItem[]; pagination: typeof pagination }>(
         "/api/admin/orders",
         {
           page,
@@ -100,27 +104,34 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
+      {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-brand-charcoal">订单管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">管理所有客户订单</p>
+          <p className="mt-1 text-sm text-brand-charcoal/50">
+            管理所有客户订单{!loading && pagination.total > 0 ? `，共 ${pagination.total} 条` : ""}
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchOrders}>
-          <RefreshCw className="mr-1 h-4 w-4" /> 刷新
+        <Button
+          variant="outline"
+          size="sm"
+          leftIcon={<RefreshCw className="h-4 w-4" />}
+          onClick={fetchOrders}
+        >
+          刷新
         </Button>
       </div>
 
       {/* 筛选栏 */}
-      <div className="flex flex-wrap gap-4 rounded-xl bg-white p-4 shadow-sm">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
-          <input
-            type="text"
-            placeholder="搜索订单号/手机号..."
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-4 shadow-sm">
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+          <Input
+            placeholder="搜索订单号 / 手机号..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
-            className="w-full rounded-lg border py-2 pl-10 pr-4 text-sm"
+            className="pl-10"
           />
         </div>
         <Select
@@ -133,64 +144,100 @@ export default function AdminOrdersPage() {
 
       {/* 订单列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-brand-charcoal/50">
-            <tr>
-              <th className="px-4 py-3">订单号</th>
-              <th className="px-4 py-3">用户</th>
-              <th className="px-4 py-3">商品</th>
-              <th className="px-4 py-3">金额</th>
-              <th className="px-4 py-3">状态</th>
-              <th className="px-4 py-3">时间</th>
-              <th className="px-4 py-3">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
-                  加载中...
-                </td>
+        {loading ? (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">订单号</th>
+                <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">用户</th>
+                <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">商品</th>
+                <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">金额</th>
+                <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">状态</th>
+                <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">时间</th>
+                <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">操作</th>
               </tr>
-            ) : orders.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
-                  暂无订单
-                </td>
-              </tr>
-            ) : (
-              orders.map((order) => (
-                <tr key={order.id} className="hover:bg-brand-charcoal/[0.03]">
-                  <td className="px-4 py-3 font-mono text-sm">{order.orderNo}</td>
-                  <td className="px-4 py-3">{order.user.nickname || order.user.phone || "-"}</td>
-                  <td className="max-w-[150px] truncate px-4 py-3">
-                    {order.items[0]?.productName || "-"}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-pink-500">
-                    ¥{Number(order.payAmount).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={ORDER_STATUS_MAP[order.status]?.color || "default"}>
-                      {ORDER_STATUS_MAP[order.status]?.label || order.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-brand-charcoal/50">
-                    {new Date(order.createdAt).toLocaleDateString("zh-CN")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <Link href={`/admin/orders/${order.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-brand-charcoal/[0.06]">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={7} />
+              ))}
+            </tbody>
+          </table>
+        ) : orders.length === 0 ? (
+          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
+            <Package className="mb-3 h-12 w-12 text-brand-charcoal/20" />
+            <p className="text-base font-medium text-brand-charcoal/60">暂无订单</p>
+            <p className="mt-1 text-sm">当前筛选条件下没有匹配的订单</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                    <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">订单号</th>
+                    <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">用户</th>
+                    <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">商品</th>
+                    <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">金额</th>
+                    <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">状态</th>
+                    <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">时间</th>
+                    <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-brand-charcoal/[0.06]">
+                  {orders.map((order) => (
+                    <tr
+                      key={order.id}
+                      className="transition-colors hover:bg-brand-charcoal/[0.02]"
+                    >
+                      <td className="px-5 py-3.5">
+                        <span className="font-mono text-sm text-brand-charcoal">
+                          {order.orderNo}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-brand-charcoal/80">
+                        {order.user.nickname || order.user.phone || "-"}
+                      </td>
+                      <td className="max-w-[180px] truncate px-5 py-3.5 text-brand-charcoal/80">
+                        {order.items[0]?.productName || "-"}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="font-medium text-brand-primary">
+                          ¥{Number(order.payAmount).toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <Badge variant={ORDER_STATUS_MAP[order.status]?.color || "default"}>
+                          {ORDER_STATUS_MAP[order.status]?.label || order.status}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3.5 text-brand-charcoal/50">
+                        {new Date(order.createdAt).toLocaleDateString("zh-CN")}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <Link href={`/admin/orders/${order.id}`}>
+                          <Button variant="ghost" size="sm" leftIcon={<Eye className="h-4 w-4" />}>
+                            查看
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 分页 */}
+            <div className="flex justify-center border-t border-brand-charcoal/10 px-5 py-3">
+              <Pagination
+                page={pagination.page}
+                pageSize={pagination.pageSize}
+                total={pagination.total}
+                onChange={(p) => updateParams({ page: String(p) })}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

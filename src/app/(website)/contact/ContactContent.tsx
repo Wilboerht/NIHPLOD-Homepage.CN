@@ -247,14 +247,14 @@ export function ContactContent({ content }: ContactContentProps) {
           <div className="hidden items-center gap-1 md:flex">
             <Link
               href="/terms"
-              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               服务条款
               <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
             </Link>
             <Link
               href="/privacy"
-              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               隐私政策
               <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
@@ -265,7 +265,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="button"
                 onClick={() => setDesktopMenuOpen((prev) => !prev)}
-                className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
                 aria-expanded={desktopMenuOpen}
               >
                 菜单
@@ -286,7 +286,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     <Link
                       href="/products"
                       onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                     >
                       产品系列
                     </Link>
@@ -294,7 +294,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     <Link
                       href="/guide"
                       onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                     >
                       护肤指南
                     </Link>
@@ -302,7 +302,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     <Link
                       href="/faq"
                       onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                     >
                       常见问题
                     </Link>
@@ -310,7 +310,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     <Link
                       href="/about"
                       onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                     >
                       品牌故事
                     </Link>
@@ -321,7 +321,7 @@ export function ContactContent({ content }: ContactContentProps) {
 
             <Link
               href="/"
-              className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               <Home className="h-4 w-4" /> 返回首页
               <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
@@ -337,7 +337,7 @@ export function ContactContent({ content }: ContactContentProps) {
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-nav-panel"
           >
-            <Menu className="h-5 w-5 text-[#00263E]" />
+            <Menu className="h-5 w-5 text-brand-charcoal" />
           </button>
         </div>
       </nav>
@@ -380,7 +380,7 @@ export function ContactContent({ content }: ContactContentProps) {
                 className="flex h-10 w-10 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
                 aria-label="关闭菜单"
               >
-                <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
+                <X className="h-5 w-5 text-brand-charcoal" strokeWidth={1.5} />
               </button>
             </div>
 
@@ -389,14 +389,14 @@ export function ContactContent({ content }: ContactContentProps) {
               <Link
                 href="/terms"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
               >
                 服务条款
               </Link>
               <Link
                 href="/privacy"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
               >
                 隐私政策
               </Link>
@@ -406,7 +406,7 @@ export function ContactContent({ content }: ContactContentProps) {
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+              className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
             >
               <Home className="h-5 w-5" />
               返回首页
@@ -420,7 +420,7 @@ export function ContactContent({ content }: ContactContentProps) {
 
       {/* Header */}
       <div className="pb-8 pt-8 text-center md:pb-12 md:pt-20">
-        <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-[#00263E] md:mb-4 md:text-4xl md:font-light md:tracking-wider">
+        <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-4 md:text-4xl md:font-light md:tracking-wider">
           {title.zh}
         </h1>
         <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
@@ -437,7 +437,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
               <h2 className="mb-2 text-xl font-medium text-brand-charcoal">留言已提交</h2>
               <p className="text-brand-charcoal/60">感谢您的留言，我们会尽快回复</p>
-              <Link href="/" className="mt-6 inline-block text-[15px] font-light tracking-[0.12em] text-[#00263E] hover:underline">
+              <Link href="/" className="mt-6 inline-block text-[15px] font-light tracking-[0.12em] text-brand-charcoal hover:underline">
                 返回首页
               </Link>
             </div>
@@ -582,7 +582,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 bg-[#00263E]/[0.04] px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:border-[#00263E] active:bg-[#00263E]/10 disabled:opacity-50 md:bg-transparent md:gap-2 md:py-3.5 md:tracking-[0.15em] md:hover:border-[#00263E] md:hover:bg-[#00263E]/5"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 bg-[#00263E]/[0.04] px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:border-[#00263E] active:bg-[#00263E]/10 disabled:opacity-50 md:bg-transparent md:gap-2 md:py-3.5 md:tracking-[0.15em] md:hover:border-[#00263E] md:hover:bg-[#00263E]/5"
               >
                 {status === "loading" ? (
                   <>

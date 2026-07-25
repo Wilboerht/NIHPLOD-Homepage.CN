@@ -72,8 +72,8 @@ export function WechatBindForm({
   return (
     <div className="flex flex-col gap-12">
       <div className="pb-4 pt-[6px] text-center">
-        <h2 className="text-[24px] font-light tracking-[0.15em] text-[#00263E]">绑定手机号</h2>
-        <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
+        <h2 className="text-[24px] font-light tracking-[0.15em] text-brand-charcoal">绑定手机号</h2>
+        <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
         <p className="mt-4 text-sm tracking-wide text-brand-charcoal/50">
           微信授权成功，请绑定手机号以完成登录。
         </p>

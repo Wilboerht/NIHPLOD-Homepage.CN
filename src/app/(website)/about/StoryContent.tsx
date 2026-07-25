@@ -192,10 +192,10 @@ export function StoryContent() {
               {activeSection === "story" && (
                 <section className="relative pt-3">
                   <div className="mb-8 flex flex-col items-center">
-                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                       品牌故事
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
                   </div>
 
                   <div>
@@ -204,10 +204,10 @@ export function StoryContent() {
                       <span className="block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
                         来自大自然的神奇修复力
                       </span>
-                      <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90">
+                      <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
                         海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
                       </p>
-                      <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
+                      <div className="relative mt-6 w-full overflow-hidden border border-brand-charcoal/10">
                         <Image
                           src="/images/story/dolphin-ocean.webp"
                           alt="Dolphin Skin"
@@ -220,7 +220,7 @@ export function StoryContent() {
 
                     {/* 第二个内容块 */}
                     <div>
-                      <span className="inline-flex items-center gap-1.5 text-[12px] text-[#00263e]/60">
+                      <span className="inline-flex items-center gap-1.5 text-[12px] text-brand-charcoal/60">
                         <Image
                           src="/images/quote-icon.svg"
                           alt=""
@@ -233,11 +233,11 @@ export function StoryContent() {
                       <span className="mt-6 block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
                         前沿科技赋能精简护理
                       </span>
-                      <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90">
+                      <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
                         创始人 Dr. Stefan
                         博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
                       </p>
-                      <div className="relative mt-6 w-full overflow-hidden border border-[#00263e]/10">
+                      <div className="relative mt-6 w-full overflow-hidden border border-brand-charcoal/10">
                         <Image
                           src="/images/story/lab-research.webp"
                           alt="Science"
@@ -255,14 +255,14 @@ export function StoryContent() {
               {activeSection === "mission" && (
                 <section className="relative pt-3">
                   <div className="mb-8 flex flex-col items-center">
-                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                       公司使命
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
                   </div>
 
                   <div className="flex flex-col gap-6">
-                    <div className="relative w-full overflow-hidden border border-[#00263e]/10 bg-white/20 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)]">
+                    <div className="relative w-full overflow-hidden border border-brand-charcoal/10 bg-white/20 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)]">
                       <Image
                         src="/images/story/mission-image.webp"
                         alt="Mission"
@@ -274,17 +274,17 @@ export function StoryContent() {
                     </div>
 
                     <div className="flex flex-col gap-2.5">
-                      <p className="text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90">
+                      <p className="text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
                         旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                       </p>
-                      <p className="text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90">
+                      <p className="text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
                         将逆转时光的不可能，慢慢变得「有可能」。
                       </p>
                     </div>
 
                     {/* CEO 签名 */}
                     <div className="flex flex-col items-end gap-2.5">
-                      <span className="text-[12px] leading-[18px] text-[#00263e]/50">
+                      <span className="text-[12px] leading-[18px] text-brand-charcoal/50">
                         CEO
                       </span>
                       <Image
@@ -303,10 +303,10 @@ export function StoryContent() {
               {activeSection === "philosophy" && (
                 <section className="relative pt-3">
                   <div className="mb-8 flex shrink-0 flex-col items-center">
-                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                       品牌哲学
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -343,10 +343,10 @@ export function StoryContent() {
                           <span className="text-[16px] font-light tracking-[0.1em] text-brand-charcoal/35">
                             {item.num}
                           </span>
-                          <h3 className="text-[14px] font-normal leading-[22px] text-[#00263E]">
+                          <h3 className="text-[14px] font-normal leading-[22px] text-brand-charcoal">
                             {item.title}
                           </h3>
-                          <p className="text-[13px] font-light leading-[22px] text-[#00263E]/70">
+                          <p className="text-[13px] font-light leading-[22px] text-brand-charcoal/70">
                             {item.desc}
                           </p>
                         </m.div>
@@ -359,10 +359,10 @@ export function StoryContent() {
               {activeSection === "awards" && (
                 <section className="relative pt-3">
                   <div className="mb-8 flex flex-col items-center">
-                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
+                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                       媒体及获奖
                     </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b border-[#00263E]" />
+                    <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
                   </div>
                     {/* 奖项列表 */}
                     <div className="flex flex-col gap-6">
@@ -479,8 +479,8 @@ export function StoryContent() {
                         className={cn(
                           "group relative px-1 py-1 text-[15px] font-light tracking-[0.15em] transition-opacity duration-300",
                           activeSection === item.id
-                            ? "text-[#00263E] opacity-100"
-                            : "text-[#00263E] opacity-60 hover:opacity-80"
+                            ? "text-brand-charcoal opacity-100"
+                            : "text-brand-charcoal opacity-60 hover:opacity-80"
                         )}
                       >
                         {item.pcLabel}
@@ -526,7 +526,7 @@ export function StoryContent() {
 
                     {/* 右侧文字区域 */}
                     <div className="pl-0 lg:pl-10">
-                      <span className="mb-4 block text-sm font-light tracking-[0.15em] text-[#00263e]/60">
+                      <span className="mb-4 block text-sm font-light tracking-[0.15em] text-brand-charcoal/60">
                         Since 2008 | Monaco
                       </span>
                       <h2 className="mt-8 mb-8 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mt-10 md:mb-10 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
@@ -578,16 +578,16 @@ export function StoryContent() {
                              <br />
                              逆转时光
                           </h2>
-                          <p className="max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
+                          <p className="max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-brand-charcoal/80">
                             旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
                           </p>
-                          <p className="mt-6 max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-[#00263e]/80">
+                          <p className="mt-6 max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-brand-charcoal/80">
                             将逆转时光的不可能，慢慢变得「有可能」。
                           </p>
                         </div>
 
                         <div className="mt-6 flex w-full flex-col gap-1">
-                          <span className="block text-[10px] font-light tracking-[0.12em] text-[#00263e]/50">
+                          <span className="block text-[10px] font-light tracking-[0.12em] text-brand-charcoal/50">
                             CEO
                           </span>
                           <div className="text-left">
@@ -613,7 +613,7 @@ export function StoryContent() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                    className="grid h-full w-full grid-cols-1 gap-px self-stretch bg-[#00263e]/10 md:grid-cols-2 md:grid-rows-2 lg:grid-cols-4 lg:grid-rows-1"
+                    className="grid h-full w-full grid-cols-1 gap-px self-stretch bg-brand-charcoal/10 md:grid-cols-2 md:grid-rows-2 lg:grid-cols-4 lg:grid-rows-1"
                   >
                     {[
                       {
@@ -641,12 +641,12 @@ export function StoryContent() {
                         key={idx}
                         className="flex h-full flex-col justify-between bg-[#FBF8F0] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] lg:p-10"
                       >
-                        <span className="text-6xl font-thin text-[#00263e]/10">{item.num}</span>
+                        <span className="text-6xl font-thin text-brand-charcoal/10">{item.num}</span>
                         <div>
-                          <h3 className="mb-3 text-lg font-light tracking-[0.15em] text-[#00263e]">
+                          <h3 className="mb-3 text-lg font-light tracking-[0.15em] text-brand-charcoal">
                             {item.title}
                           </h3>
-                          <p className="line-clamp-4 min-h-[112px] text-sm font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/80">
+                          <p className="line-clamp-4 min-h-[112px] text-sm font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80">
                             {item.desc}
                           </p>
                         </div>
@@ -678,7 +678,7 @@ export function StoryContent() {
                               delay: idx * 0.1,
                               ease: [0.22, 1, 0.36, 1],
                             }}
-                            className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-[#00263e]/25 bg-[#FCF9F2] p-6 transition-all duration-500 hover:border-[#00263e]/50 lg:p-8 xl:p-10"
+                            className="group relative flex aspect-[16/9] flex-col justify-center overflow-hidden border border-brand-charcoal/25 bg-[#FCF9F2] p-6 transition-all duration-500 hover:border-brand-charcoal/50 lg:p-8 xl:p-10"
                           >
                             {/* 悬浮显示的背景图 */}
                             <div className="absolute inset-0 z-0 opacity-[0.03] transition-opacity duration-500 group-hover:opacity-100">
@@ -694,13 +694,13 @@ export function StoryContent() {
 
                             {/* 默认显示的文字内容 */}
                             <div className="relative z-10 flex flex-col items-start gap-2 transition-opacity duration-300 group-hover:opacity-0">
-                              <span className="block text-sm font-light tracking-[0.12em] text-[#00263e]/60">
+                              <span className="block text-sm font-light tracking-[0.12em] text-brand-charcoal/60">
                                 {award.org}
                               </span>
-                              <span className="text-left text-base font-light leading-relaxed tracking-[0.12em] text-[#00263e] lg:text-lg">
+                              <span className="text-left text-base font-light leading-relaxed tracking-[0.12em] text-brand-charcoal lg:text-lg">
                                 {award.title}
                               </span>
-                              <span className="text-xs font-light tracking-[0.12em] text-[#00263e]/60 lg:text-sm">
+                              <span className="text-xs font-light tracking-[0.12em] text-brand-charcoal/60 lg:text-sm">
                                 {award.year}
                               </span>
                             </div>
@@ -717,7 +717,7 @@ export function StoryContent() {
                           disabled={currentAwardPage === 0}
                           className="absolute -left-12 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0 lg:-left-16"
                         >
-                          <ChevronLeft className="h-5 w-5 text-[#00263e]" />
+                          <ChevronLeft className="h-5 w-5 text-brand-charcoal" />
                         </button>
                         <button
                           onClick={() =>
@@ -728,7 +728,7 @@ export function StoryContent() {
                           disabled={currentAwardPage >= Math.ceil(AWARDS_DATA.length / 6) - 1}
                           className="absolute -right-12 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0 lg:-right-16"
                         >
-                          <ChevronRight className="h-5 w-5 text-[#00263e]" />
+                          <ChevronRight className="h-5 w-5 text-brand-charcoal" />
                         </button>
                       </>
                     )}

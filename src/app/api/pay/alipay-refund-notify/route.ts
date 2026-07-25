@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const refundStatus = params.refund_status;
 
     if (process.env.NODE_ENV === "development")
-      console.log(`[AlipayRefundNotify] 收到退款回调: ${tradeNo}, 状态: ${refundStatus}`);
+      apiConsole.debug(`[AlipayRefundNotify] 收到退款回调: ${tradeNo}, 状态: ${refundStatus}`);
 
     // 验证签名
     const sign = params.sign;
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const idempotencyCheck = await isNotificationProcessed("alipay_refund", notifyId);
     if (idempotencyCheck.processed) {
       if (process.env.NODE_ENV === "development")
-        console.log(`[AlipayRefundNotify] 退款通知已处理: ${notifyId}`);
+        apiConsole.debug(`[AlipayRefundNotify] 退款通知已处理: ${notifyId}`);
       return new NextResponse("success", { status: 200 });
     }
 
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     // 检查订单是否已退款
     if (order.status === OrderStatus.REFUNDED) {
       if (process.env.NODE_ENV === "development")
-        console.log(`[AlipayRefundNotify] 订单已退款: ${tradeNo}`);
+        apiConsole.debug(`[AlipayRefundNotify] 订单已退款: ${tradeNo}`);
       if (recordId) await markNotificationSuccess(recordId);
       return new NextResponse("success", { status: 200 });
     }
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (process.env.NODE_ENV === "development")
-      console.log(`[AlipayRefundNotify] 订单退款成功: ${tradeNo}`);
+      apiConsole.debug(`[AlipayRefundNotify] 订单退款成功: ${tradeNo}`);
     if (recordId) await markNotificationSuccess(recordId);
 
     // 支付宝要求返回 "success" 字符串

@@ -317,7 +317,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
               <div
                 ref={fadeMaskRef}
                 className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6 transition-opacity duration-300"
-                style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)", opacity: 0 }}
+                style={{ background: "linear-gradient(to bottom, var(--brand-cream, #FBF8F0), transparent)", opacity: 0 }}
               />
               <div
               ref={mobileScrollRef}
@@ -351,10 +351,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           viewport={{ once: true, margin: "-20px" }}
                           transition={{ delay: index * 0.1 }}
                           onClick={() => selectModule(module.id)}
-                          className="relative flex h-full flex-col items-start justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
+                          className="relative flex h-full flex-col items-start justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-brand-warm-light p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
                         >
                           <div className="relative z-10 flex flex-col">
-                            <module.icon className="h-8 w-8 text-[#B8A47B] mb-4" strokeWidth={1} />
+                            <module.icon className="h-8 w-8 text-brand-buff mb-4" strokeWidth={1} />
                             <span className="text-lg font-light tracking-[0.12em] text-brand-charcoal">
                               {module.label}
                             </span>
@@ -399,7 +399,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           viewport={{ once: true, margin: "-10px" }}
                           transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
                           onClick={() => selectScheme(scheme)}
-                          className="group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-[#FFFDF9] px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
+                          className="group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-brand-warm-white px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
                         >
                           {/* 左侧装饰线 */}
                           <div className="mr-4 h-10 w-[2px] shrink-0 rounded-full bg-brand-beige/60 transition-colors group-active:bg-brand-beige" />
@@ -590,7 +590,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           <h3 className="text-[17px] font-normal tracking-[0.1em] text-brand-charcoal">
                             {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
                           </h3>
-                          <span className="rounded-sm bg-[#E6DCC3] px-1.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-brand-charcoal/60">
+                          <span className="rounded-sm bg-brand-ecru px-1.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-brand-charcoal/60">
                             招牌
                           </span>
                         </div>
@@ -652,7 +652,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 步骤 {String(index + 1).padStart(2, "0")}
                               </div>
                               {/* 图片展示区 */}
-                              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#FFFDF9] transition-transform duration-500 group-active:scale-[0.99]">
+                              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-brand-warm-white transition-transform duration-500 group-active:scale-[0.99]">
                                 <Image
                                   src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
                                   alt={step.title}
@@ -881,7 +881,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             onClick={() => selectModule(module.id)}
                             onMouseEnter={() => setHoveredIndex(index)}
                             onMouseLeave={() => setHoveredIndex(null)}
-                            className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out hover:-translate-y-[2px] hover:border-brand-beige/70 hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30"
+                            className="group relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-brand-warm-light shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out hover:-translate-y-[2px] hover:border-brand-beige/70 hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30"
                             initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{
@@ -895,7 +895,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {/* 模块图标 */}
                               <div className="mb-8 transition-transform duration-500 group-hover:scale-110">
                                 <module.icon
-                                  className="h-12 w-12 text-[#B8A47B] transition-colors duration-500"
+                                  className="h-12 w-12 text-brand-buff transition-colors duration-500"
                                   strokeWidth={1}
                                 />
                               </div>
@@ -940,7 +940,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           onMouseLeave={() => setHoveredIndex(null)}
                           className={cn(
                             // Bento Box 样式：正方形卡片，宽高固定
-                            "group relative flex aspect-square w-full max-w-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-[#FCF9F2] shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out",
+                            "group relative flex aspect-square w-full max-w-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-brand-warm-light shadow-[0_1px_0_rgba(0,0,0,0.02),0_4px_16px_-2px_rgba(0,38,62,0.04)] transition-all duration-700 ease-out",
                             hoveredIndex === index
                               ? "scale-[1.02] border-brand-beige hover:shadow-[0_2px_0_rgba(0,38,62,0.02),0_8px_24px_-4px_rgba(0,38,62,0.06),0_16px_40px_-10px_rgba(0,38,62,0.04)]"
                               : "hover:border-brand-beige/70 hover:shadow-md"
@@ -959,7 +959,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                           {/* 图标 - 仅存在时显示 */}
                           {scheme.icon && (
-                            <div className="mb-6 text-[#B8A47B] [&>svg]:h-12 [&>svg]:w-12 [&>svg]:stroke-[1]">
+                            <div className="mb-6 text-brand-buff [&>svg]:h-12 [&>svg]:w-12 [&>svg]:stroke-[1]">
                               {scheme.icon}
                             </div>
                           )}
@@ -1012,7 +1012,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       <header className="flex flex-shrink-0 items-center pb-4">
                         {/* 左侧标题组 */}
                         <div className="flex flex-row items-center gap-5">
-                          <h2 className="relative pb-4 font-sans text-3xl font-light leading-none tracking-[0.08em] text-[#00263E] after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-brand-beige/60">
+                          <h2 className="relative pb-4 font-sans text-3xl font-light leading-none tracking-[0.08em] text-brand-charcoal after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-brand-beige/60">
                             {selectedModule === "portable" || selectedModule === "professional"
                               ? modules.find((m) => m.id === selectedModule)?.label
                               : selectedScheme.name}
@@ -1255,7 +1255,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   <h3 className="text-3xl font-normal tracking-wide text-brand-charcoal">
                                     {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
                                   </h3>
-                                  <span className="rounded-sm bg-[#E6DCC3] px-1.5 py-0.5 text-xs font-medium text-brand-charcoal">
+                                  <span className="rounded-sm bg-brand-ecru px-1.5 py-0.5 text-xs font-medium text-brand-charcoal">
                                     招牌
                                   </span>
                                 </div>
@@ -1273,7 +1273,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       <span className="relative z-10 font-semibold transition-colors duration-500 group-hover:text-brand-charcoal">
                                         申请入驻
                                       </span>
-                                      <span className="absolute inset-0 z-0 w-0 bg-[#C3BC9F]/40 transition-all duration-500 ease-out group-hover:w-full" />
+                                      <span className="absolute inset-0 z-0 w-0 bg-brand-sage/40 transition-all duration-500 ease-out group-hover:w-full" />
                                       <span className="absolute bottom-0 left-0 h-[1px] w-full bg-brand-charcoal/20" />
                                     </Link>
                                     您所在的城市。
@@ -1379,12 +1379,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     className="group relative w-[280px] flex-none"
                                   >
                                     {/* 步骤序号 */}
-                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/20 bg-[#FBF8F0] px-4 py-1 text-[10px] font-light tracking-[0.12em] text-brand-charcoal shadow-sm">
+                                    <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/20 bg-brand-cream px-4 py-1 text-[10px] font-light tracking-[0.12em] text-brand-charcoal shadow-sm">
                                       步骤 {String(index + 1).padStart(2, "0")}
                                     </div>
 
                                     {/* 内容卡片 */}
-                                    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-[#FCF9F2]">
+                                    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-brand-warm-light">
                                       <div className="absolute inset-0 flex flex-col p-6 pt-10">
                                         {/* 图片区域 */}
                                         <div className="relative mb-6 flex h-[240px] w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
@@ -1453,12 +1453,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                             }}
                                           >
                                             {/* 步骤序号 */}
-                                            <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/20 bg-[#FBF8F0] px-4 py-1 text-xs font-medium tracking-widest text-brand-charcoal shadow-sm">
+                                            <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/20 bg-brand-cream px-4 py-1 text-xs font-medium tracking-widest text-brand-charcoal shadow-sm">
                                               步骤 {String(actualIndex + 1).padStart(2, "0")}
                                             </div>
 
                                             {/* 内容卡片 */}
-                                            <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-[#FCF9F2] transition-all duration-300 hover:border-brand-charcoal/40">
+                                            <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-brand-warm-light transition-all duration-300 hover:border-brand-charcoal/40">
                                               <div className="absolute inset-0 flex flex-col p-6 pt-10">
                                                 {/* 图片区域 */}
                                                 <div className="relative mb-6 flex h-[240px] w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 transition-colors group-hover:bg-brand-beige/30">
@@ -1510,7 +1510,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     disabled={currentStepIndex === 0}
                                     className="absolute -left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0"
                                   >
-                                    <ChevronLeft className="h-5 w-5 text-[#00263e]" />
+                                    <ChevronLeft className="h-5 w-5 text-brand-charcoal" />
                                   </button>
                                   <button
                                     onClick={() =>
@@ -1523,7 +1523,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     }
                                     className="absolute -right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)] backdrop-blur transition-all hover:bg-white hover:shadow-[0_4px_12px_-4px_rgba(0,38,62,0.12)] disabled:pointer-events-none disabled:opacity-0"
                                   >
-                                    <ChevronRight className="h-5 w-5 text-[#00263e]" />
+                                    <ChevronRight className="h-5 w-5 text-brand-charcoal" />
                                   </button>
                                 </>
                               )}
@@ -1572,20 +1572,20 @@ function HotelLogoMarquee({ variant }: { variant: "mobile" | "desktop" }) {
       className={cn(
         "relative overflow-hidden border-t",
         isMobile
-          ? "-mx-5 border-[#00263E]/10 px-5 pb-4 pt-6"
+          ? "-mx-5 border-brand-charcoal/10 px-5 pb-4 pt-6"
           : "mb-6 border-brand-charcoal/10 pt-8"
       )}
     >
       {/* 左右渐变遮罩 */}
       <div
         className={cn(
-          "pointer-events-none absolute bottom-0 left-0 top-0 z-10 bg-gradient-to-r from-[#FBF8F0] to-transparent",
+          "pointer-events-none absolute bottom-0 left-0 top-0 z-10 bg-gradient-to-r from-brand-cream to-transparent",
           isMobile ? "w-8" : "w-16"
         )}
       />
       <div
         className={cn(
-          "pointer-events-none absolute bottom-0 right-0 top-0 z-10 bg-gradient-to-l from-[#FBF8F0] to-transparent",
+          "pointer-events-none absolute bottom-0 right-0 top-0 z-10 bg-gradient-to-l from-brand-cream to-transparent",
           isMobile ? "w-8" : "w-16"
         )}
       />

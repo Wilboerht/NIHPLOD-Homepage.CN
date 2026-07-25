@@ -30,10 +30,10 @@ const iconMap = {
 };
 
 const iconColorMap = {
-  info: "text-blue-500 bg-blue-50",
-  warning: "text-yellow-500 bg-yellow-50",
+  info: "text-brand-primary bg-brand-primary/10",
+  warning: "text-amber-500 bg-amber-50",
   danger: "text-red-500 bg-red-50",
-  success: "text-green-500 bg-green-50",
+  success: "text-emerald-500 bg-emerald-50",
 };
 
 const confirmButtonVariant = {

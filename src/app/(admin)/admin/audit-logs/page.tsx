@@ -4,7 +4,10 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw, Eye, FileJson } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/api-client";
 
 interface AuditLogItem {
@@ -63,21 +66,41 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  login: "bg-green-50 text-green-700",
+  // 认证类
+  login: "bg-brand-charcoal/8 text-brand-charcoal/80",
   logout: "bg-brand-charcoal/8 text-brand-charcoal/80",
+  // 物流类
   ship_order: "bg-blue-50 text-blue-700",
-  refund_approve: "bg-yellow-50 text-yellow-700",
-  refund_reject: "bg-orange-50 text-orange-700",
-  create_admin: "bg-purple-50 text-purple-700",
-  update_admin: "bg-purple-50 text-purple-700",
-  delete_admin: "bg-red-50 text-red-700",
+  // 退款类
+  refund_approve: "bg-amber-50 text-amber-700",
+  refund_reject: "bg-amber-50 text-amber-700",
+  // 创建类
+  create_admin: "bg-emerald-50 text-emerald-700",
   create_product: "bg-emerald-50 text-emerald-700",
-  update_product: "bg-emerald-50 text-emerald-700",
+  create_category: "bg-emerald-50 text-emerald-700",
+  create_job: "bg-emerald-50 text-emerald-700",
+  create_coupon: "bg-emerald-50 text-emerald-700",
+  batch_product: "bg-emerald-50 text-emerald-700",
+  batch_job: "bg-emerald-50 text-emerald-700",
+  batch_message: "bg-emerald-50 text-emerald-700",
+  // 更新类
+  update_admin: "bg-sky-50 text-sky-700",
+  update_product: "bg-sky-50 text-sky-700",
+  update_category: "bg-sky-50 text-sky-700",
+  update_job: "bg-sky-50 text-sky-700",
+  update_coupon: "bg-sky-50 text-sky-700",
+  update_application: "bg-sky-50 text-sky-700",
+  update_message: "bg-sky-50 text-sky-700",
+  // 删除类
+  delete_admin: "bg-red-50 text-red-700",
   delete_product: "bg-red-50 text-red-700",
-  create_coupon: "bg-pink-50 text-pink-700",
-  update_coupon: "bg-pink-50 text-pink-700",
+  delete_category: "bg-red-50 text-red-700",
+  delete_job: "bg-red-50 text-red-700",
   delete_coupon: "bg-red-50 text-red-700",
-  run_cron_task: "bg-indigo-50 text-indigo-700",
+  delete_application: "bg-red-50 text-red-700",
+  delete_message: "bg-red-50 text-red-700",
+  // 系统类
+  run_cron_task: "bg-purple-50 text-purple-700",
 };
 
 export default function AuditLogsPage() {
@@ -146,60 +169,52 @@ export default function AuditLogsPage() {
           <h1 className="text-2xl font-semibold text-brand-charcoal">审计日志</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">记录管理端关键操作，便于追溯和合规审计</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchLogs}>
-          <RefreshCw className="mr-1 h-4 w-4" /> 刷新
+        <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchLogs}>
+          刷新
         </Button>
       </div>
 
       {/* 筛选栏 */}
-      <div className="flex flex-wrap gap-4 rounded-xl bg-white p-4 shadow-sm">
-        <select
+      <div className="flex flex-wrap items-center gap-4 rounded-xl bg-white p-4 shadow-sm">
+        <Select
+          options={[
+            { value: "", label: "全部操作" },
+            ...Object.entries(ACTION_LABELS).map(([key, label]) => ({ value: key, label })),
+          ]}
           value={action}
           onChange={(e) => updateParams({ action: e.target.value })}
-          className="rounded-lg border px-3 py-2 text-sm"
-        >
-          <option value="">全部操作</option>
-          {Object.entries(ACTION_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select
+          className="w-40"
+        />
+        <Select
+          options={[
+            { value: "", label: "全部类型" },
+            ...Object.entries(TARGET_TYPE_LABELS).map(([key, label]) => ({ value: key, label })),
+          ]}
           value={targetType}
           onChange={(e) => updateParams({ targetType: e.target.value })}
-          className="rounded-lg border px-3 py-2 text-sm"
-        >
-          <option value="">全部类型</option>
-          {Object.entries(TARGET_TYPE_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+          className="w-32"
+        />
       </div>
 
       {/* 日志列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-brand-charcoal/50">
-            <tr>
-              <th className="px-4 py-3">时间</th>
-              <th className="px-4 py-3">操作人</th>
-              <th className="px-4 py-3">操作</th>
-              <th className="px-4 py-3">目标类型</th>
-              <th className="px-4 py-3">目标ID</th>
-              <th className="px-4 py-3">IP地址</th>
-              <th className="px-4 py-3 text-right">操作</th>
+          <thead>
+            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="px-4 py-3">时间</th>
+              <th scope="col" className="px-4 py-3">操作人</th>
+              <th scope="col" className="px-4 py-3">操作</th>
+              <th scope="col" className="px-4 py-3">目标类型</th>
+              <th scope="col" className="px-4 py-3">目标ID</th>
+              <th scope="col" className="px-4 py-3">IP地址</th>
+              <th scope="col" className="px-4 py-3 text-right">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
-                  加载中...
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={7} />
+              ))
             ) : logs.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
@@ -262,21 +277,14 @@ export default function AuditLogsPage() {
       </div>
 
       {/* 分页 */}
-      {pagination.totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          {Array.from({ length: pagination.totalPages }, (_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => updateParams({ page: String(i + 1) })}
-              className={`rounded px-3 py-1 ${
-                page === i + 1 ? "bg-blue-600 text-white" : "bg-brand-charcoal/8 text-brand-charcoal"
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex justify-center">
+        <Pagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          onChange={(p) => updateParams({ page: String(p) })}
+        />
+      </div>
 
       {/* 详情模态框 */}
       <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title="审计日志详情" size="lg">

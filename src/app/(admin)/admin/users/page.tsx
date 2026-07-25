@@ -22,8 +22,12 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPatch } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 
@@ -127,6 +131,7 @@ export default function AdminUsersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<{ id: string; status: UserStatus } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -151,17 +156,21 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const updateUserStatus = async (userId: string, status: UserStatus) => {
+  const updateUserStatus = (userId: string, status: UserStatus) => {
+    setStatusTarget({ id: userId, status });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusTarget) return;
+    const { id, status } = statusTarget;
     const target = userStatusMap[status];
-    if (!window.confirm(`确定要将该用户状态设置为「${target.label}」吗？${target.description}`)) {
-      return;
-    }
     setStatusLoading(true);
     try {
-      await apiPatch(`/api/admin/users/${userId}`, { status });
+      await apiPatch(`/api/admin/users/${id}`, { status });
       toast.success(`已设置用户状态为「${target.label}」`);
+      setStatusTarget(null);
       await fetchUsers();
-      if (detailUser?.id === userId) {
+      if (detailUser?.id === id) {
         setDetailUser((prev) => (prev ? { ...prev, status } : prev));
       }
     } catch (err) {
@@ -215,22 +224,21 @@ export default function AdminUsersPage() {
           <h1 className="text-2xl font-semibold text-brand-charcoal">用户管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">管理注册用户</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchUsers}>
-          <RefreshCw className="mr-1 h-4 w-4" /> 刷新
+        <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchUsers}>
+          刷新
         </Button>
       </div>
 
       {/* 搜索栏 */}
       <div className="flex gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
-          <input
-            type="text"
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+          <Input
             placeholder="搜索手机号/昵称..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
-            className="w-full rounded-lg border py-2 pl-10 pr-4 text-sm"
+            className="pl-10"
           />
         </div>
       </div>
@@ -238,23 +246,21 @@ export default function AdminUsersPage() {
       {/* 用户列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-brand-charcoal/50">
-            <tr>
-              <th className="px-4 py-3">用户</th>
-              <th className="px-4 py-3">手机号</th>
-              <th className="px-4 py-3">状态</th>
-              <th className="px-4 py-3">订单数</th>
-              <th className="px-4 py-3">注册时间</th>
-              <th className="px-4 py-3">操作</th>
+          <thead>
+            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="px-4 py-3">用户</th>
+              <th scope="col" className="px-4 py-3">手机号</th>
+              <th scope="col" className="px-4 py-3">状态</th>
+              <th scope="col" className="px-4 py-3">订单数</th>
+              <th scope="col" className="px-4 py-3">注册时间</th>
+              <th scope="col" className="px-4 py-3">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-brand-charcoal/50">
-                  加载中...
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={6} />
+              ))
             ) : users.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-brand-charcoal/50">
@@ -306,19 +312,14 @@ export default function AdminUsersPage() {
       </div>
 
       {/* 分页 */}
-      {pagination.totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          {Array.from({ length: pagination.totalPages }, (_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => updateParams({ page: String(i + 1) })}
-              className={`rounded px-3 py-1 ${page === i + 1 ? "bg-pink-500 text-white" : "bg-brand-charcoal/8"}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex justify-center">
+        <Pagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          onChange={(p) => updateParams({ page: String(p) })}
+        />
+      </div>
 
       {/* 用户详情模态框 */}
       <Modal
@@ -386,7 +387,7 @@ export default function AdminUsersPage() {
                     <dd className="flex items-center gap-2">
                       {detailUser.phone || "未绑定"}
                       {detailUser.phoneVerified && (
-                        <Badge variant="success" className="px-1.5 py-0 text-[10px]">
+                        <Badge variant="success" className="px-1.5 py-0 text-xs">
                           已验证
                         </Badge>
                       )}
@@ -399,7 +400,7 @@ export default function AdminUsersPage() {
                     </dt>
                     <dd>
                       {detailUser.wechatOpenId ? (
-                        <Badge variant="success" className="px-1.5 py-0 text-[10px]">
+                        <Badge variant="success" className="px-1.5 py-0 text-xs">
                           已绑定
                         </Badge>
                       ) : (
@@ -432,7 +433,7 @@ export default function AdminUsersPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+                      className="border-amber-200 text-amber-700 hover:bg-amber-50"
                       leftIcon={<Lock className="h-4 w-4" />}
                       loading={statusLoading}
                       onClick={() => updateUserStatus(detailUser.id, "SUSPENDED")}
@@ -491,7 +492,7 @@ export default function AdminUsersPage() {
                           {addr.name} {addr.phone}
                         </span>
                         {addr.isDefault && (
-                          <Badge variant="success" className="px-1.5 py-0 text-[10px]">
+                          <Badge variant="success" className="px-1.5 py-0 text-xs">
                             默认
                           </Badge>
                         )}
@@ -536,12 +537,12 @@ export default function AdminUsersPage() {
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal">最近订单</h3>
                 <div className="overflow-hidden rounded-xl border border-brand-charcoal/8">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-left text-brand-charcoal/50">
-                      <tr>
-                        <th className="px-4 py-2 font-normal">订单号</th>
-                        <th className="px-4 py-2 font-normal">状态</th>
-                        <th className="px-4 py-2 font-normal">金额</th>
-                        <th className="px-4 py-2 font-normal">时间</th>
+                    <thead>
+                      <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-brand-charcoal/60">
+                        <th scope="col" className="px-4 py-2 font-normal">订单号</th>
+                        <th scope="col" className="px-4 py-2 font-normal">状态</th>
+                        <th scope="col" className="px-4 py-2 font-normal">金额</th>
+                        <th scope="col" className="px-4 py-2 font-normal">时间</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -561,7 +562,7 @@ export default function AdminUsersPage() {
                               </button>
                             </td>
                             <td className="px-4 py-2">
-                              <Badge variant={status.variant} className="px-1.5 py-0 text-[10px]">
+                              <Badge variant={status.variant} className="px-1.5 py-0 text-xs">
                                 {status.label}
                               </Badge>
                             </td>
@@ -580,6 +581,21 @@ export default function AdminUsersPage() {
           </div>
         )}
       </Modal>
+
+      {/* 状态变更确认 */}
+      <ConfirmDialog
+        open={!!statusTarget}
+        onClose={() => setStatusTarget(null)}
+        onConfirm={confirmStatusChange}
+        title="修改用户状态"
+        description={
+          statusTarget
+            ? `确定要将该用户状态设置为「${userStatusMap[statusTarget.status].label}」吗？${userStatusMap[statusTarget.status].description}`
+            : ""
+        }
+        confirmText="确认修改"
+        loading={statusLoading}
+      />
     </div>
   );
 }

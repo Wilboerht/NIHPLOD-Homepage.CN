@@ -6,9 +6,11 @@ import Link from "next/link";
 import { Plus, Search, X } from "lucide-react";
 import { ProductsTable } from "@/components/admin";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Select, SelectOption } from "@/components/ui/Select";
 import { cn } from "@/lib/utils";
 import { apiGet } from "@/lib/api-client";
+import { useToast } from "@/components/ui/Toast";
 
 // 产品类型
 interface ProductItem {
@@ -39,6 +41,7 @@ interface Category {
 export default function AdminProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { error: showError } = useToast();
 
   // 状态
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -64,7 +67,7 @@ export default function AdminProductsPage() {
   useEffect(() => {
     apiGet<Category[]>("/api/categories")
       .then((data) => setCategories(data))
-      .catch(console.error);
+      .catch(() => showError("加载分类列表失败"));
   }, []);
 
   // 获取产品列表
@@ -163,16 +166,12 @@ export default function AdminProductsPage() {
       <div className="flex flex-wrap items-center gap-4">
         {/* 搜索框 */}
         <form onSubmit={handleSearch} className="relative min-w-[200px] max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
-          <input
-            type="text"
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+          <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="搜索产品名称..."
-            className={cn(
-              "w-full rounded-lg border border-brand-charcoal/20 bg-white py-2 pl-10 pr-10",
-              "focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
-            )}
+            className="pl-10 pr-10"
           />
           {searchInput && (
             <button

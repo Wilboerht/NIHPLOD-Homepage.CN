@@ -30,6 +30,19 @@ export function isCurrentPage(pathname: string, href: string): boolean {
 }
 
 /**
+ * 从名称生成 URL slug（小写、仅允许字母数字和连字符）
+ */
+export function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^\w\-]+/g, "")
+    .replace(/--+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "");
+}
+
+/**
  * 判断当前路由是否隐藏全局底部导航栏
  * 独立全屏页面与产品详情页不显示 BottomNavBar，
  * 布局据此决定是否保留底部导航的占位 padding

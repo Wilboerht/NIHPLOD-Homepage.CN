@@ -6,14 +6,18 @@ import { z } from "zod";
 import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { Select, SelectOption } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
+import { Badge } from "@/components/ui/Badge";
 import { TagInput } from "@/components/ui/TagInput";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema } from "@/schemas/product";
+import { generateSlug } from "@/lib/utils";
+import { usePurchaseLinks, type PurchaseLinkItem } from "@/hooks/usePurchaseLinks";
 
 // 图片类型
 interface ImageItem {
@@ -24,13 +28,8 @@ interface ImageItem {
   file?: File;
 }
 
-// 购买链接类型
-interface PurchaseLinkItem {
-  id?: string;
-  platform: string;
-  url: string;
-  order: number;
-}
+// 购买链接类型（从 hook 复用类型）
+// PurchaseLinkItem 已通过 import type 引入
 
 // 表单数据类型
 interface FormData {
@@ -72,17 +71,6 @@ interface ProductFormProps {
   mode: "create" | "edit";
   initialData?: ProductData;
   categories: Category[];
-}
-
-// 生成 slug
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[\s_]+/g, "-")
-    .replace(/[^\w\-]+/g, "")
-    .replace(/--+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "");
 }
 
 const defaultFormData: FormData = {
@@ -162,34 +150,10 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     }
   };
 
-  // 购买链接管理
-  const addPurchaseLink = () => {
-    const newLink: PurchaseLinkItem = {
-      platform: "小红书",
-      url: "",
-      order: formData.purchaseLinks.length,
-    };
-    updateField("purchaseLinks", [...formData.purchaseLinks, newLink]);
-  };
-
-  const removePurchaseLink = (index: number) => {
-    const newLinks = formData.purchaseLinks.filter((_, i) => i !== index);
-    // 重新排序
-    updateField(
-      "purchaseLinks",
-      newLinks.map((link, i) => ({ ...link, order: i }))
-    );
-  };
-
-  const updatePurchaseLink = (
-    index: number,
-    field: keyof PurchaseLinkItem,
-    value: string | number
-  ) => {
-    const newLinks = [...formData.purchaseLinks];
-    newLinks[index] = { ...newLinks[index], [field]: value };
-    updateField("purchaseLinks", newLinks);
-  };
+  const { addPurchaseLink, removePurchaseLink, updatePurchaseLink } = usePurchaseLinks(
+    formData.purchaseLinks,
+    (links) => updateField("purchaseLinks", links)
+  );
 
   // 验证表单
   const validateForm = (): boolean => {
@@ -453,9 +417,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           {/* 站内购买 */}
           <div className="mb-6">
             <div className="mb-3 flex items-center gap-2">
-              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                站内购买
-              </span>
+              <Badge variant="success">站内购买</Badge>
               <span className="text-xs text-brand-charcoal/50">用户可直接在网站内下单购买</span>
             </div>
             <div className="flex items-center gap-6">
@@ -467,14 +429,14 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               {formData.allowDirectBuy && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-brand-charcoal/50">库存数量</span>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     value={formData.stock}
                     onChange={(e) =>
                       updateField("stock", Math.max(0, parseInt(e.target.value) || 0))
                     }
-                    className="w-24 rounded-lg border border-brand-charcoal/20 px-3 py-1.5 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                    className="w-24"
                   />
                 </div>
               )}
@@ -492,9 +454,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           <div>
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                  第三方平台
-                </span>
+                <Badge variant="primary">第三方平台</Badge>
                 <span className="text-xs text-brand-charcoal/50">天猫、小红书、抖音等平台链接</span>
               </div>
               <Button
@@ -585,7 +545,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-primary text-xs font-bold text-white">
                       Q
                     </span>
-                    <input
+                    <Input
                       className="flex-1 border-none bg-transparent p-0 text-sm font-medium focus:ring-0"
                       value={faq.question}
                       onChange={(e) => {
@@ -599,7 +559,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-charcoal text-xs font-bold text-white">
                       A
                     </span>
-                    <textarea
+                    <Textarea
                       className="h-auto flex-1 resize-none border-none bg-transparent p-0 text-sm focus:ring-0"
                       rows={2}
                       value={faq.answer}

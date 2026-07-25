@@ -135,7 +135,7 @@ export function DataTable<T extends object>({
     >
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-brand-charcoal/10" aria-label={emptyText || "数据表格"}>
-          <thead className="sticky top-0 z-10 bg-gray-50">
+          <thead className="sticky top-0 z-10 bg-brand-charcoal/[0.02]">
             <tr>
               {columns.map((column) => {
                 const sortState =
@@ -147,6 +147,7 @@ export function DataTable<T extends object>({
                 return (
                   <th
                     key={String(column.key)}
+                    scope="col"
                     style={{ width: column.width }}
                     className={cn(
                       "px-6 py-3 text-sm font-medium uppercase tracking-wider text-brand-charcoal/50",

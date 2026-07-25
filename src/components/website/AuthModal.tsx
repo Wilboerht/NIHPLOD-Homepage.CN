@@ -615,7 +615,7 @@ export function AuthModal() {
               }
               className="absolute bottom-0 left-0 top-0 flex items-center justify-center px-4 py-[10px]"
             >
-              <ChevronLeft className="h-6 w-6 text-[#00263E]" />
+              <ChevronLeft className="h-6 w-6 text-brand-charcoal" />
             </button>
             {view !== "login" && (
               <Image

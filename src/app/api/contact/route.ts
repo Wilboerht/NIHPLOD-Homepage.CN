@@ -72,11 +72,11 @@ export async function POST(request: NextRequest) {
         content,
       },
     });
-    if (process.env.NODE_ENV === "development") console.log("✅ [Contact API] DB record created");
+    if (process.env.NODE_ENV === "development") apiConsole.debug("✅ [Contact API] DB record created");
 
     // 发送通知
     if (process.env.NODE_ENV === "development")
-      console.log("📧 [Contact API] Sending notifications");
+      apiConsole.debug("📧 [Contact API] Sending notifications");
     try {
       // 1. 发送企业微信机器人通知
       const wecomContent = formatContactToWecom({
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       });
       await sendWecomNotification(wecomContent);
       if (process.env.NODE_ENV === "development")
-        console.log("✅ [Contact API] WeCom bot notification sent");
+        apiConsole.debug("✅ [Contact API] WeCom bot notification sent");
 
       // 暂不支持向手机发送短信自动回复
     } catch (notifError) {

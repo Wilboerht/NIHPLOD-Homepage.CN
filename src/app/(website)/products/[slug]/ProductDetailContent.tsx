@@ -386,7 +386,7 @@ export function ProductDetailContent({
             "relative flex-shrink-0 overflow-hidden rounded-lg transition-all",
             orientation === "vertical" ? "h-20 w-16" : "h-16 w-12",
             currentImageIndex === index
-              ? "ring-1 ring-[#00263E]"
+              ? "ring-1 ring-brand-charcoal"
               : "ring-1 ring-brand-beige hover:ring-brand-charcoal/30"
           )}
           aria-label={`切换到第 ${index + 1} 张图片`}
@@ -434,7 +434,7 @@ export function ProductDetailContent({
       </a>
     ) : (
       !product.allowDirectBuy && (
-        <span className="text-sm font-light text-[#00263e]/50">
+        <span className="text-sm font-light text-brand-charcoal/50">
           暂无购买链接
         </span>
       )
@@ -500,7 +500,7 @@ export function ProductDetailContent({
                 <Link
                   key={cat.id}
                   href={`/products/${catProduct.slug}`}
-                  className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                  className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
                 >
                   {cat.name}
                   <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
@@ -513,7 +513,7 @@ export function ProductDetailContent({
           <div className="hidden items-center justify-end md:flex">
             <Link
               href="/products"
-              className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               <ChevronLeft className="h-4 w-4" />
               返回产品页
@@ -530,7 +530,7 @@ export function ProductDetailContent({
             aria-expanded={mobileMenuOpen}
             aria-controls="product-detail-nav-panel"
           >
-            <Menu className="h-5 w-5 text-[#00263E]" />
+            <Menu className="h-5 w-5 text-brand-charcoal" />
           </button>
         </div>
       </nav>
@@ -545,7 +545,7 @@ export function ProductDetailContent({
         className={`fixed inset-0 z-[100] transition-all duration-500 md:hidden ${mobileMenuOpen ? "visible opacity-100" : "invisible opacity-0"}`}
       >
         <div
-          className="absolute inset-0 bg-[#00263E]/20 backdrop-blur-sm"
+          className="absolute inset-0 bg-brand-charcoal/20 backdrop-blur-sm"
           onClick={() => setMobileMenuOpen(false)}
         />
         <div
@@ -570,7 +570,7 @@ export function ProductDetailContent({
                 className="flex h-10 w-10 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
                 aria-label="关闭菜单"
               >
-                <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
+                <X className="h-5 w-5 text-brand-charcoal" strokeWidth={1.5} />
               </button>
             </div>
 
@@ -583,7 +583,7 @@ export function ProductDetailContent({
                     key={cat.id}
                     href={`/products/${catProduct.slug}`}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                    className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
                   >
                     {cat.name}
                   </Link>
@@ -594,7 +594,7 @@ export function ProductDetailContent({
             <Link
               href="/products"
               onClick={() => setMobileMenuOpen(false)}
-              className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+              className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
             >
               <Home className="h-5 w-5" />
               返回产品页
@@ -692,8 +692,8 @@ export function ProductDetailContent({
                               className={cn(
                                 "h-2 w-6 rounded-full border-none p-0 transition-all duration-300",
                                 currentImageIndex === index
-                                  ? "scale-110 bg-[#00263E]"
-                                  : "bg-[#00263E]/20"
+                                  ? "scale-110 bg-brand-charcoal"
+                                  : "bg-brand-charcoal/20"
                               )}
                               aria-label={`查看第 ${index + 1} 张图片`}
                               aria-current={currentImageIndex === index ? "true" : undefined}
@@ -722,7 +722,7 @@ export function ProductDetailContent({
                   >
                   {/* 产品名称 + 操作按钮 */}
                   <div className="flex items-center justify-between gap-3">
-                    <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
+                    <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-brand-charcoal sm:text-[24px] lg:text-[28px]">
                       {product.name}
                     </h1>
                     <div className="flex items-center gap-1">
@@ -739,7 +739,7 @@ export function ProductDetailContent({
 
                   {/* 产地/规格 */}
                   {(product.origin || product.capacity) && (
-                    <dl className="mt-2 flex items-center gap-3 text-xs font-light leading-relaxed tracking-[0.06em] text-[#00263E]">
+                    <dl className="mt-2 flex items-center gap-3 text-xs font-light leading-relaxed tracking-[0.06em] text-brand-charcoal">
                       {product.origin && (
                         <div className="flex gap-0">
                           <dt>产地：</dt>
@@ -759,7 +759,7 @@ export function ProductDetailContent({
                   <div className="mt-4">
                     <data
                       value={product.price}
-                      className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-[#00263E]"
+                      className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-brand-charcoal"
                     >
                       {formatPrice(product.price)}
                     </data>
@@ -771,7 +771,7 @@ export function ProductDetailContent({
                       {product.benefits.map((benefit, index) => (
                         <li
                           key={index}
-                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[13px] font-light tracking-[0.06em] text-[#00263E] md:text-sm"
+                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[13px] font-light tracking-[0.06em] text-brand-charcoal md:text-sm"
                         >
                           {benefit}
                         </li>
@@ -834,13 +834,13 @@ export function ProductDetailContent({
                         >
                           {tabContent[tab.key] ? (
                             <div
-                              className="text-left text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90 md:text-base md:tracking-[0.08em] [&_p+p]:mt-3"
+                              className="text-left text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 md:text-base md:tracking-[0.08em] [&_p+p]:mt-3"
                               dangerouslySetInnerHTML={{
                                 __html: DOMPurify.sanitize(tabContent[tab.key]!),
                               }}
                             />
                           ) : (
-                            <p className="text-base font-light text-[#00263e]/40">暂无内容</p>
+                            <p className="text-base font-light text-brand-charcoal/40">暂无内容</p>
                           )}
                         </div>
                       );
@@ -866,7 +866,7 @@ export function ProductDetailContent({
                         aria-label="官网购买"
                         className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <span className="text-xs font-normal tracking-[0.12em] text-[#00263E]">
+                        <span className="text-xs font-normal tracking-[0.12em] text-brand-charcoal">
                           {buying ? "加入中…" : "官网"}
                         </span>
                       </button>
@@ -916,7 +916,7 @@ export function ProductDetailContent({
                 {/* 相关产品推荐 */}
                 {relatedProducts.length > 0 && (
                   <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pt-8 sm:px-0 pb-24">
-                    <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E]">
+                    <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-brand-charcoal">
                       相关推荐
                     </h2>
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

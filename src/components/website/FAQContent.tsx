@@ -10,6 +10,11 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 
+/** Footer 版权信息组件 */
+function FooterCopyright() {
+  return <>&copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.</>;
+}
+
 const FAQS = [
   {
     question: "什么是 NIHPLOD ?",
@@ -243,10 +248,10 @@ export function FAQContent() {
                     >
                       {/* Page Title */}
                       <div className="mb-8 flex flex-col items-center pt-3">
-                        <h1 className="text-[19px] font-normal tracking-[0.15em] text-[#00263E]">
+                        <h1 className="text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                           常见问题
                         </h1>
-                        <div className="mt-2 w-[70px] border-b border-[#00263E]" />
+                        <div className="mt-2 w-[70px] border-b border-brand-charcoal" />
                       </div>
 
                       {/* Question List - no dividers, numbered */}
@@ -260,7 +265,7 @@ export function FAQContent() {
                             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand-primary/70 text-[11px] font-normal text-brand-primary/80">
                               {index + 1}
                             </span>
-                            <span className="flex-1 truncate text-[14px] font-light leading-[1.6] tracking-[0.04em] text-[#00263E]">
+                            <span className="flex-1 truncate text-[14px] font-light leading-[1.6] tracking-[0.04em] text-brand-charcoal">
                               {faq.question}
                             </span>
                           </button>
@@ -288,7 +293,7 @@ export function FAQContent() {
                       {/* Mobile Footer Copyright */}
                       <div className="mt-auto flex flex-col items-center justify-center pt-10">
                         <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
-                          &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                          <FooterCopyright />
                         </p>
                       </div>
                     </m.div>
@@ -320,7 +325,7 @@ export function FAQContent() {
                       {/* Mobile Footer Copyright */}
                       <div className="mt-auto flex flex-col items-center justify-center pt-10">
                         <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
-                          &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                          <FooterCopyright />
                         </p>
                       </div>
                     </m.div>
@@ -332,7 +337,7 @@ export function FAQContent() {
               <div className="hidden sm:block">
                 {/* Page Title - Desktop */}
                 <div className="mb-6 mt-8 flex justify-center">
-                  <h1 className="relative inline-block text-[24px] font-light tracking-[0.15em] text-[#00263e] after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-[#00263e]/20">
+                  <h1 className="relative inline-block text-[24px] font-light tracking-[0.15em] text-brand-charcoal after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-brand-charcoal/20">
                     常见问题
                   </h1>
                 </div>
@@ -354,7 +359,7 @@ export function FAQContent() {
                       >
                         <span
                           className={cn(
-                            "flex-1 text-[14px] font-light leading-snug tracking-[0.08em] text-[#00263E] transition-colors duration-300 lg:text-[16px] lg:leading-normal",
+                            "flex-1 text-[14px] font-light leading-snug tracking-[0.08em] text-brand-charcoal transition-colors duration-300 lg:text-[16px] lg:leading-normal",
                             openIndex === index
                               ? "text-brand-charcoal"
                               : "group-hover:text-brand-charcoal"
@@ -417,7 +422,7 @@ export function FAQContent() {
           {/* Footer Info - Desktop 固定页脚 */}
           <div className="hidden shrink-0 flex-col items-center justify-center gap-2 pt-10 pb-4 sm:flex">
             <p className="text-center text-[12px] font-light tracking-[0.1em] text-brand-charcoal/[0.48]">
-              &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+              <FooterCopyright />
             </p>
           </div>
         </div>

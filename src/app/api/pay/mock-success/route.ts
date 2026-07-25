@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (process.env.NODE_ENV === "development")
-      console.log(`[MockPay] 模拟支付成功: ${order.orderNo}`);
+      apiConsole.debug(`[MockPay] 模拟支付成功: ${order.orderNo}`);
 
     return NextResponse.json({
       success: true,

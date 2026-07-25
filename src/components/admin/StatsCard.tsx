@@ -48,7 +48,7 @@ export function StatsCard({
             <p
               className={cn(
                 "mt-2 text-sm font-medium",
-                trend.isPositive ? "text-green-600" : "text-red-600"
+                trend.isPositive ? "text-emerald-600" : "text-red-500"
               )}
             >
               {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%

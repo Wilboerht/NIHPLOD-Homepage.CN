@@ -6,7 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/utils";
+import { cn, generateSlug } from "@/lib/utils";
 import { apiPost, apiPut } from "@/lib/api-client";
 
 // 分类类型
@@ -37,17 +37,6 @@ const CategorySchema = z.object({
     .max(50, "URL别名不能超过50个字符")
     .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
 });
-
-// 生成 slug
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[\s_]+/g, "-")
-    .replace(/[^\w\-]+/g, "")
-    .replace(/--+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "");
-}
 
 export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFormProps) {
   const { success, error: showError } = useToast();

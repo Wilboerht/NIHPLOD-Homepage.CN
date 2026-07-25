@@ -18,6 +18,13 @@ const config: Config = {
           charcoal: "#00263E",
           "charcoal-light": "#4A6272",
           beige: "#E4DFD9",
+          gold: "#B8860B",
+          "gold-dark": "#A0750A",
+          "warm-light": "#FCF9F2",
+          "warm-white": "#FFFDF9",
+          buff: "#B8A47B",
+          ecru: "#E6DCC3",
+          sage: "#C3BC9F",
         },
       },
       fontFamily: {

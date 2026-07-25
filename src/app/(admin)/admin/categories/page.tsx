@@ -46,6 +46,7 @@ export default function AdminCategoriesPage() {
       setCategories(data);
     } catch (error) {
       console.error("获取分类失败:", error);
+      showError("加载失败，请刷新重试");
     } finally {
       setLoading(false);
     }
@@ -234,7 +235,7 @@ export default function AdminCategoriesPage() {
                     className={cn(
                       "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
                       category.visible
-                        ? "bg-green-100 text-green-700 hover:bg-green-200"
+                        ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                         : "bg-brand-charcoal/8 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06]"
                     )}
                     title={category.visible ? "点击隐藏" : "点击显示"}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { apiGet } from "@/lib/api-client";
+import { useToast } from "@/components/ui/Toast";
 
 interface Category {
   id: string;
@@ -13,11 +14,12 @@ interface Category {
 export default function NewProductPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const { error: showError } = useToast();
 
   useEffect(() => {
     apiGet<Category[]>("/api/categories")
       .then((data) => setCategories(data))
-      .catch(console.error)
+      .catch(() => showError("加载分类列表失败"))
       .finally(() => setLoading(false));
   }, []);
 

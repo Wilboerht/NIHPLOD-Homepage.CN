@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const idempotencyCheck = await isNotificationProcessed("wechat", notifyId);
     if (idempotencyCheck.processed && idempotencyCheck.status === "SUCCESS") {
       if (process.env.NODE_ENV === "development")
-        console.log(`[PayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
+        apiConsole.debug(`[PayNotify] 通知 ${notifyId} 已处理过，返回成功应答`);
       return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
     }
 

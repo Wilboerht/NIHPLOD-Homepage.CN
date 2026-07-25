@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
-
-// 分类验证 Schema
-const CategorySchema = z.object({
-  name: z.string().min(1, "名称不能为空").max(50, "名称不能超过50个字符"),
-  nameEn: z.string().min(1, "英文名称不能为空").max(50, "英文名称不能超过50个字符"),
-  slug: z
-    .string()
-    .min(1, "URL别名不能为空")
-    .max(50, "URL别名不能超过50个字符")
-    .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
-  order: z.number().int().min(0).default(0),
-  visible: z.boolean().default(true), // 是否在前台展示
-});
+import { CategorySchema } from "@/schemas/product";
 
 // GET /api/admin/categories - 获取分类列表
 // 强制动态渲染，禁止静态预渲染

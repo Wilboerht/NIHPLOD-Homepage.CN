@@ -19,16 +19,16 @@ export default function Error({ error, reset }: ErrorProps) {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4">
-      <h1 className="text-xl font-medium text-[#00263E]">出现了一些问题</h1>
-      <p className="text-sm text-[#00263E]/60">抱歉，页面加载时发生了错误，请稍后再试。</p>
+      <h1 className="text-xl font-medium text-brand-charcoal">出现了一些问题</h1>
+      <p className="text-sm text-brand-charcoal/60">抱歉，页面加载时发生了错误，请稍后再试。</p>
       {process.env.NODE_ENV === "development" && error.message && (
-        <p className="max-w-md rounded-lg border border-[#00263E]/10 bg-[#00263E]/5 px-4 py-3 font-mono text-xs text-[#00263E]/60">
+        <p className="max-w-md rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/5 px-4 py-3 font-mono text-xs text-brand-charcoal/60">
           {error.message}
         </p>
       )}
       <button
         onClick={() => reset()}
-        className="rounded-full bg-[#00263E] px-6 py-2.5 text-sm text-white hover:opacity-90"
+        className="rounded-full bg-brand-charcoal px-6 py-2.5 text-sm text-white hover:opacity-90"
       >
         重试
       </button>

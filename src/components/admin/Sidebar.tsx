@@ -130,7 +130,7 @@ export function Sidebar({
                         <Icon className="h-5 w-5 flex-shrink-0" />
                         {(!isCollapsed || isMobile) && <span>{item.title}</span>}
                         {(!isCollapsed || isMobile) && item.badge !== undefined && (
-                          <span className="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+                          <span className="ml-auto rounded-full bg-red-400 px-2 py-0.5 text-xs text-white">
                             {item.badge}
                           </span>
                         )}
@@ -168,7 +168,7 @@ export function Sidebar({
         <button
           onClick={handleLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-charcoal/60 transition-colors hover:bg-red-50 hover:text-red-600",
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-charcoal/60 transition-colors hover:bg-red-50/70 hover:text-red-500",
             isCollapsed && !isMobile && "justify-center px-2"
           )}
           title={isCollapsed && !isMobile ? "退出登录" : undefined}

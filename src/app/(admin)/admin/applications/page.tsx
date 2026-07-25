@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { Textarea } from "@/components/ui/Textarea";
 import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -431,13 +432,12 @@ export default function AdminApplicationsPage() {
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
-          <input
-            type="text"
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+          <Input
             placeholder="搜索姓名、手机号..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full rounded-lg border border-brand-charcoal/15 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+            className="pl-10"
           />
         </div>
 
@@ -561,7 +561,7 @@ export default function AdminApplicationsPage() {
                       </button>
                       <button
                         onClick={() => downloadResume(application)}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-blue-50 hover:text-blue-500"
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
                         title="下载简历"
                       >
                         <Download className="h-4 w-4" />
@@ -703,13 +703,12 @@ export default function AdminApplicationsPage() {
 
             {/* 备注 */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-brand-charcoal/80">备注</label>
-              <textarea
+              <Textarea
+                label="备注"
                 value={editingNotes}
                 onChange={(e) => setEditingNotes(e.target.value)}
                 placeholder="添加备注信息..."
                 rows={3}
-                className="w-full rounded-lg border border-brand-charcoal/15 p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
               />
               <div className="mt-2 flex justify-end">
                 <Button size="sm" onClick={saveNotes}>
@@ -747,16 +746,13 @@ export default function AdminApplicationsPage() {
             placeholder="如：优秀候选人、待面试等"
             required
           />
-          <div>
-            <label className="mb-2 block text-sm font-medium text-brand-charcoal/80">描述（可选）</label>
-            <textarea
-              value={folderForm.description}
-              onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
-              placeholder="添加分类说明..."
-              rows={2}
-              className="w-full rounded-lg border border-brand-charcoal/15 p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
-            />
-          </div>
+          <Textarea
+            label="描述（可选）"
+            value={folderForm.description}
+            onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
+            placeholder="添加分类说明..."
+            rows={2}
+          />
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="outline" onClick={() => setShowFolderModal(false)}>
               取消

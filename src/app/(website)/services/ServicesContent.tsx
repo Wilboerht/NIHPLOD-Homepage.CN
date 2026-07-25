@@ -145,21 +145,21 @@ export function ServicesContent({ content }: ServicesContentProps) {
           <div className="hidden items-center gap-1 md:flex">
             <Link
               href="/contact"
-              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               联系我们
               <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
             </Link>
             <Link
               href="/terms"
-              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               服务条款
               <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
             </Link>
             <Link
               href="/privacy"
-              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               隐私政策
               <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
@@ -170,7 +170,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
               <button
                 type="button"
                 onClick={() => setDesktopMenuOpen((prev) => !prev)}
-                className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
                 aria-expanded={desktopMenuOpen}
               >
                 菜单
@@ -191,7 +191,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                     <Link
                       href="/products"
                       onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                     >
                       产品系列
                     </Link>
@@ -199,7 +199,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                     <Link
                       href="/guide"
                       onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                     >
                       护肤指南
                     </Link>
@@ -207,7 +207,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                     <Link
                       href="/faq"
                       onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                     >
                       常见问题
                     </Link>
@@ -215,7 +215,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                     <Link
                       href="/about"
                       onClick={() => setDesktopMenuOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                      className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                     >
                       品牌故事
                     </Link>
@@ -226,7 +226,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
             <Link
               href="/"
-              className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+              className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
             >
               <Home className="h-4 w-4" /> 返回首页
               <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
@@ -241,7 +241,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             aria-expanded={mobileMenuOpen}
             aria-controls="services-nav-panel"
           >
-            <Menu className="h-5 w-5 text-[#00263E]" />
+            <Menu className="h-5 w-5 text-brand-charcoal" />
           </button>
         </div>
       </nav>
@@ -280,7 +280,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
                 className="flex h-10 w-10 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
                 aria-label="关闭菜单"
               >
-                <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
+                <X className="h-5 w-5 text-brand-charcoal" strokeWidth={1.5} />
               </button>
             </div>
 
@@ -288,21 +288,21 @@ export function ServicesContent({ content }: ServicesContentProps) {
               <Link
                 href="/contact"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
               >
                 联系我们
               </Link>
               <Link
                 href="/terms"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
               >
                 服务条款
               </Link>
               <Link
                 href="/privacy"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
               >
                 隐私政策
               </Link>
@@ -311,7 +311,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+              className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
             >
               <Home className="h-5 w-5" />
               返回首页
@@ -325,7 +325,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
       {/* Services Grid - centered vertically */}
       <main className="flex flex-1 flex-col items-center justify-center px-6 md:px-0">
-        <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-[#00263E] md:mb-4 md:text-4xl md:font-light md:tracking-wider">
+        <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-4 md:text-4xl md:font-light md:tracking-wider">
           {pageTitle.zh}
         </h1>
         <div className="mb-4 w-[70px] border-b border-brand-primary md:hidden" />
@@ -458,7 +458,7 @@ function ServiceListItem({ service, index }: { service: ServiceDetail; index: nu
         <div className="flex h-10 w-10 shrink-0 items-center justify-center">
           <Icon className="h-7 w-7" isHovered={false} color={ICON_MOBILE_COLOR} />
         </div>
-        <span className="text-[14px] font-light tracking-[0.08em] text-[#00263E]">{service.label}</span>
+        <span className="text-[14px] font-light tracking-[0.08em] text-brand-charcoal">{service.label}</span>
         {!isDisabled && (
           <ChevronDown className="ml-auto h-4 w-4 -rotate-90 text-brand-charcoal/30" />
         )}
@@ -495,7 +495,7 @@ function ServiceCard({ service, index }: { service: ServiceDetail; index: number
         <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
           <Icon className="h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16" isHovered={isHovered} />
         </div>
-        <span className="text-[13px] font-light tracking-[0.08em] text-[#00263E] md:text-[15px] md:tracking-[0.15em]">{service.label}</span>
+        <span className="text-[13px] font-light tracking-[0.08em] text-brand-charcoal md:text-[15px] md:tracking-[0.15em]">{service.label}</span>
       </Link>
     </m.div>
   );

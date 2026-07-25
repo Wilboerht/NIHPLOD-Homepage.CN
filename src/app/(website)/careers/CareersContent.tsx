@@ -143,21 +143,21 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             <div className="hidden items-center gap-1 md:flex">
               <Link
                 href="/contact"
-                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
               >
                 联系我们
                 <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
               </Link>
               <Link
                 href="/terms"
-                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
               >
                 服务条款
                 <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
               </Link>
               <Link
                 href="/privacy"
-                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group relative px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
               >
                 隐私政策
                 <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
@@ -167,7 +167,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 <button
                   type="button"
                   onClick={() => setDesktopMenuOpen((prev) => !prev)}
-                  className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                  className="group inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
                   aria-expanded={desktopMenuOpen}
                   aria-controls="careers-desktop-menu"
                   aria-label="更多页面"
@@ -191,7 +191,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                       <Link
                         href="/products"
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                       >
                         产品系列
                       </Link>
@@ -199,7 +199,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                       <Link
                         href="/guide"
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                       >
                         护肤指南
                       </Link>
@@ -207,7 +207,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                       <Link
                         href="/faq"
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                       >
                         常见问题
                       </Link>
@@ -215,7 +215,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                       <Link
                         href="/about"
                         onClick={() => setDesktopMenuOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                        className="block rounded-xl px-4 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/5"
                       >
                         品牌故事
                       </Link>
@@ -226,7 +226,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
               <Link
                 href="/"
-                className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-[#00263E] transition-colors duration-500 hover:text-brand-charcoal-light"
+                className="group relative inline-flex items-center gap-2 px-3 py-2 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-colors duration-500 hover:text-brand-charcoal-light"
               >
                 <Home className="h-4 w-4" /> 返回首页
                 <span className="absolute bottom-1 left-1/2 h-[1px] w-0 -translate-x-1/2 bg-current transition-all duration-500 group-hover:w-[calc(100%-1.5rem)]" />
@@ -241,7 +241,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               aria-expanded={mobileMenuOpen}
               aria-controls="careers-nav-panel"
             >
-              <Menu className="h-6 w-6 text-[#00263E]" />
+              <Menu className="h-6 w-6 text-brand-charcoal" />
             </button>
           </div>
         </nav>
@@ -255,7 +255,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
           className={`fixed inset-0 z-[100] transition-all duration-500 md:hidden ${mobileMenuOpen ? "visible opacity-100" : "invisible opacity-0"}`}
         >
           <div
-            className="absolute inset-0 bg-[#00263E]/20 backdrop-blur-sm"
+            className="absolute inset-0 bg-brand-charcoal/20 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
           <div
@@ -280,7 +280,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                   className="flex h-10 w-10 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
                   aria-label="关闭菜单"
                 >
-                  <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
+                  <X className="h-5 w-5 text-brand-charcoal" strokeWidth={1.5} />
                 </button>
               </div>
 
@@ -288,21 +288,21 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                 <Link
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                  className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
                 >
                   联系我们
                 </Link>
                 <Link
                   href="/terms"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                  className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
                 >
                   服务条款
                 </Link>
                 <Link
                   href="/privacy"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                  className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
                 >
                   隐私政策
                 </Link>
@@ -311,7 +311,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
+                className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:bg-brand-charcoal/5"
               >
                 <Home className="h-5 w-5" />
                 返回首页
@@ -325,7 +325,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
         {/* Header */}
         <div className="pb-8 pt-8 text-center md:pb-12 md:pt-20">
-          <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-[#00263E] md:mb-4 md:text-4xl md:font-light md:tracking-wider">
+          <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-4 md:text-4xl md:font-light md:tracking-wider">
             {title.zh}
           </h1>
           <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
@@ -342,7 +342,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
                   onClick={() => setFilterType(item.id)}
                   className={`rounded-full px-3 py-1.5 text-[13px] font-light tracking-[0.08em] transition-colors md:px-4 md:py-2 md:text-[15px] md:tracking-[0.12em] ${
                     filterType === item.id
-                      ? "bg-[#00263E]/10 text-[#00263E]"
+                      ? "bg-[#00263E]/10 text-brand-charcoal"
                       : "text-brand-charcoal/50 hover:text-brand-charcoal/70"
                   }`}
                 >
@@ -447,7 +447,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
       className="w-full rounded-xl border border-zinc-200/60 p-4 text-left transition-all duration-200 active:scale-[0.98] active:bg-brand-charcoal/[0.02] md:p-5 md:hover:border-[#00263E]/30 md:hover:bg-white/50"
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-light tracking-[0.08em] text-[#00263E] md:text-lg md:tracking-[0.12em]">{job.title}</h3>
+        <h3 className="text-[15px] font-light tracking-[0.08em] text-brand-charcoal md:text-lg md:tracking-[0.12em]">{job.title}</h3>
         <svg
           width="18"
           height="18"
@@ -463,11 +463,11 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
         </svg>
       </div>
       <div className="mt-2.5 flex items-center gap-2.5 text-[13px] font-light text-brand-charcoal/70">
-        <span className="font-light text-[#00263E]/60">{typeInfo.label}</span>
+        <span className="font-light text-brand-charcoal/60">{typeInfo.label}</span>
         <span className="text-zinc-300">|</span>
         {job.salary && (
           <>
-            <span className="text-[#00263E]/70">{job.salary}</span>
+            <span className="text-brand-charcoal/70">{job.salary}</span>
             <span className="text-zinc-300">|</span>
           </>
         )}
@@ -635,7 +635,7 @@ function JobModal({
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-4 md:p-6">
           <div>
-            <h2 className="text-[17px] font-normal tracking-[0.08em] text-[#00263E] md:text-xl md:font-light md:tracking-[0.12em]">{job.title}</h2>
+            <h2 className="text-[17px] font-normal tracking-[0.08em] text-brand-charcoal md:text-xl md:font-light md:tracking-[0.12em]">{job.title}</h2>
             <div className="mt-2 flex items-center gap-2 text-[13px] font-light text-brand-charcoal/70">
               <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
                 {typeInfo.label}
@@ -664,7 +664,7 @@ function JobModal({
 
           {/* Description */}
           <div>
-            <h3 className="mb-3 text-base font-light tracking-[0.12em] text-[#00263E]">职位描述</h3>
+            <h3 className="mb-3 text-base font-light tracking-[0.12em] text-brand-charcoal">职位描述</h3>
             <div
               className="prose prose-sm max-w-none font-light text-brand-charcoal/80 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
               dangerouslySetInnerHTML={{
@@ -676,7 +676,7 @@ function JobModal({
           {/* Requirements */}
           {job.requirements && (
             <div>
-              <h3 className="mb-3 text-base font-light tracking-[0.12em] text-[#00263E]">任职要求</h3>
+              <h3 className="mb-3 text-base font-light tracking-[0.12em] text-brand-charcoal">任职要求</h3>
               <div
                 className="prose prose-sm max-w-none font-light text-brand-charcoal/80 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
                 dangerouslySetInnerHTML={{
@@ -688,7 +688,7 @@ function JobModal({
 
           {/* Application Form */}
           <div className="border-t border-zinc-100 pt-6">
-            <h3 className="mb-4 text-base font-light tracking-[0.12em] text-[#00263E]">投递简历</h3>
+            <h3 className="mb-4 text-base font-light tracking-[0.12em] text-brand-charcoal">投递简历</h3>
             <p className="mb-4 whitespace-pre-line text-[14px] font-light text-brand-charcoal/70">{submitTip?.content}</p>
 
             {submitStatus === "success" ? (
@@ -733,12 +733,12 @@ function JobModal({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-[14px] font-light text-brand-charcoal/70 transition-colors hover:border-[#00263E]/40 hover:text-[#00263E]"
+                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-[14px] font-light text-brand-charcoal/70 transition-colors hover:border-[#00263E]/40 hover:text-brand-charcoal"
                   >
                     {resumeFile ? (
                       <>
-                        <FileText className="h-5 w-5 text-[#00263E]" />
-                        <span className="text-[#00263E]">{resumeFile.name}</span>
+                        <FileText className="h-5 w-5 text-brand-charcoal" />
+                        <span className="text-brand-charcoal">{resumeFile.name}</span>
                       </>
                     ) : (
                       <>
