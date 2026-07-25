@@ -22,9 +22,9 @@ export async function initializeApp(): Promise<void> {
     return;
   }
 
-  console.log("\n========================================");
-  console.log("🚀 应用启动初始化...");
-  console.log("========================================\n");
+  apiConsole.info("\n========================================");
+  apiConsole.info("🚀 应用启动初始化...");
+  apiConsole.info("========================================\n");
 
   try {
     // 初始化定时任务
@@ -36,8 +36,8 @@ export async function initializeApp(): Promise<void> {
 
   _initialized = true;
 
-  console.log("\n✅ 应用初始化完成");
-  console.log("========================================\n");
+  apiConsole.info("\n✅ 应用初始化完成");
+  apiConsole.info("========================================\n");
 
   // 优雅关闭：仅负责 cron 任务清理，不调用 process.exit
   // prisma.ts 已注册完整的 DB 连接池关闭 + process.exit 逻辑
@@ -45,7 +45,7 @@ export async function initializeApp(): Promise<void> {
     _handlersRegistered = true;
 
     process.on("SIGTERM", async () => {
-      console.log("\n[Server] 收到 SIGTERM，停止定时任务...");
+      apiConsole.info("\n[Server] 收到 SIGTERM，停止定时任务...");
       try {
         const { stopCronTasks } = await import("./cron-tasks");
         stopCronTasks();
@@ -55,7 +55,7 @@ export async function initializeApp(): Promise<void> {
     });
 
     process.on("SIGINT", async () => {
-      console.log("\n[Server] 收到 SIGINT，停止定时任务...");
+      apiConsole.info("\n[Server] 收到 SIGINT，停止定时任务...");
       try {
         const { stopCronTasks } = await import("./cron-tasks");
         stopCronTasks();

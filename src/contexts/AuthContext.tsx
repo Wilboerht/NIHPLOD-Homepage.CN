@@ -198,7 +198,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (typeof window !== "undefined" && localStorage.getItem("auth_hint")) {
         const intervalId = setInterval(
           () => {
-            refreshAccessToken().catch(() => {});
+            refreshAccessToken().catch(() => {
+              // 静默刷新失败：token 可能已过期，下次 API 调用时会触发完整登录流程
+            });
           },
           14 * 60 * 1000
         );
@@ -209,7 +211,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const intervalId = setInterval(
       () => {
-        refreshAccessToken().catch(() => {});
+        refreshAccessToken().catch(() => {
+          // 静默刷新失败：token 可能已过期，下次 API 调用时会触发完整登录流程
+        });
       },
       14 * 60 * 1000
     );

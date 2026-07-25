@@ -208,14 +208,14 @@ function getWxPay() {
     const required = ["privateKey", "mchId", "apiV3Key"];
     const missing = required.filter((k) => !config[k as keyof typeof config]);
     if (missing.length > 0) {
-      console.warn(`⚠️ 微信支付配置不完整，缺少: ${missing.join(", ")}`);
+      apiConsole.warn(`⚠️ 微信支付配置不完整，缺少: ${missing.join(", ")}`);
       throw new Error("WECHAT_PAY_NOT_CONFIGURED");
     }
 
     // 必须至少有一个可用的平台证书（环境变量配置 或 自动下载缓存）
     const certsMap = getCertsMap(config);
     if (Object.keys(certsMap).length === 0) {
-      console.warn("⚠️ 微信支付平台证书未配置，请先配置或触发自动下载");
+      apiConsole.warn("⚠️ 微信支付平台证书未配置，请先配置或触发自动下载");
       throw new Error("WECHAT_PAY_NOT_CONFIGURED");
     }
 
@@ -438,7 +438,7 @@ export async function handlePaymentNotify(
 ): Promise<{ success: boolean; message?: string; transactionId?: string; amount?: number }> {
   try {
     const data = await verifyAndDecrypt(headers, rawBody);
-    console.log(`[WechatPay] 收到支付通知: ${data.out_trade_no}, 状态: ${data.trade_state}`);
+    apiConsole.info(`[WechatPay] 收到支付通知: ${data.out_trade_no}, 状态: ${data.trade_state}`);
 
     if (data.trade_state !== "SUCCESS") return { success: false, message: "支付未成功" };
 
@@ -474,7 +474,7 @@ export async function handlePaymentNotify(
         OrderStatus.DELIVERED,
       ];
       if (terminalStatuses.includes(order.status)) {
-        console.warn(`[WechatPay] 订单 ${orderNo} 已处于终态 ${order.status}，忽略支付通知`);
+        apiConsole.warn(`[WechatPay] 订单 ${orderNo} 已处于终态 ${order.status}，忽略支付通知`);
         return;
       }
 
@@ -493,7 +493,7 @@ export async function handlePaymentNotify(
       });
 
       if (updatedOrder.count === 0) {
-        console.warn(`[WechatPay] 订单 ${orderNo} 已被并发处理，跳过`);
+        apiConsole.warn(`[WechatPay] 订单 ${orderNo} 已被并发处理，跳过`);
         return;
       }
 
@@ -583,7 +583,7 @@ export async function handleRefundNotify(
 ): Promise<{ success: boolean; message?: string; refundId?: string; refundAmount?: number }> {
   try {
     const data = await verifyAndDecrypt(headers, rawBody);
-    console.log(`[WechatPay] 收到退款通知: ${data.out_trade_no}, 状态: ${data.refund_status}`);
+    apiConsole.info(`[WechatPay] 收到退款通知: ${data.out_trade_no}, 状态: ${data.refund_status}`);
 
     if (data.refund_status === "SUCCESS") {
       const order = await prisma.order.findUnique({

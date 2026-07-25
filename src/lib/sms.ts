@@ -85,7 +85,7 @@ export async function sendSMS(options: SMSParams): Promise<SMSResult> {
  * Mock 短信（开发测试用）
  */
 async function sendMockSMS(options: SMSParams): Promise<SMSResult> {
-  console.log("[Mock SMS] 发送短信:", {
+  apiConsole.info("[Mock SMS] 发送短信:", {
     phone: options.phone,
     template: options.template,
     params: options.params,
@@ -156,7 +156,7 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
     const result = await response.json();
 
     if (result.Code === "OK") {
-      console.log("[Aliyun SMS] 发送成功:", result.BizId);
+      apiConsole.info("[Aliyun SMS] 发送成功:", result.BizId);
       return { success: true, messageId: result.BizId };
     } else {
       apiConsole.error("[Aliyun SMS] 发送失败:", result);
@@ -256,7 +256,7 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
     });
 
     if (res.SendStatusSet && res.SendStatusSet[0].Code === "Ok") {
-      console.log("[Tencent SMS] 发送成功:", res.SendStatusSet[0].SerialNo);
+      apiConsole.info("[Tencent SMS] 发送成功:", res.SendStatusSet[0].SerialNo);
       return { success: true, messageId: res.SendStatusSet[0].SerialNo };
     } else {
       apiConsole.error("[Tencent SMS] 发送失败:", res.SendStatusSet?.[0]);

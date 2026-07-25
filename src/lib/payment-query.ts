@@ -132,7 +132,7 @@ async function fulfillOrderAsPaid(
   });
 
   if (fulfilled) {
-    console.log(`[PaymentQuery] 主动查询完成订单支付: ${order.orderNo}, 网关: ${gateway}`);
+    apiConsole.info(`[PaymentQuery] 主动查询完成订单支付: ${order.orderNo}, 网关: ${gateway}`);
   }
 
   return fulfilled;
@@ -170,7 +170,7 @@ export async function queryAndFulfillExpiredPendingOrders(pendingMinutes = 25): 
       }
     }
 
-    console.log(`[PaymentQuery] 批量兜底查询完成: ${fulfilledCount}/${orders.length} 个订单已支付`);
+    apiConsole.info(`[PaymentQuery] 批量兜底查询完成: ${fulfilledCount}/${orders.length} 个订单已支付`);
     return { success: true, fulfilledCount };
   } catch (error) {
     apiConsole.error("[PaymentQuery] 批量查询失败:", error);

@@ -29,10 +29,10 @@ const tasks: ScheduledTask[] = [
     cronExpression: "0 1 * * *", // 每天凌晨 1 点刷新
     handler: async () => {
       try {
-        console.log("[Cron] 开始刷新微信支付平台证书...");
+        apiConsole.info("[Cron] 开始刷新微信支付平台证书...");
         const result = await downloadWechatPlatformCerts();
         if (result.success) {
-          console.log(`[Cron] 微信支付平台证书刷新完成: ${result.count} 个证书`);
+          apiConsole.info(`[Cron] 微信支付平台证书刷新完成: ${result.count} 个证书`);
         } else {
           apiConsole.error("[Cron] 微信支付平台证书刷新失败:", result.error);
         }
@@ -46,9 +46,9 @@ const tasks: ScheduledTask[] = [
     cronExpression: "*/30 * * * *", // 每30分钟执行一次，在自动取消前兜底查询
     handler: async () => {
       try {
-        console.log("[Cron] 开始执行待支付订单主动查询任务...");
+        apiConsole.info("[Cron] 开始执行待支付订单主动查询任务...");
         const result = await queryAndFulfillExpiredPendingOrders(25);
-        console.log(`[Cron] 主动查询完成: ${result.fulfilledCount} 个订单已支付`);
+        apiConsole.info(`[Cron] 主动查询完成: ${result.fulfilledCount} 个订单已支付`);
       } catch (error) {
         apiConsole.error("[Cron] 待支付订单主动查询任务失败:", error);
       }
@@ -59,9 +59,9 @@ const tasks: ScheduledTask[] = [
     cronExpression: "*/30 * * * *", // 每30分钟执行一次
     handler: async () => {
       try {
-        console.log("[Cron] 开始执行订单取消任务...");
+        apiConsole.info("[Cron] 开始执行订单取消任务...");
         const result = await autoCancelExpiredOrders(30);
-        console.log(`[Cron] 订单取消完成: ${result.canceledCount} 个订单被取消`);
+        apiConsole.info(`[Cron] 订单取消完成: ${result.canceledCount} 个订单被取消`);
       } catch (error) {
         apiConsole.error("[Cron] 订单取消任务失败:", error);
       }
@@ -72,9 +72,9 @@ const tasks: ScheduledTask[] = [
     cronExpression: "0 0 * * *", // 每天午夜执行一次
     handler: async () => {
       try {
-        console.log("[Cron] 开始执行订单完成任务...");
+        apiConsole.info("[Cron] 开始执行订单完成任务...");
         const result = await autoCompleteShippedOrders(15);
-        console.log(`[Cron] 订单完成处理: ${result.completedCount} 个订单自动完成`);
+        apiConsole.info(`[Cron] 订单完成处理: ${result.completedCount} 个订单自动完成`);
       } catch (error) {
         apiConsole.error("[Cron] 订单完成任务失败:", error);
       }
@@ -85,9 +85,9 @@ const tasks: ScheduledTask[] = [
     cronExpression: "0 2 * * *", // 每天凌晨 2 点执行
     handler: async () => {
       try {
-        console.log("[Cron] 开始执行优惠券过期清理任务...");
+        apiConsole.info("[Cron] 开始执行优惠券过期清理任务...");
         const result = await autoExpireUserCoupons();
-        console.log(`[Cron] 优惠券过期清理完成: ${result.expiredCount} 张优惠券被标记为过期`);
+        apiConsole.info(`[Cron] 优惠券过期清理完成: ${result.expiredCount} 张优惠券被标记为过期`);
       } catch (error) {
         apiConsole.error("[Cron] 优惠券过期清理任务失败:", error);
       }
@@ -98,9 +98,9 @@ const tasks: ScheduledTask[] = [
     cronExpression: "0 3 * * *", // 每天凌晨 3 点执行
     handler: async () => {
       try {
-        console.log("[Cron] 开始清理过期 Refresh Token...");
+        apiConsole.info("[Cron] 开始清理过期 Refresh Token...");
         const count = await cleanupExpiredRefreshTokens();
-        console.log(`[Cron] 过期 Refresh Token 清理完成: ${count} 个`);
+        apiConsole.info(`[Cron] 过期 Refresh Token 清理完成: ${count} 个`);
       } catch (error) {
         apiConsole.error("[Cron] 过期 Refresh Token 清理失败:", error);
       }
@@ -111,9 +111,9 @@ const tasks: ScheduledTask[] = [
     cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
     handler: async () => {
       try {
-        console.log("[Cron] 开始清理过期限流记录...");
+        apiConsole.info("[Cron] 开始清理过期限流记录...");
         const count = await cleanupRateLimitRecords();
-        console.log(`[Cron] 过期限流记录清理完成: ${count} 条`);
+        apiConsole.info(`[Cron] 过期限流记录清理完成: ${count} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 过期限流记录清理失败:", error);
       }
@@ -124,9 +124,9 @@ const tasks: ScheduledTask[] = [
     cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
     handler: async () => {
       try {
-        console.log("[Cron] 开始清理陈旧登录尝试记录...");
+        apiConsole.info("[Cron] 开始清理陈旧登录尝试记录...");
         const count = await cleanupOldLoginAttempts();
-        console.log(`[Cron] 登录尝试记录清理完成: ${count} 条`);
+        apiConsole.info(`[Cron] 登录尝试记录清理完成: ${count} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 登录尝试记录清理失败:", error);
       }
@@ -137,9 +137,9 @@ const tasks: ScheduledTask[] = [
     cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
     handler: async () => {
       try {
-        console.log("[Cron] 开始清理过期验证码记录...");
+        apiConsole.info("[Cron] 开始清理过期验证码记录...");
         const count = await cleanupExpiredSmsCodes();
-        console.log(`[Cron] 过期验证码记录清理完成: ${count} 条`);
+        apiConsole.info(`[Cron] 过期验证码记录清理完成: ${count} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 验证码记录清理失败:", error);
       }
@@ -160,16 +160,16 @@ export function isLocalCronEnabled(): boolean {
 }
 export function initializeCronTasks(): void {
   if (isInitialized) {
-    console.log("[Cron] 定时任务已初始化，跳过重复初始化");
+    apiConsole.info("[Cron] 定时任务已初始化，跳过重复初始化");
     return;
   }
 
   if (!isLocalCronEnabled()) {
-    console.log("[Cron] 本地定时任务已禁用（如需启用请设置 ENABLE_LOCAL_CRON=true）");
+    apiConsole.info("[Cron] 本地定时任务已禁用（如需启用请设置 ENABLE_LOCAL_CRON=true）");
     return;
   }
 
-  console.log("[Cron] 初始化定时任务...");
+  apiConsole.info("[Cron] 初始化定时任务...");
 
   // 启动时立即刷新一次微信证书，避免重启后证书缓存为空导致回调验签失败
   downloadWechatPlatformCerts().catch((error) => {
@@ -184,14 +184,14 @@ export function initializeCronTasks(): void {
       });
 
       scheduledTasks.push(job);
-      console.log(`[Cron] ✓ 任务已注册: ${task.name} (${task.cronExpression})`);
+      apiConsole.info(`[Cron] ✓ 任务已注册: ${task.name} (${task.cronExpression})`);
     } catch (error) {
       apiConsole.error(`[Cron] ✗ 任务注册失败: ${task.name}`, error);
     }
   }
 
   isInitialized = true;
-  console.log(`[Cron] 共注册 ${scheduledTasks.length} 个定时任务`);
+  apiConsole.info(`[Cron] 共注册 ${scheduledTasks.length} 个定时任务`);
 }
 
 /**
@@ -199,7 +199,7 @@ export function initializeCronTasks(): void {
  * 在应用关闭时调用
  */
 export function stopCronTasks(): void {
-  console.log("[Cron] 停止所有定时任务...");
+  apiConsole.info("[Cron] 停止所有定时任务...");
 
   for (const task of scheduledTasks) {
     task.stop();
@@ -207,5 +207,5 @@ export function stopCronTasks(): void {
 
   scheduledTasks = [];
   isInitialized = false;
-  console.log("[Cron] 所有定时任务已停止");
+  apiConsole.info("[Cron] 所有定时任务已停止");
 }

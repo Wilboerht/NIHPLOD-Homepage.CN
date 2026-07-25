@@ -462,7 +462,7 @@ export async function handleAlipayNotify(
       }
     });
 
-    console.log(`[Alipay] 订单支付成功: ${orderNo}`);
+    apiConsole.info(`[Alipay] 订单支付成功: ${orderNo}`);
     return { success: true };
   } catch (error) {
     apiConsole.error("[Alipay] 处理回调失败:", error);
@@ -509,7 +509,7 @@ export async function refundAlipayOrder(
       return { success: false, error: result.error || "退款失败" };
     }
 
-    console.log(`[Alipay] 退款成功: ${outTradeNo}, 退款金额: ${safeRefundAmount}`);
+    apiConsole.info(`[Alipay] 退款成功: ${outTradeNo}, 退款金额: ${safeRefundAmount}`);
     return { success: true };
   } catch (e) {
     apiConsole.error("[Alipay] 退款异常:", e);

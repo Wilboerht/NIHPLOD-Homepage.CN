@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { config as dotenvConfig } from "dotenv";
 import { existsSync } from "node:fs";
 import { join } from "node:path";

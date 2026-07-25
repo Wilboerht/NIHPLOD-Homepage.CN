@@ -91,7 +91,9 @@ export default function AdminCouponsPage() {
     // 加载品类列表（用于编辑弹窗的适用范围选择）
     apiGet<{ id: string; name: string }[]>("/api/admin/categories")
       .then((data) => setCategories(data))
-      .catch(() => {});
+      .catch((err) => {
+            apiConsole.error("加载品类列表失败:", err);
+          });
   }, [fetchCoupons]);
 
   const handleToggleActive = async (id: string, current: boolean) => {

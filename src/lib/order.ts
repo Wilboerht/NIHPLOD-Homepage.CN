@@ -277,7 +277,7 @@ export async function createOrder(
       return { orderId: order.id, orderNo: order.orderNo };
     });
 
-    console.log(`[Order] 订单创建成功: ${result.orderNo}`);
+    apiConsole.info(`[Order] 订单创建成功: ${result.orderNo}`);
     return { success: true, ...result };
   } catch (error) {
     const message = error instanceof Error ? error.message : "订单创建失败";
@@ -336,7 +336,7 @@ export async function cancelOrder(
       }
     });
 
-    console.log(`[Order] 订单取消成功: ${orderId}`);
+    apiConsole.info(`[Order] 订单取消成功: ${orderId}`);
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "取消失败";
@@ -414,7 +414,7 @@ export async function autoCancelExpiredOrders(
       }
     }
 
-    console.log(`[Order] 系统自动取消了 ${canceledCount} 个超时订单`);
+    apiConsole.info(`[Order] 系统自动取消了 ${canceledCount} 个超时订单`);
     return { success: true, canceledCount };
   } catch (error) {
     apiConsole.error("[Order] 自动取消超时订单出错:", error);
@@ -446,7 +446,7 @@ export async function autoCompleteShippedOrders(
       },
     });
 
-    console.log(`[Order] 系统自动完成了 ${result.count} 个发货超期订单`);
+    apiConsole.info(`[Order] 系统自动完成了 ${result.count} 个发货超期订单`);
     return { success: true, completedCount: result.count };
   } catch (error) {
     apiConsole.error("[Order] 自动完成已发货订单出错:", error);

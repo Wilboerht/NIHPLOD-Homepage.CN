@@ -142,7 +142,7 @@ export async function applyRefund(
       },
     });
 
-    console.log(`[Refund] 退款申请: ${order.orderNo}`);
+    apiConsole.info(`[Refund] 退款申请: ${order.orderNo}`);
     return { success: true };
   } catch (error) {
     apiConsole.error("[Refund] 申请失败:", error);
@@ -186,7 +186,7 @@ export async function processRefund(
       // 1. 微信支付：调用退款接口，成功后只记录信息，等回调确认
       if (order.paymentMethod === "wechat" && order.payAmount) {
         refundNo = generateRefundNo(order.orderNo);
-        console.log(`[Refund] 发起微信退款: ${order.orderNo}, 金额: ${refundAmount}`);
+        apiConsole.info(`[Refund] 发起微信退款: ${order.orderNo}, 金额: ${refundAmount}`);
 
         const refundRes = await applyWechatRefund(
           order.orderNo,
@@ -218,7 +218,7 @@ export async function processRefund(
 
       // 2. 支付宝退款：同步接口，成功后直接 finalize
       else if (order.paymentMethod === "alipay" && order.payAmount) {
-        console.log(`[Refund] 发起支付宝退款: ${order.orderNo}`);
+        apiConsole.info(`[Refund] 发起支付宝退款: ${order.orderNo}`);
 
         const refundRes = await refundAlipayOrder(
           order.orderNo,
@@ -263,7 +263,7 @@ export async function processRefund(
         });
       }
 
-      console.log(`[Refund] 退款处理成功: ${order.orderNo}`);
+      apiConsole.info(`[Refund] 退款处理成功: ${order.orderNo}`);
     } else {
       // 拒绝退款：恢复到退款前状态（优先使用记录的 previousStatus）
       const previousStatus = order.previousStatus || OrderStatus.PAID;
@@ -278,7 +278,7 @@ export async function processRefund(
         },
       });
 
-      console.log(`[Refund] 退款拒绝: ${order.orderNo}`);
+      apiConsole.info(`[Refund] 退款拒绝: ${order.orderNo}`);
     }
 
     return { success: true };
@@ -319,7 +319,7 @@ export async function cancelRefund(
       },
     });
 
-    console.log(`[Refund] 取消退款: ${order.orderNo}`);
+    apiConsole.info(`[Refund] 取消退款: ${order.orderNo}`);
     return { success: true };
   } catch (error) {
     apiConsole.error("[Refund] 取消失败:", error);
