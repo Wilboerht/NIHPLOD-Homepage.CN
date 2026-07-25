@@ -527,7 +527,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00263E]/30 px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:border-[#00263E] hover:bg-[#00263E]/5 disabled:opacity-50 md:py-3.5 md:tracking-[0.15em]"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00263E]/30 px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:border-[#00263E] active:bg-[#00263E]/5 hover:border-[#00263E] hover:bg-[#00263E]/5 disabled:opacity-50 md:py-3.5 md:tracking-[0.15em]"
               >
                 {status === "loading" ? (
                   <>
