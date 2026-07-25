@@ -947,7 +947,7 @@ export function ProductDetailContent({
 
         {/* 移动端底部固定购买栏 */}
         {product.allowDirectBuy && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#fefcf8]/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-md lg:hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#fefcf8]/95 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-md lg:hidden">
             <div className="flex items-center gap-3">
               <button
                 type="button"
