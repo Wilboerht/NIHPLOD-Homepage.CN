@@ -259,60 +259,62 @@ export function ServicesContent({ content }: ServicesContentProps) {
           onClick={() => setMobileMenuOpen(false)}
         />
         <div
-          className={`absolute left-0 top-0 h-full w-[min(300px,80vw)] transform rounded-r-3xl bg-[#FBF8F0] pb-[calc(1.25rem+env(safe-area-inset-bottom,16px))] pt-[calc(1.25rem+env(safe-area-inset-top,0px))] shadow-2xl transition-transform duration-500 ease-out ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+          className={`absolute left-0 top-0 h-full w-[min(300px,80vw)] transform rounded-r-3xl bg-[#fefcf8] pb-[calc(1.25rem+env(safe-area-inset-bottom,16px))] pt-[calc(1.25rem+env(safe-area-inset-top,0px))] shadow-2xl transition-transform duration-500 ease-out ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex h-full flex-col px-6">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(false)}
-              className="mb-8 flex h-10 w-10 items-center justify-center self-end rounded-full transition-colors hover:bg-brand-charcoal/5"
-              aria-label="关闭菜单"
-            >
-              <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
-            </button>
+            {/* Logo + 关闭按钮同行 */}
+            <div className="mb-8 flex items-center justify-between rounded-xl px-4 py-4">
+              <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+                <div className="relative h-[30px] w-[107px]">
+                  <Image
+                    src="/images/NIHPLOD-logo.svg"
+                    alt="NIHPLOD"
+                    fill
+                    className="object-contain object-left"
+                  />
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
+                aria-label="关闭菜单"
+              >
+                <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
+              </button>
+            </div>
 
-            <Link href="/" onClick={() => setMobileMenuOpen(false)} className="mb-10">
-              <div className="relative h-[30px] w-[130px]">
-                <Image
-                  src="/images/NIHPLOD-logo.svg"
-                  alt="NIHPLOD"
-                  fill
-                  className="object-contain object-center md:object-left"
-                />
-              </div>
-            </Link>
-
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-1 flex-col gap-2 overflow-y-auto overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <Link
                 href="/contact"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
               >
                 联系我们
               </Link>
               <Link
                 href="/terms"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
               >
                 服务条款
               </Link>
               <Link
                 href="/privacy"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                className="flex h-12 items-center rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
               >
                 隐私政策
               </Link>
             </div>
 
             <Link
-              href="/"
+              href="/products"
               onClick={() => setMobileMenuOpen(false)}
-              className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+              className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
             >
               <Home className="h-5 w-5" />
-              返回首页
+              返回产品页
             </Link>
           </div>
         </div>
