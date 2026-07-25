@@ -591,7 +591,9 @@ function JobModal({
       });
     };
 
-    tryInitMap();
+    // 延迟地图初始化，等模态框动画完成后再加载，避免主线程争抢导致卡顿
+    const timer = setTimeout(tryInitMap, 400);
+    return () => clearTimeout(timer);
   }, [job.id, job.location, job.longitude, job.latitude]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -638,6 +640,7 @@ function JobModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
+      style={{ willChange: "opacity" }}
       className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:p-4"
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -645,7 +648,8 @@ function JobModal({
         initial={isDesktop ? { opacity: 0 } : { opacity: 0, y: "100%" }}
         animate={isDesktop ? { opacity: 1 } : { opacity: 1, y: 0 }}
         exit={isDesktop ? { opacity: 0 } : { opacity: 0, y: "100%" }}
-        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+        transition={{ duration: 0.3, delay: 0.05, ease: [0.32, 0.72, 0, 1] }}
+        style={{ willChange: "transform, opacity" }}
         className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-2xl md:rounded-2xl"
       >
         {/* Header */}
