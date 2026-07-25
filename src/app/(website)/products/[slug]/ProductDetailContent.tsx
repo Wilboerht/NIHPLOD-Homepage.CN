@@ -887,10 +887,10 @@ export function ProductDetailContent({
                       href="https://advisor.nihplod.cn"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group inline-flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.08em] text-brand-primary transition-opacity hover:opacity-70 lg:tracking-[0.12em]"
+                      className="group flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.08em] text-brand-primary transition-opacity hover:opacity-70 lg:inline-flex lg:tracking-[0.12em]"
                     >
                       <span>
-                        参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤
+                        参加肌智派素颜测肤，获取您的专属护肤秘籍<br className="lg:hidden" />——更少产品，科学护肤
                       </span>
                       <svg
                         viewBox="0 0 24 24"
@@ -899,7 +899,7 @@ export function ProductDetailContent({
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="h-3 w-3 shrink-0 transition-transform group-hover:translate-x-1"
+                        className="ml-auto h-3 w-3 shrink-0 transition-transform group-hover:translate-x-1 lg:ml-0"
                       >
                         <path d="M5 12h14" />
                         <path d="m12 5 7 7-7 7" />
