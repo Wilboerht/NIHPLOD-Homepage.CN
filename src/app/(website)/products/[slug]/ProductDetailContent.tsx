@@ -606,7 +606,7 @@ export function ProductDetailContent({
       {/* 固定顶栏占位 */}
       <div className="h-[88px] shrink-0 md:h-[88px]" />
 
-      <div className="relative z-10 flex flex-1 flex-col pb-28 lg:w-[80%] lg:mx-auto lg:justify-center lg:pb-8">
+      <div className="relative z-10 flex flex-1 flex-col pb-24 lg:w-[80%] lg:mx-auto lg:justify-center lg:pb-8">
 
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative w-full lg:flex lg:items-center lg:justify-center">
