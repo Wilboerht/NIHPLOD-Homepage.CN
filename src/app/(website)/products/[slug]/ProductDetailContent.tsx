@@ -944,12 +944,12 @@ export function ProductDetailContent({
 
         {/* 移动端底部固定购买栏 */}
         {product.allowDirectBuy && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#fefcf8]/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#fefcf8]/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-md lg:hidden">
             <button
               type="button"
               onClick={handleOfficialBuy}
               disabled={buying}
-              className="w-full rounded-lg bg-brand-primary py-3 text-center text-sm font-light tracking-[0.12em] text-white transition-colors hover:bg-brand-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg bg-brand-primary py-3 text-center text-sm font-light tracking-[0.08em] text-white transition-colors hover:bg-brand-primary/90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 lg:tracking-[0.12em]"
             >
               {buying ? "加入中…" : "官网购买"}
             </button>
@@ -960,7 +960,7 @@ export function ProductDetailContent({
 
       {/* 底部版权信息 */}
       <footer className="mt-auto md:border-t md:border-brand-charcoal/10">
-        <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16 max-lg:pb-24">
+        <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16 max-lg:pb-[calc(5.75rem+env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-center gap-3">
             <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
