@@ -665,11 +665,32 @@ export function ProductDetailContent({
                             </div>
                           ))}
                         </m.div>
+
+                        {/* 移动端细线指示器（图片内部） */}
+                        {product.images.length > 1 && (
+                          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 lg:hidden">
+                            {product.images.map((_, index) => (
+                              <button
+                                key={index}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(index); }}
+                                className={cn(
+                                  "h-[2px] rounded-full border-none p-0 transition-all duration-300",
+                                  currentImageIndex === index
+                                    ? "w-5 bg-white"
+                                    : "w-3 bg-white/40"
+                                )}
+                                aria-label={`查看第 ${index + 1} 张图片`}
+                                aria-current={currentImageIndex === index ? "true" : undefined}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
 
-                      {/* 图片指示器 */}
+                      {/* PC端圆点指示器 */}
                       {product.images.length > 1 && (
-                        <div className="mt-4 flex items-center justify-center gap-2 lg:mt-7">
+                        <div className="mt-7 hidden items-center justify-center gap-2 lg:flex">
                           {product.images.map((_, index) => (
                             <button
                               key={index}
