@@ -31,14 +31,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "护肤仪式 | NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。"
+      "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "护肤仪式 | NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。"
+      "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。",
     images: ["/images/og-image.png"],
   },
 };
