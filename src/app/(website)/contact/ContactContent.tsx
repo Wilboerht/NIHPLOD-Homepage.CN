@@ -92,6 +92,46 @@ export function ContactContent({ content }: ContactContentProps) {
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const desktopMenuRef = useRef<HTMLDivElement>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Per-field validation for onBlur
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case "name":
+        if (!value.trim()) return "请输入您的称呼";
+        if (value.length < 2) return "称呼至少2个字符";
+        if (value.length > 50) return "称呼最多50个字符";
+        return "";
+      case "phone":
+        if (!value.trim()) return "请输入您的手机号";
+        if (!/^1[3456789]\d{9}$/.test(value)) return "请输入有效的11位手机号";
+        return "";
+      case "type":
+        if (!value) return "请选择留言类型";
+        return "";
+      case "content":
+        if (!value.trim()) return "请输入留言内容";
+        if (value.length < 10) return "留言内容至少10个字符";
+        if (value.length > 2000) return "留言内容最多2000个字符";
+        return "";
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setErrors((prev) => {
+      if (error && prev[name] !== error) return { ...prev, [name]: error };
+      if (!error && prev[name]) {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      }
+      return prev;
+    });
+  };
 
   useEffect(() => {
     const typeParam = searchParams.get("type");
@@ -148,6 +188,7 @@ export function ContactContent({ content }: ContactContentProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (status === "loading") return; // 防止重复提交
     if (!validateForm()) return;
     setStatus("loading");
     try {
@@ -170,6 +211,11 @@ export function ContactContent({ content }: ContactContentProps) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    // Auto-grow textarea (capped at 200px)
+    if (e.target instanceof HTMLTextAreaElement) {
+      e.target.style.height = "auto";
+      e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+    }
   };
 
   return (
@@ -424,6 +470,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="您的称呼"
                     autoComplete="name"
                     maxLength={50}
@@ -449,6 +496,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="您的手机号"
                     autoComplete="tel"
                     inputMode="tel"
@@ -472,28 +520,32 @@ export function ContactContent({ content }: ContactContentProps) {
                 >
                   留言类型 <span className="text-red-400">*</span>
                 </label>
-                <select
-                  id="type"
-                  name="type"
-                  value={formData.type}
-                  onChange={(e) => {
-                    setFormData((prev) => ({ ...prev, type: e.target.value }));
-                    if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
-                  }}
-                  className={cn(
-                    "w-full rounded-lg border px-3 py-2 text-[15px] font-light outline-none transition-all appearance-none md:px-4 md:py-3.5",
-                    !formData.type && "text-brand-charcoal/40",
-                    errors.type
-                      ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                      : "border-brand-charcoal/20 hover:border-[#00263E]/40 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
-                  )}
-                >
-                  {messageTypes.map((type) => (
-                    <option key={type.value} value={type.value} disabled={type.value === ""}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    id="type"
+                    name="type"
+                    value={formData.type}
+                    onChange={(e) => {
+                      setFormData((prev) => ({ ...prev, type: e.target.value }));
+                      if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
+                    }}
+                    onBlur={handleBlur}
+                    className={cn(
+                      "w-full rounded-lg border px-3 py-2 pr-10 text-[15px] font-light outline-none transition-all appearance-none md:px-4 md:py-3.5 md:pr-12",
+                      !formData.type && "text-brand-charcoal/40",
+                      errors.type
+                        ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-brand-charcoal/20 hover:border-[#00263E]/40 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
+                    )}
+                  >
+                    {messageTypes.map((type) => (
+                      <option key={type.value} value={type.value} disabled={type.value === ""}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40 md:right-4" />
+                </div>
                 {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
               </div>
 
@@ -506,10 +558,12 @@ export function ContactContent({ content }: ContactContentProps) {
                   留言内容 <span className="text-red-400">*</span>
                 </label>
                 <textarea
+                  ref={textareaRef}
                   id="content"
                   name="content"
                   value={formData.content}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   placeholder="请输入您的留言内容..."
                   rows={4}
                   maxLength={2000}
@@ -519,6 +573,7 @@ export function ContactContent({ content }: ContactContentProps) {
                       ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                       : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
                   )}
+                  style={{ maxHeight: "200px" }}
                 />
                 {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
               </div>
@@ -527,7 +582,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:border-[#00263E] active:bg-[#00263E]/5 hover:border-[#00263E] hover:bg-[#00263E]/5 disabled:opacity-50 md:gap-2 md:py-3.5 md:tracking-[0.15em]"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 bg-[#00263E]/[0.04] px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:border-[#00263E] active:bg-[#00263E]/10 disabled:opacity-50 md:bg-transparent md:gap-2 md:py-3.5 md:tracking-[0.15em] md:hover:border-[#00263E] md:hover:bg-[#00263E]/5"
               >
                 {status === "loading" ? (
                   <>
