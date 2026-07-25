@@ -621,14 +621,15 @@ function JobModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
       className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:p-4"
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <m.div
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: "100%" }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 40 }}
-        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+        exit={{ opacity: 0, y: "100%" }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-2xl md:rounded-2xl"
       >
         {/* Header */}
