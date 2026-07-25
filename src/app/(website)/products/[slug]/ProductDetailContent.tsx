@@ -610,7 +610,7 @@ export function ProductDetailContent({
           <div className="w-full scroll-smooth overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
             <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
-              <div className="px-6 lg:flex lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-y-auto lg:px-0 lg:py-8">
+              <div className="px-6 pt-6 lg:flex lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-y-auto lg:px-0 lg:pb-8">
                 <div className="w-full md:mx-auto md:w-full lg:max-w-lg">
                   <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
                     {/* 桌面端缩略图列 */}
@@ -709,7 +709,7 @@ export function ProductDetailContent({
               </div>
 
               {/* 右侧：产品信息 + 购买 */}
-              <div className="lg:min-w-0 lg:overflow-y-auto lg:py-8">
+              <div className="pt-8 lg:min-w-0 lg:overflow-y-auto lg:py-8 lg:pt-0">
                 <div className="mx-auto max-w-2xl px-6 sm:px-0">
                   {/* 产品信息 */}
                   <m.div
@@ -718,7 +718,7 @@ export function ProductDetailContent({
                     transition={{ duration: 0.6, ease: "easeOut" }}
                   >
                   {/* 产品名称 + 操作按钮 */}
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3">
                     <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E] sm:text-[24px] lg:text-[28px]">
                       {product.name}
                     </h1>
@@ -726,7 +726,7 @@ export function ProductDetailContent({
                       <button
                         type="button"
                         onClick={handleShare}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal md:h-11 md:w-11"
                         aria-label="分享"
                       >
                         <Share2 className="h-5 w-5" />
