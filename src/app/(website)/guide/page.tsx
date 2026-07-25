@@ -10,7 +10,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "护肤仪式与指南",
   description:
-    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
   keywords: [
     "NIHPLOD",
     "旎柏",
@@ -31,14 +31,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "护肤仪式 | NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+      "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。"
     images: ["/images/og-image.png"],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "护肤仪式 | NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+      "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。"
     images: ["/images/og-image.png"],
   },
 };

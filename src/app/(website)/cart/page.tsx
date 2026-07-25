@@ -10,7 +10,7 @@ import CartContent from "./CartContent";
 export const metadata: Metadata = {
   title: "购物车",
   description:
-    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
   alternates: {
     canonical: "/cart",
   },

@@ -47,6 +47,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <Suspense
         fallback={<div className="flex min-h-dvh items-center justify-center">加载中...</div>}
       >
+        <head>
+          <meta name="robots" content="noindex, nofollow" />
+        </head>
         {children}
       </Suspense>
     );
@@ -54,6 +57,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <ToastProvider>
+      <head>
+        <meta name="robots" content="noindex, nofollow" />
+      </head>
       <div className="min-h-dvh bg-gray-50 font-sans">
         {/* 侧边栏 */}
         <Sidebar

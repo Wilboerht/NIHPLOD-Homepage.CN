@@ -77,7 +77,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
     const mockDescription = toMetaDescription(
       mockProduct.description,
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌。"
+      "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。"
     );
     const mockOgImageUrl = toOgImageUrl(mockProduct.images[0]?.url);
     return {
@@ -91,7 +91,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         images: [{ url: mockOgImageUrl, alt: mockProduct.name }],
       },
       twitter: {
-        card: "summary",
+        card: "summary_large_image",
         title: `${mockProduct.name} | NIHPLOD 旎柏`,
         description: mockDescription,
         images: [mockOgImageUrl],
@@ -118,7 +118,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const description = toMetaDescription(
     product.description,
-    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。"
+    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。"
   );
   const productKeywords = [
     product.name,
@@ -146,7 +146,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       images: [{ url: ogImageUrl, alt: product.name }],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: `${product.name} | NIHPLOD 旎柏`,
       description: description,
       images: [ogImageUrl],

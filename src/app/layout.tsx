@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s | NIHPLOD 旎柏",
   },
   description:
-    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
   // meta keywords 对 Google 无效、百度权重极低，仅保留高商业意图词作为语义补充；
   // 核心排名依赖各页面 title / description / H1 / JSON-LD 中的关键词布局
   keywords: [
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
     siteName: "NIHPLOD 旎柏",
     title: "NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+      "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
     images: [
       {
         url: "/images/og-image.png",
@@ -89,16 +89,26 @@ export const metadata: Metadata = {
 
   // Twitter Card
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+      "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
     creator: "@nihplod",
   },
 
   icons: {
     icon: "/favicon.ico",
+  },
+
+  // PWA 清单
+  manifest: "/manifest.json",
+
+  // 国际化 hreflang
+  alternates: {
+    languages: {
+      "zh-CN": baseUrl,
+    },
   },
 
   // 其他 SEO

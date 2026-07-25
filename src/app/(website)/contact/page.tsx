@@ -9,7 +9,7 @@ export const revalidate = 86400; // 24小时
 export const metadata: Metadata = {
   title: "联系我们",
   description:
-    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
   alternates: {
     canonical: "/contact",
   },
@@ -26,14 +26,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "联系我们 | NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+      "联系 NIHPLOD 旎柏——专属服务，始终在线。",
     images: ["/images/og-image.png"],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "联系我们 | NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+      "联系 NIHPLOD 旎柏——专属服务，始终在线。",
     images: ["/images/og-image.png"],
   },
 };

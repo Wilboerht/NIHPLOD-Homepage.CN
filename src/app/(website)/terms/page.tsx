@@ -72,21 +72,21 @@ const defaultContent: TermsPageContent = {
 export const metadata: Metadata = {
   title: "服务条款",
   description:
-    "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
   alternates: {
     canonical: "/terms",
   },
   openGraph: {
     title: "服务条款 | NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+      "了解使用本网站的各项服务条款与用户协议。",
     images: ["/images/og-image.png"],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "服务条款 | NIHPLOD 旎柏",
     description:
-      "NIHPLOD 旎柏，是源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于为高净值人士打造简单、高效的护肤体验。",
+      "了解使用本网站的各项服务条款与用户协议。",
     images: ["/images/og-image.png"],
   },
   robots: {

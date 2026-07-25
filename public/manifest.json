@@ -1,0 +1,19 @@
+{
+  "name": "NIHPLOD 旎柏",
+  "short_name": "NIHPLOD",
+  "description": "NIHPLOD 旎柏——源自摩纳哥的专业护肤品牌，以真脂质体 Dolphin-Skin 专利科技逆转时光。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBF8F0",
+  "theme_color": "#00263E",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/logo.webp",
+      "sizes": "any",
+      "type": "image/webp"
+    }
+  ],
+  "lang": "zh-CN",
+  "dir": "ltr"
+}
