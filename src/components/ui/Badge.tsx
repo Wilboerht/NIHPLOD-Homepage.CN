@@ -20,17 +20,17 @@ interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-gray-100 text-gray-700",
+  default: "bg-brand-charcoal/8 text-brand-charcoal/80",
   primary: "bg-brand-primary/10 text-brand-primary",
-  secondary: "bg-gray-500/10 text-gray-600",
+  secondary: "bg-brand-charcoal/8 text-brand-charcoal/60",
   success: "bg-green-50 text-green-700",
   warning: "bg-yellow-50 text-yellow-700",
   danger: "bg-red-50 text-red-700",
-  outline: "border border-gray-300 text-gray-700 bg-transparent",
+  outline: "border border-brand-charcoal/20 text-brand-charcoal/80 bg-transparent",
 };
 
 const sizeStyles = {
-  sm: "px-2 py-0.5 text-xs",
+  sm: "px-2.5 py-0.5 text-sm",
   md: "px-2.5 py-1 text-sm",
 };
 
@@ -65,7 +65,7 @@ export function DotBadge({
   className?: string;
 }) {
   const dotColors = {
-    gray: "bg-gray-400",
+    gray: "bg-brand-charcoal/40",
     green: "bg-green-500",
     yellow: "bg-yellow-500",
     red: "bg-red-500",

@@ -96,15 +96,15 @@ export function Modal({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex shrink-0 items-start justify-between border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex shrink-0 items-start justify-between border-b border-brand-charcoal/10 px-4 py-3 sm:px-6 sm:py-4">
             <div>
               {title && (
-                <h2 id="modal-title" className="text-base font-semibold text-gray-900 sm:text-lg">
+                <h2 id="modal-title" className="text-base font-semibold text-brand-charcoal sm:text-lg">
                   {title}
                 </h2>
               )}
               {description && (
-                <p id="modal-description" className="mt-1 text-sm text-gray-500">
+                <p id="modal-description" className="mt-1 text-sm text-brand-charcoal/50">
                   {description}
                 </p>
               )}
@@ -112,7 +112,7 @@ export function Modal({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-lg p-1 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
                 aria-label="关闭"
               >
                 <X className="h-5 w-5" />

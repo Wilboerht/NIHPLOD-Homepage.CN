@@ -56,7 +56,7 @@ export function Sidebar({
       {/* Logo 区域 */}
       <div
         className={cn(
-          "flex h-16 items-center border-b border-gray-200",
+          "flex h-16 items-center border-b border-brand-charcoal/15",
           isCollapsed && !isMobile ? "justify-center px-2" : "justify-between pl-6 pr-4"
         )}
       >
@@ -79,7 +79,7 @@ export function Sidebar({
         {isMobile && (
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+            className="rounded-lg p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06]"
             aria-label="关闭菜单"
           >
             <X className="h-5 w-5" />
@@ -100,9 +100,9 @@ export function Sidebar({
                       isCollapsed && !isMobile && "justify-center px-2"
                     )}
                   >
-                    <div className="h-5 w-5 flex-shrink-0 animate-pulse rounded bg-gray-200" />
+                    <div className="h-5 w-5 flex-shrink-0 animate-pulse rounded bg-brand-charcoal/10" />
                     {(!isCollapsed || isMobile) && (
-                      <div className="h-4 flex-1 animate-pulse rounded bg-gray-200" />
+                      <div className="h-4 flex-1 animate-pulse rounded bg-brand-charcoal/10" />
                     )}
                   </div>
                 </li>
@@ -122,7 +122,7 @@ export function Sidebar({
                           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                           active
                             ? "bg-brand-primary/10 text-brand-primary"
-                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                            : "text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal",
                           isCollapsed && !isMobile && "justify-center px-2"
                         )}
                         title={isCollapsed && !isMobile ? item.title : undefined}
@@ -142,13 +142,13 @@ export function Sidebar({
       </nav>
 
       {/* 底部区域 */}
-      <div className="border-t border-gray-200 p-3">
+      <div className="border-t border-brand-charcoal/15 p-3">
         {/* 折叠按钮（桌面端） */}
         {!isMobile && (
           <button
             onClick={onToggleCollapse}
             className={cn(
-              "mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900",
+              "mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-charcoal/60 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal",
               isCollapsed && "justify-center px-2"
             )}
             title={isCollapsed ? "展开侧边栏" : "折叠侧边栏"}
@@ -168,7 +168,7 @@ export function Sidebar({
         <button
           onClick={handleLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600",
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-charcoal/60 transition-colors hover:bg-red-50 hover:text-red-600",
             isCollapsed && !isMobile && "justify-center px-2"
           )}
           title={isCollapsed && !isMobile ? "退出登录" : undefined}
@@ -211,7 +211,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 flex h-dvh flex-col border-r border-gray-200 bg-white transition-all duration-300",
+        "fixed left-0 top-0 z-40 flex h-dvh flex-col border-r border-brand-charcoal/15 bg-white transition-all duration-300",
         isCollapsed ? "w-16" : "w-64"
       )}
     >

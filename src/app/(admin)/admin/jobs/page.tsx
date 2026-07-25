@@ -135,8 +135,8 @@ export default function AdminJobsPage() {
       {/* 头部 */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">招聘管理</h1>
-          <p className="mt-1 text-sm text-gray-500">共 {total} 个职位</p>
+          <h1 className="text-2xl font-semibold text-brand-charcoal">招聘管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">共 {total} 个职位</p>
         </div>
         <Link href="/admin/jobs/new">
           <Button leftIcon={<Plus className="h-4 w-4" />}>新增职位</Button>
@@ -147,13 +147,13 @@ export default function AdminJobsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
             <input
               type="text"
               placeholder="搜索职位..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-60 rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="h-9 w-60 rounded-lg border border-brand-charcoal/15 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
           <Select
@@ -173,7 +173,7 @@ export default function AdminJobsPage() {
 
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">已选 {selectedIds.size} 项</span>
+            <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
             <Button size="sm" variant="outline" onClick={() => handleBatchAction("publish")}>
               批量发布
             </Button>
@@ -199,14 +199,14 @@ export default function AdminJobsPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : jobs.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
             <Briefcase className="mb-2 h-12 w-12" />
             <p className="text-lg">暂无职位</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-brand-charcoal/8">
             {jobs.map((job) => (
-              <div key={job.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
+              <div key={job.id} className="flex items-center gap-4 px-6 py-4 hover:bg-brand-charcoal/[0.03]">
                 {/* 选择框 */}
                 <input
                   type="checkbox"
@@ -220,7 +220,7 @@ export default function AdminJobsPage() {
                     }
                     setSelectedIds(newSelected);
                   }}
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-brand-charcoal/20"
                 />
 
                 {/* 职位信息 */}
@@ -228,7 +228,7 @@ export default function AdminJobsPage() {
                   <div className="flex items-center gap-3">
                     <Link
                       href={`/admin/jobs/${job.id}/edit`}
-                      className="font-medium text-gray-900 hover:text-brand-primary"
+                      className="font-medium text-brand-charcoal hover:text-brand-primary"
                     >
                       {job.title}
                     </Link>
@@ -236,7 +236,7 @@ export default function AdminJobsPage() {
                       {job.published ? "已发布" : "草稿"}
                     </Badge>
                   </div>
-                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
+                  <div className="mt-1 flex items-center gap-4 text-sm text-brand-charcoal/50">
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5" />
                       {job.location}
@@ -247,27 +247,27 @@ export default function AdminJobsPage() {
                 </div>
 
                 {/* 更新时间 */}
-                <div className="hidden text-sm text-gray-500 md:block">
+                <div className="hidden text-sm text-brand-charcoal/50 md:block">
                   {formatDate(job.updatedAt)}
                 </div>
 
                 {/* 操作按钮 */}
                 <div className="relative flex items-center gap-1">
                   <Link href={`/admin/jobs/${job.id}/edit`}>
-                    <button className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                    <button className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal">
                       <Edit className="h-4 w-4" />
                     </button>
                   </Link>
                   <button
                     onClick={() => togglePublish(job)}
-                    className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
                     title={job.published ? "取消发布" : "发布"}
                   >
                     {job.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                   <button
                     onClick={() => setDeleteTarget(job)}
-                    className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                    className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

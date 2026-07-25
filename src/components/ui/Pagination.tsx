@@ -73,7 +73,7 @@ export function Pagination({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {/* 总数显示 */}
-      {showTotal && <span className="mr-4 text-sm text-gray-500">共 {total} 条</span>}
+      {showTotal && <span className="mr-4 text-sm text-brand-charcoal/50">共 {total} 条</span>}
 
       {/* 上一页 */}
       <button
@@ -81,8 +81,8 @@ export function Pagination({
         disabled={page === 1}
         className={cn(
           buttonBaseStyles,
-          "border border-gray-300 bg-white px-2",
-          page === 1 ? "cursor-not-allowed opacity-50" : "hover:bg-gray-50"
+          "border border-brand-charcoal/20 bg-white px-2",
+          page === 1 ? "cursor-not-allowed opacity-50" : "hover:bg-brand-charcoal/[0.03]"
         )}
         aria-label="上一页"
       >
@@ -95,7 +95,7 @@ export function Pagination({
           item === "ellipsis" ? (
             <span
               key={`ellipsis-${index}`}
-              className="flex h-9 w-9 items-center justify-center text-gray-400"
+              className="flex h-9 w-9 items-center justify-center text-brand-charcoal/50"
             >
               <MoreHorizontal className="h-4 w-4" />
             </span>
@@ -108,7 +108,7 @@ export function Pagination({
                 "px-3",
                 page === item
                   ? "bg-brand-primary text-white"
-                  : "border border-gray-300 bg-white hover:bg-gray-50"
+                  : "border border-brand-charcoal/20 bg-white hover:bg-brand-charcoal/[0.03]"
               )}
             >
               {item}
@@ -123,8 +123,8 @@ export function Pagination({
         disabled={page === totalPages}
         className={cn(
           buttonBaseStyles,
-          "border border-gray-300 bg-white px-2",
-          page === totalPages ? "cursor-not-allowed opacity-50" : "hover:bg-gray-50"
+          "border border-brand-charcoal/20 bg-white px-2",
+          page === totalPages ? "cursor-not-allowed opacity-50" : "hover:bg-brand-charcoal/[0.03]"
         )}
         aria-label="下一页"
       >

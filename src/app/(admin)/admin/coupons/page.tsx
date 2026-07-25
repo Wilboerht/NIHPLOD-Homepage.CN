@@ -242,11 +242,11 @@ export default function AdminCouponsPage() {
                     </td>
                     <td className="p-4 align-middle">
                       <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4 text-gray-400" />
+                        <Users className="h-4 w-4 text-brand-charcoal/50" />
                         {coupon._count.userCoupons} /{" "}
                         {coupon.totalLimit === null ? "∞" : coupon.totalLimit}
                       </div>
-                      <div className="mt-0.5 text-xs text-gray-400">
+                      <div className="mt-0.5 text-xs text-brand-charcoal/50">
                         已使用 {coupon.userCoupons.length} 张
                       </div>
                     </td>
@@ -296,17 +296,17 @@ export default function AdminCouponsPage() {
           <button
             onClick={() => fetchCoupons(pagination.page - 1)}
             disabled={pagination.page <= 1}
-            className="rounded-md border p-2 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+            className="rounded-md border p-2 hover:bg-brand-charcoal/[0.03] disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-brand-charcoal/60">
             第 {pagination.page} / {pagination.totalPages} 页，共 {pagination.total} 条
           </span>
           <button
             onClick={() => fetchCoupons(pagination.page + 1)}
             disabled={pagination.page >= pagination.totalPages}
-            className="rounded-md border p-2 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+            className="rounded-md border p-2 hover:bg-brand-charcoal/[0.03] disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -321,7 +321,7 @@ export default function AdminCouponsPage() {
               <h2 className="text-lg font-semibold">
                 {modalMode === "create" ? "创建优惠券" : "编辑优惠券"}
               </h2>
-              <button onClick={closeModal} className="rounded p-1 hover:bg-gray-100">
+              <button onClick={closeModal} className="rounded p-1 hover:bg-brand-charcoal/[0.06]">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -410,7 +410,7 @@ export default function AdminCouponsPage() {
                 {!modalCoupon.daysValid ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">开始时间</label>
+                      <label className="text-xs text-brand-charcoal/50">开始时间</label>
                       <input
                         type="datetime-local"
                         className="w-full rounded-md border p-2 text-sm"
@@ -425,7 +425,7 @@ export default function AdminCouponsPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">结束时间</label>
+                      <label className="text-xs text-brand-charcoal/50">结束时间</label>
                       <input
                         type="datetime-local"
                         className="w-full rounded-md border p-2 text-sm"
@@ -442,7 +442,7 @@ export default function AdminCouponsPage() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-500">有效天数</label>
+                    <label className="text-xs text-brand-charcoal/50">有效天数</label>
                     <input
                       type="number"
                       className="w-full rounded-md border p-2 text-sm"
@@ -490,12 +490,12 @@ export default function AdminCouponsPage() {
                 </div>
                 {modalCoupon.scopeType === "CATEGORY" && (
                   <div className="space-y-2">
-                    <label className="text-xs text-gray-500">选择适用品类（可多选）</label>
+                    <label className="text-xs text-brand-charcoal/50">选择适用品类（可多选）</label>
                     <div className="flex flex-wrap gap-2">
                       {categories.map((cat) => (
                         <label
                           key={cat.id}
-                          className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${modalCoupon.scopeIds.includes(cat.id) ? "border-black bg-black text-white" : "border-gray-200 bg-white hover:bg-gray-50"}`}
+                          className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${modalCoupon.scopeIds.includes(cat.id) ? "border-black bg-black text-white" : "border-brand-charcoal/15 bg-white hover:bg-brand-charcoal/[0.03]"}`}
                         >
                           <input
                             type="checkbox"
@@ -516,7 +516,7 @@ export default function AdminCouponsPage() {
                 )}
                 {modalCoupon.scopeType === "PRODUCT" && (
                   <div className="space-y-2">
-                    <label className="text-xs text-gray-500">适用商品ID（逗号分隔）</label>
+                    <label className="text-xs text-brand-charcoal/50">适用商品ID（逗号分隔）</label>
                     <input
                       className="w-full rounded-md border p-2 text-sm"
                       placeholder="例如：abc123,def456"
@@ -569,7 +569,7 @@ export default function AdminCouponsPage() {
                     type="checkbox"
                     checked={modalCoupon.isActive}
                     onChange={(e) => setModalCoupon({ ...modalCoupon, isActive: e.target.checked })}
-                    className="rounded border-gray-300"
+                    className="rounded border-brand-charcoal/20"
                   />
                   <span>上架中</span>
                 </label>
@@ -577,7 +577,7 @@ export default function AdminCouponsPage() {
                   <button
                     type="button"
                     onClick={() => setModalCoupon(null)}
-                    className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
+                    className="rounded-md border px-4 py-2 text-sm hover:bg-brand-charcoal/[0.03]"
                   >
                     取消
                   </button>

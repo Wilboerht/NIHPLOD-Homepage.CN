@@ -73,12 +73,12 @@ export function RichTextEditor({
       attributes: {
         class: cn(
           "prose prose-sm max-w-none focus:outline-none",
-          "prose-headings:font-semibold prose-headings:text-gray-900",
-          "prose-p:text-gray-700 prose-p:leading-relaxed",
-          "prose-strong:text-gray-900",
+          "prose-headings:font-semibold prose-headings:text-brand-charcoal",
+          "prose-p:text-brand-charcoal/80 prose-p:leading-relaxed",
+          "prose-strong:text-brand-charcoal",
           "prose-ul:list-disc prose-ol:list-decimal",
-          "prose-li:text-gray-700",
-          "prose-blockquote:border-l-brand-primary prose-blockquote:text-gray-600",
+          "prose-li:text-brand-charcoal/80",
+          "prose-blockquote:border-l-brand-primary prose-blockquote:text-brand-charcoal/80",
           "prose-a:text-brand-primary prose-a:underline"
         ),
       },
@@ -112,8 +112,8 @@ export function RichTextEditor({
   if (!editor) {
     return (
       <div className={cn("animate-pulse", className)}>
-        {label && <div className="mb-1.5 h-5 w-20 rounded bg-gray-200" />}
-        <div className="h-32 rounded-lg bg-gray-100" />
+        {label && <div className="mb-1.5 h-5 w-20 rounded bg-brand-charcoal/10" />}
+        <div className="h-32 rounded-lg bg-brand-charcoal/8" />
       </div>
     );
   }
@@ -141,7 +141,7 @@ export function RichTextEditor({
         "rounded p-1.5 transition-colors",
         active
           ? "bg-brand-primary/20 text-brand-primary"
-          : "text-gray-500 hover:bg-gray-100 hover:text-gray-700",
+          : "text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80",
         disabled && "cursor-not-allowed opacity-50"
       )}
     >
@@ -151,17 +151,17 @@ export function RichTextEditor({
 
   return (
     <div className={className}>
-      {label && <label className="mb-1.5 block text-sm font-medium text-gray-700">{label}</label>}
+      {label && <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>}
 
       <div
         className={cn(
           "overflow-hidden rounded-lg border bg-white transition-all",
-          isFocused ? "border-brand-primary ring-2 ring-brand-primary/20" : "border-gray-300",
+          isFocused ? "border-brand-primary ring-2 ring-brand-primary/20" : "border-brand-charcoal/20",
           error && "border-red-500"
         )}
       >
         {/* 工具栏 */}
-        <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
+        <div className="flex flex-wrap items-center gap-0.5 border-b border-brand-charcoal/15 bg-brand-charcoal/[0.03] px-2 py-1.5">
           {/* 标题 */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
@@ -178,7 +178,7 @@ export function RichTextEditor({
             <Heading2 className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-gray-300" />
+          <div className="mx-1 h-5 w-px bg-brand-charcoal/20" />
 
           {/* 文字样式 */}
           <ToolbarButton
@@ -203,7 +203,7 @@ export function RichTextEditor({
             <Strikethrough className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-gray-300" />
+          <div className="mx-1 h-5 w-px bg-brand-charcoal/20" />
 
           {/* 列表 */}
           <ToolbarButton
@@ -221,7 +221,7 @@ export function RichTextEditor({
             <ListOrdered className="h-4 w-4" />
           </ToolbarButton>
 
-          <div className="mx-1 h-5 w-px bg-gray-300" />
+          <div className="mx-1 h-5 w-px bg-brand-charcoal/20" />
 
           {/* 引用 */}
           <ToolbarButton
@@ -256,7 +256,7 @@ export function RichTextEditor({
 
             {/* 链接输入框 */}
             {showLinkInput && (
-              <div className="absolute left-0 top-full z-10 mt-1 flex gap-1 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+              <div className="absolute left-0 top-full z-10 mt-1 flex gap-1 rounded-lg border border-brand-charcoal/15 bg-white p-2 shadow-lg">
                 <input
                   type="url"
                   placeholder="输入链接地址"
@@ -271,7 +271,7 @@ export function RichTextEditor({
                       setShowLinkInput(false);
                     }
                   }}
-                  className="w-48 rounded border border-gray-300 px-2 py-1 text-sm focus:border-brand-primary focus:outline-none"
+                  className="w-48 rounded border border-brand-charcoal/20 px-2 py-1 text-sm focus:border-brand-primary focus:outline-none"
                 />
                 <button
                   type="button"
@@ -284,7 +284,7 @@ export function RichTextEditor({
             )}
           </div>
 
-          <div className="mx-1 h-5 w-px bg-gray-300" />
+          <div className="mx-1 h-5 w-px bg-brand-charcoal/20" />
 
           {/* 撤销/重做 */}
           <ToolbarButton
@@ -313,7 +313,7 @@ export function RichTextEditor({
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0",
-              "[&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400",
+              "[&_.ProseMirror_p.is-editor-empty:first-child::before]:text-brand-charcoal/50",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]"
             )}
           />
@@ -322,7 +322,7 @@ export function RichTextEditor({
           {editor && isFocused && (
             <BubbleMenu
               editor={editor}
-              className="flex gap-0.5 rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
+              className="flex gap-0.5 rounded-lg border border-brand-charcoal/15 bg-white p-1 shadow-lg"
             >
               <ToolbarButton
                 onClick={() => editor.chain().focus().toggleBold().run()}

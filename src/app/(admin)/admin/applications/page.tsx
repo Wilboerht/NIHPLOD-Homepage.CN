@@ -329,8 +329,8 @@ export default function AdminApplicationsPage() {
       {/* 头部 */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">简历管理</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-semibold text-brand-charcoal">简历管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">
             共 {total} 份简历
             {pendingCount > 0 && (
               <span className="ml-2 text-brand-primary">({pendingCount} 份待处理)</span>
@@ -354,7 +354,7 @@ export default function AdminApplicationsPage() {
               "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
               folderFilter === "all"
                 ? "bg-brand-primary text-white"
-                : "bg-white text-gray-600 hover:bg-gray-100"
+                : "bg-white text-brand-charcoal/60 hover:bg-brand-charcoal/8"
             )}
           >
             <Folder className="h-4 w-4" />
@@ -368,8 +368,8 @@ export default function AdminApplicationsPage() {
             className={cn(
               "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
               folderFilter === "uncategorized"
-                ? "bg-gray-600 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-100"
+                ? "bg-brand-charcoal text-white"
+                : "bg-white text-brand-charcoal/60 hover:bg-brand-charcoal/8"
             )}
           >
             <FileText className="h-4 w-4" />
@@ -386,7 +386,7 @@ export default function AdminApplicationsPage() {
                   "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                   folderFilter === folder.id
                     ? "bg-brand-primary text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-100"
+                    : "bg-white text-brand-charcoal/60 hover:bg-brand-charcoal/8"
                 )}
               >
                 {folder.name}
@@ -395,7 +395,7 @@ export default function AdminApplicationsPage() {
                     "rounded-full px-1.5 py-0.5 text-xs",
                     folderFilter === folder.id
                       ? "bg-white/20 text-white"
-                      : "bg-gray-100 text-gray-500"
+                      : "bg-brand-charcoal/8 text-brand-charcoal/50"
                   )}
                 >
                   {folder.applicationCount}
@@ -407,7 +407,7 @@ export default function AdminApplicationsPage() {
                     e.stopPropagation();
                     openFolderModal(folder);
                   }}
-                  className="rounded bg-white p-1 text-gray-400 shadow hover:text-gray-600"
+                  className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-brand-charcoal/60"
                   title="编辑"
                 >
                   <Edit2 className="h-3 w-3" />
@@ -417,7 +417,7 @@ export default function AdminApplicationsPage() {
                     e.stopPropagation();
                     setDeleteFolderTarget(folder);
                   }}
-                  className="rounded bg-white p-1 text-gray-400 shadow hover:text-red-500"
+                  className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-red-500"
                   title="删除"
                 >
                   <X className="h-3 w-3" />
@@ -431,18 +431,18 @@ export default function AdminApplicationsPage() {
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
           <input
             type="text"
             placeholder="搜索姓名、手机号..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+            className="h-9 w-full rounded-lg border border-brand-charcoal/15 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-gray-400" />
+          <Filter className="h-4 w-4 text-brand-charcoal/50" />
           <Select
             options={[
               { value: "all", label: "全部状态" },
@@ -462,7 +462,7 @@ export default function AdminApplicationsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Briefcase className="h-4 w-4 text-gray-400" />
+          <Briefcase className="h-4 w-4 text-brand-charcoal/50" />
           <Select
             options={[
               { value: "all", label: "全部职位" },
@@ -485,14 +485,14 @@ export default function AdminApplicationsPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : applications.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
             <FileText className="mb-2 h-12 w-12" />
             <p className="text-lg">暂无简历申请</p>
           </div>
         ) : (
           <>
             {/* 表头 */}
-            <div className="grid grid-cols-12 gap-4 border-b border-gray-100 px-6 py-3 text-sm font-medium text-gray-500">
+            <div className="grid grid-cols-12 gap-4 border-b border-brand-charcoal/8 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <span className="col-span-3">申请人</span>
               <span className="col-span-3">应聘职位</span>
               <span className="col-span-2">状态</span>
@@ -501,14 +501,14 @@ export default function AdminApplicationsPage() {
             </div>
 
             {/* 列表 */}
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-brand-charcoal/8">
               {applications.map((application) => {
                 const statusInfo = statusConfig[application.status] || statusConfig.pending;
                 return (
                   <div
                     key={application.id}
                     className={cn(
-                      "grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-gray-50",
+                      "grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-brand-charcoal/[0.03]",
                       application.status === "pending" && "bg-brand-primary/5"
                     )}
                   >
@@ -518,18 +518,18 @@ export default function AdminApplicationsPage() {
                         {application.name.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-gray-900">{application.name}</p>
-                        <p className="truncate text-xs text-gray-500">{application.phone}</p>
+                        <p className="truncate font-medium text-brand-charcoal">{application.name}</p>
+                        <p className="truncate text-xs text-brand-charcoal/50">{application.phone}</p>
                       </div>
                     </div>
 
                     {/* 应聘职位 */}
                     <div className="col-span-3 flex items-center">
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-gray-700">
+                        <p className="truncate font-medium text-brand-charcoal/80">
                           {application.job.title}
                         </p>
-                        <p className="truncate text-xs text-gray-400">{application.job.titleEn}</p>
+                        <p className="truncate text-xs text-brand-charcoal/50">{application.job.titleEn}</p>
                       </div>
                     </div>
 
@@ -537,7 +537,7 @@ export default function AdminApplicationsPage() {
                     <div className="col-span-2 flex flex-col justify-center gap-1">
                       <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
                       {application.folder && (
-                        <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
+                        <span className="inline-flex items-center gap-1 rounded bg-brand-charcoal/8 px-1.5 py-0.5 text-xs text-brand-charcoal/60">
                           <Tag className="h-3 w-3" />
                           {application.folder.name}
                         </span>
@@ -545,7 +545,7 @@ export default function AdminApplicationsPage() {
                     </div>
 
                     {/* 时间 */}
-                    <div className="col-span-2 flex items-center text-sm text-gray-500">
+                    <div className="col-span-2 flex items-center text-sm text-brand-charcoal/50">
                       <Clock className="mr-1.5 h-3.5 w-3.5" />
                       {formatDate(application.createdAt)}
                     </div>
@@ -554,21 +554,21 @@ export default function AdminApplicationsPage() {
                     <div className="col-span-2 flex items-center justify-end gap-1">
                       <button
                         onClick={() => viewDetail(application)}
-                        className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/8 hover:text-brand-charcoal/60"
                         title="查看详情"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => downloadResume(application)}
-                        className="rounded p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-500"
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-blue-50 hover:text-blue-500"
                         title="下载简历"
                       >
                         <Download className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(application)}
-                        className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
                         title="删除"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -605,14 +605,14 @@ export default function AdminApplicationsPage() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-medium text-gray-900">
+                  <span className="text-lg font-medium text-brand-charcoal">
                     {detailApplication.name}
                   </span>
                   <Badge variant={statusConfig[detailApplication.status]?.color || "default"}>
                     {statusConfig[detailApplication.status]?.label || "未知"}
                   </Badge>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
+                <div className="mt-2 flex flex-wrap gap-4 text-sm text-brand-charcoal/50">
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
                     {detailApplication.phone}
@@ -622,17 +622,17 @@ export default function AdminApplicationsPage() {
             </div>
 
             {/* 应聘职位 */}
-            <div className="rounded-lg bg-gray-50 p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
+            <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm text-brand-charcoal/50">
                 <Briefcase className="h-4 w-4" />
                 应聘职位
               </div>
-              <p className="font-medium text-gray-900">{detailApplication.job.title}</p>
-              <p className="text-sm text-gray-500">{detailApplication.job.titleEn}</p>
+              <p className="font-medium text-brand-charcoal">{detailApplication.job.title}</p>
+              <p className="text-sm text-brand-charcoal/50">{detailApplication.job.titleEn}</p>
             </div>
 
             {/* 申请时间 */}
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-brand-charcoal/50">
               <Clock className="h-4 w-4" />
               申请时间：{formatDate(detailApplication.createdAt)}
             </div>
@@ -650,7 +650,7 @@ export default function AdminApplicationsPage() {
 
             {/* 状态更新 */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">更新状态</label>
+              <label className="mb-2 block text-sm font-medium text-brand-charcoal/80">更新状态</label>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(statusConfig).map(([key, config]) => (
                   <button
@@ -660,7 +660,7 @@ export default function AdminApplicationsPage() {
                       "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                       detailApplication.status === key
                         ? "bg-brand-primary text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06]"
                     )}
                   >
                     {config.label}
@@ -671,15 +671,15 @@ export default function AdminApplicationsPage() {
 
             {/* 分类夹 */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">分类</label>
+              <label className="mb-2 block text-sm font-medium text-brand-charcoal/80">分类</label>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => updateApplicationFolder(detailApplication, null)}
                   className={cn(
                     "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                     !detailApplication.folderId
-                      ? "bg-gray-600 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      ? "bg-brand-charcoal text-white"
+                      : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06]"
                   )}
                 >
                   未分类
@@ -692,7 +692,7 @@ export default function AdminApplicationsPage() {
                       "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                       detailApplication.folderId === folder.id
                         ? "bg-brand-primary text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06]"
                     )}
                   >
                     {folder.name}
@@ -703,13 +703,13 @@ export default function AdminApplicationsPage() {
 
             {/* 备注 */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">备注</label>
+              <label className="mb-2 block text-sm font-medium text-brand-charcoal/80">备注</label>
               <textarea
                 value={editingNotes}
                 onChange={(e) => setEditingNotes(e.target.value)}
                 placeholder="添加备注信息..."
                 rows={3}
-                className="w-full rounded-lg border border-gray-200 p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                className="w-full rounded-lg border border-brand-charcoal/15 p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
               />
               <div className="mt-2 flex justify-end">
                 <Button size="sm" onClick={saveNotes}>
@@ -748,13 +748,13 @@ export default function AdminApplicationsPage() {
             required
           />
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">描述（可选）</label>
+            <label className="mb-2 block text-sm font-medium text-brand-charcoal/80">描述（可选）</label>
             <textarea
               value={folderForm.description}
               onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
               placeholder="添加分类说明..."
               rows={2}
-              className="w-full rounded-lg border border-gray-200 p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="w-full rounded-lg border border-brand-charcoal/15 p-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
           <div className="flex justify-end gap-3 pt-4">

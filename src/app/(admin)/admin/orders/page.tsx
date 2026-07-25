@@ -102,8 +102,8 @@ export default function AdminOrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">订单管理</h1>
-          <p className="mt-1 text-sm text-gray-500">管理所有客户订单</p>
+          <h1 className="text-2xl font-semibold text-brand-charcoal">订单管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">管理所有客户订单</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchOrders}>
           <RefreshCw className="mr-1 h-4 w-4" /> 刷新
@@ -113,7 +113,7 @@ export default function AdminOrdersPage() {
       {/* 筛选栏 */}
       <div className="flex flex-wrap gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
           <input
             type="text"
             placeholder="搜索订单号/手机号..."
@@ -134,7 +134,7 @@ export default function AdminOrdersPage() {
       {/* 订单列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500">
+          <thead className="bg-gray-50 text-left text-brand-charcoal/50">
             <tr>
               <th className="px-4 py-3">订单号</th>
               <th className="px-4 py-3">用户</th>
@@ -148,20 +148,20 @@ export default function AdminOrdersPage() {
           <tbody className="divide-y">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
                   加载中...
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
                   暂无订单
                 </td>
               </tr>
             ) : (
               orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{order.orderNo}</td>
+                <tr key={order.id} className="hover:bg-brand-charcoal/[0.03]">
+                  <td className="px-4 py-3 font-mono text-sm">{order.orderNo}</td>
                   <td className="px-4 py-3">{order.user.nickname || order.user.phone || "-"}</td>
                   <td className="max-w-[150px] truncate px-4 py-3">
                     {order.items[0]?.productName || "-"}
@@ -174,7 +174,7 @@ export default function AdminOrdersPage() {
                       {ORDER_STATUS_MAP[order.status]?.label || order.status}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-gray-400">
+                  <td className="px-4 py-3 text-brand-charcoal/50">
                     {new Date(order.createdAt).toLocaleDateString("zh-CN")}
                   </td>
                   <td className="px-4 py-3">

@@ -184,8 +184,8 @@ export default function AdminMessagesPage() {
       {/* 头部 */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">留言管理</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-semibold text-brand-charcoal">留言管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">
             共 {total} 条留言
             {unreadCount > 0 && (
               <span className="ml-2 text-brand-primary">({unreadCount} 条未读)</span>
@@ -198,13 +198,13 @@ export default function AdminMessagesPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
             <input
               type="text"
               placeholder="搜索留言..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-60 rounded-lg border border-gray-200 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="h-9 w-60 rounded-lg border border-brand-charcoal/15 pl-9 pr-3 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
           <Select
@@ -224,7 +224,7 @@ export default function AdminMessagesPage() {
 
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">已选 {selectedIds.size} 项</span>
+            <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
             <Button size="sm" variant="outline" onClick={() => handleBatchAction("read")}>
               标记已读
             </Button>
@@ -250,19 +250,19 @@ export default function AdminMessagesPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
             <Mail className="mb-2 h-12 w-12" />
             <p className="text-lg">暂无留言</p>
           </div>
         ) : (
           <>
             {/* 表头 */}
-            <div className="flex items-center gap-4 border-b border-gray-100 px-6 py-3 text-sm font-medium text-gray-500">
+            <div className="flex items-center gap-4 border-b border-brand-charcoal/8 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <input
                 type="checkbox"
                 checked={isAllSelected}
                 onChange={(e) => handleSelectAll(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 rounded border-brand-charcoal/20"
               />
               <span className="flex-1">留言内容</span>
               <span className="hidden w-32 sm:block">联系方式</span>
@@ -271,12 +271,12 @@ export default function AdminMessagesPage() {
             </div>
 
             {/* 列表 */}
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-brand-charcoal/8">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={cn(
-                    "flex items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50",
+                    "flex items-center gap-4 px-6 py-4 transition-colors hover:bg-brand-charcoal/[0.03]",
                     !message.read && "bg-brand-primary/5"
                   )}
                 >
@@ -293,7 +293,7 @@ export default function AdminMessagesPage() {
                       }
                       setSelectedIds(newSelected);
                     }}
-                    className="mt-1 h-4 w-4 rounded border-gray-300"
+                    className="mt-1 h-4 w-4 rounded border-brand-charcoal/20"
                   />
 
                   {/* 留言内容 */}
@@ -306,7 +306,7 @@ export default function AdminMessagesPage() {
                         className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium",
                           message.read
-                            ? "bg-gray-100 text-gray-600"
+                            ? "bg-brand-charcoal/8 text-brand-charcoal/60"
                             : "bg-brand-primary/10 text-brand-primary"
                         )}
                       >
@@ -317,12 +317,12 @@ export default function AdminMessagesPage() {
                           <span
                             className={cn(
                               "font-medium",
-                              message.read ? "text-gray-600" : "text-gray-900"
+                              message.read ? "text-brand-charcoal/60" : "text-brand-charcoal"
                             )}
                           >
                             {message.name}
                           </span>
-                          <span className="text-sm text-gray-400">{message.phone}</span>
+                          <span className="text-sm text-brand-charcoal/50">{message.phone}</span>
                           {message.type && (
                             <Badge variant="secondary" size="sm">
                               {MESSAGE_TYPE_LABELS[message.type] || message.type}
@@ -334,18 +334,18 @@ export default function AdminMessagesPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="mt-1 truncate text-sm text-gray-500">{message.content}</p>
+                        <p className="mt-1 truncate text-sm text-brand-charcoal/50">{message.content}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* 联系方式 */}
-                  <div className="hidden w-32 items-center text-sm text-gray-500 sm:flex">
+                  <div className="hidden w-32 items-center text-sm text-brand-charcoal/50 sm:flex">
                     {message.phone}
                   </div>
 
                   {/* 时间 */}
-                  <div className="hidden w-32 items-center gap-1 text-sm text-gray-500 md:flex">
+                  <div className="hidden w-32 items-center gap-1 text-sm text-brand-charcoal/50 md:flex">
                     <Clock className="h-3.5 w-3.5" />
                     {formatDate(message.createdAt)}
                   </div>
@@ -354,7 +354,7 @@ export default function AdminMessagesPage() {
                   <div className="flex w-24 items-center gap-1">
                     <button
                       onClick={() => toggleRead(message)}
-                      className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
                       title={message.read ? "标记为未读" : "标记为已读"}
                     >
                       {message.read ? (
@@ -365,7 +365,7 @@ export default function AdminMessagesPage() {
                     </button>
                     <button
                       onClick={() => setDeleteTarget(message)}
-                      className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                      className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
                       title="删除"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -401,7 +401,7 @@ export default function AdminMessagesPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">{detailMessage.name}</span>
+                  <span className="font-medium text-brand-charcoal">{detailMessage.name}</span>
                   {detailMessage.read ? (
                     <Badge variant="default" size="sm">
                       已读
@@ -412,12 +412,12 @@ export default function AdminMessagesPage() {
                     </Badge>
                   )}
                 </div>
-                <span className="text-sm text-gray-500">{detailMessage.phone}</span>
+                <span className="text-sm text-brand-charcoal/50">{detailMessage.phone}</span>
               </div>
             </div>
 
             {/* 时间与类型 */}
-            <div className="flex items-center gap-4 text-sm text-gray-500">
+            <div className="flex items-center gap-4 text-sm text-brand-charcoal/50">
               <span className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 {new Date(detailMessage.createdAt).toLocaleString("zh-CN")}
@@ -430,8 +430,8 @@ export default function AdminMessagesPage() {
             </div>
 
             {/* 留言内容 */}
-            <div className="rounded-lg bg-gray-50 p-4">
-              <p className="whitespace-pre-wrap text-gray-700">{detailMessage.content}</p>
+            <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+              <p className="whitespace-pre-wrap text-brand-charcoal/80">{detailMessage.content}</p>
             </div>
 
             {/* 操作按钮 */}

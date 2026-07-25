@@ -189,7 +189,7 @@ export function ImageUploader({
 
   return (
     <div className={className}>
-      {label && <label className="mb-1.5 block text-sm font-medium text-gray-700">{label}</label>}
+      {label && <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>}
 
       {/* 错误提示 */}
       {uploadErrors.length > 0 && (
@@ -214,7 +214,7 @@ export function ImageUploader({
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
               className={cn(
-                "group relative aspect-square overflow-hidden rounded-lg border-2 bg-gray-100",
+                "group relative aspect-square overflow-hidden rounded-lg border-2 bg-brand-charcoal/8",
                 dragOverIndex === index ? "border-brand-primary" : "border-transparent",
                 image.uploading && "opacity-50"
               )}
@@ -261,7 +261,7 @@ export function ImageUploader({
               ? "border-brand-primary bg-brand-primary/5"
               : error
                 ? "border-red-300 bg-red-50"
-                : "border-gray-300 hover:border-brand-primary hover:bg-brand-cream/30"
+                : "border-brand-charcoal/20 hover:border-brand-primary hover:bg-brand-cream/30"
           )}
         >
           <input
@@ -272,20 +272,20 @@ export function ImageUploader({
             onChange={(e) => handleFiles(e.target.files)}
             className="hidden"
           />
-          <div className="mb-3 rounded-full bg-gray-100 p-3">
+          <div className="mb-3 rounded-full bg-brand-charcoal/8 p-3">
             {isCompressing ? (
               <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
             ) : dragActive ? (
               <Upload className="h-6 w-6 text-brand-primary" />
             ) : (
-              <ImageIcon className="h-6 w-6 text-gray-400" />
+              <ImageIcon className="h-6 w-6 text-brand-charcoal/50" />
             )}
           </div>
-          <p className="mb-1 text-sm font-medium text-gray-700">
+          <p className="mb-1 text-sm font-medium text-brand-charcoal/80">
             {isCompressing ? "正在处理图片..." : dragActive ? "释放以上传" : "点击或拖拽上传图片"}
           </p>
-          <p className="text-xs text-gray-500">支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB</p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="text-xs text-brand-charcoal/50">支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB</p>
+          <p className="mt-1 text-xs text-brand-charcoal/50">
             已上传 {value.length}/{maxImages} 张
           </p>
         </div>

@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh bg-gray-50">
+      <div className="min-h-dvh bg-gray-50 font-sans">
         {/* 侧边栏 */}
         <Sidebar
           isOpen={isOpen}
@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </main>
 
           {/* 页脚 */}
-          <footer className="px-4 py-4 text-center text-xs text-gray-400 md:px-6">
+          <footer className="px-4 py-4 text-center text-sm text-brand-charcoal/50 md:px-6">
             © {new Date().getFullYear()} NIHPLOD All Rights Reserved.
           </footer>
         </div>

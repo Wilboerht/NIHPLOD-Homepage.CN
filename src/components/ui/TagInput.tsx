@@ -57,13 +57,13 @@ export function TagInput({
 
   return (
     <div className={className}>
-      {label && <label className="mb-1.5 block text-sm font-medium text-gray-700">{label}</label>}
+      {label && <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>}
 
       <div
         className={cn(
           "flex flex-wrap items-center gap-2 rounded-lg border bg-white px-3 py-2",
           "focus-within:border-brand-primary focus-within:ring-1 focus-within:ring-brand-primary",
-          error ? "border-red-500" : "border-gray-300"
+          error ? "border-red-500" : "border-brand-charcoal/20"
         )}
       >
         {/* 已添加的标签 */}
@@ -99,7 +99,7 @@ export function TagInput({
               <button
                 type="button"
                 onClick={addTag}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded p-1 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -113,9 +113,9 @@ export function TagInput({
         {error ? (
           <span className="text-red-500">{error}</span>
         ) : (
-          <span className="text-gray-400">按回车添加标签</span>
+          <span className="text-brand-charcoal/50">按回车添加标签</span>
         )}
-        <span className="text-gray-400">
+        <span className="text-brand-charcoal/50">
           {value.length}/{maxTags}
         </span>
       </div>

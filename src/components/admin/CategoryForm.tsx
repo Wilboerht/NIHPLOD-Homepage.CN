@@ -299,17 +299,17 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
         />
 
         {/* 前台展示开关 */}
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] px-4 py-3">
           <div>
-            <label className="text-sm font-medium text-gray-700">前台展示</label>
-            <p className="text-xs text-gray-500">关闭后该分类不会在产品页显示</p>
+            <label className="text-sm font-medium text-brand-charcoal/80">前台展示</label>
+            <p className="text-xs text-brand-charcoal/50">关闭后该分类不会在产品页显示</p>
           </div>
           <button
             type="button"
             onClick={() => setFormData((prev) => ({ ...prev, visible: !prev.visible }))}
             className={cn(
               "relative h-6 w-11 rounded-full transition-colors",
-              formData.visible ? "bg-brand-primary" : "bg-gray-300"
+              formData.visible ? "bg-brand-primary" : "bg-brand-charcoal/25"
             )}
           >
             <span
@@ -323,12 +323,12 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
 
         {/* 图标选择器 */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label className="mb-2 block text-sm font-medium text-brand-charcoal/80">
             分类图标（用于产品页分类栏）
           </label>
 
           {/* 切换标签 */}
-          <div className="mb-3 flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+          <div className="mb-3 flex rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-1">
             <button
               type="button"
               onClick={() => setIconMode("preset")}
@@ -336,7 +336,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
                 "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
                 iconMode === "preset"
                   ? "bg-white text-brand-primary shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
               )}
             >
               预设图标
@@ -348,7 +348,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
                 "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
                 iconMode === "custom"
                   ? "bg-white text-brand-primary shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  : "text-brand-charcoal/50 hover:text-brand-charcoal/80"
               )}
             >
               上传自定义
@@ -357,7 +357,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
 
           {/* 预设图标网格 */}
           {iconMode === "preset" && (
-            <div className="grid grid-cols-5 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div className="grid grid-cols-5 gap-2 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3">
               {presetIcons.map((icon) => (
                 <button
                   key={icon.id}
@@ -367,7 +367,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
                     "group relative flex flex-col items-center justify-center gap-1 rounded-lg border p-2 transition-all",
                     formData.icon === icon.svg
                       ? "border-brand-primary bg-brand-primary/10 ring-1 ring-brand-primary"
-                      : "border-gray-200 bg-white hover:border-brand-primary/50 hover:bg-brand-primary/5"
+                      : "border-brand-charcoal/15 bg-white hover:border-brand-primary/50 hover:bg-brand-primary/5"
                   )}
                   title={icon.name}
                 >
@@ -376,11 +376,11 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
                       "h-8 w-8 transition-colors",
                       formData.icon === icon.svg
                         ? "text-brand-primary"
-                        : "text-gray-500 group-hover:text-brand-primary"
+                        : "text-brand-charcoal/50 group-hover:text-brand-primary"
                     )}
                     dangerouslySetInnerHTML={{ __html: sanitizeSvg(icon.svg) }}
                   />
-                  <span className="text-[10px] text-gray-500">{icon.name}</span>
+                  <span className="text-[10px] text-brand-charcoal/50">{icon.name}</span>
                 </button>
               ))}
             </div>
@@ -388,7 +388,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
 
           {/* 自定义上传 */}
           {iconMode === "custom" && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <div className="rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-4">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -407,13 +407,13 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
                     />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-700">已上传自定义图标</p>
-                    <p className="text-xs text-gray-500">点击下方按钮更换图标</p>
+                    <p className="text-sm font-medium text-brand-charcoal/80">已上传自定义图标</p>
+                    <p className="text-xs text-brand-charcoal/50">点击下方按钮更换图标</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, icon: null }))}
-                    className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-red-500"
+                    className="rounded-lg p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-red-500"
                     title="删除图标"
                   >
                     <X className="h-5 w-5" />
@@ -421,9 +421,9 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-4 text-center">
-                  <Upload className="mb-2 h-8 w-8 text-gray-400" />
-                  <p className="text-sm text-gray-600">上传 SVG 格式的图标文件</p>
-                  <p className="mt-1 text-xs text-gray-400">建议尺寸 40x40，最大 50KB</p>
+                  <Upload className="mb-2 h-8 w-8 text-brand-charcoal/50" />
+                  <p className="text-sm text-brand-charcoal/60">上传 SVG 格式的图标文件</p>
+                  <p className="mt-1 text-xs text-brand-charcoal/50">建议尺寸 40x40，最大 50KB</p>
                 </div>
               )}
 
@@ -442,7 +442,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
 
               {customIconError && <p className="mt-2 text-xs text-red-500">{customIconError}</p>}
 
-              <p className="mt-3 text-xs text-gray-400">
+              <p className="mt-3 text-xs text-brand-charcoal/50">
                 提示：SVG 中的颜色填充会自动转换为 currentColor，以支持在产品页动态变色
               </p>
             </div>
@@ -452,7 +452,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
             <button
               type="button"
               onClick={() => setFormData((prev) => ({ ...prev, icon: null }))}
-              className="mt-2 text-xs text-gray-500 hover:text-red-500"
+              className="mt-2 text-xs text-brand-charcoal/50 hover:text-red-500"
             >
               清除已选图标
             </button>

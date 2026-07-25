@@ -151,8 +151,8 @@ export default function AdminProductsPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">产品管理</h1>
-          <p className="mt-1 text-sm text-gray-500">管理所有产品，共 {pagination.total} 个</p>
+          <h1 className="text-2xl font-semibold text-brand-charcoal">产品管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">管理所有产品，共 {pagination.total} 个</p>
         </div>
         <Link href="/admin/products/new">
           <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
@@ -163,14 +163,14 @@ export default function AdminProductsPage() {
       <div className="flex flex-wrap items-center gap-4">
         {/* 搜索框 */}
         <form onSubmit={handleSearch} className="relative min-w-[200px] max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="搜索产品名称..."
             className={cn(
-              "w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-10",
+              "w-full rounded-lg border border-brand-charcoal/20 bg-white py-2 pl-10 pr-10",
               "focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             )}
           />
@@ -178,7 +178,7 @@ export default function AdminProductsPage() {
             <button
               type="button"
               onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 hover:text-brand-charcoal"
             >
               <X className="h-4 w-4" />
             </button>

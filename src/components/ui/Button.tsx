@@ -35,15 +35,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary: "bg-brand-primary text-white hover:bg-brand-primary/90",
-      secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200",
-      outline: "border border-gray-300 text-gray-700 bg-white hover:bg-gray-50",
-      ghost: "text-gray-700 hover:bg-gray-100",
+      secondary: "bg-brand-charcoal/8 text-brand-charcoal hover:bg-brand-charcoal/15",
+      outline: "border border-brand-charcoal/20 text-brand-charcoal/80 bg-white hover:bg-brand-charcoal/[0.03]",
+      ghost: "text-brand-charcoal/80 hover:bg-brand-charcoal/[0.06]",
       danger: "bg-red-600 text-white hover:bg-red-700",
     };
 
     const sizeStyles = {
-      sm: "h-8 px-3 text-sm",
-      md: "h-10 px-4 text-sm",
+      sm: "h-9 px-3 text-sm",
+      md: "h-11 px-4 text-sm",
       lg: "h-12 px-6 text-base",
     };
 

@@ -37,13 +37,13 @@ export function StatsCard({
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <p className="text-sm font-medium text-brand-charcoal/50">{title}</p>
           {loading ? (
-            <div className="mt-2 h-9 w-20 animate-pulse rounded bg-gray-200" />
+            <div className="mt-2 h-9 w-20 animate-pulse rounded bg-brand-charcoal/10" />
           ) : (
-            <p className="mt-2 text-3xl font-semibold text-gray-900">{value}</p>
+            <p className="mt-2 text-3xl font-semibold text-brand-charcoal">{value}</p>
           )}
-          {description && <p className="mt-1 text-xs text-gray-400">{description}</p>}
+          {description && <p className="mt-1 text-xs text-brand-charcoal/50">{description}</p>}
           {trend && !loading && (
             <p
               className={cn(
@@ -52,7 +52,7 @@ export function StatsCard({
               )}
             >
               {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%
-              <span className="ml-1 text-gray-400">较上月</span>
+              <span className="ml-1 text-brand-charcoal/50">较上月</span>
             </p>
           )}
         </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, Plus } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 // 列定义接口
@@ -39,6 +40,10 @@ interface DataTableProps<T> {
   rowKey?: keyof T | ((record: T) => string);
   onRowClick?: (record: T) => void;
   emptyText?: string;
+  emptyAction?: {
+    label: string;
+    onClick: () => void;
+  };
   onSort?: (key: string, order: "asc" | "desc") => void;
   className?: string;
 }
@@ -54,6 +59,7 @@ export function DataTable<T extends object>({
   rowKey,
   onRowClick,
   emptyText = "暂无数据",
+  emptyAction,
   onSort,
   className,
 }: DataTableProps<T>) {
@@ -105,7 +111,7 @@ export function DataTable<T extends object>({
 
     const key = String(column.key);
     if (sortConfig?.key !== key) {
-      return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
+      return <ArrowUpDown className="h-4 w-4 text-brand-charcoal/50" />;
     }
     return sortConfig.order === "asc" ? (
       <ArrowUp className="h-4 w-4 text-brand-primary" />
@@ -123,13 +129,13 @@ export function DataTable<T extends object>({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-lg border border-gray-200 bg-white",
+        "relative overflow-hidden rounded-lg border border-brand-charcoal/15 bg-white",
         className
       )}
     >
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200" aria-label={emptyText || "数据表格"}>
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-brand-charcoal/10" aria-label={emptyText || "数据表格"}>
+          <thead className="sticky top-0 z-10 bg-gray-50">
             <tr>
               {columns.map((column) => {
                 const sortState =
@@ -143,9 +149,9 @@ export function DataTable<T extends object>({
                     key={String(column.key)}
                     style={{ width: column.width }}
                     className={cn(
-                      "px-6 py-3 text-xs font-medium uppercase tracking-wider text-gray-500",
+                      "px-6 py-3 text-sm font-medium uppercase tracking-wider text-brand-charcoal/50",
                       alignStyles[column.align || "left"],
-                      column.sortable && "cursor-pointer select-none hover:bg-gray-100"
+                      column.sortable && "cursor-pointer select-none hover:bg-brand-charcoal/[0.06]"
                     )}
                     aria-sort={column.sortable ? sortState : undefined}
                     onClick={() => handleSort(column)}
@@ -165,7 +171,7 @@ export function DataTable<T extends object>({
               })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody className="divide-y divide-brand-charcoal/10 bg-white">
             {loading ? (
               // 加载状态
               Array.from({ length: 5 }).map((_, i) => (
@@ -174,10 +180,19 @@ export function DataTable<T extends object>({
             ) : data.length === 0 ? (
               // 空状态
               <tr>
-                <td colSpan={columns.length} className="px-6 py-16 text-center text-gray-500">
-                  <div className="flex flex-col items-center gap-2">
+                <td colSpan={columns.length} className="px-6 py-16 text-center text-brand-charcoal/50">
+                  <div className="flex flex-col items-center gap-3">
                     <span className="text-4xl">📭</span>
                     <span>{emptyText}</span>
+                    {emptyAction && (
+                      <Button
+                        size="sm"
+                        onClick={emptyAction.onClick}
+                        leftIcon={<Plus className="h-4 w-4" />}
+                      >
+                        {emptyAction.label}
+                      </Button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -188,8 +203,8 @@ export function DataTable<T extends object>({
                   key={getRowKey(record, rowIndex)}
                   onClick={() => onRowClick?.(record)}
                   className={cn(
-                    "transition-colors",
-                    onRowClick && "cursor-pointer hover:bg-gray-50"
+                    "transition-colors even:bg-brand-charcoal/[0.02]",
+                    onRowClick && "cursor-pointer hover:bg-brand-charcoal/[0.03]"
                   )}
                 >
                   {columns.map((column) => {
@@ -198,7 +213,7 @@ export function DataTable<T extends object>({
                       <td
                         key={String(column.key)}
                         className={cn(
-                          "whitespace-nowrap px-6 py-4 text-sm text-gray-900",
+                          "whitespace-nowrap px-6 py-4 text-sm text-brand-charcoal",
                           alignStyles[column.align || "left"]
                         )}
                       >
@@ -219,7 +234,7 @@ export function DataTable<T extends object>({
 
       {/* 分页 */}
       {pagination && pagination.total > pagination.pageSize && (
-        <div className="border-t border-gray-200 px-6 py-4">
+        <div className="border-t border-brand-charcoal/15 px-6 py-4">
           <Pagination
             page={pagination.page}
             pageSize={pagination.pageSize}

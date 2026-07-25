@@ -158,8 +158,8 @@ export default function AdminCategoriesPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">分类管理</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-semibold text-brand-charcoal">分类管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">
             管理产品分类，拖拽调整排序，共 {categories.length} 个分类
           </p>
         </div>
@@ -171,14 +171,14 @@ export default function AdminCategoriesPage() {
       {/* 分类列表 */}
       <div className="rounded-xl bg-white shadow-sm">
         {categories.length === 0 ? (
-          <div className="flex h-48 flex-col items-center justify-center text-gray-400">
+          <div className="flex h-48 flex-col items-center justify-center text-brand-charcoal/50">
             <p className="text-lg">暂无分类</p>
             <p className="mt-1 text-sm">点击上方按钮创建第一个分类</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-brand-charcoal/8">
             {/* 表头 */}
-            <div className="grid grid-cols-12 gap-4 px-6 py-3 text-sm font-medium text-gray-500">
+            <div className="grid grid-cols-12 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <div className="col-span-1"></div>
               <div className="col-span-1">图标</div>
               <div className="col-span-3">分类名称</div>
@@ -199,12 +199,12 @@ export default function AdminCategoriesPage() {
                 className={cn(
                   "grid grid-cols-12 gap-4 px-6 py-4 transition-colors",
                   dragOverItem === index && "bg-brand-primary/5",
-                  "hover:bg-gray-50"
+                  "hover:bg-brand-charcoal/[0.03]"
                 )}
               >
                 {/* 拖拽手柄 */}
                 <div className="col-span-1 flex items-center">
-                  <button className="cursor-grab text-gray-400 hover:text-gray-600">
+                  <button className="cursor-grab text-brand-charcoal/50 hover:text-brand-charcoal">
                     <GripVertical className="h-5 w-5" />
                   </button>
                 </div>
@@ -217,7 +217,7 @@ export default function AdminCategoriesPage() {
                       dangerouslySetInnerHTML={{ __html: sanitizeSvg(category.icon) }}
                     />
                   ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100 text-xs text-gray-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-brand-charcoal/8 text-xs text-brand-charcoal/50">
                       无
                     </div>
                   )}
@@ -225,13 +225,13 @@ export default function AdminCategoriesPage() {
 
                 {/* 名称 */}
                 <div className="col-span-3 flex flex-col justify-center">
-                  <span className="font-medium text-gray-900">{category.name}</span>
-                  <span className="text-sm text-gray-500">{category.nameEn}</span>
+                  <span className="font-medium text-brand-charcoal">{category.name}</span>
+                  <span className="text-sm text-brand-charcoal/50">{category.nameEn}</span>
                 </div>
 
                 {/* Slug */}
                 <div className="col-span-2 flex items-center">
-                  <code className="rounded bg-gray-100 px-2 py-1 text-sm text-gray-600">
+                  <code className="rounded bg-brand-charcoal/8 px-2 py-1 text-sm text-brand-charcoal/60">
                     {category.slug}
                   </code>
                 </div>
@@ -251,7 +251,7 @@ export default function AdminCategoriesPage() {
                       "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
                       category.visible
                         ? "bg-green-100 text-green-700 hover:bg-green-200"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                        : "bg-brand-charcoal/8 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06]"
                     )}
                     title={category.visible ? "点击隐藏" : "点击显示"}
                   >
@@ -271,14 +271,14 @@ export default function AdminCategoriesPage() {
                 <div className="col-span-3 flex items-center justify-end gap-2">
                   <button
                     onClick={() => handleEdit(category)}
-                    className="rounded p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
                     title="编辑"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setDeleteConfirm({ open: true, category })}
-                    className="rounded p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                    className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
                     title="删除"
                   >
                     <Trash2 className="h-4 w-4" />

@@ -69,13 +69,13 @@ export default function EditJobPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/admin/jobs"
-          className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="rounded-lg p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">编辑职位</h1>
-          <p className="mt-0.5 text-sm text-gray-500">{job.title}</p>
+          <h1 className="text-xl font-semibold text-brand-charcoal">编辑职位</h1>
+          <p className="mt-0.5 text-sm text-brand-charcoal/50">{job.title}</p>
         </div>
       </div>
 

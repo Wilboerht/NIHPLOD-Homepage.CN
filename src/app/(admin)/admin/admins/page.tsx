@@ -133,8 +133,8 @@ export default function AdminAdminsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">管理员管理</h1>
-          <p className="mt-1 text-sm text-gray-500">管理后台管理员账号</p>
+          <h1 className="text-2xl font-semibold text-brand-charcoal">管理员管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">管理后台管理员账号</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchAdmins}>
@@ -149,7 +149,7 @@ export default function AdminAdminsPage() {
       {/* 搜索栏 */}
       <div className="flex gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
           <input
             type="text"
             placeholder="搜索邮箱/姓名..."
@@ -164,7 +164,7 @@ export default function AdminAdminsPage() {
       {/* 列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500">
+          <thead className="bg-gray-50 text-left text-brand-charcoal/50">
             <tr>
               <th className="px-4 py-3">姓名</th>
               <th className="px-4 py-3">邮箱</th>
@@ -176,29 +176,29 @@ export default function AdminAdminsPage() {
           <tbody className="divide-y">
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-brand-charcoal/50">
                   加载中...
                 </td>
               </tr>
             ) : admins.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-brand-charcoal/50">
                   暂无管理员
                 </td>
               </tr>
             ) : (
               admins.map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50">
+                <tr key={admin.id} className="hover:bg-brand-charcoal/[0.03]">
                   <td className="px-4 py-3 font-medium">{admin.name}</td>
                   <td className="px-4 py-3">{admin.email}</td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs ${admin.role === "owner" ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-600"}`}
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs ${admin.role === "owner" ? "bg-amber-50 text-amber-600" : "bg-brand-charcoal/8 text-brand-charcoal/60"}`}
                     >
                       {admin.role === "owner" ? "最高权限管理员" : "管理员"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400">
+                  <td className="px-4 py-3 text-brand-charcoal/50">
                     {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
                   </td>
                   <td className="px-4 py-3">
@@ -225,7 +225,7 @@ export default function AdminAdminsPage() {
             <button
               key={i + 1}
               onClick={() => updateParams({ page: String(i + 1) })}
-              className={`rounded px-3 py-1 ${page === i + 1 ? "bg-pink-500 text-white" : "bg-gray-100"}`}
+              className={`rounded px-3 py-1 ${page === i + 1 ? "bg-pink-500 text-white" : "bg-brand-charcoal/8"}`}
             >
               {i + 1}
             </button>
@@ -241,14 +241,14 @@ export default function AdminAdminsPage() {
               <h3 className="text-lg font-semibold">{editing ? "编辑管理员" : "新增管理员"}</h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-brand-charcoal/50 hover:text-brand-charcoal/60"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">姓名</label>
+                <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">姓名</label>
                 <input
                   required
                   value={form.name}
@@ -257,7 +257,7 @@ export default function AdminAdminsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">邮箱</label>
+                <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">邮箱</label>
                 <input
                   type="email"
                   required
@@ -267,7 +267,7 @@ export default function AdminAdminsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
                   密码 {editing && "（留空则不修改）"}
                 </label>
                 <input
@@ -280,7 +280,7 @@ export default function AdminAdminsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">角色</label>
+                <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">角色</label>
                 <select
                   value={form.role}
                   onChange={(e) => setForm({ ...form, role: e.target.value as "owner" | "admin" })}

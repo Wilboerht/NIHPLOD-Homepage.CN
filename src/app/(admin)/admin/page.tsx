@@ -42,8 +42,8 @@ export default async function AdminDashboard() {
     <div className="space-y-6">
       {/* 页面标题 */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">仪表盘</h1>
-        <p className="mt-1 text-sm text-gray-500">欢迎回来，查看网站概览数据</p>
+        <h1 className="text-2xl font-semibold text-brand-charcoal">仪表盘</h1>
+        <p className="mt-1 text-sm text-brand-charcoal/50">欢迎回来，查看网站概览数据</p>
       </div>
 
       {/* 统计卡片 */}
@@ -79,7 +79,7 @@ export default async function AdminDashboard() {
         {/* 最近留言 */}
         <div className="rounded-xl bg-white p-6 shadow-sm lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-900">最近留言</h2>
+            <h2 className="text-lg font-medium text-brand-charcoal">最近留言</h2>
             <Link href="/admin/messages" className="text-sm text-brand-primary hover:underline">
               查看全部
             </Link>
@@ -91,14 +91,14 @@ export default async function AdminDashboard() {
                 <Link
                   key={message.id}
                   href="/admin/messages"
-                  className="block rounded-lg p-3 transition-colors hover:bg-gray-50"
+                  className="block rounded-lg p-3 transition-colors hover:bg-brand-charcoal/[0.03]"
                 >
                   <div className="flex items-start gap-3">
                     <div
                       className={cn(
                         "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
                         message.read
-                          ? "bg-gray-100 text-gray-600"
+                          ? "bg-brand-charcoal/8 text-brand-charcoal/60"
                           : "bg-brand-primary/10 text-brand-primary"
                       )}
                     >
@@ -109,17 +109,17 @@ export default async function AdminDashboard() {
                         <span
                           className={cn(
                             "font-medium",
-                            message.read ? "text-gray-600" : "text-gray-900"
+                            message.read ? "text-brand-charcoal/60" : "text-brand-charcoal"
                           )}
                         >
                           {message.name}
                         </span>
-                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                        <span className="flex items-center gap-1 text-xs text-brand-charcoal/50">
                           <Clock className="h-3 w-3" />
                           {formatRelativeTime(message.createdAt)}
                         </span>
                       </div>
-                      <p className="mt-1 truncate text-sm text-gray-500">{message.content}</p>
+                      <p className="mt-1 truncate text-sm text-brand-charcoal/50">{message.content}</p>
                     </div>
                     {!message.read && <span className="h-2 w-2 rounded-full bg-brand-primary" />}
                   </div>
@@ -127,13 +127,13 @@ export default async function AdminDashboard() {
               ))}
             </div>
           ) : (
-            <div className="py-8 text-center text-sm text-gray-400">暂无留言</div>
+            <div className="py-8 text-center text-sm text-brand-charcoal/50">暂无留言</div>
           )}
         </div>
 
         {/* 快捷操作 */}
         <div className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">快捷操作</h2>
+          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">快捷操作</h2>
           <div className="space-y-2">
             {quickActions.map((action) => {
               const Icon = action.icon;
@@ -142,7 +142,7 @@ export default async function AdminDashboard() {
                   key={action.href}
                   href={action.href}
                   target={action.external ? "_blank" : undefined}
-                  className="flex items-center gap-3 rounded-lg p-3 text-gray-700 transition-colors hover:bg-gray-50"
+                  className="flex items-center gap-3 rounded-lg p-3 text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
                     <Icon className="h-4 w-4" />

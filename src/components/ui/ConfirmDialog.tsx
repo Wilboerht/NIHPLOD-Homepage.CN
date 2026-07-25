@@ -77,8 +77,8 @@ export function ConfirmDialog({
           <Icon className="h-5 w-5" />
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+          <h3 className="text-lg font-semibold text-brand-charcoal">{title}</h3>
+          {description && <p className="mt-1 text-sm text-brand-charcoal/50">{description}</p>}
           {children && <div className="mt-3">{children}</div>}
         </div>
       </div>

@@ -212,8 +212,8 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">用户管理</h1>
-          <p className="mt-1 text-sm text-gray-500">管理注册用户</p>
+          <h1 className="text-2xl font-semibold text-brand-charcoal">用户管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">管理注册用户</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchUsers}>
           <RefreshCw className="mr-1 h-4 w-4" /> 刷新
@@ -223,7 +223,7 @@ export default function AdminUsersPage() {
       {/* 搜索栏 */}
       <div className="flex gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
           <input
             type="text"
             placeholder="搜索手机号/昵称..."
@@ -238,7 +238,7 @@ export default function AdminUsersPage() {
       {/* 用户列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500">
+          <thead className="bg-gray-50 text-left text-brand-charcoal/50">
             <tr>
               <th className="px-4 py-3">用户</th>
               <th className="px-4 py-3">手机号</th>
@@ -251,22 +251,22 @@ export default function AdminUsersPage() {
           <tbody className="divide-y">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-brand-charcoal/50">
                   加载中...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-brand-charcoal/50">
                   暂无用户
                 </td>
               </tr>
             ) : (
               users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-brand-charcoal/[0.03]">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-xs text-gray-500">
+                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/50">
                         {user.avatar && user.avatar.startsWith("http") ? (
                           <Image
                             src={user.avatar}
@@ -290,7 +290,7 @@ export default function AdminUsersPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-3">{user.orderCount}</td>
-                  <td className="px-4 py-3 text-gray-400">
+                  <td className="px-4 py-3 text-brand-charcoal/50">
                     {new Date(user.createdAt).toLocaleDateString("zh-CN")}
                   </td>
                   <td className="px-4 py-3">
@@ -312,7 +312,7 @@ export default function AdminUsersPage() {
             <button
               key={i + 1}
               onClick={() => updateParams({ page: String(i + 1) })}
-              className={`rounded px-3 py-1 ${page === i + 1 ? "bg-pink-500 text-white" : "bg-gray-100"}`}
+              className={`rounded px-3 py-1 ${page === i + 1 ? "bg-pink-500 text-white" : "bg-brand-charcoal/8"}`}
             >
               {i + 1}
             </button>
@@ -332,7 +332,7 @@ export default function AdminUsersPage() {
             <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
           </div>
         ) : !detailUser ? (
-          <div className="flex h-64 flex-col items-center justify-center text-gray-400">
+          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
             <User className="mb-2 h-12 w-12" />
             <p>用户不存在</p>
           </div>
@@ -340,7 +340,7 @@ export default function AdminUsersPage() {
           <div className="space-y-6">
             {/* 顶部：头像 + ID */}
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-xl text-gray-500">
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xl text-brand-charcoal/50">
                 {detailUser.avatar && detailUser.avatar.startsWith("http") ? (
                   <Image
                     src={detailUser.avatar}
@@ -355,20 +355,20 @@ export default function AdminUsersPage() {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-lg font-semibold text-gray-900">
+                <p className="truncate text-lg font-semibold text-brand-charcoal">
                   {detailUser.nickname || "未设置昵称"}
                 </p>
-                <p className="truncate font-mono text-xs text-gray-400">ID: {detailUser.id}</p>
+                <p className="truncate font-mono text-xs text-brand-charcoal/50">ID: {detailUser.id}</p>
               </div>
             </div>
 
             {/* 基本信息 + 账号状态 */}
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl bg-gray-50 p-5">
-                <h3 className="mb-3 text-sm font-medium text-gray-900">基本信息</h3>
+              <div className="rounded-xl bg-brand-charcoal/[0.03] p-5">
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">基本信息</h3>
                 <dl className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <dt className="flex items-center gap-1.5 text-gray-500">
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
                       <Shield className="h-3.5 w-3.5" />
                       账号状态
                     </dt>
@@ -379,7 +379,7 @@ export default function AdminUsersPage() {
                     </dd>
                   </div>
                   <div className="flex items-center justify-between">
-                    <dt className="flex items-center gap-1.5 text-gray-500">
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
                       <Smartphone className="h-3.5 w-3.5" />
                       手机号
                     </dt>
@@ -393,7 +393,7 @@ export default function AdminUsersPage() {
                     </dd>
                   </div>
                   <div className="flex items-center justify-between">
-                    <dt className="flex items-center gap-1.5 text-gray-500">
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
                       <MessageCircle className="h-3.5 w-3.5" />
                       微信绑定
                     </dt>
@@ -403,21 +403,21 @@ export default function AdminUsersPage() {
                           已绑定
                         </Badge>
                       ) : (
-                        <span className="text-gray-400">未绑定</span>
+                        <span className="text-brand-charcoal/50">未绑定</span>
                       )}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">注册时间</dt>
+                    <dt className="text-brand-charcoal/50">注册时间</dt>
                     <dd>{formatDate(detailUser.createdAt)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">最后更新</dt>
+                    <dt className="text-brand-charcoal/50">最后更新</dt>
                     <dd>{formatDate(detailUser.updatedAt)}</dd>
                   </div>
                 </dl>
 
-                <div className="mt-5 flex flex-wrap gap-2 border-t border-gray-200 pt-4">
+                <div className="mt-5 flex flex-wrap gap-2 border-t border-brand-charcoal/15 pt-4">
                   {detailUser.status !== "ACTIVE" && (
                     <Button
                       size="sm"
@@ -454,19 +454,19 @@ export default function AdminUsersPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl bg-gray-50 p-5">
-                <h3 className="mb-3 text-sm font-medium text-gray-900">数据统计</h3>
+              <div className="rounded-xl bg-brand-charcoal/[0.03] p-5">
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">数据统计</h3>
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">订单数量</dt>
+                    <dt className="text-brand-charcoal/50">订单数量</dt>
                     <dd className="font-medium">{detailUser._count?.orders ?? 0}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">收货地址</dt>
+                    <dt className="text-brand-charcoal/50">收货地址</dt>
                     <dd className="font-medium">{detailUser.addresses?.length ?? 0}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">可用优惠券</dt>
+                    <dt className="text-brand-charcoal/50">可用优惠券</dt>
                     <dd className="font-medium">{detailUser.userCoupons?.length ?? 0}</dd>
                   </div>
                 </dl>
@@ -476,7 +476,7 @@ export default function AdminUsersPage() {
             {/* 收货地址 */}
             {detailUser.addresses && detailUser.addresses.length > 0 && (
               <div>
-                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-brand-charcoal">
                   <MapPin className="h-4 w-4" />
                   收货地址
                 </h3>
@@ -484,7 +484,7 @@ export default function AdminUsersPage() {
                   {detailUser.addresses.map((addr) => (
                     <div
                       key={addr.id}
-                      className="rounded-xl border border-gray-100 bg-white p-4 text-sm"
+                      className="rounded-xl border border-brand-charcoal/8 bg-white p-4 text-sm"
                     >
                       <div className="mb-1 flex items-center justify-between">
                         <span className="font-medium">
@@ -496,7 +496,7 @@ export default function AdminUsersPage() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-gray-500">
+                      <p className="text-brand-charcoal/50">
                         {addr.province} {addr.city} {addr.district} {addr.detail}
                       </p>
                     </div>
@@ -508,7 +508,7 @@ export default function AdminUsersPage() {
             {/* 优惠券 */}
             {detailUser.userCoupons && detailUser.userCoupons.length > 0 && (
               <div>
-                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-brand-charcoal">
                   <Ticket className="h-4 w-4" />
                   可用优惠券
                 </h3>
@@ -518,7 +518,7 @@ export default function AdminUsersPage() {
                       key={uc.id}
                       className="rounded-lg border border-dashed border-brand-primary/40 bg-brand-primary/5 px-3 py-1.5 text-xs"
                     >
-                      <span className="font-medium text-gray-800">{uc.coupon.name}</span>
+                      <span className="font-medium text-brand-charcoal">{uc.coupon.name}</span>
                       <span className="ml-1 text-brand-primary">
                         {uc.coupon.type === "DISCOUNT_PERCENT"
                           ? `${(uc.coupon.value * 10).toFixed(1)}折`
@@ -533,10 +533,10 @@ export default function AdminUsersPage() {
             {/* 最近订单 */}
             {detailUser.orders && detailUser.orders.length > 0 && (
               <div>
-                <h3 className="mb-3 text-sm font-medium text-gray-900">最近订单</h3>
-                <div className="overflow-hidden rounded-xl border border-gray-100">
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">最近订单</h3>
+                <div className="overflow-hidden rounded-xl border border-brand-charcoal/8">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-left text-gray-500">
+                    <thead className="bg-gray-50 text-left text-brand-charcoal/50">
                       <tr>
                         <th className="px-4 py-2 font-normal">订单号</th>
                         <th className="px-4 py-2 font-normal">状态</th>
@@ -551,7 +551,7 @@ export default function AdminUsersPage() {
                           variant: "default",
                         };
                         return (
-                          <tr key={order.id} className="hover:bg-gray-50">
+                          <tr key={order.id} className="hover:bg-brand-charcoal/[0.03]">
                             <td className="px-4 py-2">
                               <button
                                 className="text-brand-primary hover:underline"
@@ -566,7 +566,7 @@ export default function AdminUsersPage() {
                               </Badge>
                             </td>
                             <td className="px-4 py-2">¥{order.payAmount}</td>
-                            <td className="px-4 py-2 text-gray-400">
+                            <td className="px-4 py-2 text-brand-charcoal/50">
                               {formatDateShort(order.createdAt)}
                             </td>
                           </tr>

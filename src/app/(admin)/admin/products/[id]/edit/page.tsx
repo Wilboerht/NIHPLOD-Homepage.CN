@@ -122,7 +122,7 @@ export default function EditProductPage() {
   if (error || !product) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
-        <p className="text-gray-500">{error || "产品不存在"}</p>
+        <p className="text-brand-charcoal/50">{error || "产品不存在"}</p>
         <button
           onClick={() => router.push("/admin/products")}
           className="text-brand-primary hover:underline"
@@ -135,7 +135,7 @@ export default function EditProductPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">编辑产品</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-brand-charcoal">编辑产品</h1>
       <ProductForm mode="edit" initialData={product} categories={categories} />
     </div>
   );

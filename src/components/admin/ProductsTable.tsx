@@ -146,7 +146,7 @@ export function ProductsTable({
           type="checkbox"
           checked={selectedIds.length === products.length && products.length > 0}
           onChange={handleSelectAll}
-          className="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
+          className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
         />
       ) as unknown as string,
       width: "50px",
@@ -155,7 +155,7 @@ export function ProductsTable({
           type="checkbox"
           checked={selectedIds.includes(record.id)}
           onChange={() => handleSelect(record.id)}
-          className="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
+          className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
         />
       ),
     },
@@ -164,7 +164,7 @@ export function ProductsTable({
       title: "图片",
       width: "80px",
       render: (_, record) => (
-        <div className="h-12 w-12 overflow-hidden rounded-lg bg-gray-100">
+        <div className="h-12 w-12 overflow-hidden rounded-lg bg-brand-charcoal/8">
           {record.image ? (
             <Image
               src={record.image.url}
@@ -174,7 +174,7 @@ export function ProductsTable({
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+            <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/50">
               无图
             </div>
           )}
@@ -186,8 +186,8 @@ export function ProductsTable({
       title: "产品名称",
       render: (_, record) => (
         <div>
-          <p className="font-medium text-gray-900">{record.name}</p>
-          <p className="text-xs text-gray-500">{record.nameEn}</p>
+          <p className="font-medium text-brand-charcoal">{record.name}</p>
+          <p className="text-xs text-brand-charcoal/50">{record.nameEn}</p>
         </div>
       ),
     },
@@ -206,7 +206,7 @@ export function ProductsTable({
       key: "salesCount",
       title: "销量",
       align: "right",
-      render: (_, record) => <span className="text-sm text-gray-600">{record.salesCount}</span>,
+      render: (_, record) => <span className="text-sm text-brand-charcoal/60">{record.salesCount}</span>,
     },
     {
       key: "stock",
@@ -214,7 +214,7 @@ export function ProductsTable({
       align: "right",
       render: (_, record) => (
         <span
-          className={`text-sm ${record.allowDirectBuy && record.stock <= 5 ? "font-medium text-red-500" : "text-gray-600"}`}
+          className={`text-sm ${record.allowDirectBuy && record.stock <= 5 ? "font-medium text-red-500" : "text-brand-charcoal/60"}`}
         >
           {record.allowDirectBuy ? record.stock : "-"}
         </span>
@@ -239,21 +239,21 @@ export function ProductsTable({
           <button
             onClick={() => handleTogglePublish(record.id, record.published)}
             disabled={actionLoading === record.id}
-            className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
             title={record.published ? "取消发布" : "发布"}
           >
             {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
           <Link
             href={`/admin/products/${record.id}/edit`}
-            className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
             title="编辑"
           >
             <Pencil className="h-4 w-4" />
           </Link>
           <button
             onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
-            className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
             title="删除"
           >
             <Trash2 className="h-4 w-4" />
@@ -268,7 +268,7 @@ export function ProductsTable({
       {/* 批量操作栏 */}
       {selectedIds.length > 0 && (
         <div className="flex items-center gap-4 rounded-lg bg-brand-primary/5 px-4 py-3">
-          <span className="text-sm text-gray-700">
+          <span className="text-sm text-brand-charcoal/80">
             已选择 <strong>{selectedIds.length}</strong> 项
           </span>
           <div className="flex gap-2">
@@ -298,7 +298,7 @@ export function ProductsTable({
           </div>
           <button
             onClick={() => setSelectedIds([])}
-            className="ml-auto text-sm text-gray-500 hover:text-gray-700"
+            className="ml-auto text-sm text-brand-charcoal/50 hover:text-brand-charcoal/80"
           >
             取消选择
           </button>

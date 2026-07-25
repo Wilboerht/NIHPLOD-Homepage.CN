@@ -164,8 +164,8 @@ export default function OrderDetailPage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-400">加载中...</div>;
-  if (!order) return <div className="p-8 text-center text-gray-400">订单不存在</div>;
+  if (loading) return <div className="p-8 text-center text-brand-charcoal/50">加载中...</div>;
+  if (!order) return <div className="p-8 text-center text-brand-charcoal/50">订单不存在</div>;
 
   return (
     <div className="space-y-6">
@@ -216,32 +216,32 @@ export default function OrderDetailPage() {
           <h2 className="mb-4 font-medium">订单信息</h2>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-gray-500">订单号</dt>
+              <dt className="text-brand-charcoal/50">订单号</dt>
               <dd>{order.orderNo}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">下单时间</dt>
+              <dt className="text-brand-charcoal/50">下单时间</dt>
               <dd>{new Date(order.createdAt).toLocaleString("zh-CN")}</dd>
             </div>
             {order.paymentTime && (
               <div className="flex justify-between">
-                <dt className="text-gray-500">支付时间</dt>
+                <dt className="text-brand-charcoal/50">支付时间</dt>
                 <dd>{new Date(order.paymentTime).toLocaleString("zh-CN")}</dd>
               </div>
             )}
             {order.receivedAt && (
               <div className="flex justify-between">
-                <dt className="text-gray-500">签收时间</dt>
+                <dt className="text-brand-charcoal/50">签收时间</dt>
                 <dd>{new Date(order.receivedAt).toLocaleString("zh-CN")}</dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-gray-500">用户</dt>
+              <dt className="text-brand-charcoal/50">用户</dt>
               <dd>{order.user.nickname || order.user.phone}</dd>
             </div>
             {order.paymentMethod && (
               <div className="flex justify-between">
-                <dt className="text-gray-500">支付方式</dt>
+                <dt className="text-brand-charcoal/50">支付方式</dt>
                 <dd>
                   {order.paymentMethod === "wechat"
                     ? "微信支付"
@@ -253,20 +253,20 @@ export default function OrderDetailPage() {
             )}
             {order.paymentNo && (
               <div className="flex justify-between">
-                <dt className="text-gray-500">支付流水号</dt>
+                <dt className="text-brand-charcoal/50">支付流水号</dt>
                 <dd className="font-mono text-xs">{order.paymentNo}</dd>
               </div>
             )}
             {order.remark && (
               <div className="border-t pt-2">
-                <dt className="mb-1 text-gray-500">用户备注</dt>
-                <dd className="rounded-lg bg-yellow-50 p-2 text-gray-700">{order.remark}</dd>
+                <dt className="mb-1 text-brand-charcoal/50">用户备注</dt>
+                <dd className="rounded-lg bg-yellow-50 p-2 text-brand-charcoal/80">{order.remark}</dd>
               </div>
             )}
             {order.refundStatus && (
               <div className="border-t pt-2">
                 <div className="flex justify-between">
-                  <dt className="text-gray-500">退款状态</dt>
+                  <dt className="text-brand-charcoal/50">退款状态</dt>
                   <dd>
                     <Badge
                       variant={
@@ -283,19 +283,19 @@ export default function OrderDetailPage() {
                 </div>
                 {order.refundNo && (
                   <div className="mt-1 flex justify-between">
-                    <dt className="text-gray-500">退款单号</dt>
+                    <dt className="text-brand-charcoal/50">退款单号</dt>
                     <dd className="font-mono text-xs">{order.refundNo}</dd>
                   </div>
                 )}
                 {order.refundAmount && (
                   <div className="mt-1 flex justify-between">
-                    <dt className="text-gray-500">退款金额</dt>
+                    <dt className="text-brand-charcoal/50">退款金额</dt>
                     <dd>¥{Number(order.refundAmount).toFixed(2)}</dd>
                   </div>
                 )}
                 {order.refundTime && (
                   <div className="mt-1 flex justify-between">
-                    <dt className="text-gray-500">退款时间</dt>
+                    <dt className="text-brand-charcoal/50">退款时间</dt>
                     <dd>{new Date(order.refundTime).toLocaleString("zh-CN")}</dd>
                   </div>
                 )}
@@ -309,26 +309,26 @@ export default function OrderDetailPage() {
           <h2 className="mb-4 font-medium">收货信息</h2>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-gray-500">收货人</dt>
+              <dt className="text-brand-charcoal/50">收货人</dt>
               <dd>{order.recipientName}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">联系电话</dt>
+              <dt className="text-brand-charcoal/50">联系电话</dt>
               <dd>{order.recipientPhone}</dd>
             </div>
             <div>
-              <dt className="mb-1 text-gray-500">地址</dt>
+              <dt className="mb-1 text-brand-charcoal/50">地址</dt>
               <dd>{order.recipientAddress}</dd>
             </div>
             {order.shippingCompany && (
               <div className="border-t pt-2">
                 <div className="flex justify-between">
-                  <dt className="text-gray-500">物流公司</dt>
+                  <dt className="text-brand-charcoal/50">物流公司</dt>
                   <dd>{order.shippingCompany}</dd>
                 </div>
                 {order.trackingNo && (
                   <div className="mt-1 flex justify-between">
-                    <dt className="text-gray-500">快递单号</dt>
+                    <dt className="text-brand-charcoal/50">快递单号</dt>
                     <dd className="font-mono">{order.trackingNo}</dd>
                   </div>
                 )}
@@ -342,7 +342,7 @@ export default function OrderDetailPage() {
       <div className="rounded-xl bg-white p-6 shadow-sm">
         <h2 className="mb-4 font-medium">商品明细</h2>
         <table className="w-full text-sm">
-          <thead className="border-b text-left text-gray-500">
+          <thead className="border-b text-left text-brand-charcoal/50">
             <tr>
               <th className="pb-2">商品</th>
               <th className="pb-2">单价</th>
@@ -364,20 +364,20 @@ export default function OrderDetailPage() {
           </tbody>
           <tfoot className="border-t">
             <tr>
-              <td colSpan={3} className="py-3 text-right text-gray-500">
+              <td colSpan={3} className="py-3 text-right text-brand-charcoal/50">
                 商品总额
               </td>
               <td className="py-3">¥{Number(order.totalAmount).toFixed(2)}</td>
             </tr>
             <tr>
-              <td colSpan={3} className="py-1 text-right text-gray-500">
+              <td colSpan={3} className="py-1 text-right text-brand-charcoal/50">
                 运费
               </td>
               <td className="py-1">¥{Number(order.shippingFee).toFixed(2)}</td>
             </tr>
             {Number(order.discountAmount) > 0 && (
               <tr>
-                <td colSpan={3} className="py-1 text-right text-gray-500">
+                <td colSpan={3} className="py-1 text-right text-brand-charcoal/50">
                   优惠 {order.userCoupon?.coupon.name ? `(${order.userCoupon.coupon.name})` : ""}
                 </td>
                 <td className="py-1 text-green-500">-¥{Number(order.discountAmount).toFixed(2)}</td>
@@ -426,9 +426,9 @@ export default function OrderDetailPage() {
         ) : (
           <div className="space-y-3">
             {order.adminNote ? (
-              <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">{order.adminNote}</p>
+              <p className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm text-brand-charcoal/80">{order.adminNote}</p>
             ) : (
-              <p className="text-sm text-gray-400">暂无备注</p>
+              <p className="text-sm text-brand-charcoal/50">暂无备注</p>
             )}
             <div className="flex justify-end">
               <Button
@@ -455,7 +455,7 @@ export default function OrderDetailPage() {
               <h3 className="mb-4 text-lg font-medium">发货</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">物流公司</label>
+                  <label className="mb-1 block text-sm text-brand-charcoal/60">物流公司</label>
                   <select
                     value={shipForm.logisticsCompany}
                     onChange={(e) =>
@@ -471,7 +471,7 @@ export default function OrderDetailPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">快递单号</label>
+                  <label className="mb-1 block text-sm text-brand-charcoal/60">快递单号</label>
                   <input
                     type="text"
                     value={shipForm.trackingNo}
@@ -503,7 +503,7 @@ export default function OrderDetailPage() {
               <h3 className="mb-4 text-lg font-medium">{refundAction ? "同意退款" : "拒绝退款"}</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">备注（可选）</label>
+                  <label className="mb-1 block text-sm text-brand-charcoal/60">备注（可选）</label>
                   <textarea
                     value={refundRemark}
                     onChange={(e) => setRefundRemark(e.target.value)}

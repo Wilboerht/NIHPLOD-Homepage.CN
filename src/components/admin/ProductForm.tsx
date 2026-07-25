@@ -305,7 +305,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          className="flex items-center gap-2 text-brand-charcoal/60 hover:text-brand-charcoal"
         >
           <ArrowLeft className="h-4 w-4" />
           返回
@@ -332,7 +332,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       <div className="space-y-8">
         {/* 基本信息 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">基本信息</h2>
+          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">基本信息</h2>
           <div className="grid gap-6 md:grid-cols-2">
             <Input
               label="产品名称（中文）"
@@ -391,7 +391,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
         {/* 产品图片 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">产品图片</h2>
+          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">产品图片</h2>
           <ImageUploader
             value={formData.images}
             onChange={(images) => updateField("images", images)}
@@ -402,7 +402,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
         {/* 产品描述 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">产品描述</h2>
+          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">产品描述</h2>
           <RichTextEditor
             label="产品简介"
             value={formData.description}
@@ -435,7 +435,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
         {/* 功效标签 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">功效标签</h2>
+          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">功效标签</h2>
           <TagInput
             label="产品功效"
             value={formData.benefits}
@@ -448,7 +448,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
         {/* 购买设置 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">购买设置</h2>
+          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">购买设置</h2>
 
           {/* 站内购买 */}
           <div className="mb-6">
@@ -456,7 +456,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
                 站内购买
               </span>
-              <span className="text-xs text-gray-500">用户可直接在网站内下单购买</span>
+              <span className="text-xs text-brand-charcoal/50">用户可直接在网站内下单购买</span>
             </div>
             <div className="flex items-center gap-6">
               <Switch
@@ -466,7 +466,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               />
               {formData.allowDirectBuy && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">库存数量</span>
+                  <span className="text-sm text-brand-charcoal/50">库存数量</span>
                   <input
                     type="number"
                     min="0"
@@ -474,7 +474,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     onChange={(e) =>
                       updateField("stock", Math.max(0, parseInt(e.target.value) || 0))
                     }
-                    className="w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                    className="w-24 rounded-lg border border-brand-charcoal/20 px-3 py-1.5 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                   />
                 </div>
               )}
@@ -483,9 +483,9 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
           {/* 分隔线 */}
           <div className="mb-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-xs text-gray-400">第三方购买渠道</span>
-            <div className="h-px flex-1 bg-gray-200" />
+            <div className="h-px flex-1 bg-brand-charcoal/10" />
+            <span className="text-xs text-brand-charcoal/50">第三方购买渠道</span>
+            <div className="h-px flex-1 bg-brand-charcoal/10" />
           </div>
 
           {/* 第三方平台链接 */}
@@ -495,7 +495,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                   第三方平台
                 </span>
-                <span className="text-xs text-gray-500">天猫、小红书、抖音等平台链接</span>
+                <span className="text-xs text-brand-charcoal/50">天猫、小红书、抖音等平台链接</span>
               </div>
               <Button
                 type="button"
@@ -508,15 +508,15 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               </Button>
             </div>
             {formData.purchaseLinks.length === 0 ? (
-              <p className="text-sm text-gray-500">暂无第三方购买链接，点击右上角添加</p>
+              <p className="text-sm text-brand-charcoal/50">暂无第三方购买链接，点击右上角添加</p>
             ) : (
               <div className="space-y-3">
                 {formData.purchaseLinks.map((link, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3"
+                    className="flex items-center gap-3 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3"
                   >
-                    <GripVertical className="h-4 w-4 flex-shrink-0 cursor-move text-gray-400" />
+                    <GripVertical className="h-4 w-4 flex-shrink-0 cursor-move text-brand-charcoal/50" />
                     <div className="grid flex-1 gap-3 sm:grid-cols-2">
                       <Select
                         options={platformOptions}
@@ -533,7 +533,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     <button
                       type="button"
                       onClick={() => removePurchaseLink(index)}
-                      className="flex-shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                      className="flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -551,8 +551,8 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         <section className="rounded-xl bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-medium text-gray-900">GEO FAQ 优化 (SEO)</h2>
-              <p className="mt-1 text-xs text-gray-500">
+              <h2 className="text-lg font-medium text-brand-charcoal">GEO FAQ 优化 (SEO)</h2>
+              <p className="mt-1 text-xs text-brand-charcoal/50">
                 编写针对 AI 搜索（如 Perplexity, ChatGPT）优化的问答对，提升曝光权重
               </p>
             </div>
@@ -570,16 +570,16 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           </div>
 
           {!formData.geoFaqs ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-8">
-              <Sparkles className="mb-2 h-8 w-8 text-gray-300" />
-              <p className="text-sm text-gray-500">尚未生成 GEO 优化内容</p>
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-brand-charcoal/20 bg-brand-charcoal/[0.03] py-8">
+              <Sparkles className="mb-2 h-8 w-8 text-brand-charcoal/30" />
+              <p className="text-sm text-brand-charcoal/50">尚未生成 GEO 优化内容</p>
             </div>
           ) : (
             <div className="space-y-4">
               {formData.geoFaqs.map((faq, index) => (
                 <div
                   key={index}
-                  className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-4"
+                  className="space-y-2 rounded-lg border border-brand-charcoal/8 bg-brand-charcoal/[0.03] p-4"
                 >
                   <div className="flex gap-2">
                     <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-primary text-xs font-bold text-white">
@@ -596,7 +596,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     />
                   </div>
                   <div className="flex gap-2">
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-gray-800 text-xs font-bold text-white">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-charcoal text-xs font-bold text-white">
                       A
                     </span>
                     <textarea
@@ -643,7 +643,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
         {/* 其他设置 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-gray-900">其他设置</h2>
+          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">其他设置</h2>
           <div className="space-y-4">
             <Input
               label="排序"

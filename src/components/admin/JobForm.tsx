@@ -133,11 +133,11 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
 
   return (
     <div ref={wrapperRef} className="relative">
-      <label className="mb-1.5 block text-sm font-medium text-gray-700">
+      <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">
         工作地点 <span className="text-red-500">*</span>
       </label>
       <div className="relative">
-        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
         <input
           id="amap-location-input"
           type="text"
@@ -151,7 +151,7 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
           className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none transition-colors focus:ring-1 ${
             error
               ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-              : "border-gray-200 focus:border-brand-primary focus:ring-brand-primary"
+              : "border-brand-charcoal/15 focus:border-brand-primary focus:ring-brand-primary"
           }`}
         />
       </div>
@@ -159,7 +159,7 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
 
       {/* 下拉建议列表 */}
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
+        <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-brand-charcoal/15 bg-white shadow-xl">
           {suggestions.map((tip, index) => (
             <li
               key={index}
@@ -177,13 +177,13 @@ function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLoca
                 }
                 setOpen(false);
               }}
-              className="flex cursor-pointer flex-col px-4 py-2 hover:bg-gray-50"
+              className="flex cursor-pointer flex-col px-4 py-2 hover:bg-brand-charcoal/[0.03]"
             >
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                <Search className="h-3.5 w-3.5 text-gray-400" />
+              <div className="flex items-center gap-2 text-sm font-medium text-brand-charcoal">
+                <Search className="h-3.5 w-3.5 text-brand-charcoal/50" />
                 {tip.name}
               </div>
-              <div className="ml-5 text-xs text-gray-500">
+              <div className="ml-5 text-xs text-brand-charcoal/50">
                 {tip.district}
                 {tip.address || ""}
               </div>
@@ -373,7 +373,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* 基本信息 */}
       <section className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="mb-6 text-lg font-medium text-gray-900">基本信息</h2>
+        <h2 className="mb-6 text-lg font-medium text-brand-charcoal">基本信息</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <Input
             label="职位名称（中文）"
@@ -424,7 +424,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         </div>
         {/* 显示经纬度调试 */}
         {formData.longitude && formData.latitude && (
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="mt-2 text-xs text-brand-charcoal/50">
             已定位坐标: {formData.longitude.toFixed(6)}, {formData.latitude.toFixed(6)}
           </p>
         )}
@@ -432,7 +432,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
       {/* 职责描述 */}
       <section className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="mb-6 text-lg font-medium text-gray-900">职责描述</h2>
+        <h2 className="mb-6 text-lg font-medium text-brand-charcoal">职责描述</h2>
         <RichTextEditor
           value={formData.description || ""}
           onChange={(value) => updateField("description", value)}
@@ -444,7 +444,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
       {/* 任职要求 */}
       <section className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="mb-6 text-lg font-medium text-gray-900">任职要求</h2>
+        <h2 className="mb-6 text-lg font-medium text-brand-charcoal">任职要求</h2>
         <RichTextEditor
           value={formData.requirements || ""}
           onChange={(value) => updateField("requirements", value)}

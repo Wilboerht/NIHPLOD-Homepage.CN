@@ -161,7 +161,7 @@ export default function LoginPage() {
   );
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-brand-cream px-6">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#fefcf8] px-6">
       {/* 面包屑导航 */}
       <div className="absolute left-6 top-6 z-20 flex items-center gap-2 text-xs text-slate-400 sm:left-10 sm:top-8">
         <Link href="/" className="transition-colors hover:text-slate-600">
@@ -214,11 +214,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* 装饰背景光晕 */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-brand-primary/10 blur-[100px]" />
-        <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-brand-primary/10 blur-[100px]" />
-      </div>
 
       <div className="relative z-10 flex w-full flex-col items-center">
         {/* 轨道动画 + 登录卡片 */}
@@ -399,10 +394,10 @@ export default function LoginPage() {
 
       {/* 页脚 */}
       <div className="absolute bottom-6 left-0 right-0 z-20 flex flex-col items-center gap-1 px-6">
-        <p className="text-[10px] font-light tracking-widest text-brand-charcoal/40">
+        <p className="text-[11px] font-light tracking-widest text-brand-charcoal/40">
           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
         </p>
-        <div className="flex items-center justify-center gap-2 whitespace-nowrap text-[9px] font-light tracking-normal text-brand-charcoal/40">
+        <div className="flex items-center justify-center gap-2 whitespace-nowrap text-[11px] font-light tracking-normal text-brand-charcoal/40">
           <Link
             href="https://beian.miit.gov.cn/"
             target="_blank"

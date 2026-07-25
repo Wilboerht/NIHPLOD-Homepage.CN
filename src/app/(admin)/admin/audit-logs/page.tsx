@@ -64,7 +64,7 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
 
 const ACTION_COLORS: Record<string, string> = {
   login: "bg-green-50 text-green-700",
-  logout: "bg-gray-100 text-gray-700",
+  logout: "bg-brand-charcoal/8 text-brand-charcoal/80",
   ship_order: "bg-blue-50 text-blue-700",
   refund_approve: "bg-yellow-50 text-yellow-700",
   refund_reject: "bg-orange-50 text-orange-700",
@@ -143,8 +143,8 @@ export default function AuditLogsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">审计日志</h1>
-          <p className="mt-1 text-sm text-gray-500">记录管理端关键操作，便于追溯和合规审计</p>
+          <h1 className="text-2xl font-semibold text-brand-charcoal">审计日志</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">记录管理端关键操作，便于追溯和合规审计</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchLogs}>
           <RefreshCw className="mr-1 h-4 w-4" /> 刷新
@@ -182,7 +182,7 @@ export default function AuditLogsPage() {
       {/* 日志列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500">
+          <thead className="bg-gray-50 text-left text-brand-charcoal/50">
             <tr>
               <th className="px-4 py-3">时间</th>
               <th className="px-4 py-3">操作人</th>
@@ -196,13 +196,13 @@ export default function AuditLogsPage() {
           <tbody className="divide-y">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
                   加载中...
                 </td>
               </tr>
             ) : logs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
                   暂无记录
                 </td>
               </tr>
@@ -210,26 +210,26 @@ export default function AuditLogsPage() {
               logs.map((log) => (
                 <tr
                   key={log.id}
-                  className="cursor-pointer hover:bg-gray-50"
+                  className="cursor-pointer hover:bg-brand-charcoal/[0.03]"
                   onClick={() => openDetail(log)}
                 >
-                  <td className="whitespace-nowrap px-4 py-3 text-gray-400">
+                  <td className="whitespace-nowrap px-4 py-3 text-brand-charcoal/50">
                     {formatDate(log.createdAt)}
                   </td>
                   <td className="px-4 py-3">
                     {log.admin ? (
                       <div>
                         <div className="font-medium">{log.admin.name}</div>
-                        <div className="text-xs text-gray-400">{log.admin.email}</div>
+                        <div className="text-xs text-brand-charcoal/50">{log.admin.email}</div>
                       </div>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-brand-charcoal/50">-</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        ACTION_COLORS[log.action] || "bg-gray-100 text-gray-700"
+                        ACTION_COLORS[log.action] || "bg-brand-charcoal/8 text-brand-charcoal/80"
                       }`}
                     >
                       {ACTION_LABELS[log.action] || log.action}
@@ -238,10 +238,10 @@ export default function AuditLogsPage() {
                   <td className="px-4 py-3">
                     {TARGET_TYPE_LABELS[log.targetType] || log.targetType}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                  <td className="px-4 py-3 font-mono text-xs text-brand-charcoal/50">
                     {log.targetId || "-"}
                   </td>
-                  <td className="px-4 py-3 text-gray-400">{log.ipAddress || "-"}</td>
+                  <td className="px-4 py-3 text-brand-charcoal/50">{log.ipAddress || "-"}</td>
                   <td className="px-4 py-3 text-right">
                     <Button
                       variant="ghost"
@@ -269,7 +269,7 @@ export default function AuditLogsPage() {
               key={i + 1}
               onClick={() => updateParams({ page: String(i + 1) })}
               className={`rounded px-3 py-1 ${
-                page === i + 1 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
+                page === i + 1 ? "bg-blue-600 text-white" : "bg-brand-charcoal/8 text-brand-charcoal"
               }`}
             >
               {i + 1}
@@ -286,15 +286,15 @@ export default function AuditLogsPage() {
             <div className="flex items-center gap-3">
               <span
                 className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  ACTION_COLORS[selectedLog.action] || "bg-gray-100 text-gray-700"
+                  ACTION_COLORS[selectedLog.action] || "bg-brand-charcoal/8 text-brand-charcoal/80"
                 }`}
               >
                 {ACTION_LABELS[selectedLog.action] || selectedLog.action}
               </span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-brand-charcoal/50">
                 {TARGET_TYPE_LABELS[selectedLog.targetType] || selectedLog.targetType}
                 {selectedLog.targetId && (
-                  <span className="ml-1 font-mono text-xs text-gray-400">
+                  <span className="ml-1 font-mono text-xs text-brand-charcoal/50">
                     ({selectedLog.targetId})
                   </span>
                 )}
@@ -303,24 +303,24 @@ export default function AuditLogsPage() {
 
             {/* 基本信息 */}
             <div className="grid gap-3 text-sm md:grid-cols-2">
-              <div className="rounded-lg bg-gray-50 p-3">
-                <dt className="mb-1 text-gray-500">操作人</dt>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
+                <dt className="mb-1 text-brand-charcoal/50">操作人</dt>
                 <dd className="font-medium">
                   {selectedLog.admin
                     ? `${selectedLog.admin.name} (${selectedLog.admin.email})`
                     : "-"}
                 </dd>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
-                <dt className="mb-1 text-gray-500">操作时间</dt>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
+                <dt className="mb-1 text-brand-charcoal/50">操作时间</dt>
                 <dd className="font-medium">{formatDate(selectedLog.createdAt)}</dd>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
-                <dt className="mb-1 text-gray-500">IP 地址</dt>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
+                <dt className="mb-1 text-brand-charcoal/50">IP 地址</dt>
                 <dd className="font-mono font-medium">{selectedLog.ipAddress || "-"}</dd>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
-                <dt className="mb-1 text-gray-500">User-Agent</dt>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
+                <dt className="mb-1 text-brand-charcoal/50">User-Agent</dt>
                 <dd className="break-all text-xs font-medium">{selectedLog.userAgent || "-"}</dd>
               </div>
             </div>
@@ -328,16 +328,16 @@ export default function AuditLogsPage() {
             {/* JSON 详情 */}
             {selectedLog.detail ? (
               <div>
-                <h4 className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                <h4 className="mb-2 flex items-center gap-1.5 text-sm font-medium text-brand-charcoal">
                   <FileJson className="h-4 w-4" />
                   操作详情
                 </h4>
-                <pre className="max-h-80 overflow-auto rounded-lg border border-gray-100 bg-gray-50 p-4 text-xs text-gray-600">
+                <pre className="max-h-80 overflow-auto rounded-lg border border-brand-charcoal/8 bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/60">
                   {JSON.stringify(selectedLog.detail, null, 2)}
                 </pre>
               </div>
             ) : (
-              <div className="text-sm text-gray-400">无详细记录</div>
+              <div className="text-sm text-brand-charcoal/50">无详细记录</div>
             )}
           </div>
         ) : null}
