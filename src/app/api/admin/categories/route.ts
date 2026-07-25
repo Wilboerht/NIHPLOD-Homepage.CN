@@ -14,7 +14,6 @@ const CategorySchema = z.object({
     .min(1, "URL别名不能为空")
     .max(50, "URL别名不能超过50个字符")
     .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
-  icon: z.string().max(10000, "图标代码不能超过10000个字符").optional().nullable(),
   order: z.number().int().min(0).default(0),
   visible: z.boolean().default(true), // 是否在前台展示
 });
@@ -49,7 +48,6 @@ export async function GET(request: NextRequest) {
         name: cat.name,
         nameEn: cat.nameEn,
         slug: cat.slug,
-        icon: cat.icon,
         order: cat.order,
         visible: cat.visible,
         productCount: cat._count.products,
@@ -108,7 +106,6 @@ export async function POST(request: NextRequest) {
         name: validated.name,
         nameEn: validated.nameEn,
         slug: validated.slug,
-        icon: validated.icon,
         order,
         visible: validated.visible,
       },
