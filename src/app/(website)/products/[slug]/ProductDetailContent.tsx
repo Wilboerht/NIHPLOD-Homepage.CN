@@ -126,6 +126,7 @@ export function ProductDetailContent({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [buying, setBuying] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
   const mobileTrapRef = useFocusTrap(mobileMenuOpen);
   const lightboxTrapRef = useFocusTrap(lightboxOpen);
 
@@ -479,7 +480,7 @@ export function ProductDetailContent({
       {/* 固定顶栏导航 */}
       <nav
         aria-label="产品页导航"
-        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#FBF8F0]/80 px-6 py-3 backdrop-blur-md md:grid md:grid-cols-[160px_1fr_160px] md:px-20 md:py-6"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#FBF8F0]/80 px-6 py-6 backdrop-blur-md md:grid md:grid-cols-[160px_1fr_160px] md:px-20"
         style={{ pointerEvents: "none" }}
       >
         <div
@@ -488,7 +489,7 @@ export function ProductDetailContent({
         >
           {/* Logo */}
           <Link href="/">
-            <div className="relative h-[30px] w-[130px] md:h-[40px] md:w-[160px]">
+            <div className="relative h-[30px] w-[107px] md:h-[40px] md:w-[160px]">
               <Image
                 src="/images/NIHPLOD-logo.svg"
                 alt="NIHPLOD"
@@ -533,7 +534,7 @@ export function ProductDetailContent({
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-brand-charcoal/5 md:hidden"
+            className="absolute left-0 flex h-10 w-10 items-center justify-center md:hidden"
             aria-label="打开菜单"
             aria-expanded={mobileMenuOpen}
             aria-controls="product-detail-nav-panel"
@@ -563,7 +564,7 @@ export function ProductDetailContent({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="mb-8 flex h-11 w-11 items-center justify-center self-end rounded-full transition-colors hover:bg-brand-charcoal/5"
+              className="mb-8 flex h-10 w-10 items-center justify-center self-end rounded-full transition-colors hover:bg-brand-charcoal/5"
               aria-label="关闭菜单"
             >
               <X className="h-5 w-5 text-[#00263E]" strokeWidth={1.5} />
@@ -589,7 +590,7 @@ export function ProductDetailContent({
                     key={cat.id}
                     href={`/products/${catProduct.slug}`}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+                    className="rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
                   >
                     {cat.name}
                   </Link>
@@ -600,7 +601,7 @@ export function ProductDetailContent({
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-medium tracking-wider text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
+              className="mt-auto flex items-center gap-2 rounded-xl px-4 py-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors hover:bg-brand-charcoal/5"
             >
               <Home className="h-5 w-5" />
               返回首页
@@ -610,7 +611,7 @@ export function ProductDetailContent({
       </div>
 
       {/* 固定顶栏占位 */}
-      <div className="h-[62px] shrink-0 md:h-[88px]" />
+      <div className="h-[88px] shrink-0 md:h-[88px]" />
 
       <div className="relative z-10 flex flex-1 flex-col pb-28 lg:w-[80%] lg:mx-auto lg:justify-center lg:pb-8">
 
@@ -619,7 +620,7 @@ export function ProductDetailContent({
           <div className="w-full scroll-smooth overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
             <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
-              <div className="lg:flex lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-y-auto lg:py-8">
+              <div className="px-6 lg:flex lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-y-auto lg:px-0 lg:py-8">
                 <div className="w-full md:mx-auto md:w-full lg:max-w-lg">
                   <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
                     {/* 桌面端缩略图列 */}
@@ -666,14 +667,9 @@ export function ProductDetailContent({
                         </m.div>
                       </div>
 
-                      {/* 移动端缩略图条 */}
-                      {product.images.length > 1 && (
-                        <div className="mt-4 lg:hidden">{renderThumbnails("horizontal")}</div>
-                      )}
-
                       {/* 图片指示器 */}
                       {product.images.length > 1 && (
-                        <div className="mt-7 flex items-center justify-center gap-2">
+                        <div className="mt-4 flex items-center justify-center gap-2 lg:mt-7">
                           {product.images.map((_, index) => (
                             <button
                               key={index}
@@ -703,7 +699,7 @@ export function ProductDetailContent({
 
               {/* 右侧：产品信息 + 购买 */}
               <div className="lg:min-w-0 lg:overflow-y-auto lg:py-8">
-                <div className="mx-auto max-w-2xl px-4 sm:px-0">
+                <div className="mx-auto max-w-2xl px-6 sm:px-0">
                   {/* 产品信息 */}
                   <m.div
                     initial={{ opacity: 0, y: 20 }}
@@ -761,7 +757,7 @@ export function ProductDetailContent({
                       {product.benefits.map((benefit, index) => (
                         <li
                           key={index}
-                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-sm font-light text-[#00263E]"
+                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[13px] font-light text-[#00263E] md:text-sm"
                         >
                           {benefit}
                         </li>
@@ -787,7 +783,7 @@ export function ProductDetailContent({
                           onClick={() => handleTabChange(tab.key)}
                           onKeyDown={handleTabKeyDown}
                           className={cn(
-                            "relative cursor-pointer pb-3 text-sm tracking-[0.12em] transition-colors",
+                            "relative cursor-pointer pb-3 text-[13px] tracking-[0.08em] transition-colors md:text-sm md:tracking-[0.12em]",
                             activeTab === tab.key
                               ? "font-normal text-brand-charcoal"
                               : "font-light text-brand-charcoal hover:opacity-70"
@@ -824,7 +820,7 @@ export function ProductDetailContent({
                         >
                           {tabContent[tab.key] ? (
                             <div
-                              className="text-left text-base font-light leading-[1.8] tracking-[0.08em] text-[#00263e]/90 [&_p+p]:mt-3"
+                              className="text-left text-[14px] font-light leading-[1.8] tracking-[0.06em] text-[#00263e]/90 md:text-base md:tracking-[0.08em] [&_p+p]:mt-3"
                               dangerouslySetInnerHTML={{
                                 __html: DOMPurify.sanitize(tabContent[tab.key]!),
                               }}
@@ -903,7 +899,7 @@ export function ProductDetailContent({
 
                 {/* 相关产品推荐 */}
                 {relatedProducts.length > 0 && (
-                  <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-4 pt-8 sm:px-0 pb-24">
+                  <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pt-8 sm:px-0 pb-24">
                     <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-[#00263E]">
                       相关推荐
                     </h2>
@@ -952,13 +948,79 @@ export function ProductDetailContent({
       </div>
 
       {/* 底部版权信息 */}
-      <footer className="mt-auto border-t border-brand-charcoal/10 max-lg:border-0">
+      <footer className="mt-auto md:border-t md:border-brand-charcoal/10">
         <div className="container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16 max-lg:pb-24">
-          <p className="text-[11px] font-normal tracking-[0.15em] text-brand-charcoal/[0.48]">
-            &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-          </p>
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
+              &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+            </span>
+            <span className="text-[11px] font-light text-brand-charcoal/20">|</span>
+            {/* 移动端：点击弹出模态框 */}
+            <button
+              type="button"
+              onClick={() => setQrModalOpen(true)}
+              className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] transition-colors active:text-brand-charcoal/70 md:hidden"
+            >
+              服务号
+            </button>
+            {/* PC端：hover 显示 */}
+            <div className="group relative hidden cursor-pointer md:inline-flex">
+              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">服务号</span>
+              <Image
+                src="/images/wechat-qrcode.jpg"
+                alt="NIHPLOD 微信服务号"
+                width={160}
+                height={160}
+                unoptimized
+                className="absolute bottom-full left-1/2 z-50 mb-2 hidden h-auto w-40 -translate-x-1/2 rounded-lg bg-white p-2 shadow-lg group-hover:block"
+              />
+            </div>
+          </div>
         </div>
       </footer>
+
+      {/* 移动端二维码模态框 */}
+      <AnimatePresence>
+        {qrModalOpen && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-brand-charcoal/30 backdrop-blur-sm md:hidden"
+            onClick={() => setQrModalOpen(false)}
+          >
+            <m.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+              className="mx-6 flex flex-col items-center rounded-2xl bg-white p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src="/images/wechat-qrcode.jpg"
+                alt="NIHPLOD 微信服务号"
+                width={200}
+                height={200}
+                unoptimized
+                className="h-[200px] w-[200px] rounded-lg"
+              />
+              <p className="mt-4 text-[13px] font-light tracking-[0.06em] text-brand-charcoal/60">
+                扫码关注 NIHPLOD 服务号
+              </p>
+              <button
+                type="button"
+                onClick={() => setQrModalOpen(false)}
+                className="mt-4 flex h-8 w-8 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5"
+                aria-label="关闭"
+              >
+                <X className="h-4 w-4 text-brand-charcoal/40" strokeWidth={1.5} />
+              </button>
+            </m.div>
+          </m.div>
+        )}
+      </AnimatePresence>
 
       {/* 图片灯箱 */}
       <AnimatePresence>

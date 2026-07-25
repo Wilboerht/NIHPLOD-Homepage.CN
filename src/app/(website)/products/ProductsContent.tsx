@@ -225,7 +225,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => { if (categoryProduct) setMobileView(cat.id); }}
+                        onClick={() => { if (categoryProduct) handleProductClick(categoryProduct); }}
                         disabled={!categoryProduct}
                         className={cn(
                           "flex items-center gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-200",
@@ -260,76 +260,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 </div>
               </m.div>
 
-            ) : (
-              /* --- 分类详情视图（产品展示） --- */
-              <m.div
-                key={`cat-detail-${mobileView}`}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className="flex min-h-full flex-col"
-              >
-                {(() => {
-                  const cat = categories.find((c) => c.id === mobileView);
-                  const product = products.find((p) => p.categoryId === mobileView);
-                  if (!cat || !product) return null;
-                  return (
-                    <>
-                      {/* Category + Product Title */}
-                      <div className="pt-6">
-                        <h2 className="text-[17px] font-normal leading-[1.6] tracking-[0.06em] text-brand-primary">
-                          {cat.name}
-                        </h2>
-                      </div>
-
-                      {/* Decorative Divider */}
-                      <div className="mx-auto mt-6 w-[40px] border-b border-brand-charcoal/[0.12]" />
-
-                      {/* Product Image */}
-                      <div className="mt-6 relative aspect-square w-full overflow-hidden bg-[#FBF8F0]">
-                        {product.images[0] && (
-                          <Image src={product.images[0].url} alt={product.name} fill className="object-cover" />
-                        )}
-                      </div>
-
-                      {/* Product Info */}
-                      <div className="mt-5 flex flex-col items-center text-center">
-                        <h3 className="text-[15px] font-normal tracking-[0.08em] text-brand-primary">
-                          {product.name}
-                        </h3>
-                        <p className="mt-1 text-[14px] font-light tracking-[0.08em] text-brand-primary/60">
-                          {formatPrice(product.price)}
-                        </p>
-                        {product.description && (
-                          <p className="mt-4 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
-                            {product.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* CTA */}
-                      <div className="mt-8 flex justify-center">
-                        <button
-                          type="button"
-                          onClick={() => { handleProductClick(product); setMobileView("products"); }}
-                          className="rounded-full border border-brand-charcoal/20 px-6 py-3.5 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70 transition-all duration-300 active:scale-[0.97]"
-                        >
-                          查看完整详情
-                        </button>
-                      </div>
-
-                      {/* Copyright */}
-                      <div className="mt-auto flex flex-col items-center justify-center pb-6 pt-10">
-                        <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
-                          &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-                        </p>
-                      </div>
-                    </>
-                  );
-                })()}
-              </m.div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
       </div>
