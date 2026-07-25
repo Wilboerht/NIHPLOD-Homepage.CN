@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Home,
+  ShoppingCart,
 } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { ProductCard, PlatformIcon, XiaohongshuLink } from "@/components/website";
@@ -945,14 +946,25 @@ export function ProductDetailContent({
         {/* 移动端底部固定购买栏 */}
         {product.allowDirectBuy && (
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#fefcf8]/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-md lg:hidden">
-            <button
-              type="button"
-              onClick={handleOfficialBuy}
-              disabled={buying}
-              className="w-full rounded-lg bg-brand-primary py-3 text-center text-sm font-light tracking-[0.08em] text-white transition-colors hover:bg-brand-primary/90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 lg:tracking-[0.12em]"
-            >
-              {buying ? "加入中…" : "官网购买"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleOfficialBuy}
+                disabled={buying}
+                className="flex-1 rounded-lg bg-brand-primary py-3 text-center text-sm font-light tracking-[0.08em] text-white transition-colors hover:bg-brand-primary/90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 lg:tracking-[0.12em]"
+              >
+                {buying ? "加入中…" : "官网购买"}
+              </button>
+              <button
+                type="button"
+                onClick={handleOfficialBuy}
+                disabled={buying}
+                aria-label="购物车"
+                className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg border border-brand-charcoal/15 text-brand-charcoal/70 transition-colors active:bg-brand-charcoal/5 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <ShoppingCart className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+            </div>
           </div>
         )}
 
