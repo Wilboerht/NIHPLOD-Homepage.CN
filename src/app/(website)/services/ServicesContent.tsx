@@ -309,12 +309,12 @@ export function ServicesContent({ content }: ServicesContentProps) {
             </div>
 
             <Link
-              href="/products"
+              href="/"
               onClick={() => setMobileMenuOpen(false)}
               className="mt-8 flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-light tracking-[0.08em] text-[#00263E] transition-colors active:bg-brand-charcoal/5"
             >
               <Home className="h-5 w-5" />
-              返回产品页
+              返回首页
             </Link>
           </div>
         </div>
