@@ -123,7 +123,7 @@ export default function TOTPSettingsPage() {
             )}
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-brand-charcoal">
+            <h2 className="text-lg font-medium text-brand-charcoal">
               {totpEnabled ? "二次验证已启用" : "二次验证未启用"}
             </h2>
             <p className="mt-1 text-sm text-brand-charcoal/50">
@@ -231,7 +231,7 @@ export default function TOTPSettingsPage() {
 
       {totpEnabled && (
         <div className="rounded-lg border border-brand-charcoal/15 bg-white p-6 shadow-sm">
-          <h3 className="mb-3 text-base font-semibold text-brand-charcoal">关闭二次验证</h3>
+          <h3 className="mb-3 text-base font-medium text-brand-charcoal">关闭二次验证</h3>
           <p className="mb-4 text-sm text-brand-charcoal/50">
             关闭后登录不再需要动态验证码，账号安全性将降低。
           </p>

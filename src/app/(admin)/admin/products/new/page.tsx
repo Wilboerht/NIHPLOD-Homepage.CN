@@ -33,7 +33,7 @@ export default function NewProductPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold text-brand-charcoal">新增产品</h1>
+      <h1 className="mb-6 text-2xl font-medium text-brand-charcoal">新增产品</h1>
       <ProductForm mode="create" categories={categories} />
     </div>
   );

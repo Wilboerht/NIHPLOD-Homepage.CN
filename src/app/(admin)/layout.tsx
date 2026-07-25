@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </main>
 
           {/* 页脚 */}
-          <footer className="px-4 py-4 text-center text-sm text-brand-charcoal/50 md:px-6">
+          <footer className="px-4 py-4 text-center text-[11px] font-light tracking-widest text-brand-charcoal/40 md:px-6">
             © {new Date().getFullYear()} NIHPLOD All Rights Reserved.
           </footer>
         </div>

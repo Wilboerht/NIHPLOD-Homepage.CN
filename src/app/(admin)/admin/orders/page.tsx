@@ -107,7 +107,7 @@ export default function AdminOrdersPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-charcoal">订单管理</h1>
+          <h1 className="text-2xl font-medium text-brand-charcoal">订单管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">
             管理所有客户订单{!loading && pagination.total > 0 ? `，共 ${pagination.total} 条` : ""}
           </p>

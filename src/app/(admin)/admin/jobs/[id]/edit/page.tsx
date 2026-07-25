@@ -74,7 +74,7 @@ export default function EditJobPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-xl font-semibold text-brand-charcoal">编辑职位</h1>
+          <h1 className="text-xl font-medium text-brand-charcoal">编辑职位</h1>
           <p className="mt-0.5 text-sm text-brand-charcoal/50">{job.title}</p>
         </div>
       </div>

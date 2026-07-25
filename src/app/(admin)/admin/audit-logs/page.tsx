@@ -166,7 +166,7 @@ export default function AuditLogsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-charcoal">审计日志</h1>
+          <h1 className="text-2xl font-medium text-brand-charcoal">审计日志</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">记录管理端关键操作，便于追溯和合规审计</p>
         </div>
         <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchLogs}>

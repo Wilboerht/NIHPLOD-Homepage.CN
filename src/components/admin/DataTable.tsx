@@ -150,7 +150,7 @@ export function DataTable<T extends object>({
                     scope="col"
                     style={{ width: column.width }}
                     className={cn(
-                      "px-6 py-3 text-sm font-medium uppercase tracking-wider text-brand-charcoal/50",
+                      "px-6 py-3 text-sm font-medium tracking-wider text-brand-charcoal/50",
                       alignStyles[column.align || "left"],
                       column.sortable && "cursor-pointer select-none hover:bg-brand-charcoal/[0.06]"
                     )}

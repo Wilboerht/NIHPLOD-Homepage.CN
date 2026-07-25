@@ -224,7 +224,7 @@ export default function OrderDetailPage() {
               <ArrowLeft className="mr-1 h-4 w-4" /> 返回
             </Button>
           </Link>
-          <h1 className="text-xl font-semibold text-brand-charcoal">订单 {order.orderNo}</h1>
+          <h1 className="text-xl font-medium text-brand-charcoal">订单 {order.orderNo}</h1>
           <Badge variant={STATUS_MAP[order.status]?.color || "default"}>
             {STATUS_MAP[order.status]?.label || order.status}
           </Badge>

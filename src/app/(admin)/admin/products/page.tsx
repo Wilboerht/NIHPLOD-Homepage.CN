@@ -154,7 +154,7 @@ export default function AdminProductsPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-charcoal">产品管理</h1>
+          <h1 className="text-2xl font-medium text-brand-charcoal">产品管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">管理所有产品，共 {pagination.total} 个</p>
         </div>
         <Link href="/admin/products/new">

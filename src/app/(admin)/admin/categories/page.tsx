@@ -158,7 +158,7 @@ export default function AdminCategoriesPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-charcoal">分类管理</h1>
+          <h1 className="text-2xl font-medium text-brand-charcoal">分类管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">
             管理产品分类，拖拽调整排序，共 {categories.length} 个分类
           </p>

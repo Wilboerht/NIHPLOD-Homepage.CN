@@ -178,7 +178,7 @@ export default function AdminCouponsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-charcoal">优惠券管理</h1>
+          <h1 className="text-2xl font-medium text-brand-charcoal">优惠券管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">
             管理所有优惠券{!loading && pagination.total > 0 ? `，共 ${pagination.total} 张` : ""}
           </p>

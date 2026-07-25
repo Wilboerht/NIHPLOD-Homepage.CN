@@ -185,7 +185,7 @@ export default function AdminMessagesPage() {
       {/* 头部 */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-charcoal">留言管理</h1>
+          <h1 className="text-2xl font-medium text-brand-charcoal">留言管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">
             共 {total} 条留言
             {unreadCount > 0 && (

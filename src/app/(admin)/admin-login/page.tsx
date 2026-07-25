@@ -263,7 +263,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <h1 className="mb-1 text-xl font-semibold tracking-wide text-brand-charcoal">管理员登录</h1>
+            <h1 className="mb-1 text-xl font-medium tracking-wide text-brand-charcoal">管理员登录</h1>
             <p className="mb-8 text-sm text-brand-charcoal/50">请输入您的管理账号</p>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -410,7 +410,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-primary bg-transparent py-3 text-[15px] font-medium tracking-wide text-brand-primary transition-all duration-300 hover:bg-brand-primary hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-primary bg-transparent py-3 text-[15px] font-medium tracking-wider text-brand-primary transition-all duration-300 hover:bg-brand-primary hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isLoading ? (
                   <>

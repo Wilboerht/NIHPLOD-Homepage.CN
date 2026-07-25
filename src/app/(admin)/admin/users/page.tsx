@@ -221,7 +221,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-charcoal">用户管理</h1>
+          <h1 className="text-2xl font-medium text-brand-charcoal">用户管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">管理注册用户</p>
         </div>
         <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchUsers}>
@@ -356,7 +356,7 @@ export default function AdminUsersPage() {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-lg font-semibold text-brand-charcoal">
+                <p className="truncate text-lg font-medium text-brand-charcoal">
                   {detailUser.nickname || "未设置昵称"}
                 </p>
                 <p className="truncate font-mono text-xs text-brand-charcoal/50">ID: {detailUser.id}</p>
@@ -539,10 +539,10 @@ export default function AdminUsersPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-brand-charcoal/60">
-                        <th scope="col" className="px-4 py-2 font-normal">订单号</th>
-                        <th scope="col" className="px-4 py-2 font-normal">状态</th>
-                        <th scope="col" className="px-4 py-2 font-normal">金额</th>
-                        <th scope="col" className="px-4 py-2 font-normal">时间</th>
+                        <th scope="col" className="px-4 py-2 font-medium">订单号</th>
+                        <th scope="col" className="px-4 py-2 font-medium">状态</th>
+                        <th scope="col" className="px-4 py-2 font-medium">金额</th>
+                        <th scope="col" className="px-4 py-2 font-medium">时间</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">

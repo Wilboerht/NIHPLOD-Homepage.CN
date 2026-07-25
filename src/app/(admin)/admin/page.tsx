@@ -42,7 +42,7 @@ export default async function AdminDashboard() {
     <div className="space-y-6">
       {/* 页面标题 */}
       <div>
-        <h1 className="text-2xl font-semibold text-brand-charcoal">仪表盘</h1>
+        <h1 className="text-2xl font-medium text-brand-charcoal">仪表盘</h1>
         <p className="mt-1 text-sm text-brand-charcoal/50">欢迎回来，查看网站概览数据</p>
       </div>
 
