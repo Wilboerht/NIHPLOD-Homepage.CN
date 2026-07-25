@@ -42,6 +42,8 @@ export function ImageUploader({
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragItem = useRef<number | null>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   // 验证文件
   const validateFile = useCallback(
@@ -150,13 +152,12 @@ export function ImageUploader({
   // 组件卸载时清理所有 blob URL
   useEffect(() => {
     return () => {
-      value.forEach((img) => {
+      valueRef.current.forEach((img) => {
         if (img?.url?.startsWith("blob:")) {
           URL.revokeObjectURL(img.url);
         }
       });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 图片排序拖拽
@@ -219,7 +220,7 @@ export function ImageUploader({
                 image.uploading && "opacity-50"
               )}
             >
-              <Image src={image.url} alt={image.alt || "产品图片"} fill className="object-cover" />
+              <Image src={image.url} alt={image.alt || "产品图片"} fill className="object-cover" sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" />
               {/* 拖拽手柄 */}
               <div className="absolute left-1 top-1 cursor-grab rounded bg-black/50 p-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <GripVertical className="h-4 w-4 text-white" />

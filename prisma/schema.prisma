@@ -46,6 +46,7 @@ model Product {
 
   @@index([categoryId])
   @@index([published, order])
+  @@index([featured, order])
 }
 
 // 购买链接（支持多平台）
@@ -405,6 +406,7 @@ model Order {
   @@index([userId, createdAt(sort: Desc)])
   @@index([status, createdAt])
   @@index([paymentNo])
+  @@index([status, shippedAt])
 }
 
 model OrderItem {
@@ -594,6 +596,7 @@ model Coupon {
   userCoupons UserCoupon[]
 
   @@index([isActive])
+  @@index([isActive, startDate, endDate])
 }
 
 model UserCoupon {

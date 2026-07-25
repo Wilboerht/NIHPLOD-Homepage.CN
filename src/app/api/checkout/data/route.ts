@@ -239,7 +239,9 @@ export async function GET(request: NextRequest) {
 
     const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-    // 查询用户可用优惠券（UNUSED 且未过期，满足门槛，且适用于当前商品）
+    // 查询用户可用优惠券（UNUSED 且未过期，满足门槛）
+    // 注意：不设 take 限制，因为 scopeType 过滤在应用层进行，
+    // 截断可能导致匹配当前品类的券被遗漏
     const now = new Date();
     const availableCoupons = await prisma.userCoupon.findMany({
       where: {
@@ -261,10 +263,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    // 获取当前商品的品类ID，用于过滤适用范围
-    const productIds = items.map((i) => i.productId);
+    // 从结算商品中提取品类ID，用于过滤适用范围
+    const itemProductIds = Array.from(new Set(items.map((i) => i.productId)));
     const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
+      where: { id: { in: itemProductIds } },
       select: { id: true, categoryId: true },
     });
     const categoryIds = Array.from(new Set(products.map((p) => p.categoryId)));
@@ -277,7 +279,7 @@ export async function GET(request: NextRequest) {
         return categoryIds.some((cid) => coupon.scopeIds.includes(cid));
       }
       if (coupon.scopeType === "PRODUCT") {
-        return productIds.some((pid) => coupon.scopeIds.includes(pid));
+        return itemProductIds.some((pid) => coupon.scopeIds.includes(pid));
       }
       return true;
     });

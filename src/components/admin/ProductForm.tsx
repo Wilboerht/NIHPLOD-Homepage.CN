@@ -134,8 +134,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         slug: generateSlug(prev.nameEn),
       }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.nameEn, mode]);
+  }, [formData.nameEn, mode, formData.slug]);
 
   // 更新表单字段
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {

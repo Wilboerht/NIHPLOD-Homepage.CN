@@ -54,7 +54,7 @@ export async function finalizeRefund(
       },
     });
 
-    // 恢复库存 + 回滚销量（批量预取产品，避免 N+1）
+    // 恢复库存 + 回滚销量（预取产品 + 按 productId 聚合后批量更新，避免 N+1）
     const productIds = order.items.map((i) => i.productId);
     const allProducts = await tx.product.findMany({
       where: { id: { in: productIds } },
@@ -62,14 +62,24 @@ export async function finalizeRefund(
     });
     const productMap = new Map(allProducts.map((p) => [p.id, p]));
 
+    const stockAggregation = new Map<string, { stockIncrement: number; salesDecrement: number }>();
     for (const item of order.items) {
       const product = productMap.get(item.productId);
       const decrementQty = product ? Math.min(item.quantity, product.salesCount) : item.quantity;
+      const existing = stockAggregation.get(item.productId);
+      if (existing) {
+        existing.stockIncrement += item.quantity;
+        existing.salesDecrement += decrementQty;
+      } else {
+        stockAggregation.set(item.productId, { stockIncrement: item.quantity, salesDecrement: decrementQty });
+      }
+    }
+    for (const [productId, agg] of stockAggregation) {
       await tx.product.update({
-        where: { id: item.productId },
+        where: { id: productId },
         data: {
-          stock: { increment: item.quantity },
-          salesCount: { decrement: decrementQty },
+          stock: { increment: agg.stockIncrement },
+          salesCount: { decrement: agg.salesDecrement },
         },
       });
     }

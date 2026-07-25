@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { formatPrice } from "@/lib/utils";
 
 // 产品类型
 interface ProductItem {
@@ -128,15 +129,6 @@ export function ProductsTable({
     } finally {
       setActionLoading(null);
     }
-  };
-
-  // 格式化价格
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("zh-CN", {
-      style: "currency",
-      currency: "CNY",
-      minimumFractionDigits: 0,
-    }).format(price);
   };
 
   // 表格列定义

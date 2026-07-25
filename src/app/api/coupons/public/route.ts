@@ -17,6 +17,7 @@ export async function GET(_req: NextRequest) {
         ],
       },
       orderBy: { createdAt: "desc" },
+      take: 20,
       select: {
         id: true,
         name: true,

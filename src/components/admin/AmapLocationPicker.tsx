@@ -19,24 +19,20 @@ export interface AmapLocationPickerProps {
  * 提供地点搜索建议、自动补全和坐标返回
  */
 export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLocationPickerProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<AMap.Tip[]>([]);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const autoCompleteRef = useRef<any>(null);
+  const autoCompleteRef = useRef<AMap.Autocomplete | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (typeof window === "undefined" || (window as any).AMap) return;
+    if (typeof window === "undefined" || window.AMap) return;
 
     // 防止重复插入脚本
     const existing = document.querySelector('script[src*="webapi.amap.com"]');
     if (existing) return;
 
     // 配置安全密钥
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any)._AMapSecurityConfig = {
+    window._AMapSecurityConfig = {
       securityJsCode: AMAP_SECRET,
     };
 
@@ -56,23 +52,20 @@ export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: A
   // 搜索建议逻辑
   const handleSearch = (keyword: string) => {
     onChange(keyword);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const AMap = (window as any).AMap;
-    if (!AMap) return;
+    const amap = window.AMap;
+    if (!amap) return;
 
     if (keyword.trim()) {
-      AMap.plugin(["AMap.Autocomplete"], () => {
+      amap.plugin(["AMap.Autocomplete"], () => {
         if (!autoCompleteRef.current) {
-          autoCompleteRef.current = new AMap.Autocomplete({
+          autoCompleteRef.current = new amap.Autocomplete({
             city: "上海",
           });
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        autoCompleteRef.current.search(keyword, (status: string, result: any) => {
+        autoCompleteRef.current.search(keyword, (status: string, result: AMap.AutocompleteResult) => {
           if (status === "complete" && result.tips) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setSuggestions(result.tips.filter((t: any) => t.location));
+            setSuggestions(result.tips.filter((t) => t.location));
             setOpen(true);
           } else {
             setSuggestions([]);

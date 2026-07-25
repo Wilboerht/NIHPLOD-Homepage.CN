@@ -92,9 +92,8 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     address: string
   ): Promise<{ lng: number; lat: number } | null> => {
     return new Promise((resolve) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const AMap = (window as any).AMap;
-      if (!AMap || !AMap.PlaceSearch) return resolve(null);
+      const amap = window.AMap;
+      if (!amap || !amap.PlaceSearch) return resolve(null);
 
       // 默认上海中心坐标（高德常回落到这里，约在城隍庙/人民广场附近）
       const IS_DEFAULT_CENTER = (lng: number, lat: number) => {
@@ -102,14 +101,13 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       };
 
       // 策略1：优先用 PlaceSearch 搜具体的建筑物（针对 "信泰中心" 这种写字楼点对点最准）
-      const ps = new AMap.PlaceSearch({ city: "021", pageSize: 1 });
+      const ps = new amap.PlaceSearch({ city: "021", pageSize: 1 });
 
       // 智能提取关键词：如果是 "上海市普陀区信泰中心广场T3-610" -> 会尝试提取 "普陀区信泰中心广场"
       const cleanKeyword = address.split(" ").shift() || address;
       const shortKeyword = cleanKeyword.split(/[A-Z,a-z,0-9]/)[0] || cleanKeyword; // 尝试剥离房号后缀
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ps.search(shortKeyword, (status: string, result: any) => {
+      ps.search(shortKeyword, (status: string, result: AMap.PlaceSearchResult) => {
         if (status === "complete" && result.poiList && result.poiList.pois.length > 0) {
           const poi = result.poiList.pois[0];
           if (!IS_DEFAULT_CENTER(poi.location.lng, poi.location.lat)) {
@@ -118,9 +116,8 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         }
 
         // 策略2：备选 Geocoder
-        const geocoder = new AMap.Geocoder({ city: "021" });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        geocoder.getLocation(address, (s: string, r: any) => {
+        const geocoder = new amap.Geocoder({ city: "021" });
+        geocoder.getLocation(address, (s: string, r: AMap.GeocoderResult) => {
           if (s === "complete" && r.geocodes.length > 0) {
             const loc = r.geocodes[0].location;
             if (!IS_DEFAULT_CENTER(loc.lng, loc.lat)) {
@@ -132,8 +129,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           const fallbackKeyword = address.includes("区")
             ? address.split("区").pop()?.substring(0, 10)
             : address;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          geocoder.getLocation(fallbackKeyword || address, (fs: string, fr: any) => {
+          geocoder.getLocation(fallbackKeyword || address, (fs: string, fr: AMap.GeocoderResult) => {
             if (fs === "complete" && fr.geocodes.length > 0) {
               const loc = fr.geocodes[0].location;
               resolve({ lng: loc.lng, lat: loc.lat });
@@ -204,13 +200,6 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   const handleConfirmPublish = async () => {
     setShowPublishConfirm(false);
     await doSave(true);
-  };
-
-  // 暂时保留，如果未来需要保存为草稿则启用
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handleKeepDraft = async () => {
-    setShowPublishConfirm(false);
-    await doSave(false);
   };
 
   return (

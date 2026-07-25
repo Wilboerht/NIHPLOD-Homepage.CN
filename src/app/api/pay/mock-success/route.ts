@@ -8,6 +8,7 @@ import { verifyUserAuth } from "@/lib/auth";
 import { OrderStatus } from "@/generated/prisma/client";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 const mockSuccessSchema = z.object({
   orderId: z.string().min(1, "订单ID不能为空"),
@@ -33,6 +34,10 @@ export async function POST(request: NextRequest) {
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
       );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const body = await request.json();

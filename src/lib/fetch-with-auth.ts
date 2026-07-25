@@ -45,9 +45,16 @@ async function ensureCSRFToken(): Promise<string | null> {
 
 async function doRefresh(): Promise<boolean> {
   try {
+    // 刷新 Token 时也需附带 CSRF Token
+    const csrfToken = await ensureCSRFToken();
+    const headers: HeadersInit = {};
+    if (csrfToken) {
+      headers["X-CSRF-Token"] = csrfToken;
+    }
     const res = await fetch("/api/auth/refresh", {
       method: "POST",
       credentials: "include",
+      headers,
     });
     return res.ok;
   } catch {

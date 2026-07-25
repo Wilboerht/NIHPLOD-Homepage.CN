@@ -84,6 +84,10 @@ export const RATE_LIMIT_PRESETS = {
   refresh: { maxRequests: 10, windowMs: 5 * 60 * 1000 },
   /** 密码重置限制 - 每 15 分钟 5 次 */
   "reset-password": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+  /** 结算数据查询 - IP 级 - 每分钟 30 次（含地址/优惠券敏感信息） */
+  "checkout-data": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** 结算数据查询 - 用户级 - 每分钟 15 次 */
+  "checkout-data-user": { maxRequests: 15, windowMs: 60 * 1000 },
 } as const;
 
 /**

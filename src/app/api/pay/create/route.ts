@@ -11,6 +11,7 @@ import { isPaymentMethodEnabled } from "@/lib/payment-config";
 import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 创建支付参数验证
 const createPaySchema = z.object({
@@ -35,6 +36,10 @@ export async function POST(request: NextRequest) {
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
       );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     // 速率限制检查（双重限制：IP + 用户）

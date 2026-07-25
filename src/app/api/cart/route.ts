@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 添加购物车参数验证
 const addCartSchema = z.object({
@@ -99,6 +100,10 @@ export async function POST(request: NextRequest) {
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
       );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const body = await request.json();

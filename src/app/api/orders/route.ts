@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { dualRateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 创建订单参数验证
 const createOrderSchema = z
@@ -153,6 +154,10 @@ export async function POST(request: NextRequest) {
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
       );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     // 速率限制：每用户每分钟最多创建 10 个订单

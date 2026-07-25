@@ -17,6 +17,7 @@ import {
 } from "@/lib/totp";
 import QRCode from "qrcode";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 

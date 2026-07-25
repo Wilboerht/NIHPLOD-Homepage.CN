@@ -32,13 +32,19 @@ import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { rateLimit } from "@/lib/ratelimit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // 0. 速率限制：IP 维度每 5 分钟最多 10 次刷新
+    // 0. CSRF 校验：防止跨站请求伪造
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
+    // 1. 速率限制：IP 维度每 5 分钟最多 10 次刷新
     const ip = getClientIP(request);
     const ipLimit = await rateLimit(ip, "refresh", { maxRequests: 10, windowMs: 5 * 60 * 1000 });
     if (!ipLimit.success) {
@@ -48,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. 从 httpOnly Cookie 中读取 Refresh Token
+    // 2. 从 httpOnly Cookie 中读取 Refresh Token
     const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
 
     if (!refreshToken) {
@@ -69,7 +75,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 验证 Refresh Token JWT
+    // 3. 验证 Refresh Token JWT
     const payload = await verifyRefreshToken(refreshToken);
     if (!payload) {
       logAuthEvent("user_refresh_token", {
@@ -89,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 检查账号状态
+    // 4. 检查账号状态
     const statusCheck = await checkUserStatus(payload.id);
     if (!statusCheck.valid) {
       logAuthEvent("user_refresh_token", {
@@ -111,7 +117,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. 签发新双 Token（先签发，后续在原子事务中与旧 Token 一起处理）
+    // 5. 签发新双 Token（先签发，后续在原子事务中与旧 Token 一起处理）
     const newAccessToken = await signUserToken({
       id: payload.id,
       phone: payload.phone,
@@ -122,7 +128,7 @@ export async function POST(request: NextRequest) {
     });
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    // 5. 原子化验证旧 Token 并轮换新 Token
+    // 6. 原子化验证旧 Token 并轮换新 Token
     //    在单一 DB 事务中完成：查找旧 Token → 校验状态 → 撤销旧 → 保存新
     //    消除 validate + revoke + save 之间的 Race Condition 窗口
     const rotation = await atomicallyRotateRefreshToken(
@@ -169,7 +175,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. 构建响应（不再在 body 中返回 Token，仅返回过期时间等元数据）
+    // 7. 构建响应（不再在 body 中返回 Token，仅返回过期时间等元数据）
     const response = NextResponse.json({
       success: true,
       data: {
@@ -178,7 +184,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 7. 更新 Cookie 中的双 Token
+    // 8. 更新 Cookie 中的双 Token
     response.cookies.set(USER_COOKIE_NAME, newAccessToken, USER_ACCESS_COOKIE_OPTIONS);
     response.cookies.set(USER_REFRESH_COOKIE_NAME, newRefreshToken, USER_REFRESH_COOKIE_OPTIONS);
 

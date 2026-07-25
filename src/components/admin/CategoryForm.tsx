@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn, generateSlug } from "@/lib/utils";
 import { apiPost, apiPut } from "@/lib/api-client";
+import { CategorySchema as FullCategorySchema } from "@/schemas/product";
+
+// 分类表单专用 Schema（仅包含表单中需要的字段）
+const CategorySchema = FullCategorySchema.pick({ name: true, nameEn: true, slug: true });
 
 // 分类类型
 interface Category {
@@ -26,17 +30,6 @@ interface CategoryFormProps {
   onSuccess: () => void;
   category?: Category | null;
 }
-
-// 分类验证 Schema
-const CategorySchema = z.object({
-  name: z.string().min(1, "名称不能为空").max(50, "名称不能超过50个字符"),
-  nameEn: z.string().min(1, "英文名称不能为空").max(50, "英文名称不能超过50个字符"),
-  slug: z
-    .string()
-    .min(1, "URL别名不能为空")
-    .max(50, "URL别名不能超过50个字符")
-    .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
-});
 
 export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFormProps) {
   const { success, error: showError } = useToast();
@@ -74,8 +67,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
         slug: generateSlug(prev.nameEn),
       }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.nameEn, isEdit]);
+  }, [formData.nameEn, isEdit, formData.slug]);
 
   // 更新表单字段
   const updateField = (key: keyof typeof formData, value: string) => {

@@ -31,9 +31,16 @@ const jobTypeMap: Record<string, { label: string; color: string }> = {
   intern: { label: "实习", color: "bg-brand-beige text-brand-charcoal/70" },
 };
 
+interface CareersPageContent {
+  title?: { en: string; zh: string };
+  description?: string;
+  contactEmail?: string;
+  submitTip?: { title: string; content: string };
+}
+
 interface CareersContentProps {
   jobs: Job[];
-  content?: any;
+  content?: CareersPageContent;
 }
 
 // ============================================
@@ -513,8 +520,8 @@ function JobModal({
     const maxRetries = 20;
 
     const tryInitMap = () => {
-      const AMap = (window as any).AMap;
-      if (!AMap) {
+      const amap = window.AMap;
+      if (!amap) {
         if (retryCount < maxRetries) {
           retryCount++;
           setTimeout(tryInitMap, 200);
@@ -525,20 +532,20 @@ function JobModal({
       const container = document.getElementById(`map-${job.id}`);
       if (!container) return;
 
-      AMap.plugin(["AMap.Geocoder", "AMap.PlaceSearch"], () => {
+      amap.plugin(["AMap.Geocoder", "AMap.PlaceSearch"], () => {
         const initRender = (lng: number, lat: number) => {
-          const map = new AMap.Map(container, {
+          const map = new amap.Map(container, {
             zoom: 16,
             center: [lng, lat],
             viewMode: "2D",
           });
-          const marker = new AMap.Marker({
+          const marker = new amap.Marker({
             position: [lng, lat],
             title: job.location,
             label: {
               content: `<div class="amap-custom-label">${job.location}</div>`,
               direction: "bottom",
-              offset: new AMap.Pixel(0, 10),
+              offset: new amap.Pixel(0, 10),
             },
           });
           map.add(marker);
@@ -550,16 +557,16 @@ function JobModal({
         }
 
         if (job.location) {
-          const geocoder = new AMap.Geocoder({ city: "021" });
-          const ps = new AMap.PlaceSearch({ city: "021", pageSize: 1 });
+          const geocoder = new amap.Geocoder({ city: "021" });
+          const ps = new amap.PlaceSearch({ city: "021", pageSize: 1 });
           const rawLocation = job.location.split(" ").shift() || job.location;
           const pureBuilding = rawLocation.split(/[a-zA-Z0-9-]/)[0] || rawLocation;
-          ps.search(pureBuilding, (status: string, result: any) => {
+          ps.search(pureBuilding, (status: string, result: AMap.PlaceSearchResult) => {
             if (status === "complete" && result?.poiList?.pois?.length) {
               const poi = result.poiList.pois[0];
               initRender(poi.location.lng, poi.location.lat);
             } else {
-              geocoder.getLocation(job.location, (status: string, result: any) => {
+              geocoder.getLocation(job.location, (status: string, result: AMap.GeocoderResult) => {
                 if (status === "complete" && result.geocodes.length) {
                   const geo = result.geocodes[0];
                   initRender(geo.location.lng, geo.location.lat);

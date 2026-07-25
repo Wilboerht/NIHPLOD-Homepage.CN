@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 /**
@@ -8,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { X, User, Package, MapPin, LogOut, ArrowLeft, Ticket } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { OrdersPanel } from "./user-center/OrdersPanel";
@@ -204,11 +204,13 @@ export function UserCenterModal() {
                   {/* 用户头像区域 */}
                   <div className="px-16 pb-4 pt-12">
                     <div className="flex flex-col items-start gap-4 text-left">
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FBF8F0]/40 object-cover">
+                      <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FBF8F0]/40 object-cover">
                         {user.avatar ? (
-                          <img
+                          <Image
                             src={user.avatar}
                             alt="Avatar"
+                            fill
+                            unoptimized
                             className="h-full w-full object-cover"
                           />
                         ) : (

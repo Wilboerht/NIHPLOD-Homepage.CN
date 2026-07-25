@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 /**
@@ -6,6 +5,7 @@
  * 支持头像上传和昵称编辑 - 品牌风格版
  */
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { User, Camera, Loader2, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -102,11 +102,13 @@ export function ProfilePanel() {
         <div className="mb-6 flex items-center gap-6 md:mb-10">
           {/* 可点击上传头像 */}
           <div className="group relative">
-            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#FBF8F0]/20 transition-all group-hover:border-stone-300">
+            <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#FBF8F0]/20 transition-all group-hover:border-stone-300">
               {user.avatar ? (
-                <img
+                <Image
                   src={user.avatar}
                   alt="Avatar"
+                  fill
+                  unoptimized
                   className="h-full w-full object-cover transition-all"
                 />
               ) : (

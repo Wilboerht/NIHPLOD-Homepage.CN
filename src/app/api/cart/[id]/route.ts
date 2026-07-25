@@ -9,6 +9,7 @@ import { verifyUserAuth } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -29,6 +30,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
       );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const { id } = await context.params;
@@ -101,6 +106,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
       );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const { id } = await context.params;

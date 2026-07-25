@@ -212,6 +212,10 @@ export function logError(module: string, error: unknown, context?: LogContext) {
  * 用于平滑迁移现有 console.error/console.warn 调用，无需改动调用方传参习惯
  */
 export const apiConsole = {
+  debug: (...args: unknown[]) => {
+    const msg = args.map((a) => (a instanceof Error ? a.message : String(a))).join(" ");
+    apiLogger.debug(msg);
+  },
   error: (...args: unknown[]) => {
     const msgParts: string[] = [];
     const context: LogContext = {};

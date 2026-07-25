@@ -98,11 +98,15 @@ async function fulfillOrderAsPaid(
 
     fulfilled = true;
 
-    // 更新商品销量
+    // 更新商品销量（按 productId 聚合后批量更新，避免 N+1）
+    const salesAggregation = new Map<string, number>();
     for (const item of order.items) {
+      salesAggregation.set(item.productId, (salesAggregation.get(item.productId) || 0) + item.quantity);
+    }
+    for (const [productId, qty] of salesAggregation) {
       await tx.product.update({
-        where: { id: item.productId },
-        data: { salesCount: { increment: item.quantity } },
+        where: { id: productId },
+        data: { salesCount: { increment: qty } },
       });
     }
 

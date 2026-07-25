@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 
 /**
  * 产品图片类型
@@ -46,18 +46,6 @@ interface ProductCardProps {
   priority?: boolean;
   /** 自定义类名 */
   className?: string;
-}
-
-/**
- * 格式化价格显示
- */
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
 }
 
 /**

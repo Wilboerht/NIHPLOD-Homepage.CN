@@ -319,11 +319,15 @@ export async function cancelOrder(
         throw new Error("订单已被并发处理或状态已变更");
       }
 
-      // 恢复库存（PENDING 订单从未支付，销量未增加，无需回滚销量）
+      // 恢复库存（批量聚合后更新，避免 N+1）
+      const stockRestoreMap = new Map<string, number>();
       for (const item of order.items) {
+        stockRestoreMap.set(item.productId, (stockRestoreMap.get(item.productId) || 0) + item.quantity);
+      }
+      for (const [productId, qty] of stockRestoreMap) {
         await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
+          where: { id: productId },
+          data: { stock: { increment: qty } },
         });
       }
 
@@ -391,11 +395,15 @@ export async function autoCancelExpiredOrders(
             return false; // 已被其他流程处理
           }
 
-          // 恢复库存
+          // 恢复库存（批量聚合后更新，避免 N+1）
+          const stockRestoreMap = new Map<string, number>();
           for (const item of order.items) {
+            stockRestoreMap.set(item.productId, (stockRestoreMap.get(item.productId) || 0) + item.quantity);
+          }
+          for (const [productId, qty] of stockRestoreMap) {
             await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: item.quantity } },
+              where: { id: productId },
+              data: { stock: { increment: qty } },
             });
           }
 
