@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { createAuditLog } from "@/lib/audit";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
@@ -24,6 +25,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
     const { ids, action } = BatchSchema.parse(body);
@@ -55,6 +59,15 @@ export async function POST(request: NextRequest) {
       delete: "删除",
     }[action];
 
+    createAuditLog({
+      action: "batch_message",
+      targetType: "message",
+      targetId: ids[0],
+      detail: { ids, action, count },
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
+
     revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
@@ -76,7 +89,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "批量操作失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "批量操作失败" } },
       { status: 500 }
     );
   }

@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取留言列表失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取留言列表失败" } },
       { status: 500 }
     );
   }

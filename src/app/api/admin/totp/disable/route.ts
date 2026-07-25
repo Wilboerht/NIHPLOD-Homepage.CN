@@ -5,11 +5,12 @@
  * 需要验证当前密码才能关闭 TOTP。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth";
+import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { z } from "zod";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 
 const disableSchema = z.object({
   password: z.string().min(1, "请输入密码"),
@@ -19,6 +20,9 @@ export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async (request: NextRequest, adminPayload) => {
   try {
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const result = disableSchema.safeParse(body);
     if (!result.success) {
@@ -78,7 +82,7 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
 
     return NextResponse.json({ success: true, data: { message: "二次验证已关闭" } });
   } catch (error) {
-    console.error("[TOTP Disable] 异常:", error);
+    apiConsole.error("[TOTP Disable] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取产品列表失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取产品列表失败" } },
       { status: 500 }
     );
   }
@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "创建产品失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "创建产品失败" } },
       { status: 500 }
     );
   }

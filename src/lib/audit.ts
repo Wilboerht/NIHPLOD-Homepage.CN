@@ -30,6 +30,10 @@ export type AuditAction =
   | "batch_job"
   | "update_application"
   | "delete_application"
+  | "create_application_folder"
+  | "update_application_folder"
+  | "delete_application_folder"
+  | "reorder_categories"
   | "update_message"
   | "delete_message"
   | "batch_message"
@@ -55,7 +59,8 @@ export type AuditTargetType =
   | "message"
   | "application"
   | "coupon"
-  | "system";
+  | "system"
+  | "application_folder";
 
 export const AUDIT_ACTIONS = [
   "login",
@@ -79,6 +84,10 @@ export const AUDIT_ACTIONS = [
   "batch_job",
   "update_application",
   "delete_application",
+  "create_application_folder",
+  "update_application_folder",
+  "delete_application_folder",
+  "reorder_categories",
   "update_message",
   "delete_message",
   "batch_message",
@@ -105,6 +114,7 @@ export const AUDIT_TARGET_TYPES = [
   "application",
   "coupon",
   "system",
+  "application_folder",
 ] as const;
 
 interface AuditLogInput {

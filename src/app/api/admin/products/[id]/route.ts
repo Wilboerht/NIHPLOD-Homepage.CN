@@ -66,7 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   } catch (error) {
     apiConsole.error("获取产品详情失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取产品详情失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取产品详情失败" } },
       { status: 500 }
     );
   }
@@ -144,7 +144,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   } catch (error) {
     apiConsole.error("更新产品失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "更新产品失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "更新产品失败" } },
       { status: 500 }
     );
   }
@@ -343,7 +343,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "更新产品失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "更新产品失败" } },
       { status: 500 }
     );
   }
@@ -404,7 +404,7 @@ export async function DELETE(
   } catch (error) {
     apiConsole.error("删除产品失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "删除产品失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "删除产品失败" } },
       { status: 500 }
     );
   }

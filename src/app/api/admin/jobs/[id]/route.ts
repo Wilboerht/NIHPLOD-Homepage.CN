@@ -67,7 +67,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   } catch (error) {
     apiConsole.error("获取职位详情失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取职位详情失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取职位详情失败" } },
       { status: 500 }
     );
   }
@@ -152,7 +152,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "更新职位失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "更新职位失败" } },
       { status: 500 }
     );
   }
@@ -203,7 +203,7 @@ export async function DELETE(
   } catch (error) {
     apiConsole.error("删除职位失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "删除职位失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "删除职位失败" } },
       { status: 500 }
     );
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -25,6 +25,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     // 解析请求体
     const body = await request.json();
@@ -109,7 +112,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "批量操作失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "批量操作失败" } },
       { status: 500 }
     );
   }

@@ -25,7 +25,7 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
       {
         success: false,
         error: {
-          code: "SERVER_ERROR",
+          code: "INTERNAL_ERROR",
           message: "获取用户信息失败",
         },
       },

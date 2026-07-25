@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     apiConsole.error("获取简历列表失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取失败" } },
       { status: 500 }
     );
   }

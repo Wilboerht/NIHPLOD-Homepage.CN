@@ -6,7 +6,7 @@
  * 需要调用 /api/admin/totp/verify-setup 验证首个 code 后才启用。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth";
+import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import {
   generateTOTPSecret,
@@ -23,6 +23,9 @@ export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async (request: NextRequest, adminPayload) => {
   try {
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await prisma.admin.findUnique({
       where: { id: adminPayload.id },
       select: { id: true, email: true, totpEnabled: true },

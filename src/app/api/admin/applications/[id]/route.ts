@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { deleteUploadedFile } from "@/lib/upload";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { createAuditLog, type AuditAction } from "@/lib/audit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     apiConsole.error("获取申请详情失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取失败" } },
       { status: 500 }
     );
   }
@@ -83,6 +84,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
     const parsed = patchSchema.safeParse(body);
@@ -133,13 +137,36 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
     });
 
+    createApplicationAuditLog("update_application", id, { status, notes, folderId }, admin, request).catch(() => {});
+
     return NextResponse.json({ success: true, data: application });
   } catch (error) {
     apiConsole.error("更新申请失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "更新失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "更新失败" } },
       { status: 500 }
     );
+  }
+}
+
+async function createApplicationAuditLog(
+  action: AuditAction,
+  targetId: string,
+  detail: Record<string, unknown>,
+  admin: { id: string },
+  request: NextRequest
+) {
+  try {
+    await createAuditLog({
+      action,
+      targetType: "application",
+      targetId,
+      detail,
+      adminId: admin.id,
+      request,
+    });
+  } catch {
+    // 审计日志失败不阻断业务
   }
 }
 
@@ -160,6 +187,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return invalidIdResponse();
     }
 
+    const rateLimitResponse2 = await checkAdminRateLimit(request);
+    if (rateLimitResponse2) return rateLimitResponse2;
+
     // 先获取申请记录以删除关联的简历文件
     const application = await prisma.jobApplication.findUnique({
       where: { id },
@@ -172,11 +202,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await prisma.jobApplication.delete({ where: { id } });
 
+    createApplicationAuditLog("delete_application", id, {}, admin, request).catch(() => {});
+
     return NextResponse.json({ success: true, message: "删除成功" });
   } catch (error) {
     apiConsole.error("删除申请失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "删除失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "删除失败" } },
       { status: 500 }
     );
   }

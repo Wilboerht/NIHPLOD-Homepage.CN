@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { createAuditLog } from "@/lib/audit";
 
 // 排序更新 Schema
 const OrderUpdateSchema = z.object({
@@ -31,6 +32,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const { items } = OrderUpdateSchema.parse(body);
 
@@ -43,6 +47,15 @@ export async function PUT(request: NextRequest) {
         })
       )
     );
+
+    await createAuditLog({
+      action: "reorder_categories",
+      targetType: "category",
+      targetId: "batch",
+      detail: { count: items.length, ids: items.map(i => i.id) },
+      adminId: admin.id,
+      request,
+    });
 
     return NextResponse.json({
       success: true,
@@ -63,7 +76,7 @@ export async function PUT(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "更新排序失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "更新排序失败" } },
       { status: 500 }
     );
   }

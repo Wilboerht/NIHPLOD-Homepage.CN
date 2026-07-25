@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { createAuditLog } from "@/lib/audit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     apiConsole.error("获取分类夹详情失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取分类夹详情失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取分类夹详情失败" } },
       { status: 500 }
     );
   }
@@ -84,6 +85,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return invalidIdResponse();
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const validated = UpdateFolderSchema.parse(body);
 
@@ -98,6 +102,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const folder = await prisma.applicationFolder.update({
       where: { id },
       data: validated,
+    });
+
+    await createAuditLog({
+      action: "update_application_folder",
+      targetType: "application_folder",
+      targetId: id,
+      detail: validated,
+      adminId: admin.id,
+      request,
     });
 
     return NextResponse.json({
@@ -117,7 +130,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
     apiConsole.error("更新分类夹失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "更新分类夹失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "更新分类夹失败" } },
       { status: 500 }
     );
   }
@@ -140,6 +153,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return invalidIdResponse();
     }
 
+    const rateLimitResponse2 = await checkAdminRateLimit(request);
+    if (rateLimitResponse2) return rateLimitResponse2;
+
     const existing = await prisma.applicationFolder.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json(
@@ -151,6 +167,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // 删除分类夹（关联的申请会自动设为 null）
     await prisma.applicationFolder.delete({ where: { id } });
 
+    await createAuditLog({
+      action: "delete_application_folder",
+      targetType: "application_folder",
+      targetId: id,
+      detail: { name: existing.name },
+      adminId: admin.id,
+      request,
+    });
+
     return NextResponse.json({
       success: true,
       data: { message: "分类夹已删除" },
@@ -158,7 +183,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     apiConsole.error("删除分类夹失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "删除分类夹失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "删除分类夹失败" } },
       { status: 500 }
     );
   }

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { createAuditLog } from "@/lib/audit";
 
 // 创建分类夹 Schema
 const CreateFolderSchema = z.object({
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     apiConsole.error("获取分类夹列表失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取分类夹列表失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取分类夹列表失败" } },
       { status: 500 }
     );
   }
@@ -65,6 +66,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const validated = CreateFolderSchema.parse(body);
 
@@ -79,6 +83,15 @@ export async function POST(request: NextRequest) {
         description: validated.description || null,
         order: (maxOrder._max.order || 0) + 1,
       },
+    });
+
+    await createAuditLog({
+      action: "create_application_folder",
+      targetType: "application_folder",
+      targetId: folder.id,
+      detail: { name: validated.name },
+      adminId: admin.id,
+      request,
     });
 
     return NextResponse.json({
@@ -99,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
     apiConsole.error("创建分类夹失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "创建分类夹失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "创建分类夹失败" } },
       { status: 500 }
     );
   }

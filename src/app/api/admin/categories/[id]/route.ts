@@ -5,6 +5,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { createAuditLog } from "@/lib/audit";
 
 // 分类更新 Schema
 const CategoryUpdateSchema = z.object({
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   } catch (error) {
     apiConsole.error("获取分类详情失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取分类详情失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取分类详情失败" } },
       { status: 500 }
     );
   }
@@ -121,6 +122,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data: validated,
     });
 
+    createAuditLog({
+      action: "update_category",
+      targetType: "category",
+      targetId: id,
+      detail: validated,
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
+
     revalidateTag("admin-stats", "max");
 
     return NextResponse.json({
@@ -139,7 +149,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "更新分类失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "更新分类失败" } },
       { status: 500 }
     );
   }
@@ -217,6 +227,15 @@ export async function DELETE(
 
     revalidateTag("admin-stats", "max");
 
+    createAuditLog({
+      action: "delete_category",
+      targetType: "category",
+      targetId: id,
+      detail: {},
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
+
     return NextResponse.json({
       success: true,
       data: { message: "分类已删除" },
@@ -224,7 +243,7 @@ export async function DELETE(
   } catch (error) {
     apiConsole.error("删除分类失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "删除分类失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "删除分类失败" } },
       { status: 500 }
     );
   }

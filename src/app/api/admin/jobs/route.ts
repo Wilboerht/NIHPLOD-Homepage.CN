@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     apiConsole.error("获取职位列表失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "获取职位列表失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "获取职位列表失败" } },
       { status: 500 }
     );
   }
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { success: false, error: { code: "SERVER_ERROR", message: "创建职位失败" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: "创建职位失败" } },
       { status: 500 }
     );
   }

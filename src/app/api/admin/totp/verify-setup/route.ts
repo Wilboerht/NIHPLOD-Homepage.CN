@@ -5,11 +5,12 @@
  * 验证首个 TOTP code，成功后启用 TOTP。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth";
+import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { verifyTOTP, decryptTOTPSecret } from "@/lib/totp";
 import { z } from "zod";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 
 const verifySchema = z.object({
   code: z.string().length(6, "请输入6位验证码"),
@@ -19,6 +20,9 @@ export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async (request: NextRequest, adminPayload) => {
   try {
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const result = verifySchema.safeParse(body);
     if (!result.success) {
@@ -74,7 +78,7 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
 
     return NextResponse.json({ success: true, data: { message: "二次验证已启用" } });
   } catch (error) {
-    console.error("[TOTP Verify Setup] 异常:", error);
+    apiConsole.error("[TOTP Verify Setup] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

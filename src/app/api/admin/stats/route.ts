@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error: {
-          code: "SERVER_ERROR",
+          code: "INTERNAL_ERROR",
           message: "获取统计数据失败",
         },
       },
