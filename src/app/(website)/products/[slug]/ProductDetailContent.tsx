@@ -951,7 +951,7 @@ export function ProductDetailContent({
                 type="button"
                 onClick={handleOfficialBuy}
                 disabled={buying}
-                className="flex-1 rounded-lg bg-brand-primary py-3 text-center text-sm font-light tracking-[0.08em] text-white transition-colors hover:bg-brand-primary/90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 lg:tracking-[0.12em]"
+                className="flex-1 rounded-lg border border-brand-primary bg-transparent py-3 text-center text-sm font-light tracking-[0.08em] text-brand-primary transition-colors hover:bg-brand-primary/5 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 lg:tracking-[0.12em]"
               >
                 {buying ? "加入中…" : "官网购买"}
               </button>
