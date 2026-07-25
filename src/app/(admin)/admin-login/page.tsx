@@ -242,7 +242,7 @@ export default function LoginPage() {
                   priority
                 />
               </div>
-              <div className="flex items-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-3 backdrop-blur-sm">
+              <div className="flex h-11 items-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 backdrop-blur-sm">
                 <span className="text-xs font-light tracking-wider text-white/60">NIHPLOD Admin v2.0.1</span>
               </div>
             </div>
