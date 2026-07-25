@@ -451,7 +451,7 @@ export function ProductDetailContent({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.6 }}
-      className="relative flex min-h-dvh flex-col bg-[#FBF8F0]"
+      className="relative flex min-h-dvh flex-col bg-[#fefcf8]"
     >
       <style jsx global>{`
         html {
@@ -459,19 +459,9 @@ export function ProductDetailContent({
         }
       `}</style>
 
-      {/* 手机端背景水印 */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden lg:hidden">
-        <Image
-          src="/images/watermark-mobile.webp"
-          alt=""
-          fill
-          className="object-cover opacity-75 blur-[7.5px]"
-          priority
-        />
-      </div>
-      {/* 矿物纹理叠加层 */}
+      {/* 矿物纹理叠加层（仅PC端） */}
       <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.04]"
+        className="pointer-events-none absolute inset-0 z-0 hidden opacity-[0.04] lg:block"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
         }}
@@ -480,7 +470,7 @@ export function ProductDetailContent({
       {/* 固定顶栏导航 */}
       <nav
         aria-label="产品页导航"
-        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#FBF8F0]/80 px-6 py-6 backdrop-blur-md md:grid md:grid-cols-[160px_1fr_160px] md:px-20"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:grid md:grid-cols-[160px_1fr_160px] md:px-20"
         style={{ pointerEvents: "none" }}
       >
         <div
@@ -558,7 +548,7 @@ export function ProductDetailContent({
           onClick={() => setMobileMenuOpen(false)}
         />
         <div
-          className={`absolute left-0 top-0 h-full w-[min(300px,80vw)] transform rounded-r-3xl bg-[#FBF8F0] pb-[calc(1.25rem+env(safe-area-inset-bottom,16px))] pt-[calc(1.25rem+env(safe-area-inset-top,0px))] shadow-2xl transition-transform duration-500 ease-out ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+          className={`absolute left-0 top-0 h-full w-[min(300px,80vw)] transform rounded-r-3xl bg-[#fefcf8] pb-[calc(1.25rem+env(safe-area-inset-bottom,16px))] pt-[calc(1.25rem+env(safe-area-inset-top,0px))] shadow-2xl transition-transform duration-500 ease-out ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex h-full flex-col px-6">
             <button
@@ -954,7 +944,7 @@ export function ProductDetailContent({
 
         {/* 移动端底部固定购买栏 */}
         {product.allowDirectBuy && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#FBF8F0]/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#fefcf8]/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md lg:hidden">
             <button
               type="button"
               onClick={handleOfficialBuy}
