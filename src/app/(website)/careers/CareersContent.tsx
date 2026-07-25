@@ -512,8 +512,17 @@ function JobModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typeInfo = jobTypeMap[job.type] || { label: job.type, color: "bg-gray-100 text-gray-700" };
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
 
   useEffect(() => {
     let retryCount = 0;
@@ -633,9 +642,9 @@ function JobModal({
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <m.div
-        initial={{ opacity: 0, y: "100%" }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: "100%" }}
+        initial={isDesktop ? { opacity: 0 } : { opacity: 0, y: "100%" }}
+        animate={isDesktop ? { opacity: 1 } : { opacity: 1, y: 0 }}
+        exit={isDesktop ? { opacity: 0 } : { opacity: 0, y: "100%" }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-2xl md:rounded-2xl"
       >
