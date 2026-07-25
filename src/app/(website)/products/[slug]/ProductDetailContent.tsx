@@ -736,7 +736,7 @@ export function ProductDetailContent({
 
                   {/* 产地/规格 */}
                   {(product.origin || product.capacity) && (
-                    <dl className="mt-2 flex items-center gap-3 text-xs font-normal leading-relaxed text-[#00263E]">
+                    <dl className="mt-2 flex items-center gap-3 text-xs font-light leading-relaxed tracking-[0.06em] text-[#00263E]">
                       {product.origin && (
                         <div className="flex gap-0">
                           <dt>产地：</dt>
@@ -768,7 +768,7 @@ export function ProductDetailContent({
                       {product.benefits.map((benefit, index) => (
                         <li
                           key={index}
-                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[13px] font-light text-[#00263E] md:text-sm"
+                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[13px] font-light tracking-[0.06em] text-[#00263E] md:text-sm"
                         >
                           {benefit}
                         </li>
@@ -848,7 +848,7 @@ export function ProductDetailContent({
                 {/* 小红书链接 */}
                 <XiaohongshuLink
                   categoryName={product.category.name}
-                  className="flex flex-col gap-1 pb-7"
+                  className="flex flex-col gap-1 pb-6 lg:pb-7"
                 />
 
                 {/* 购买按钮区域 - 桌面端内联 */}
@@ -882,12 +882,12 @@ export function ProductDetailContent({
                 )}
 
                   {/* 肌智派素颜测肤推广 */}
-                  <div className="pb-7">
+                  <div className="pb-6 lg:pb-7">
                     <a
                       href="https://advisor.nihplod.cn"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group inline-flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.12em] text-brand-primary transition-opacity hover:opacity-70"
+                      className="group inline-flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.08em] text-brand-primary transition-opacity hover:opacity-70 lg:tracking-[0.12em]"
                     >
                       <span>
                         参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤

@@ -18,7 +18,7 @@ export function XiaohongshuLink({ categoryName, className }: XiaohongshuLinkProp
         href={webUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="group inline-flex h-7 min-h-0 min-w-0 items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.12em] text-brand-primary !transition-opacity hover:opacity-70"
+        className="group inline-flex h-7 min-h-0 min-w-0 items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.08em] text-brand-primary !transition-opacity hover:opacity-70 md:tracking-[0.12em]"
       >
         <span>去小红书了解更多</span>
         <svg
