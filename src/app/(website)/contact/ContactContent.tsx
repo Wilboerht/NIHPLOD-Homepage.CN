@@ -475,10 +475,10 @@ export function ContactContent({ content }: ContactContentProps) {
                     autoComplete="name"
                     maxLength={50}
                     className={cn(
-                      "w-full rounded-lg border px-3 py-2 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:px-4 md:py-3.5",
+                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:tracking-wider placeholder:uppercase placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                       errors.name
-                        ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                        : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
+                        ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                        : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                     )}
                   />
                   {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
@@ -502,10 +502,10 @@ export function ContactContent({ content }: ContactContentProps) {
                     inputMode="tel"
                     maxLength={11}
                     className={cn(
-                      "w-full rounded-lg border px-3 py-2 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:px-4 md:py-3.5",
+                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:tracking-wider placeholder:uppercase placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                       errors.phone
-                        ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                        : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
+                        ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                        : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                     )}
                   />
                   {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
@@ -531,11 +531,11 @@ export function ContactContent({ content }: ContactContentProps) {
                     }}
                     onBlur={handleBlur}
                     className={cn(
-                      "w-full rounded-lg border px-3 py-2 pr-10 text-[15px] font-light outline-none transition-all appearance-none md:px-4 md:py-3.5 md:pr-12",
-                      !formData.type && "text-brand-charcoal/40",
+                      "w-full rounded-none border-0 border-b px-0 py-3 pr-8 text-base font-light tracking-wide outline-none transition-colors appearance-none md:rounded-lg md:border md:px-4 md:py-3.5 md:pr-12 md:text-[15px] md:tracking-[0.06em]",
+                      !formData.type && "text-sm text-brand-charcoal/40",
                       errors.type
-                        ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                        : "border-brand-charcoal/20 hover:border-[#00263E]/40 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
+                        ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                        : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:hover:border-[#00263E]/40 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                     )}
                   >
                     {messageTypes.map((type) => (
@@ -544,7 +544,7 @@ export function ContactContent({ content }: ContactContentProps) {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40 md:right-4" />
+                  <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40 md:right-4" />
                 </div>
                 {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
               </div>
@@ -568,10 +568,10 @@ export function ContactContent({ content }: ContactContentProps) {
                   rows={4}
                   maxLength={2000}
                   className={cn(
-                    "w-full resize-none rounded-lg border px-3 py-2 text-[15px] font-light outline-none transition-all placeholder:text-[15px] placeholder:font-light placeholder:text-brand-charcoal/40 md:px-4 md:py-3.5",
+                    "w-full resize-none rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:tracking-wider placeholder:uppercase placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                     errors.content
-                      ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                      : "border-brand-charcoal/20 focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
+                      ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                      : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                   )}
                   style={{ maxHeight: "200px" }}
                 />

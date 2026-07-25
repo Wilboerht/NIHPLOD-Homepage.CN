@@ -277,7 +277,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             )}
           >
             <ShoppingBag size={20} strokeWidth={1.5} />
-            <span className="text-[11px] font-light tracking-[0.06em]">推荐</span>
+            <span className="text-[11px] font-light tracking-[0.06em]">当季热卖</span>
           </button>
           <button
             type="button"
@@ -288,7 +288,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             )}
           >
             <LayoutGrid size={20} strokeWidth={1.5} />
-            <span className="text-[11px] font-light tracking-[0.06em]">全部</span>
+            <span className="text-[11px] font-light tracking-[0.06em]">全部产品</span>
           </button>
         </div>
       )}
