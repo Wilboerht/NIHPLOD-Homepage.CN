@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
-import { ProductDrawer, AdvisorCTA } from "@/components/website";
+import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { getCategoryIconPath } from "@/lib/product-icons";
 import {
@@ -424,9 +424,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     </div>
 
                     {/* AI 护肤顾问引导 */}
-                    <div className="mt-8">
-                      <AdvisorCTA variant="guide" />
-                    </div>
+                    <div className="mt-8" />
                   </m.div>
                 )}
 
@@ -1530,9 +1528,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
             </div>
 
             {/* Advisor CTA - 桌面端 */}
-            <div className="flex shrink-0 flex-col items-center px-10 pt-4 xl:px-[8%]">
-              <AdvisorCTA variant="guide" />
-            </div>
+            <div className="flex shrink-0 flex-col items-center px-10 pt-4 xl:px-[8%]" />
 
             {/* Desktop Footer Copyright */}
             <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-4 pb-6">

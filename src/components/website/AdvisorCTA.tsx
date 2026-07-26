@@ -10,67 +10,40 @@ interface AdvisorCTAProps {
 
 const COPY = {
   guide:
-    "想让护肤方案更精准？AI 测肤为你定制专属方案",
+    "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
   discover:
-    "不知道该选哪款？先测肤质，找到最适合你的产品",
+    "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
   "empty-cart":
-    "还不确定买什么？先测肤质找到最适合你的产品",
+    "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
 } as const;
 
 /**
- * advisor.nihplod.cn 肤质自测工具引导卡片
- * 在多个页面中复用，统一视觉风格
+ * advisor.nihplod.cn 肤质自测工具引导链接
+ * 移动端为带边框的卡片样式，桌面端为极简文字链接
  */
 export function AdvisorCTA({ variant = "discover", className }: AdvisorCTAProps) {
   return (
-    <a
-      href="https://advisor.nihplod.cn"
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        "group flex items-center gap-3 rounded-2xl border border-brand-charcoal/10 bg-gradient-to-br from-[#FBF8F0] to-[#F5F0E8] px-5 py-4 transition-all duration-500 hover:border-brand-charcoal/20 hover:shadow-[0_4px_20px_rgba(0,38,62,0.06)]",
-        className
-      )}
-    >
-      {/* 图标 */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-charcoal/5">
+    <div className={cn("max-lg:rounded-lg max-lg:border max-lg:border-brand-charcoal/10 max-lg:px-4 max-lg:py-3", className)}>
+      <a
+        href="https://advisor.nihplod.cn"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.08em] text-brand-primary transition-opacity hover:opacity-70 lg:inline-flex lg:tracking-[0.12em]"
+      >
+        <span>{COPY[variant]}</span>
         <svg
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.5"
+          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="h-5 w-5 text-brand-charcoal/70"
+          className="ml-auto h-3 w-3 shrink-0 transition-transform group-hover:translate-x-1 lg:ml-0"
         >
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 6v6l4 2" />
-          <path d="M9 2a12.05 12.05 0 0 0 0 20" />
-          <path d="M15 2a12.05 12.05 0 0 1 0 20" />
-          <path d="M2 12h20" />
+          <path d="M5 12h14" />
+          <path d="m12 5 7 7-7 7" />
         </svg>
-      </div>
-
-      {/* 文案 */}
-      <div className="min-w-0 flex-1 text-left">
-        <p className="text-sm font-light leading-relaxed tracking-[0.04em] text-brand-charcoal">
-          {COPY[variant]}
-        </p>
-      </div>
-
-      {/* 箭头 */}
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="h-4 w-4 shrink-0 text-brand-charcoal/40 transition-transform duration-500 group-hover:translate-x-1"
-      >
-        <path d="M5 12h14" />
-        <path d="m12 5 7 7-7 7" />
-      </svg>
-    </a>
+      </a>
+    </div>
   );
 }
