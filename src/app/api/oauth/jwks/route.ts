@@ -8,12 +8,34 @@
  *   2. 密钥泄漏后无法单独吊销某个消费者的验证权限
  *
  * 🔜 迁移计划：升级至 RS256 非对称密钥，此端点仅暴露公钥。
- *   过渡期同时支持 HS256 和 RS256，通过 kid 区分。
+ *   推荐时间线：
+ *     - Phase 1（1-2 周）：生成 RSA 密钥对，kid="access-token-v2"，
+ *       同时发布 HS256 + RS256 双密钥，验证端同时接受两种签名
+ *     - Phase 2（2-4 周）：所有子项目完成 RS256 验证迁移
+ *     - Phase 3（4 周后）：移除 HS256 密钥，仅保留 RS256
  *
  * 当前缓解措施：
  *   - 响应缓存 1 小时减少暴露面
- *   - 生产环境通过反向代理限制访问来源 IP（建议实施）
+ *   - 生产环境通过反向代理限制访问来源 IP（推荐实施，见下方 Nginx 配置）
  *   - HS256 密钥定期轮换（通过环境变量更新）
+ *
+ * 推荐 Nginx 反向代理 IP 白名单配置：
+ * ```nginx
+ * # 仅允许内部子项目服务访问 JWKS 端点
+ * location /api/oauth/jwks.json {
+ *     # 只允许 GET 方法
+ *     limit_except GET { deny all; }
+ *
+ *     # IP 白名单：填入所有子项目的出口 IP
+ *     allow 10.0.0.0/8;       # 内网
+ *     allow 172.16.0.0/12;    # Docker 网络
+ *     # allow xxx.xxx.xxx.xxx; # 子项目 A 出口 IP
+ *     # allow xxx.xxx.xxx.xxx; # 子项目 B 出口 IP
+ *     deny all;
+ *
+ *     proxy_pass http://nextjs_app;
+ * }
+ * ```
  */
 import { NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";

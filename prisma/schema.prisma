@@ -328,18 +328,32 @@ model OAuthAuthorizationCode {
 }
 
 model OAuthSession {
-  id        String    @id @default(cuid())
-  userId    String
-  clientId  String
-  sessionId String    @unique
-  scopes    String[]
-  createdAt DateTime  @default(now())
-  expiresAt DateTime
-  revokedAt DateTime?
+  id                   String    @id @default(cuid())
+  userId               String
+  clientId             String
+  sessionId            String    @unique
+  authorizationCodeId  String?   // 关联的授权码（用于追溯）
+  scopes               String[]
+  createdAt            DateTime  @default(now())
+  expiresAt            DateTime
+  revokedAt            DateTime?
 
   @@index([userId, clientId])
   @@index([sessionId])
   @@index([userId, revokedAt])
+}
+
+model UserConsent {
+  id        String    @id @default(cuid())
+  userId    String
+  clientId  String
+  scopes    String[]
+  grantedAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@unique([userId, clientId])
+  @@index([userId])
+  @@index([clientId])
 }
 
 model SsoAuditEvent {

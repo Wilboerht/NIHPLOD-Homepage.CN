@@ -14,6 +14,7 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { apiConsole } from "@/lib/logger";
+import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -86,34 +87,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 触发 Backchannel Logout（非阻塞）
-    const client = await prisma.oAuthClient.findFirst({
-      where: { clientId, isActive: true, backchannelLogoutUri: { not: null } },
-      select: { clientId: true, backchannelLogoutUri: true },
-    });
-
-    if (client?.backchannelLogoutUri) {
-      try {
-        const { signLogoutToken } = await import("@/lib/jwt");
-        const jti = crypto.randomUUID();
-        const logoutToken = await signLogoutToken({
-          sub: user.id,
-          aud: client.clientId,
-          events: "http://schemas.openid.net/event/backchannel-logout",
-          jti,
-        });
-
-        fetch(client.backchannelLogoutUri, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ logout_token: logoutToken }),
-          signal: AbortSignal.timeout(5000),
-        }).catch((err) => {
-          apiConsole.warn(`[OAuth Revoke] Backchannel logout 通知失败 (${clientId}):`, err);
-        });
-      } catch (err) {
-        apiConsole.warn(`[OAuth Revoke] Backchannel logout token 签发失败 (${clientId}):`, err);
-      }
-    }
+    await sendBackchannelLogout(user.id, [clientId]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

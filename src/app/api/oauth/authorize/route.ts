@@ -12,6 +12,7 @@ import { verifyUserToken } from "@/lib/jwt";
 import { checkUserStatus } from "@/lib/auth";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
@@ -175,6 +176,11 @@ export async function POST(request: NextRequest) {
         { error: "rate_limited", error_description: "请求过于频繁" },
         { status: 429 }
       );
+    }
+
+    // CSRF 防护：consent 操作必须携带 CSRF Token
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     // 验证用户登录

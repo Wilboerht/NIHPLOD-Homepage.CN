@@ -15,6 +15,10 @@ import {
   ShieldCheck,
   ScrollText,
   Crown,
+  Key,
+  UserCog,
+  MonitorStop,
+  FileSearch,
   LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +44,10 @@ export const adminNavItems: NavItem[] = [
   { title: "管理员管理", href: "/admin/admins", icon: Shield, roles: ["owner"] },
   { title: "安全设置", href: "/admin/settings/totp", icon: ShieldCheck, roles: ["owner", "admin"] },
   { title: "审计日志", href: "/admin/audit-logs", icon: ScrollText, roles: ["owner", "admin"] },
+  { title: "SSO 客户端", href: "/admin/oauth-clients", icon: Key, roles: ["owner"] },
+  { title: "SSO 授权管理", href: "/admin/oauth/consents", icon: UserCog, roles: ["owner"] },
+  { title: "SSO 会话管理", href: "/admin/oauth/sessions", icon: MonitorStop, roles: ["owner"] },
+  { title: "SSO 审计日志", href: "/admin/oauth/audit", icon: FileSearch, roles: ["owner"] },
 ];
 
 /**

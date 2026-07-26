@@ -86,6 +86,27 @@ async function verifySecret(secret: string, hash: string): Promise<boolean> {
 }
 
 // ============================================
+// 密钥轮换缓存（5 分钟过渡期）
+// ============================================
+
+/**
+ * 旧 secret hash 缓存，用于密钥轮换后的平滑过渡。
+ * key: clientId, value: { oldHash, expiresAt }
+ */
+const oldSecretCache = new Map<string, { oldHash: string; expiresAt: number }>();
+
+/**
+ * 缓存旧 secret hash，供 verifyOAuthClientSecret 在过渡期内回退匹配。
+ * 轮换密钥时由 rotate-secret API 调用。
+ */
+export function cacheOldSecret(clientId: string, oldHash: string): void {
+  oldSecretCache.set(clientId, {
+    oldHash,
+    expiresAt: Date.now() + 5 * 60 * 1000, // 5 分钟过渡期
+  });
+}
+
+// ============================================
 // CRUD 操作
 // ============================================
 
@@ -163,7 +184,21 @@ export async function verifyOAuthClientSecret(
   });
   if (!client) return null;
 
-  const valid = await verifySecret(secret, client.clientSecret);
+  // 优先匹配当前 hash
+  let valid = await verifySecret(secret, client.clientSecret);
+
+  // 回退：检查旧 secret 缓存（密钥轮换过渡期）
+  if (!valid) {
+    const cached = oldSecretCache.get(clientId);
+    if (cached && Date.now() < cached.expiresAt) {
+      valid = await verifySecret(secret, cached.oldHash);
+      // 清理过期条目
+      if (Date.now() >= cached.expiresAt) {
+        oldSecretCache.delete(clientId);
+      }
+    }
+  }
+
   if (!valid) return null;
 
   return {
@@ -286,6 +321,8 @@ export async function listOAuthClients(params?: {
  * 注意：此函数仅从内存配置中查找 project 名称，
  * 实际数据库查询需由调用方异步执行（使用 findClientByName）。
  *
+ * @deprecated 此存根已无调用者，请直接使用 {@link findClientByName}。
+ *             保留仅为向后兼容，未来版本将移除。
  * @returns InternalApiKeyConfig 项目配置（不含 DB 信息），
  *          或 null（调用方应回退到 client_secret 认证）
  */

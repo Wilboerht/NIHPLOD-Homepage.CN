@@ -51,7 +51,10 @@ export type AuditAction =
   | "user_deleted"
   | "oauth_client_create"
   | "oauth_client_update"
-  | "oauth_client_delete";
+  | "oauth_client_delete"
+  | "oauth_client_rotate_secret"
+  | "oauth_consent_revoke"
+  | "oauth_session_terminate";
 
 export type AuditTargetType =
   | "order"
@@ -65,7 +68,9 @@ export type AuditTargetType =
   | "coupon"
   | "system"
   | "application_folder"
-  | "oauth_client";
+  | "oauth_client"
+  | "oauth_consent"
+  | "oauth_session";
 
 export const AUDIT_ACTIONS = [
   "login",

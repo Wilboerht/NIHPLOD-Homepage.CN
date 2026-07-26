@@ -21,6 +21,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
   getRefreshTokenExpiresAt,
+  computeAtHash,
   type IdTokenClaims,
 } from "@/lib/jwt";
 import { atomicallyRotateRefreshToken, extractDeviceInfo, saveRefreshToken } from "@/lib/auth-security";
@@ -220,11 +221,12 @@ export async function POST(request: NextRequest) {
       const deviceInfo = extractDeviceInfo(request);
       await saveRefreshToken(user.id, refreshToken, refreshExpiresAt, deviceInfo);
 
-      // 签发 ID Token
+      // 签发 ID Token（含 at_hash）
       const idTokenClaims: IdTokenClaims = {
         sub: user.id,
         aud: client_id,
         scope: scopeStr,
+        at_hash: computeAtHash(accessToken),
       };
       if (scopeStr.includes("phone")) idTokenClaims.phone = maskPhone(user.phone);
       if (scopeStr.includes("profile")) {
@@ -238,12 +240,13 @@ export async function POST(request: NextRequest) {
 
       const idToken = await signIdToken(idTokenClaims);
 
-      // 记录 OAuth Session
+      // 记录 OAuth Session（关联授权码用于追溯）
       await prisma.oAuthSession.create({
         data: {
           userId: user.id,
           clientId: client_id,
           sessionId: crypto.randomUUID(),
+          authorizationCodeId: codeData.id,
           scopes: codeData.scopes,
           expiresAt: refreshExpiresAt,
         },
@@ -345,11 +348,12 @@ export async function POST(request: NextRequest) {
         select: { id: true, phone: true, nickname: true, avatar: true, membershipLevel: true, totalPoints: true },
       });
 
-      // 签发新的 ID Token
+      // 签发新的 ID Token（含 at_hash）
       const idTokenClaims: IdTokenClaims = {
         sub: refreshPayload.id,
         aud: client_id,
         scope: scopeStr,
+        at_hash: computeAtHash(newAccessToken),
       };
       if (scopeStr.includes("phone") && user) {
         idTokenClaims.phone = maskPhone(user.phone);

@@ -356,6 +356,17 @@ export interface IdTokenClaims {
   membershipLevel?: string;
   totalPoints?: number;
   scope?: string;
+  /** OIDC Core 3.3.2.11: Access Token 的 SHA-256 左半 base64url */
+  at_hash?: string;
+}
+
+/**
+ * 计算 OIDC at_hash 声明
+ * OIDC Core 3.3.2.11: access_token 的 SHA-256 哈希左半部分（128 bits）的 base64url 编码
+ */
+export function computeAtHash(accessToken: string): string {
+  const hash = createHash("sha256").update(accessToken).digest();
+  return Buffer.from(hash.subarray(0, hash.length / 2)).toString("base64url");
 }
 
 /**

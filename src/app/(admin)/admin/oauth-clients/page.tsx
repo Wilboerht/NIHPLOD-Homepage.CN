@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Power, Copy, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Copy, EyeOff, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -170,6 +170,24 @@ export default function OAuthClientsPage() {
     }
   };
 
+  const handleRotateSecret = async (clientId: string) => {
+    if (!confirm("确定要轮换该 Client 的密钥？轮换后旧密钥将在 5 分钟内失效。")) return;
+    setSaving(true);
+    try {
+      const data = await apiPost<{ plainSecret: string }>(
+        `/api/admin/oauth-clients/${clientId}/rotate-secret`,
+        { confirm: true }
+      );
+      setNewSecret(data.plainSecret);
+      setShowCreate(true); // 复用 create modal 展示新 secret
+      toast.success("密钥轮换成功");
+    } catch {
+      toast.error("密钥轮换失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleToggleActive = async (client: OAuthClient) => {
     try {
       await apiPatch<ClientActionResponse>(`/api/admin/oauth-clients/${client.id}`, {
@@ -265,6 +283,13 @@ export default function OAuthClientsPage() {
                         title="编辑"
                       >
                         <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRotateSecret(c.id)}
+                        className="p-1.5 text-gray-400 hover:text-purple-600 rounded"
+                        title="轮换密钥"
+                      >
+                        <RotateCw className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleToggleActive(c)}
