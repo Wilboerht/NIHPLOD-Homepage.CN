@@ -10,7 +10,6 @@ import { cn, formatPrice } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 import { getCategoryIconPath } from "@/lib/product-icons";
-import { AdvisorCTA } from "@/components/website";
 import { trackEvent } from "@/lib/analytics";
 
 interface Category {
@@ -205,11 +204,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       </button>
                     </m.div>
                   ))}
-                </div>
-
-                {/* Advisor CTA - 移动端 */}
-                <div className="mt-6 mb-4">
-                  <AdvisorCTA variant="discover" />
                 </div>
 
                 {/* Copyright */}
@@ -479,10 +473,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     ))}
                   </section>
 
-                  {/* Advisor CTA - 桌面端 */}
-                  <div className="mt-6">
-                    <AdvisorCTA variant="discover" />
-                  </div>
                 </div>
 
                 {/* Footer Info */}

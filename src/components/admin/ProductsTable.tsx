@@ -142,7 +142,7 @@ export function ProductsTable({
           onChange={handleSelectAll}
           className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
         />
-      ) as unknown as string,
+      ),
       width: "50px",
       render: (_, record) => (
         <input

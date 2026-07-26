@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 // 列定义接口
 export interface Column<T> {
   key: keyof T | string;
-  title: string;
+  title: ReactNode;
   width?: string;
   render?: (value: unknown, record: T, index: number) => ReactNode;
   sortable?: boolean;
