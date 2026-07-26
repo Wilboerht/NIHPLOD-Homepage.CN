@@ -1,0 +1,58 @@
+/**
+ * 用户登录历史端点
+ * GET /api/user/login-history
+ *
+ * 返回当前用户最近的登录尝试记录。
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { verifyUserAuth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { apiConsole } from "@/lib/logger";
+import { maskPhone } from "@/lib/mask-phone";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await verifyUserAuth(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
+        { status: 401 }
+      );
+    }
+
+    const attempts = await prisma.loginAttempt.findMany({
+      where: { identifier: user.phone },
+      select: {
+        id: true,
+        identifier: true,
+        type: true,
+        success: true,
+        reason: true,
+        ipAddress: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+
+    const data = attempts.map((a) => ({
+      id: a.id,
+      identifier: maskPhone(a.identifier),
+      type: a.type,
+      success: a.success,
+      reason: a.reason,
+      ipAddress: a.ipAddress || "未知 IP",
+      createdAt: a.createdAt.toISOString(),
+    }));
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    apiConsole.error("[LoginHistory] 异常:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器内部错误" } },
+      { status: 500 }
+    );
+  }
+}

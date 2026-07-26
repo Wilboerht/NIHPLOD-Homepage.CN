@@ -14,6 +14,7 @@ import {
   Shield,
   ShieldCheck,
   ScrollText,
+  Crown,
   LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ export const adminNavItems: NavItem[] = [
   { title: "产品管理", href: "/admin/products", icon: Package, roles: ["owner", "admin"] },
   { title: "分类管理", href: "/admin/categories", icon: FolderTree, roles: ["owner", "admin"] },
   { title: "优惠券管理", href: "/admin/coupons", icon: Ticket, roles: ["owner", "admin"] },
+  { title: "会员管理", href: "/admin/vip", icon: Crown, roles: ["owner", "admin"] },
   { title: "职位管理", href: "/admin/jobs", icon: Briefcase, roles: ["owner", "admin"] },
   { title: "简历管理", href: "/admin/applications", icon: UserCheck, roles: ["owner", "admin"] },
   { title: "留言管理", href: "/admin/messages", icon: MessageSquare, roles: ["owner", "admin"] },

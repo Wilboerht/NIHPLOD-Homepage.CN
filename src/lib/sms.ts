@@ -18,8 +18,13 @@ import { randomInt } from "./random";
  * 使用 phone + code + type 组合，增加彩虹表攻击难度
  */
 export function hashVerifyCode(phone: string, code: string, type: string): string {
+  // 使用 JWT_ACCESS_SECRET 作为 HMAC 密钥（该密钥在 jwt.ts 启动时强制校验，保证存在）
+  const hmacSecret = process.env.JWT_ACCESS_SECRET;
+  if (!hmacSecret) {
+    throw new Error("[SMS] JWT_ACCESS_SECRET 环境变量未设置，无法进行验证码哈希");
+  }
   return crypto
-    .createHmac("sha256", process.env.JWT_SECRET || "default-secret")
+    .createHmac("sha256", hmacSecret)
     .update(`${phone}:${code}:${type}`)
     .digest("hex");
 }

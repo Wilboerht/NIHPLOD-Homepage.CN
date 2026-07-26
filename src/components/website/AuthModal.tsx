@@ -58,7 +58,6 @@ export function AuthModal() {
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [regCodeSending, setRegCodeSending] = useState(false);
   const [regCountdown, setRegCountdown] = useState(0);
-  const [inviteCode, setInviteCode] = useState("");
 
   // Forgot Password Fields
   const [forgotPhone, setForgotPhone] = useState("");
@@ -209,7 +208,6 @@ export function AuthModal() {
         code: regCode,
         password: regPassword,
         confirmPassword: regConfirmPassword,
-        inviteCode,
       });
       toast.success("注册成功！");
       await handleAuthSuccess();
@@ -514,7 +512,6 @@ export function AuthModal() {
                 {view === "register" && (
                   <RegisterForm
                     variant="pc"
-                    inviteCode={inviteCode}
                     regName={regName}
                     regPhone={regPhone}
                     regCode={regCode}
@@ -526,7 +523,6 @@ export function AuthModal() {
                     mobileAgreed={mobileAgreed}
                     agreementShake={agreementShake}
                     loading={loading}
-                    onInviteCodeChange={setInviteCode}
                     onRegNameChange={setRegName}
                     onRegPhoneChange={setRegPhone}
                     onRegCodeChange={setRegCode}
@@ -663,7 +659,6 @@ export function AuthModal() {
               {view === "register" && (
                 <RegisterForm
                   variant="mobile"
-                  inviteCode={inviteCode}
                   regName={regName}
                   regPhone={regPhone}
                   regCode={regCode}
@@ -675,7 +670,6 @@ export function AuthModal() {
                   mobileAgreed={mobileAgreed}
                   agreementShake={agreementShake}
                   loading={loading}
-                  onInviteCodeChange={setInviteCode}
                   onRegNameChange={setRegName}
                   onRegPhoneChange={setRegPhone}
                   onRegCodeChange={setRegCode}

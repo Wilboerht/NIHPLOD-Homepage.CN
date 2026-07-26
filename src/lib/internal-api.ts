@@ -11,7 +11,7 @@
  * 注意：Nonce 存储使用内存 LRU，仅适用于单实例部署；多实例部署时需要接入 Redis。
  */
 
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { LRUCache } from "lru-cache";
 import { apiConsole } from "@/lib/logger";
 
@@ -43,8 +43,6 @@ let lastEnvValue: string | undefined = undefined;
  *
  * 格式：JSON 数组
  * [ {"project":"advisor","key":"advisor-key","secret":"advisor-secret"} ]
- *
- * 为兼容旧版，仍支持 INTERNAL_API_SECRET 作为单一密钥（project="legacy"）。
  */
 export function getInternalApiKeys(): ParsedKeys {
   const envValue = process.env.INTERNAL_API_KEYS;
@@ -70,18 +68,6 @@ export function getInternalApiKeys(): ParsedKeys {
     } catch (error) {
       apiConsole.error("[InternalApi] 解析 INTERNAL_API_KEYS 失败:", error);
     }
-  }
-
-  // 兼容旧版 INTERNAL_API_SECRET
-  const legacySecret = process.env.INTERNAL_API_SECRET;
-  if (legacySecret && !secrets.has(legacySecret)) {
-    const legacyConfig: InternalApiKeyConfig = {
-      project: "legacy",
-      key: "legacy",
-      secret: legacySecret,
-    };
-    keys.set(legacyConfig.key, legacyConfig);
-    secrets.set(legacyConfig.secret, legacyConfig);
   }
 
   cachedParsedKeys = { keys, secrets };
@@ -178,7 +164,6 @@ export function checkAndRecordNonce(nonce: string): boolean {
 /**
  * 计算请求体 SHA-256 哈希
  */
-export async function hashRequestBody(body: string): Promise<string> {
-  const { createHash } = await import("crypto");
+export function hashRequestBody(body: string): string {
   return createHash("sha256").update(body).digest("hex");
 }

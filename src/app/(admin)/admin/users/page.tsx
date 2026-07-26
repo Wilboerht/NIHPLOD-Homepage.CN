@@ -19,6 +19,8 @@ import {
   Ban,
   CheckCircle,
   Lock,
+  Award,
+  Coins,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
@@ -39,6 +41,8 @@ interface UserItem {
   nickname: string | null;
   avatar: string | null;
   status: UserStatus;
+  membershipLevel: string | null;
+  totalPoints: number | null;
   orderCount: number;
   createdAt: string;
 }
@@ -56,6 +60,12 @@ const userStatusMap: Record<
   BANNED: { label: "封禁", variant: "danger", description: "账号永久封禁，不可恢复" },
 };
 
+const membershipLevelMap: Record<string, { label: string; emoji: string; variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline" }> = {
+  SILVER: { label: "银卡", emoji: "🪙", variant: "secondary" },
+  GOLD: { label: "金卡", emoji: "🥇", variant: "warning" },
+  DIAMOND: { label: "钻石", emoji: "💎", variant: "primary" },
+};
+
 interface UserDetail {
   id: string;
   phone: string | null;
@@ -63,6 +73,8 @@ interface UserDetail {
   nickname: string | null;
   avatar: string | null;
   status: UserStatus;
+  membershipLevel: string | null;
+  totalPoints: number | null;
   wechatOpenId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -250,6 +262,8 @@ export default function AdminUsersPage() {
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
               <th scope="col" className="px-4 py-3">用户</th>
               <th scope="col" className="px-4 py-3">手机号</th>
+              <th scope="col" className="px-4 py-3">会员等级</th>
+              <th scope="col" className="px-4 py-3">积分</th>
               <th scope="col" className="px-4 py-3">状态</th>
               <th scope="col" className="px-4 py-3">订单数</th>
               <th scope="col" className="px-4 py-3">注册时间</th>
@@ -259,11 +273,11 @@ export default function AdminUsersPage() {
           <tbody className="divide-y">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={6} />
+                <TableRowSkeleton key={i} columns={8} />
               ))
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-brand-charcoal/50">
+                <td colSpan={8} className="px-4 py-8 text-center text-brand-charcoal/50">
                   暂无用户
                 </td>
               </tr>
@@ -290,6 +304,23 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">{user.phone || "-"}</td>
+                  <td className="px-4 py-3">
+                    {user.membershipLevel && membershipLevelMap[user.membershipLevel] ? (
+                      <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
+                        {membershipLevelMap[user.membershipLevel].emoji}{" "}
+                        {membershipLevelMap[user.membershipLevel].label}
+                      </Badge>
+                    ) : (
+                      <span className="text-brand-charcoal/40">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {user.totalPoints != null ? (
+                      <span className="font-mono text-sm">{user.totalPoints.toLocaleString()}</span>
+                    ) : (
+                      <span className="text-brand-charcoal/40">0</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant={userStatusMap[user.status].variant}>
                       {userStatusMap[user.status].label}
@@ -471,6 +502,37 @@ export default function AdminUsersPage() {
                     <dd className="font-medium">{detailUser.userCoupons?.length ?? 0}</dd>
                   </div>
                 </dl>
+
+                <div className="mt-5 border-t border-brand-charcoal/15 pt-4">
+                  <h3 className="mb-3 text-sm font-medium text-brand-charcoal">会员信息</h3>
+                  <dl className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                        <Award className="h-3.5 w-3.5" />
+                        会员等级
+                      </dt>
+                      <dd>
+                        {detailUser.membershipLevel && membershipLevelMap[detailUser.membershipLevel] ? (
+                          <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
+                            {membershipLevelMap[detailUser.membershipLevel].emoji}{" "}
+                            {membershipLevelMap[detailUser.membershipLevel].label}
+                          </Badge>
+                        ) : (
+                          <span className="text-brand-charcoal/40">未设置</span>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                        <Coins className="h-3.5 w-3.5" />
+                        累计积分
+                      </dt>
+                      <dd className="font-mono font-medium">
+                        {detailUser.totalPoints != null ? detailUser.totalPoints.toLocaleString() : "0"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
               </div>
             </div>
 

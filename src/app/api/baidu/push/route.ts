@@ -8,6 +8,7 @@
  * 使用前：在百度站长平台 -> 数据引入 -> 链接提交 -> 找到 token
  */
 import { NextRequest, NextResponse } from "next/server";
+import { apiConsole } from "@/lib/logger";
 
 const BAIDU_PUSH_TOKEN = process.env.BAIDU_PUSH_TOKEN;
 const BAIDU_PUSH_API = "http://data.zz.baidu.com/urls";
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
       notValid: result.not_valid || [],
     });
   } catch (error) {
-    console.error("百度推送失败:", error);
+    apiConsole.error("百度推送失败:", error);
     return NextResponse.json({ error: "推送失败" }, { status: 500 });
   }
 }

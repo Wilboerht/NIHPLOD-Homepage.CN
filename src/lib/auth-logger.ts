@@ -7,6 +7,7 @@
 
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "./audit";
+import { maskPhone } from "./mask-phone";
 
 export type AuthEventType =
   | "user_login"
@@ -22,12 +23,14 @@ export type AuthEventType =
   | "admin_create"
   | "admin_update"
   | "internal_api_call"
-  | "wechat_bind";
+  | "wechat_bind"
+  | "user_oauth_revoke";
 
 interface AuthLogContext {
   identifier?: string;
   userId?: string;
   adminId?: string;
+  clientId?: string;
   ip?: string;
   ua?: string | null;
   success?: boolean;
@@ -47,12 +50,24 @@ function maskIdentifier(identifier?: string): string | undefined {
     return `${local.slice(0, 2)}****${local.slice(-2)}@${domain}`;
   }
 
-  // 手机号
-  if (identifier.length >= 7) {
-    return `${identifier.slice(0, 3)}****${identifier.slice(-4)}`;
-  }
+  // 手机号：复用 maskPhone 避免重复实现
+  return maskPhone(identifier);
+}
 
-  return identifier;
+/**
+ * Auth 事件到 Audit action 的映射
+ * 注意：auth-logger 的 event 命名与 AuditAction 不完全一致
+ */
+function mapEventToAuditAction(event: AuthEventType): string | null {
+  const mapping: Record<string, string> = {
+    user_login: "user_login",
+    user_logout: "user_logout",
+    user_register: "user_register",
+    user_reset_password: "user_reset_password",
+    wechat_bind: "user_wechat_bind",
+    user_oauth_revoke: "user_oauth_revoke",
+  };
+  return mapping[event] || null;
 }
 
 /**
@@ -91,25 +106,28 @@ export function logAuthEvent(event: AuthEventType, context: AuthLogContext): voi
     "user_register",
     "user_reset_password",
     "wechat_bind",
+    "user_oauth_revoke",
   ];
 
   if (persistentEvents.includes(event)) {
+    const auditAction = mapEventToAuditAction(event);
+    if (!auditAction) return;
+
     const targetType = event === "wechat_bind" ? "user" : "system";
     const targetId = context.userId;
 
     createAuditLog({
-      action: event as
+      action: auditAction as
         | "user_login"
         | "user_logout"
         | "user_register"
         | "user_reset_password"
-        | "user_wechat_bind",
+        | "user_wechat_bind"
+        | "user_oauth_revoke",
       targetType,
       targetId,
       detail: logPayload,
       userId: context.userId,
-      // 注意：auth-logger 通常在 API 路由中调用，但没有直接传入 request
-      // 调用方应在 detail 中包含 ip/ua，或后续重构为传入 request
     }).catch((error) => {
       apiConsole.error("[AuthAudit] 持久化审计日志失败:", error);
     });

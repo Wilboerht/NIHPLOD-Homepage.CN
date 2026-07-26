@@ -163,10 +163,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     apiConsole.error("💥 [Apply API] Error:", error);
-    // @ts-expect-error - error is unknown type
-    if (error.code) apiConsole.error("Error Code:", error.code);
-    // @ts-expect-error - error is unknown type
-    if (error.message) apiConsole.error("Error Message:", error.message);
 
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "投递失败，请稍后重试" } },

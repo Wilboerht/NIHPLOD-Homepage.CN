@@ -8,3 +8,4 @@ export { ProductDrawer, PlatformIcon } from "./ProductDrawer";
 export { BottomNavBar } from "./BottomNavBar";
 export { KineticBackground } from "./KineticBackground";
 export { XiaohongshuLink } from "./XiaohongshuLink";
+export { AdvisorCTA } from "./AdvisorCTA";

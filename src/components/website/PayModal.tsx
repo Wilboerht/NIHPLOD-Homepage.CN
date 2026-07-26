@@ -10,6 +10,7 @@ import { X, CreditCard, Loader2, Clock, Check, AlertCircle } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { isWechatBrowser } from "@/lib/wechat";
+import { trackEvent } from "@/lib/analytics";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { apiPost, ApiError } from "@/lib/api-client";
 
@@ -18,11 +19,19 @@ const TEXTURE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='
 
 type PayMethod = "wechat" | "alipay";
 
+interface OrderItem {
+  productId: string;
+  productName: string;
+  price: number | string;
+  quantity: number;
+}
+
 interface OrderData {
   id: string;
   orderNo: string;
   payAmount: number;
   createdAt: string;
+  items?: OrderItem[];
 }
 
 export default function PayModal() {
@@ -61,7 +70,22 @@ export default function PayModal() {
       const data = await res.json();
       if (data.success) {
         // API 返回的是 data.data.order
-        setOrder(data.data.order);
+        const orderData: OrderData = {
+          ...data.data.order,
+          items: data.data.order.items?.map((item: { productId: string; productName: string; price: string | number; quantity: number }) => ({
+            productId: item.productId,
+            productName: item.productName,
+            price: typeof item.price === "string" ? parseFloat(item.price) : item.price,
+            quantity: item.quantity,
+          })),
+        };
+        setOrder(orderData);
+        // 缓存订单 items 供 PayResult 回退使用
+        if (orderData.items) {
+          try {
+            sessionStorage.setItem("pending_purchase_items", JSON.stringify(orderData.items));
+          } catch { /* ignore */ }
+        }
       } else {
         setError(data.error?.message || "加载订单失败");
       }
@@ -139,6 +163,17 @@ export default function PayModal() {
       if (data.payType === "mock") {
         if (confirm("开发环境：模拟支付成功？")) {
           await apiPost("/api/pay/mock-success", { orderId: order.id });
+          trackEvent("purchase", {
+            transaction_id: order.orderNo,
+            currency: "CNY",
+            value: Number(order.payAmount),
+            items: order.items?.map((item) => ({
+              item_id: item.productId,
+              item_name: item.productName,
+              price: typeof item.price === "string" ? parseFloat(item.price) : item.price,
+              quantity: item.quantity,
+            })),
+          });
           closePay();
           // 支付成功后打开用户中心订单详情
           openUserCenter("orders", order.id);
@@ -154,6 +189,17 @@ export default function PayModal() {
       if (data.payParams && typeof WeixinJSBridge !== "undefined") {
         WeixinJSBridge.invoke("getBrandWCPayRequest", data.payParams, (r: { err_msg: string }) => {
           if (r.err_msg === "get_brand_wcpay_request:ok") {
+            trackEvent("purchase", {
+              transaction_id: order.orderNo,
+              currency: "CNY",
+              value: Number(order.payAmount),
+              items: order.items?.map((item) => ({
+                item_id: item.productId,
+                item_name: item.productName,
+                price: typeof item.price === "string" ? parseFloat(item.price) : item.price,
+                quantity: item.quantity,
+              })),
+            });
             closePay();
             // 支付成功后打开用户中心订单详情
             openUserCenter("orders", order.id);

@@ -56,6 +56,18 @@ vi.mock("@/lib/shipping-config", () => ({
   calculateShippingFee: vi.fn().mockResolvedValue(0),
 }));
 
+// Mock CSRF
+vi.mock("@/lib/csrf", () => ({
+  validateCSRFToken: vi.fn().mockReturnValue(true),
+  csrfForbiddenResponse: () => {
+    const { NextResponse } = require("next/server");
+    return NextResponse.json(
+      { success: false, error: { code: "CSRF_ERROR", message: "CSRF 验证失败" } },
+      { status: 403 }
+    );
+  },
+}));
+
 // Mock order service
 const mockCreateOrder = vi.fn();
 vi.mock("@/lib/order", () => ({

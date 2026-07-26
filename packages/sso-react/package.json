@@ -1,0 +1,48 @@
+{
+  "name": "@nihplod/sso-react",
+  "version": "1.0.0",
+  "description": "NIHPLOD 一网通 SSO React SDK — 提供 useSSO Hook、LoginButton 和 UserCenterModal 组件",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --external react --external react-dom",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch --external react --external react-dom",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "sso",
+    "oauth2",
+    "react",
+    "nihplod",
+    "login",
+    "user-center"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nihplod/nihplod.cn",
+    "directory": "packages/sso-react"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

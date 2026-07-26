@@ -9,6 +9,7 @@ import { OrderStatus } from "@/generated/prisma/client";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { creditPointsForOrder } from "@/lib/points";
 
 const mockSuccessSchema = z.object({
   orderId: z.string().min(1, "订单ID不能为空"),
@@ -137,6 +138,15 @@ export async function POST(request: NextRequest) {
           gatewayTrxId: paymentNo,
           rawData: JSON.stringify({ source: "mock_success", createdAt: new Date().toISOString() }),
         },
+      });
+
+      // VIP 积分奖励
+      await creditPointsForOrder({
+        tx,
+        orderId,
+        userId: orderWithItems.userId,
+        payAmount: Number(orderWithItems.payAmount),
+        orderNo: orderWithItems.orderNo,
       });
     });
 

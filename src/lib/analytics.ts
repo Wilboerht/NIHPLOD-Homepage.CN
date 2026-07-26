@@ -1,4 +1,13 @@
-export type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
+export type AnalyticsPropValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Record<string, unknown>
+  | Array<Record<string, unknown>>;
+
+export type AnalyticsProps = Record<string, AnalyticsPropValue>;
 
 /**
  * Lightweight client-side tracking bridge.

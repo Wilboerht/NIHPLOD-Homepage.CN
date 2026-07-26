@@ -191,6 +191,12 @@ enum UserStatus {
   BANNED
 }
 
+enum MembershipLevel {
+  SILVER
+  GOLD
+  DIAMOND
+}
+
 model User {
   id            String     @id @default(cuid())
   phone         String     @unique              // 手机号（唯一）
@@ -200,22 +206,31 @@ model User {
   avatar        String?                         // 头像 URL
   status        UserStatus @default(ACTIVE)     // 账号状态
 
+  // 多租户预留：如需租户隔离，添加 tenantId String? 字段，并在所有查询中添加 WHERE tenantId = ? 条件
+
   // 微信登录
   wechatOpenId  String?   @unique               // 微信 OpenID
   wechatUnionId String?                         // 微信 UnionID
 
+  // VIP 会员
+  membershipLevel MembershipLevel @default(SILVER)
+  totalPoints     Int              @default(0)
+  birthday        DateTime?
+
   // 关联
-  addresses     Address[]
-  orders        Order[]
-  cartItems     CartItem[]
-  userCoupons   UserCoupon[]
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]
+  addresses        Address[]
+  orders           Order[]
+  cartItems        CartItem[]
+  userCoupons      UserCoupon[]
+  refreshTokens    RefreshToken[]
+  auditLogs        AuditLog[]
+  pointTransactions PointTransaction[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 
   @@index([status])
+  @@index([membershipLevel])
   // phone 和 wechatOpenId 已有 @unique 索引，无需重复 @@index
 }
 
@@ -263,11 +278,87 @@ model LoginAttempt {
   reason    String?                            // 失败原因（如：code_invalid、user_not_found 等）
   ipAddress String?                            // IP 地址
   userAgent String?  @db.Text                  // User Agent
+  clientId  String?                            // OAuth Client ID（来源子项目）
   
   createdAt DateTime @default(now())
   
   @@index([identifier, createdAt(sort: Desc)])
   @@index([identifier, success, createdAt(sort: Desc)])
+  @@index([clientId, createdAt(sort: Desc)])
+}
+
+// ============================================
+// OAuth 2.0 / SSO 一网通
+// ============================================
+
+model OAuthClient {
+  id                  String   @id @default(cuid())
+  clientId            String   @unique     // 客户端 ID（公开）
+  clientSecret        String               // 客户端密钥（bcrypt 哈希存储）
+  name                String               // 应用名称
+  redirectUris        String[]             // 允许的回调 URL 列表
+  scopes              String[]             // 允许的权限范围
+  isActive            Boolean  @default(true)
+  backchannelLogoutUri String?            // Backchannel Logout URI
+  tenantId            String?              // 多租户预留：当前为 null 表示全局共享
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
+
+  @@index([isActive])
+  @@index([tenantId])
+}
+
+model OAuthAuthorizationCode {
+  id                  String    @id @default(cuid())
+  code                String    @unique     // 授权码（SHA-256 哈希存储）
+  clientId            String                // 关联的 OAuthClient.clientId
+  userId              String                // 关联的用户 ID
+  redirectUri         String                // 回调 URL 快照
+  scopes              String[]              // 请求的权限范围
+  codeChallenge       String?               // PKCE code_challenge
+  codeChallengeMethod String?               // PKCE method（S256）
+  expiresAt           DateTime              // 过期时间（5 分钟）
+  used                Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+
+  @@index([code])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@index([clientId, used, expiresAt])
+}
+
+model OAuthSession {
+  id        String    @id @default(cuid())
+  userId    String
+  clientId  String
+  sessionId String    @unique
+  scopes    String[]
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  @@index([userId, clientId])
+  @@index([sessionId])
+  @@index([userId, revokedAt])
+}
+
+model SsoAuditEvent {
+  id         String   @id @default(cuid())
+  event      String               // authorize | token | introspect | logout | userinfo | backchannel_logout | consent | status_change
+  userId     String?              // 关联用户
+  clientId   String?              // 关联子项目
+  clientName String?              // 子项目名称快照
+  ip         String?              // IP 地址
+  userAgent  String?  @db.Text    // User Agent
+  detail     Json?                // 事件详情
+  success    Boolean  @default(true)
+  tenantId   String?              // 多租户预留
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([clientId, createdAt(sort: Desc)])
+  @@index([event, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
 }
 
 model PaymentNotification {
@@ -513,6 +604,40 @@ model RateLimitRecord {
   updatedAt   DateTime @default(now()) @updatedAt
 
   @@index([key, windowStart])
+}
+
+// ============================================
+// VIP 会员体系
+// ============================================
+
+model PointTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  points    Int      // 正数为获得，负数为消耗
+  type      String   // ORDER_REWARD | BIRTHDAY_GIFT | ADMIN_ADJUST | REDEEM | LEVEL_UP_BONUS
+  reference String?  // 关联的订单号/优惠券ID等
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+}
+
+model MembershipBenefit {
+  id          String          @id @default(cuid())
+  level       MembershipLevel @unique
+  name        String          // 等级名称（如：银卡会员）
+  nameEn      String?         // 英文名称
+  icon        String?         // 图标 emoji/SVG
+  minPoints   Int             // 升级所需最低积分
+  maxPoints   Int?            // 该等级积分上限（最高等级为 null）
+  pointRate   Int             @default(1) // 消费积分倍率（1元=N分）
+  benefits    Json            // 权益列表 [{ icon, title, desc }]
+  colorClass  String?         // Tailwind 颜色类名
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now()) @updatedAt
 }
 
 // ============================================

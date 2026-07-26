@@ -15,8 +15,9 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
-import { ProductCard, PlatformIcon, XiaohongshuLink } from "@/components/website";
+import { ProductCard, PlatformIcon, XiaohongshuLink, AdvisorCTA } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useToast } from "@/components/ui/Toast";
@@ -94,6 +95,23 @@ export function ProductDetailContent({
   useEffect(() => {
     setDrawerOpen(false);
   }, [setDrawerOpen]);
+
+  // GA: view_item 事件
+  useEffect(() => {
+    trackEvent("view_item", {
+      currency: "CNY",
+      value: product.price,
+      items: [
+        {
+          item_id: product.id,
+          item_name: product.name,
+          price: product.price,
+          item_category: product.category.name,
+        },
+      ],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   // 标记从产品列表页导航过来，返回时跳过列表页抽屉动画
   useEffect(() => {
@@ -355,6 +373,18 @@ export function ProductDetailContent({
     try {
       const result = await addToCart(product.id, 1);
       if (result) {
+        trackEvent("add_to_cart", {
+          currency: "CNY",
+          value: product.price,
+          items: [
+            {
+              item_id: product.id,
+              item_name: product.name,
+              price: product.price,
+              quantity: 1,
+            },
+          ],
+        });
         success("已加入购物车");
       } else {
         showError("添加失败，请重试");
@@ -886,30 +916,7 @@ export function ProductDetailContent({
 
                   {/* 肌智派素颜测肤推广 */}
                   <div className="pb-6 lg:pb-7">
-                    <div className="max-lg:rounded-lg max-lg:border max-lg:border-brand-charcoal/10 max-lg:px-4 max-lg:py-3">
-                      <a
-                        href="https://advisor.nihplod.cn"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.08em] text-brand-primary transition-opacity hover:opacity-70 lg:inline-flex lg:tracking-[0.12em]"
-                      >
-                        <span>
-                          参加肌智派素颜测肤，获取您的专属护肤秘籍<br className="lg:hidden" />——更少产品，科学护肤
-                        </span>
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="ml-auto h-3 w-3 shrink-0 transition-transform group-hover:translate-x-1 lg:ml-0"
-                        >
-                          <path d="M5 12h14" />
-                          <path d="m12 5 7 7-7 7" />
-                        </svg>
-                      </a>
-                    </div>
+                    <AdvisorCTA variant="guide" />
                   </div>
                 </div>
 

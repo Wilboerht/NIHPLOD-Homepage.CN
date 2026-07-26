@@ -9,6 +9,7 @@ import { Wechatpay, Rsa, Formatter, Aes } from "wechatpay-axios-plugin";
 import { yuanToFen, moneyStrictEqual, fenToYuan } from "./money";
 import { formatKey, validateKeyFormat } from "./crypto-utils";
 import { recordTransaction } from "./transaction";
+import { creditPointsForOrder } from "./points";
 import { apiConsole } from "@/lib/logger";
 
 interface WechatPlatformCert {
@@ -517,6 +518,15 @@ export async function handlePaymentNotify(
           data: { status: "USED", usedAt: new Date() },
         });
       }
+
+      // VIP 积分奖励
+      await creditPointsForOrder({
+        tx,
+        orderId: order.id,
+        userId: order.userId,
+        payAmount: Number(order.payAmount),
+        orderNo,
+      });
     });
 
     // 记录交易流水（仅在成功更新订单时记录，避免重复流水）

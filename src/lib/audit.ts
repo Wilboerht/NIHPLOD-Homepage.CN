@@ -46,8 +46,12 @@ export type AuditAction =
   | "user_register"
   | "user_reset_password"
   | "user_wechat_bind"
+  | "user_oauth_revoke"
   | "user_status_change"
-  | "user_deleted";
+  | "user_deleted"
+  | "oauth_client_create"
+  | "oauth_client_update"
+  | "oauth_client_delete";
 
 export type AuditTargetType =
   | "order"
@@ -60,7 +64,8 @@ export type AuditTargetType =
   | "application"
   | "coupon"
   | "system"
-  | "application_folder";
+  | "application_folder"
+  | "oauth_client";
 
 export const AUDIT_ACTIONS = [
   "login",
@@ -100,7 +105,12 @@ export const AUDIT_ACTIONS = [
   "user_register",
   "user_reset_password",
   "user_wechat_bind",
+  "user_oauth_revoke",
   "user_status_change",
+  "user_deleted",
+  "oauth_client_create",
+  "oauth_client_update",
+  "oauth_client_delete",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [
@@ -115,6 +125,7 @@ export const AUDIT_TARGET_TYPES = [
   "coupon",
   "system",
   "application_folder",
+  "oauth_client",
 ] as const;
 
 interface AuditLogInput {

@@ -11,10 +11,10 @@ import { jwtVerify } from "jose";
 const AUTH_COOKIE_NAME = "__Host-admin_token";
 
 function getSecret(): Uint8Array {
-  const jwtSecret = process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET;
+  const jwtSecret = process.env.JWT_ADMIN_SECRET;
   if (!jwtSecret) {
     throw new Error(
-      "[Middleware] JWT_SECRET / JWT_ADMIN_SECRET 环境变量未设置，请配置后再启动应用"
+      "[Middleware] JWT_ADMIN_SECRET 环境变量未设置，请配置后再启动应用"
     );
   }
   return new TextEncoder().encode(jwtSecret);
@@ -42,6 +42,10 @@ const PUBLIC_API_PREFIXES = [
   "/api/revalidate",
   "/api/internal/",
   "/api/v1/internal/",
+  "/api/oauth/",
+  "/api/account",
+  "/login",
+  "/logout",
 ];
 
 async function verifyToken(token: string): Promise<boolean> {

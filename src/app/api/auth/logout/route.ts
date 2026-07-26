@@ -19,6 +19,7 @@ import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { prisma } from "@/lib/prisma";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -29,12 +30,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 验证用户身份
+    // 验证用户身份（优先于 body 解析，避免未认证请求触发不必要的 body 解析）
     const user = await verifyUserAuth(request);
-    const body = await request.json().catch(() => ({}));
-    const allDevices = body.allDevices === true;
 
     if (user) {
+      const body = await request.json().catch(() => ({}));
+      const allDevices = body.allDevices === true;
+
       const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
 
       if (!allDevices && refreshToken) {
@@ -52,6 +54,58 @@ export async function POST(request: NextRequest) {
         allDevices,
         ip: getClientIP(request),
       });
+
+      // === SLO: 先查询活跃的 OAuthSession（在撤销之前获取 clientId 列表）===
+      const activeSessions = await prisma.oAuthSession.findMany({
+        where: { userId: user.id, revokedAt: null },
+        select: { clientId: true },
+      });
+
+      // === SLO: 撤销所有 OAuthSession ===
+      await prisma.oAuthSession.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+
+      // === SLO: Backchannel Logout（非阻塞）===
+      // 查询所有已注册且配置了 backchannelLogoutUri 的 client
+
+      if (activeSessions.length > 0) {
+        const clientIds = activeSessions.map((s) => s.clientId);
+        const clients = await prisma.oAuthClient.findMany({
+          where: { clientId: { in: clientIds }, isActive: true, backchannelLogoutUri: { not: null } },
+          select: { clientId: true, backchannelLogoutUri: true },
+        });
+
+        if (clients.length > 0) {
+          const { signLogoutToken } = await import("@/lib/jwt");
+
+          for (const client of clients) {
+            if (!client.backchannelLogoutUri) continue;
+            try {
+              // 为每个 client 生成独立的 jti，避免跨 client 的 jti 碰撞
+              const jti = crypto.randomUUID();
+              const logoutToken = await signLogoutToken({
+                sub: user.id,
+                aud: client.clientId,
+                events: "http://schemas.openid.net/event/backchannel-logout",
+                jti,
+              });
+
+              fetch(client.backchannelLogoutUri, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ logout_token: logoutToken }),
+                signal: AbortSignal.timeout(5000),
+              }).catch((err) => {
+                apiConsole.warn(`[SLO] Backchannel logout 通知失败 (${client.clientId}):`, err);
+              });
+            } catch (err) {
+              apiConsole.warn(`[SLO] Backchannel logout token 签发失败 (${client.clientId}):`, err);
+            }
+          }
+        }
+      }
     }
 
     const response = NextResponse.json({

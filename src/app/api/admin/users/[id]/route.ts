@@ -43,6 +43,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         nickname: true,
         avatar: true,
         status: true,
+        membershipLevel: true,
+        totalPoints: true,
         wechatOpenId: true,
         wechatUnionId: true,
         createdAt: true,
@@ -198,6 +200,53 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       adminId: admin.id,
       request,
     });
+
+    // === 通知子项目账户状态变更（Phase 2-D）===
+    // 查询该用户的活跃 OAuthSession，向各 client 的 backchannelLogoutUri 通知
+    if (status !== "ACTIVE") {
+      try {
+        const activeSessions = await prisma.oAuthSession.findMany({
+          where: { userId: id, revokedAt: null },
+          select: { clientId: true },
+        });
+
+        if (activeSessions.length > 0) {
+          const clientIds = activeSessions.map((s) => s.clientId);
+          const clients = await prisma.oAuthClient.findMany({
+            where: { clientId: { in: clientIds }, isActive: true, backchannelLogoutUri: { not: null } },
+            select: { clientId: true, backchannelLogoutUri: true, name: true },
+          });
+
+          if (clients.length > 0) {
+            const { signLogoutToken } = await import("@/lib/jwt");
+            for (const client of clients) {
+              if (!client.backchannelLogoutUri) continue;
+              try {
+                const logoutToken = await signLogoutToken({
+                  sub: user.id,
+                  aud: client.clientId,
+                  events: "http://schemas.openid.net/event/backchannel-logout",
+                  jti: crypto.randomUUID(),
+                });
+
+                fetch(client.backchannelLogoutUri, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                  body: new URLSearchParams({
+                    logout_token: logoutToken,
+                    event: "account_disabled",
+                    reason: status === "SUSPENDED" ? "SUSPENDED" : "BANNED",
+                  }),
+                  signal: AbortSignal.timeout(5000),
+                }).catch(() => {});
+              } catch {}
+            }
+          }
+        }
+      } catch (err) {
+        apiConsole.warn("[AdminUserUpdate] 子项目通知失败:", err);
+      }
+    }
 
     return NextResponse.json({ success: true, data: { user: updatedUser } });
   } catch (error) {

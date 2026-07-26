@@ -118,6 +118,18 @@ export interface RefreshTokenPayload extends JWTPayload {
 }
 
 /**
+ * OAuth Access Token 载荷
+ * 由 signOAuthAccessToken 签发，type="access_token"，与 C 端内部 UserToken 隔离
+ */
+export interface OAuthAccessTokenPayload extends JWTPayload {
+  id: string;
+  phone: string;
+  type: "access_token";
+  client_id: string;
+  scope?: string;
+}
+
+/**
  * C端用户 Cookie 配置
  */
 export const USER_COOKIE_NAME = "__Host-user_token";
@@ -125,7 +137,13 @@ export const USER_REFRESH_COOKIE_NAME = "__Host-user_refresh_token";
 
 // Access Token Cookie：15 分钟，与 JWT 过期时间一致
 // 使用 Lax 而非 Strict：微信/支付宝内嵌浏览器作为第三方上下文会拦截 Strict Cookie，
-// 但 CSRF Token（__Host- 前缀 + X-CSRF-Token Header）已提供等效的写操作防护
+// 导致用户从微信内打开子站时无法维持登录状态。
+// 安全考量：
+// - Lax 模式下跨站 POST/PUT/DELETE 请求不会携带 Cookie，写操作天然受 CSRF 保护
+// - 但跨站 GET 请求（顶级导航）会携带 Cookie，可能被用于 CSRF 读操作
+// - 对此，关键 API 的写操作已有 CSRF Token（__Host-csrf_token + X-CSRF-Token Header）
+//   通过 verifyUserAuth 函数强制执行，提供等效的写操作纵深防御
+// - OAuth 授权端点使用 state 参数防 CSRF，不依赖 Cookie 的 SameSite 策略
 export const USER_ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,

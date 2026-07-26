@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
           nickname: true,
           avatar: true,
           status: true,
+          membershipLevel: true,
+          totalPoints: true,
           createdAt: true,
           _count: { select: { orders: true } },
         },

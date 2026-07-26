@@ -13,6 +13,8 @@ import {
   cleanupOldLoginAttempts,
   cleanupExpiredSmsCodes,
 } from "./auth-security";
+import { cleanupExpiredCodes } from "./oauth-code";
+import { cleanupOldSsoAuditEvents } from "./sso-audit";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -120,15 +122,23 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
-    name: "Cleanup Old Login Attempts",
+    name: "Cleanup Old Login Attempts + SSO Audit Events",
     cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理陈旧登录尝试记录...");
-        const count = await cleanupOldLoginAttempts();
-        apiConsole.info(`[Cron] 登录尝试记录清理完成: ${count} 条`);
+        const loginCount = await cleanupOldLoginAttempts();
+        apiConsole.info(`[Cron] 登录尝试记录清理完成: ${loginCount} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 登录尝试记录清理失败:", error);
+      }
+
+      try {
+        apiConsole.info("[Cron] 开始清理 90 天前的 SSO 审计日志...");
+        const auditCount = await cleanupOldSsoAuditEvents();
+        apiConsole.info(`[Cron] SSO 审计日志清理完成: ${auditCount} 条`);
+      } catch (error) {
+        apiConsole.error("[Cron] SSO 审计日志清理失败:", error);
       }
     },
   },
@@ -142,6 +152,19 @@ const tasks: ScheduledTask[] = [
         apiConsole.info(`[Cron] 过期验证码记录清理完成: ${count} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 验证码记录清理失败:", error);
+      }
+    },
+  },
+  {
+    name: "Cleanup Expired OAuth Authorization Codes",
+    cronExpression: "0 5 * * *", // 每天凌晨 5 点执行
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始清理过期授权码...");
+        const count = await cleanupExpiredCodes();
+        apiConsole.info(`[Cron] 过期授权码清理完成: ${count} 条`);
+      } catch (error) {
+        apiConsole.error("[Cron] 过期授权码清理失败:", error);
       }
     },
   },

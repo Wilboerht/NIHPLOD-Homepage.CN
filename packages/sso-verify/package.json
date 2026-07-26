@@ -1,0 +1,47 @@
+{
+  "name": "@nihplod/sso-verify",
+  "version": "1.0.0",
+  "description": "NIHPLOD 一网通 SSO Token 验证工具包 — 供子项目在后端验证主站签发的 Access Token",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "sso",
+    "oauth2",
+    "jwt",
+    "jwks",
+    "token-verification",
+    "nihplod"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nihplod/nihplod.cn",
+    "directory": "packages/sso-verify"
+  },
+  "peerDependencies": {},
+  "dependencies": {
+    "jose": "^5.0.0",
+    "lru-cache": "^11.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

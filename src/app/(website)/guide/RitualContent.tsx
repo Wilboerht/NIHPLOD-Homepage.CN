@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
-import { ProductDrawer } from "@/components/website";
+import { ProductDrawer, AdvisorCTA } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
 import { getCategoryIconPath } from "@/lib/product-icons";
 import {
@@ -424,16 +424,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     </div>
 
                     {/* AI 护肤顾问引导 */}
-                    <div className="mt-8 text-center">
-                      <a
-                        href="https://advisor.nihplod.cn"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group inline-flex items-center gap-1.5 text-[13px] font-light leading-relaxed tracking-[0.06em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/70"
-                      >
-                        肌智派素颜测肤
-                        <ChevronRight className="h-3.5 w-3.5 transition-transform group-active:translate-x-0.5" />
-                      </a>
+                    <div className="mt-8">
+                      <AdvisorCTA variant="guide" />
                     </div>
                   </m.div>
                 )}
@@ -1535,6 +1527,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   </m.div>
                 )}
               </AnimatePresence>
+            </div>
+
+            {/* Advisor CTA - 桌面端 */}
+            <div className="flex shrink-0 flex-col items-center px-10 pt-4 xl:px-[8%]">
+              <AdvisorCTA variant="guide" />
             </div>
 
             {/* Desktop Footer Copyright */}

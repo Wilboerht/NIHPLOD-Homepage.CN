@@ -42,6 +42,8 @@ const getCachedUserProfile = unstable_cache(
         phone: true,
         nickname: true,
         avatar: true,
+        membershipLevel: true,
+        totalPoints: true,
         createdAt: true,
         _count: { select: { orders: true, addresses: true } },
       },
@@ -54,6 +56,8 @@ const getCachedUserProfile = unstable_cache(
       phone: user.phone,
       nickname: user.nickname,
       avatar: user.avatar,
+      membershipLevel: user.membershipLevel,
+      totalPoints: user.totalPoints,
       createdAt: user.createdAt,
       stats: {
         orderCount: user._count.orders,
@@ -68,8 +72,75 @@ const getCachedUserProfile = unstable_cache(
 // GET - 获取用户资料（含统计）
 export const dynamic = "force-dynamic";
 
+/**
+ * 生日礼自动发放检查
+ * 在用户首次登录当天检查，无需主动打开会员中心
+ */
+async function checkAndGrantBirthdayGift(userId: string): Promise<void> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { membershipLevel: true, birthday: true, totalPoints: true },
+    });
+
+    if (!user?.birthday) return;
+
+    const now = new Date();
+    const birthdayThisYear = new Date(now.getFullYear(), user.birthday.getMonth(), user.birthday.getDate());
+    const isToday =
+      birthdayThisYear.getDate() === now.getDate() &&
+      birthdayThisYear.getMonth() === now.getMonth();
+
+    if (!isToday || user.membershipLevel === "SILVER") return;
+
+    // 幂等检查：今年是否已发放过生日礼
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const existingGift = await prisma.pointTransaction.findFirst({
+      where: {
+        userId,
+        type: "BIRTHDAY_GIFT",
+        createdAt: { gte: yearStart },
+      },
+    });
+
+    if (existingGift) return;
+
+    // 发放生日积分礼
+    const giftPoints = user.membershipLevel === "DIAMOND" ? 1000 : 500;
+    const giftLabel =
+      user.membershipLevel === "DIAMOND" ? "钻石会员生日礼盒" : "金卡会员生日礼遇";
+
+    await prisma.pointTransaction.create({
+      data: {
+        userId,
+        points: giftPoints,
+        type: "BIRTHDAY_GIFT",
+        note: `${giftLabel} — ${now.getFullYear()}年生日赠礼`,
+      },
+    });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { totalPoints: user.totalPoints + giftPoints },
+    });
+
+    // 失效 profile 缓存，确保 AuthContext 拉取最新积分
+    revalidateTag(USER_PROFILE_TAG, "max");
+
+    apiConsole.info(
+      `[BirthdayGift] 用户 ${userId} (${user.membershipLevel}) 生日赠送 ${giftPoints} 积分 (via profile API)`
+    );
+  } catch (error) {
+    // 生日礼失败不应阻塞用户资料获取
+    apiConsole.error("[BirthdayGift] 发放失败:", error);
+  }
+}
+
 export const GET = withUserAuth(async (request: NextRequest, payload) => {
   try {
+    // 生日礼自动检查：无需用户主动打开会员中心
+    await checkAndGrantBirthdayGift(payload.id);
+
     const user = await getCachedUserProfile(payload.id);
 
     if (!user) {

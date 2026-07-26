@@ -17,7 +17,7 @@
 import { createHash } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { LRUCache } from "lru-cache";
-import type { AdminJWTPayload, UserJWTPayload, RefreshTokenPayload, AdminRole } from "@/types/auth";
+import type { AdminJWTPayload, UserJWTPayload, RefreshTokenPayload, OAuthAccessTokenPayload, AdminRole } from "@/types/auth";
 
 const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 const MIN_SECRET_LENGTH = 32;
@@ -34,27 +34,28 @@ function validateSecret(name: string, value: string | undefined): string {
   return value;
 }
 
-// 各类型 Token 的 Secret：支持独立配置，未配置时回退到 JWT_SECRET 以保持兼容
+// 各类型 Token 的 Secret：必须独立配置，确保密钥隔离，禁止跨类型 Token 滥用
+// 未配置时 validateSecret 会在启动时抛出错误，阻止应用启动
 const adminSecret = new TextEncoder().encode(
-  validateSecret("JWT_ADMIN_SECRET", process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET)
+  validateSecret("JWT_ADMIN_SECRET", process.env.JWT_ADMIN_SECRET)
 );
 const accessSecret = new TextEncoder().encode(
-  validateSecret("JWT_ACCESS_SECRET", process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET)
+  validateSecret("JWT_ACCESS_SECRET", process.env.JWT_ACCESS_SECRET)
 );
 const refreshSecret = new TextEncoder().encode(
-  validateSecret("JWT_REFRESH_SECRET", process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET)
+  validateSecret("JWT_REFRESH_SECRET", process.env.JWT_REFRESH_SECRET)
 );
 const wechatBindSecret = new TextEncoder().encode(
-  validateSecret(
-    "JWT_WECHAT_BIND_SECRET",
-    process.env.JWT_WECHAT_BIND_SECRET || process.env.JWT_SECRET
-  )
+  validateSecret("JWT_WECHAT_BIND_SECRET", process.env.JWT_WECHAT_BIND_SECRET)
 );
 const wechatExchangeSecret = new TextEncoder().encode(
-  validateSecret(
-    "JWT_WECHAT_EXCHANGE_SECRET",
-    process.env.JWT_WECHAT_EXCHANGE_SECRET || process.env.JWT_SECRET
-  )
+  validateSecret("JWT_WECHAT_EXCHANGE_SECRET", process.env.JWT_WECHAT_EXCHANGE_SECRET)
+);
+const idTokenSecret = new TextEncoder().encode(
+  validateSecret("JWT_ID_TOKEN_SECRET", process.env.JWT_ID_TOKEN_SECRET)
+);
+const logoutSecret = new TextEncoder().encode(
+  validateSecret("JWT_LOGOUT_SECRET", process.env.JWT_LOGOUT_SECRET)
 );
 
 // JWT 过期时间
@@ -71,6 +72,8 @@ const accessTokenExpiresIn = "15m"; // Access Token 15分钟
 const refreshTokenExpiresIn = "30d"; // Refresh Token 30天
 const wechatBindExpiresIn = "1h"; // 微信绑定临时 Token 1小时
 const wechatExchangeExpiresIn = "10m"; // 子站微信 exchange Token 10分钟
+const idTokenExpiresIn = "1h"; // OAuth ID Token 1小时
+const logoutTokenExpiresIn = "5m"; // Logout Token 5分钟
 
 function encodeSecret(secret: Uint8Array): Uint8Array {
   return secret;
@@ -125,6 +128,14 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
 
 /**
  * 签发用户 Access Token（短期，15分钟）
+ *
+ * 用于 C 端用户内部 API（如 /api/user/profile、/api/cart 等）。
+ * Token type="user"，audience="user"，仅供 verifyUserToken 验证。
+ *
+ * 与 OAuth Access Token 的区别：
+ * - OAuth：type="access_token"，audience=clientId，由 signOAuthAccessToken 签发
+ * - 内部：type="user"，audience="user"，由本函数签发
+ * - 两者使用不同的 token type，verifyOAuthAccessToken 仅接受 access_token 类型
  */
 export async function signUserToken(payload: { id: string; phone: string }): Promise<string> {
   const token = await new SignJWT({ ...payload, type: "user" as const })
@@ -140,8 +151,15 @@ export async function signUserToken(payload: { id: string; phone: string }): Pro
 
 /**
  * 验证用户 Access Token
+ *
+ * @param token - JWT token 字符串
+ * @param options - 可选配置
+ * @param options.checkStatus - 可选状态检查回调，返回 true 表示用户状态正常
  */
-export async function verifyUserToken(token: string): Promise<UserJWTPayload | null> {
+export async function verifyUserToken(
+  token: string,
+  options?: { checkStatus?: (userId: string) => Promise<boolean> }
+): Promise<UserJWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, encodeSecret(accessSecret), {
       issuer: ISSUER,
@@ -151,6 +169,16 @@ export async function verifyUserToken(token: string): Promise<UserJWTPayload | n
     if ((payload as UserJWTPayload).type !== "user") {
       return null;
     }
+
+    // 可选：实时状态检查
+    if (options?.checkStatus) {
+      const userId = (payload as UserJWTPayload).id;
+      const isActive = await options.checkStatus(userId);
+      if (!isActive) {
+        return null;
+      }
+    }
+
     return payload as UserJWTPayload;
   } catch {
     return null;
@@ -310,6 +338,177 @@ export async function verifyWechatBindToken(token: string): Promise<WechatBindPa
       return null;
     }
     return payload as unknown as WechatBindPayload;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================
+// OAuth ID Token
+// ============================================
+
+export interface IdTokenClaims {
+  sub: string;
+  aud: string;
+  phone?: string;
+  nickname?: string;
+  avatar?: string;
+  membershipLevel?: string;
+  totalPoints?: number;
+  scope?: string;
+}
+
+/**
+ * 签发 OIDC ID Token（1小时）
+ */
+export async function signIdToken(claims: IdTokenClaims): Promise<string> {
+  const token = await new SignJWT({ ...claims, type: "id_token" as const })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience(claims.aud)
+    .setSubject(claims.sub)
+    .setJti(crypto.randomUUID())
+    .setExpirationTime(idTokenExpiresIn)
+    .sign(encodeSecret(idTokenSecret));
+
+  return token;
+}
+
+/**
+ * 验证 ID Token
+ */
+export async function verifyIdToken(token: string, audience: string): Promise<IdTokenClaims | null> {
+  try {
+    const { payload } = await jwtVerify(token, encodeSecret(idTokenSecret), {
+      issuer: ISSUER,
+      audience,
+    });
+    if ((payload as { type?: string }).type !== "id_token") {
+      return null;
+    }
+    return payload as unknown as IdTokenClaims;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================
+// OAuth Logout Token (Backchannel Logout)
+// ============================================
+
+export interface LogoutTokenClaims {
+  sub: string;
+  aud: string;
+  events: string;
+  jti: string;
+}
+
+/**
+ * 签发 Logout Token（5分钟，用于 backchannel logout）
+ */
+export async function signLogoutToken(claims: LogoutTokenClaims): Promise<string> {
+  const token = await new SignJWT({ ...claims, type: "logout_token" as const })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience(claims.aud)
+    .setSubject(claims.sub)
+    .setJti(claims.jti || crypto.randomUUID())
+    .setExpirationTime(logoutTokenExpiresIn)
+    .sign(encodeSecret(logoutSecret));
+
+  return token;
+}
+
+/**
+ * 验证 Logout Token
+ */
+export async function verifyLogoutToken(token: string, audience: string): Promise<LogoutTokenClaims | null> {
+  try {
+    const { payload } = await jwtVerify(token, encodeSecret(logoutSecret), {
+      issuer: ISSUER,
+      audience,
+    });
+    if ((payload as { type?: string }).type !== "logout_token") {
+      return null;
+    }
+    return payload as unknown as LogoutTokenClaims;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================
+// OAuth Access Token（带 OAuth claims 的 C 端 Token）
+// ============================================
+
+/**
+ * 签发 OAuth Access Token（短期，15分钟，含 OAuth claims）
+ *
+ * 用于 OAuth 2.0 授权码流程，由 /api/oauth/token 端点签发。
+ * Token type="access_token"，audience=clientId（按子项目隔离）。
+ * 子项目可使用此 token 调用 /api/oauth/userinfo 或通过 JWKS 本地验证。
+ *
+ * 与内部用户 Access Token 的区别：
+ * - OAuth：type="access_token"，audience=clientId，含 scope/client_id claims
+ * - 内部：type="user"，audience="user"，由 signUserToken 签发
+ * - verifyOAuthAccessToken 仅接受 access_token 类型，确保 OAuth 端点不泄漏内部 token
+ */
+export async function signOAuthAccessToken(payload: {
+  id: string;
+  phone: string;
+  clientId: string;
+  scope: string;
+}): Promise<string> {
+  const token = await new SignJWT({
+    id: payload.id,
+    phone: payload.phone,
+    client_id: payload.clientId,
+    scope: payload.scope,
+    type: "access_token" as const,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience(payload.clientId)
+    .setJti(crypto.randomUUID())
+    .setExpirationTime(accessTokenExpiresIn)
+    .sign(encodeSecret(accessSecret));
+
+  return token;
+}
+
+/**
+ * 验证 OAuth Access Token
+ *
+ * 仅接受 type="access_token"（由 signOAuthAccessToken 签发）。
+ * 与 verifyUserToken 隔离：C 端内部 API 使用 verifyUserToken，
+ * OAuth 端点使用此函数。
+ *
+ * @param token - JWT token 字符串
+ * @param expectedClientId - 可选，预期 clientId。传入时严格校验 aud claim；
+ *   不传时跳过 audience 校验（用于 userinfo/introspect 等通用端点）
+ */
+export async function verifyOAuthAccessToken(
+  token: string,
+  expectedClientId?: string
+): Promise<OAuthAccessTokenPayload | null> {
+  try {
+    const verifyOptions: { issuer: string; audience?: string } = {
+      issuer: ISSUER,
+    };
+    // 仅当调用方明确传入 expectedClientId 时才校验 audience
+    // userinfo/introspect 等通用端点不需要限制 audience
+    if (expectedClientId) {
+      verifyOptions.audience = expectedClientId;
+    }
+    const { payload } = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);
+    const t = (payload as { type?: string }).type;
+    if (t !== "access_token") {
+      return null;
+    }
+    return payload as unknown as OAuthAccessTokenPayload;
   } catch {
     return null;
   }

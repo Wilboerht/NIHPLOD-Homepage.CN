@@ -8,16 +8,18 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { X, User, Package, MapPin, LogOut, ArrowLeft, Ticket } from "lucide-react";
+import { X, User, Package, MapPin, LogOut, ArrowLeft, Ticket, Crown } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { OrdersPanel } from "./user-center/OrdersPanel";
 import { AddressesPanel } from "./user-center/AddressesPanel";
 import { ProfilePanel } from "./user-center/ProfilePanel";
 import { CouponsPanel } from "./user-center/CouponsPanel";
+import { VipPanel } from "./user-center/VipPanel";
 
 // 菜单项配置
 const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
+  { id: "vip", label: "会员中心", icon: Crown },
   { id: "orders", label: "我的订单", icon: Package },
   { id: "addresses", label: "收货地址", icon: MapPin },
   { id: "coupons", label: "我的优惠券", icon: Ticket },
@@ -221,7 +223,16 @@ export function UserCenterModal() {
                         <p className="truncate text-[15px] font-medium text-stone-800">
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
-                        <p className="mt-1 text-xs font-light text-stone-400">普通会员</p>
+                        <p className="mt-1 text-xs font-light text-stone-400">
+                          {user.membershipLevel === "DIAMOND"
+                            ? "💎 钻石会员"
+                            : user.membershipLevel === "GOLD"
+                              ? "🥇 金卡会员"
+                              : "🪙 银卡会员"}
+                          {user.totalPoints !== undefined && (
+                            <span className="ml-1">· {user.totalPoints} 积分</span>
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -344,6 +355,8 @@ function ContentPanel({ view }: { view: UserCenterView }) {
       return <AddressesPanel />;
     case "coupons":
       return <CouponsPanel />;
+    case "vip":
+      return <VipPanel />;
     default:
       return <ProfilePanel />;
   }

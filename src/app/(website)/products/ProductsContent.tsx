@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,8 @@ import { cn, formatPrice } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 import { getCategoryIconPath } from "@/lib/product-icons";
+import { AdvisorCTA } from "@/components/website";
+import { trackEvent } from "@/lib/analytics";
 
 interface Category {
   id: string;
@@ -57,7 +59,22 @@ interface ProductsContentProps {
 export function ProductsContent({ categories, products }: ProductsContentProps) {
   const { isDrawerOpen } = useLayout();
 
-  // 状态管理
+  // GA: view_item_list 事件
+  useEffect(() => {
+    if (products.length > 0) {
+      trackEvent("view_item_list", {
+        item_list_id: "products",
+        item_list_name: "产品列表",
+        items: products.map((p) => ({
+          item_id: p.id,
+          item_name: p.name,
+          price: p.price,
+          item_category: p.category?.name,
+        })),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.length]);
   const [mobileView, setMobileView] = useState<"products" | "categories" | string>("products");
   const [activeTab, _setActiveTab] = useState<"featured" | "all">("featured");
   const mobileScrollRef = useRef<HTMLDivElement>(null);
@@ -188,6 +205,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       </button>
                     </m.div>
                   ))}
+                </div>
+
+                {/* Advisor CTA - 移动端 */}
+                <div className="mt-6 mb-4">
+                  <AdvisorCTA variant="discover" />
                 </div>
 
                 {/* Copyright */}
@@ -456,6 +478,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       </Link>
                     ))}
                   </section>
+
+                  {/* Advisor CTA - 桌面端 */}
+                  <div className="mt-6">
+                    <AdvisorCTA variant="discover" />
+                  </div>
                 </div>
 
                 {/* Footer Info */}

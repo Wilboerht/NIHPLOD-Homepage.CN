@@ -28,7 +28,10 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
 const statusQuerySchema = z.object({
-  userId: z.string().cuid(),
+  userId: z.string().cuid().optional(),
+  userIds: z.array(z.string().cuid()).max(100).optional(),
+}).refine((data) => data.userId || (data.userIds && data.userIds.length > 0), {
+  message: "至少提供 userId 或 userIds",
 });
 
 export const dynamic = "force-dynamic";
@@ -118,9 +121,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId } = parsed.data;
+    const { userId, userIds } = parsed.data;
 
-    // 5. 查询用户状态
+    // 批量查询模式
+    if (userIds && userIds.length > 0) {
+      const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, status: true, updatedAt: true },
+      });
+
+      const resultMap = new Map(users.map((u) => [u.id, u]));
+      const results = userIds.map((uid) => {
+        const u = resultMap.get(uid);
+        if (!u) {
+          return { userId: uid, status: "NOT_FOUND" as const };
+        }
+        return {
+          userId: u.id,
+          status: u.status,
+          updatedAt: u.updatedAt.toISOString(),
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: { users: results },
+      });
+    }
+
+    // 单用户查询模式
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, status: true, updatedAt: true },

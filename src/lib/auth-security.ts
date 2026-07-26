@@ -56,14 +56,16 @@ export function getUserAgent(request: NextRequest): string | null {
  * @param reason 失败原因
  * @param type 认证类型
  * @param userId 用户 ID（成功登录时传入）
+ * @param clientId OAuth Client ID（来源子项目）
  */
 export async function recordLoginAttempt(
   identifier: string,
   success: boolean,
   request: NextRequest,
   reason?: string,
-  type: "password" | "sms" = "password",
-  userId?: string
+  type: "password" | "sms" | "oauth" = "password",
+  userId?: string,
+  clientId?: string
 ): Promise<void> {
   const ip = getClientIP(request);
   const ua = getUserAgent(request);
@@ -77,6 +79,7 @@ export async function recordLoginAttempt(
         reason: success ? null : reason,
         ipAddress: ip,
         userAgent: ua,
+        clientId,
       },
     });
 
@@ -88,6 +91,7 @@ export async function recordLoginAttempt(
       type,
       ip,
       ua,
+      clientId,
     });
   } catch (error) {
     const { logError } = await import("./logger");

@@ -2,10 +2,9 @@
  * 内部 API（旧版）：代子站发送微信模板消息
  * POST /api/internal/wechat/send-template
  *
- * 认证：X-Internal-API-Secret Header
+ * 认证：X-Internal-API-Key + HMAC-SHA256 请求签名
  *
- * ⚠️ 已 deprecation：建议子站迁移到 /api/v1/internal/wechat/send-template，
- *    使用 X-Internal-API-Key + 请求签名鉴权，安全性更高。
+ * ⚠️ 已弃用：建议子站迁移到 /api/v1/internal/wechat/send-template。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
@@ -35,11 +34,17 @@ export async function POST(request: NextRequest) {
     if (!limitResult.success) {
       return NextResponse.json(
         { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" } },
-        { status: 429 }
+        {
+          status: 429,
+          headers: {
+            Deprecation: "true",
+            Sunset: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        }
       );
     }
 
-    // 2. 认证校验（兼容旧版单一 INTERNAL_API_SECRET）
+    // 2. 认证校验（INTERNAL_API_KEYS 多项目密钥映射）
     const secret = request.headers.get("x-internal-api-secret");
     const { secrets } = getInternalApiKeys();
     const matchedConfig = secret ? secrets.get(secret) : null;
@@ -48,7 +53,13 @@ export async function POST(request: NextRequest) {
       apiConsole.warn("[WechatInternal] 认证失败，secret 不匹配");
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权的请求" } },
-        { status: 401 }
+        {
+          status: 401,
+          headers: {
+            Deprecation: "true",
+            Sunset: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        }
       );
     }
 
@@ -79,10 +90,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: result.error }, { status: statusCode });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { sent: result.sent, reason: result.reason },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: { sent: result.sent, reason: result.reason },
+      },
+      {
+        headers: {
+          Deprecation: "true",
+          Sunset: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      }
+    );
   } catch (error) {
     apiConsole.error("[WechatInternal] 异常:", error);
     return NextResponse.json(

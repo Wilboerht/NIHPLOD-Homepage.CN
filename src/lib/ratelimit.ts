@@ -88,10 +88,23 @@ export const RATE_LIMIT_PRESETS = {
   "checkout-data": { maxRequests: 30, windowMs: 60 * 1000 },
   /** 结算数据查询 - 用户级 - 每分钟 15 次 */
   "checkout-data-user": { maxRequests: 15, windowMs: 60 * 1000 },
+  /** OAuth 授权端点 - 每分钟 30 次 */
+  "oauth-authorize": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** OAuth Token 端点 - 每分钟 60 次 */
+  "oauth-token": { maxRequests: 60, windowMs: 60 * 1000 },
+  /** OAuth UserInfo 端点 - 每分钟 120 次 */
+  "oauth-userinfo": { maxRequests: 120, windowMs: 60 * 1000 },
+  /** OAuth Introspection 端点 - 每分钟 120 次 */
+  "oauth-introspect": { maxRequests: 120, windowMs: 60 * 1000 },
+  /** OAuth JWKS 端点 - 每分钟 60 次（公钥端点不宜过高） */
+  "oauth-jwks": { maxRequests: 60, windowMs: 60 * 1000 },
 } as const;
 
 /**
  * 速率限制检查
+ *
+ * 多租户预留：限流 key 格式可为 {tenantId}:{type}:{identifier}，确保租户间限流隔离。
+ * 当前 tenantId 为空字符串，所有租户共享同一限流池。
  *
  * @param identifier - 唯一标识符（通常是 IP 地址）
  * @param type - 限制类型（使用预设配置）
@@ -108,6 +121,7 @@ export async function rateLimit(
   const opts: RateLimitOptions = { ...preset, ...options };
 
   // 数据库模式：支持多实例部署
+  // 多租户预留：dbKey 格式应为 {tenantId}:{type}:{identifier}
   if (process.env.RATE_LIMIT_STORAGE === "database") {
     const dbKey = `${type}:${identifier}`;
     return rateLimitDB(dbKey, opts);

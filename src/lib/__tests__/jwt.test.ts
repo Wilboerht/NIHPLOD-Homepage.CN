@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   signToken,
   verifyToken,
@@ -7,12 +7,6 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "@/lib/jwt";
-
-const TEST_SECRET = "test-secret-key-at-least-32-characters-long";
-
-beforeAll(() => {
-  process.env.JWT_SECRET = TEST_SECRET;
-});
 
 describe("JWT 工具", () => {
   describe("管理员 Token", () => {

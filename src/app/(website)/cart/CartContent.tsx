@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiDelete } from "@/lib/api-client";
 import { trackEvent } from "@/lib/analytics";
 import { formatPrice } from "@/lib/utils";
+import { AdvisorCTA } from "@/components/website";
 
 interface CartItem {
   id: string;
@@ -113,6 +114,19 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
       openLoginModal();
       return;
     }
+
+    // GA: begin_checkout 事件
+    trackEvent("begin_checkout", {
+      currency: "CNY",
+      value: totalPrice,
+      items: selectedItems.map((item) => ({
+        item_id: item.product.id,
+        item_name: item.product.name,
+        price: item.price,
+        quantity: item.quantity,
+      })),
+    });
+
     // 打开结算弹窗
     openCheckout(selectedItems.map((item) => item.product.id));
   };
@@ -124,6 +138,9 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
         <Link href="/products" className="text-pink-500 hover:underline">
           去逛逛 →
         </Link>
+        <div className="mx-auto mt-8 max-w-sm">
+          <AdvisorCTA variant="empty-cart" />
+        </div>
       </div>
     );
   }

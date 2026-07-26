@@ -9,12 +9,14 @@ interface User {
   phone?: string;
   nickname?: string;
   avatar?: string;
+  membershipLevel?: string;
+  totalPoints?: number;
 }
 
 type ModalType = "login" | "register" | "forgot-password" | "wechat-bind" | null;
 
 // 用户中心视图类型
-export type UserCenterView = "profile" | "orders" | "addresses" | "coupons" | null;
+export type UserCenterView = "profile" | "orders" | "addresses" | "coupons" | "vip" | null;
 
 interface AuthContextType {
   user: User | null;
