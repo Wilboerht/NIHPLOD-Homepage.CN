@@ -265,7 +265,7 @@ export function StoryContent() {
                     <div className="relative w-full overflow-hidden border border-brand-charcoal/10 bg-white/20 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)]">
                       <Image
                         src="/images/story/mission-image.webp"
-                        alt="Mission"
+                        alt="NIHPLOD 品牌使命"
                         width={600}
                         height={800}
                         sizes="(max-width: 640px) calc(100vw - 48px), 600px"
@@ -461,7 +461,7 @@ export function StoryContent() {
                     <div className="relative h-9 w-[150px] opacity-90 transition-opacity hover:opacity-70">
                       <Image
                         src="/images/NIHPLOD-logo.svg"
-                        alt="Logo"
+                        alt="NIHPLOD"
                         fill
                         className="object-contain object-left"
                         priority

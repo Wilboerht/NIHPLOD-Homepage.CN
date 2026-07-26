@@ -10,7 +10,7 @@ import prisma from "@/lib/prisma";
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // 静态页面（注意：services 和 privacy 页面设置了 noindex，不放入 sitemap）
+  // 静态页面（注意：services、terms、privacy 页面设置了 noindex，不放入 sitemap）
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -43,16 +43,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
       url: `${baseUrl}/careers`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.3,
     },
   ];
 

@@ -20,8 +20,7 @@ export const metadata: Metadata = {
     "高端护肤",
     "真脂质体技术",
     "Dolphin-Skin",
-    "抗衰老品牌",
-    "奢华护肤传奇",
+    "科学护肤",
   ],
   openGraph: {
     title: "品牌故事 | NIHPLOD 旎柏",

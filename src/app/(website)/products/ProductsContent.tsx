@@ -354,7 +354,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 <div className="relative h-9 w-[150px] opacity-90 transition-opacity hover:opacity-70">
                   <Image
                     src="/images/NIHPLOD-logo.svg"
-                    alt="Logo"
+                    alt="NIHPLOD"
                     fill
                     className="object-contain"
                     priority

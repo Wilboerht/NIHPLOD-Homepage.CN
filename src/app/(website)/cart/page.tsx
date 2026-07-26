@@ -18,6 +18,19 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
+  openGraph: {
+    title: "购物车 | NIHPLOD 旎柏",
+    description:
+      "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
+    images: ["/images/og-image.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "购物车 | NIHPLOD 旎柏",
+    description:
+      "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
+    images: ["/images/og-image.png"],
+  },
 };
 
 interface CartPageProps {
