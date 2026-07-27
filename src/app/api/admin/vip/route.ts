@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { cuidSchema } from "@/lib/validation";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
 
@@ -30,7 +31,7 @@ const updateBenefitSchema = z.object({
 
 // 调整积分 schema
 const adjustPointsSchema = z.object({
-  userId: z.string().min(1),
+  userId: cuidSchema,
   points: z.number().int(),
   note: z.string().min(1, "请填写调整原因"),
 });

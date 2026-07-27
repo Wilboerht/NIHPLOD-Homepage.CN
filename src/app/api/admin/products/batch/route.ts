@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
@@ -28,6 +30,10 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
 
     // 解析请求体
     const body = await request.json();
@@ -92,6 +98,16 @@ export async function POST(request: NextRequest) {
     };
 
     revalidateTag("admin-stats", "max");
+
+    // 记录审计日志
+    createAuditLog({
+      action: "batch_product",
+      targetType: "product",
+      targetId: "batch",
+      detail: { action, ids, affected: result.count },
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

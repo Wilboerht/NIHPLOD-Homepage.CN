@@ -10,6 +10,7 @@ import { deleteUploadedFile } from "@/lib/upload";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
 const patchProductSchema = z
@@ -85,6 +86,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
 
     const { id } = await params;
     if (!validateCUID(id)) {
@@ -163,6 +168,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const rateLimitResponse2 = await checkAdminRateLimit(request);
     if (rateLimitResponse2) return rateLimitResponse2;
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
 
     const { id } = await params;
     if (!validateCUID(id)) {
@@ -324,6 +333,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       revalidatePath(`/products/${fullProduct.slug}`);
     }
 
+    // 记录审计日志
+    createAuditLog({
+      action: "update_product",
+      targetType: "product",
+      targetId: id,
+      detail: { name: validated.name, slug: validated.slug, price: validated.price },
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
+
     return NextResponse.json({
       success: true,
       data: {
@@ -366,6 +385,10 @@ export async function DELETE(
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const { id } = await params;
 
     if (!validateCUID(id)) {
@@ -396,6 +419,16 @@ export async function DELETE(
     revalidatePath("/products");
     revalidatePath(`/products/${existing.slug}`);
     revalidateTag("admin-stats", "max");
+
+    // 记录审计日志
+    createAuditLog({
+      action: "delete_product",
+      targetType: "product",
+      targetId: id,
+      detail: { name: existing.name, slug: existing.slug },
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

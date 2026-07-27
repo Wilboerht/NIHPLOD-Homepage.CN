@@ -191,6 +191,10 @@ export async function DELETE(
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const { id } = await params;
 
     if (!validateCUID(id)) {
@@ -211,6 +215,16 @@ export async function DELETE(
 
     // 清除前端缓存
     revalidatePath("/careers");
+
+    // 记录审计日志
+    createAuditLog({
+      action: "delete_job",
+      targetType: "job",
+      targetId: id,
+      detail: { title: existing.title },
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

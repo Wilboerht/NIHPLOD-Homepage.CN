@@ -241,6 +241,16 @@ export async function POST(request: NextRequest) {
     revalidatePath("/products");
     revalidateTag("admin-stats", "max");
 
+    // 记录审计日志
+    createAuditLog({
+      action: "create_product",
+      targetType: "product",
+      targetId: product.id,
+      detail: { name: product.name, slug: product.slug, price: Number(product.price) },
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
+
     return NextResponse.json({
       success: true,
       data: {

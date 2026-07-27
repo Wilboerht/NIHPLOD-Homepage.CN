@@ -4,6 +4,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 创建分类夹 Schema
 const CreateFolderSchema = z.object({
@@ -68,6 +69,10 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
 
     const body = await request.json();
     const validated = CreateFolderSchema.parse(body);
