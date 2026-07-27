@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost } from "@/lib/api-client";
 
 interface Consent {
+  id: string;
   userId: string;
   phone: string;
   clientId: string;
@@ -178,7 +179,7 @@ export default function OAuthConsentsPage() {
               </tr>
             ) : (
               consents.map((c) => (
-                <tr key={`${c.userId}-${c.clientId}`} className="border-b hover:bg-gray-50">
+                <tr key={c.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm">{c.phone || c.userId}</td>
                   <td className="px-4 py-3 text-sm font-mono text-gray-600">{c.clientId}</td>
                   <td className="px-4 py-3">

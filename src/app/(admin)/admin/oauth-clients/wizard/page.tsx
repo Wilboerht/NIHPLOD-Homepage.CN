@@ -65,6 +65,9 @@ export default function OAuthWizardPage() {
   // Step 3: Result
   const [result, setResult] = useState<StepResult>({});
 
+  // Step 4: Secret saved confirmation
+  const [secretSaved, setSecretSaved] = useState(false);
+
   // Step 5: Test
   const [testResult, setTestResult] = useState<TestResultData | null>(null);
   const [testLoading, setTestLoading] = useState(false);
@@ -85,8 +88,18 @@ export default function OAuthWizardPage() {
       toast.error("请输入回调 URL");
       return;
     }
-    if (!redirectUri.startsWith("https://")) {
-      toast.error("回调 URL 必须以 https:// 开头");
+    try {
+      const url = new URL(redirectUri.trim());
+      if (url.protocol !== "https:") {
+        toast.error("回调 URL 必须使用 https:// 协议");
+        return;
+      }
+      if (url.hash) {
+        toast.error("回调 URL 不能包含 hash 片段");
+        return;
+      }
+    } catch {
+      toast.error("回调 URL 格式不正确");
       return;
     }
 
@@ -404,11 +417,36 @@ const user = await userRes.json();`;
             </pre>
           </div>
 
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={secretSaved}
+                onChange={(e) => setSecretSaved(e.target.checked)}
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium text-amber-800">我已安全保存 Client Secret</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Secret 仅显示一次，关闭页面后无法再次查看。未完成保存前请勿继续。
+                </p>
+              </div>
+            </label>
+          </div>
+
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStep(5)} leftIcon={<ExternalLink className="w-4 h-4" />}>
+            <Button
+              variant="outline"
+              onClick={() => setStep(5)}
+              disabled={!secretSaved}
+              leftIcon={<ExternalLink className="w-4 h-4" />}
+            >
               在线测试连接
             </Button>
-            <Button onClick={() => (window.location.href = "/admin/oauth-clients")}>
+            <Button
+              onClick={() => (window.location.href = "/admin/oauth-clients")}
+              disabled={!secretSaved}
+            >
               完成，前往管理
             </Button>
           </div>

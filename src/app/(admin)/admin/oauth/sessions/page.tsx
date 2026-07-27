@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
 
 interface Session {
+  id: string;
   userId: string;
   phone: string;
   nickname: string;
@@ -55,13 +56,14 @@ export default function OAuthSessionsPage() {
   const [searchClientId, setSearchClientId] = useState("");
 
   // Terminate single session
-  const [terminateTarget, setTerminateTarget] = useState<{ userId: string; clientId: string } | null>(null);
+  const [terminateTarget, setTerminateTarget] = useState<{ id: string; userId: string; clientId: string } | null>(null);
   const [showTerminate, setShowTerminate] = useState(false);
   const [terminating, setTerminating] = useState(false);
 
   // Batch terminate all
   const [showBatchTerminate, setShowBatchTerminate] = useState(false);
   const [batchTerminating, setBatchTerminating] = useState(false);
+  const [batchConfirmText, setBatchConfirmText] = useState("");
 
   const fetchSessions = useCallback(async () => {
     setLoading(true);
@@ -97,8 +99,7 @@ export default function OAuthSessionsPage() {
     setTerminating(true);
     try {
       await apiPost("/api/admin/oauth/sessions", {
-        userId: terminateTarget.userId,
-        clientId: terminateTarget.clientId,
+        sessionId: terminateTarget.id,
       });
       toast.success("会话已终止");
       setShowTerminate(false);
@@ -111,11 +112,16 @@ export default function OAuthSessionsPage() {
   };
 
   const handleBatchTerminate = async () => {
+    if (batchConfirmText !== "TERMINATE ALL") {
+      toast.error("请输入 TERMINATE ALL 以确认批量终止");
+      return;
+    }
     setBatchTerminating(true);
     try {
       await apiDelete("/api/admin/oauth/sessions");
       toast.success("全部会话已终止");
       setShowBatchTerminate(false);
+      setBatchConfirmText("");
       fetchSessions();
     } catch {
       toast.error("批量终止失败");
@@ -223,7 +229,7 @@ export default function OAuthSessionsPage() {
               </tr>
             ) : (
               sessions.map((s) => (
-                <tr key={`${s.userId}-${s.clientId}-${s.createdAt}`} className="border-b hover:bg-gray-50">
+                <tr key={s.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm">{s.phone || s.userId}</td>
                   <td className="px-4 py-3 text-sm">{s.nickname || "-"}</td>
                   <td className="px-4 py-3 text-sm font-mono text-gray-600">{s.clientId}</td>
@@ -241,7 +247,7 @@ export default function OAuthSessionsPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => {
-                        setTerminateTarget({ userId: s.userId, clientId: s.clientId });
+                        setTerminateTarget({ id: s.id, userId: s.userId, clientId: s.clientId });
                         setShowTerminate(true);
                       }}
                       className="p-1.5 text-gray-400 hover:text-red-600 rounded"
@@ -275,7 +281,7 @@ export default function OAuthSessionsPage() {
         onConfirm={handleTerminate}
         type="danger"
         title="终止会话"
-        description={`确定要终止用户 ${terminateTarget?.userId} 在 ${terminateTarget?.clientId} 的会话吗？该操作将立即注销用户 Token。`}
+        description={`确定要终止用户 ${terminateTarget?.userId} 在 ${terminateTarget?.clientId} 的这条会话吗？该操作将立即注销该会话的 Token。`}
         confirmText="确定终止"
         loading={terminating}
       />
@@ -283,14 +289,22 @@ export default function OAuthSessionsPage() {
       {/* Batch Terminate Confirm */}
       <ConfirmDialog
         open={showBatchTerminate}
-        onClose={() => setShowBatchTerminate(false)}
+        onClose={() => { setShowBatchTerminate(false); setBatchConfirmText(""); }}
         onConfirm={handleBatchTerminate}
         type="danger"
         title="批量终止全部会话"
-        description="确定要终止所有活跃会话吗？此操作将使所有已登录用户注销，且不可撤销。"
+        description="此操作将使所有已登录用户强制注销，且不可撤销。请在下方输入 TERMINATE ALL 以确认。"
         confirmText="确定全部终止"
         loading={batchTerminating}
-      />
+        confirmDisabled={batchConfirmText !== "TERMINATE ALL"}
+      >
+        <Input
+          value={batchConfirmText}
+          onChange={(e) => setBatchConfirmText(e.target.value)}
+          placeholder="输入 TERMINATE ALL"
+          className="mt-2"
+        />
+      </ConfirmDialog>
     </div>
   );
 }

@@ -37,10 +37,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const admin = await verifyAuth(request);
-    if (!admin) {
+    if (!admin || admin.role !== "owner") {
       return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
-        { status: 401 }
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可操作" } },
+        { status: 403 }
       );
     }
 
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const { clientId, clientSecret, redirectUri } = parsed.data;
     const steps: TestStep[] = [];
-    const baseUrl = request.nextUrl.origin;
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin).replace(/\/$/, "");
 
     // Step 1: 验证 Client 凭据
     const t1 = performance.now();
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     // Step 2: JWKS 端点可达性
     const t2 = performance.now();
     try {
-      const jwksRes = await fetch(`${baseUrl}/api/oauth/jwks.json`, {
+      const jwksRes = await fetch(`${baseUrl}/api/oauth/jwks`, {
         method: "GET",
         headers: { "Accept": "application/json" },
       });

@@ -165,6 +165,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 同步撤销 UserConsent，确保授权状态一致性
+    await prisma.userConsent.upsert({
+      where: { userId_clientId: { userId, clientId } },
+      update: { revokedAt: new Date() },
+      create: {
+        userId,
+        clientId,
+        scopes: [],
+        revokedAt: new Date(),
+      },
+    });
+
     // 记录 SSO 审计事件
     recordSsoEvent({
       event: "consent",

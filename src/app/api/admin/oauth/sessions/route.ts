@@ -108,10 +108,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const terminateSchema = z.object({
-  userId: z.string().min(1),
-  clientId: z.string().optional(),
-});
+const terminateSchema = z.union([
+  z.object({
+    sessionId: z.string().min(1),
+  }),
+  z.object({
+    userId: z.string().min(1),
+    clientId: z.string().optional(),
+  }),
+]);
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -136,13 +141,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId, clientId } = parsed.data;
     const ip = getClientIP(request);
+
+    // 模式 A：精确终止单条 session
+    if ("sessionId" in parsed.data) {
+      const { sessionId } = parsed.data;
+
+      const session = await prisma.oAuthSession.findUnique({
+        where: { id: sessionId },
+        select: { id: true, userId: true, clientId: true, revokedAt: true },
+      });
+
+      if (!session || session.revokedAt) {
+        return NextResponse.json(
+          { success: false, error: { code: "NOT_FOUND", message: "未找到活跃会话" } },
+          { status: 404 }
+        );
+      }
+
+      // 撤销指定 OAuthSession
+      await prisma.oAuthSession.update({
+        where: { id: sessionId },
+        data: { revokedAt: new Date() },
+      });
+
+      // 同步撤销该用户下所有活跃 RefreshToken
+      // （RefreshToken 表当前无 clientId 字段，无法更精确过滤）
+      await prisma.refreshToken.updateMany({
+        where: { userId: session.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+
+      // Backchannel Logout 通知
+      await sendBackchannelLogout(session.userId, [session.clientId]);
+
+      recordSsoEvent({
+        event: "status_change",
+        userId: session.userId,
+        clientId: session.clientId,
+        ip,
+        success: true,
+        detail: { action: "session_terminated", sessionId, terminatedCount: 1 },
+      });
+
+      await createAuditLog({
+        action: "oauth_session_terminate",
+        targetType: "oauth_session",
+        targetId: sessionId,
+        detail: { userId: session.userId, clientId: session.clientId, sessionId, terminatedCount: 1 },
+        adminId: admin.id,
+        request,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: { terminatedCount: 1 },
+      });
+    }
+
+    // 模式 B：按 userId (+ clientId) 批量终止该用户全部或某 Client 下的会话
+    const { userId, clientId } = parsed.data;
 
     const sessionWhere: Record<string, unknown> = { userId, revokedAt: null };
     if (clientId) sessionWhere.clientId = clientId;
 
-    // 查询所有将被撤销的 session
     const sessions = await prisma.oAuthSession.findMany({
       where: sessionWhere,
       select: { id: true, clientId: true },
@@ -155,35 +217,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 撤销 OAuthSession
     await prisma.oAuthSession.updateMany({
       where: sessionWhere,
       data: { revokedAt: new Date() },
     });
 
-    // 撤销 RefreshToken
-    if (clientId) {
-      // 按 client 终止 RefreshToken：
-      // RefreshToken 表目前不直接关联 clientId，无法精确按 client 过滤。
-      // 但由于 OAuthSession 已被撤销，token 刷新时将因找不到活跃 session
-      // 而降级为最小权限（openid），安全风险已受控。
-      // 同时撤销该用户所有与该 client 相关的 refresh token：
-      // 通过查找该 client 下活跃 OAuthSession 的 userId 来批量撤销。
-      await prisma.refreshToken.updateMany({
-        where: {
-          userId,
-          revokedAt: null,
-        },
-        data: { revokedAt: new Date() },
-      });
-    } else {
-      await prisma.refreshToken.updateMany({
-        where: { userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-    }
+    await prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
 
-    // Backchannel Logout 通知
     const uniqueClientIds = [...new Set(sessions.map((s) => s.clientId))];
     await sendBackchannelLogout(userId, uniqueClientIds);
 

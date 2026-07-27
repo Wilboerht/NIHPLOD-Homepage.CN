@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Power, Copy, EyeOff, RotateCw, Code, Users, Clock } from "lucide-react";
+import { Plus, Pencil, Power, Copy, RotateCw, Code, Users, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch } from "@/lib/api-client";
 
 interface OAuthClient {
   id: string;
@@ -39,10 +39,6 @@ interface ClientActionResponse {
   client: OAuthClient;
 }
 
-interface DeleteResponse {
-  message: string;
-}
-
 const formatDate = (dateStr: string) => {
   if (!dateStr) return "-";
   return new Date(dateStr).toLocaleDateString("zh-CN");
@@ -59,13 +55,15 @@ export default function OAuthClientsPage() {
   // Modal states
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
   const [editClient, setEditClient] = useState<OAuthClient | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // Rotate secret confirm modal
   const [showRotateConfirm, setShowRotateConfirm] = useState(false);
   const [rotateClientId, setRotateClientId] = useState<string | null>(null);
+
+  // Rotated secret display modal
+  const [showRotatedSecret, setShowRotatedSecret] = useState(false);
+  const [rotatedSecret, setRotatedSecret] = useState<string | null>(null);
 
   // Form
   const [formName, setFormName] = useState("");
@@ -161,21 +159,6 @@ export default function OAuthClientsPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    setSaving(true);
-    try {
-      await apiDelete<DeleteResponse>(`/api/admin/oauth-clients/${deleteId}`);
-      toast.success("Client 已停用");
-      setShowDelete(false);
-      fetchClients();
-    } catch {
-      toast.error("网络错误");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleRotateSecret = async () => {
     if (!rotateClientId) return;
     setSaving(true);
@@ -184,8 +167,8 @@ export default function OAuthClientsPage() {
         `/api/admin/oauth-clients/${rotateClientId}/rotate-secret`,
         { confirm: true }
       );
-      setNewSecret(data.plainSecret);
-      setShowCreate(true); // 复用 create modal 展示新 secret
+      setRotatedSecret(data.plainSecret);
+      setShowRotatedSecret(true);
       toast.success("密钥轮换成功");
     } catch {
       toast.error("密钥轮换失败");
@@ -224,19 +207,20 @@ export default function OAuthClientsPage() {
   };
 
   const generateSdkConfig = (client: OAuthClient) => {
+    const ssoBaseUrl = typeof window !== "undefined" ? window.location.origin : "https://nihplod.cn";
     const primaryUri = client.redirectUris[0] || "https://your-app.com/callback";
     const configCode = `import { SsoClient } from "@nihplod/sso-sdk";
 
 const ssoClient = new SsoClient({
   clientId: "${client.clientId}",
   redirectUri: "${primaryUri}",
-  ssoBaseUrl: "${typeof window !== "undefined" ? window.location.origin : ""}",
+  ssoBaseUrl: "${ssoBaseUrl}",
   scopes: "${client.scopes.join(" ")}",
 });
 
 // React 集成:
 // import { SsoProvider } from "@nihplod/sso-sdk/react";
-// <SsoProvider config={{ clientId: "${client.clientId}", redirectUri: "${primaryUri}", ssoBaseUrl: window.location.origin, scopes: "${client.scopes.join(" ")}" }}>
+// <SsoProvider config={{ clientId: "${client.clientId}", redirectUri: "${primaryUri}", ssoBaseUrl: "${ssoBaseUrl}", scopes: "${client.scopes.join(" ")}" }}>
 //   <App />
 // </SsoProvider>`;
     return configCode;
@@ -351,13 +335,6 @@ const ssoClient = new SsoClient({
                         title={c.isActive ? "禁用" : "启用"}
                       >
                         <Power className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => { setDeleteId(c.id); setShowDelete(true); }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-                        title="删除"
-                      >
-                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -493,17 +470,44 @@ const ssoClient = new SsoClient({
         title="轮换 Client 密钥"
         description="确定要轮换该 Client 的密钥？轮换后旧密钥将在 5 分钟内失效，所有使用旧密钥的子项目需要立即更新配置。"
         confirmText="确定轮换"
+        loading={saving}
       />
 
-      {/* Delete Confirm */}
-      <ConfirmDialog
-        open={showDelete}
-        onClose={() => setShowDelete(false)}
-        onConfirm={handleDelete}
-        title="停用 OAuth Client"
-        description="停用后该 Client 将无法发起授权请求，所有已签发的 Token 仍有效。确定停用？"
-        confirmText="确定停用"
-      />
+      {/* Rotated Secret Display Modal */}
+      <Modal
+        open={showRotatedSecret}
+        onClose={() => { setShowRotatedSecret(false); setRotatedSecret(null); }}
+        title="Client Secret 轮换成功"
+      >
+        <div className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-sm text-green-800 font-medium mb-2">新 Secret 已生成</p>
+            <p className="text-xs text-green-600 mb-3">
+              请立即复制并安全保存。旧 Secret 将在 5 分钟内失效，关闭后无法再次查看新 Secret。
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                value={rotatedSecret || ""}
+                readOnly
+                className="font-mono text-sm flex-1"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => rotatedSecret && copyToClipboard(rotatedSecret)}
+                leftIcon={<Copy className="w-4 h-4" />}
+              >
+                复制
+              </Button>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => { setShowRotatedSecret(false); setRotatedSecret(null); fetchClients(); }}>
+              关闭
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* SDK Config Modal */}
       <Modal
