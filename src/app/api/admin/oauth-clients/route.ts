@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createOAuthClient, listOAuthClients } from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
@@ -81,6 +82,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" } },
         { status: 403 }
+      );
+    }
+
+    // 速率限制：OAuth Client 列表含敏感配置信息
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "default", { maxRequests: 30, windowMs: 60 * 1000 });
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" } },
+        { status: 429 }
       );
     }
 

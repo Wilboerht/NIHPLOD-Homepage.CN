@@ -7,6 +7,7 @@ import { revalidateTag } from "next/cache";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { shipOrder } from "@/lib/logistics";
 import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -22,6 +23,11 @@ const shipSchema = z.object({
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  // CSRF 保护：非安全方法须校验 CSRF Token（纵深防御）
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const admin = await verifyAuth(request);
     if (!admin) {

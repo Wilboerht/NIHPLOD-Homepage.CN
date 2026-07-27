@@ -6,6 +6,7 @@ import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
 import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 
@@ -141,6 +142,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/products - 创建产品
 export async function POST(request: NextRequest) {
+  // CSRF 保护：非安全方法须校验 CSRF Token（纵深防御）
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const admin = await verifyAuth(request);
     if (!admin) {

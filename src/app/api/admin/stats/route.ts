@@ -61,9 +61,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 速率限制
+    // 速率限制：仪表盘统计含营收等敏感数据，使用保守策略
     const ip = getClientIP(request);
-    const limitResult = await rateLimit(ip, "default");
+    const limitResult = await rateLimit(ip, "default", { maxRequests: 30, windowMs: 60 * 1000 });
     if (!limitResult.success) {
       return NextResponse.json<StatsResponse>(
         {

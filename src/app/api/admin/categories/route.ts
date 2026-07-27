@@ -5,6 +5,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { CategorySchema } from "@/schemas/product";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // GET /api/admin/categories - 获取分类列表
 // 强制动态渲染，禁止静态预渲染
@@ -61,6 +62,10 @@ export async function POST(request: NextRequest) {
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
       );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const rateLimitResponse = await checkAdminRateLimit(request);

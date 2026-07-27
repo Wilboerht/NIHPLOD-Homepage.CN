@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { createAuditLog } from "@/lib/audit";
 
@@ -70,6 +71,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 // PATCH /api/admin/orders/:id - 更新订单部分字段（如管理备注）
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  // CSRF 保护：非安全方法须校验 CSRF Token（纵深防御）
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
