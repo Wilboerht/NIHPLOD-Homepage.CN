@@ -379,7 +379,7 @@ export async function POST(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       });
 
-      const scopeStr = session?.scopes?.join(" ") || "openid";
+      const scopeStr = session?.scopes?.join(" ") || refreshPayload.scope || "openid";
 
       const newAccessToken = await signOAuthAccessToken({
         id: refreshPayload.id,
