@@ -88,6 +88,8 @@ export interface OidcDiscovery {
   userinfo_endpoint: string;
   jwks_uri: string;
   introspection_endpoint: string;
+  revocation_endpoint?: string;
+  end_session_endpoint?: string;
   scopes_supported: string[];
   response_types_supported: string[];
   grant_types_supported: string[];
@@ -212,7 +214,7 @@ export class SsoClient {
 
     // 保存 PKCE verifier 和 state 到 sessionStorage
     savePkceVerifier(this.config.clientId, verifier);
-    saveOAuthState(state);
+    saveOAuthState(state, this.config.clientId);
 
     if (returnUrl) {
       saveReturnUrl(returnUrl);
@@ -244,8 +246,8 @@ export class SsoClient {
     const state = generateState();
 
     savePkceVerifier(this.config.clientId, verifier);
-    saveOAuthState(state);
-    if (returnUrl) saveReturnUrl(returnUrl);
+    saveOAuthState(state, this.config.clientId);
+    if (returnUrl) saveReturnUrl(returnUrl, this.config.clientId);
 
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
@@ -290,15 +292,15 @@ export class SsoClient {
     }
 
     // 校验 state 参数（CSRF 防护）
-    const savedState = getOAuthState();
+    const savedState = getOAuthState(this.config.clientId);
     if (!savedState || savedState !== returnedState) {
-      removeOAuthState();
+      removeOAuthState(this.config.clientId);
       throw new SsoError(
         "state_mismatch",
         "State 参数不匹配，可能存在 CSRF 攻击"
       );
     }
-    removeOAuthState();
+    removeOAuthState(this.config.clientId);
 
     // 获取 code_verifier
     const verifier = getPkceVerifier(this.config.clientId);
@@ -355,7 +357,7 @@ export class SsoClient {
       expires_at: now + data.expires_in * 1000,
     };
 
-    saveTokenData(tokenData);
+    saveTokenData(tokenData, this.config.clientId);
     return tokenData;
   }
 
@@ -379,7 +381,7 @@ export class SsoClient {
   }
 
   private async _doRefreshToken(): Promise<TokenData> {
-    const current = getTokenData();
+    const current = getTokenData(this.config.clientId);
     if (!current?.refresh_token) {
       throw new SsoError("no_refresh_token", "没有可用的 refresh_token");
     }
@@ -405,10 +407,16 @@ export class SsoClient {
     }
 
     if (!res.ok) {
-      removeTokenData();
+      let errData: Record<string, unknown> = {};
+      try { errData = await res.json(); } catch { /* ignore */ }
+      const errorCode = (errData.error as string) || "";
+      // invalid_grant 表示 refresh_token 已被撤销或过期，应清除本地登录态
+      if (errorCode === "invalid_grant" || res.status === 401) {
+        removeTokenData(this.config.clientId);
+      }
       throw new SsoError(
-        "token_request_failed",
-        `刷新 Token 失败: HTTP ${res.status}`
+        errorCode === "invalid_grant" ? "session_expired" : "token_request_failed",
+        (errData.error_description as string) || `刷新 Token 失败: HTTP ${res.status}`
       );
     }
 
@@ -424,7 +432,7 @@ export class SsoClient {
       expires_at: now + data.expires_in * 1000,
     };
 
-    saveTokenData(tokenData);
+    saveTokenData(tokenData, this.config.clientId);
     return tokenData;
   }
 
@@ -434,7 +442,7 @@ export class SsoClient {
    * 若 access_token 已过期则自动刷新后再请求。
    */
   async getUserInfo(): Promise<SsoUser> {
-    let tokenData = getTokenData();
+    let tokenData = getTokenData(this.config.clientId);
 
     if (!tokenData) {
       throw new SsoError("not_authenticated", "未登录");
@@ -460,7 +468,7 @@ export class SsoClient {
 
     if (!res.ok) {
       if (res.status === 401) {
-        removeTokenData();
+        removeTokenData(this.config.clientId);
         throw new SsoError("not_authenticated", "Token 已失效");
       }
       throw new SsoError(
@@ -479,7 +487,7 @@ export class SsoClient {
    * 若无 token 返回 null；若刷新失败则抛出错误（与 getUserInfo 行为一致）。
    */
   async getAccessToken(): Promise<string | null> {
-    let tokenData = getTokenData();
+    let tokenData = getTokenData(this.config.clientId);
     if (!tokenData) return null;
 
     if (Date.now() >= tokenData.expires_at) {
@@ -495,7 +503,7 @@ export class SsoClient {
    * 仅检查本地是否存在未过期的 access_token。
    */
   isAuthenticated(): boolean {
-    const tokenData = getTokenData();
+    const tokenData = getTokenData(this.config.clientId);
     if (!tokenData) return false;
     return Date.now() < tokenData.expires_at;
   }
@@ -508,17 +516,20 @@ export class SsoClient {
    */
   async logout(redirectToSso: boolean = false): Promise<void> {
     // 获取 refresh_token 用于服务端撤销（需在 clearAllSsoData 之前）
-    const tokenData = getTokenData();
+    const tokenData = getTokenData(this.config.clientId);
     const refreshToken = tokenData?.refresh_token;
+    const idTokenHint = tokenData?.id_token;
 
-    clearAllSsoData();
+    clearAllSsoData(this.config.clientId);
 
     // 尝试调用服务端 token revocation 端点（best-effort）
     // 仅 Confidential Client 携带 client_secret；Public Client 不传 secret。
     if (refreshToken && this.config.clientId) {
       try {
-        const tokenEndpoint = await this._getTokenEndpoint();
-        const revokeUrl = tokenEndpoint.replace(/\/token$/, "/revoke");
+        const discovery = await this._getDiscovery();
+        const revokeUrl =
+          discovery?.revocation_endpoint ||
+          `${this.config.ssoBaseUrl}/api/oauth/revoke`;
         const revokeBody = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",
@@ -538,12 +549,23 @@ export class SsoClient {
     }
 
     if (redirectToSso) {
-      // OIDC RP-Initiated Logout：携带 client_id 和 post_logout_redirect_uri
-      const logoutUrl = new URL("/logout", this.config.ssoBaseUrl);
+      // OIDC RP-Initiated Logout：携带 client_id / post_logout_redirect_uri / id_token_hint / state
+      const discovery = await this._getDiscovery();
+      const endSessionEndpoint =
+        discovery?.end_session_endpoint || `${this.config.ssoBaseUrl}/logout`;
+      const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", this.config.clientId);
       if (this.config.redirectUri) {
-        logoutUrl.searchParams.set("post_logout_redirect_uri", this.config.redirectUri);
+        logoutUrl.searchParams.set(
+          "post_logout_redirect_uri",
+          this.config.redirectUri
+        );
       }
+      if (idTokenHint) {
+        logoutUrl.searchParams.set("id_token_hint", idTokenHint);
+      }
+      const state = generateState();
+      logoutUrl.searchParams.set("state", state);
       window.location.href = logoutUrl.toString();
     }
   }

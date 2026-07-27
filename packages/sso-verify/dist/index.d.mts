@@ -53,6 +53,24 @@ interface SsoVerifierOptions {
     accessTokenSecret?: string;
     /** Introspection 结果缓存 TTL（毫秒），默认 30 秒 */
     introspectCacheTtl?: number;
+    /**
+     * Access Token RS256 公钥（PEM 格式，可选）。
+     * 主站已迁移至 RS256 签名，子项目可传入此公钥进行本地验证，
+     * 避免每次都调用 Introspection 端点。
+     */
+    accessTokenPublicKey?: string;
+    /**
+     * JWKS 端点 URL（可选）。
+     * 子项目可传入此 URL 以动态获取 RS256 公钥进行本地验证。
+     * 当 accessTokenPublicKey 未配置时，将通过此端点获取匹配 kid 的公钥。
+     */
+    jwksUri?: string;
+    /**
+     * Logout Token Secret（可选）。
+     * 用于本地验证主站签发的 logout_token（HS256 签名）。
+     * 若未提供，将回退使用 accessTokenSecret 进行验证。
+     */
+    logoutTokenSecret?: string;
 }
 interface VerifiedTokenPayload extends JWTPayload {
     sub: string;
@@ -61,6 +79,37 @@ interface VerifiedTokenPayload extends JWTPayload {
     client_id?: string;
     scope?: string;
     phone?: string;
+}
+/**
+ * Logout Token Payload（RFC 7519 + OIDC Back-Channel Logout 1.0）
+ *
+ * 主站签发 logout_token 时包含以下字段：
+ * - iss: 主站 issuer
+ * - aud: 目标 client_id
+ * - sub: 用户 ID
+ * - iat: 签发时间
+ * - jti: 唯一 ID（防重放，建议接收方缓存已处理的 jti）
+ * - events: { "http://schemas.openid.net/event/backchannel-logout": {} }
+ */
+interface LogoutTokenPayload {
+    /** JWT type，logout_token 固定值为 "logout_token" */
+    type: "logout_token";
+    /** 签发者 */
+    iss: string;
+    /** 目标 audience */
+    aud: string;
+    /** 用户 ID */
+    sub: string;
+    /** 签发时间（UNIX timestamp） */
+    iat: number;
+    /** JWT ID（唯一标识，防重放） */
+    jti: string;
+    /** Backchannel logout 事件声明 */
+    events: {
+        "http://schemas.openid.net/event/backchannel-logout": Record<string, never>;
+    };
+    /** sid (Session ID)，可选 */
+    sid?: string;
 }
 interface IntrospectResponse {
     active: boolean;
@@ -75,8 +124,9 @@ declare function createTokenVerifier(options: SsoVerifierOptions): {
      * 验证 Access Token
      *
      * 验证顺序：
-     * 1. 若配置了 accessTokenSecret，先尝试本地 JWT 验证
-     * 2. 否则/失败后，调用 Introspection 端点
+     * 1. 若配置了 accessTokenSecret，先尝试 HS256 本地验证
+     * 2. 若配置了 accessTokenPublicKey 或 jwksUri，尝试 RS256 本地验证
+     * 3. 若上述均失败/未配置，调用 Introspection 端点
      *
      * @returns token payload 或者 null（验证失败）
      */
@@ -89,6 +139,19 @@ declare function createTokenVerifier(options: SsoVerifierOptions): {
      * 清除指定 token 的 Introspection 缓存
      */
     invalidateCache(token: string): void;
+    /**
+     * 验证 Logout Token（Back-Channel Logout）
+     *
+     * 用于子项目接收主站 backchannel logout 通知时验证 logout_token。
+     * 验证要求（OIDC Back-Channel Logout 1.0）：
+     * 1. type === "logout_token"
+     * 2. iss 匹配配置的 issuer
+     * 3. aud 包含当前 client_id
+     * 4. events 包含 backchannel-logout 事件
+     *
+     * @returns LogoutTokenPayload 或 null（验证失败）
+     */
+    verifyLogoutToken(token: string): Promise<LogoutTokenPayload | null>;
 };
 /**
  * Express/Next.js 兼容中间件
@@ -115,5 +178,40 @@ declare function createTokenVerifier(options: SsoVerifierOptions): {
  * ```
  */
 declare function ssoMiddleware(options: SsoVerifierOptions): (req: any, res: any, next: () => void) => Promise<void>;
+/**
+ * 创建 Logout Token 专用验证器
+ *
+ * 适用于仅需处理 backchannel logout 的子项目。
+ * 内部调用 createTokenVerifier 并暴露 verifyLogoutToken 方法。
+ *
+ * 使用示例：
+ * ```typescript
+ * import { createLogoutTokenVerifier } from "@nihplod/sso-verify";
+ *
+ * const logoutVerifier = createLogoutTokenVerifier({
+ *   audience: "advisor",
+ *   issuer: "https://nihplod.cn",
+ *   logoutTokenSecret: process.env.LOGOUT_TOKEN_SECRET,
+ * });
+ *
+ * // 在 backchannel logout 端点中：
+ * app.post("/api/auth/backchannel-logout", async (req, res) => {
+ *   const token = req.body.logout_token;
+ *   const payload = await logoutVerifier.verify(token);
+ *   if (payload) {
+ *     await clearUserSession(payload.sub);
+ *     res.status(200).end();
+ *   } else {
+ *     res.status(400).end();
+ *   }
+ * });
+ * ```
+ */
+declare function createLogoutTokenVerifier(options: SsoVerifierOptions): {
+    /**
+     * 验证 logout_token
+     */
+    verify(token: string): Promise<LogoutTokenPayload | null>;
+};
 
-export { type SsoVerifierOptions, type VerifiedTokenPayload, createTokenVerifier, ssoMiddleware };
+export { type LogoutTokenPayload, type SsoVerifierOptions, type VerifiedTokenPayload, createLogoutTokenVerifier, createTokenVerifier, ssoMiddleware };

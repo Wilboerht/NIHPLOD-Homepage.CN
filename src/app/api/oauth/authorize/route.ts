@@ -29,7 +29,7 @@ const authorizeQuerySchema = z.object({
   client_id: z.string().min(1),
   redirect_uri: z.string().url().min(1),
   scope: z.string().min(1),
-  state: z.string().min(8),
+  state: z.string().min(32),
   code_challenge: z.string().length(43),
   code_challenge_method: z.literal("S256"),
 });
@@ -164,7 +164,7 @@ const consentSchema = z.object({
   client_id: z.string().min(1),
   redirect_uri: z.string().url(),
   scope: z.string(),
-  state: z.string().min(8),
+  state: z.string().min(32),
   code_challenge: z.string().length(43),
   code_challenge_method: z.literal("S256"),
 });

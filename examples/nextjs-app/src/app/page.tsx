@@ -12,7 +12,7 @@ import { SsoClient } from "@nihplod/sso-sdk";
  */
 const sso = new SsoClient({
   clientId: "your-client-id", // ← 替换
-  redirectUri: "http://localhost:3002/dashboard",
+  redirectUri: "http://localhost:3002/api/auth/callback",
   ssoBaseUrl: "https://nihplod.cn",
   scopes: "openid profile",
 });
@@ -39,12 +39,9 @@ export default function Home() {
           <p>已登录: {user.nickname || user.sub}</p>
           <div style={styles.buttons}>
             <a href="/dashboard" style={styles.btnPrimary}>进入控制台</a>
-            <button
-              style={styles.btnDanger}
-              onClick={() => sso.logout(true)}
-            >
+            <a href="/api/auth/logout" style={styles.btnDanger}>
               退出登录
-            </button>
+            </a>
           </div>
         </div>
       ) : (

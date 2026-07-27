@@ -46,6 +46,8 @@ const defaultConfig = {
   scopes: "openid profile",
 };
 
+const CLIENT_ID = defaultConfig.clientId;
+
 describe("SsoClient", () => {
   beforeEach(() => {
     mockStore.clear();
@@ -117,7 +119,7 @@ describe("SsoClient", () => {
         issued_at: now,
         expires_at: now + 900000, // 15 minutes later
       };
-      saveTokenData(token);
+      saveTokenData(token, CLIENT_ID);
 
       const client = new SsoClient(defaultConfig);
       expect(client.isAuthenticated()).toBe(true);
@@ -133,7 +135,7 @@ describe("SsoClient", () => {
         issued_at: now - 1000000,
         expires_at: now - 1000, // already expired
       };
-      saveTokenData(token);
+      saveTokenData(token, CLIENT_ID);
 
       const client = new SsoClient(defaultConfig);
       expect(client.isAuthenticated()).toBe(false);
@@ -143,7 +145,7 @@ describe("SsoClient", () => {
   describe("handleCallback", () => {
     it("state 不匹配时抛出错误", async () => {
       const client = new SsoClient(defaultConfig);
-      saveOAuthState("expected-state");
+      saveOAuthState("expected-state", CLIENT_ID);
 
       const callbackUrl =
         "https://test-app.com/callback?code=test-code&state=wrong-state";
@@ -155,7 +157,7 @@ describe("SsoClient", () => {
 
     it("缺少 code 时抛出错误", async () => {
       const client = new SsoClient(defaultConfig);
-      saveOAuthState("test-state");
+      saveOAuthState("test-state", CLIENT_ID);
 
       const callbackUrl =
         "https://test-app.com/callback?state=test-state";
@@ -199,7 +201,7 @@ describe("SsoClient", () => {
         } as Response);
 
       const client = new SsoClient(defaultConfig);
-      saveOAuthState("test-state-123");
+      saveOAuthState("test-state-123", CLIENT_ID);
       savePkceVerifier("test-client-id", "test-verifier");
 
       const callbackUrl =
@@ -212,7 +214,7 @@ describe("SsoClient", () => {
       expect(result.token_type).toBe("Bearer");
 
       // Token 应该被保存到 storage
-      const saved = getTokenData();
+      const saved = getTokenData(CLIENT_ID);
       expect(saved).not.toBeNull();
       expect(saved!.access_token).toBe("new-access-token");
     });
@@ -241,7 +243,7 @@ describe("SsoClient", () => {
         ssoBaseUrl: "https://nihplod.cn",
         scopes: "openid profile",
       });
-      saveOAuthState("public-state");
+      saveOAuthState("public-state", "public-client-id");
       savePkceVerifier("public-client-id", "public-verifier");
 
       await publicClient.handleCallback(
@@ -257,7 +259,7 @@ describe("SsoClient", () => {
 
     it("缺少 code_verifier 时抛出错误", async () => {
       const client = new SsoClient(defaultConfig);
-      saveOAuthState("test-state-123");
+      saveOAuthState("test-state-123", CLIENT_ID);
       // 不保存 verifier
 
       const callbackUrl =
@@ -281,7 +283,7 @@ describe("SsoClient", () => {
         .mockRejectedValueOnce(new Error("Network failure"));
 
       const client = new SsoClient(defaultConfig);
-      saveOAuthState("test-state-123");
+      saveOAuthState("test-state-123", CLIENT_ID);
       savePkceVerifier("test-client-id", "test-verifier");
 
       const callbackUrl =
@@ -309,7 +311,7 @@ describe("SsoClient", () => {
         refresh_token: "refresh-token",
         issued_at: now,
         expires_at: now + 900000,
-      });
+      }, CLIENT_ID);
 
       const client = new SsoClient(defaultConfig);
       const token = await client.getAccessToken();
@@ -327,7 +329,7 @@ describe("SsoClient", () => {
         refresh_token: "refresh-token-1",
         issued_at: now - 1000000,
         expires_at: now - 1000,
-      });
+      }, CLIENT_ID);
 
       const mockFetch = vi.spyOn(globalThis, "fetch");
       mockFetch
@@ -371,7 +373,7 @@ describe("SsoClient", () => {
         refresh_token: "refresh-token-1",
         issued_at: now - 1000000,
         expires_at: now - 1000,
-      });
+      }, CLIENT_ID);
 
       const mockFetch = vi.spyOn(globalThis, "fetch");
       mockFetch
@@ -403,7 +405,7 @@ describe("SsoClient", () => {
         refresh_token: "refresh-token",
         issued_at: now,
         expires_at: now + 900000,
-      });
+      }, CLIENT_ID);
 
       const mockFetch = vi.spyOn(globalThis, "fetch");
       mockFetch
@@ -437,7 +439,7 @@ describe("SsoClient", () => {
         refresh_token: "refresh-token",
         issued_at: now,
         expires_at: now + 900000,
-      });
+      }, CLIENT_ID);
 
       const mockFetch = vi.spyOn(globalThis, "fetch");
       mockFetch
@@ -453,7 +455,7 @@ describe("SsoClient", () => {
 
       const client = new SsoClient(defaultConfig);
       await expect(client.getUserInfo()).rejects.toThrow("Token 已失效");
-      expect(getTokenData()).toBeNull();
+      expect(getTokenData(CLIENT_ID)).toBeNull();
     });
   });
 
@@ -467,8 +469,8 @@ describe("SsoClient", () => {
         refresh_token: "test-refresh",
         issued_at: now,
         expires_at: now + 900000,
-      });
-      saveOAuthState("test-state");
+      }, CLIENT_ID);
+      saveOAuthState("test-state", CLIENT_ID);
 
       // Mock fetch for OIDC discovery (logout calls _getTokenEndpoint → _getDiscovery)
       // and the revocation endpoint
@@ -486,7 +488,7 @@ describe("SsoClient", () => {
       const client = new SsoClient(defaultConfig);
       await client.logout(false);
 
-      expect(getTokenData()).toBeNull();
+      expect(getTokenData(CLIENT_ID)).toBeNull();
       expect(client.isAuthenticated()).toBe(false);
     });
   });

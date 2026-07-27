@@ -8,6 +8,7 @@ export type SsoErrorCode =
   | "state_mismatch"
   | "pkce_required"
   | "token_request_failed"
+  | "session_expired"
   | "no_refresh_token"
   | "userinfo_failed"
   | "not_authenticated"

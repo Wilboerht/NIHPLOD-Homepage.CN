@@ -20,6 +20,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
+  createLogoutTokenVerifier: () => createLogoutTokenVerifier,
   createTokenVerifier: () => createTokenVerifier,
   ssoMiddleware: () => ssoMiddleware
 });
@@ -40,9 +41,40 @@ function createTokenVerifier(options) {
     clientId,
     clientSecret,
     accessTokenSecret,
+    accessTokenPublicKey,
+    jwksUri,
+    logoutTokenSecret,
     introspectCacheTtl = 30 * 1e3
   } = options;
   const introspectCache = createIntrospectCache(introspectCacheTtl);
+  let _jwksKeySet = null;
+  function getJwksKeySet() {
+    if (!jwksUri) return null;
+    if (!_jwksKeySet) {
+      _jwksKeySet = (0, import_jose.createRemoteJWKSet)(new URL(jwksUri), {
+        cacheMaxAge: 60 * 60 * 1e3
+        // 1 小时缓存
+      });
+    }
+    return _jwksKeySet;
+  }
+  let _rs256PublicKey = null;
+  let _rs256KeyInitialized = false;
+  async function getRS256PublicKey() {
+    if (!_rs256KeyInitialized) {
+      _rs256KeyInitialized = true;
+      if (!accessTokenPublicKey) {
+        _rs256PublicKey = null;
+      } else {
+        try {
+          _rs256PublicKey = await (0, import_jose.importSPKI)(accessTokenPublicKey, "RS256");
+        } catch {
+          _rs256PublicKey = null;
+        }
+      }
+    }
+    return _rs256PublicKey;
+  }
   async function introspect(token) {
     if (!introspectionEndpoint || !clientId || !clientSecret) {
       return null;
@@ -96,13 +128,44 @@ function createTokenVerifier(options) {
       return null;
     }
   }
+  async function verifyWithRS256(token) {
+    const hasPublicKey = Boolean(accessTokenPublicKey);
+    const hasJwks = Boolean(jwksUri);
+    if (!hasPublicKey && !hasJwks) return null;
+    try {
+      const directKey = await getRS256PublicKey();
+      if (directKey) {
+        const { payload } = await (0, import_jose.jwtVerify)(token, directKey, {
+          issuer,
+          audience,
+          algorithms: ["RS256"]
+        });
+        if (payload.type !== "access_token") return null;
+        return payload;
+      }
+      const jwks = getJwksKeySet();
+      if (jwks) {
+        const { payload } = await (0, import_jose.jwtVerify)(token, jwks, {
+          issuer,
+          audience,
+          algorithms: ["RS256"]
+        });
+        if (payload.type !== "access_token") return null;
+        return payload;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
   return {
     /**
      * 验证 Access Token
      *
      * 验证顺序：
-     * 1. 若配置了 accessTokenSecret，先尝试本地 JWT 验证
-     * 2. 否则/失败后，调用 Introspection 端点
+     * 1. 若配置了 accessTokenSecret，先尝试 HS256 本地验证
+     * 2. 若配置了 accessTokenPublicKey 或 jwksUri，尝试 RS256 本地验证
+     * 3. 若上述均失败/未配置，调用 Introspection 端点
      *
      * @returns token payload 或者 null（验证失败）
      */
@@ -111,6 +174,8 @@ function createTokenVerifier(options) {
         const local = await verifyLocally(token);
         if (local) return local;
       }
+      const rs256Result = await verifyWithRS256(token);
+      if (rs256Result) return rs256Result;
       const result = await introspect(token);
       if (!result?.active) return null;
       return {
@@ -131,6 +196,40 @@ function createTokenVerifier(options) {
      */
     invalidateCache(token) {
       introspectCache.delete(token);
+    },
+    /**
+     * 验证 Logout Token（Back-Channel Logout）
+     *
+     * 用于子项目接收主站 backchannel logout 通知时验证 logout_token。
+     * 验证要求（OIDC Back-Channel Logout 1.0）：
+     * 1. type === "logout_token"
+     * 2. iss 匹配配置的 issuer
+     * 3. aud 包含当前 client_id
+     * 4. events 包含 backchannel-logout 事件
+     *
+     * @returns LogoutTokenPayload 或 null（验证失败）
+     */
+    async verifyLogoutToken(token) {
+      const secret = logoutTokenSecret || accessTokenSecret;
+      if (!secret) return null;
+      try {
+        const key = new TextEncoder().encode(secret);
+        const { payload } = await (0, import_jose.jwtVerify)(token, key, {
+          issuer,
+          audience,
+          algorithms: ["HS256"]
+        });
+        if (payload.type !== "logout_token") {
+          return null;
+        }
+        const events = payload.events;
+        if (!events || !events["http://schemas.openid.net/event/backchannel-logout"]) {
+          return null;
+        }
+        return payload;
+      } catch {
+        return null;
+      }
     }
   };
 }
@@ -156,8 +255,20 @@ function ssoMiddleware(options) {
     next();
   };
 }
+function createLogoutTokenVerifier(options) {
+  const verifier = createTokenVerifier(options);
+  return {
+    /**
+     * 验证 logout_token
+     */
+    async verify(token) {
+      return verifier.verifyLogoutToken(token);
+    }
+  };
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  createLogoutTokenVerifier,
   createTokenVerifier,
   ssoMiddleware
 });

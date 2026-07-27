@@ -114,7 +114,7 @@ export function SsoProvider({
     } catch {
       setUser(null);
       setIsAuthenticated(false);
-      removeTokenData();
+      removeTokenData(client.config.clientId);
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +146,7 @@ export function SsoProvider({
         refreshTimerRef.current = null;
       }
 
-      const tokenData = getTokenData();
+      const tokenData = getTokenData(client.config.clientId);
       if (!tokenData) return;
 
       // 计算距离过期还有多少秒
@@ -156,7 +156,10 @@ export function SsoProvider({
         // 已过期，立即刷新
         client
           .refreshToken()
-          .then(() => loadUser())
+          .then((td) => {
+            onTokenRefreshed?.(td.access_token);
+            loadUser();
+          })
           .catch(() => {});
         return;
       }
@@ -177,7 +180,7 @@ export function SsoProvider({
       const delayMs = (remainingSec - refreshThreshold) * 1000;
 
       refreshTimerRef.current = setTimeout(() => {
-        const td = getTokenData();
+        const td = getTokenData(client.config.clientId);
         if (!td) return;
 
         const secLeft = (td.expires_at - Date.now()) / 1000;

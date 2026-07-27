@@ -110,6 +110,9 @@ var TOKEN_KEY = "token";
 var VERIFIER_KEY_PREFIX = "pkce_verifier_";
 var STATE_KEY = "oauth_state";
 var RETURN_URL_KEY = "return_url";
+function buildKey(base, clientId) {
+  return clientId ? `${base}:${clientId}` : base;
+}
 var sessionStorageAdapter = {
   get(key) {
     if (typeof sessionStorage === "undefined") return null;
@@ -131,11 +134,11 @@ function setTokenStorage(storage) {
 function getTokenStorage() {
   return _storage;
 }
-function saveTokenData(data) {
-  _storage.set(TOKEN_KEY, JSON.stringify(data));
+function saveTokenData(data, clientId) {
+  _storage.set(buildKey(TOKEN_KEY, clientId), JSON.stringify(data));
 }
-function getTokenData() {
-  const raw = _storage.get(TOKEN_KEY);
+function getTokenData(clientId) {
+  const raw = _storage.get(buildKey(TOKEN_KEY, clientId));
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -143,8 +146,8 @@ function getTokenData() {
     return null;
   }
 }
-function removeTokenData() {
-  _storage.remove(TOKEN_KEY);
+function removeTokenData(clientId) {
+  _storage.remove(buildKey(TOKEN_KEY, clientId));
 }
 function savePkceVerifier(clientId, verifier) {
   _storage.set(VERIFIER_KEY_PREFIX + clientId, verifier);
@@ -155,25 +158,32 @@ function getPkceVerifier(clientId) {
 function removePkceVerifier(clientId) {
   _storage.remove(VERIFIER_KEY_PREFIX + clientId);
 }
-function saveOAuthState(state) {
-  _storage.set(STATE_KEY, state);
+function saveOAuthState(state, clientId) {
+  _storage.set(buildKey(STATE_KEY, clientId), state);
 }
-function getOAuthState() {
-  return _storage.get(STATE_KEY);
+function getOAuthState(clientId) {
+  return _storage.get(buildKey(STATE_KEY, clientId));
 }
-function removeOAuthState() {
-  _storage.remove(STATE_KEY);
+function removeOAuthState(clientId) {
+  _storage.remove(buildKey(STATE_KEY, clientId));
 }
-function saveReturnUrl(url) {
-  _storage.set(RETURN_URL_KEY, url);
+function saveReturnUrl(url, clientId) {
+  _storage.set(buildKey(RETURN_URL_KEY, clientId), url);
 }
-function getReturnUrl() {
-  return _storage.get(RETURN_URL_KEY);
+function getReturnUrl(clientId) {
+  return _storage.get(buildKey(RETURN_URL_KEY, clientId));
 }
-function removeReturnUrl() {
-  _storage.remove(RETURN_URL_KEY);
+function removeReturnUrl(clientId) {
+  _storage.remove(buildKey(RETURN_URL_KEY, clientId));
 }
-function clearAllSsoData() {
+function clearAllSsoData(clientId) {
+  if (clientId) {
+    removeTokenData(clientId);
+    removeOAuthState(clientId);
+    removeReturnUrl(clientId);
+    removePkceVerifier(clientId);
+    return;
+  }
   removeTokenData();
   removeOAuthState();
   removeReturnUrl();
@@ -185,7 +195,6 @@ function clearAllSsoData() {
         _storage.remove(key.slice(STORAGE_PREFIX.length));
       }
     }
-  } else {
   }
 }
 function clearVerifiersForClients(clientIds) {
@@ -279,7 +288,7 @@ var _SsoClient = class _SsoClient {
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
     savePkceVerifier(this.config.clientId, verifier);
-    saveOAuthState(state);
+    saveOAuthState(state, this.config.clientId);
     if (returnUrl) {
       saveReturnUrl(returnUrl);
     }
@@ -304,8 +313,8 @@ var _SsoClient = class _SsoClient {
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
     savePkceVerifier(this.config.clientId, verifier);
-    saveOAuthState(state);
-    if (returnUrl) saveReturnUrl(returnUrl);
+    saveOAuthState(state, this.config.clientId);
+    if (returnUrl) saveReturnUrl(returnUrl, this.config.clientId);
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
     params.set("response_type", "code");
@@ -339,15 +348,15 @@ var _SsoClient = class _SsoClient {
     if (!code) {
       throw new SsoError("token_request_failed", "\u56DE\u8C03 URL \u4E2D\u7F3A\u5C11 authorization code");
     }
-    const savedState = getOAuthState();
+    const savedState = getOAuthState(this.config.clientId);
     if (!savedState || savedState !== returnedState) {
-      removeOAuthState();
+      removeOAuthState(this.config.clientId);
       throw new SsoError(
         "state_mismatch",
         "State \u53C2\u6570\u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 CSRF \u653B\u51FB"
       );
     }
-    removeOAuthState();
+    removeOAuthState(this.config.clientId);
     const verifier = getPkceVerifier(this.config.clientId);
     if (!verifier) {
       throw new SsoError(
@@ -398,7 +407,7 @@ var _SsoClient = class _SsoClient {
       issued_at: now,
       expires_at: now + data.expires_in * 1e3
     };
-    saveTokenData(tokenData);
+    saveTokenData(tokenData, this.config.clientId);
     return tokenData;
   }
   /**
@@ -418,7 +427,7 @@ var _SsoClient = class _SsoClient {
     }
   }
   async _doRefreshToken() {
-    const current = getTokenData();
+    const current = getTokenData(this.config.clientId);
     if (!current?.refresh_token) {
       throw new SsoError("no_refresh_token", "\u6CA1\u6709\u53EF\u7528\u7684 refresh_token");
     }
@@ -441,10 +450,18 @@ var _SsoClient = class _SsoClient {
       throw new SsoError("network_error", "\u5237\u65B0 Token \u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25", err);
     }
     if (!res.ok) {
-      removeTokenData();
+      let errData = {};
+      try {
+        errData = await res.json();
+      } catch {
+      }
+      const errorCode = errData.error || "";
+      if (errorCode === "invalid_grant" || res.status === 401) {
+        removeTokenData(this.config.clientId);
+      }
       throw new SsoError(
-        "token_request_failed",
-        `\u5237\u65B0 Token \u5931\u8D25: HTTP ${res.status}`
+        errorCode === "invalid_grant" ? "session_expired" : "token_request_failed",
+        errData.error_description || `\u5237\u65B0 Token \u5931\u8D25: HTTP ${res.status}`
       );
     }
     const data = await res.json();
@@ -458,7 +475,7 @@ var _SsoClient = class _SsoClient {
       issued_at: now,
       expires_at: now + data.expires_in * 1e3
     };
-    saveTokenData(tokenData);
+    saveTokenData(tokenData, this.config.clientId);
     return tokenData;
   }
   /**
@@ -467,7 +484,7 @@ var _SsoClient = class _SsoClient {
    * 若 access_token 已过期则自动刷新后再请求。
    */
   async getUserInfo() {
-    let tokenData = getTokenData();
+    let tokenData = getTokenData(this.config.clientId);
     if (!tokenData) {
       throw new SsoError("not_authenticated", "\u672A\u767B\u5F55");
     }
@@ -487,7 +504,7 @@ var _SsoClient = class _SsoClient {
     }
     if (!res.ok) {
       if (res.status === 401) {
-        removeTokenData();
+        removeTokenData(this.config.clientId);
         throw new SsoError("not_authenticated", "Token \u5DF2\u5931\u6548");
       }
       throw new SsoError(
@@ -504,7 +521,7 @@ var _SsoClient = class _SsoClient {
    * 若无 token 返回 null；若刷新失败则抛出错误（与 getUserInfo 行为一致）。
    */
   async getAccessToken() {
-    let tokenData = getTokenData();
+    let tokenData = getTokenData(this.config.clientId);
     if (!tokenData) return null;
     if (Date.now() >= tokenData.expires_at) {
       tokenData = await this.refreshToken();
@@ -517,7 +534,7 @@ var _SsoClient = class _SsoClient {
    * 仅检查本地是否存在未过期的 access_token。
    */
   isAuthenticated() {
-    const tokenData = getTokenData();
+    const tokenData = getTokenData(this.config.clientId);
     if (!tokenData) return false;
     return Date.now() < tokenData.expires_at;
   }
@@ -528,13 +545,14 @@ var _SsoClient = class _SsoClient {
    * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）
    */
   async logout(redirectToSso = false) {
-    const tokenData = getTokenData();
+    const tokenData = getTokenData(this.config.clientId);
     const refreshToken = tokenData?.refresh_token;
-    clearAllSsoData();
+    const idTokenHint = tokenData?.id_token;
+    clearAllSsoData(this.config.clientId);
     if (refreshToken && this.config.clientId) {
       try {
-        const tokenEndpoint = await this._getTokenEndpoint();
-        const revokeUrl = tokenEndpoint.replace(/\/token$/, "/revoke");
+        const discovery = await this._getDiscovery();
+        const revokeUrl = discovery?.revocation_endpoint || `${this.config.ssoBaseUrl}/api/oauth/revoke`;
         const revokeBody = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",
@@ -552,11 +570,21 @@ var _SsoClient = class _SsoClient {
       }
     }
     if (redirectToSso) {
-      const logoutUrl = new URL("/logout", this.config.ssoBaseUrl);
+      const discovery = await this._getDiscovery();
+      const endSessionEndpoint = discovery?.end_session_endpoint || `${this.config.ssoBaseUrl}/logout`;
+      const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", this.config.clientId);
       if (this.config.redirectUri) {
-        logoutUrl.searchParams.set("post_logout_redirect_uri", this.config.redirectUri);
+        logoutUrl.searchParams.set(
+          "post_logout_redirect_uri",
+          this.config.redirectUri
+        );
       }
+      if (idTokenHint) {
+        logoutUrl.searchParams.set("id_token_hint", idTokenHint);
+      }
+      const state = generateState();
+      logoutUrl.searchParams.set("state", state);
       window.location.href = logoutUrl.toString();
     }
   }

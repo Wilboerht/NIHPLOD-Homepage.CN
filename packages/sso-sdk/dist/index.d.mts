@@ -3,6 +3,10 @@
  *
  * 默认使用 sessionStorage（非 localStorage），防止 XSS 持久化窃取。
  * 支持注入自定义实现（如 React Native AsyncStorage、Node.js 文件存储）。
+ *
+ * 多 client 隔离：
+ * - token / state / return_url 均支持按 clientId 隔离 key
+ * - 不传 clientId 时使用全局 key，保持向后兼容
  */
 /** Token 数据 */
 interface TokenData {
@@ -30,19 +34,19 @@ declare function setTokenStorage(storage: TokenStorage): void;
  * 获取当前存储实现
  */
 declare function getTokenStorage(): TokenStorage;
-declare function saveTokenData(data: TokenData): void;
-declare function getTokenData(): TokenData | null;
-declare function removeTokenData(): void;
+declare function saveTokenData(data: TokenData, clientId?: string): void;
+declare function getTokenData(clientId?: string): TokenData | null;
+declare function removeTokenData(clientId?: string): void;
 declare function savePkceVerifier(clientId: string, verifier: string): void;
 declare function getPkceVerifier(clientId: string): string | null;
 declare function removePkceVerifier(clientId: string): void;
-declare function saveOAuthState(state: string): void;
-declare function getOAuthState(): string | null;
-declare function removeOAuthState(): void;
-declare function saveReturnUrl(url: string): void;
-declare function getReturnUrl(): string | null;
-declare function removeReturnUrl(): void;
-declare function clearAllSsoData(): void;
+declare function saveOAuthState(state: string, clientId?: string): void;
+declare function getOAuthState(clientId?: string): string | null;
+declare function removeOAuthState(clientId?: string): void;
+declare function saveReturnUrl(url: string, clientId?: string): void;
+declare function getReturnUrl(clientId?: string): string | null;
+declare function removeReturnUrl(clientId?: string): void;
+declare function clearAllSsoData(clientId?: string): void;
 /**
  * 清理指定 clientId 列表的 PKCE verifier
  *
@@ -106,6 +110,8 @@ interface OidcDiscovery {
     userinfo_endpoint: string;
     jwks_uri: string;
     introspection_endpoint: string;
+    revocation_endpoint?: string;
+    end_session_endpoint?: string;
     scopes_supported: string[];
     response_types_supported: string[];
     grant_types_supported: string[];
@@ -240,7 +246,7 @@ declare function generateState(): string;
  * SSO SDK 错误类型
  */
 /** SSO 错误码 */
-type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "sso_server_error" | "network_error";
+type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "sso_server_error" | "network_error";
 /** OAuth 2.0 标准错误码 */
 type OAuthErrorCode = "invalid_request" | "invalid_client" | "invalid_grant" | "unauthorized_client" | "unsupported_grant_type" | "invalid_scope" | "access_denied" | "server_error" | "rate_limited";
 /**

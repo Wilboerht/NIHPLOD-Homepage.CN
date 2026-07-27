@@ -52,7 +52,7 @@ function validClient() {
 
 // 有效的 PKCE code_challenge（43 字符 base64url）
 const VALID_CODE_CHALLENGE = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
-const VALID_STATE = "abc123xyz789";
+const VALID_STATE = "abcdefghijklmnopqrstuvwx12345678"; // 32 chars, min required
 
 function buildAuthorizeUrl(extra: Record<string, string> = {}) {
   const params = new URLSearchParams({
@@ -126,7 +126,7 @@ describe("GET /api/oauth/authorize", () => {
 
   it("缺少 code_challenge 应返回 400", async () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
-    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=code&client_id=test-client&redirect_uri=https://example.com/cb&scope=openid&state=abc123xyz789&code_challenge_method=S256");
+    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=code&client_id=test-client&redirect_uri=https://example.com/cb&scope=openid&state=abcdefghijklmnopqrstuvwx12345678&code_challenge_method=S256");
     const res = await GET(req);
     expect(res.status).toBe(400);
     const body = await res.json();

@@ -23,6 +23,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import {
+  DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+  DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+  DEFAULT_STATE_COOKIE_NAME,
+  DEFAULT_RETURN_COOKIE_NAME,
+  DEFAULT_VERIFIER_COOKIE_NAME,
+  getHostCookieOptions,
+} from "./constants";
 
 // ============================================
 // 类型定义
@@ -38,14 +46,30 @@ export interface CallbackRouteConfig {
   /** 回调 URL（须与注册的 redirect_uri 一致） */
   redirectUri: string;
 
-  /** Token 存储 cookie 名称，默认 "nihplod_sso_at" */
-  tokenCookieName?: string;
-
-  /** Cookie domain（可选） */
-  cookieDomain?: string;
+  /**
+   * OAuth Client Secret（可选）。
+   * 对于 Confidential Client（BFF/Next.js），应传入 clientSecret
+   * 以提供第二因素认证。对于 Public Client（SPA），应省略此字段。
+   */
+  clientSecret?: string;
 
   /** 成功回调后重定向的默认路径，默认 "/" */
   defaultReturnPath?: string;
+
+  /** Access Token Cookie 名称，默认 __Host-nihplod_sso_at */
+  accessTokenCookieName?: string;
+
+  /** Refresh Token Cookie 名称，默认 __Host-nihplod_sso_rt */
+  refreshTokenCookieName?: string;
+
+  /** State Cookie 名称，默认 __Host-nihplod_sso_state */
+  stateCookieName?: string;
+
+  /** Return URL Cookie 名称，默认 __Host-nihplod_sso_return */
+  returnUrlCookieName?: string;
+
+  /** PKCE Verifier Cookie 名称，默认 __Host-nihplod_sso_verifier */
+  verifierCookieName?: string;
 }
 
 // ============================================
@@ -57,9 +81,13 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     clientId,
     ssoBaseUrl,
     redirectUri,
-    tokenCookieName = "nihplod_sso_at",
-    cookieDomain,
+    clientSecret,
     defaultReturnPath = "/",
+    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+    refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
+    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
+    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
   } = config;
 
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
@@ -91,7 +119,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     }
 
     // 验证 state（从 cookie 中读取原始 state，CSRF 必需）
-    const savedState = request.cookies.get("nihplod_sso_state")?.value;
+    const savedState = request.cookies.get(stateCookieName)?.value;
     if (!savedState) {
       return NextResponse.json(
         {
@@ -112,7 +140,16 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     }
 
     // 读取 PKCE code_verifier（middleware 存入的 httpOnly cookie）
-    const verifier = request.cookies.get("nihplod_sso_verifier")?.value;
+    const verifier = request.cookies.get(verifierCookieName)?.value;
+    if (!verifier) {
+      return NextResponse.json(
+        {
+          error: "invalid_request",
+          error_description: "PKCE verifier 缺失，请重新发起授权请求",
+        },
+        { status: 400 }
+      );
+    }
 
     // 交换 token
     const tokenEndpoint = `${normalizedBase}/api/oauth/token`;
@@ -121,8 +158,9 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     body.set("code", code);
     body.set("client_id", clientId);
     body.set("redirect_uri", redirectUri);
-    if (verifier) {
-      body.set("code_verifier", verifier);
+    body.set("code_verifier", verifier);
+    if (clientSecret) {
+      body.set("client_secret", clientSecret);
     }
 
     // 带重试的 token 交换（1 次重试 + 指数退避）
@@ -186,19 +224,14 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
 
     // 读取 return URL
     const returnUrl =
-      request.cookies.get("nihplod_sso_return")?.value || defaultReturnPath;
+      request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
 
     // 重定向并设置 cookie
     const response = NextResponse.redirect(new URL(returnUrl, request.url));
 
-    // 设置 access_token cookie (httpOnly, Secure, SameSite=Lax)
-    response.cookies.set(tokenCookieName, tokenData.access_token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: tokenData.expires_in,
-      domain: cookieDomain,
+    // 设置 access_token cookie (httpOnly, Secure, SameSite=Lax, Path=/)
+    response.cookies.set(accessTokenCookieName, tokenData.access_token, {
+      ...getHostCookieOptions(tokenData.expires_in),
     });
 
     // 设置 refresh_token cookie（使用服务端返回的过期时间动态计算）
@@ -209,27 +242,25 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
         ? (tokenData as Record<string, unknown>).refresh_expires_in as number
         : 30 * 24 * 60 * 60;
 
-    response.cookies.set("nihplod_sso_rt", tokenData.refresh_token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: refreshMaxAge,
-      domain: cookieDomain,
+    response.cookies.set(refreshTokenCookieName, tokenData.refresh_token, {
+      ...getHostCookieOptions(refreshMaxAge),
     });
 
-    // 清除临时 cookies: state / return URL / PKCE verifier
-    const clearCookieOpts = {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax" as const,
-      path: "/" as const,
-      maxAge: 0,
-    };
+    // 清除临时 cookies: state / return URL
+    response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
+    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
 
-    response.cookies.set("nihplod_sso_state", "", clearCookieOpts);
-    response.cookies.set("nihplod_sso_return", "", clearCookieOpts);
-    response.cookies.set("nihplod_sso_verifier", "", clearCookieOpts);
+    // 清除 PKCE verifier cookie，必须使用写入时的 path（callbackPath）
+    // 由于 callback handler 不知道 middleware 的 callbackPath，这里保守地
+    // 同时清除 path=/ 和 path=当前请求路径两种可能
+    response.cookies.set(verifierCookieName, "", {
+      ...getHostCookieOptions(0),
+      path: "/",
+    });
+    response.cookies.set(verifierCookieName, "", {
+      ...getHostCookieOptions(0),
+      path: request.nextUrl.pathname,
+    });
 
     return response;
   };

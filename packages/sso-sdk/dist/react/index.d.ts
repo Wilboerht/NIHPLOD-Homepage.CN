@@ -5,6 +5,10 @@ import React, { ReactNode, ComponentType } from 'react';
  *
  * 默认使用 sessionStorage（非 localStorage），防止 XSS 持久化窃取。
  * 支持注入自定义实现（如 React Native AsyncStorage、Node.js 文件存储）。
+ *
+ * 多 client 隔离：
+ * - token / state / return_url 均支持按 clientId 隔离 key
+ * - 不传 clientId 时使用全局 key，保持向后兼容
  */
 /** Token 数据 */
 interface TokenData {
@@ -67,6 +71,8 @@ interface OidcDiscovery {
     userinfo_endpoint: string;
     jwks_uri: string;
     introspection_endpoint: string;
+    revocation_endpoint?: string;
+    end_session_endpoint?: string;
     scopes_supported: string[];
     response_types_supported: string[];
     grant_types_supported: string[];

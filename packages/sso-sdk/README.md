@@ -165,6 +165,8 @@ interface OidcDiscovery {
   userinfo_endpoint: string;
   jwks_uri: string;
   introspection_endpoint: string;
+  revocation_endpoint?: string;
+  end_session_endpoint?: string;
   scopes_supported: string[];
   response_types_supported: string[];
   grant_types_supported: string[];
@@ -245,7 +247,8 @@ export default function AuthCallback() {
 
 ## Next.js 绑定
 
-### `createSsoMiddleware(config)`
+Next.js 推荐采用 **Middleware + Route Handler** 的 BFF 模式，token 存放在
+`httpOnly` Cookie 中，JavaScript 无法读取，安全性最高。
 
 ```typescript
 // src/middleware.ts
@@ -253,13 +256,18 @@ import { createSsoMiddleware } from "@nihplod/sso-sdk/next";
 
 export const middleware = createSsoMiddleware({
   clientId: "...",
-  ssoBaseUrl: "...",
-  redirectUri: "...",
+  ssoBaseUrl: "https://nihplod.cn",
+  redirectUri: "https://yourapp.com/api/auth/callback",
+  scopes: "openid profile",
   publicPaths: ["/", "/public"],
+  // Confidential Client（BFF）可传入 clientSecret
+  // clientSecret: process.env.SSO_CLIENT_SECRET,
 });
-```
 
-### `createCallbackRouteHandler(config)`
+export const config = {
+  matcher: ["/((?!_next|favicon.ico).*)"],
+};
+```
 
 ```typescript
 // src/app/api/auth/callback/route.ts
@@ -267,10 +275,43 @@ import { createCallbackRouteHandler } from "@nihplod/sso-sdk/next";
 
 export const GET = createCallbackRouteHandler({
   clientId: "...",
-  ssoBaseUrl: "...",
-  redirectUri: "...",
+  ssoBaseUrl: "https://nihplod.cn",
+  redirectUri: "https://yourapp.com/api/auth/callback",
+  defaultReturnPath: "/dashboard",
+  // 与 middleware 一致，Confidential Client 可传入 clientSecret
 });
 ```
+
+```typescript
+// src/app/api/auth/logout/route.ts
+import { createLogoutRouteHandler } from "@nihplod/sso-sdk/next";
+
+export const GET = createLogoutRouteHandler({
+  clientId: "...",
+  ssoBaseUrl: "https://nihplod.cn",
+  redirectUri: "https://yourapp.com/api/auth/callback",
+  postLogoutRedirectUri: "https://yourapp.com/",
+  redirectToSso: true,
+});
+```
+
+页面中使用标准 `<a>` 跳转登出端点即可：
+
+```tsx
+<a href="/api/auth/logout">退出登录</a>
+```
+
+### Cookie 配置
+
+默认 Cookie 名称均使用 `__Host-` 前缀（要求 Secure + Path=/ + 无 Domain）：
+
+| Cookie | 默认名称 | 说明 |
+|--------|----------|------|
+| access_token | `__Host-nihplod_sso_at` | 可通过 `accessTokenCookieName` 配置 |
+| refresh_token | `__Host-nihplod_sso_rt` | 可通过 `refreshTokenCookieName` 配置 |
+| state | `__Host-nihplod_sso_state` | 可通过 `stateCookieName` 配置 |
+| return_url | `__Host-nihplod_sso_return` | 可通过 `returnUrlCookieName` 配置 |
+| verifier | `__Host-nihplod_sso_verifier` | 可通过 `verifierCookieName` 配置 |
 
 ---
 

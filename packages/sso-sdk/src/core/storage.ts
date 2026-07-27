@@ -3,6 +3,10 @@
  *
  * 默认使用 sessionStorage（非 localStorage），防止 XSS 持久化窃取。
  * 支持注入自定义实现（如 React Native AsyncStorage、Node.js 文件存储）。
+ *
+ * 多 client 隔离：
+ * - token / state / return_url 均支持按 clientId 隔离 key
+ * - 不传 clientId 时使用全局 key，保持向后兼容
  */
 
 /** Token 数据 */
@@ -35,6 +39,10 @@ const TOKEN_KEY = "token";
 const VERIFIER_KEY_PREFIX = "pkce_verifier_";
 const STATE_KEY = "oauth_state";
 const RETURN_URL_KEY = "return_url";
+
+function buildKey(base: string, clientId?: string): string {
+  return clientId ? `${base}:${clientId}` : base;
+}
 
 /**
  * 浏览器 sessionStorage 实现
@@ -74,12 +82,12 @@ export function getTokenStorage(): TokenStorage {
 // Token 存取
 // ============================================
 
-export function saveTokenData(data: TokenData): void {
-  _storage.set(TOKEN_KEY, JSON.stringify(data));
+export function saveTokenData(data: TokenData, clientId?: string): void {
+  _storage.set(buildKey(TOKEN_KEY, clientId), JSON.stringify(data));
 }
 
-export function getTokenData(): TokenData | null {
-  const raw = _storage.get(TOKEN_KEY);
+export function getTokenData(clientId?: string): TokenData | null {
+  const raw = _storage.get(buildKey(TOKEN_KEY, clientId));
   if (!raw) return null;
   try {
     return JSON.parse(raw) as TokenData;
@@ -88,8 +96,8 @@ export function getTokenData(): TokenData | null {
   }
 }
 
-export function removeTokenData(): void {
-  _storage.remove(TOKEN_KEY);
+export function removeTokenData(clientId?: string): void {
+  _storage.remove(buildKey(TOKEN_KEY, clientId));
 }
 
 // ============================================
@@ -112,39 +120,47 @@ export function removePkceVerifier(clientId: string): void {
 // State 参数存取
 // ============================================
 
-export function saveOAuthState(state: string): void {
-  _storage.set(STATE_KEY, state);
+export function saveOAuthState(state: string, clientId?: string): void {
+  _storage.set(buildKey(STATE_KEY, clientId), state);
 }
 
-export function getOAuthState(): string | null {
-  return _storage.get(STATE_KEY);
+export function getOAuthState(clientId?: string): string | null {
+  return _storage.get(buildKey(STATE_KEY, clientId));
 }
 
-export function removeOAuthState(): void {
-  _storage.remove(STATE_KEY);
+export function removeOAuthState(clientId?: string): void {
+  _storage.remove(buildKey(STATE_KEY, clientId));
 }
 
 // ============================================
 // 返回 URL 存取
 // ============================================
 
-export function saveReturnUrl(url: string): void {
-  _storage.set(RETURN_URL_KEY, url);
+export function saveReturnUrl(url: string, clientId?: string): void {
+  _storage.set(buildKey(RETURN_URL_KEY, clientId), url);
 }
 
-export function getReturnUrl(): string | null {
-  return _storage.get(RETURN_URL_KEY);
+export function getReturnUrl(clientId?: string): string | null {
+  return _storage.get(buildKey(RETURN_URL_KEY, clientId));
 }
 
-export function removeReturnUrl(): void {
-  _storage.remove(RETURN_URL_KEY);
+export function removeReturnUrl(clientId?: string): void {
+  _storage.remove(buildKey(RETURN_URL_KEY, clientId));
 }
 
 // ============================================
 // 清理所有 SSO 数据
 // ============================================
 
-export function clearAllSsoData(): void {
+export function clearAllSsoData(clientId?: string): void {
+  if (clientId) {
+    removeTokenData(clientId);
+    removeOAuthState(clientId);
+    removeReturnUrl(clientId);
+    removePkceVerifier(clientId);
+    return;
+  }
+
   removeTokenData();
   removeOAuthState();
   removeReturnUrl();
@@ -158,9 +174,6 @@ export function clearAllSsoData(): void {
         _storage.remove(key.slice(STORAGE_PREFIX.length));
       }
     }
-  } else {
-    // 非浏览器环境：回退到尝试清空已知 clientIds 的 key
-    // 调用方可使用 clearAllVerifiersForClients() 辅助函数
   }
 }
 

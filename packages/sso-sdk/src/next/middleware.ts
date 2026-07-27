@@ -22,6 +22,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import {
+  DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+  DEFAULT_STATE_COOKIE_NAME,
+  DEFAULT_RETURN_COOKIE_NAME,
+  DEFAULT_VERIFIER_COOKIE_NAME,
+  getHostCookieOptions,
+} from "./constants";
 
 // ============================================
 // 类型定义
@@ -51,6 +58,24 @@ export interface SsoMiddlewareConfig {
    * 默认 "__Host-user_token"（与主站 C 端登录 Cookie 一致）。
    */
   ssoCookieName?: string;
+
+  /**
+   * OAuth Client Secret（Confidential Client 使用）
+   * 浏览器端 Public Client 应省略。
+   */
+  clientSecret?: string;
+
+  /** Access Token Cookie 名称，默认 __Host-nihplod_sso_at */
+  accessTokenCookieName?: string;
+
+  /** State Cookie 名称，默认 __Host-nihplod_sso_state */
+  stateCookieName?: string;
+
+  /** Return URL Cookie 名称，默认 __Host-nihplod_sso_return */
+  returnUrlCookieName?: string;
+
+  /** PKCE Verifier Cookie 名称，默认 __Host-nihplod_sso_verifier */
+  verifierCookieName?: string;
 }
 
 // ============================================
@@ -139,6 +164,10 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     publicPaths = [],
     callbackPath = "/api/auth/callback",
     ssoCookieName = "__Host-user_token",
+    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
+    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
+    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
   } = config;
 
   // 规范化 ssoBaseUrl
@@ -174,7 +203,7 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     }
 
     // Check for access_token in cookie (set by callback handler)
-    const accessTokenCookie = request.cookies.get("nihplod_sso_at");
+    const accessTokenCookie = request.cookies.get(accessTokenCookieName);
     if (accessTokenCookie?.value) {
       // 快速检查 JWT 是否过期（解码 payload 中的 exp claim）
       const payload = decodeJwtPayload(accessTokenCookie.value);
@@ -212,31 +241,21 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     const response = NextResponse.redirect(loginUrl);
 
     // Set state cookie for CSRF verification on callback
-    response.cookies.set("nihplod_sso_state", state, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 600, // 10 分钟
-    });
+    response.cookies.set(stateCookieName, state, getHostCookieOptions(600));
 
     // Set PKCE verifier cookie（httpOnly，供 callback handler 使用）
-    response.cookies.set("nihplod_sso_verifier", verifier, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
+    response.cookies.set(verifierCookieName, verifier, {
+      ...getHostCookieOptions(600),
       path: callbackPath,
-      maxAge: 600,
     });
 
     // Set return URL cookie
-    response.cookies.set("nihplod_sso_return", request.url, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 600,
-    });
+    response.cookies.set(returnUrlCookieName, request.url, getHostCookieOptions(600));
+
+    // 如果存在过期的 access_token cookie，立即清除
+    if (accessTokenCookie?.value) {
+      response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
+    }
 
     return response;
   };

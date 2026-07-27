@@ -1,5 +1,23 @@
 // src/next/middleware.ts
 import { NextResponse } from "next/server";
+
+// src/next/constants.ts
+var DEFAULT_ACCESS_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_at";
+var DEFAULT_REFRESH_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_rt";
+var DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
+var DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
+var DEFAULT_VERIFIER_COOKIE_NAME = "__Host-nihplod_sso_verifier";
+function getHostCookieOptions(maxAge) {
+  return {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    ...maxAge !== void 0 ? { maxAge } : {}
+  };
+}
+
+// src/next/middleware.ts
 function generateRandomString(length) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
   const maxValid = Math.floor(256 / chars.length) * chars.length;
@@ -53,7 +71,11 @@ function createSsoMiddleware(config) {
     scopes = "openid profile",
     publicPaths = [],
     callbackPath = "/api/auth/callback",
-    ssoCookieName = "__Host-user_token"
+    ssoCookieName = "__Host-user_token",
+    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
+    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
+    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME
   } = config;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   return async function ssoMiddleware(request) {
@@ -72,7 +94,7 @@ function createSsoMiddleware(config) {
     if (ssoSession?.value) {
       return NextResponse.next();
     }
-    const accessTokenCookie = request.cookies.get("nihplod_sso_at");
+    const accessTokenCookie = request.cookies.get(accessTokenCookieName);
     if (accessTokenCookie?.value) {
       const payload = decodeJwtPayload(accessTokenCookie.value);
       if (payload?.exp && typeof payload.exp === "number") {
@@ -98,28 +120,15 @@ function createSsoMiddleware(config) {
     const loginUrl = new URL("/api/oauth/authorize", normalizedBase);
     loginUrl.search = authorizeParams.toString();
     const response = NextResponse.redirect(loginUrl);
-    response.cookies.set("nihplod_sso_state", state, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 600
-      // 10 分钟
+    response.cookies.set(stateCookieName, state, getHostCookieOptions(600));
+    response.cookies.set(verifierCookieName, verifier, {
+      ...getHostCookieOptions(600),
+      path: callbackPath
     });
-    response.cookies.set("nihplod_sso_verifier", verifier, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: callbackPath,
-      maxAge: 600
-    });
-    response.cookies.set("nihplod_sso_return", request.url, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 600
-    });
+    response.cookies.set(returnUrlCookieName, request.url, getHostCookieOptions(600));
+    if (accessTokenCookie?.value) {
+      response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
+    }
     return response;
   };
 }
@@ -131,9 +140,13 @@ function createCallbackRouteHandler(config) {
     clientId,
     ssoBaseUrl,
     redirectUri,
-    tokenCookieName = "nihplod_sso_at",
-    cookieDomain,
-    defaultReturnPath = "/"
+    clientSecret,
+    defaultReturnPath = "/",
+    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+    refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
+    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
+    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME
   } = config;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   return async function GET(request) {
@@ -157,7 +170,7 @@ function createCallbackRouteHandler(config) {
         { status: 400 }
       );
     }
-    const savedState = request.cookies.get("nihplod_sso_state")?.value;
+    const savedState = request.cookies.get(stateCookieName)?.value;
     if (!savedState) {
       return NextResponse2.json(
         {
@@ -176,15 +189,25 @@ function createCallbackRouteHandler(config) {
         { status: 400 }
       );
     }
-    const verifier = request.cookies.get("nihplod_sso_verifier")?.value;
+    const verifier = request.cookies.get(verifierCookieName)?.value;
+    if (!verifier) {
+      return NextResponse2.json(
+        {
+          error: "invalid_request",
+          error_description: "PKCE verifier \u7F3A\u5931\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u6388\u6743\u8BF7\u6C42"
+        },
+        { status: 400 }
+      );
+    }
     const tokenEndpoint = `${normalizedBase}/api/oauth/token`;
     const body = new URLSearchParams();
     body.set("grant_type", "authorization_code");
     body.set("code", code);
     body.set("client_id", clientId);
     body.set("redirect_uri", redirectUri);
-    if (verifier) {
-      body.set("code_verifier", verifier);
+    body.set("code_verifier", verifier);
+    if (clientSecret) {
+      body.set("client_secret", clientSecret);
     }
     let res;
     let lastError;
@@ -232,40 +255,125 @@ function createCallbackRouteHandler(config) {
       );
     }
     const tokenData = await res.json();
-    const returnUrl = request.cookies.get("nihplod_sso_return")?.value || defaultReturnPath;
+    const returnUrl = request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
     const response = NextResponse2.redirect(new URL(returnUrl, request.url));
-    response.cookies.set(tokenCookieName, tokenData.access_token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: tokenData.expires_in,
-      domain: cookieDomain
+    response.cookies.set(accessTokenCookieName, tokenData.access_token, {
+      ...getHostCookieOptions(tokenData.expires_in)
     });
     const refreshMaxAge = tokenData.refresh_expires_in != null ? tokenData.refresh_expires_in : 30 * 24 * 60 * 60;
-    response.cookies.set("nihplod_sso_rt", tokenData.refresh_token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: refreshMaxAge,
-      domain: cookieDomain
+    response.cookies.set(refreshTokenCookieName, tokenData.refresh_token, {
+      ...getHostCookieOptions(refreshMaxAge)
     });
-    const clearCookieOpts = {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0
-    };
-    response.cookies.set("nihplod_sso_state", "", clearCookieOpts);
-    response.cookies.set("nihplod_sso_return", "", clearCookieOpts);
-    response.cookies.set("nihplod_sso_verifier", "", clearCookieOpts);
+    response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
+    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
+    response.cookies.set(verifierCookieName, "", {
+      ...getHostCookieOptions(0),
+      path: "/"
+    });
+    response.cookies.set(verifierCookieName, "", {
+      ...getHostCookieOptions(0),
+      path: request.nextUrl.pathname
+    });
+    return response;
+  };
+}
+
+// src/next/logout.ts
+import { NextResponse as NextResponse3 } from "next/server";
+async function fetchDiscovery(ssoBaseUrl) {
+  try {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 5e3);
+    const res = await fetch(
+      `${ssoBaseUrl}/api/oauth/.well-known/openid-configuration`,
+      { signal: controller.signal }
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+function createLogoutRouteHandler(config) {
+  const {
+    clientId,
+    ssoBaseUrl,
+    redirectUri,
+    clientSecret,
+    postLogoutRedirectUri = new URL(redirectUri).origin + "/",
+    redirectToSso = true,
+    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+    refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
+    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
+    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
+    callbackPath = "/api/auth/callback"
+  } = config;
+  const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  return async function GET(request) {
+    const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
+    const idTokenHint = request.cookies.get(accessTokenCookieName)?.value ? void 0 : void 0;
+    if (refreshToken) {
+      try {
+        const discovery = await fetchDiscovery(normalizedBase);
+        const revokeUrl = discovery?.revocation_endpoint || `${normalizedBase}/api/oauth/revoke`;
+        const body = new URLSearchParams({
+          token: refreshToken,
+          token_type_hint: "refresh_token",
+          client_id: clientId
+        });
+        if (clientSecret) {
+          body.set("client_secret", clientSecret);
+        }
+        await fetch(revokeUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString()
+        });
+      } catch {
+      }
+    }
+    const response = NextResponse3.redirect(
+      redirectToSso ? postLogoutRedirectUri : request.nextUrl.origin + "/"
+    );
+    response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
+    response.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0));
+    response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
+    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
+    response.cookies.set(verifierCookieName, "", {
+      ...getHostCookieOptions(0),
+      path: "/"
+    });
+    response.cookies.set(verifierCookieName, "", {
+      ...getHostCookieOptions(0),
+      path: callbackPath
+    });
+    if (redirectToSso) {
+      const discovery = await fetchDiscovery(normalizedBase);
+      const endSessionEndpoint = discovery?.end_session_endpoint || `${normalizedBase}/logout`;
+      const logoutUrl = new URL(endSessionEndpoint);
+      logoutUrl.searchParams.set("client_id", clientId);
+      logoutUrl.searchParams.set(
+        "post_logout_redirect_uri",
+        postLogoutRedirectUri
+      );
+      if (idTokenHint) {
+        logoutUrl.searchParams.set("id_token_hint", idTokenHint);
+      }
+      return NextResponse3.redirect(logoutUrl.toString());
+    }
     return response;
   };
 }
 export {
+  DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+  DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+  DEFAULT_RETURN_COOKIE_NAME,
+  DEFAULT_STATE_COOKIE_NAME,
+  DEFAULT_VERIFIER_COOKIE_NAME,
   createCallbackRouteHandler,
-  createSsoMiddleware
+  createLogoutRouteHandler,
+  createSsoMiddleware,
+  getHostCookieOptions
 };
 //# sourceMappingURL=index.mjs.map
