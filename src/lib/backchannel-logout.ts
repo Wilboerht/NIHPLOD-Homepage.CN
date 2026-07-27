@@ -11,6 +11,7 @@
 import { signLogoutToken } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { recordSsoEvent } from "@/lib/sso-audit";
 
 /**
  * 向已注册的 OAuth Client 发送 Backchannel Logout 通知
@@ -59,6 +60,13 @@ export async function sendBackchannelLogout(
           `[SLO] Backchannel logout 通知失败 (${client.clientId}):`,
           err
         );
+        recordSsoEvent({
+          event: "backchannel_logout",
+          userId,
+          clientId: client.clientId,
+          success: false,
+          detail: { reason: "http_request_failed", error: String(err) },
+        });
       });
     } catch (err) {
       apiConsole.warn(

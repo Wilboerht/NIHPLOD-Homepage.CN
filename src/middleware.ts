@@ -32,18 +32,17 @@ const PUBLIC_API_PREFIXES = [
   "/api/oss/sign",
   "/api/auth/",
   "/api/user/",
-  "/api/cart",
-  "/api/checkout",
-  "/api/orders",
-  "/api/pay",
-  "/api/wechat",
-  "/api/coupons",
-  "/api/coupons/public",
+  "/api/cart/",
+  "/api/checkout/",
+  "/api/orders/",
+  "/api/pay/",
+  "/api/wechat/",
+  "/api/coupons/",
   "/api/revalidate",
   "/api/internal/",
   "/api/v1/internal/",
   "/api/oauth/",
-  "/api/account",
+  "/api/account/",
   "/login",
   "/logout",
 ];
@@ -57,8 +56,17 @@ async function verifyToken(token: string): Promise<boolean> {
   }
 }
 
+/**
+ * 路径匹配：支持精确匹配和前缀匹配两种模式
+ * - 以 "/" 结尾的路径 → 前缀匹配（pathname.startsWith）
+ * - 不以 "/" 结尾的路径 → 精确匹配（pathname === path）
+ *
+ * 此设计防止前缀匹配过于宽泛的问题（如 "/api/admin/login" 误匹配 "/api/admin/login-attempt"）
+ */
 function matchesPath(pathname: string, paths: string[]): boolean {
-  return paths.some((path) => pathname.startsWith(path));
+  return paths.some((path) =>
+    path.endsWith("/") ? pathname.startsWith(path) : pathname === path
+  );
 }
 
 // ================= CORS 配置 =================

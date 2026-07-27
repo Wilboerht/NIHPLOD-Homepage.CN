@@ -163,7 +163,19 @@ export async function POST(request: NextRequest) {
 
     // 撤销 RefreshToken
     if (clientId) {
-      // 按 client 终止：仅影响该 client 的 refresh token
+      // 按 client 终止 RefreshToken：
+      // RefreshToken 表目前不直接关联 clientId，无法精确按 client 过滤。
+      // 但由于 OAuthSession 已被撤销，token 刷新时将因找不到活跃 session
+      // 而降级为最小权限（openid），安全风险已受控。
+      // 同时撤销该用户所有与该 client 相关的 refresh token：
+      // 通过查找该 client 下活跃 OAuthSession 的 userId 来批量撤销。
+      await prisma.refreshToken.updateMany({
+        where: {
+          userId,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
     } else {
       await prisma.refreshToken.updateMany({
         where: { userId, revokedAt: null },

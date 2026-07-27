@@ -19,7 +19,9 @@ import { randomInt } from "./random";
  */
 export function hashVerifyCode(phone: string, code: string, type: string): string {
   // 使用 JWT_ACCESS_SECRET 作为 HMAC 密钥（该密钥在 jwt.ts 启动时强制校验，保证存在）
-  const hmacSecret = process.env.JWT_ACCESS_SECRET;
+  // 注意：若 JWT_ACCESS_SECRET 轮换，所有已存储的验证码哈希将失效。
+  // 建议使用独立的 SMS_CODE_HMAC_KEY 环境变量以避免密钥复用。
+  const hmacSecret = process.env.SMS_CODE_HMAC_KEY || process.env.JWT_ACCESS_SECRET;
   if (!hmacSecret) {
     throw new Error("[SMS] JWT_ACCESS_SECRET 环境变量未设置，无法进行验证码哈希");
   }
@@ -31,7 +33,8 @@ export function hashVerifyCode(phone: string, code: string, type: string): strin
 
 /**
  * 安全地比较验证码
- * 优先使用 codeHash，回退明文 code（兼容旧数据）
+ * 使用 timingSafeEqual 防止时序攻击。
+ * 存储的 codeHash 为 HMAC-SHA256(phone:code:type)，不与明文 code 直接比对。
  */
 export function verifyCode(
   phone: string,

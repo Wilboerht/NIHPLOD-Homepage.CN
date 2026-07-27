@@ -151,6 +151,15 @@ export async function POST(request: NextRequest) {
 
       // 校验 client_id 与授权码一致
       if (codeData.clientId !== client_id) {
+        recordSsoEvent({
+          event: "token",
+          userId: codeData.userId,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "client_id_mismatch", expected: codeData.clientId },
+        });
         return NextResponse.json(
           { error: "invalid_grant", error_description: "Client ID 不匹配" },
           { status: 400 }

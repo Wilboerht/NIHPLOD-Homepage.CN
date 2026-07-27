@@ -75,9 +75,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 构建响应：已登录用户正常登出，未登录用户仅清除 Cookie
+    const wasAuthenticated = !!user;
     const response = NextResponse.json({
       success: true,
-      data: { message: "已退出登录" },
+      data: {
+        message: "已退出登录",
+        wasAuthenticated,
+      },
     });
 
     // 清除所有认证相关的 Cookies

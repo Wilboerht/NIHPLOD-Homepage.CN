@@ -502,7 +502,7 @@ export async function cleanupExpiredRefreshTokens(): Promise<number> {
         expiresAt: { lt: new Date() },
       },
     });
-    console.log(`[CleanupExpiredRefreshTokens] 清理了 ${result.count} 个过期 token`);
+    apiConsole.info(`[CleanupExpiredRefreshTokens] 清理了 ${result.count} 个过期 token`);
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupExpiredRefreshTokens] 清理失败:", error);
@@ -523,7 +523,7 @@ export async function cleanupOldLoginAttempts(): Promise<number> {
         createdAt: { lt: sevenDaysAgo },
       },
     });
-    console.log(`[CleanupLoginAttempts] 清理了 ${result.count} 条陈旧登录记录`);
+    apiConsole.info(`[CleanupLoginAttempts] 清理了 ${result.count} 条陈旧登录记录`);
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupLoginAttempts] 清理失败:", error);
@@ -544,7 +544,7 @@ export async function cleanupExpiredSmsCodes(): Promise<number> {
         createdAt: { lt: sevenDaysAgo },
       },
     });
-    console.log(`[CleanupSmsCodes] 清理了 ${result.count} 条过期验证码记录`);
+    apiConsole.info(`[CleanupSmsCodes] 清理了 ${result.count} 条过期验证码记录`);
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupSmsCodes] 清理失败:", error);
