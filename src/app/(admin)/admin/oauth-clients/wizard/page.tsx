@@ -148,7 +148,7 @@ export default function OAuthWizardPage() {
 import { createTokenVerifier } from "@nihplod/sso-verify";
 
 const verifier = createTokenVerifier({
-  jwksUri: "${baseUrl}/api/oauth/jwks.json",
+  jwksUri: "${baseUrl}/api/oauth/jwks",
   audience: "${result.clientId || "YOUR_CLIENT_ID"}",
   issuer: "${baseUrl}",
   introspectionEndpoint: "${baseUrl}/api/oauth/introspect",
