@@ -200,11 +200,11 @@ export async function GET(request: NextRequest) {
     }
 
     // 8. 已登录 → 展示 consent 页
-    // 注意：searchParams.toString() 已自动进行 URL 编码，此处不重复 encodeURIComponent
+    // 将原始 OAuth 参数整体传给 consent 页，便于用户确认后 POST 回授权端点
     const consentUrl = new URL("/login", getPublicOrigin(request));
     consentUrl.searchParams.set("mode", "consent");
     consentUrl.searchParams.set("client_name", client.name);
-    consentUrl.searchParams.set("return_to", `/api/oauth/authorize?${searchParams.toString()}`);
+    consentUrl.searchParams.set("oauth_params", searchParams.toString());
 
     return NextResponse.redirect(consentUrl);
   } catch (error) {
