@@ -237,6 +237,16 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 - SDK 自动在过期前 60 秒静默刷新
 - 刷新使用互斥锁防止并发
 - refresh_token 采用原子轮换（旧 token 立即作废）
+- **Refresh Token 所有权校验**：OAuth 场景下 refresh token 会携带 `client_id` 与 `scope` 声明，
+  `/api/oauth/token` 在 refresh 流程中严格校验 token 归属的 client 与请求方一致，
+  防止子项目 A 的 refresh token 被拿到子项目 B 使用
+
+### 授权错误回传
+
+当 `/api/oauth/authorize` 已经识别出合法的 `client_id` + `redirect_uri`，
+但其他参数（scope、PKCE、state、response_type 等）校验失败时，
+SSO 中心不会直接返回 JSON 400，而是按 OAuth 2.0 规范 302 重定向到 `redirect_uri?error=...&error_description=...&state=...`。
+子项目回调处理必须同时检查 `code` 和 `error` 参数。
 
 ---
 
