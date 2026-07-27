@@ -21,6 +21,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
   getRefreshTokenExpiresAt,
+  getExpiresInFromToken,
   computeAtHash,
   type IdTokenClaims,
 } from "@/lib/jwt";
@@ -156,29 +157,57 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // PKCE 校验
-      if (codeData.codeChallenge) {
-        if (!code_verifier) {
-          return NextResponse.json(
-            { error: "invalid_grant", error_description: "Missing code_verifier" },
-            { status: 400 }
-          );
-        }
-        if (!verifyPKCE(code_verifier, codeData.codeChallenge, codeData.codeChallengeMethod || "S256")) {
-          recordSsoEvent({
-            event: "token",
-            userId: codeData.userId,
-            clientId: client_id,
-            clientName: client.name,
-            ip,
-            success: false,
-            detail: { grant_type, reason: "pkce_failed" },
-          });
-          return NextResponse.json(
-            { error: "invalid_grant", error_description: "Invalid code_verifier" },
-            { status: 400 }
-          );
-        }
+      // RFC 6749 §4.1.3: token 端点必须校验 redirect_uri 与授权请求一致
+      const redirect_uri = body.redirect_uri;
+      if (!redirect_uri) {
+        return NextResponse.json(
+          { error: "invalid_grant", error_description: "缺少 redirect_uri" },
+          { status: 400 }
+        );
+      }
+      if (redirect_uri !== codeData.redirectUri) {
+        recordSsoEvent({
+          event: "token",
+          userId: codeData.userId,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "redirect_uri_mismatch", expected: codeData.redirectUri, got: redirect_uri },
+        });
+        return NextResponse.json(
+          { error: "invalid_grant", error_description: "redirect_uri 与授权请求不一致" },
+          { status: 400 }
+        );
+      }
+
+      // PKCE 校验（强制）
+      if (!codeData.codeChallenge) {
+        return NextResponse.json(
+          { error: "invalid_grant", error_description: "Authorization code was issued without PKCE" },
+          { status: 400 }
+        );
+      }
+      if (!code_verifier) {
+        return NextResponse.json(
+          { error: "invalid_grant", error_description: "Missing code_verifier" },
+          { status: 400 }
+        );
+      }
+      if (!verifyPKCE(code_verifier, codeData.codeChallenge, codeData.codeChallengeMethod || "S256")) {
+        recordSsoEvent({
+          event: "token",
+          userId: codeData.userId,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "pkce_failed" },
+        });
+        return NextResponse.json(
+          { error: "invalid_grant", error_description: "Invalid code_verifier" },
+          { status: 400 }
+        );
       }
 
       // 查询用户信息
@@ -266,11 +295,15 @@ export async function POST(request: NextRequest) {
       // 记录登录尝试（OAuth 授权码登录）
       await recordLoginAttempt(user.phone, true, request, undefined, "oauth", user.id, client_id);
 
+      const expiresIn = getExpiresInFromToken(accessToken) ?? ACCESS_TOKEN_EXPIRES_IN;
+
       return NextResponse.json({
         access_token: accessToken,
         token_type: "Bearer",
-        expires_in: ACCESS_TOKEN_EXPIRES_IN, // 15 分钟
+        expires_in: expiresIn,
         refresh_token: refreshToken,
+        refresh_expires_in: 30 * 24 * 60 * 60,
+        scope: scopeStr,
         id_token: idToken,
       });
     }
@@ -295,9 +328,18 @@ export async function POST(request: NextRequest) {
       }
 
       // 签发新的 Access Token（OAuth 类型）
-      // 注意：refresh token 不携带 scope/client_id，需要从 OAuthSession 获取
+      // 注意：refresh token 不携带 scope/client_id，需要从 OAuthSession 获取。
+      // 按 client_id + userId 过滤，取最近未过期未撤销的会话 scope。
+      // 若该用户从未通过当前 client 创建过有效 OAuthSession（如旧版本 token），
+      // 回退到 "openid"（最小权限原则）。
+      const now = new Date();
       const session = await prisma.oAuthSession.findFirst({
-        where: { userId: refreshPayload.id, clientId: client_id, revokedAt: null },
+        where: {
+          userId: refreshPayload.id,
+          clientId: client_id,
+          revokedAt: null,
+          expiresAt: { gt: now },
+        },
         orderBy: { createdAt: "desc" },
       });
 
@@ -379,11 +421,16 @@ export async function POST(request: NextRequest) {
         detail: { grant_type: "refresh_token" },
       });
 
+      const refreshExpiresIn = 30 * 24 * 60 * 60;
+      const newExpiresIn = getExpiresInFromToken(newAccessToken) ?? ACCESS_TOKEN_EXPIRES_IN;
+
       return NextResponse.json({
         access_token: newAccessToken,
         token_type: "Bearer",
-        expires_in: ACCESS_TOKEN_EXPIRES_IN,
+        expires_in: newExpiresIn,
         refresh_token: newRefreshToken,
+        refresh_expires_in: refreshExpiresIn,
+        scope: scopeStr,
         id_token: idToken,
       });
     }

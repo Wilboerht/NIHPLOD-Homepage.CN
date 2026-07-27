@@ -11,8 +11,61 @@ import { createOAuthClient, listOAuthClients } from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+/** 为每个 client 填充使用统计（容错：聚合查询失败时返回 0/null 而非 500） */
+async function enrichClientsWithStats(
+  clients: Awaited<ReturnType<typeof listOAuthClients>>["clients"]
+) {
+  const clientIds = clients.map((c) => c.clientId);
+
+  if (clientIds.length === 0) return clients;
+
+  let sessionMap = new Map<string, number>();
+  let activityMap = new Map<string, string | null>();
+
+  // 聚合每个 client 的活跃用户数（有效 session 数）
+  try {
+    const sessionCounts = await prisma.oAuthSession.groupBy({
+      by: ["clientId"],
+      where: {
+        clientId: { in: clientIds },
+        revokedAt: null,
+      },
+      _count: { userId: true },
+    });
+    sessionMap = new Map(
+      sessionCounts.map((s) => [s.clientId, s._count.userId])
+    );
+  } catch (err) {
+    apiConsole.warn("[enrichClientsWithStats] 活跃用户统计查询失败，返回 0:", err);
+  }
+
+  // 聚合每个 client 的最近活跃时间
+  try {
+    const lastActivities = await prisma.ssoAuditEvent.groupBy({
+      by: ["clientId"],
+      where: {
+        clientId: { in: clientIds },
+        success: true,
+      },
+      _max: { createdAt: true },
+    });
+    activityMap = new Map(
+      lastActivities.map((a) => [a.clientId!, a._max.createdAt?.toISOString() || null])
+    );
+  } catch (err) {
+    apiConsole.warn("[enrichClientsWithStats] 最近活跃时间查询失败，返回 null:", err);
+  }
+
+  return clients.map((c) => ({
+    ...c,
+    activeUserCount: sessionMap.get(c.clientId) || 0,
+    lastActiveAt: activityMap.get(c.clientId) || null,
+  }));
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,10 +90,13 @@ export async function GET(request: NextRequest) {
 
     const result = await listOAuthClients({ page, pageSize });
 
+    // 填充使用统计
+    const enrichedClients = await enrichClientsWithStats(result.clients);
+
     return NextResponse.json({
       success: true,
       data: {
-        clients: result.clients,
+        clients: enrichedClients,
         pagination: { page, pageSize, total: result.total },
       },
     });

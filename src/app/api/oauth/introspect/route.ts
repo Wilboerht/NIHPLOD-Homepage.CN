@@ -89,6 +89,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ active: false });
     }
 
+    // Audience 校验：client 只能 introspect 颁发给自己的 token
+    if (payload.client_id !== client_id) {
+      recordSsoEvent({
+        event: "introspect",
+        userId: payload.id,
+        clientId: client_id,
+        clientName: client.name,
+        ip,
+        success: false,
+        detail: { active: false, reason: "audience_mismatch", tokenAudience: payload.client_id },
+      });
+      return NextResponse.json({ active: false });
+    }
+
     // 检查黑名单
     const blacklisted = isTokenBlacklisted(payload.id);
     if (blacklisted) {
@@ -116,10 +130,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       active: true,
+      token_type: "Bearer",
       sub: payload.id,
       client_id: payload.client_id,
       scope: payload.scope || "openid",
       exp: payload.exp,
+      iat: payload.iat,
+      iss: process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn",
     });
   } catch (error) {
     apiConsole.error("[OAuth Introspect] 异常:", error);

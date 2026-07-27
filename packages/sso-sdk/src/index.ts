@@ -1,63 +1,38 @@
 /**
- * @nihplod/sso-sdk
+ * @nihplod/sso-sdk 核心入口
  *
- * NIHPLOD 一网通 SSO Node.js SDK
- *
- * 提供完整的 OAuth 2.0 客户端功能，供子项目后端集成 SSO。
- *
- * 安装：npm install @nihplod/sso-sdk
- *
- * 使用：
- * ```typescript
- * import { OAuth2Client } from "@nihplod/sso-sdk";
- *
- * const sso = new OAuth2Client({
- *   clientId: "advisor",
- *   clientSecret: "your-secret",
- *   redirectUri: "https://advisor.nihplod.cn/callback",
- *   providerUrl: "https://nihplod.cn",
- * });
- *
- * // 步骤 1: 生成授权 URL
- * const { url, codeVerifier, state } = sso.getAuthorizationUrl({
- *   scope: "openid profile phone",
- * });
- *
- * // 步骤 2: 处理回调
- * const tokens = await sso.handleCallback({ code, codeVerifier, expectedState: state });
- *
- * // 步骤 3: 获取用户信息
- * const user = await sso.getUserInfo();
- *
- * // 步骤 4: 登出
- * await sso.logout();
- * ```
+ * 导出 SsoClient、PKCE 工具、存储层和错误类。
+ * 无框架依赖，可在任何 JavaScript/TypeScript 项目中使用。
  */
 
-// Core
-export { OAuth2Client } from "./client";
-export type {
-  OAuth2ClientConfig,
-  AuthorizationUrlParams,
-  AuthorizationUrlResult,
-  CallbackParams,
-  TokenResponse,
-  UserInfo,
-} from "./client";
+export { SsoClient } from "./core/SsoClient";
+export type { SsoClientConfig, SsoUser, TokenResponse, OidcDiscovery } from "./core/SsoClient";
 
-// Token Store
 export {
-  InMemoryTokenStore,
-  FileTokenStore,
-  RefreshMutex,
-  AutoRefreshManager,
-} from "./token-store";
-export type { TokenData, TokenStore, AutoRefreshOptions } from "./token-store";
+  generateCodeVerifier,
+  generateCodeChallenge,
+  generateState,
+} from "./core/pkce";
 
-// Events
-export { SsoEventEmitter } from "./events";
-export type { SsoSdkEvents } from "./events";
+export {
+  setTokenStorage,
+  getTokenStorage,
+  saveTokenData,
+  getTokenData,
+  removeTokenData,
+  savePkceVerifier,
+  getPkceVerifier,
+  removePkceVerifier,
+  saveOAuthState,
+  getOAuthState,
+  removeOAuthState,
+  saveReturnUrl,
+  getReturnUrl,
+  removeReturnUrl,
+  clearAllSsoData,
+  clearVerifiersForClients,
+} from "./core/storage";
+export type { TokenData, TokenStorage } from "./core/storage";
 
-// Degradation
-export { DegradationManager } from "./degradation";
-export type { DegradationCacheEntry, DegradationOptions } from "./degradation";
+export { SsoError, OAuthError } from "./core/errors";
+export type { SsoErrorCode, OAuthErrorCode } from "./core/errors";

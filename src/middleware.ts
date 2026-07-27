@@ -61,9 +61,52 @@ function matchesPath(pathname: string, paths: string[]): boolean {
   return paths.some((path) => pathname.startsWith(path));
 }
 
+// ================= CORS 配置 =================
+
+/** OAuth 路径前缀（需要跨域支持） */
+const OAUTH_PATH_PREFIXES = [
+  "/api/oauth/",
+  "/.well-known/",
+];
+
+/**
+ * 为 OAuth 端点添加 CORS 响应头
+ *
+ * 允许已注册子项目的 origin 进行跨域请求。
+ * 由于中间件在 Edge Runtime 运行，无法实时查询数据库，
+ * 此处回显请求的 origin（token/userinfo 端点自身已通过
+ * client_secret / Bearer token 进行身份认证）。
+ * 仅在 origin 为 null 时回退为 "*"。
+ */
+function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
+  response.headers.set("Access-Control-Allow-Origin", origin || "*");
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, OPTIONS"
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+  response.headers.set("Access-Control-Max-Age", "86400");
+  // 当回显具体 origin 时，允许携带凭据
+  if (origin) {
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+  }
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, origin: requestOrigin } = request.nextUrl;
   const method = request.method;
+  const origin = request.headers.get("origin");
+
+  // CORS 预检：对 OAuth 路径的 OPTIONS 请求直接返回 204
+  const isOAuthPath = matchesPath(pathname, OAUTH_PATH_PREFIXES);
+  if (method === "OPTIONS" && isOAuthPath) {
+    const corsResponse = new NextResponse(null, { status: 204 });
+    return addCorsHeaders(corsResponse, origin);
+  }
 
   if (process.env.NODE_ENV !== "production") {
     console.log(
@@ -113,6 +156,11 @@ export async function middleware(request: NextRequest) {
     if (matchesPath(pathname, PAYMENT_CALLBACK_PATHS) && method !== "POST") {
       console.warn(`[Middleware] 支付回调 ${pathname} 收到非 POST 请求 (${method})，已拦截`);
       return new NextResponse("Method Not Allowed", { status: 405 });
+    }
+    // 对 OAuth 路径添加 CORS 响应头
+    if (matchesPath(pathname, OAUTH_PATH_PREFIXES)) {
+      const response = NextResponse.next();
+      return addCorsHeaders(response, origin);
     }
     return NextResponse.next();
   }

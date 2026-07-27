@@ -3,6 +3,7 @@
  * POST /api/oauth/introspect (RFC 7662)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
 // === Mock ratelimit ===
 vi.mock("@/lib/ratelimit", () => ({
@@ -13,6 +14,12 @@ vi.mock("@/lib/ratelimit", () => ({
 // === Mock oauth-client ===
 vi.mock("@/lib/oauth-client", () => ({
   verifyOAuthClientSecret: vi.fn(),
+}));
+
+// === Mock jwt ===
+const mockVerifyOAuthAccessToken = vi.fn();
+vi.mock("@/lib/jwt", () => ({
+  verifyOAuthAccessToken: (...args: unknown[]) => mockVerifyOAuthAccessToken(...args),
 }));
 
 // === Mock sso-audit ===
@@ -44,7 +51,7 @@ describe("POST /api/oauth/introspect", () => {
 
   it("缺少 client_id 应返回 401", async () => {
     const req = createFormBody({ token: "some-token" });
-    const res = await POST(req as unknown as Request);
+    const res = await POST(req as unknown as NextRequest);
     expect(res.status).toBe(401);
   });
 
@@ -55,7 +62,7 @@ describe("POST /api/oauth/introspect", () => {
       client_id: "bad-client",
       client_secret: "wrong",
     });
-    const res = await POST(req as unknown as Request);
+    const res = await POST(req as unknown as NextRequest);
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error).toBe("invalid_client");
@@ -68,14 +75,68 @@ describe("POST /api/oauth/introspect", () => {
       scopes: ["openid"], isActive: true,
       backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
     });
+    mockVerifyOAuthAccessToken.mockResolvedValue(null);
     const req = createFormBody({
       token: "invalid-token",
       client_id: "test-client",
       client_secret: "secret",
     });
-    const res = await POST(req as unknown as Request);
+    const res = await POST(req as unknown as NextRequest);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.active).toBe(false);
+  });
+
+  it("audience 不匹配应返回 active: false", async () => {
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
+      id: "1", clientId: "test-client", name: "Test",
+      redirectUris: ["https://example.com/cb"],
+      scopes: ["openid"], isActive: true,
+      backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "other-client",
+      scope: "openid profile",
+      exp: Math.floor(Date.now() / 1000) + 900,
+    } as unknown as Awaited<ReturnType<typeof import("@/lib/jwt").verifyOAuthAccessToken>>);
+    const req = createFormBody({
+      token: "valid-token-for-other-client",
+      client_id: "test-client",
+      client_secret: "secret",
+    });
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.active).toBe(false);
+  });
+
+  it("token 有效且 audience 匹配应返回完整 introspection", async () => {
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
+      id: "1", clientId: "test-client", name: "Test",
+      redirectUris: ["https://example.com/cb"],
+      scopes: ["openid"], isActive: true,
+      backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+    const now = Math.floor(Date.now() / 1000);
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile",
+      exp: now + 900,
+      iat: now,
+    } as unknown as Awaited<ReturnType<typeof import("@/lib/jwt").verifyOAuthAccessToken>>);
+    const req = createFormBody({
+      token: "valid-token",
+      client_id: "test-client",
+      client_secret: "secret",
+    });
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.active).toBe(true);
+    expect(body.token_type).toBe("Bearer");
+    expect(body.client_id).toBe("test-client");
+    expect(body.scope).toBe("openid profile");
   });
 });

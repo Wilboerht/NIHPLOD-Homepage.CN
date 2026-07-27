@@ -50,26 +50,44 @@ function validClient() {
   };
 }
 
+// 有效的 PKCE code_challenge（43 字符 base64url）
+const VALID_CODE_CHALLENGE = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+const VALID_STATE = "abc123xyz789";
+
+function buildAuthorizeUrl(extra: Record<string, string> = {}) {
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: "test-client",
+    redirect_uri: "https://example.com/cb",
+    scope: "openid",
+    state: VALID_STATE,
+    code_challenge: VALID_CODE_CHALLENGE,
+    code_challenge_method: "S256",
+    ...extra,
+  });
+  return `http://localhost/api/oauth/authorize?${params.toString()}`;
+}
+
 describe("GET /api/oauth/authorize", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("缺少 response_type 应返回 400", async () => {
-    const req = new NextRequest("http://localhost/api/oauth/authorize?client_id=test&redirect_uri=https://example.com/cb&scope=openid");
+    const req = new NextRequest("http://localhost/api/oauth/authorize?client_id=test&redirect_uri=https://example.com/cb&scope=openid&state=abc123&code_challenge=aaa&code_challenge_method=S256");
     const res = await GET(req);
     expect(res.status).toBe(400);
   });
 
   it("response_type 不为 code 应返回 400", async () => {
-    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=token&client_id=test&redirect_uri=https://example.com/cb&scope=openid");
+    const req = new NextRequest(buildAuthorizeUrl({ response_type: "token" }));
     const res = await GET(req);
     expect(res.status).toBe(400);
   });
 
   it("client 不存在应返回 400", async () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(null);
-    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=code&client_id=nonexistent&redirect_uri=https://example.com/cb&scope=openid");
+    const req = new NextRequest(`http://localhost/api/oauth/authorize?response_type=code&client_id=nonexistent&redirect_uri=https://example.com/cb&scope=openid&state=${VALID_STATE}&code_challenge=${VALID_CODE_CHALLENGE}&code_challenge_method=S256`);
     const res = await GET(req);
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -78,7 +96,7 @@ describe("GET /api/oauth/authorize", () => {
 
   it("redirect_uri 不在允许列表应返回 400", async () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
-    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=code&client_id=test-client&redirect_uri=https://evil.com/cb&scope=openid");
+    const req = new NextRequest(buildAuthorizeUrl({ redirect_uri: "https://evil.com/cb" }));
     const res = await GET(req);
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -90,7 +108,7 @@ describe("GET /api/oauth/authorize", () => {
       ...validClient(),
       scopes: ["openid"],
     });
-    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=code&client_id=test-client&redirect_uri=https://example.com/cb&scope=openid%20admin");
+    const req = new NextRequest(buildAuthorizeUrl({ scope: "openid admin" }));
     const res = await GET(req);
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -99,7 +117,26 @@ describe("GET /api/oauth/authorize", () => {
 
   it("PKCE method 不为 S256 应返回 400", async () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
-    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=code&client_id=test-client&redirect_uri=https://example.com/cb&scope=openid&code_challenge=abc&code_challenge_method=plain");
+    const req = new NextRequest(buildAuthorizeUrl({ code_challenge_method: "plain" }));
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_request");
+  });
+
+  it("缺少 code_challenge 应返回 400", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=code&client_id=test-client&redirect_uri=https://example.com/cb&scope=openid&state=abc123xyz789&code_challenge_method=S256");
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_request");
+    expect(body.error_description).toContain("code_challenge");
+  });
+
+  it("缺少 state 应返回 400", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const req = new NextRequest("http://localhost/api/oauth/authorize?response_type=code&client_id=test-client&redirect_uri=https://example.com/cb&scope=openid&code_challenge=aaa&code_challenge_method=S256");
     const res = await GET(req);
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -127,6 +164,9 @@ describe("POST /api/oauth/authorize", () => {
         client_id: "test",
         redirect_uri: "https://example.com/cb",
         scope: "openid",
+        state: VALID_STATE,
+        code_challenge: VALID_CODE_CHALLENGE,
+        code_challenge_method: "S256",
       }),
     });
     const res = await POST(req);

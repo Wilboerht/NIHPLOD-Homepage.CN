@@ -15,8 +15,9 @@
  * - 验证时校验 type 与 audience
  */
 import { createHash } from "crypto";
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, importPKCS8, importSPKI } from "jose";
 import { LRUCache } from "lru-cache";
+import { isAccessTokenRevoked } from "./token-blacklist";
 import type { AdminJWTPayload, UserJWTPayload, RefreshTokenPayload, OAuthAccessTokenPayload, AdminRole } from "@/types/auth";
 
 const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
@@ -57,6 +58,31 @@ const idTokenSecret = new TextEncoder().encode(
 const logoutSecret = new TextEncoder().encode(
   validateSecret("JWT_LOGOUT_SECRET", process.env.JWT_LOGOUT_SECRET)
 );
+
+// ============================================
+// OAuth Access Token RS256 迁移支持（可选）
+// ============================================
+
+let cachedAccessPrivateKey: CryptoKey | null = null;
+let cachedAccessPublicKey: CryptoKey | null = null;
+
+function hasRS256AccessKeys(): boolean {
+  return Boolean(process.env.JWT_ACCESS_PRIVATE_KEY && process.env.JWT_ACCESS_PUBLIC_KEY);
+}
+
+async function getAccessPrivateKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_ACCESS_PRIVATE_KEY) return null;
+  if (cachedAccessPrivateKey) return cachedAccessPrivateKey;
+  cachedAccessPrivateKey = await importPKCS8(process.env.JWT_ACCESS_PRIVATE_KEY, "RS256");
+  return cachedAccessPrivateKey;
+}
+
+export async function getAccessPublicKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_ACCESS_PUBLIC_KEY) return null;
+  if (cachedAccessPublicKey) return cachedAccessPublicKey;
+  cachedAccessPublicKey = await importSPKI(process.env.JWT_ACCESS_PUBLIC_KEY, "RS256");
+  return cachedAccessPublicKey;
+}
 
 // JWT 过期时间
 const adminExpiresInRaw = process.env.JWT_EXPIRES_IN || "1d";
@@ -472,22 +498,28 @@ export async function signOAuthAccessToken(payload: {
   clientId: string;
   scope: string;
 }): Promise<string> {
-  const token = await new SignJWT({
+  const jwt = new SignJWT({
     id: payload.id,
     phone: payload.phone,
     client_id: payload.clientId,
     scope: payload.scope,
     type: "access_token" as const,
   })
-    .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience(payload.clientId)
     .setJti(crypto.randomUUID())
-    .setExpirationTime(accessTokenExpiresIn)
-    .sign(encodeSecret(accessSecret));
+    .setExpirationTime(accessTokenExpiresIn);
 
-  return token;
+  // 若配置了 RS256 密钥对，优先使用非对称签名；否则回退 HS256
+  const rs256PrivateKey = await getAccessPrivateKey();
+  if (rs256PrivateKey) {
+    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT" });
+    return jwt.sign(rs256PrivateKey);
+  }
+
+  jwt.setProtectedHeader({ alg: "HS256" });
+  return jwt.sign(encodeSecret(accessSecret));
 }
 
 /**
@@ -506,17 +538,41 @@ export async function verifyOAuthAccessToken(
   expectedClientId?: string
 ): Promise<OAuthAccessTokenPayload | null> {
   try {
-    const verifyOptions: { issuer: string; audience?: string } = {
+    const verifyOptions: { issuer: string; audience?: string; algorithms?: string[] } = {
       issuer: ISSUER,
+      algorithms: ["HS256", "RS256"],
     };
     // 仅当调用方明确传入 expectedClientId 时才校验 audience
     // userinfo/introspect 等通用端点不需要限制 audience
     if (expectedClientId) {
       verifyOptions.audience = expectedClientId;
     }
-    const { payload } = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);
+
+    // 优先尝试 RS256 公钥验证（若已配置）
+    const publicKey = await getAccessPublicKey();
+    let payload: import("jose").JWTPayload;
+
+    if (publicKey) {
+      try {
+        const result = await jwtVerify(token, publicKey, verifyOptions);
+        payload = result.payload;
+      } catch {
+        // RS256 验证失败，尝试 HS256（兼容旧 token）
+        const result = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);
+        payload = result.payload;
+      }
+    } else {
+      const result = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);
+      payload = result.payload;
+    }
+
     const t = (payload as { type?: string }).type;
     if (t !== "access_token") {
+      return null;
+    }
+    // RFC 7009 access_token 撤销检查
+    const jti = (payload as { jti?: string }).jti;
+    if (jti && isAccessTokenRevoked(jti)) {
       return null;
     }
     return payload as unknown as OAuthAccessTokenPayload;
@@ -531,6 +587,25 @@ export async function verifyOAuthAccessToken(
  */
 export function getTokenExpiresAt(minutes: number = 15): number {
   return Math.floor(Date.now() / 1000) + minutes * 60;
+}
+
+/**
+ * 从已签发的 JWT 计算 `expires_in`（剩余秒数）
+ * 不验证签名，仅解码 payload 中的 exp claim。
+ */
+export function getExpiresInFromToken(token: string): number | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(
+      Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
+    ) as { exp?: number };
+    if (!payload.exp || typeof payload.exp !== "number") return null;
+    const remaining = payload.exp - Math.floor(Date.now() / 1000);
+    return Math.max(0, remaining);
+  } catch {
+    return null;
+  }
 }
 
 /**

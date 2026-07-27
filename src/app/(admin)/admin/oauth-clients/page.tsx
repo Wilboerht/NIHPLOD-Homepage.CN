@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Power, Copy, EyeOff, RotateCw } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Copy, EyeOff, RotateCw, Code, Users, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -21,6 +21,8 @@ interface OAuthClient {
   backchannelLogoutUri: string | null;
   createdAt: string;
   updatedAt: string;
+  activeUserCount?: number;
+  lastActiveAt?: string | null;
 }
 
 interface ClientsResponse {
@@ -60,6 +62,10 @@ export default function OAuthClientsPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [editClient, setEditClient] = useState<OAuthClient | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Rotate secret confirm modal
+  const [showRotateConfirm, setShowRotateConfirm] = useState(false);
+  const [rotateClientId, setRotateClientId] = useState<string | null>(null);
 
   // Form
   const [formName, setFormName] = useState("");
@@ -170,12 +176,12 @@ export default function OAuthClientsPage() {
     }
   };
 
-  const handleRotateSecret = async (clientId: string) => {
-    if (!confirm("确定要轮换该 Client 的密钥？轮换后旧密钥将在 5 分钟内失效。")) return;
+  const handleRotateSecret = async () => {
+    if (!rotateClientId) return;
     setSaving(true);
     try {
       const data = await apiPost<{ plainSecret: string }>(
-        `/api/admin/oauth-clients/${clientId}/rotate-secret`,
+        `/api/admin/oauth-clients/${rotateClientId}/rotate-secret`,
         { confirm: true }
       );
       setNewSecret(data.plainSecret);
@@ -185,6 +191,8 @@ export default function OAuthClientsPage() {
       toast.error("密钥轮换失败");
     } finally {
       setSaving(false);
+      setShowRotateConfirm(false);
+      setRotateClientId(null);
     }
   };
 
@@ -215,6 +223,28 @@ export default function OAuthClientsPage() {
     });
   };
 
+  const generateSdkConfig = (client: OAuthClient) => {
+    const primaryUri = client.redirectUris[0] || "https://your-app.com/callback";
+    const configCode = `import { SsoClient } from "@nihplod/sso-sdk";
+
+const ssoClient = new SsoClient({
+  clientId: "${client.clientId}",
+  redirectUri: "${primaryUri}",
+  ssoBaseUrl: "${typeof window !== "undefined" ? window.location.origin : ""}",
+  scopes: "${client.scopes.join(" ")}",
+});
+
+// React 集成:
+// import { SsoProvider } from "@nihplod/sso-sdk/react";
+// <SsoProvider config={{ clientId: "${client.clientId}", redirectUri: "${primaryUri}", ssoBaseUrl: window.location.origin, scopes: "${client.scopes.join(" ")}" }}>
+//   <App />
+// </SsoProvider>`;
+    return configCode;
+  };
+
+  const [showSdkConfig, setShowSdkConfig] = useState(false);
+  const [sdkConfigCode, setSdkConfigCode] = useState("");
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -240,6 +270,8 @@ export default function OAuthClientsPage() {
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Client ID</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">回调 URL</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Scopes</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">活跃用户</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">最近活跃</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">状态</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">创建时间</th>
               <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">操作</th>
@@ -248,11 +280,11 @@ export default function OAuthClientsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">加载中...</td>
+                <td colSpan={9} className="text-center py-8 text-gray-500">加载中...</td>
               </tr>
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">暂无数据</td>
+                <td colSpan={9} className="text-center py-8 text-gray-500">暂无数据</td>
               </tr>
             ) : (
               clients.map((c) => (
@@ -269,6 +301,18 @@ export default function OAuthClientsPage() {
                       ))}
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5" />
+                      {c.activeUserCount ?? "-"}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {c.lastActiveAt ? formatDate(c.lastActiveAt) : "-"}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant={c.isActive ? "success" : "danger"}>
                       {c.isActive ? "启用" : "禁用"}
@@ -278,6 +322,16 @@ export default function OAuthClientsPage() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
+                        onClick={() => {
+                          setSdkConfigCode(generateSdkConfig(c));
+                          setShowSdkConfig(true);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-green-600 rounded"
+                        title="生成接入配置"
+                      >
+                        <Code className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => openEdit(c)}
                         className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
                         title="编辑"
@@ -285,7 +339,7 @@ export default function OAuthClientsPage() {
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleRotateSecret(c.id)}
+                        onClick={() => { setRotateClientId(c.id); setShowRotateConfirm(true); }}
                         className="p-1.5 text-gray-400 hover:text-purple-600 rounded"
                         title="轮换密钥"
                       >
@@ -431,6 +485,16 @@ export default function OAuthClientsPage() {
         </div>
       </Modal>
 
+      {/* Rotate Secret Confirm */}
+      <ConfirmDialog
+        open={showRotateConfirm}
+        onClose={() => { setShowRotateConfirm(false); setRotateClientId(null); }}
+        onConfirm={handleRotateSecret}
+        title="轮换 Client 密钥"
+        description="确定要轮换该 Client 的密钥？轮换后旧密钥将在 5 分钟内失效，所有使用旧密钥的子项目需要立即更新配置。"
+        confirmText="确定轮换"
+      />
+
       {/* Delete Confirm */}
       <ConfirmDialog
         open={showDelete}
@@ -440,6 +504,45 @@ export default function OAuthClientsPage() {
         description="停用后该 Client 将无法发起授权请求，所有已签发的 Token 仍有效。确定停用？"
         confirmText="确定停用"
       />
+
+      {/* SDK Config Modal */}
+      <Modal
+        open={showSdkConfig}
+        onClose={() => setShowSdkConfig(false)}
+        title="接入配置代码"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            将以下代码复制到子项目中即可快速接入 SSO。详情请参考{" "}
+            <a
+              href="https://nihplod.cn/docs/sso-integration"
+              target="_blank"
+              className="text-blue-600 underline"
+              rel="noreferrer"
+            >
+              接入文档
+            </a>
+            。
+          </p>
+          <div className="relative">
+            <pre className="bg-gray-900 text-green-400 rounded-lg p-4 text-xs overflow-x-auto max-h-80">
+              <code>{sdkConfigCode}</code>
+            </pre>
+            <button
+              onClick={() => copyToClipboard(sdkConfigCode)}
+              className="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded"
+              title="复制代码"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowSdkConfig(false)}>
+              关闭
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

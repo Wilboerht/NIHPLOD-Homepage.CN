@@ -3,6 +3,7 @@
  * POST /api/oauth/token
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
 // === Mock Prisma（factory 内联，避免 hoisting 引用问题）===
 vi.mock("@/lib/prisma", () => ({
@@ -59,10 +60,20 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
+// === Mock oauth-code PKCE ===
+vi.mock("@/lib/oauth-code", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/oauth-code")>("@/lib/oauth-code");
+  return {
+    ...actual,
+    verifyPKCE: vi.fn().mockReturnValue(true),
+  };
+});
+
 import { POST } from "../token/route";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { atomicallyRotateRefreshToken } from "@/lib/auth-security";
 import { prisma } from "@/lib/prisma";
+import { verifyPKCE } from "@/lib/oauth-code";
 
 function createRequest(body: Record<string, string>, contentType = "application/json"): Request {
   return new Request("http://localhost/api/oauth/token", {
@@ -93,7 +104,7 @@ describe("POST /api/oauth/token", () => {
   describe("client 认证", () => {
     it("缺少 client_id 或 client_secret 应返回 401", async () => {
       const req = createRequest({ grant_type: "authorization_code" });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(401);
       const body = await res.json();
       expect(body.error).toBe("invalid_client");
@@ -106,7 +117,7 @@ describe("POST /api/oauth/token", () => {
         client_id: "bad-client",
         client_secret: "wrong-secret",
       });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(401);
       const body = await res.json();
       expect(body.error).toBe("invalid_client");
@@ -121,7 +132,7 @@ describe("POST /api/oauth/token", () => {
         client_id: "test-client",
         client_secret: "secret",
       });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
@@ -138,7 +149,7 @@ describe("POST /api/oauth/token", () => {
         client_secret: "secret",
         code: "used-code",
       });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
@@ -165,7 +176,7 @@ describe("POST /api/oauth/token", () => {
         client_secret: "secret",
         code: "expired-code",
       });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
@@ -195,7 +206,64 @@ describe("POST /api/oauth/token", () => {
         client_secret: "secret",
         code: "code",
       });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+    });
+
+    it("缺少 redirect_uri 应返回 400", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+        expiresAt: new Date(Date.now() + 60000),
+      });
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "code",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+    });
+
+    it("redirect_uri 与授权请求不一致应返回 400", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+        expiresAt: new Date(Date.now() + 60000),
+      });
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "code",
+        redirect_uri: "https://evil.com/cb",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
@@ -221,12 +289,43 @@ describe("POST /api/oauth/token", () => {
         client_id: "test-client",
         client_secret: "secret",
         code: "code",
+        redirect_uri: "https://example.com/cb",
         // 缺少 code_verifier
       });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
+    });
+
+    it("授权码未携带 PKCE 应返回 400", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
+        codeChallenge: null,
+        codeChallengeMethod: null,
+        expiresAt: new Date(Date.now() + 60000),
+      });
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "code",
+        redirect_uri: "https://example.com/cb",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      expect(body.error_description).toContain("PKCE");
     });
   });
 
@@ -238,7 +337,7 @@ describe("POST /api/oauth/token", () => {
         client_id: "test-client",
         client_secret: "secret",
       });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
@@ -253,7 +352,7 @@ describe("POST /api/oauth/token", () => {
         client_secret: "secret",
         refresh_token: "invalid-token",
       });
-      const res = await POST(req as unknown as Request);
+      const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
@@ -267,7 +366,7 @@ describe("POST /api/oauth/token", () => {
       client_id: "test-client",
       client_secret: "secret",
     });
-    const res = await POST(req as unknown as Request);
+    const res = await POST(req as unknown as NextRequest);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("unsupported_grant_type");

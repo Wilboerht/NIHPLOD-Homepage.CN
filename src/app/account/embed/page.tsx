@@ -75,14 +75,27 @@ export default function EmbedAccountPage() {
     }
   }, []);
 
+  const fetchSessions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/oauth/sessions");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setSessions(data.data);
+      }
+    } catch {
+      // 授权列表加载失败不阻断主流程
+    }
+  }, []);
+
   useEffect(() => {
     fetchProfile();
+    fetchSessions();
 
     // 通知父窗口 iframe 已加载完成
     if (window.parent !== window) {
       window.parent.postMessage({ type: "NIHPLOD_SSO_READY" }, APP_URL);
     }
-  }, [fetchProfile]);
+  }, [fetchProfile, fetchSessions]);
 
   const handleSaveNickname = async () => {
     setSaving(true);

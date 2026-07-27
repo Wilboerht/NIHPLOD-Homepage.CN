@@ -18,6 +18,12 @@ const blacklistCache = new LRUCache<string, { reason: string; timestamp: number 
   ttl: TOKEN_BLACKLIST_TTL_MS,
 });
 
+// 单条 access_token 撤销（RFC 7009 token revocation）
+const revokedTokenCache = new LRUCache<string, { revokedAt: number }>({
+  max: 10000,
+  ttl: TOKEN_BLACKLIST_TTL_MS,
+});
+
 /**
  * 将用户加入 access token 黑名单（封禁/冻结时调用）
  */
@@ -40,4 +46,19 @@ export function isTokenBlacklisted(userId: string): { reason: string } | null {
  */
 export function removeFromBlacklist(userId: string): void {
   blacklistCache.delete(userId);
+}
+
+/**
+ * 撤销单条 access_token（RFC 7009）
+ * key 为 token 的 jti claim
+ */
+export function revokeAccessToken(jti: string): void {
+  revokedTokenCache.set(jti, { revokedAt: Date.now() });
+}
+
+/**
+ * 检查 access_token 是否被撤销
+ */
+export function isAccessTokenRevoked(jti: string): boolean {
+  return revokedTokenCache.has(jti);
 }

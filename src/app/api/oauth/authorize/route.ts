@@ -29,9 +29,9 @@ const authorizeQuerySchema = z.object({
   client_id: z.string().min(1),
   redirect_uri: z.string().url().min(1),
   scope: z.string().min(1),
-  state: z.string().optional(),
-  code_challenge: z.string().optional(),
-  code_challenge_method: z.literal("S256").optional(),
+  state: z.string().min(8),
+  code_challenge: z.string().length(43),
+  code_challenge_method: z.literal("S256"),
 });
 
 export async function GET(request: NextRequest) {
@@ -56,14 +56,19 @@ export async function GET(request: NextRequest) {
       client_id: searchParams.get("client_id"),
       redirect_uri: searchParams.get("redirect_uri"),
       scope: searchParams.get("scope"),
-      state: searchParams.get("state") || undefined,
-      code_challenge: searchParams.get("code_challenge") || undefined,
-      code_challenge_method: searchParams.get("code_challenge_method") || undefined,
+      state: searchParams.get("state"),
+      code_challenge: searchParams.get("code_challenge"),
+      code_challenge_method: searchParams.get("code_challenge_method"),
     });
 
     if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
+      const field = firstIssue.path.join(".");
+      const description = field
+        ? `缺少或无效的参数: ${field}`
+        : "参数错误";
       return NextResponse.json(
-        { error: "invalid_request", error_description: "参数错误" },
+        { error: "invalid_request", error_description: description },
         { status: 400 }
       );
     }
@@ -88,6 +93,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. scope 校验
+    // 注意：openid 是 OIDC 核心 scope，所有 client 默认允许，无需在 client.scopes 中显式配置
     const requestedScopes = scope.split(" ").filter(Boolean);
     for (const s of requestedScopes) {
       if (!client.scopes.includes(s) && s !== "openid") {
@@ -104,10 +110,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 5. PKCE: 若传了 code_challenge 则必须传 code_challenge_method=S256
-    if (code_challenge && code_challenge_method !== "S256") {
+    // 5. PKCE: 强制要求 code_challenge + S256（OAuth 2.1 / 公共安全最佳实践）
+    if (!code_challenge || code_challenge_method !== "S256") {
       return NextResponse.json(
-        { error: "invalid_request", error_description: "code_challenge_method must be S256" },
+        { error: "invalid_request", error_description: "code_challenge (S256) is required" },
         { status: 400 }
       );
     }
@@ -136,12 +142,11 @@ export async function GET(request: NextRequest) {
     }
 
     // 8. 已登录 → 展示 consent 页
+    // 注意：searchParams.toString() 已自动进行 URL 编码，此处不重复 encodeURIComponent
     const consentUrl = new URL("/login", request.url);
     consentUrl.searchParams.set("mode", "consent");
     consentUrl.searchParams.set("client_name", client.name);
-    // 将所有 OAuth 参数编码传递
-    consentUrl.searchParams.set("oauth_params", encodeURIComponent(searchParams.toString()));
-    consentUrl.searchParams.set("return_to", encodeURIComponent(`/api/oauth/authorize?${searchParams.toString()}`));
+    consentUrl.searchParams.set("return_to", `/api/oauth/authorize?${searchParams.toString()}`);
 
     return NextResponse.redirect(consentUrl);
   } catch (error) {
@@ -159,9 +164,9 @@ const consentSchema = z.object({
   client_id: z.string().min(1),
   redirect_uri: z.string().url(),
   scope: z.string(),
-  state: z.string().optional(),
-  code_challenge: z.string().optional(),
-  code_challenge_method: z.literal("S256").optional(),
+  state: z.string().min(8),
+  code_challenge: z.string().length(43),
+  code_challenge_method: z.literal("S256"),
 });
 
 export async function POST(request: NextRequest) {
@@ -221,8 +226,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = consentSchema.safeParse(body);
     if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
+      const field = firstIssue.path.join(".");
+      const description = field
+        ? `缺少或无效的参数: ${field}`
+        : "参数错误";
       return NextResponse.json(
-        { error: "invalid_request", error_description: "参数错误" },
+        { error: "invalid_request", error_description: description },
         { status: 400 }
       );
     }
@@ -273,7 +283,15 @@ export async function POST(request: NextRequest) {
     // action === "approve"
     const requestedScopes = scope.split(" ").filter(Boolean);
 
-    // 校验 scope：拒绝超出 client 允许范围或系统不支持的 scope
+    // PKCE: 强制要求 code_challenge + S256
+    if (!code_challenge || code_challenge_method !== "S256") {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "code_challenge (S256) is required" },
+        { status: 400 }
+      );
+    }
+
+    // 校验 scope：openid 始终允许，拒绝超出 client 允许范围或系统不支持的 scope
     for (const s of requestedScopes) {
       if (!client.scopes.includes(s) && s !== "openid") {
         return NextResponse.json(

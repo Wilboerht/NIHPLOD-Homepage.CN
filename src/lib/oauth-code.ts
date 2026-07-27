@@ -144,6 +144,10 @@ export async function cleanupExpiredCodes(): Promise<number> {
 /**
  * 验证 PKCE code_verifier
  *
+ * RFC 7636:
+ * - code_verifier 长度 43-128 字符
+ * - code_challenge 长度 43 字符（S256 base64url 编码后的 SHA-256 输出）
+ *
  * @param codeVerifier - 客户端提交的原始 code_verifier
  * @param codeChallenge - 存储在授权码记录中的 code_challenge
  * @param method - code_challenge_method（仅支持 S256）
@@ -154,6 +158,16 @@ export function verifyPKCE(
   method: string = "S256"
 ): boolean {
   if (method !== "S256") {
+    return false;
+  }
+
+  // RFC 7636: code_verifier 长度 43-128 字符
+  if (codeVerifier.length < 43 || codeVerifier.length > 128) {
+    return false;
+  }
+
+  // RFC 7636: S256 code_challenge 应为 43 字符 base64url
+  if (codeChallenge.length !== 43) {
     return false;
   }
 

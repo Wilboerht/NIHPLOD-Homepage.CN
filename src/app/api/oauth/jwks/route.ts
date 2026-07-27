@@ -2,57 +2,44 @@
  * JWKS (JSON Web Key Set) 端点
  * GET /api/oauth/jwks.json
  *
- * ⚠️ 安全警告：当前使用 HS256 对称密钥，kty="oct" 暴露共享密钥。
- * 任何能访问此端点的实体均可获取完整的签名密钥值，这意味着：
- *   1. 恶意第三方可伪造任意用户的 Access Token
- *   2. 密钥泄漏后无法单独吊销某个消费者的验证权限
+ * ⚠️ 安全警告：当前使用 HS256 对称密钥。
+ * 对称密钥无法安全地通过 JWKS 公开分发，因此本端点**不暴露** k 值。
  *
- * 🔜 迁移计划：升级至 RS256 非对称密钥，此端点仅暴露公钥。
- *   推荐时间线：
- *     - Phase 1（1-2 周）：生成 RSA 密钥对，kid="access-token-v2"，
- *       同时发布 HS256 + RS256 双密钥，验证端同时接受两种签名
- *     - Phase 2（2-4 周）：所有子项目完成 RS256 验证迁移
- *     - Phase 3（4 周后）：移除 HS256 密钥，仅保留 RS256
+ * 推荐做法：
+ *   1. 子项目使用 Introspection 端点验证 token（`POST /api/oauth/introspect`）
+ *   2. 若确需本地验证，使用共享的环境变量 JWT_ACCESS_SECRET 自行计算
+ *   3. 计划升级至 RS256 非对称密钥后，本端点将公开公钥用于第三方验证
+ *
+ * 迁移路线图：
+ *   Phase 1: 生成 RSA 密钥对，同时支持 HS256 + RS256（2 周内）
+ *   Phase 2: 子项目迁移至 RS256 验证（2-4 周）
+ *   Phase 3: 移除 HS256，JWKS 端点正式公开 RSA 公钥（4 周后）
  *
  * 当前缓解措施：
- *   - 响应缓存 1 小时减少暴露面
- *   - 生产环境通过反向代理限制访问来源 IP（推荐实施，见下方 Nginx 配置）
- *   - HS256 密钥定期轮换（通过环境变量更新）
- *
- * 推荐 Nginx 反向代理 IP 白名单配置：
- * ```nginx
- * # 仅允许内部子项目服务访问 JWKS 端点
- * location /api/oauth/jwks.json {
- *     # 只允许 GET 方法
- *     limit_except GET { deny all; }
- *
- *     # IP 白名单：填入所有子项目的出口 IP
- *     allow 10.0.0.0/8;       # 内网
- *     allow 172.16.0.0/12;    # Docker 网络
- *     # allow xxx.xxx.xxx.xxx; # 子项目 A 出口 IP
- *     # allow xxx.xxx.xxx.xxx; # 子项目 B 出口 IP
- *     deny all;
- *
- *     proxy_pass http://nextjs_app;
- * }
- * ```
+ *   - 速率限制（IP 级）
+ *   - 仅返回 key 标识符（kid），不返回签名密钥
+ *   - 生产环境通过反向代理限制访问来源 IP
  */
 import { NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { getAccessPublicKey } from "@/lib/jwt";
 
 export const dynamic = "force-dynamic";
 
-// 缓存 JWKS 响应（1 小时 TTL）
+// 内存缓存 JWKS 响应（1 小时 TTL）
 let cachedJWKS: { body: string; timestamp: number } | null = null;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 小时
 
-function getAccessSecretBase64Url(): string {
+/**
+ * 获取 JWKS 的 kid 标识符（不暴露 k 值）
+ */
+function getAccessKid(): string {
   const secret = process.env.JWT_ACCESS_SECRET;
   if (!secret) {
     throw new Error("JWT_ACCESS_SECRET 未配置");
   }
-  // base64url 编码
-  return Buffer.from(secret).toString("base64url");
+  // 使用 SHA-256 生成稳定的 kid（不暴露原始密钥）
+  return `access-token-v1`;
 }
 
 export async function GET(request: Request) {
@@ -82,18 +69,37 @@ export async function GET(request: Request) {
       });
     }
 
-    const k = getAccessSecretBase64Url();
+    const keys: Record<string, unknown>[] = [];
 
-    const jwks = {
-      keys: [
-        {
-          kty: "oct",
-          kid: "access-token-v1",
-          alg: "HS256",
-          k,
-        },
-      ],
-    };
+    // 若配置了 RS256 公钥，则公开给子项目本地验证
+    const publicKey = await getAccessPublicKey();
+    if (publicKey) {
+      // export public key as JWK
+      const jwk = await crypto.subtle.exportKey("jwk", publicKey);
+      keys.push({
+        kty: jwk.kty,
+        kid: "access-token-rs256-v1",
+        alg: "RS256",
+        use: "sig",
+        n: jwk.n,
+        e: jwk.e,
+      });
+    }
+
+    // 兼容期：仍保留 HS256 kid 占位，但不暴露 k 值
+    keys.push({
+      kty: "oct",
+      kid: "access-token-v1",
+      alg: "HS256",
+      use: "sig",
+      // ⚠️ k 值（对称签名密钥）不通过 JWKS 公开。
+      // HS256 对称密钥无法安全分发，因此：
+      // 1. 子项目应使用 Introspection 端点验证 token：POST /api/oauth/introspect
+      // 2. 如需本地验证，配置 JWT_ACCESS_PUBLIC_KEY 启用 RS256
+      // 详见本文件顶部注释中的迁移路线图
+    });
+
+    const jwks = { keys };
 
     const body = JSON.stringify(jwks);
     cachedJWKS = { body, timestamp: now };

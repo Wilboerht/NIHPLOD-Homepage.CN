@@ -98,6 +98,8 @@ export const RATE_LIMIT_PRESETS = {
   "oauth-introspect": { maxRequests: 120, windowMs: 60 * 1000 },
   /** OAuth JWKS 端点 - 每分钟 60 次（公钥端点不宜过高） */
   "oauth-jwks": { maxRequests: 60, windowMs: 60 * 1000 },
+  /** OAuth Token Revocation 端点 - 每分钟 30 次 */
+  "oauth-revoke": { maxRequests: 30, windowMs: 60 * 1000 },
 } as const;
 
 /**

@@ -3,6 +3,7 @@
  * GET /api/oauth/userinfo
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
 // === Mock ratelimit ===
 vi.mock("@/lib/ratelimit", () => ({
@@ -36,7 +37,7 @@ describe("GET /api/oauth/userinfo", () => {
 
   it("缺少 Authorization header 应返回 401", async () => {
     const req = new Request("http://localhost/api/oauth/userinfo");
-    const res = await GET(req as unknown as Request);
+    const res = await GET(req as unknown as NextRequest);
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error).toBe("invalid_token");
@@ -46,7 +47,7 @@ describe("GET /api/oauth/userinfo", () => {
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Basic dGVzdDp0ZXN0" },
     });
-    const res = await GET(req as unknown as Request);
+    const res = await GET(req as unknown as NextRequest);
     expect(res.status).toBe(401);
   });
 
@@ -54,7 +55,7 @@ describe("GET /api/oauth/userinfo", () => {
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Bearer " },
     });
-    const res = await GET(req as unknown as Request);
+    const res = await GET(req as unknown as NextRequest);
     expect(res.status).toBe(401);
   });
 
@@ -62,7 +63,7 @@ describe("GET /api/oauth/userinfo", () => {
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Bearer invalid.token.here" },
     });
-    const res = await GET(req as unknown as Request);
+    const res = await GET(req as unknown as NextRequest);
     expect(res.status).toBe(401);
   });
 
@@ -74,7 +75,7 @@ describe("GET /api/oauth/userinfo", () => {
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0eXBlIjoiYWNjZXNzX3Rva2VuIiwiaWQiOiJ1c2VyLTEifQ.invalid" },
     });
-    const res = await GET(req as unknown as Request);
+    const res = await GET(req as unknown as NextRequest);
     // JWT 验证失败先于黑名单检查，返回 401
     expect(res.status).toBe(401);
   });

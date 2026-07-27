@@ -1,15 +1,26 @@
 {
   "name": "@nihplod/sso-sdk",
   "version": "1.0.0",
-  "description": "NIHPLOD 一网通 SSO Node.js SDK — 完整的 OAuth 2.0 客户端，含 Token 自动刷新、事件系统、降级策略",
+  "description": "NIHPLOD SSO 子项目接入 SDK — OAuth 2.0 授权码 + PKCE 客户端封装",
+  "license": "UNLICENSED",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.mjs",
+      "require": "./dist/react/index.js"
+    },
+    "./next": {
+      "types": "./dist/next/index.d.ts",
+      "import": "./dist/next/index.mjs",
+      "require": "./dist/next/index.js"
     }
   },
   "files": [
@@ -17,30 +28,35 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
-    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
-    "prepublishOnly": "npm run build"
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "next": ">=14",
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "tsup": "^8",
+    "typescript": "^5"
   },
   "keywords": [
     "sso",
     "oauth2",
-    "oidc",
     "pkce",
-    "token-management",
-    "nihplod"
-  ],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/nihplod/nihplod.cn",
-    "directory": "packages/sso-sdk"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
-  }
+    "oidc",
+    "single-sign-on",
+    "react"
+  ]
 }
