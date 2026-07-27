@@ -15,9 +15,9 @@ import { logError } from "@/lib/logger";
 // 更新等级权益 schema
 const updateBenefitSchema = z.object({
   level: z.enum(["SILVER", "GOLD", "DIAMOND"]),
-  name: z.string().min(1).optional(),
-  nameEn: z.string().optional(),
-  icon: z.string().optional(),
+  name: z.string().min(1).max(50).optional(),
+  nameEn: z.string().max(50).optional(),
+  icon: z.string().max(50).optional(),
   minPoints: z.number().int().min(0).optional(),
   maxPoints: z.number().int().min(0).nullable().optional(),
   pointRate: z.number().int().min(1).optional(),
@@ -33,7 +33,7 @@ const updateBenefitSchema = z.object({
 const adjustPointsSchema = z.object({
   userId: cuidSchema,
   points: z.number().int(),
-  note: z.string().min(1, "请填写调整原因"),
+  note: z.string().min(1, "请填写调整原因").max(200, "调整原因不能超过200个字符"),
 });
 
 export const dynamic = "force-dynamic";

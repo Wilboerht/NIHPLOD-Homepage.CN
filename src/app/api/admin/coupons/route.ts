@@ -8,7 +8,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 const createSchema = z
   .object({
-    name: z.string().min(1, "优惠券名称不能为空"),
+    name: z.string().min(1, "优惠券名称不能为空").max(50, "名称不能超过50个字符"),
     type: z.enum(["DISCOUNT_AMOUNT", "DISCOUNT_PERCENT"]),
     value: z.number().positive("优惠值必须为正数"),
     minAmount: z.number().min(0).default(0),

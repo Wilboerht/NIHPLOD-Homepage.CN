@@ -55,6 +55,7 @@ function sanitizeContext(context: LogContext): LogContext {
     "cardNumber",
     "cvv",
     "phone",
+    "email",
     "idCard",
     "cookie",
     "session",
@@ -148,13 +149,17 @@ function createLogger(module: string) {
 function serializeContext(context: LogContext): LogContext {
   const sanitized = sanitizeContext(context);
   const result: LogContext = {};
+  const isProduction = process.env.NODE_ENV === "production";
 
   for (const [key, value] of Object.entries(sanitized)) {
     if (value instanceof Error) {
       result[key] = {
         name: value.name,
         message: value.message,
-        stack: value.stack,
+        // 生产环境不记录完整堆栈，仅保留前 3 行（文件名+错误位置）
+        ...(isProduction
+          ? { stack: value.stack?.split("\n").slice(0, 3).join("\n") }
+          : { stack: value.stack }),
         cause: (value as { cause?: unknown }).cause,
       };
     } else {
@@ -219,12 +224,13 @@ export const apiConsole = {
   error: (...args: unknown[]) => {
     const msgParts: string[] = [];
     const context: LogContext = {};
+    const stackLines = process.env.NODE_ENV === "production" ? 3 : 5;
 
     for (const arg of args) {
       if (arg instanceof Error) {
         context.errorName = arg.name;
         context.errorMessage = arg.message;
-        context.stack = arg.stack?.split("\n").slice(0, 5).join("\n");
+        context.stack = arg.stack?.split("\n").slice(0, stackLines).join("\n");
       } else if (typeof arg === "object" && arg !== null && !Array.isArray(arg)) {
         // 合并纯对象到 context
         Object.assign(context, arg);
