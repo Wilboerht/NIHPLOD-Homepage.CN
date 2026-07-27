@@ -4,6 +4,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 const createSchema = z
   .object({

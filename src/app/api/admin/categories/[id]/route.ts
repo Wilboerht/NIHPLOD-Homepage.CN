@@ -6,6 +6,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 分类更新 Schema
 const CategoryUpdateSchema = z.object({
@@ -86,6 +87,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
 
     const { id } = await params;
     if (!validateCUID(id)) {
@@ -171,6 +176,10 @@ export async function DELETE(
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
 
     const { id } = await params;
 

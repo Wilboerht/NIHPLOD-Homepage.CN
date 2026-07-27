@@ -5,6 +5,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
+import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 职位类型
 const JOB_TYPES = ["fulltime", "parttime", "intern"] as const;
@@ -117,6 +119,10 @@ export async function POST(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const body = await request.json();
     const validated = CreateJobSchema.parse(body);
 
@@ -146,6 +152,16 @@ export async function POST(request: NextRequest) {
 
     // 清除前端缓存
     revalidatePath("/careers");
+
+    // 记录审计日志（非阻塞）
+    createAuditLog({
+      action: "create_job",
+      targetType: "job",
+      targetId: job.id,
+      detail: { title: job.title, type: job.type, location: job.location },
+      adminId: admin.id,
+      request,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

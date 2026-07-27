@@ -5,6 +5,7 @@ import { z } from "zod";
 import { logError } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 const updateSchema = z
   .object({
@@ -49,6 +50,10 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     const rateLimitResponse = await checkAdminRateLimit(req);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(req)) {
+      return csrfForbiddenResponse();
+    }
 
     const { id } = await context.params;
     if (!validateCUID(id)) {
@@ -126,6 +131,10 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
 
     const rateLimitResponse = await checkAdminRateLimit(req);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(req)) {
+      return csrfForbiddenResponse();
+    }
 
     const { id } = await context.params;
 
