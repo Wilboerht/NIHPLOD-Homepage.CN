@@ -74,6 +74,7 @@ import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { atomicallyRotateRefreshToken } from "@/lib/auth-security";
 import { prisma } from "@/lib/prisma";
 import { verifyPKCE } from "@/lib/oauth-code";
+import { signRefreshToken } from "@/lib/jwt";
 
 function createRequest(body: Record<string, string>, contentType = "application/json"): Request {
   return new Request("http://localhost/api/oauth/token", {
@@ -356,6 +357,67 @@ describe("POST /api/oauth/token", () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
+    });
+
+    it("refresh token 的 client_id 与请求不一致应返回 400", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      // 签发属于 other-client 的 refresh token
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "other-client",
+        scope: "openid",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      expect(body.error_description).toContain("client");
+    });
+
+    it("refresh token 携带匹配 client_id 时应进入轮换流程", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      // atomicallyRotateRefreshToken 默认返回 undefined，会导致轮换失败；
+      // 这里 mock 为成功，验证 client_id 校验通过
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({ valid: true } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        scopes: ["openid", "phone"],
+      });
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+      });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid phone",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.access_token).toBeDefined();
+      expect(body.refresh_token).toBeDefined();
+      expect(body.scope).toBe("openid phone");
     });
   });
 

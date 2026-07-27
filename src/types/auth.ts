@@ -110,11 +110,17 @@ export interface UserJWTPayload extends JWTPayload {
 
 /**
  * Refresh Token 载荷
+ *
+ * 安全增强：OAuth 2.0 场景下携带 client_id / scope，
+ * 用于 refresh 流程校验 token 所有权，防止跨 client 复用 refresh token。
+ * 内部非 OAuth 刷新 token 可不设置这两个字段，保持向后兼容。
  */
 export interface RefreshTokenPayload extends JWTPayload {
   id: string;
   phone: string;
   type: "refresh";
+  client_id?: string;
+  scope?: string;
 }
 
 /**

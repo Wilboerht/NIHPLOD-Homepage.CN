@@ -16,23 +16,29 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
-import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 // 支持的 scope 列表
 const SUPPORTED_SCOPES = ["openid", "profile", "phone", "membership"];
 
-// GET 参数校验
-const authorizeQuerySchema = z.object({
-  response_type: z.literal("code"),
-  client_id: z.string().min(1),
-  redirect_uri: z.string().url().min(1),
-  scope: z.string().min(1),
-  state: z.string().min(32),
-  code_challenge: z.string().length(43),
-  code_challenge_method: z.literal("S256"),
-});
+/**
+ * 构造 OAuth 2.0 错误重定向响应。
+ * 当 client_id / redirect_uri 已识别并合法时，按规范把错误通过 302
+ * 回传给回调地址，而非直接返回 JSON 400。
+ */
+function buildErrorRedirect(
+  redirectUri: string,
+  error: string,
+  errorDescription: string,
+  state?: string | null
+): NextResponse {
+  const url = new URL(redirectUri);
+  url.searchParams.set("error", error);
+  url.searchParams.set("error_description", errorDescription);
+  if (state) url.searchParams.set("state", state);
+  return NextResponse.redirect(url, 302);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,30 +56,27 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
 
-    // 1. 参数校验
-    const parsed = authorizeQuerySchema.safeParse({
-      response_type: searchParams.get("response_type"),
-      client_id: searchParams.get("client_id"),
-      redirect_uri: searchParams.get("redirect_uri"),
-      scope: searchParams.get("scope"),
-      state: searchParams.get("state"),
-      code_challenge: searchParams.get("code_challenge"),
-      code_challenge_method: searchParams.get("code_challenge_method"),
-    });
+    // 先提取关键参数，用于判断是否可以安全地重定向错误
+    const client_id = searchParams.get("client_id") || "";
+    const redirect_uri = searchParams.get("redirect_uri") || "";
+    const state = searchParams.get("state");
 
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      const field = firstIssue.path.join(".");
-      const description = field
-        ? `缺少或无效的参数: ${field}`
-        : "参数错误";
+    // 1. client_id / redirect_uri 前置校验：若无法识别合法回调地址，
+    //    按 OAuth 2.0 规范禁止自动重定向，直接返回 JSON 400
+    if (!client_id || !redirect_uri) {
       return NextResponse.json(
-        { error: "invalid_request", error_description: description },
+        { error: "invalid_request", error_description: "缺少 client_id 或 redirect_uri" },
         { status: 400 }
       );
     }
-
-    const { client_id, redirect_uri, scope, state, code_challenge, code_challenge_method } = parsed.data;
+    try {
+      new URL(redirect_uri);
+    } catch {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "redirect_uri 不是合法 URL" },
+        { status: 400 }
+      );
+    }
 
     // 2. 校验 client
     const client = await getOAuthClientByClientId(client_id);
@@ -92,30 +95,76 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 4. scope 校验
+    // 自此 redirect_uri 已验证为合法，后续所有参数错误均通过 302 回传
+    const safeRedirectUri = redirect_uri;
+
+    // 4. 其余参数校验与错误 302 回传
+    const response_type = searchParams.get("response_type");
+    const scope = searchParams.get("scope") || "";
+    const code_challenge = searchParams.get("code_challenge") || "";
+    const code_challenge_method = searchParams.get("code_challenge_method") || "";
+
+    if (response_type !== "code") {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "unsupported_response_type",
+        "response_type 必须为 code",
+        state
+      );
+    }
+    if (!scope.trim()) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "invalid_request",
+        "缺少 scope",
+        state
+      );
+    }
+    if (!state || state.length < 32) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "invalid_request",
+        "state 参数无效或长度不足",
+        state
+      );
+    }
+    if (code_challenge.length !== 43) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "invalid_request",
+        "code_challenge 长度必须为 43",
+        state
+      );
+    }
+    if (code_challenge_method !== "S256") {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "invalid_request",
+        "code_challenge_method 必须为 S256",
+        state
+      );
+    }
+
+    // 5. scope 校验
     // 注意：openid 是 OIDC 核心 scope，所有 client 默认允许，无需在 client.scopes 中显式配置
     const requestedScopes = scope.split(" ").filter(Boolean);
     for (const s of requestedScopes) {
-      if (!client.scopes.includes(s) && s !== "openid") {
-        return NextResponse.json(
-          { error: "invalid_scope", error_description: `Scope '${s}' not allowed for this client` },
-          { status: 400 }
-        );
-      }
       if (!SUPPORTED_SCOPES.includes(s)) {
-        return NextResponse.json(
-          { error: "invalid_scope", error_description: `Scope '${s}' not supported` },
-          { status: 400 }
+        return buildErrorRedirect(
+          safeRedirectUri,
+          "invalid_scope",
+          `Scope '${s}' not supported`,
+          state
         );
       }
-    }
-
-    // 5. PKCE: 强制要求 code_challenge + S256（OAuth 2.1 / 公共安全最佳实践）
-    if (!code_challenge || code_challenge_method !== "S256") {
-      return NextResponse.json(
-        { error: "invalid_request", error_description: "code_challenge (S256) is required" },
-        { status: 400 }
-      );
+      if (!client.scopes.includes(s) && s !== "openid") {
+        return buildErrorRedirect(
+          safeRedirectUri,
+          "invalid_scope",
+          `Scope '${s}' not allowed for this client`,
+          state
+        );
+      }
     }
 
     // 6. 检查用户登录状态
@@ -157,17 +206,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-// POST body schema
-const consentSchema = z.object({
-  action: z.enum(["approve", "deny"]),
-  client_id: z.string().min(1),
-  redirect_uri: z.string().url(),
-  scope: z.string(),
-  state: z.string().min(32),
-  code_challenge: z.string().length(43),
-  code_challenge_method: z.literal("S256"),
-});
 
 export async function POST(request: NextRequest) {
   try {
@@ -224,20 +262,27 @@ export async function POST(request: NextRequest) {
 
     // 解析 body
     const body = await request.json();
-    const parsed = consentSchema.safeParse(body);
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      const field = firstIssue.path.join(".");
-      const description = field
-        ? `缺少或无效的参数: ${field}`
-        : "参数错误";
+
+    // 先提取关键参数，用于判断是否可以安全地重定向错误
+    const client_id = typeof body.client_id === "string" ? body.client_id : "";
+    const redirect_uri = typeof body.redirect_uri === "string" ? body.redirect_uri : "";
+    const state = typeof body.state === "string" ? body.state : undefined;
+    const action = body.action;
+
+    if (!client_id || !redirect_uri) {
       return NextResponse.json(
-        { error: "invalid_request", error_description: description },
+        { error: "invalid_request", error_description: "缺少 client_id 或 redirect_uri" },
         { status: 400 }
       );
     }
-
-    const { action, client_id, redirect_uri, scope, state, code_challenge, code_challenge_method } = parsed.data;
+    try {
+      new URL(redirect_uri);
+    } catch {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "redirect_uri 不是合法 URL" },
+        { status: 400 }
+      );
+    }
 
     // 校验 client
     const client = await getOAuthClientByClientId(client_id);
@@ -256,9 +301,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 构建重定向 URL
-    const redirectUrl = new URL(redirect_uri);
+    // 自此 redirect_uri 已验证为合法，后续所有参数错误均通过 302 回传
+    const safeRedirectUri = redirect_uri;
 
+    // action 校验
+    if (action !== "approve" && action !== "deny") {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "invalid_request",
+        "action 必须为 approve 或 deny",
+        state
+      );
+    }
+
+    const scope = typeof body.scope === "string" ? body.scope : "";
+    const code_challenge = typeof body.code_challenge === "string" ? body.code_challenge : "";
+    const code_challenge_method = typeof body.code_challenge_method === "string" ? body.code_challenge_method : "";
+
+    // 构建重定向 URL（成功或错误都用它）
+    const redirectUrl = new URL(safeRedirectUri);
     if (state) {
       redirectUrl.searchParams.set("state", state);
     }
@@ -285,24 +346,38 @@ export async function POST(request: NextRequest) {
 
     // PKCE: 强制要求 code_challenge + S256
     if (!code_challenge || code_challenge_method !== "S256") {
-      return NextResponse.json(
-        { error: "invalid_request", error_description: "code_challenge (S256) is required" },
-        { status: 400 }
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "invalid_request",
+        "code_challenge (S256) is required",
+        state
+      );
+    }
+    if (code_challenge.length !== 43) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "invalid_request",
+        "code_challenge 长度必须为 43",
+        state
       );
     }
 
     // 校验 scope：openid 始终允许，拒绝超出 client 允许范围或系统不支持的 scope
     for (const s of requestedScopes) {
-      if (!client.scopes.includes(s) && s !== "openid") {
-        return NextResponse.json(
-          { error: "invalid_scope", error_description: `Scope '${s}' not allowed for this client` },
-          { status: 400 }
+      if (!SUPPORTED_SCOPES.includes(s)) {
+        return buildErrorRedirect(
+          safeRedirectUri,
+          "invalid_scope",
+          `Scope '${s}' not supported`,
+          state
         );
       }
-      if (!SUPPORTED_SCOPES.includes(s)) {
-        return NextResponse.json(
-          { error: "invalid_scope", error_description: `Scope '${s}' not supported` },
-          { status: 400 }
+      if (!client.scopes.includes(s) && s !== "openid") {
+        return buildErrorRedirect(
+          safeRedirectUri,
+          "invalid_scope",
+          `Scope '${s}' not allowed for this client`,
+          state
         );
       }
     }

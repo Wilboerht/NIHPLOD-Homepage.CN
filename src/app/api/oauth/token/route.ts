@@ -251,8 +251,13 @@ export async function POST(request: NextRequest) {
         scope: scopeStr,
       });
 
-      // 签发 Refresh Token
-      const refreshToken = await signRefreshToken({ id: user.id, phone: user.phone });
+      // 签发 Refresh Token（携带 client_id / scope，用于所有权校验）
+      const refreshToken = await signRefreshToken({
+        id: user.id,
+        phone: user.phone,
+        clientId: client_id,
+        scope: scopeStr,
+      });
       const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       // 保存 Refresh Token（复用现有设备管理）
@@ -336,8 +341,30 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Refresh Token 所有权校验：payload 中的 client_id 必须与请求方一致
+      // 旧版 token 可能未携带 client_id，为安全起见一旦存在就强制校验
+      if (refreshPayload.client_id && refreshPayload.client_id !== client_id) {
+        recordSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: {
+            grant_type: "refresh_token",
+            reason: "client_id_mismatch",
+            expected: refreshPayload.client_id,
+          },
+        });
+        return NextResponse.json(
+          { error: "invalid_grant", error_description: "Refresh token 与当前 client 不匹配" },
+          { status: 400 }
+        );
+      }
+
       // 签发新的 Access Token（OAuth 类型）
-      // 注意：refresh token 不携带 scope/client_id，需要从 OAuthSession 获取。
+      // 注意：refresh token 不携带 scope/client_id 时，需要从 OAuthSession 获取。
       // 按 client_id + userId 过滤，取最近未过期未撤销的会话 scope。
       // 若该用户从未通过当前 client 创建过有效 OAuthSession（如旧版本 token），
       // 回退到 "openid"（最小权限原则）。
@@ -361,10 +388,12 @@ export async function POST(request: NextRequest) {
         scope: scopeStr,
       });
 
-      // 签发新的 Refresh Token 并原子化轮换
+      // 签发新的 Refresh Token 并原子化轮换（继承所有权与 scope）
       const newRefreshToken = await signRefreshToken({
         id: refreshPayload.id,
         phone: refreshPayload.phone,
+        clientId: client_id,
+        scope: scopeStr,
       });
       const newRefreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 

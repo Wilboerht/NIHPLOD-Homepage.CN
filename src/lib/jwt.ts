@@ -213,9 +213,26 @@ export async function verifyUserToken(
 
 /**
  * 签发用户 Refresh Token（长期，30天）
+ *
+ * @param payload.clientId - OAuth client_id，可选。传入时写入 payload，用于 refresh 时校验所有权。
+ * @param payload.scope - 授权 scope，可选。传入时写入 payload，便于后续审计与最小权限校验。
  */
-export async function signRefreshToken(payload: { id: string; phone: string }): Promise<string> {
-  const token = await new SignJWT({ ...payload, type: "refresh" as const })
+export async function signRefreshToken(payload: {
+  id: string;
+  phone: string;
+  clientId?: string;
+  scope?: string;
+}): Promise<string> {
+  const jwtPayload: Record<string, unknown> = {
+    id: payload.id,
+    phone: payload.phone,
+    type: "refresh" as const,
+  };
+  // 仅在传入时写入，保持内部非 OAuth token 的向后兼容
+  if (payload.clientId) jwtPayload.client_id = payload.clientId;
+  if (payload.scope) jwtPayload.scope = payload.scope;
+
+  const token = await new SignJWT(jwtPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setIssuer(ISSUER)
