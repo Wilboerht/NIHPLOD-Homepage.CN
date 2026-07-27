@@ -27,9 +27,17 @@ const ID_TOKEN_SIGNING_ALG_VALUES = ["HS256"];
 /** 支持的 token_endpoint_auth_method */
 const TOKEN_ENDPOINT_AUTH_METHODS = ["client_secret_post", "none"];
 
+/** OpenID Connect issuer / 公开 base URL（生产环境必须是 https://nihplod.cn） */
+function getIssuer(): string {
+  const publicUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
+  if (publicUrl) return publicUrl.replace(/\/$/, "");
+  return process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
+}
+
 export async function GET(request: NextRequest) {
-  // 构建 issuer (base URL)
-  const { origin } = request.nextUrl;
+  // 发现文档的 issuer 必须稳定公开，优先使用环境变量中的公网地址，
+  // 避免反向代理后 request.nextUrl.origin 变成 localhost:3000
+  const origin = getIssuer();
 
   const discovery = {
     issuer: origin,

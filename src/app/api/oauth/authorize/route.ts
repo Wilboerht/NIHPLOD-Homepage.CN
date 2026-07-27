@@ -19,6 +19,15 @@ import { USER_COOKIE_NAME } from "@/types/auth";
 
 export const dynamic = "force-dynamic";
 
+/** 获取公网 origin（反向代理后 request.url 可能为 localhost） */
+function getPublicOrigin(request: NextRequest): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    request.nextUrl.origin
+  );
+}
+
 // 支持的 scope 列表
 const SUPPORTED_SCOPES = ["openid", "profile", "phone", "membership"];
 
@@ -184,7 +193,7 @@ export async function GET(request: NextRequest) {
     if (!isLoggedIn) {
       // 保留所有原始 query 参数
       const returnTo = `/api/oauth/authorize?${searchParams.toString()}`;
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL("/login", getPublicOrigin(request));
       loginUrl.searchParams.set("return_to", encodeURIComponent(returnTo));
       loginUrl.searchParams.set("client_name", client.name);
       return NextResponse.redirect(loginUrl);
@@ -192,7 +201,7 @@ export async function GET(request: NextRequest) {
 
     // 8. 已登录 → 展示 consent 页
     // 注意：searchParams.toString() 已自动进行 URL 编码，此处不重复 encodeURIComponent
-    const consentUrl = new URL("/login", request.url);
+    const consentUrl = new URL("/login", getPublicOrigin(request));
     consentUrl.searchParams.set("mode", "consent");
     consentUrl.searchParams.set("client_name", client.name);
     consentUrl.searchParams.set("return_to", `/api/oauth/authorize?${searchParams.toString()}`);
