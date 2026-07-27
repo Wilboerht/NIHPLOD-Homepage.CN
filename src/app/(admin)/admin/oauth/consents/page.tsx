@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Search, XCircle } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -180,8 +181,24 @@ export default function OAuthConsentsPage() {
             ) : (
               consents.map((c) => (
                 <tr key={c.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm">{c.phone || c.userId}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-gray-600">{c.clientId}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <Link
+                      href={`/admin/users/${c.userId}`}
+                      className="text-blue-600 hover:underline"
+                      title="查看用户详情"
+                    >
+                      {c.phone || c.userId}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    <Link
+                      href={`/admin/oauth-clients?search=${encodeURIComponent(c.clientId)}`}
+                      className="text-blue-600 hover:underline font-mono"
+                      title="查看 Client"
+                    >
+                      {c.clientName || c.clientId}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 flex-wrap">
                       {c.scopes.map((s) => (
@@ -198,7 +215,7 @@ export default function OAuthConsentsPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {c.status === "active" && (
+                    {c.status === "active" ? (
                       <button
                         onClick={() => {
                           setRevokeTarget({ userId: c.userId, clientId: c.clientId });
@@ -209,6 +226,10 @@ export default function OAuthConsentsPage() {
                       >
                         <XCircle className="w-4 h-4" />
                       </button>
+                    ) : (
+                      <span className="text-xs text-gray-400" title="用户下次访问该 Client 时需要重新授权">
+                        需重新授权
+                      </span>
                     )}
                   </td>
                 </tr>

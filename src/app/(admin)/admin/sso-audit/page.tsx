@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search, ChevronDown, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -44,11 +45,13 @@ const formatDate = (dateStr: string) => {
 };
 
 export default function SsoAuditPage() {
+  const router = useRouter();
   const toast = useToast();
   const [items, setItems] = useState<SsoAuditItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [redirectSeconds, setRedirectSeconds] = useState(3);
   const pageSize = 20;
 
   // Filters
@@ -89,9 +92,40 @@ export default function SsoAuditPage() {
     fetchItems();
   }, [fetchItems]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRedirectSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          router.push("/admin/oauth/audit");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [router]);
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">SSO 审计日志</h1>
+    <div className="p-6 space-y-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-amber-800">页面已迁移</p>
+          <p className="text-xs text-amber-600 mt-1">
+            SSO 审计日志已合并到{" "}
+            <button
+              onClick={() => router.push("/admin/oauth/audit")}
+              className="underline hover:text-amber-800"
+            >
+              /admin/oauth/audit
+            </button>
+            。{redirectSeconds} 秒后自动跳转。
+          </p>
+        </div>
+      </div>
+
+      <h1 className="text-2xl font-bold">SSO 审计日志</h1>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">

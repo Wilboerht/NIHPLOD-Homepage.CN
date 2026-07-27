@@ -34,11 +34,55 @@ export async function GET(request: NextRequest) {
     const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "20", 10), 100);
     const userId = searchParams.get("userId") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
+    const search = searchParams.get("search") || undefined;
+
+    // 模糊搜索：匹配用户手机号/昵称 或 Client ID/名称
+    let searchOr: Record<string, unknown>[] | undefined;
+    if (search) {
+      const [matchedUsers, matchedClients] = await Promise.all([
+        prisma.user.findMany({
+          where: {
+            OR: [
+              { phone: { contains: search } },
+              { nickname: { contains: search, mode: "insensitive" } },
+            ],
+          },
+          select: { id: true },
+        }),
+        prisma.oAuthClient.findMany({
+          where: {
+            OR: [
+              { clientId: { contains: search, mode: "insensitive" } },
+              { name: { contains: search, mode: "insensitive" } },
+            ],
+          },
+          select: { clientId: true },
+        }),
+      ]);
+      const userIds = matchedUsers.map((u) => u.id);
+      const clientIds = matchedClients.map((c) => c.clientId);
+
+      searchOr = [];
+      if (userIds.length > 0) searchOr.push({ userId: { in: userIds } });
+      if (clientIds.length > 0) searchOr.push({ clientId: { in: clientIds } });
+
+      if (searchOr.length === 0) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            stats: { activeSessions: 0, activeRefreshTokens: 0 },
+            items: [],
+            pagination: { page, pageSize, total: 0 },
+          },
+        });
+      }
+    }
 
     // 活跃 OAuthSession
     const sessionWhere: Record<string, unknown> = { revokedAt: null };
     if (userId) sessionWhere.userId = userId;
     if (clientId) sessionWhere.clientId = clientId;
+    if (searchOr) sessionWhere.OR = searchOr;
 
     const [sessions, total] = await Promise.all([
       prisma.oAuthSession.findMany({

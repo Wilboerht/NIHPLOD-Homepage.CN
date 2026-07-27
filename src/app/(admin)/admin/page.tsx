@@ -1,10 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Package, FolderTree, MessageSquare, Briefcase, Plus, Eye, Clock } from "lucide-react";
+import {
+  Package,
+  FolderTree,
+  MessageSquare,
+  Briefcase,
+  Plus,
+  Eye,
+  Clock,
+  Key,
+  MonitorStop,
+  FileSearch,
+  Shield,
+  Users,
+  TrendingUp,
+} from "lucide-react";
 import { StatsCard } from "@/components/admin";
 import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
-import { getAdminStats } from "@/lib/admin-stats";
+import { getAdminStats, getSsoStats } from "@/lib/admin-stats";
 
 // 格式化相对时间（基于服务端渲染时刻）
 function formatRelativeTime(dateString: string) {
@@ -29,6 +43,13 @@ const quickActions = [
   { title: "查看网站", href: "/", icon: Eye, external: true },
 ];
 
+// SSO 快捷操作
+const ssoQuickActions = [
+  { title: "OAuth Client 管理", href: "/admin/oauth-clients", icon: Key },
+  { title: "SSO 会话管理", href: "/admin/oauth/sessions", icon: MonitorStop },
+  { title: "SSO 审计日志", href: "/admin/oauth/audit", icon: FileSearch },
+];
+
 export default async function AdminDashboard() {
   // 服务端验证管理员身份，未登录直接重定向
   const admin = await getCurrentAdmin();
@@ -36,7 +57,10 @@ export default async function AdminDashboard() {
     redirect("/admin-login");
   }
 
-  const stats = await getAdminStats();
+  const [stats, ssoStats] = await Promise.all([
+    getAdminStats(),
+    admin.role === "owner" ? getSsoStats() : null,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -73,6 +97,45 @@ export default async function AdminDashboard() {
           description="已发布"
         />
       </div>
+
+      {/* SSO 概览 */}
+      {ssoStats && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-brand-charcoal flex items-center gap-2">
+              <Shield className="h-5 w-5 text-brand-primary" />
+              SSO 概览
+            </h2>
+            <span className="text-xs text-brand-charcoal/50">仅超级管理员可见</span>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatsCard
+              title="活跃 Client"
+              value={ssoStats.activeClients}
+              icon={<Key className="h-6 w-6" />}
+              description="已启用的 OAuth Client"
+            />
+            <StatsCard
+              title="活跃会话"
+              value={ssoStats.activeSessions}
+              icon={<Users className="h-6 w-6" />}
+              description="当前在线的 SSO 会话"
+            />
+            <StatsCard
+              title="今日 SSO 事件"
+              value={ssoStats.todayEvents}
+              icon={<TrendingUp className="h-6 w-6" />}
+              description="今日授权/Token/登出等事件"
+            />
+            <StatsCard
+              title="本月授权成功率"
+              value={`${ssoStats.successRate}%`}
+              icon={<MonitorStop className="h-6 w-6" />}
+              description="本月 SSO 事件成功占比"
+            />
+          </div>
+        </div>
+      )}
 
       {/* 下方内容区域 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -152,6 +215,30 @@ export default async function AdminDashboard() {
               );
             })}
           </div>
+
+          {admin.role === "owner" && (
+            <>
+              <div className="my-4 border-t border-brand-charcoal/10" />
+              <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">SSO 管理</h3>
+              <div className="space-y-2">
+                {ssoQuickActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Link
+                      key={action.href}
+                      href={action.href}
+                      className="flex items-center gap-3 rounded-lg p-3 text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <span className="font-medium">{action.title}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

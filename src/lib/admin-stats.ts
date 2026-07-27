@@ -38,6 +38,13 @@ export interface AdminStatsData {
   }[];
 }
 
+export interface SsoStatsData {
+  activeClients: number;
+  activeSessions: number;
+  todayEvents: number;
+  successRate: number;
+}
+
 const getCachedStats = unstable_cache(
   async (dateStr: string) => {
     const todayStart = new Date(dateStr);
@@ -168,4 +175,46 @@ export async function getAdminStats(): Promise<AdminStatsData> {
       createdAt: new Date(order.createdAt).toISOString(),
     })),
   };
+}
+
+const getCachedSsoStats = unstable_cache(
+  async () => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      activeClients,
+      activeSessions,
+      todayEvents,
+      successfulEvents,
+      totalEvents,
+    ] = await Promise.all([
+      prisma.oAuthClient.count({ where: { isActive: true } }),
+      prisma.oAuthSession.count({ where: { revokedAt: null } }),
+      prisma.ssoAuditEvent.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.ssoAuditEvent.count({
+        where: { createdAt: { gte: monthStart }, success: true },
+      }),
+      prisma.ssoAuditEvent.count({
+        where: { createdAt: { gte: monthStart } },
+      }),
+    ]);
+
+    return {
+      activeClients,
+      activeSessions,
+      todayEvents,
+      successRate: totalEvents > 0 ? Math.round((successfulEvents / totalEvents) * 100) : 100,
+    };
+  },
+  ["admin-dashboard-sso-stats"],
+  { revalidate: 300, tags: ["admin-sso-stats"] }
+);
+
+/**
+ * 获取管理员仪表盘 SSO 统计数据
+ */
+export async function getSsoStats(): Promise<SsoStatsData> {
+  return getCachedSsoStats();
 }

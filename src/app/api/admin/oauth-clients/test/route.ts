@@ -14,6 +14,7 @@ import { getOAuthClientByClientId, verifyOAuthClientSecret } from "@/lib/oauth-c
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
+import { randomBytes, createHash } from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,17 @@ const bodySchema = z.object({
   clientSecret: z.string().min(1),
   redirectUri: z.string().url(),
 });
+
+/**
+ * 生成 PKCE code_verifier + code_challenge (S256)
+ */
+function generatePkce() {
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256")
+    .update(verifier)
+    .digest("base64url");
+  return { verifier, challenge };
+}
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -122,7 +134,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Step 3: Authorize 端点参数校验
+    // 生成 PKCE 用于后续 authorize / token 测试
+    const pkce = generatePkce();
+
+    // Step 3: Authorize 端点参数校验（带 PKCE）
     const t3 = performance.now();
     try {
       const authUrl = new URL(`${baseUrl}/api/oauth/authorize`);
@@ -131,6 +146,8 @@ export async function POST(request: NextRequest) {
       authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("scope", client.scopes.join(" "));
       authUrl.searchParams.set("state", "test-state-value");
+      authUrl.searchParams.set("code_challenge", pkce.challenge);
+      authUrl.searchParams.set("code_challenge_method", "S256");
 
       const authRes = await fetch(authUrl.toString(), {
         method: "GET",
@@ -173,7 +190,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Step 4: Token 端点认证校验（用无效 code 测试，期望返回 invalid_grant 而非 invalid_client）
+    // Step 4: Token 端点认证校验（用无效 code + 有效 PKCE verifier 测试，期望返回 invalid_grant 而非 invalid_client）
     const t4 = performance.now();
     try {
       const tokenBody = new URLSearchParams({
@@ -182,7 +199,7 @@ export async function POST(request: NextRequest) {
         client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: redirectUri,
-        code_verifier: "test-verifier",
+        code_verifier: pkce.verifier,
       });
 
       const tokenRes = await fetch(`${baseUrl}/api/oauth/token`, {

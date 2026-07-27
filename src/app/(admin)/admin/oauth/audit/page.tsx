@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, Download, RotateCw } from "lucide-react";
+import { Search, Download, RotateCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -32,8 +32,11 @@ const EVENT_TYPE_OPTIONS = [
   { value: "authorize", label: "授权请求" },
   { value: "token", label: "Token 签发" },
   { value: "refresh", label: "Token 刷新" },
+  { value: "introspect", label: "Token 验证" },
+  { value: "userinfo", label: "用户信息" },
   { value: "revoke", label: "Token 吊销" },
-  { value: "consent_revoke", label: "授权撤销" },
+  { value: "consent", label: "授权确认/撤销" },
+  { value: "status_change", label: "状态变更" },
   { value: "logout", label: "登出" },
   { value: "backchannel_logout", label: "Backchannel 登出" },
   { value: "login", label: "登录" },
@@ -62,8 +65,11 @@ const formatEventType = (type: string): string => {
     authorize: "授权请求",
     token: "Token 签发",
     refresh: "Token 刷新",
+    introspect: "Token 验证",
+    userinfo: "用户信息",
     revoke: "Token 吊销",
-    consent_revoke: "授权撤销",
+    consent: "授权确认/撤销",
+    status_change: "状态变更",
     logout: "登出",
     backchannel_logout: "Backchannel 登出",
     login: "登录",
@@ -76,8 +82,11 @@ const getEventBadgeVariant = (type: string): "primary" | "secondary" | "success"
     authorize: "primary",
     token: "success",
     refresh: "secondary",
+    introspect: "secondary",
+    userinfo: "secondary",
     revoke: "warning",
-    consent_revoke: "danger",
+    consent: "danger",
+    status_change: "warning",
     logout: "outline",
     backchannel_logout: "outline",
     login: "primary",
@@ -101,6 +110,9 @@ export default function OAuthAuditPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [successFilter, setSuccessFilter] = useState("");
+
+  // Expand detail
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchAudit = useCallback(async () => {
     setLoading(true);
@@ -141,6 +153,7 @@ export default function OAuthAuditPage() {
     setDateFrom("");
     setDateTo("");
     setSuccessFilter("");
+    setExpandedId(null);
     setPage(1);
   };
 
@@ -255,40 +268,67 @@ export default function OAuthAuditPage() {
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">IP</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">状态</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">时间</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">详情</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">
+                <td colSpan={8} className="text-center py-8 text-gray-500">
                   加载中...
                 </td>
               </tr>
             ) : entries.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">
+                <td colSpan={8} className="text-center py-8 text-gray-500">
                   暂无数据
                 </td>
               </tr>
             ) : (
               entries.map((entry) => (
-                <tr key={entry.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <Badge variant={getEventBadgeVariant(entry.event)}>
-                      {formatEventType(entry.event)}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-mono text-gray-600">{entry.userId}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-gray-600">{entry.clientId}</td>
-                  <td className="px-4 py-3 text-sm">{entry.clientName || "-"}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-gray-500">{entry.ip}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={entry.success ? "success" : "danger"}>
-                      {entry.success ? "成功" : "失败"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(entry.createdAt)}</td>
-                </tr>
+                <>
+                  <tr key={entry.id} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <Badge variant={getEventBadgeVariant(entry.event)}>
+                        {formatEventType(entry.event)}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-mono text-gray-600">{entry.userId}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-gray-600">{entry.clientId}</td>
+                    <td className="px-4 py-3 text-sm">{entry.clientName || "-"}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-gray-500">{entry.ip}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={entry.success ? "success" : "danger"}>
+                        {entry.success ? "成功" : "失败"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{formatDate(entry.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      {entry.detail ? (
+                        <button
+                          onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
+                          className="text-blue-600 text-xs hover:underline flex items-center gap-1"
+                        >
+                          展开
+                          <ChevronDown
+                            className={`w-3 h-3 transition-transform ${expandedId === entry.id ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                  {expandedId === entry.id && entry.detail && (
+                    <tr key={`${entry.id}-detail`} className="bg-gray-50 border-b">
+                      <td colSpan={8} className="px-4 py-3">
+                        <pre className="text-xs text-gray-600 bg-gray-100 rounded p-3 overflow-x-auto max-h-40">
+                          {JSON.stringify(entry.detail, null, 2)}
+                        </pre>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))
             )}
           </tbody>

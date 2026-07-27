@@ -98,8 +98,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "20", 10), 100);
+    const search = searchParams.get("search") || undefined;
 
-    const result = await listOAuthClients({ page, pageSize });
+    const result = await listOAuthClients({ page, pageSize, search });
 
     // 填充使用统计
     const enrichedClients = await enrichClientsWithStats(result.clients);

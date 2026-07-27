@@ -282,11 +282,19 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
  */
 export async function listOAuthClients(params?: {
   isActive?: boolean;
+  search?: string;
   page?: number;
   pageSize?: number;
 }): Promise<{ clients: OAuthClientData[]; total: number }> {
-  const { isActive, page = 1, pageSize = 20 } = params || {};
-  const where = isActive !== undefined ? { isActive } : {};
+  const { isActive, search, page = 1, pageSize = 20 } = params || {};
+  const where: Record<string, unknown> = {};
+  if (isActive !== undefined) where.isActive = isActive;
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { clientId: { contains: search, mode: "insensitive" } },
+    ];
+  }
 
   const [clients, total] = await Promise.all([
     prisma.oAuthClient.findMany({
