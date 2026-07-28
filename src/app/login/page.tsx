@@ -671,8 +671,8 @@ function LoginPageContent() {
                 </button>
               )}
 
-              {/* Back button (non-login, non-wechat-bind) */}
-              {mode !== "login" && mode !== "wechat-bind" && (
+              {/* Back button (non-login, non-wechat-bind, non-consent) */}
+              {mode !== "login" && mode !== "wechat-bind" && mode !== "consent" && (
                 <button
                   onClick={handleSwitchToLogin}
                   disabled={loading}
