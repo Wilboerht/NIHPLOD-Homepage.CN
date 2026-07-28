@@ -70,6 +70,62 @@ await sso.logout(true);
 
 ---
 
+## Client 类型选择
+
+管理后台创建 Client 时必须选择应用类型，这决定了 token 端点的认证方式。
+
+### Confidential Client（默认）
+
+适用场景：Next.js App Router、BFF、服务端应用、桌面端原生应用等**拥有可信后端**的项目。
+
+- 创建时勾选 **Confidential Client**
+- 必须安全保存 `clientSecret`，仅在后端使用
+- Token 端点需要携带 `client_id` + `client_secret`
+- 后端推荐通过 Introspection 端点或 RS256 + JWKS 验证 access_token
+
+```typescript
+import { SsoClient } from "@nihplod/sso-sdk";
+
+// 仅在服务端构建 SsoClient 时使用 clientSecret
+const sso = new SsoClient({
+  clientId: "your-client-id",
+  clientSecret: process.env.SSO_CLIENT_SECRET, // 不可泄露到前端
+  redirectUri: "https://yourapp.com/api/auth/callback",
+  ssoBaseUrl: "https://nihplod.cn",
+  scopes: "openid profile",
+});
+```
+
+### Public Client
+
+适用场景：React SPA、Vue SPA、移动端 H5、桌面端 Electron 等**无可信后端**的项目。
+
+- 创建时勾选 **Public Client**
+- **不需要也不应该传入 clientSecret**；前端代码中暴露 clientSecret 属于安全事故
+- 依赖 PKCE S256 保护授权码流程
+- token 端点只传 `client_id`，不传 `client_secret`
+
+```typescript
+import { SsoClient } from "@nihplod/sso-sdk";
+
+// 浏览器端 SPA：不传 clientSecret
+const sso = new SsoClient({
+  clientId: "your-client-id",
+  redirectUri: "https://yourapp.com/callback",
+  ssoBaseUrl: "https://nihplod.cn",
+  scopes: "openid profile",
+});
+```
+
+### 类型选错怎么办？
+
+可在 [管理后台](/admin/oauth-clients) 编辑 Client 切换类型。切换后：
+
+- Confidential → Public：停止使用 clientSecret，前端/后端配置同步移除 secret
+- Public → Confidential：需要立即轮换密钥并安全保存新生成的 clientSecret，旧 Public 配置不再能刷新 token
+
+---
+
 ## React 集成
 
 ### Provider 方式
