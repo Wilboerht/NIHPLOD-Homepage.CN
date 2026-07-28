@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
     const client_id = body.client_id;
     const client_secret = body.client_secret;
 
-    if (!client_id || !client_secret) {
+    if (!client_id) {
       return NextResponse.json(
-        { error: "invalid_client", error_description: "缺少 client_id 或 client_secret" },
+        { error: "invalid_client", error_description: "缺少 client_id" },
         { status: 401 }
       );
     }
@@ -86,8 +86,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证 client_secret
-    const client = await verifyOAuthClientSecret(client_id, client_secret);
+    // 验证 client（Public Client 可不传 client_secret）
+    const client = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
     if (!client) {
       recordSsoEvent({
         event: "token",
@@ -98,6 +98,22 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(
         { error: "invalid_client", error_description: "Client 认证失败" },
+        { status: 401 }
+      );
+    }
+
+    // Confidential Client 必须提供 client_secret
+    if (!client.isPublic && !client_secret) {
+      recordSsoEvent({
+        event: "token",
+        clientId: client_id,
+        clientName: client.name,
+        ip,
+        success: false,
+        detail: { grant_type, reason: "missing_client_secret" },
+      });
+      return NextResponse.json(
+        { error: "invalid_client", error_description: "Confidential Client 必须提供 client_secret" },
         { status: 401 }
       );
     }

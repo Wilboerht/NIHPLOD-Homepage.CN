@@ -17,6 +17,7 @@ const createClientSchema = z.object({
   name: z.string().min(1).max(100),
   redirectUris: z.array(z.string().url().max(500)).min(1),
   scopes: z.array(z.string().min(1).max(50)).min(1),
+  isPublic: z.boolean().optional().default(false),
   backchannelLogoutUri: z.string().url().max(500).optional(),
 });
 
@@ -25,6 +26,7 @@ const updateClientSchema = z.object({
   redirectUris: z.array(z.string().url().max(500)).min(1).optional(),
   scopes: z.array(z.string().min(1).max(50)).min(1).optional(),
   isActive: z.boolean().optional(),
+  isPublic: z.boolean().optional(),
   backchannelLogoutUri: z.string().url().max(500).nullable().optional(),
 });
 
@@ -40,6 +42,7 @@ export interface OAuthClientData {
   redirectUris: string[];
   scopes: string[];
   isActive: boolean;
+  isPublic: boolean;
   backchannelLogoutUri: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -128,6 +131,7 @@ export async function createOAuthClient(
       name: parsed.name,
       redirectUris: parsed.redirectUris,
       scopes: parsed.scopes,
+      isPublic: parsed.isPublic,
       backchannelLogoutUri: parsed.backchannelLogoutUri || null,
     },
   });
@@ -141,6 +145,7 @@ export async function createOAuthClient(
       redirectUris: client.redirectUris,
       scopes: client.scopes,
       isActive: client.isActive,
+      isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
@@ -166,6 +171,7 @@ export async function getOAuthClientByClientId(
     redirectUris: client.redirectUris,
     scopes: client.scopes,
     isActive: client.isActive,
+    isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
@@ -174,29 +180,39 @@ export async function getOAuthClientByClientId(
 
 /**
  * 按 clientId 验证 client_secret
+ * - Confidential Client：必须提供并验证 client_secret
+ * - Public Client：当 allowPublic=true 且未提供 secret 时直接通过（用于 token 端点）
  */
 export async function verifyOAuthClientSecret(
   clientId: string,
-  secret: string
+  secret?: string,
+  options?: { allowPublic?: boolean }
 ): Promise<OAuthClientData | null> {
   const client = await prisma.oAuthClient.findFirst({
     where: { clientId, isActive: true },
   });
   if (!client) return null;
 
-  // 优先匹配当前 hash
-  let valid = await verifySecret(secret, client.clientSecret);
+  let valid = false;
+  if (client.isPublic && options?.allowPublic && !secret) {
+    valid = true;
+  } else if (secret) {
+    // 优先匹配当前 hash
+    valid = await verifySecret(secret, client.clientSecret);
 
-  // 回退：检查旧 secret 缓存（密钥轮换过渡期）
-  if (!valid) {
-    const cached = oldSecretCache.get(clientId);
-    if (cached && Date.now() < cached.expiresAt) {
-      valid = await verifySecret(secret, cached.oldHash);
-      // 清理过期条目
-      if (Date.now() >= cached.expiresAt) {
-        oldSecretCache.delete(clientId);
+    // 回退：检查旧 secret 缓存（密钥轮换过渡期）
+    if (!valid) {
+      const cached = oldSecretCache.get(clientId);
+      if (cached && Date.now() < cached.expiresAt) {
+        valid = await verifySecret(secret, cached.oldHash);
       }
     }
+  }
+
+  // 清理过期缓存条目
+  const cached = oldSecretCache.get(clientId);
+  if (cached && Date.now() >= cached.expiresAt) {
+    oldSecretCache.delete(clientId);
   }
 
   if (!valid) return null;
@@ -208,6 +224,7 @@ export async function verifyOAuthClientSecret(
     redirectUris: client.redirectUris,
     scopes: client.scopes,
     isActive: client.isActive,
+    isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
@@ -227,6 +244,7 @@ export async function getOAuthClientById(id: string): Promise<OAuthClientData | 
     redirectUris: client.redirectUris,
     scopes: client.scopes,
     isActive: client.isActive,
+    isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
@@ -253,6 +271,7 @@ export async function updateOAuthClient(
       redirectUris: client.redirectUris,
       scopes: client.scopes,
       isActive: client.isActive,
+      isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
@@ -314,6 +333,7 @@ export async function listOAuthClients(params?: {
       redirectUris: c.redirectUris,
       scopes: c.scopes,
       isActive: c.isActive,
+      isPublic: c.isPublic,
       backchannelLogoutUri: c.backchannelLogoutUri,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
@@ -358,6 +378,7 @@ export async function findClientByName(name: string): Promise<OAuthClientData | 
     redirectUris: client.redirectUris,
     scopes: client.scopes,
     isActive: client.isActive,
+    isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,

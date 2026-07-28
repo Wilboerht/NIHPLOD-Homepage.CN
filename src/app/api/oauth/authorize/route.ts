@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
       // 保留所有原始 query 参数
       const returnTo = `/api/oauth/authorize?${searchParams.toString()}`;
       const loginUrl = new URL("/login", getPublicOrigin(request));
-      loginUrl.searchParams.set("return_to", encodeURIComponent(returnTo));
+      loginUrl.searchParams.set("return_to", returnTo);
       loginUrl.searchParams.set("client_name", client.name);
       return NextResponse.redirect(loginUrl);
     }

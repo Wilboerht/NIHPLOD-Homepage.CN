@@ -299,6 +299,7 @@ model OAuthClient {
   redirectUris        String[]             // 允许的回调 URL 列表
   scopes              String[]             // 允许的权限范围
   isActive            Boolean  @default(true)
+  isPublic            Boolean  @default(false)  // Public Client (SPA/移动端/桌面端不传 client_secret)
   backchannelLogoutUri String?            // Backchannel Logout URI
   tenantId            String?              // 多租户预留：当前为 null 表示全局共享
   createdAt           DateTime @default(now())

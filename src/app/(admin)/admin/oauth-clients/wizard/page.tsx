@@ -58,6 +58,7 @@ export default function OAuthWizardPage() {
   // Step 1: App Info
   const [appName, setAppName] = useState("");
   const [redirectUri, setRedirectUri] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
 
   // Step 2: Scopes
   const [selectedScopes, setSelectedScopes] = useState<string[]>(["openid", "profile"]);
@@ -109,6 +110,7 @@ export default function OAuthWizardPage() {
         name: appName.trim(),
         redirectUris: [redirectUri.trim()],
         scopes: selectedScopes,
+        isPublic,
       });
 
       setResult({
@@ -260,6 +262,37 @@ const user = await userRes.json();`;
                 用户授权后，主站将把授权码发送到此 URL。
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">应用类型</label>
+              <div className="space-y-2">
+                <label className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${!isPublic ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <input
+                    type="radio"
+                    name="clientType"
+                    checked={!isPublic}
+                    onChange={() => setIsPublic(false)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Confidential Client</p>
+                    <p className="text-xs text-gray-500">Next.js / 服务端应用，后端保密 client_secret</p>
+                  </div>
+                </label>
+                <label className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${isPublic ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <input
+                    type="radio"
+                    name="clientType"
+                    checked={isPublic}
+                    onChange={() => setIsPublic(true)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Public Client</p>
+                    <p className="text-xs text-gray-500">SPA / 移动端 / 桌面端，不传输 client_secret，必须使用 PKCE</p>
+                  </div>
+                </label>
+              </div>
+            </div>
             <div className="flex justify-end">
               <Button
                 onClick={() => setStep(2)}
@@ -325,6 +358,10 @@ const user = await userRes.json();`;
               <div>
                 <span className="text-gray-500">应用名称：</span>
                 <span className="text-gray-900 font-medium">{appName}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">应用类型：</span>
+                <span className="text-gray-900 font-medium">{isPublic ? "Public Client" : "Confidential Client"}</span>
               </div>
               <div>
                 <span className="text-gray-500">回调 URL：</span>

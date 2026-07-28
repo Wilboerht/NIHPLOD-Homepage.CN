@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
+import { Switch } from "@/components/ui/Switch";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -34,6 +35,7 @@ interface OAuthClient {
   redirectUris: string[];
   scopes: string[];
   isActive: boolean;
+  isPublic: boolean;
   backchannelLogoutUri: string | null;
   createdAt: string;
   updatedAt: string;
@@ -131,6 +133,7 @@ function OAuthClientsPage() {
   const [formName, setFormName] = useState("");
   const [formRedirectUris, setFormRedirectUris] = useState("");
   const [formScopes, setFormScopes] = useState("openid profile phone");
+  const [formIsPublic, setFormIsPublic] = useState(false);
   const [formBackchannelUri, setFormBackchannelUri] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -187,6 +190,7 @@ function OAuthClientsPage() {
     setFormName("");
     setFormRedirectUris("");
     setFormScopes("openid profile phone");
+    setFormIsPublic(false);
     setFormBackchannelUri("");
   };
 
@@ -213,6 +217,7 @@ function OAuthClientsPage() {
         name: formName.trim(),
         redirectUris: uriValidation.parsed,
         scopes,
+        isPublic: formIsPublic,
         backchannelLogoutUri: formBackchannelUri.trim() || undefined,
       });
       setNewSecret(data.plainSecret);
@@ -248,6 +253,7 @@ function OAuthClientsPage() {
         name: formName.trim(),
         redirectUris: uriValidation.parsed,
         scopes,
+        isPublic: formIsPublic,
         backchannelLogoutUri: formBackchannelUri.trim() || null,
       });
       toast.success("Client 更新成功");
@@ -298,6 +304,7 @@ function OAuthClientsPage() {
     setFormName(client.name);
     setFormRedirectUris(client.redirectUris.join("\n"));
     setFormScopes(client.scopes.join(" "));
+    setFormIsPublic(client.isPublic);
     setFormBackchannelUri(client.backchannelLogoutUri || "");
     setShowEdit(true);
   };
@@ -419,6 +426,7 @@ if (!payload) {
             <tr>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">名称</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Client ID</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">类型</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">回调 URL</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Scopes</th>
               <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">活跃用户</th>
@@ -431,11 +439,11 @@ if (!payload) {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-500">加载中...</td>
+                <td colSpan={10} className="text-center py-8 text-gray-500">加载中...</td>
               </tr>
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-500">暂无数据</td>
+                <td colSpan={10} className="text-center py-8 text-gray-500">暂无数据</td>
               </tr>
             ) : (
               clients.map((c) => (
@@ -459,6 +467,11 @@ if (!payload) {
                         <Copy className="w-3.5 h-3.5" />
                       </button>
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={c.isPublic ? "warning" : "secondary"} className="text-xs">
+                      {c.isPublic ? "Public" : "Confidential"}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
                     {c.redirectUris.join(", ")}
@@ -608,6 +621,14 @@ if (!payload) {
               <p className="text-xs text-gray-400 mt-1">必须包含 openid，建议只申请必需 scope</p>
             </div>
             <div>
+              <Switch
+                checked={formIsPublic}
+                onChange={setFormIsPublic}
+                label="Public Client"
+                description={formIsPublic ? "SPA / 移动端 / 桌面端，不传输 client_secret" : "Next.js / 服务端应用，必须保密 client_secret"}
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Backchannel Logout URI（可选）</label>
               <Input value={formBackchannelUri} onChange={(e) => setFormBackchannelUri(e.target.value)} placeholder="https://advisor.nihplod.cn/api/sso/logout" />
             </div>
@@ -651,6 +672,14 @@ if (!payload) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Scopes（空格分隔）</label>
             <Input value={formScopes} onChange={(e) => setFormScopes(e.target.value)} />
             <p className="text-xs text-gray-400 mt-1">必须包含 openid，建议只申请必需 scope</p>
+          </div>
+          <div>
+            <Switch
+              checked={formIsPublic}
+              onChange={setFormIsPublic}
+              label="Public Client"
+              description={formIsPublic ? "SPA / 移动端 / 桌面端，不传输 client_secret" : "Next.js / 服务端应用，必须保密 client_secret"}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Backchannel Logout URI（可选）</label>
@@ -812,6 +841,12 @@ if (!payload) {
                       <span className="text-gray-500">状态</span>
                       <Badge variant={detailClient.isActive ? "success" : "danger"}>
                         {detailClient.isActive ? "启用" : "禁用"}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">类型</span>
+                      <Badge variant={detailClient.isPublic ? "warning" : "secondary"}>
+                        {detailClient.isPublic ? "Public" : "Confidential"}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
