@@ -22,7 +22,7 @@ interface Coupon {
 
 export function CouponsContent() {
   const toast = useToast();
-  const { user, openLoginModal } = useAuth();
+  const { user, redirectToLogin } = useAuth();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [acquiring, setAcquiring] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export function CouponsContent() {
 
   const handleAcquire = async (coupon: Coupon) => {
     if (!user) {
-      openLoginModal();
+      redirectToLogin();
       return;
     }
     if (acquiring) return;

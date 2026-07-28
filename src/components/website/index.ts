@@ -1,4 +1,3 @@
-export { AuthModal } from "./AuthModal";
 export { UserCenterModal } from "./UserCenterModal";
 export { CheckoutModal } from "./CheckoutModal";
 export { default as PayModal } from "./PayModal";

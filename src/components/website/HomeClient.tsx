@@ -20,15 +20,13 @@ import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
  */
 function UrlParamHandler() {
   const searchParams = useSearchParams();
-  const { openWechatBindModal } = useAuth();
+  const { redirectToWechatBind } = useAuth();
 
   useEffect(() => {
     if (searchParams.get("login") === "wechat_bind") {
-      openWechatBindModal();
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, "", newUrl);
+      redirectToWechatBind(window.location.pathname);
     }
-  }, [searchParams, openWechatBindModal]);
+  }, [searchParams, redirectToWechatBind]);
 
   return null;
 }

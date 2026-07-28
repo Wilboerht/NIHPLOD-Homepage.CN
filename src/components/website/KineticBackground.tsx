@@ -37,7 +37,7 @@ const LOOP_SLOGANS = [
  */
 export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { user, switchToLogin, openUserCenter } = useAuth();
+  const { user, redirectToLogin, openUserCenter } = useAuth();
   const pathname = usePathname();
   const { setDrawerOpen } = useLayout();
   const [sloganIndex, setSloganIndex] = useState(2);
@@ -99,7 +99,7 @@ export function KineticBackground() {
   const handleLoginClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    switchToLogin();
+    redirectToLogin();
   };
 
   return (
@@ -294,7 +294,7 @@ export function KineticBackground() {
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              user ? openUserCenter() : switchToLogin();
+              user ? openUserCenter() : redirectToLogin();
             }
           }}
         >

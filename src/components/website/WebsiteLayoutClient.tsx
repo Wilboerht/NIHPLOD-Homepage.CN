@@ -42,7 +42,7 @@ export function MainContent({ children }: { children: ReactNode }) {
  * 3. 包装页面内容
  */
 export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
-  const { refreshUser, openUserCenter, openWechatBindModal } = useAuth();
+  const { refreshUser, openUserCenter, redirectToWechatBind } = useAuth();
   const toast = useToast();
 
   useEffect(() => {
@@ -61,12 +61,12 @@ export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
         openUserCenter();
       });
     } else if (wechatAuth === "binding_required") {
-      openWechatBindModal();
+      redirectToWechatBind();
     } else if (wechatAuth === "error") {
       const message = params.get("message") || "微信授权失败";
       toast.error(decodeURIComponent(message));
     }
-  }, [refreshUser, openUserCenter, openWechatBindModal, toast]);
+  }, [refreshUser, openUserCenter, redirectToWechatBind, toast]);
 
   return (
     <LayoutProvider>

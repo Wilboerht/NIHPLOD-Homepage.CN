@@ -52,7 +52,7 @@ let mockCheckoutOpen = false;
 let mockUser: unknown = { id: "user-1" };
 const mockCloseCheckout = vi.fn();
 const mockOpenUserCenter = vi.fn();
-const mockOpenLoginModal = vi.fn();
+const mockRedirectToLogin = vi.fn();
 const mockOpenPay = vi.fn();
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -63,7 +63,7 @@ vi.mock("@/contexts/AuthContext", () => ({
     checkoutQuantities: {},
     closeCheckout: mockCloseCheckout,
     openUserCenter: mockOpenUserCenter,
-    openLoginModal: mockOpenLoginModal,
+    redirectToLogin: mockRedirectToLogin,
     openPay: mockOpenPay,
   }),
 }));
@@ -137,7 +137,7 @@ describe("CheckoutModal", () => {
     render(<CheckoutModal />);
 
     await waitFor(() => {
-      expect(mockOpenLoginModal).toHaveBeenCalled();
+      expect(mockRedirectToLogin).toHaveBeenCalled();
     });
   });
 

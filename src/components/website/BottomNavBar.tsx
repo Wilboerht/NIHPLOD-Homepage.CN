@@ -83,7 +83,7 @@ export function BottomNavBar() {
   const shouldReduceMotion = useReducedMotion();
   const { isDrawerOpen, setDrawerOpen, isNavMenuOpen, setNavMenuOpen, isDrawerAnimating } =
     useLayout();
-  const { activeModal, userCenterOpen } = useAuth();
+  const { userCenterOpen } = useAuth();
 
   const currentPage = useMemo(
     () => allNavItems.find((item) => isCurrentPage(pathname, item.href))?.href || homeNavItem.href,
@@ -182,7 +182,6 @@ export function BottomNavBar() {
   const isVisible =
     !isDrawerOpen &&
     !isDrawerAnimating &&
-    !activeModal &&
     !userCenterOpen &&
     !isBottomNavHiddenRoute(pathname);
 

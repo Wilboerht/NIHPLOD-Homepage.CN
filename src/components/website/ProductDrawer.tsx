@@ -690,13 +690,13 @@ function DrawerAddToCartButton({
   onClose?: () => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const { user, openLoginModal } = useAuth();
+  const { user, redirectToLogin } = useAuth();
   const { success, error: showError } = useToast();
   const { addToCart } = useCartStore();
 
   const handleAddToCart = async () => {
     if (!user) {
-      openLoginModal();
+      redirectToLogin();
       return;
     }
     if (stock <= 0) {
@@ -757,12 +757,12 @@ function DrawerDirectBuyButton({
   onClose?: () => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const { user, openCheckout, openLoginModal } = useAuth();
+  const { user, openCheckout, redirectToLogin } = useAuth();
   const { error: showError } = useToast();
 
   const handleDirectBuy = () => {
     if (!user) {
-      openLoginModal();
+      redirectToLogin();
       return;
     }
     if (stock <= 0) {

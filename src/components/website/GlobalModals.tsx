@@ -4,7 +4,6 @@
  * 全局模态框组件 - 包含所有需要的模态框
  */
 import { useEffect, useState } from "react";
-import { AuthModal } from "./AuthModal";
 import { UserCenterModal } from "./UserCenterModal";
 import { CheckoutModal } from "./CheckoutModal";
 import PayModal from "./PayModal";
@@ -23,8 +22,6 @@ export function GlobalModals() {
 
   return (
     <>
-      {/* 登录模态框 */}
-      <AuthModal />
       {/* 用户中心弹窗 */}
       <UserCenterModal />
       {/* 结算弹窗 */}

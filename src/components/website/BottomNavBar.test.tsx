@@ -62,7 +62,6 @@ function setupMocks(
     ...layoutOverrides,
   });
   (useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-    activeModal: null,
     userCenterOpen: false,
     ...authOverrides,
   });
@@ -150,8 +149,8 @@ describe("BottomNavBar", () => {
     expect(menuPopup).toHaveAttribute("id", "mobile-nav-menu");
   });
 
-  it("hides the navigation when a modal is active", () => {
-    setupMocks("/", {}, { activeModal: "login" });
+  it("hides the navigation when the user center is open", () => {
+    setupMocks("/", {}, { userCenterOpen: true });
     const { container } = render(<BottomNavBar />);
 
     expect(container.querySelector("nav")).not.toBeInTheDocument();

@@ -43,7 +43,7 @@ interface CartContentProps {
 export default function CartContent({ initialItems, autoOpenCheckout = false }: CartContentProps) {
   const router = useRouter();
   const toast = useToast();
-  const { user, openCheckout, openLoginModal } = useAuth();
+  const { user, openCheckout, redirectToLogin } = useAuth();
   const [items, setItems] = useState(initialItems);
   const [loading, _setLoading] = useState(false);
   const autoOpenedRef = useRef(false);
@@ -63,7 +63,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
     if (selectedItems.length === 0) return;
 
     if (!user) {
-      openLoginModal();
+      redirectToLogin();
       return;
     }
 
@@ -74,7 +74,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
     });
 
     openCheckout();
-  }, [autoOpenCheckout, selectedItems.length, user, openCheckout, openLoginModal, router]);
+  }, [autoOpenCheckout, selectedItems.length, user, openCheckout, redirectToLogin, router]);
 
   // 更新数量
   const updateQuantity = async (id: string, quantity: number) => {
@@ -111,7 +111,7 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
     }
     // 未登录先打开登录弹窗
     if (!user) {
-      openLoginModal();
+      redirectToLogin();
       return;
     }
 

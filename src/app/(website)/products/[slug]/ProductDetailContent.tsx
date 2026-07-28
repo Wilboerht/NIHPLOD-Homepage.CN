@@ -90,7 +90,7 @@ export function ProductDetailContent({
   const { setDrawerOpen } = useLayout();
   const { success, error: showError } = useToast();
   const { addToCart } = useCartStore();
-  const { user, openLoginModal } = useAuth();
+  const { user, redirectToLogin } = useAuth();
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -362,7 +362,7 @@ export function ProductDetailContent({
   const handleOfficialBuy = useCallback(async () => {
     if (buying) return;
     if (!user) {
-      openLoginModal();
+      redirectToLogin();
       return;
     }
     if (product.stock <= 0) {
@@ -394,7 +394,7 @@ export function ProductDetailContent({
     } finally {
       setBuying(false);
     }
-  }, [buying, user, openLoginModal, product.id, product.stock, addToCart, success, showError]);
+  }, [buying, user, redirectToLogin, product.id, product.stock, addToCart, success, showError]);
 
   const handleThumbnailClick = (index: number) => {
     setCurrentImageIndex(index);

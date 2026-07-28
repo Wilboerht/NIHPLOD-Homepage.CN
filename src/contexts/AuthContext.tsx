@@ -13,15 +13,12 @@ interface User {
   totalPoints?: number;
 }
 
-type ModalType = "login" | "register" | "forgot-password" | "wechat-bind" | null;
-
 // 用户中心视图类型
 export type UserCenterView = "profile" | "orders" | "addresses" | "coupons" | "vip" | null;
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  activeModal: ModalType;
   // 用户中心弹窗状态
   userCenterOpen: boolean;
   userCenterView: UserCenterView;
@@ -41,26 +38,29 @@ interface AuthContextType {
   payOrderId: string | null;
   openPay: (orderId: string) => void;
   closePay: () => void;
-  // 登录弹窗
-  openLoginModal: () => void;
-  openRegisterModal: () => void;
-  openForgotPasswordModal: () => void;
-  openWechatBindModal: () => void;
-  closeModal: () => void;
-  switchToLogin: () => void;
-  switchToRegister: () => void;
-  switchToForgotPassword: () => void;
-  switchToWechatBind: () => void;
+  // 登录/注册/找回/绑定入口（全部跳转到统一登录页）
+  redirectToLogin: (returnTo?: string | null) => void;
+  redirectToRegister: (returnTo?: string | null) => void;
+  redirectToForgotPassword: (returnTo?: string | null) => void;
+  redirectToWechatBind: (returnTo?: string | null) => void;
   refreshUser: (force?: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function buildAuthUrl(mode: string, returnTo?: string | null) {
+  const params = new URLSearchParams();
+  params.set("mode", mode);
+  if (returnTo) {
+    params.set("return_to", returnTo);
+  }
+  return `/login?${params.toString()}`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeModal, setActiveModal] = useState<ModalType>(null);
 
   // 用户中心弹窗状态
   const [userCenterOpen, setUserCenterOpen] = useState(false);
@@ -78,15 +78,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [payOpen, setPayOpen] = useState(false);
   const [payOrderId, setPayOrderId] = useState<string | null>(null);
 
-  const openLoginModal = useCallback(() => setActiveModal("login"), []);
-  const openRegisterModal = useCallback(() => setActiveModal("register"), []);
-  const openForgotPasswordModal = useCallback(() => setActiveModal("forgot-password"), []);
-  const openWechatBindModal = useCallback(() => setActiveModal("wechat-bind"), []);
-  const closeModal = useCallback(() => setActiveModal(null), []);
-  const switchToLogin = useCallback(() => setActiveModal("login"), []);
-  const switchToRegister = useCallback(() => setActiveModal("register"), []);
-  const switchToForgotPassword = useCallback(() => setActiveModal("forgot-password"), []);
-  const switchToWechatBind = useCallback(() => setActiveModal("wechat-bind"), []);
+  // 统一登录页跳转（使用 window.location 确保在事件回调中也能立即触发）
+  const redirectToLogin = useCallback((returnTo?: string | null) => {
+    const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    window.location.href = buildAuthUrl("login", target);
+  }, []);
+
+  const redirectToRegister = useCallback((returnTo?: string | null) => {
+    const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    window.location.href = buildAuthUrl("register", target);
+  }, []);
+
+  const redirectToForgotPassword = useCallback((returnTo?: string | null) => {
+    const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    window.location.href = buildAuthUrl("reset", target);
+  }, []);
+
+  const redirectToWechatBind = useCallback((returnTo?: string | null) => {
+    const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    window.location.href = buildAuthUrl("wechat-bind", target);
+  }, []);
 
   // 用户中心弹窗操作
   const openUserCenter = useCallback((view: UserCenterView = "profile", orderId?: string) => {
@@ -227,7 +238,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isLoading,
-      activeModal,
       userCenterOpen,
       userCenterView,
       initialOrderId,
@@ -244,22 +254,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       payOrderId,
       openPay,
       closePay,
-      openLoginModal,
-      openRegisterModal,
-      openForgotPasswordModal,
-      openWechatBindModal,
-      closeModal,
-      switchToLogin,
-      switchToRegister,
-      switchToForgotPassword,
-      switchToWechatBind,
+      redirectToLogin,
+      redirectToRegister,
+      redirectToForgotPassword,
+      redirectToWechatBind,
       refreshUser,
       logout,
     }),
     [
       user,
       isLoading,
-      activeModal,
       userCenterOpen,
       userCenterView,
       initialOrderId,
@@ -276,15 +280,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       payOrderId,
       openPay,
       closePay,
-      openLoginModal,
-      openRegisterModal,
-      openForgotPasswordModal,
-      openWechatBindModal,
-      closeModal,
-      switchToLogin,
-      switchToRegister,
-      switchToForgotPassword,
-      switchToWechatBind,
+      redirectToLogin,
+      redirectToRegister,
+      redirectToForgotPassword,
+      redirectToWechatBind,
       refreshUser,
       logout,
     ]
