@@ -16,6 +16,7 @@ import {
   X,
   Shield,
   Smartphone,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -25,7 +26,7 @@ import { Switch } from "@/components/ui/Switch";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPost, apiPatch } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 interface OAuthClient {
@@ -125,6 +126,10 @@ function OAuthClientsPage() {
   // Rotated secret display modal
   const [showRotatedSecret, setShowRotatedSecret] = useState(false);
   const [rotatedSecret, setRotatedSecret] = useState<string | null>(null);
+
+  // Delete confirm modal
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
 
   // Detail drawer
   const [detailClient, setDetailClient] = useState<OAuthClient | null>(null);
@@ -263,6 +268,22 @@ function OAuthClientsPage() {
       toast.error("网络错误");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteClientId) return;
+    setSaving(true);
+    try {
+      await apiDelete(`/api/admin/oauth-clients/${deleteClientId}`);
+      toast.success("Client 已删除");
+      fetchClients();
+    } catch {
+      toast.error("删除 Client 失败");
+    } finally {
+      setSaving(false);
+      setShowDeleteConfirm(false);
+      setDeleteClientId(null);
     }
   };
 
@@ -538,6 +559,13 @@ if (!payload) {
                       >
                         <Power className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => { setDeleteClientId(c.id); setShowDeleteConfirm(true); }}
+                        className="p-1.5 text-gray-400 hover:text-red-600 rounded"
+                        title="删除 Client"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -702,6 +730,18 @@ if (!payload) {
         title="轮换 Client 密钥"
         description="确定要轮换该 Client 的密钥？轮换后旧密钥将在 5 分钟内失效，所有使用旧密钥的子项目需要立即更新配置。"
         confirmText="确定轮换"
+        loading={saving}
+      />
+
+      {/* Delete Confirm */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => { setShowDeleteConfirm(false); setDeleteClientId(null); }}
+        onConfirm={handleDelete}
+        type="danger"
+        title="删除 Client"
+        description="确定要删除该 Client 吗？删除后该 Client 将无法继续接入 SSO，所有已授权用户需要重新授权。"
+        confirmText="确定删除"
         loading={saving}
       />
 
