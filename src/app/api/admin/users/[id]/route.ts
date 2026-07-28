@@ -225,7 +225,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                 const logoutToken = await signLogoutToken({
                   sub: user.id,
                   aud: client.clientId,
-                  events: "http://schemas.openid.net/event/backchannel-logout",
+                  events: { "http://schemas.openid.net/event/backchannel-logout": {} },
                   jti: crypto.randomUUID(),
                 });
 
