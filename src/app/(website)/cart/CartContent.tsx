@@ -109,9 +109,9 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
       toast.warning("请选择商品");
       return;
     }
-    // 未登录先打开登录弹窗
+    // 未登录先跳登录页，登录后自动回到 /cart?openCheckout=1 拉起结算
     if (!user) {
-      redirectToLogin();
+      redirectToLogin("/cart?openCheckout=1");
       return;
     }
 

@@ -51,6 +51,8 @@ interface ProductDrawerProps {
   onClose: () => void;
   /** 产品数据 */
   product: ProductData | null;
+  /** 未登录时触发，由父组件决定重定向方式（如 SSO 登录后恢复抽屉） */
+  onAuthRequired?: (productId: string, action: "addToCart" | "directBuy") => void;
 }
 
 /**
@@ -80,7 +82,7 @@ export function PlatformIcon({ platform }: { platform: string }) {
  * - 锁定背景滚动
  * - 左右分栏布局
  */
-export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) {
+export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: ProductDrawerProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"description" | "ingredients" | "usage">(
@@ -442,6 +444,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                     stock={product.stock!}
                                     quantity={1}
                                     onClose={onClose}
+                                    onAuthRequired={onAuthRequired}
                                     compact
                                   />
                                   <div className="my-1.5 border-t border-brand-charcoal/5" />
@@ -450,6 +453,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                     stock={product.stock!}
                                     quantity={1}
                                     onClose={onClose}
+                                    onAuthRequired={onAuthRequired}
                                     compact
                                   />
                                 </div>
@@ -626,6 +630,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                 stock={product.stock!}
                                 quantity={1}
                                 onClose={onClose}
+                                onAuthRequired={onAuthRequired}
                                 compact
                               />
                               <div className="my-1.5 border-t border-brand-charcoal/5" />
@@ -634,6 +639,7 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                                 stock={product.stock!}
                                 quantity={1}
                                 onClose={onClose}
+                                onAuthRequired={onAuthRequired}
                                 compact
                               />
                             </div>
@@ -682,12 +688,14 @@ function DrawerAddToCartButton({
   quantity,
   compact,
   onClose,
+  onAuthRequired,
 }: {
   productId: string;
   stock: number;
   quantity: number;
   compact?: boolean;
   onClose?: () => void;
+  onAuthRequired?: (productId: string, action: "addToCart" | "directBuy") => void;
 }) {
   const [loading, setLoading] = useState(false);
   const { user, redirectToLogin } = useAuth();
@@ -696,6 +704,10 @@ function DrawerAddToCartButton({
 
   const handleAddToCart = async () => {
     if (!user) {
+      if (onAuthRequired) {
+        onAuthRequired(productId, "addToCart");
+        return;
+      }
       redirectToLogin();
       return;
     }
@@ -749,12 +761,14 @@ function DrawerDirectBuyButton({
   quantity,
   compact,
   onClose,
+  onAuthRequired,
 }: {
   productId: string;
   stock: number;
   quantity: number;
   compact?: boolean;
   onClose?: () => void;
+  onAuthRequired?: (productId: string, action: "addToCart" | "directBuy") => void;
 }) {
   const [loading, setLoading] = useState(false);
   const { user, openCheckout, redirectToLogin } = useAuth();
@@ -762,6 +776,10 @@ function DrawerDirectBuyButton({
 
   const handleDirectBuy = () => {
     if (!user) {
+      if (onAuthRequired) {
+        onAuthRequired(productId, "directBuy");
+        return;
+      }
       redirectToLogin();
       return;
     }

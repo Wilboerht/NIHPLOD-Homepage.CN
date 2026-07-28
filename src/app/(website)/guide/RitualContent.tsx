@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
+import { useCartStore } from "@/store/cart";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 import { ProductDrawer } from "@/components/website";
 import type { ProductData } from "@/components/website/ProductDrawer";
@@ -128,6 +131,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   const currentLevel = !selectedModule ? 1 : !selectedScheme ? 2 : 3;
   // 悬停的模块索引
   const { isDrawerOpen } = useLayout();
+  const { user, openCheckout } = useAuth();
+  const { success: showSuccess } = useToast();
+  const { addToCart } = useCartStore();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // 轮播导航状态（桌面端步骤分页）
@@ -214,6 +220,65 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   const handleCloseProductDrawer = () => {
     setProductDrawerOpen(false);
   };
+
+  // 根据 ID 查找产品（用于登录后恢复抽屉）
+  const findProductById = (productId: string) => {
+    if (!products || products.length === 0) return null;
+    return products.find((p) => p.id === productId) ?? null;
+  };
+
+  // 产品抽屉未登录操作：暂存意图，登录后回到 guide 自动恢复抽屉并执行
+  const handleProductDrawerAuthRequired = useCallback(
+    (productId: string, action: "addToCart" | "directBuy") => {
+      if (typeof window === "undefined") return;
+      sessionStorage.setItem(
+        "pendingProductDrawer",
+        JSON.stringify({ productId, action })
+      );
+      window.location.href = `/login?redirect=${encodeURIComponent(
+        "/guide?restoreProductDrawer=1"
+      )}`;
+    },
+    []
+  );
+
+  // 登录后自动恢复 guide 页的产品抽屉
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("restoreProductDrawer") !== "1") return;
+
+    const raw = sessionStorage.getItem("pendingProductDrawer");
+    if (!raw) return;
+
+    let restored = false;
+    try {
+      const pending = JSON.parse(raw) as {
+        productId: string;
+        action?: "addToCart" | "directBuy";
+      };
+      const product = findProductById(pending.productId);
+      if (product && user) {
+        setSelectedProduct(product);
+        setProductDrawerOpen(true);
+        if (pending.action === "addToCart") {
+          addToCart(product.id, 1).then((ok) => {
+            if (ok) showSuccess("已加入购物车");
+          });
+        } else if (pending.action === "directBuy") {
+          openCheckout([product.id], { [product.id]: 1 });
+        }
+        restored = true;
+      }
+    } catch {
+      // ignore invalid sessionStorage data
+    } finally {
+      sessionStorage.removeItem("pendingProductDrawer");
+      params.delete("restoreProductDrawer");
+      const newQuery = params.toString();
+      router.replace(`/guide${newQuery ? `?${newQuery}` : ""}`, { scroll: false });
+    }
+  }, [user, products, addToCart, openCheckout, showSuccess, router]);
 
   // 使用默认数据
   const moduleData = defaultModuleData;
@@ -1549,6 +1614,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
         isOpen={productDrawerOpen}
         onClose={handleCloseProductDrawer}
         product={selectedProduct}
+        onAuthRequired={handleProductDrawerAuthRequired}
       />
     </>
   );

@@ -14,6 +14,7 @@ import {
   Home,
   ShoppingCart,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { ProductCard, PlatformIcon, XiaohongshuLink, AdvisorCTA } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
@@ -119,6 +120,25 @@ export function ProductDetailContent({
       sessionStorage.setItem("products_animate", "1");
     }
   }, []);
+
+  const router = useRouter();
+  const autoBuyProcessedRef = useRef(false);
+
+  // 登录后自动恢复“官网购买”：URL 带 autoBuy=1 且用户已登录时加入购物车并清理参数
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("autoBuy") !== "1" || !user || autoBuyProcessedRef.current) return;
+
+    autoBuyProcessedRef.current = true;
+    addToCart(product.id, 1).then((ok) => {
+      if (ok) success("已加入购物车");
+    });
+
+    params.delete("autoBuy");
+    const newQuery = params.toString();
+    router.replace(`/products/${product.slug}${newQuery ? `?${newQuery}` : ""}`, { scroll: false });
+  }, [user, product.id, product.slug, addToCart, success, router]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
@@ -362,7 +382,8 @@ export function ProductDetailContent({
   const handleOfficialBuy = useCallback(async () => {
     if (buying) return;
     if (!user) {
-      redirectToLogin();
+      // 未登录时跳转到登录页，登录后自动回到本页并执行加入购物车
+      redirectToLogin(`/products/${product.slug}?autoBuy=1`);
       return;
     }
     if (product.stock <= 0) {
