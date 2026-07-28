@@ -26,10 +26,12 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+  DEFAULT_ID_TOKEN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME,
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
+  getSecureCookieOptions,
 } from "./constants";
 
 // ============================================
@@ -62,14 +64,35 @@ export interface CallbackRouteConfig {
   /** Refresh Token Cookie 名称，默认 __Host-nihplod_sso_rt */
   refreshTokenCookieName?: string;
 
+  /** ID Token Cookie 名称，默认 __Host-nihplod_sso_id */
+  idTokenCookieName?: string;
+
   /** State Cookie 名称，默认 __Host-nihplod_sso_state */
   stateCookieName?: string;
 
   /** Return URL Cookie 名称，默认 __Host-nihplod_sso_return */
   returnUrlCookieName?: string;
 
-  /** PKCE Verifier Cookie 名称，默认 __Host-nihplod_sso_verifier */
+  /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
   verifierCookieName?: string;
+}
+
+// ============================================
+// 工具函数
+// ============================================
+
+/**
+ * 校验回调后的 returnUrl 是否可信。
+ * 仅允许：相对路径（且不以 // 开头）或与当前 origin 完全一致。
+ */
+function isTrustedReturnUrl(url: string, currentOrigin: string): boolean {
+  if (!url) return false;
+  if (url.startsWith("/") && !url.startsWith("//")) return true;
+  try {
+    return new URL(url).origin === currentOrigin;
+  } catch {
+    return false;
+  }
 }
 
 // ============================================
@@ -85,6 +108,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     defaultReturnPath = "/",
     accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
     refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+    idTokenCookieName = DEFAULT_ID_TOKEN_COOKIE_NAME,
     stateCookieName = DEFAULT_STATE_COOKIE_NAME,
     returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
     verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
@@ -222,9 +246,12 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       id_token?: string;
     } = await res.json();
 
-    // 读取 return URL
-    const returnUrl =
+    // 读取 return URL，并做开放重定向防护
+    const rawReturnUrl =
       request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
+    const returnUrl = isTrustedReturnUrl(rawReturnUrl, request.nextUrl.origin)
+      ? rawReturnUrl
+      : "/";
 
     // 重定向并设置 cookie
     const response = NextResponse.redirect(new URL(returnUrl, request.url));
@@ -246,6 +273,13 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       ...getHostCookieOptions(refreshMaxAge),
     });
 
+    // 设置 id_token cookie，用于 RP-Initiated Logout 的 id_token_hint
+    if (tokenData.id_token) {
+      response.cookies.set(idTokenCookieName, tokenData.id_token, {
+        ...getHostCookieOptions(refreshMaxAge),
+      });
+    }
+
     // 清除临时 cookies: state / return URL
     response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
     response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
@@ -253,14 +287,8 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     // 清除 PKCE verifier cookie，必须使用写入时的 path（callbackPath）
     // 由于 callback handler 不知道 middleware 的 callbackPath，这里保守地
     // 同时清除 path=/ 和 path=当前请求路径两种可能
-    response.cookies.set(verifierCookieName, "", {
-      ...getHostCookieOptions(0),
-      path: "/",
-    });
-    response.cookies.set(verifierCookieName, "", {
-      ...getHostCookieOptions(0),
-      path: request.nextUrl.pathname,
-    });
+    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/"));
+    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname));
 
     return response;
   };

@@ -13,7 +13,15 @@ export type SsoErrorCode =
   | "userinfo_failed"
   | "not_authenticated"
   | "sso_server_error"
-  | "network_error";
+  | "network_error"
+  | "id_token_invalid"
+  | "id_token_unsupported_alg"
+  | "id_token_missing_secret"
+  | "id_token_invalid_signature"
+  | "id_token_issuer_mismatch"
+  | "id_token_audience_mismatch"
+  | "id_token_expired"
+  | "id_token_missing_sub";
 
 /** OAuth 2.0 标准错误码 */
 export type OAuthErrorCode =

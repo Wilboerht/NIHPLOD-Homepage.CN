@@ -34,6 +34,187 @@ import {
 } from "./storage";
 
 // ============================================
+// ID Token 验证辅助函数（浏览器原生 Web Crypto）
+// ============================================
+
+function base64UrlDecode(input: string): Uint8Array {
+  const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/** 解码 JWT payload（不验证签名） */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const json = new TextDecoder().decode(base64UrlDecode(parts[1]));
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** 解码 JWT header */
+function decodeJwtHeader(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const json = new TextDecoder().decode(base64UrlDecode(parts[0]));
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** 标准化 issuer/base URL，去除末尾斜杠 */
+function normalizeIssuer(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+interface JwksKey {
+  kty: string;
+  kid?: string;
+  alg?: string;
+  use?: string;
+  n?: string;
+  e?: string;
+  x5c?: string[];
+}
+
+interface Jwks {
+  keys: JwksKey[];
+}
+
+let cachedJwks: { baseUrl: string; jwks: Jwks; fetchedAt: number } | null = null;
+const JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+/** 从 SSO 中心拉取 JWKS */
+async function fetchJwks(baseUrl: string): Promise<Jwks | null> {
+  const now = Date.now();
+  if (cachedJwks && cachedJwks.baseUrl === baseUrl && now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS) {
+    return cachedJwks.jwks;
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/api/oauth/jwks`);
+    if (!res.ok) return null;
+    const jwks = (await res.json()) as Jwks;
+    cachedJwks = { baseUrl, jwks, fetchedAt: now };
+    return jwks;
+  } catch {
+    return null;
+  }
+}
+
+/** 使用 RS256 公钥验证 ID Token 签名 */
+async function verifyRs256(token: string, jwk: JwksKey): Promise<boolean> {
+  try {
+    const [headerB64, payloadB64, signature] = token.split(".");
+    if (!signature || !jwk.n || !jwk.e) return false;
+
+    const cryptoKey = await crypto.subtle.importKey(
+      "jwk",
+      { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RS256", ext: false },
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+
+    const signatureBytes = base64UrlDecode(signature);
+    const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    return await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      cryptoKey,
+      signatureBytes as unknown as BufferSource,
+      data as unknown as BufferSource
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** 验证 ID Token（iss、aud、exp、sub、签名） */
+async function validateIdToken(
+  idToken: string,
+  expectedIssuer: string,
+  expectedClientId: string
+) {
+  const header = decodeJwtHeader(idToken);
+  if (!header) {
+    throw new SsoError("id_token_invalid", "ID Token 格式错误");
+  }
+
+  const alg = header.alg;
+  if (typeof alg !== "string" || (alg !== "RS256" && alg !== "HS256")) {
+    throw new SsoError("id_token_unsupported_alg", `不支持的 ID Token 签名算法: ${alg}`);
+  }
+
+  // RS256：通过 JWKS 验证签名
+  if (alg === "RS256") {
+    const jwks = await fetchJwks(normalizeIssuer(expectedIssuer));
+    if (!jwks) {
+      throw new SsoError("id_token_invalid_signature", "无法获取 JWKS 验证 ID Token 签名");
+    }
+    const kid = typeof header.kid === "string" ? header.kid : undefined;
+    const key = jwks.keys.find(
+      (k) =>
+        k.kty === "RSA" &&
+        k.alg === "RS256" &&
+        k.use === "sig" &&
+        (kid ? k.kid === kid : true)
+    );
+    if (!key) {
+      throw new SsoError("id_token_invalid_signature", "JWKS 中未找到匹配的 RS256 公钥");
+    }
+    const validSig = await verifyRs256(idToken, key);
+    if (!validSig) {
+      throw new SsoError("id_token_invalid_signature", "ID Token 签名验证失败");
+    }
+  }
+
+  // HS256：对称密钥无法安全分发给 Public Client，因此仅校验声明、不校验签名。
+  // Confidential Client 如确需验证签名，应迁移到 RS256。
+  if (alg === "HS256") {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[SSO SDK] ID Token 使用 HS256 签名，Public Client 无法安全验证签名。" +
+        "建议主站配置 JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY 启用 RS256。"
+    );
+  }
+
+  const payload = decodeJwtPayload(idToken);
+  if (!payload) {
+    throw new SsoError("id_token_invalid", "ID Token payload 解析失败");
+  }
+
+  const normalizedExpectedIssuer = normalizeIssuer(expectedIssuer);
+  const tokenIssuer = typeof payload.iss === "string" ? normalizeIssuer(payload.iss) : "";
+  if (tokenIssuer !== normalizedExpectedIssuer) {
+    throw new SsoError("id_token_issuer_mismatch", "ID Token issuer 不匹配");
+  }
+  if (
+    payload.aud !== expectedClientId &&
+    !((payload.aud as string[] | undefined)?.includes(expectedClientId))
+  ) {
+    throw new SsoError("id_token_audience_mismatch", "ID Token audience 不匹配");
+  }
+  if (typeof payload.exp === "number" && Date.now() >= payload.exp * 1000) {
+    throw new SsoError("id_token_expired", "ID Token 已过期");
+  }
+  if (typeof payload.sub !== "string" || !payload.sub) {
+    throw new SsoError("id_token_missing_sub", "ID Token 缺少 sub");
+  }
+
+  return { sub: payload.sub };
+}
+
+// ============================================
 // 类型定义
 // ============================================
 
@@ -247,7 +428,8 @@ export class SsoClient {
 
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
-    if (returnUrl) saveReturnUrl(returnUrl, this.config.clientId);
+    // 统一使用全局 returnUrl key，与 login() / CallbackPage 保持一致
+    if (returnUrl) saveReturnUrl(returnUrl);
 
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
@@ -345,6 +527,17 @@ export class SsoClient {
     }
 
     const data: TokenResponse = await res.json();
+
+    // OIDC：验证 ID Token 签名与基本声明
+    if (data.id_token) {
+      try {
+        await validateIdToken(data.id_token, this.config.ssoBaseUrl, this.config.clientId);
+      } catch (err) {
+        // 验证失败：不保存任何 token，防止伪造 ID Token
+        removeTokenData(this.config.clientId);
+        throw err;
+      }
+    }
 
     const now = Date.now();
     const tokenData: TokenData = {

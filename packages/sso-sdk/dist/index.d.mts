@@ -1,8 +1,9 @@
 /**
  * Token 存储抽象层
  *
- * 默认使用 sessionStorage（非 localStorage），防止 XSS 持久化窃取。
- * 支持注入自定义实现（如 React Native AsyncStorage、Node.js 文件存储）。
+ * 默认使用 localStorage，以支持多 Tab 间自动同步 token 并避免并发刷新。
+ * 对 XSS 敏感的子项目可通过 setTokenStorage() 注入更安全的自定义实现
+ *（如内存存储、Service Worker 封装、或带加密的 storage）。
  *
  * 多 client 隔离：
  * - token / state / return_url 均支持按 clientId 隔离 key
@@ -246,7 +247,7 @@ declare function generateState(): string;
  * SSO SDK 错误类型
  */
 /** SSO 错误码 */
-type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "sso_server_error" | "network_error";
+type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "sso_server_error" | "network_error" | "id_token_invalid" | "id_token_unsupported_alg" | "id_token_missing_secret" | "id_token_invalid_signature" | "id_token_issuer_mismatch" | "id_token_audience_mismatch" | "id_token_expired" | "id_token_missing_sub";
 /** OAuth 2.0 标准错误码 */
 type OAuthErrorCode = "invalid_request" | "invalid_client" | "invalid_grant" | "unauthorized_client" | "unsupported_grant_type" | "invalid_scope" | "access_denied" | "server_error" | "rate_limited";
 /**

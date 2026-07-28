@@ -207,11 +207,18 @@ export default withAuth(ProfilePage);
 import { createSsoMiddleware } from "@nihplod/sso-sdk/next";
 
 export const middleware = createSsoMiddleware({
-  clientId: "your-client-id",
-  ssoBaseUrl: "https://nihplod.cn",
-  redirectUri: "https://yourapp.com/api/auth/callback",
-  publicPaths: ["/", "/public"], // 不需要登录的路径
+  clientId: process.env.SSO_CLIENT_ID!,
+  // Confidential Client（BFF/Next.js）建议传入 clientSecret，
+  // Middleware 会通过 Introspection 精确校验 access_token，防止伪造 Cookie 绕过
+  clientSecret: process.env.SSO_CLIENT_SECRET,
+  ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
+  redirectUri: process.env.SSO_REDIRECT_URI || "https://yourapp.com/api/auth/callback",
+  publicPaths: ["/", "/public", "/api/auth/logout"], // 不需要登录的路径
 });
+
+export const config = {
+  matcher: ["/((?!_next|favicon.ico).*)", "/api/auth/:path*"],
+};
 ```
 
 ### 回调 Route Handler
@@ -220,14 +227,36 @@ export const middleware = createSsoMiddleware({
 // src/app/api/auth/callback/route.ts
 import { createCallbackRouteHandler } from "@nihplod/sso-sdk/next";
 
+export const runtime = "nodejs";
+
 export const GET = createCallbackRouteHandler({
-  clientId: "your-client-id",
-  // Confidential Client 可传入 clientSecret；Public Client 省略
-  // clientSecret: "your-client-secret",
-  ssoBaseUrl: "https://nihplod.cn",
-  redirectUri: "https://yourapp.com/api/auth/callback",
+  clientId: process.env.SSO_CLIENT_ID!,
+  // Confidential Client 必须传入 clientSecret；Public Client 省略
+  clientSecret: process.env.SSO_CLIENT_SECRET,
+  ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
+  redirectUri: process.env.SSO_REDIRECT_URI || "https://yourapp.com/api/auth/callback",
 });
 ```
+
+### 登出 Route Handler
+
+```typescript
+// src/app/api/auth/logout/route.ts
+import { createLogoutRouteHandler } from "@nihplod/sso-sdk/next";
+
+export const runtime = "nodejs";
+
+export const GET = createLogoutRouteHandler({
+  clientId: process.env.SSO_CLIENT_ID!,
+  clientSecret: process.env.SSO_CLIENT_SECRET,
+  ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
+  redirectUri: process.env.SSO_REDIRECT_URI || "https://yourapp.com/api/auth/callback",
+  postLogoutRedirectUri: process.env.SSO_POST_LOGOUT_REDIRECT_URI || "https://yourapp.com/",
+  redirectToSso: true,
+});
+```
+
+> 本地开发若使用 `http://localhost`，浏览器会拒绝 `Secure` Cookie。建议在 `.env.local` 中使用 HTTPS 地址，或仅在本地临时关闭 Secure（生产必须启用 HTTPS）。
 
 ---
 
@@ -268,8 +297,8 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 
 ### Token 存储策略
 
-- SDK 使用 `sessionStorage`（而非 `localStorage`）存储 token，页面关闭后自动清除
-- 支持注入自定义存储实现（如 httpOnly cookie、React Native AsyncStorage）
+- React SDK 默认使用 `localStorage` 存储 token，以实现多 Tab 间自动同步并避免并发刷新
+- 对 XSS 敏感的子项目可通过 `setTokenStorage()` 注入更安全的自定义实现（如内存存储、加密 storage）
 - Next.js 回调 handler 将 token 存入 httpOnly Secure cookie
 
 ### redirect_uri 规范
@@ -297,6 +326,22 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
   `/api/oauth/token` 在 refresh 流程中严格校验 token 归属的 client 与请求方一致，
   防止子项目 A 的 refresh token 被拿到子项目 B 使用
 
+### ID Token 验证
+
+SDK 在 `handleCallback` 中会自动验证 ID Token：
+- 若主站配置了 `JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY`，ID Token 使用 RS256 签名，
+  SDK 会通过 `/api/oauth/jwks` 拉取公钥完成签名验证（推荐）。
+- 若主站未配置 RS256 密钥，ID Token 使用 HS256 签名；由于对称密钥无法安全分发给 Public Client，
+  SDK 会跳过签名验证，但仍校验 `iss / aud / exp / sub` 等声明。
+
+主站生成 RS256 密钥：
+
+```bash
+npx tsx scripts/generate-oauth-rs256-keys.ts
+```
+
+将输出的 `JWT_ID_TOKEN_PRIVATE_KEY` / `JWT_ID_TOKEN_PUBLIC_KEY` 写入 `.env.local` 后重启应用即可生效。
+
 ### 授权错误回传
 
 当 `/api/oauth/authorize` 已经识别出合法的 `client_id` + `redirect_uri`，
@@ -310,7 +355,7 @@ SSO 中心不会直接返回 JSON 400，而是按 OAuth 2.0 规范 302 重定向
 
 ### Q: 回调页面报 "State 参数不匹配" 错误？
 
-A: 确保回调页面使用了同一个 `SsoClient` 实例（state 存储在 sessionStorage 中）。如果在不同标签页中登录，state 可能不匹配。
+A: 确保回调页面使用了同一个 `SsoClient` 实例（state 存储在 localStorage 中）。如果在不同标签页中登录，state 可能不匹配。
 
 ### Q: 如何在后端验证 token？
 
@@ -324,19 +369,33 @@ curl -X POST https://nihplod.cn/api/oauth/introspect \
   -d "client_id=YOUR_CLIENT_ID&client_secret=YOUR_SECRET&token=ACCESS_TOKEN"
 ```
 
-2. **本地 JWT 验证（仅内部 Confidential Client，需共享 `JWT_ACCESS_SECRET`）**：
+2. **本地 JWT 验证（仅内部 Confidential Client，需共享 RS256 公钥）**：
 
 ```typescript
 import { createTokenVerifier } from "@nihplod/sso-verify";
 
+// 方式 A：通过 JWKS 自动拉取公钥（推荐，支持密钥轮换）
 const verifier = createTokenVerifier({
-  accessTokenSecret: process.env.JWT_ACCESS_SECRET,
+  jwksUri: "https://nihplod.cn/api/oauth/jwks",
+  audience: "your-client-id",
+  issuer: "https://nihplod.cn",
+});
+
+// 方式 B：直接配置公钥
+const verifier = createTokenVerifier({
+  accessTokenPublicKey: process.env.SSO_ACCESS_TOKEN_PUBLIC_KEY,
   audience: "your-client-id",
   issuer: "https://nihplod.cn",
 });
 
 const payload = await verifier.verify(token);
 ```
+
+> ⚠️ **不要将 `JWT_ACCESS_SECRET`（HS256 对称密钥）分发给外部子项目。** 外部子项目请优先使用 Introspection；本地 JWT 验证仅适用于已与主站安全共享 RS256 公钥的内部服务。
+
+### Q: Public Client（SPA）调用 logout(true) 后，SSO 中心会话是否立即失效？
+
+A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心 `/logout` 页面；用户确认后，SSO 中心会撤销其所有会话并触发 backchannel logout。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
 
 ### Q: Next.js middleware 是否支持 PKCE？
 

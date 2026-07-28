@@ -412,9 +412,17 @@ function LoginPageContent() {
     setConsentError("");
     try {
       const params = new URLSearchParams(oauthParams);
+      const csrfMatch =
+        typeof document !== "undefined"
+          ? document.cookie.match(/(?:^|;\\s*)__Host-csrf_token=([^;]*)/)
+          : null;
+      const csrfToken = csrfMatch ? decodeURIComponent(csrfMatch[1]) : "";
       const res = await fetch("/api/oauth/authorize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+        },
         body: JSON.stringify({
           action,
           client_id: params.get("client_id"),
@@ -575,29 +583,51 @@ function LoginPageContent() {
     }
   };
 
-  const renderConsent = (variant: "pc" | "mobile") => (
-    <div className={variant === "mobile" ? "flex flex-col gap-14" : ""}>
-      {variant === "pc" && (
-        <h1 className="mb-14 text-center text-[2rem] font-light tracking-[0.15em] text-brand-charcoal">
-          授权登录
-        </h1>
-      )}
-      {variant === "mobile" && (
-        <div className="pb-4 pt-[6px] text-center">
-          <h2 className="text-[24px] font-light tracking-[0.15em] text-brand-charcoal">授权登录</h2>
-          <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
-        </div>
-      )}
+  const scopeDescriptions: Record<string, string> = {
+    openid: "唯一用户标识（sub）",
+    profile: "昵称、头像",
+    phone: "手机号（脱敏后）",
+    membership: "会员等级、积分",
+  };
 
-      <div className="space-y-10">
-        <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4">
-          <p className="text-sm text-brand-charcoal/80">
-            <strong>{clientName}</strong> 请求访问您的账户信息
-          </p>
-          <p className="text-xs text-brand-charcoal/60 mt-1">
-            授权后，{clientName} 将可以获取您的昵称、头像等基本信息。
-          </p>
-        </div>
+  const renderConsent = (variant: "pc" | "mobile") => {
+    const params = new URLSearchParams(oauthParams);
+    const requestedScopes = (params.get("scope") || "openid")
+      .split(" ")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    return (
+      <div className={variant === "mobile" ? "flex flex-col gap-14" : ""}>
+        {variant === "pc" && (
+          <h1 className="mb-14 text-center text-[2rem] font-light tracking-[0.15em] text-brand-charcoal">
+            授权登录
+          </h1>
+        )}
+        {variant === "mobile" && (
+          <div className="pb-4 pt-[6px] text-center">
+            <h2 className="text-[24px] font-light tracking-[0.15em] text-brand-charcoal">授权登录</h2>
+            <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
+          </div>
+        )}
+
+        <div className="space-y-10">
+          <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4">
+            <p className="text-sm text-brand-charcoal/80">
+              <strong>{clientName}</strong> 请求访问您的账户信息
+            </p>
+            <ul className="mt-2 space-y-1">
+              {requestedScopes.map((scope) => (
+                <li key={scope} className="flex items-start gap-2 text-xs text-brand-charcoal/70">
+                  <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                  <span>
+                    <code className="rounded bg-blue-100 px-1 py-0.5 text-blue-700">{scope}</code>
+                    {scopeDescriptions[scope] ? ` — ${scopeDescriptions[scope]}` : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
         {consentError && (
           <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-sm text-red-600">
@@ -624,6 +654,7 @@ function LoginPageContent() {
       </div>
     </div>
   );
+};
 
   return (
     <AnimatePresence>

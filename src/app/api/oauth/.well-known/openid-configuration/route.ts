@@ -21,8 +21,10 @@ const GRANT_TYPES = ["authorization_code", "refresh_token"];
 /** 支持的 code_challenge_method */
 const CODE_CHALLENGE_METHODS = ["S256"];
 
-/** 支持的 ID Token 签名算法（当前 HS256，后续迁移到 RS256） */
-const ID_TOKEN_SIGNING_ALG_VALUES = ["HS256"];
+/** 支持的 ID Token 签名算法（配置了 RS256 密钥时优先广播 RS256，同时保留 HS256 兼容） */
+const ID_TOKEN_SIGNING_ALG_VALUES = process.env.JWT_ID_TOKEN_PUBLIC_KEY
+  ? ["RS256", "HS256"]
+  : ["HS256"];
 
 /** 支持的 token_endpoint_auth_method */
 const TOKEN_ENDPOINT_AUTH_METHODS = ["client_secret_post", "none"];

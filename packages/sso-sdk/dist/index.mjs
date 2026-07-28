@@ -66,21 +66,21 @@ var RETURN_URL_KEY = "return_url";
 function buildKey(base, clientId) {
   return clientId ? `${base}:${clientId}` : base;
 }
-var sessionStorageAdapter = {
+var localStorageAdapter = {
   get(key) {
-    if (typeof sessionStorage === "undefined") return null;
-    return sessionStorage.getItem(STORAGE_PREFIX + key);
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem(STORAGE_PREFIX + key);
   },
   set(key, value) {
-    if (typeof sessionStorage === "undefined") return;
-    sessionStorage.setItem(STORAGE_PREFIX + key, value);
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(STORAGE_PREFIX + key, value);
   },
   remove(key) {
-    if (typeof sessionStorage === "undefined") return;
-    sessionStorage.removeItem(STORAGE_PREFIX + key);
+    if (typeof localStorage === "undefined") return;
+    localStorage.removeItem(STORAGE_PREFIX + key);
   }
 };
-var _storage = sessionStorageAdapter;
+var _storage = localStorageAdapter;
 function setTokenStorage(storage) {
   _storage = storage;
 }
@@ -140,10 +140,10 @@ function clearAllSsoData(clientId) {
   removeTokenData();
   removeOAuthState();
   removeReturnUrl();
-  if (typeof sessionStorage !== "undefined") {
+  if (typeof localStorage !== "undefined") {
     const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
       if (key?.startsWith(prefix)) {
         _storage.remove(key.slice(STORAGE_PREFIX.length));
       }
@@ -157,6 +157,130 @@ function clearVerifiersForClients(clientIds) {
 }
 
 // src/core/SsoClient.ts
+function base64UrlDecode(input) {
+  const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+function decodeJwtPayload(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const json = new TextDecoder().decode(base64UrlDecode(parts[1]));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function decodeJwtHeader(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const json = new TextDecoder().decode(base64UrlDecode(parts[0]));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function normalizeIssuer(url) {
+  return url.replace(/\/+$/, "");
+}
+var cachedJwks = null;
+var JWKS_CACHE_TTL_MS = 5 * 60 * 1e3;
+async function fetchJwks(baseUrl) {
+  const now = Date.now();
+  if (cachedJwks && cachedJwks.baseUrl === baseUrl && now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS) {
+    return cachedJwks.jwks;
+  }
+  try {
+    const res = await fetch(`${baseUrl}/api/oauth/jwks`);
+    if (!res.ok) return null;
+    const jwks = await res.json();
+    cachedJwks = { baseUrl, jwks, fetchedAt: now };
+    return jwks;
+  } catch {
+    return null;
+  }
+}
+async function verifyRs256(token, jwk) {
+  try {
+    const [headerB64, payloadB64, signature] = token.split(".");
+    if (!signature || !jwk.n || !jwk.e) return false;
+    const cryptoKey = await crypto.subtle.importKey(
+      "jwk",
+      { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RS256", ext: false },
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    const signatureBytes = base64UrlDecode(signature);
+    const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    return await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      cryptoKey,
+      signatureBytes,
+      data
+    );
+  } catch {
+    return false;
+  }
+}
+async function validateIdToken(idToken, expectedIssuer, expectedClientId) {
+  const header = decodeJwtHeader(idToken);
+  if (!header) {
+    throw new SsoError("id_token_invalid", "ID Token \u683C\u5F0F\u9519\u8BEF");
+  }
+  const alg = header.alg;
+  if (typeof alg !== "string" || alg !== "RS256" && alg !== "HS256") {
+    throw new SsoError("id_token_unsupported_alg", `\u4E0D\u652F\u6301\u7684 ID Token \u7B7E\u540D\u7B97\u6CD5: ${alg}`);
+  }
+  if (alg === "RS256") {
+    const jwks = await fetchJwks(normalizeIssuer(expectedIssuer));
+    if (!jwks) {
+      throw new SsoError("id_token_invalid_signature", "\u65E0\u6CD5\u83B7\u53D6 JWKS \u9A8C\u8BC1 ID Token \u7B7E\u540D");
+    }
+    const kid = typeof header.kid === "string" ? header.kid : void 0;
+    const key = jwks.keys.find(
+      (k) => k.kty === "RSA" && k.alg === "RS256" && k.use === "sig" && (kid ? k.kid === kid : true)
+    );
+    if (!key) {
+      throw new SsoError("id_token_invalid_signature", "JWKS \u4E2D\u672A\u627E\u5230\u5339\u914D\u7684 RS256 \u516C\u94A5");
+    }
+    const validSig = await verifyRs256(idToken, key);
+    if (!validSig) {
+      throw new SsoError("id_token_invalid_signature", "ID Token \u7B7E\u540D\u9A8C\u8BC1\u5931\u8D25");
+    }
+  }
+  if (alg === "HS256") {
+    console.warn(
+      "[SSO SDK] ID Token \u4F7F\u7528 HS256 \u7B7E\u540D\uFF0CPublic Client \u65E0\u6CD5\u5B89\u5168\u9A8C\u8BC1\u7B7E\u540D\u3002\u5EFA\u8BAE\u4E3B\u7AD9\u914D\u7F6E JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY \u542F\u7528 RS256\u3002"
+    );
+  }
+  const payload = decodeJwtPayload(idToken);
+  if (!payload) {
+    throw new SsoError("id_token_invalid", "ID Token payload \u89E3\u6790\u5931\u8D25");
+  }
+  const normalizedExpectedIssuer = normalizeIssuer(expectedIssuer);
+  const tokenIssuer = typeof payload.iss === "string" ? normalizeIssuer(payload.iss) : "";
+  if (tokenIssuer !== normalizedExpectedIssuer) {
+    throw new SsoError("id_token_issuer_mismatch", "ID Token issuer \u4E0D\u5339\u914D");
+  }
+  if (payload.aud !== expectedClientId && !payload.aud?.includes(expectedClientId)) {
+    throw new SsoError("id_token_audience_mismatch", "ID Token audience \u4E0D\u5339\u914D");
+  }
+  if (typeof payload.exp === "number" && Date.now() >= payload.exp * 1e3) {
+    throw new SsoError("id_token_expired", "ID Token \u5DF2\u8FC7\u671F");
+  }
+  if (typeof payload.sub !== "string" || !payload.sub) {
+    throw new SsoError("id_token_missing_sub", "ID Token \u7F3A\u5C11 sub");
+  }
+  return { sub: payload.sub };
+}
 var _SsoClient = class _SsoClient {
   constructor(config) {
     this._discovery = null;
@@ -267,7 +391,7 @@ var _SsoClient = class _SsoClient {
     const state = generateState();
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
-    if (returnUrl) saveReturnUrl(returnUrl, this.config.clientId);
+    if (returnUrl) saveReturnUrl(returnUrl);
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
     params.set("response_type", "code");
@@ -350,6 +474,14 @@ var _SsoClient = class _SsoClient {
       );
     }
     const data = await res.json();
+    if (data.id_token) {
+      try {
+        await validateIdToken(data.id_token, this.config.ssoBaseUrl, this.config.clientId);
+      } catch (err) {
+        removeTokenData(this.config.clientId);
+        throw err;
+      }
+    }
     const now = Date.now();
     const tokenData = {
       access_token: data.access_token,

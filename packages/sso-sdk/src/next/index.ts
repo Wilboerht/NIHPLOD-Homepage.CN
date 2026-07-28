@@ -23,4 +23,5 @@ export {
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
+  getSecureCookieOptions,
 } from "./constants";

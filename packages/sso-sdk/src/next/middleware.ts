@@ -28,6 +28,7 @@ import {
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
+  getSecureCookieOptions,
 } from "./constants";
 
 // ============================================
@@ -74,7 +75,7 @@ export interface SsoMiddlewareConfig {
   /** Return URL Cookie 名称，默认 __Host-nihplod_sso_return */
   returnUrlCookieName?: string;
 
-  /** PKCE Verifier Cookie 名称，默认 __Host-nihplod_sso_verifier */
+  /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
   verifierCookieName?: string;
 }
 
@@ -151,6 +152,40 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+/**
+ * 通过主站 Introspection 端点校验 access_token 是否仍有效。
+ * Confidential Client（BFF）应配置 clientSecret，防止伪造 Cookie 绕过。
+ */
+async function introspectAccessToken(
+  token: string,
+  ssoBaseUrl: string,
+  clientId: string,
+  clientSecret?: string
+): Promise<boolean> {
+  try {
+    const body = new URLSearchParams({
+      token,
+      token_type_hint: "access_token",
+      client_id: clientId,
+    });
+    if (clientSecret) {
+      body.set("client_secret", clientSecret);
+    }
+
+    const res = await fetch(`${ssoBaseUrl}/api/oauth/introspect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+
+    if (!res.ok) return false;
+    const data = (await res.json()) as { active?: boolean };
+    return data.active === true;
+  } catch {
+    return false;
+  }
+}
+
 // ============================================
 // Middleware 工厂函数
 // ============================================
@@ -158,6 +193,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 export function createSsoMiddleware(config: SsoMiddlewareConfig) {
   const {
     clientId,
+    clientSecret,
     ssoBaseUrl,
     redirectUri,
     scopes = "openid profile",
@@ -205,18 +241,19 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     // Check for access_token in cookie (set by callback handler)
     const accessTokenCookie = request.cookies.get(accessTokenCookieName);
     if (accessTokenCookie?.value) {
-      // 快速检查 JWT 是否过期（解码 payload 中的 exp claim）
-      const payload = decodeJwtPayload(accessTokenCookie.value);
-      if (payload?.exp && typeof payload.exp === "number") {
-        const expMs = payload.exp * 1000;
-        if (Date.now() < expMs) {
-          return NextResponse.next();
-        }
-        // Token 已过期：清除 cookie 并继续到 SSO 重定向
-      } else {
-        // 无法解码 exp，保守放行（向后兼容）
+      // 调用 Introspection 精确校验 token 是否仍有效。
+      // Confidential Client 携带 clientSecret；Public Client 仅传 clientId。
+      const tokenActive = await introspectAccessToken(
+        accessTokenCookie.value,
+        normalizedBase,
+        clientId,
+        clientSecret
+      );
+
+      if (tokenActive) {
         return NextResponse.next();
       }
+      // Token 无效或已过期：清除 cookie 并继续到 SSO 重定向
     }
 
     // No auth: redirect to SSO
@@ -244,10 +281,8 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     response.cookies.set(stateCookieName, state, getHostCookieOptions(600));
 
     // Set PKCE verifier cookie（httpOnly，供 callback handler 使用）
-    response.cookies.set(verifierCookieName, verifier, {
-      ...getHostCookieOptions(600),
-      path: callbackPath,
-    });
+    // 使用 __Secure- 前缀，允许写入 callbackPath
+    response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath));
 
     // Set return URL cookie
     response.cookies.set(returnUrlCookieName, request.url, getHostCookieOptions(600));

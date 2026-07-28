@@ -48,6 +48,16 @@ const defaultConfig = {
 
 const CLIENT_ID = defaultConfig.clientId;
 
+/** 构造一个仅用于测试的合法格式 ID Token（HS256，签名占位） */
+function base64UrlEncode(str: string): string {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+function buildMockIdToken(payload: Record<string, unknown>): string {
+  const header = base64UrlEncode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const body = base64UrlEncode(JSON.stringify(payload));
+  return `${header}.${body}.mock-signature`;
+}
+
 describe("SsoClient", () => {
   beforeEach(() => {
     mockStore.clear();
@@ -196,7 +206,13 @@ describe("SsoClient", () => {
             token_type: "Bearer",
             expires_in: 900,
             refresh_token: "new-refresh-token",
-            id_token: "new-id-token",
+            id_token: buildMockIdToken({
+              sub: "user123",
+              iss: "https://nihplod.cn",
+              aud: "test-client-id",
+              exp: 9999999999,
+              type: "id_token",
+            }),
           }),
         } as Response);
 

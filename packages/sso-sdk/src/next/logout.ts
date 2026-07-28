@@ -24,10 +24,12 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+  DEFAULT_ID_TOKEN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME,
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
+  getSecureCookieOptions,
 } from "./constants";
 
 // ============================================
@@ -61,6 +63,9 @@ export interface LogoutRouteConfig {
 
   /** Refresh Token Cookie 名称 */
   refreshTokenCookieName?: string;
+
+  /** ID Token Cookie 名称，默认 __Host-nihplod_sso_id */
+  idTokenCookieName?: string;
 
   /** State Cookie 名称 */
   stateCookieName?: string;
@@ -115,6 +120,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
     redirectToSso = true,
     accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
     refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+    idTokenCookieName = DEFAULT_ID_TOKEN_COOKIE_NAME,
     stateCookieName = DEFAULT_STATE_COOKIE_NAME,
     returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
     verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
@@ -125,9 +131,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
 
   return async function GET(request: NextRequest) {
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
-    const idTokenHint = request.cookies.get(accessTokenCookieName)?.value
-      ? undefined
-      : undefined;
+    const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
 
     // 1. best-effort 撤销服务端 refresh_token
     if (refreshToken) {
@@ -153,25 +157,19 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       }
     }
 
-    // 2. 清除所有 SSO cookie
-    const response = NextResponse.redirect(
-      redirectToSso ? postLogoutRedirectUri : request.nextUrl.origin + "/"
-    );
+    // 2. 准备本地清除 SSO cookie 的响应
+    const clearCookies = (res: NextResponse) => {
+      res.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(stateCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/"));
+      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath));
+      return res;
+    };
 
-    response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(verifierCookieName, "", {
-      ...getHostCookieOptions(0),
-      path: "/",
-    });
-    response.cookies.set(verifierCookieName, "", {
-      ...getHostCookieOptions(0),
-      path: callbackPath,
-    });
-
-    // 3. 若需要 RP-Initiated Logout，重定向到 SSO 中心
+    // 3. 若需要 RP-Initiated Logout，重定向到 SSO 中心，同时必须清除本地 Cookie
     if (redirectToSso) {
       const discovery = await fetchDiscovery(normalizedBase);
       const endSessionEndpoint =
@@ -185,9 +183,11 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       if (idTokenHint) {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);
       }
-      return NextResponse.redirect(logoutUrl.toString());
+      return clearCookies(NextResponse.redirect(logoutUrl.toString()));
     }
 
-    return response;
+    return clearCookies(
+      NextResponse.redirect(request.nextUrl.origin + "/")
+    );
   };
 }

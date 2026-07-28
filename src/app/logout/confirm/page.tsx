@@ -2,12 +2,17 @@
  * Frontchannel Logout 确认页面
  * /logout/confirm
  *
- * 用户在主站登出后，渲染指向所有子站 logout iframe 的页面，
- * 确保各子站的浏览器 Cookie 也被清理。
+ * 用户在主站登出后，展示登出成功并自动跳转回 post_logout_redirect_uri。
  *
  * Query 参数:
  * - post_logout_redirect_uri: 登出后跳转地址（可选）
- * - clients: 逗号分隔的子站 logout URL 列表
+ * - state: OIDC state 参数（可选，透传回 redirect）
+ *
+ * 安全说明：
+ * - 不再从 URL 读取并渲染任意 iframe 源。frontchannel logout URL 必须来自
+ *   服务端已注册的 backchannel/frontchannel logout URI，禁止通过 query 参数透传，
+ *   否则存在反射型 XSS 与开放重定向风险。当前子站 Cookie 清理由 SDK 本地 logout
+ *   及服务端 backchannel logout 保证。
  */
 "use client";
 
@@ -15,90 +20,49 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 
+/**
+ * 校验登出后的重定向地址是否可信。
+ * 仅允许：空值、站内相对路径（且不以 // 开头）、或与当前 origin 完全一致。
+ */
+function isTrustedRedirectUri(uri: string | null): uri is string {
+  if (!uri) return false;
+  if (uri.startsWith("/") && !uri.startsWith("//")) return true;
+  if (typeof window === "undefined") return false;
+  try {
+    const url = new URL(uri);
+    return url.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 function LogoutConfirmContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const redirectUri = searchParams.get("post_logout_redirect_uri");
-  const clientsParam = searchParams.get("clients") || "";
-  const clientUrls = clientsParam
-    ? clientsParam.split(",").map((url) => decodeURIComponent(url.trim())).filter(Boolean)
-    : [];
-
-  const [loadedCount, setLoadedCount] = useState(0);
+  const rawRedirectUri = searchParams.get("post_logout_redirect_uri");
+  const redirectUri = isTrustedRedirectUri(rawRedirectUri) ? rawRedirectUri : null;
   const [done, setDone] = useState(false);
 
-  // 所有 iframe 加载完成后自动跳转
   useEffect(() => {
-    if (clientUrls.length === 0) {
-      // 没有子站需要登出，直接跳转
-      const timer = setTimeout(() => {
-        if (redirectUri) {
-          window.location.href = redirectUri;
-        } else {
-          router.push("/");
-        }
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-
-    if (loadedCount >= clientUrls.length && !done) {
+    const timer = setTimeout(() => {
       setDone(true);
-      const timer = setTimeout(() => {
-        if (redirectUri) {
-          window.location.href = redirectUri;
-        } else {
-          router.push("/");
-        }
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [loadedCount, clientUrls.length, redirectUri, router, done]);
-
-  const handleIframeLoad = () => {
-    setLoadedCount((c) => c + 1);
-  };
+      if (redirectUri) {
+        window.location.href = redirectUri;
+      } else {
+        router.push("/");
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [redirectUri, router]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">已退出登录</h1>
-        <p className="text-gray-500 mb-6">
-          {clientUrls.length > 0
-            ? `正在同步登出 ${clientUrls.length} 个已授权的应用...`
-            : "您已成功退出登录"}
-        </p>
-
-        {/* 子站 SLO iframe（隐藏） */}
-        {clientUrls.map((url, i) => (
-          <iframe
-            key={i}
-            src={url}
-            onLoad={handleIframeLoad}
-            onError={handleIframeLoad}
-            style={{ display: "none" }}
-            title={`slo-iframe-${i}`}
-          />
-        ))}
-
-        {/* 进度指示 */}
-        {clientUrls.length > 0 && (
-          <div className="mb-4">
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                style={{
-                  width: `${clientUrls.length > 0 ? (loadedCount / clientUrls.length) * 100 : 100}%`,
-                }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              {loadedCount}/{clientUrls.length} 完成
-            </p>
-          </div>
-        )}
+        <p className="text-gray-500 mb-6">您已成功退出登录</p>
 
         <p className="text-sm text-gray-400">
-          {done ? "即将跳转..." : "请稍候..."}
+          {done ? "正在跳转..." : "请稍候..."}
         </p>
 
         <button

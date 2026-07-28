@@ -14,6 +14,7 @@ import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
+import { revokeRefreshToken } from "@/lib/auth-security";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -176,6 +177,9 @@ export async function POST(request: NextRequest) {
         revokedAt: new Date(),
       },
     });
+
+    // 同步撤销该用户在该 client 下的所有 Refresh Token
+    await revokeRefreshToken(userId, undefined, clientId);
 
     // 记录 SSO 审计事件
     recordSsoEvent({

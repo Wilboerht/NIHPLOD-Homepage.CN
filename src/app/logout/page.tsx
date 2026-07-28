@@ -22,6 +22,21 @@ function getCsrfTokenFromCookie(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * 校验登出后的重定向地址是否可信。
+ * 仅允许：空值、站内相对路径（且不以 // 开头）、或与当前 origin 完全一致。
+ */
+function isTrustedRedirectUri(uri: string): boolean {
+  if (!uri) return true;
+  if (uri.startsWith("/") && !uri.startsWith("//")) return true;
+  try {
+    const url = new URL(uri);
+    return url.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 async function ensureCsrfToken(): Promise<string | null> {
   const existing = getCsrfTokenFromCookie();
   if (existing) return existing;
@@ -69,9 +84,9 @@ function LogoutContent() {
         throw new Error(data.error?.message || "登出失败");
       }
 
-      // 跳转到 frontchannel logout 确认页
+      // 跳转到 frontchannel logout 确认页（仅传递可信的重定向地址）
       const confirmUrl = new URL("/logout/confirm", window.location.origin);
-      if (postLogoutRedirectUri) {
+      if (postLogoutRedirectUri && isTrustedRedirectUri(postLogoutRedirectUri)) {
         confirmUrl.searchParams.set("post_logout_redirect_uri", postLogoutRedirectUri);
       }
       if (state) {
@@ -106,7 +121,14 @@ function LogoutContent() {
 
         <div className="flex gap-3 justify-center">
           <button
-            onClick={() => router.push(postLogoutRedirectUri || "/")}
+            onClick={() => {
+              const target = isTrustedRedirectUri(postLogoutRedirectUri) ? postLogoutRedirectUri : "/";
+              if (target) {
+                window.location.href = target;
+              } else {
+                router.push("/");
+              }
+            }}
             disabled={loading}
             className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >

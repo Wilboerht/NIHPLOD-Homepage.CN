@@ -303,15 +303,17 @@ export const GET = createLogoutRouteHandler({
 
 ### Cookie 配置
 
-默认 Cookie 名称均使用 `__Host-` 前缀（要求 Secure + Path=/ + 无 Domain）：
+默认 Cookie 名称：
 
 | Cookie | 默认名称 | 说明 |
 |--------|----------|------|
-| access_token | `__Host-nihplod_sso_at` | 可通过 `accessTokenCookieName` 配置 |
-| refresh_token | `__Host-nihplod_sso_rt` | 可通过 `refreshTokenCookieName` 配置 |
-| state | `__Host-nihplod_sso_state` | 可通过 `stateCookieName` 配置 |
-| return_url | `__Host-nihplod_sso_return` | 可通过 `returnUrlCookieName` 配置 |
-| verifier | `__Host-nihplod_sso_verifier` | 可通过 `verifierCookieName` 配置 |
+| access_token | `__Host-nihplod_sso_at` | 要求 Secure + Path=/ + 无 Domain |
+| refresh_token | `__Host-nihplod_sso_rt` | 要求 Secure + Path=/ + 无 Domain |
+| state | `__Host-nihplod_sso_state` | 要求 Secure + Path=/ + 无 Domain |
+| return_url | `__Host-nihplod_sso_return` | 要求 Secure + Path=/ + 无 Domain |
+| verifier | `__Secure-nihplod_sso_verifier` | 要求 Secure + 无 Domain；Path 为回调路径，因此使用 `__Secure-` 前缀 |
+
+> 本地开发若使用 `http://localhost`，浏览器会拒绝 `Secure` Cookie。此时可仅在本地关闭 `secure`，生产环境必须启用 HTTPS。
 
 ---
 

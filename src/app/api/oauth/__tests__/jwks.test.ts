@@ -13,8 +13,10 @@ vi.mock("@/lib/ratelimit", () => ({
 
 // === Mock jwt public key ===
 const mockGetAccessPublicKey = vi.fn();
+const mockGetIdTokenPublicKey = vi.fn();
 vi.mock("@/lib/jwt", () => ({
   getAccessPublicKey: () => mockGetAccessPublicKey(),
+  getIdTokenPublicKey: () => mockGetIdTokenPublicKey(),
 }));
 
 describe("GET /api/oauth/jwks", () => {
@@ -23,6 +25,7 @@ describe("GET /api/oauth/jwks", () => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     mockGetAccessPublicKey.mockResolvedValue(null);
+    mockGetIdTokenPublicKey.mockResolvedValue(null);
   });
 
   it("未配置 RS256 公钥时返回 HS256 kid 占位", async () => {

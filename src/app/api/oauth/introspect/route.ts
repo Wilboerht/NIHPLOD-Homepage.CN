@@ -5,7 +5,9 @@
  * 子项目通过此端点验证 access_token 的有效性。
  * 返回 RFC 7662 兼容的 introspection 响应。
  *
- * 认证方式：client_id + client_secret（HTTP Basic Auth 或 POST body）
+ * 认证方式：
+ * - Confidential Client：client_id + client_secret
+ * - Public Client：仅 client_id（用于无 secret 的浏览器/移动端场景）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
@@ -45,15 +47,15 @@ export async function POST(request: NextRequest) {
     const client_id = body.client_id;
     const client_secret = body.client_secret;
 
-    if (!client_id || !client_secret) {
+    if (!client_id) {
       return NextResponse.json(
         { error: "invalid_client" },
         { status: 401 }
       );
     }
 
-    // 验证 client
-    const client = await verifyOAuthClientSecret(client_id, client_secret);
+    // 验证 client：Public Client 允许不传 secret
+    const client = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
     if (!client) {
       recordSsoEvent({
         event: "introspect",

@@ -240,17 +240,19 @@ export async function saveRefreshToken(
   userId: string,
   token: string,
   expiresAt: Date,
-  deviceInfo?: DeviceInfo
+  deviceInfo?: DeviceInfo,
+  clientId?: string
 ): Promise<void> {
   try {
     const tokenHash = hashToken(token);
     const fingerprint = getDeviceFingerprint(deviceInfo);
 
     await prisma.$transaction(async (tx) => {
-      // 1. 查找同一设备的旧 Token（如果存在则更新，实现设备级复用）
+      // 1. 查找同一用户、同一 client 下的活跃 Token（按 client 隔离设备复用）
       const existingTokens = await tx.refreshToken.findMany({
         where: {
           userId,
+          clientId: clientId ?? null,
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
@@ -268,12 +270,13 @@ export async function saveRefreshToken(
       });
 
       if (sameDeviceToken) {
-        // 更新同一设备的 Token
+        // 更新同一设备、同一 client 的 Token
         await tx.refreshToken.update({
           where: { id: sameDeviceToken.id },
           data: {
             token: tokenHash,
             expiresAt,
+            clientId: clientId ?? sameDeviceToken.clientId,
             deviceName: deviceInfo?.deviceName ?? sameDeviceToken.deviceName,
             deviceInfo: deviceInfo?.deviceInfo ?? sameDeviceToken.deviceInfo,
             ipAddress: deviceInfo?.ipAddress ?? sameDeviceToken.ipAddress,
@@ -283,7 +286,7 @@ export async function saveRefreshToken(
           },
         });
       } else {
-        // 2. 限制每个用户的最大设备数，防止无限增长
+        // 2. 限制每个用户、每个 client 的最大设备数，防止无限增长
         if (existingTokens.length >= MAX_REFRESH_TOKEN_DEVICES) {
           // 撤销最早的 Token
           const tokensToRevoke = existingTokens.slice(
@@ -300,6 +303,7 @@ export async function saveRefreshToken(
         await tx.refreshToken.create({
           data: {
             userId,
+            clientId,
             token: tokenHash,
             expiresAt,
             deviceName: deviceInfo?.deviceName,
@@ -335,7 +339,8 @@ export async function atomicallyRotateRefreshToken(
   oldToken: string,
   newToken: string,
   expiresAt: Date,
-  deviceInfo?: DeviceInfo
+  deviceInfo?: DeviceInfo,
+  clientId?: string
 ): Promise<RefreshTokenValidationResult> {
   try {
     const oldTokenHash = hashToken(oldToken);
@@ -384,10 +389,11 @@ export async function atomicallyRotateRefreshToken(
         return { valid: false as const, reason: "concurrent_rotation" as const };
       }
 
-      // 4. 查找同设备旧 Token 并更新或创建（设备级复用，与 saveRefreshToken 逻辑一致）
+      // 4. 查找同用户、同 client 下的活跃 Token（按 client 隔离设备复用）
       const existingTokens = await tx.refreshToken.findMany({
         where: {
           userId,
+          clientId: clientId ?? null,
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
@@ -410,6 +416,7 @@ export async function atomicallyRotateRefreshToken(
           data: {
             token: newTokenHash,
             expiresAt,
+            clientId: clientId ?? sameDeviceToken.clientId,
             deviceName: deviceInfo?.deviceName ?? sameDeviceToken.deviceName,
             deviceInfo: deviceInfo?.deviceInfo ?? sameDeviceToken.deviceInfo,
             ipAddress: deviceInfo?.ipAddress ?? sameDeviceToken.ipAddress,
@@ -419,6 +426,7 @@ export async function atomicallyRotateRefreshToken(
           },
         });
       } else {
+        // 限制每个用户、每个 client 的最大设备数
         if (existingTokens.length >= MAX_REFRESH_TOKEN_DEVICES) {
           const tokensToRevoke = existingTokens.slice(
             0,
@@ -433,6 +441,7 @@ export async function atomicallyRotateRefreshToken(
         await tx.refreshToken.create({
           data: {
             userId,
+            clientId,
             token: newTokenHash,
             expiresAt,
             deviceName: deviceInfo?.deviceName,
@@ -457,7 +466,11 @@ export async function atomicallyRotateRefreshToken(
  * 撤销 Refresh Token（登出时调用）
  * 返回实际被撤销的记录数，便于调用方检测并发重用。
  */
-export async function revokeRefreshToken(userId: string, token?: string): Promise<number> {
+export async function revokeRefreshToken(
+  userId: string,
+  token?: string,
+  clientId?: string
+): Promise<number> {
   try {
     if (token) {
       // 撤销特定 token（比对哈希值），仅撤销尚未撤销的，便于检测并发重用
@@ -467,6 +480,7 @@ export async function revokeRefreshToken(userId: string, token?: string): Promis
           userId,
           token: tokenHash,
           revokedAt: null,
+          ...(clientId ? { clientId } : {}),
         },
         data: {
           revokedAt: new Date(),
@@ -474,11 +488,12 @@ export async function revokeRefreshToken(userId: string, token?: string): Promis
       });
       return result.count;
     } else {
-      // 撤销用户所有有效 token
+      // 撤销用户所有有效 token（可指定 clientId 精确撤销）
       const result = await prisma.refreshToken.updateMany({
         where: {
           userId,
           revokedAt: null,
+          ...(clientId ? { clientId } : {}),
         },
         data: {
           revokedAt: new Date(),

@@ -79,6 +79,34 @@ export interface SsoProviderProps {
   onTokenRefreshed?: (token: string) => void;
 }
 
+// 跨 Tab 刷新锁（基于 localStorage + 时间戳，避免多 Tab 同时刷新导致旧 RT 被撤销）
+const REFRESH_LOCK_PREFIX = "nihplod_sso_refresh_lock:";
+const LOCK_TTL_MS = 5000;
+
+function lockKey(clientId: string): string {
+  return REFRESH_LOCK_PREFIX + clientId;
+}
+
+function acquireRefreshLock(clientId: string): boolean {
+  if (typeof localStorage === "undefined") return true;
+  const key = lockKey(clientId);
+  const now = Date.now();
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    const ts = parseInt(raw, 10);
+    if (!isNaN(ts) && now - ts < LOCK_TTL_MS) {
+      return false;
+    }
+  }
+  localStorage.setItem(key, String(now));
+  return true;
+}
+
+function releaseRefreshLock(clientId: string): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(lockKey(clientId));
+}
+
 // ============================================
 // Provider 实现
 // ============================================
@@ -153,26 +181,35 @@ export function SsoProvider({
       const remainingSec = (tokenData.expires_at - Date.now()) / 1000;
 
       if (remainingSec <= 0) {
-        // 已过期，立即刷新
+        // 已过期，立即刷新（带锁，避免多 Tab 并发）
+        if (!acquireRefreshLock(client.config.clientId)) return;
         client
           .refreshToken()
           .then((td) => {
             onTokenRefreshed?.(td.access_token);
             loadUser();
           })
-          .catch(() => {});
+          .catch(() => {
+            // 刷新失败可能是其他 Tab 已刷新；短暂后重新加载本地 token
+            setTimeout(() => loadUser(), 500);
+          })
+          .finally(() => releaseRefreshLock(client.config.clientId));
         return;
       }
 
       if (remainingSec <= refreshThreshold) {
-        // 即将过期，立即刷新
+        // 即将过期，立即刷新（带锁）
+        if (!acquireRefreshLock(client.config.clientId)) return;
         client
           .refreshToken()
           .then((td) => {
             onTokenRefreshed?.(td.access_token);
             loadUser();
           })
-          .catch(() => {});
+          .catch(() => {
+            setTimeout(() => loadUser(), 500);
+          })
+          .finally(() => releaseRefreshLock(client.config.clientId));
         return;
       }
 
@@ -185,13 +222,20 @@ export function SsoProvider({
 
         const secLeft = (td.expires_at - Date.now()) / 1000;
         if (secLeft <= refreshThreshold) {
+          if (!acquireRefreshLock(client.config.clientId)) {
+            // 其他 Tab 正在刷新，等待 storage 事件同步即可
+            return;
+          }
           client
             .refreshToken()
             .then((newTd) => {
               onTokenRefreshed?.(newTd.access_token);
               loadUser();
             })
-            .catch(() => {});
+            .catch(() => {
+              setTimeout(() => loadUser(), 500);
+            })
+            .finally(() => releaseRefreshLock(client.config.clientId));
           // 刷新后重新调度下一次
           scheduleNextRefresh();
         }
@@ -212,7 +256,11 @@ export function SsoProvider({
   // 监听 storage 事件实现跨 Tab 同步
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key?.startsWith("nihplod_sso_")) {
+      if (
+        e.key &&
+        e.key.startsWith("nihplod_sso_") &&
+        !e.key.startsWith(REFRESH_LOCK_PREFIX)
+      ) {
         loadUser();
       }
     };

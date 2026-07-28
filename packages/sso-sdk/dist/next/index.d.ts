@@ -52,7 +52,7 @@ interface SsoMiddlewareConfig {
     stateCookieName?: string;
     /** Return URL Cookie 名称，默认 __Host-nihplod_sso_return */
     returnUrlCookieName?: string;
-    /** PKCE Verifier Cookie 名称，默认 __Host-nihplod_sso_verifier */
+    /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
     verifierCookieName?: string;
 }
 declare function createSsoMiddleware(config: SsoMiddlewareConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
@@ -100,11 +100,13 @@ interface CallbackRouteConfig {
     accessTokenCookieName?: string;
     /** Refresh Token Cookie 名称，默认 __Host-nihplod_sso_rt */
     refreshTokenCookieName?: string;
+    /** ID Token Cookie 名称，默认 __Host-nihplod_sso_id */
+    idTokenCookieName?: string;
     /** State Cookie 名称，默认 __Host-nihplod_sso_state */
     stateCookieName?: string;
     /** Return URL Cookie 名称，默认 __Host-nihplod_sso_return */
     returnUrlCookieName?: string;
-    /** PKCE Verifier Cookie 名称，默认 __Host-nihplod_sso_verifier */
+    /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
     verifierCookieName?: string;
 }
 declare function createCallbackRouteHandler(config: CallbackRouteConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
@@ -151,6 +153,8 @@ interface LogoutRouteConfig {
     accessTokenCookieName?: string;
     /** Refresh Token Cookie 名称 */
     refreshTokenCookieName?: string;
+    /** ID Token Cookie 名称，默认 __Host-nihplod_sso_id */
+    idTokenCookieName?: string;
     /** State Cookie 名称 */
     stateCookieName?: string;
     /** Return URL Cookie 名称 */
@@ -165,17 +169,19 @@ declare function createLogoutRouteHandler(config: LogoutRouteConfig): (request: 
 /**
  * Next.js 集成默认 Cookie 名称
  *
- * 统一使用 __Host- 前缀，要求：
+ * 除 verifier 外统一使用 __Host- 前缀，要求：
  * - Secure
  * - Path=/
  * - 无 Domain 属性
+ *
+ * verifier 需要写入回调路径（非 /），因此使用 __Secure- 前缀。
  */
 declare const DEFAULT_ACCESS_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_at";
 declare const DEFAULT_REFRESH_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_rt";
 declare const DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
 declare const DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
-declare const DEFAULT_VERIFIER_COOKIE_NAME = "__Host-nihplod_sso_verifier";
-/** __Host- 前缀 Cookie 的安全选项 */
+declare const DEFAULT_VERIFIER_COOKIE_NAME = "__Secure-nihplod_sso_verifier";
+/** __Host- 前缀 Cookie 的安全选项（Path 必须为 /） */
 declare function getHostCookieOptions(maxAge?: number): {
     httpOnly: true;
     secure: true;
@@ -183,5 +189,13 @@ declare function getHostCookieOptions(maxAge?: number): {
     path: "/";
     maxAge?: number;
 };
+/** __Secure- 前缀 Cookie 的安全选项（允许自定义 Path） */
+declare function getSecureCookieOptions(maxAge?: number, path?: string): {
+    httpOnly: true;
+    secure: true;
+    sameSite: "lax";
+    path: string;
+    maxAge?: number;
+};
 
-export { type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutRouteConfig, type SsoMiddlewareConfig, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions };
+export { type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutRouteConfig, type SsoMiddlewareConfig, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions };

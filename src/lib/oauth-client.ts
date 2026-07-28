@@ -282,14 +282,29 @@ export async function updateOAuthClient(
 }
 
 /**
- * 删除 OAuth Client（软删除：设为 isActive=false）
+ * 删除 OAuth Client（硬删除）
+ *
+ * 删除前会清理该 client 关联的会话、授权、 consent 与 refresh token 记录，
+ * 避免已删除 client 的历史数据残留。
  */
 export async function deleteOAuthClient(id: string): Promise<boolean> {
   try {
-    await prisma.oAuthClient.update({
+    const client = await prisma.oAuthClient.findUnique({
       where: { id },
-      data: { isActive: false },
+      select: { clientId: true },
     });
+    if (!client) return false;
+
+    await prisma.$transaction(async (tx) => {
+      // 清理关联数据
+      await tx.oAuthSession.deleteMany({ where: { clientId: client.clientId } });
+      await tx.userConsent.deleteMany({ where: { clientId: client.clientId } });
+      await tx.refreshToken.deleteMany({ where: { clientId: client.clientId } });
+      await tx.oAuthAuthorizationCode.deleteMany({ where: { clientId: client.clientId } });
+      // 删除 client 本身
+      await tx.oAuthClient.delete({ where: { id } });
+    });
+
     return true;
   } catch {
     return false;

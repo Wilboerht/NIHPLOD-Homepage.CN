@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       sub: user.id,
     };
 
-    if (scopes.includes("openid") || scopes.includes("profile")) {
+    if (scopes.includes("profile")) {
       response.nickname = user.nickname;
       response.avatar = user.avatar;
     }

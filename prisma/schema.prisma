@@ -245,24 +245,26 @@ model User {
 model RefreshToken {
   id        String   @id @default(cuid())
   userId    String
-  token     String   @db.Text                  // 加密后的 refresh token
-  expiresAt DateTime                           // 过期时间
-  revokedAt DateTime?                          // 撤销时间（已登出）
+  clientId  String?                               // OAuth client_id（OAuth 刷新令牌使用）
+  token     String   @db.Text                      // 加密后的 refresh token
+  expiresAt DateTime                               // 过期时间
+  revokedAt DateTime?                              // 撤销时间（已登出）
 
   // 设备/会话信息
   deviceName  String?  // 设备名称/浏览器摘要
   deviceInfo  String?  // 原始 UA 摘要
   ipAddress   String?  // 登录 IP
   userAgent   String?  @db.Text
-  
+
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
-  
+
   @@index([userId, expiresAt])
   @@index([token])
   @@index([userId, revokedAt, expiresAt])
+  @@index([userId, clientId, revokedAt, expiresAt])
 }
 
 /**

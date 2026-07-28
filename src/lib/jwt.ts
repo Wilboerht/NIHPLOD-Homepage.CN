@@ -84,6 +84,31 @@ export async function getAccessPublicKey(): Promise<CryptoKey | null> {
   return cachedAccessPublicKey;
 }
 
+// ============================================
+// OAuth ID Token RS256 迁移支持（可选）
+// ============================================
+
+let cachedIdTokenPrivateKey: CryptoKey | null = null;
+let cachedIdTokenPublicKey: CryptoKey | null = null;
+
+function hasRS256IdTokenKeys(): boolean {
+  return Boolean(process.env.JWT_ID_TOKEN_PRIVATE_KEY && process.env.JWT_ID_TOKEN_PUBLIC_KEY);
+}
+
+async function getIdTokenPrivateKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_ID_TOKEN_PRIVATE_KEY) return null;
+  if (cachedIdTokenPrivateKey) return cachedIdTokenPrivateKey;
+  cachedIdTokenPrivateKey = await importPKCS8(process.env.JWT_ID_TOKEN_PRIVATE_KEY, "RS256");
+  return cachedIdTokenPrivateKey;
+}
+
+export async function getIdTokenPublicKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_ID_TOKEN_PUBLIC_KEY) return null;
+  if (cachedIdTokenPublicKey) return cachedIdTokenPublicKey;
+  cachedIdTokenPublicKey = await importSPKI(process.env.JWT_ID_TOKEN_PUBLIC_KEY, "RS256");
+  return cachedIdTokenPublicKey;
+}
+
 // JWT 过期时间
 const adminExpiresInRaw = process.env.JWT_EXPIRES_IN || "1d";
 if (!/^\d+[smhd]$/.test(adminExpiresInRaw)) {
@@ -396,8 +421,8 @@ export interface IdTokenClaims {
   phone?: string;
   nickname?: string;
   avatar?: string;
-  membershipLevel?: string;
-  totalPoints?: number;
+  membership_level?: string;
+  total_points?: number;
   scope?: string;
   /** OIDC Core 3.3.2.11: Access Token 的 SHA-256 左半 base64url */
   at_hash?: string;
@@ -414,30 +439,60 @@ export function computeAtHash(accessToken: string): string {
 
 /**
  * 签发 OIDC ID Token（1小时）
+ *
+ * 若配置了 JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY，
+ * 优先使用 RS256，便于 Public Client 通过 JWKS 本地验证签名。
+ * 否则回退 HS256（由服务端 JWT_ID_TOKEN_SECRET 签名）。
  */
 export async function signIdToken(claims: IdTokenClaims): Promise<string> {
-  const token = await new SignJWT({ ...claims, type: "id_token" as const })
-    .setProtectedHeader({ alg: "HS256" })
+  const jwt = new SignJWT({ ...claims, type: "id_token" as const })
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience(claims.aud)
     .setSubject(claims.sub)
     .setJti(crypto.randomUUID())
-    .setExpirationTime(idTokenExpiresIn)
-    .sign(encodeSecret(idTokenSecret));
+    .setExpirationTime(idTokenExpiresIn);
 
-  return token;
+  const rs256PrivateKey = await getIdTokenPrivateKey();
+  if (rs256PrivateKey) {
+    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: "id-token-rs256-v1" });
+    return jwt.sign(rs256PrivateKey);
+  }
+
+  jwt.setProtectedHeader({ alg: "HS256" });
+  return jwt.sign(encodeSecret(idTokenSecret));
 }
 
 /**
  * 验证 ID Token
+ *
+ * 支持 RS256（优先，若配置了公钥）与 HS256（兼容旧 token）。
  */
 export async function verifyIdToken(token: string, audience: string): Promise<IdTokenClaims | null> {
   try {
-    const { payload } = await jwtVerify(token, encodeSecret(idTokenSecret), {
+    const verifyOptions: { issuer: string; audience: string; algorithms?: string[] } = {
       issuer: ISSUER,
       audience,
-    });
+      algorithms: ["HS256", "RS256"],
+    };
+
+    const publicKey = await getIdTokenPublicKey();
+    let payload: import("jose").JWTPayload;
+
+    if (publicKey) {
+      try {
+        const result = await jwtVerify(token, publicKey, { ...verifyOptions, algorithms: ["RS256"] });
+        payload = result.payload;
+      } catch {
+        // RS256 验证失败，尝试 HS256（兼容旧 token）
+        const result = await jwtVerify(token, encodeSecret(idTokenSecret), { ...verifyOptions, algorithms: ["HS256"] });
+        payload = result.payload;
+      }
+    } else {
+      const result = await jwtVerify(token, encodeSecret(idTokenSecret), verifyOptions);
+      payload = result.payload;
+    }
+
     if ((payload as { type?: string }).type !== "id_token") {
       return null;
     }

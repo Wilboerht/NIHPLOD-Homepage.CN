@@ -1,8 +1,9 @@
 /**
  * Token 存储抽象层
  *
- * 默认使用 sessionStorage（非 localStorage），防止 XSS 持久化窃取。
- * 支持注入自定义实现（如 React Native AsyncStorage、Node.js 文件存储）。
+ * 默认使用 localStorage，以支持多 Tab 间自动同步 token 并避免并发刷新。
+ * 对 XSS 敏感的子项目可通过 setTokenStorage() 注入更安全的自定义实现
+ *（如内存存储、Service Worker 封装、或带加密的 storage）。
  *
  * 多 client 隔离：
  * - token / state / return_url 均支持按 clientId 隔离 key
@@ -45,24 +46,24 @@ function buildKey(base: string, clientId?: string): string {
 }
 
 /**
- * 浏览器 sessionStorage 实现
+ * 浏览器 localStorage 实现
  */
-const sessionStorageAdapter: TokenStorage = {
+const localStorageAdapter: TokenStorage = {
   get(key: string) {
-    if (typeof sessionStorage === "undefined") return null;
-    return sessionStorage.getItem(STORAGE_PREFIX + key);
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem(STORAGE_PREFIX + key);
   },
   set(key: string, value: string) {
-    if (typeof sessionStorage === "undefined") return;
-    sessionStorage.setItem(STORAGE_PREFIX + key, value);
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(STORAGE_PREFIX + key, value);
   },
   remove(key: string) {
-    if (typeof sessionStorage === "undefined") return;
-    sessionStorage.removeItem(STORAGE_PREFIX + key);
+    if (typeof localStorage === "undefined") return;
+    localStorage.removeItem(STORAGE_PREFIX + key);
   },
 };
 
-let _storage: TokenStorage = sessionStorageAdapter;
+let _storage: TokenStorage = localStorageAdapter;
 
 /**
  * 设置自定义存储实现
@@ -165,11 +166,11 @@ export function clearAllSsoData(clientId?: string): void {
   removeOAuthState();
   removeReturnUrl();
 
-  // 清理所有 PKCE verifier（遍历已知前缀，sessionStorage key 可枚举）
-  if (typeof sessionStorage !== "undefined") {
+  // 清理所有 PKCE verifier（遍历已知前缀，localStorage key 可枚举）
+  if (typeof localStorage !== "undefined") {
     const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
       if (key?.startsWith(prefix)) {
         _storage.remove(key.slice(STORAGE_PREFIX.length));
       }

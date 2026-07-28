@@ -278,7 +278,7 @@ export async function POST(request: NextRequest) {
 
       // 保存 Refresh Token（复用现有设备管理）
       const deviceInfo = extractDeviceInfo(request);
-      await saveRefreshToken(user.id, refreshToken, refreshExpiresAt, deviceInfo);
+      await saveRefreshToken(user.id, refreshToken, refreshExpiresAt, deviceInfo, client_id);
 
       // 签发 ID Token（含 at_hash）
       const idTokenClaims: IdTokenClaims = {
@@ -292,9 +292,9 @@ export async function POST(request: NextRequest) {
         if (user.nickname) idTokenClaims.nickname = user.nickname;
         if (user.avatar) idTokenClaims.avatar = user.avatar;
       }
-      if (scopeStr.includes("membership")) {
-        if (user.membershipLevel) idTokenClaims.membershipLevel = user.membershipLevel;
-        if (user.totalPoints != null) idTokenClaims.totalPoints = user.totalPoints;
+      if (scopeStr.includes("membership") && user) {
+        if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
+        if (user.totalPoints != null) idTokenClaims.total_points = user.totalPoints;
       }
 
       const idToken = await signIdToken(idTokenClaims);
@@ -357,9 +357,24 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Refresh Token 所有权校验：payload 中的 client_id 必须与请求方一致
-      // 旧版 token 可能未携带 client_id，为安全起见一旦存在就强制校验
-      if (refreshPayload.client_id && refreshPayload.client_id !== client_id) {
+      // Refresh Token 所有权校验：OAuth 流程签发的 token 必须携带 client_id，
+      // 且与请求方一致。无 client_id 的旧版内部 token 不允许在 OAuth 端点刷新。
+      if (!refreshPayload.client_id) {
+        recordSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "missing_client_id" },
+        });
+        return NextResponse.json(
+          { error: "invalid_grant", error_description: "Refresh token 无效" },
+          { status: 400 }
+        );
+      }
+      if (refreshPayload.client_id !== client_id) {
         recordSsoEvent({
           event: "token",
           userId: refreshPayload.id,
@@ -380,22 +395,22 @@ export async function POST(request: NextRequest) {
       }
 
       // 签发新的 Access Token（OAuth 类型）
-      // 注意：refresh token 不携带 scope/client_id 时，需要从 OAuthSession 获取。
-      // 按 client_id + userId 过滤，取最近未过期未撤销的会话 scope。
-      // 若该用户从未通过当前 client 创建过有效 OAuthSession（如旧版本 token），
-      // 回退到 "openid"（最小权限原则）。
+      // 优先使用原 Refresh Token payload 中的 scope，保证刷新不会扩大权限；
+      // 仅当旧 token 未携带 scope 时才从 OAuthSession 回退获取。
       const now = new Date();
-      const session = await prisma.oAuthSession.findFirst({
-        where: {
-          userId: refreshPayload.id,
-          clientId: client_id,
-          revokedAt: null,
-          expiresAt: { gt: now },
-        },
-        orderBy: { createdAt: "desc" },
-      });
-
-      const scopeStr = session?.scopes?.join(" ") || refreshPayload.scope || "openid";
+      let scopeStr = refreshPayload.scope || "";
+      if (!scopeStr) {
+        const session = await prisma.oAuthSession.findFirst({
+          where: {
+            userId: refreshPayload.id,
+            clientId: client_id,
+            revokedAt: null,
+            expiresAt: { gt: now },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        scopeStr = session?.scopes?.join(" ") || "openid";
+      }
 
       const newAccessToken = await signOAuthAccessToken({
         id: refreshPayload.id,
@@ -419,7 +434,8 @@ export async function POST(request: NextRequest) {
         refresh_token,
         newRefreshToken,
         newRefreshExpiresAt,
-        deviceInfo
+        deviceInfo,
+        client_id
       );
 
       if (!rotationResult.valid) {
@@ -459,8 +475,8 @@ export async function POST(request: NextRequest) {
         if (user.avatar) idTokenClaims.avatar = user.avatar;
       }
       if (scopeStr.includes("membership") && user) {
-        if (user.membershipLevel) idTokenClaims.membershipLevel = user.membershipLevel;
-        if (user.totalPoints != null) idTokenClaims.totalPoints = user.totalPoints;
+        if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
+        if (user.totalPoints != null) idTokenClaims.total_points = user.totalPoints;
       }
 
       const idToken = await signIdToken(idTokenClaims);

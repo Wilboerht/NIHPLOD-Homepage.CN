@@ -15,6 +15,7 @@ import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
+import { revokeRefreshToken } from "@/lib/auth-security";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -209,12 +210,8 @@ export async function POST(request: NextRequest) {
         data: { revokedAt: new Date() },
       });
 
-      // 同步撤销该用户下所有活跃 RefreshToken
-      // （RefreshToken 表当前无 clientId 字段，无法更精确过滤）
-      await prisma.refreshToken.updateMany({
-        where: { userId: session.userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
+      // 同步撤销该用户+client 下的活跃 RefreshToken
+      await revokeRefreshToken(session.userId, undefined, session.clientId);
 
       // Backchannel Logout 通知
       await sendBackchannelLogout(session.userId, [session.clientId]);
@@ -266,10 +263,7 @@ export async function POST(request: NextRequest) {
       data: { revokedAt: new Date() },
     });
 
-    await prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    await revokeRefreshToken(userId, undefined, clientId);
 
     const uniqueClientIds = [...new Set(sessions.map((s) => s.clientId))];
     await sendBackchannelLogout(userId, uniqueClientIds);

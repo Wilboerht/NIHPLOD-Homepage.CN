@@ -67,5 +67,6 @@ app.use(
 
 ## 注意事项
 
-- 当前主站使用 HS256 对称签名，JWKS 端点不公开签名密钥，因此**不能通过 JWKS 做本地验证**。
-- 未来主站迁移到 RS256 非对称签名后，将支持通过 JWKS 公钥本地验证。
+- 当前主站默认使用 HS256 对称签名。对于外部子项目，推荐优先使用 **Introspection 模式** 验证 access_token。
+- 若你的子项目是内部服务且已与主站共享 RS256 公钥，可配置 `accessTokenPublicKey` 或 `jwksUri` 做本地 JWT 验证。
+- **不要将 `JWT_ACCESS_SECRET`（HS256 对称密钥）分发给外部子项目。**

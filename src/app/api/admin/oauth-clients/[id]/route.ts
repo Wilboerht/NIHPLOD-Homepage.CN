@@ -147,7 +147,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       request,
     });
 
-    return NextResponse.json({ success: true, data: { message: "Client 已停用" } });
+    return NextResponse.json({ success: true, data: { message: "Client 已删除" } });
   } catch (error) {
     apiConsole.error("[AdminOAuthClient DELETE] 异常:", error);
     return NextResponse.json(

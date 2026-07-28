@@ -28,7 +28,8 @@ __export(next_exports, {
   createCallbackRouteHandler: () => createCallbackRouteHandler,
   createLogoutRouteHandler: () => createLogoutRouteHandler,
   createSsoMiddleware: () => createSsoMiddleware,
-  getHostCookieOptions: () => getHostCookieOptions
+  getHostCookieOptions: () => getHostCookieOptions,
+  getSecureCookieOptions: () => getSecureCookieOptions
 });
 module.exports = __toCommonJS(next_exports);
 
@@ -38,15 +39,25 @@ var import_server = require("next/server");
 // src/next/constants.ts
 var DEFAULT_ACCESS_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_at";
 var DEFAULT_REFRESH_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_rt";
+var DEFAULT_ID_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_id";
 var DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
 var DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
-var DEFAULT_VERIFIER_COOKIE_NAME = "__Host-nihplod_sso_verifier";
+var DEFAULT_VERIFIER_COOKIE_NAME = "__Secure-nihplod_sso_verifier";
 function getHostCookieOptions(maxAge) {
   return {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
     path: "/",
+    ...maxAge !== void 0 ? { maxAge } : {}
+  };
+}
+function getSecureCookieOptions(maxAge, path = "/") {
+  return {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path,
     ...maxAge !== void 0 ? { maxAge } : {}
   };
 }
@@ -85,21 +96,32 @@ function matchesPath(pathname, paths) {
     return false;
   });
 }
-function decodeJwtPayload(token) {
+async function introspectAccessToken(token, ssoBaseUrl, clientId, clientSecret) {
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = parts[1];
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = atob(base64);
-    return JSON.parse(decoded);
+    const body = new URLSearchParams({
+      token,
+      token_type_hint: "access_token",
+      client_id: clientId
+    });
+    if (clientSecret) {
+      body.set("client_secret", clientSecret);
+    }
+    const res = await fetch(`${ssoBaseUrl}/api/oauth/introspect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString()
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.active === true;
   } catch {
-    return null;
+    return false;
   }
 }
 function createSsoMiddleware(config) {
   const {
     clientId,
+    clientSecret,
     ssoBaseUrl,
     redirectUri,
     scopes = "openid profile",
@@ -130,13 +152,13 @@ function createSsoMiddleware(config) {
     }
     const accessTokenCookie = request.cookies.get(accessTokenCookieName);
     if (accessTokenCookie?.value) {
-      const payload = decodeJwtPayload(accessTokenCookie.value);
-      if (payload?.exp && typeof payload.exp === "number") {
-        const expMs = payload.exp * 1e3;
-        if (Date.now() < expMs) {
-          return import_server.NextResponse.next();
-        }
-      } else {
+      const tokenActive = await introspectAccessToken(
+        accessTokenCookie.value,
+        normalizedBase,
+        clientId,
+        clientSecret
+      );
+      if (tokenActive) {
         return import_server.NextResponse.next();
       }
     }
@@ -155,10 +177,7 @@ function createSsoMiddleware(config) {
     loginUrl.search = authorizeParams.toString();
     const response = import_server.NextResponse.redirect(loginUrl);
     response.cookies.set(stateCookieName, state, getHostCookieOptions(600));
-    response.cookies.set(verifierCookieName, verifier, {
-      ...getHostCookieOptions(600),
-      path: callbackPath
-    });
+    response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath));
     response.cookies.set(returnUrlCookieName, request.url, getHostCookieOptions(600));
     if (accessTokenCookie?.value) {
       response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
@@ -169,6 +188,15 @@ function createSsoMiddleware(config) {
 
 // src/next/callback.ts
 var import_server2 = require("next/server");
+function isTrustedReturnUrl(url, currentOrigin) {
+  if (!url) return false;
+  if (url.startsWith("/") && !url.startsWith("//")) return true;
+  try {
+    return new URL(url).origin === currentOrigin;
+  } catch {
+    return false;
+  }
+}
 function createCallbackRouteHandler(config) {
   const {
     clientId,
@@ -178,6 +206,7 @@ function createCallbackRouteHandler(config) {
     defaultReturnPath = "/",
     accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
     refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+    idTokenCookieName = DEFAULT_ID_TOKEN_COOKIE_NAME,
     stateCookieName = DEFAULT_STATE_COOKIE_NAME,
     returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
     verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME
@@ -289,7 +318,8 @@ function createCallbackRouteHandler(config) {
       );
     }
     const tokenData = await res.json();
-    const returnUrl = request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
+    const rawReturnUrl = request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
+    const returnUrl = isTrustedReturnUrl(rawReturnUrl, request.nextUrl.origin) ? rawReturnUrl : "/";
     const response = import_server2.NextResponse.redirect(new URL(returnUrl, request.url));
     response.cookies.set(accessTokenCookieName, tokenData.access_token, {
       ...getHostCookieOptions(tokenData.expires_in)
@@ -298,16 +328,15 @@ function createCallbackRouteHandler(config) {
     response.cookies.set(refreshTokenCookieName, tokenData.refresh_token, {
       ...getHostCookieOptions(refreshMaxAge)
     });
+    if (tokenData.id_token) {
+      response.cookies.set(idTokenCookieName, tokenData.id_token, {
+        ...getHostCookieOptions(refreshMaxAge)
+      });
+    }
     response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
     response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(verifierCookieName, "", {
-      ...getHostCookieOptions(0),
-      path: "/"
-    });
-    response.cookies.set(verifierCookieName, "", {
-      ...getHostCookieOptions(0),
-      path: request.nextUrl.pathname
-    });
+    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/"));
+    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname));
     return response;
   };
 }
@@ -338,6 +367,7 @@ function createLogoutRouteHandler(config) {
     redirectToSso = true,
     accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
     refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
+    idTokenCookieName = DEFAULT_ID_TOKEN_COOKIE_NAME,
     stateCookieName = DEFAULT_STATE_COOKIE_NAME,
     returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
     verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
@@ -346,7 +376,7 @@ function createLogoutRouteHandler(config) {
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   return async function GET(request) {
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
-    const idTokenHint = request.cookies.get(accessTokenCookieName)?.value ? void 0 : void 0;
+    const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
     if (refreshToken) {
       try {
         const discovery = await fetchDiscovery(normalizedBase);
@@ -367,21 +397,16 @@ function createLogoutRouteHandler(config) {
       } catch {
       }
     }
-    const response = import_server3.NextResponse.redirect(
-      redirectToSso ? postLogoutRedirectUri : request.nextUrl.origin + "/"
-    );
-    response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(verifierCookieName, "", {
-      ...getHostCookieOptions(0),
-      path: "/"
-    });
-    response.cookies.set(verifierCookieName, "", {
-      ...getHostCookieOptions(0),
-      path: callbackPath
-    });
+    const clearCookies = (res) => {
+      res.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(stateCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/"));
+      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath));
+      return res;
+    };
     if (redirectToSso) {
       const discovery = await fetchDiscovery(normalizedBase);
       const endSessionEndpoint = discovery?.end_session_endpoint || `${normalizedBase}/logout`;
@@ -394,9 +419,11 @@ function createLogoutRouteHandler(config) {
       if (idTokenHint) {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);
       }
-      return import_server3.NextResponse.redirect(logoutUrl.toString());
+      return clearCookies(import_server3.NextResponse.redirect(logoutUrl.toString()));
     }
-    return response;
+    return clearCookies(
+      import_server3.NextResponse.redirect(request.nextUrl.origin + "/")
+    );
   };
 }
 // Annotate the CommonJS export names for ESM import in node:
@@ -409,6 +436,7 @@ function createLogoutRouteHandler(config) {
   createCallbackRouteHandler,
   createLogoutRouteHandler,
   createSsoMiddleware,
-  getHostCookieOptions
+  getHostCookieOptions,
+  getSecureCookieOptions
 });
 //# sourceMappingURL=index.js.map

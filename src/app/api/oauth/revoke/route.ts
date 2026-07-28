@@ -6,7 +6,9 @@
  * 子项目登出时调用此端点撤销 refresh_token，
  * 使其无法再用于刷新 access_token。
  *
- * 认证方式：client_id + client_secret
+ * 认证方式：
+ * - Confidential Client：client_id + client_secret
+ * - Public Client：仅 client_id（RFC 7009 允许 Public Client 不携带 secret）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
@@ -49,9 +51,9 @@ export async function POST(request: NextRequest) {
     const token = body.token;
     const token_type_hint = body.token_type_hint;
 
-    if (!client_id || !client_secret) {
+    if (!client_id) {
       return NextResponse.json(
-        { error: "invalid_client", error_description: "缺少 client_id 或 client_secret" },
+        { error: "invalid_client", error_description: "缺少 client_id" },
         { status: 401 }
       );
     }
@@ -61,8 +63,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({});
     }
 
-    // 验证 client
-    const client = await verifyOAuthClientSecret(client_id, client_secret);
+    // 验证 client：Public Client 允许不传 secret；Confidential Client 必须验证 secret
+    const client = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
     if (!client) {
       recordSsoEvent({
         event: "logout",
@@ -83,6 +85,20 @@ export async function POST(request: NextRequest) {
       const refreshPayload = await verifyRefreshToken(token);
 
       if (refreshPayload) {
+        // 所有权校验：OAuth refresh token 携带 client_id 时，必须与本请求 client_id 一致
+        if (refreshPayload.client_id && refreshPayload.client_id !== client_id) {
+          recordSsoEvent({
+            event: "logout",
+            userId: refreshPayload.id,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { token_type: "refresh_token", action: "revoke", reason: "client_id_mismatch" },
+          });
+          return NextResponse.json({});
+        }
+
         // 使用 auth-security 的 revokeRefreshToken 撤销（自动处理 SHA-256 哈希比对）
         const revokedCount = await revokeRefreshToken(refreshPayload.id, token);
 

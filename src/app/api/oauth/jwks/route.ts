@@ -22,7 +22,7 @@
  */
 import { NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { getAccessPublicKey } from "@/lib/jwt";
+import { getAccessPublicKey, getIdTokenPublicKey } from "@/lib/jwt";
 
 export const dynamic = "force-dynamic";
 
@@ -72,13 +72,27 @@ export async function GET(request: Request) {
     const keys: Record<string, unknown>[] = [];
 
     // 若配置了 RS256 公钥，则公开给子项目本地验证
-    const publicKey = await getAccessPublicKey();
-    if (publicKey) {
+    const accessPublicKey = await getAccessPublicKey();
+    if (accessPublicKey) {
       // export public key as JWK
-      const jwk = await crypto.subtle.exportKey("jwk", publicKey);
+      const jwk = await crypto.subtle.exportKey("jwk", accessPublicKey);
       keys.push({
         kty: jwk.kty,
         kid: "access-token-rs256-v1",
+        alg: "RS256",
+        use: "sig",
+        n: jwk.n,
+        e: jwk.e,
+      });
+    }
+
+    // 若配置了 ID Token RS256 公钥，也公开给子项目验证 ID Token
+    const idTokenPublicKey = await getIdTokenPublicKey();
+    if (idTokenPublicKey) {
+      const jwk = await crypto.subtle.exportKey("jwk", idTokenPublicKey);
+      keys.push({
+        kty: jwk.kty,
+        kid: "id-token-rs256-v1",
         alg: "RS256",
         use: "sig",
         n: jwk.n,
