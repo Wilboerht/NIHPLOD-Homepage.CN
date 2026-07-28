@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Download, RotateCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -94,22 +95,26 @@ const getEventBadgeVariant = (type: string): "primary" | "secondary" | "success"
   return map[type] || "default";
 };
 
-export default function OAuthAuditPage() {
+function OAuthAuditPage() {
+  const searchParams = useSearchParams();
   const toast = useToast();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get("page");
+    return p ? Math.max(1, parseInt(p, 10)) : 1;
+  });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const pageSize = 20;
 
   // Filters
-  const [eventType, setEventType] = useState("");
-  const [searchClientId, setSearchClientId] = useState("");
-  const [searchUserId, setSearchUserId] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [successFilter, setSuccessFilter] = useState("");
+  const [eventType, setEventType] = useState(() => searchParams.get("event") || "");
+  const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
+  const [searchUserId, setSearchUserId] = useState(() => searchParams.get("userId") || "");
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get("startDate") || "");
+  const [dateTo, setDateTo] = useState(() => searchParams.get("endDate") || "");
+  const [successFilter, setSuccessFilter] = useState(() => searchParams.get("success") || "");
 
   // Expand detail
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -141,6 +146,26 @@ export default function OAuthAuditPage() {
   useEffect(() => {
     fetchAudit();
   }, [fetchAudit]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (page !== 1) params.set("page", String(page));
+    else params.delete("page");
+    if (eventType) params.set("event", eventType);
+    else params.delete("event");
+    if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
+    else params.delete("clientId");
+    if (searchUserId.trim()) params.set("userId", searchUserId.trim());
+    else params.delete("userId");
+    if (dateFrom) params.set("startDate", dateFrom);
+    else params.delete("startDate");
+    if (dateTo) params.set("endDate", dateTo);
+    else params.delete("endDate");
+    if (successFilter) params.set("success", successFilter);
+    else params.delete("success");
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState(null, "", newUrl);
+  }, [page, eventType, searchClientId, searchUserId, dateFrom, dateTo, successFilter]);
 
   const handleSearch = () => {
     setPage(1);
@@ -197,7 +222,7 @@ export default function OAuthAuditPage() {
             <Select
               options={EVENT_TYPE_OPTIONS}
               value={eventType}
-              onChange={(e) => setEventType(e.target.value)}
+              onChange={(e) => { setEventType(e.target.value); setPage(1); }}
             />
           </div>
           <div className="w-44">
@@ -220,7 +245,7 @@ export default function OAuthAuditPage() {
             <Input
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
               placeholder="开始日期"
             />
           </div>
@@ -228,7 +253,7 @@ export default function OAuthAuditPage() {
             <Input
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
               placeholder="结束日期"
             />
           </div>
@@ -236,7 +261,7 @@ export default function OAuthAuditPage() {
             <Select
               options={SUCCESS_OPTIONS}
               value={successFilter}
-              onChange={(e) => setSuccessFilter(e.target.value)}
+              onChange={(e) => { setSuccessFilter(e.target.value); setPage(1); }}
             />
           </div>
           <Button
@@ -346,5 +371,13 @@ export default function OAuthAuditPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OAuthAuditPageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+      <OAuthAuditPage />
+    </Suspense>
   );
 }

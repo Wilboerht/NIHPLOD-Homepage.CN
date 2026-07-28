@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -45,18 +46,22 @@ const STATUS_OPTIONS = [
   { value: "revoked", label: "已撤销" },
 ];
 
-export default function OAuthConsentsPage() {
+function OAuthConsentsPage() {
+  const searchParams = useSearchParams();
   const toast = useToast();
   const [consents, setConsents] = useState<Consent[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get("page");
+    return p ? Math.max(1, parseInt(p, 10)) : 1;
+  });
   const [loading, setLoading] = useState(true);
   const pageSize = 20;
 
   // Filters
-  const [searchPhone, setSearchPhone] = useState("");
-  const [searchClientId, setSearchClientId] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [searchPhone, setSearchPhone] = useState(() => searchParams.get("search") || "");
+  const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
 
   // Revoke confirm
   const [revokeTarget, setRevokeTarget] = useState<{ userId: string; clientId: string } | null>(null);
@@ -87,6 +92,20 @@ export default function OAuthConsentsPage() {
   useEffect(() => {
     fetchConsents();
   }, [fetchConsents]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (page !== 1) params.set("page", String(page));
+    else params.delete("page");
+    if (searchPhone.trim()) params.set("search", searchPhone.trim());
+    else params.delete("search");
+    if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
+    else params.delete("clientId");
+    if (statusFilter) params.set("status", statusFilter);
+    else params.delete("status");
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState(null, "", newUrl);
+  }, [page, searchPhone, searchClientId, statusFilter]);
 
   const handleSearch = () => {
     setPage(1);
@@ -139,7 +158,7 @@ export default function OAuthConsentsPage() {
             <Select
               options={STATUS_OPTIONS}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
             />
           </div>
           <Button
@@ -262,5 +281,13 @@ export default function OAuthConsentsPage() {
         loading={revoking}
       />
     </div>
+  );
+}
+
+export default function OAuthConsentsPageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+      <OAuthConsentsPage />
+    </Suspense>
   );
 }

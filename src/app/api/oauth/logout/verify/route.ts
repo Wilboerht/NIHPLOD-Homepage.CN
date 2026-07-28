@@ -92,10 +92,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证 events claim 是否包含 backchannel-logout 事件
-    // 注意：当前实现中 events 存储为纯字符串，使用精确匹配
+    // 验证 events claim 是否包含 backchannel-logout 事件（OIDC 规范要求为对象）
     const expectedEvent = "http://schemas.openid.net/event/backchannel-logout";
-    if (!payload.events || payload.events !== expectedEvent) {
+    const events =
+      typeof payload.events === "object" && payload.events !== null
+        ? (payload.events as Record<string, unknown>)
+        : null;
+    if (!events || !(expectedEvent in events)) {
       recordSsoEvent({
         event: "backchannel_logout",
         userId: payload.sub,

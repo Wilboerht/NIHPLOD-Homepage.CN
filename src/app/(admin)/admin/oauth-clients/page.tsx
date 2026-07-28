@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   Pencil,
@@ -97,13 +98,17 @@ const generatePkcePair = async () => {
   return { verifier, challenge };
 };
 
-export default function OAuthClientsPage() {
+function OAuthClientsPage() {
+  const searchParams = useSearchParams();
   const toast = useToast();
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get("page");
+    return p ? Math.max(1, parseInt(p, 10)) : 1;
+  });
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const pageSize = 20;
 
   // Modal states
@@ -159,6 +164,16 @@ export default function OAuthClientsPage() {
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (search.trim()) params.set("search", search.trim());
+    else params.delete("search");
+    if (page !== 1) params.set("page", String(page));
+    else params.delete("page");
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState(null, "", newUrl);
+  }, [search, page]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -868,5 +883,13 @@ if (!payload) {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OAuthClientsPageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+      <OAuthClientsPage />
+    </Suspense>
   );
 }

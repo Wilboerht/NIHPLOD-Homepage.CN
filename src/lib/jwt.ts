@@ -454,7 +454,7 @@ export async function verifyIdToken(token: string, audience: string): Promise<Id
 export interface LogoutTokenClaims {
   sub: string;
   aud: string;
-  events: string;
+  events: Record<string, unknown>;
   jti: string;
 }
 

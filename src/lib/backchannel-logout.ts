@@ -46,7 +46,7 @@ export async function sendBackchannelLogout(
       const logoutToken = await signLogoutToken({
         sub: userId,
         aud: client.clientId,
-        events: "http://schemas.openid.net/event/backchannel-logout",
+        events: { "http://schemas.openid.net/event/backchannel-logout": {} },
         jti,
       });
 

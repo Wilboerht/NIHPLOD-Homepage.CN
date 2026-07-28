@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, LogOut, Trash2, Key, ShieldCheck, Eye, X, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -54,18 +55,22 @@ const formatDateTime = (dateStr: string) => {
   return new Date(dateStr).toLocaleString("zh-CN");
 };
 
-export default function OAuthSessionsPage() {
+function OAuthSessionsPage() {
+  const searchParams = useSearchParams();
   const toast = useToast();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [stats, setStats] = useState({ activeSessions: 0, activeRefreshTokens: 0 });
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get("page");
+    return p ? Math.max(1, parseInt(p, 10)) : 1;
+  });
   const [loading, setLoading] = useState(true);
   const pageSize = 20;
 
   // Filters
-  const [search, setSearch] = useState("");
-  const [searchClientId, setSearchClientId] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
   const [clientOptions, setClientOptions] = useState<ClientOption[]>([]);
 
   // Detail drawer
@@ -112,6 +117,18 @@ export default function OAuthSessionsPage() {
       .then((res) => setClientOptions(res.data.clients))
       .catch(() => setClientOptions([]));
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (page !== 1) params.set("page", String(page));
+    else params.delete("page");
+    if (search.trim()) params.set("search", search.trim());
+    else params.delete("search");
+    if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
+    else params.delete("clientId");
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    window.history.replaceState(null, "", newUrl);
+  }, [page, search, searchClientId]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -463,5 +480,13 @@ export default function OAuthSessionsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OAuthSessionsPageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+      <OAuthSessionsPage />
+    </Suspense>
   );
 }
