@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { m } from "framer-motion";
-import { Eye, EyeOff, ArrowLeftRight, Check, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, ArrowLeftRight, Check, CheckCircle, MessageCircle } from "lucide-react";
 import { pcInputClass, pcBtnClass, mobileInputClass, mobileInputFlexClass } from "./auth-styles";
 
 export interface LoginFormProps {
@@ -105,6 +105,7 @@ export function LoginForm({
   onSendLoginCode,
   onSwitchToRegister,
   onForgotPassword,
+  onWechatLogin,
 }: LoginFormProps) {
   const agreed = mobileAgreed;
 
@@ -212,7 +213,7 @@ export function LoginForm({
           </button>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 flex flex-col items-center gap-3 text-center">
           <button
             type="button"
             onClick={onSwitchToRegister}
@@ -220,6 +221,16 @@ export function LoginForm({
           >
             还没有账号？立即注册
           </button>
+          {onWechatLogin && (
+            <button
+              type="button"
+              onClick={onWechatLogin}
+              className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              微信登录
+            </button>
+          )}
         </div>
       </>
     );
@@ -348,6 +359,16 @@ export function LoginForm({
         >
           还没有账户？立即注册
         </button>
+        {onWechatLogin && (
+          <button
+            type="button"
+            onClick={onWechatLogin}
+            className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+            微信登录
+          </button>
+        )}
       </div>
     </div>
   );
