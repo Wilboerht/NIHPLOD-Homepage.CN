@@ -7,6 +7,10 @@ function createIntrospectCache(ttlMs) {
     ttl: ttlMs
   });
 }
+var processedLogoutJtis = new LRUCache({
+  max: 1e4,
+  ttl: 10 * 60 * 1e3
+});
 function createTokenVerifier(options) {
   const {
     audience,
@@ -200,6 +204,14 @@ function createTokenVerifier(options) {
         if (!events || !events["http://schemas.openid.net/event/backchannel-logout"]) {
           return null;
         }
+        const jti = payload.jti;
+        if (!jti || typeof jti !== "string") {
+          return null;
+        }
+        if (processedLogoutJtis.has(jti)) {
+          return null;
+        }
+        processedLogoutJtis.set(jti, Date.now());
         return payload;
       } catch {
         return null;

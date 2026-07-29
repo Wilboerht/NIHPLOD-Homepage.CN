@@ -5,11 +5,14 @@
  * 返回当前 Access Token 对应的用户信息。
  * 按 token 中的 scope claim 裁剪返回字段。
  * 敏感字段（phone）进行脱敏处理。
+ *
+ * CORS：仅允许已注册 redirect_uri 的 origin。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyOAuthAccessToken } from "@/lib/jwt";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { prisma } from "@/lib/prisma";
+import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { maskPhone } from "@/lib/mask-phone";
@@ -20,25 +23,26 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const ip = getClientIP(request);
+    const corsHeaders = await getOAuthCorsHeaders(request);
+    const resJson = (body: unknown, status = 200, extraHeaders?: Record<string, string>) =>
+      NextResponse.json(body, { status, headers: { ...corsHeaders, ...extraHeaders } });
 
     // 限流
     const limitResult = await rateLimit(ip, "oauth-userinfo");
     if (!limitResult.success) {
-      return NextResponse.json(
+      return resJson(
         { error: "rate_limited", error_description: "请求过于频繁" },
-        { status: 429 }
+        429
       );
     }
 
     // 从 Authorization header 提取 token
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json(
+      return resJson(
         { error: "invalid_token", error_description: "缺少 Authorization header" },
-        {
-          status: 401,
-          headers: { "WWW-Authenticate": 'Bearer error="invalid_token"' },
-        }
+        401,
+        { "WWW-Authenticate": 'Bearer error="invalid_token"' }
       );
     }
 
@@ -53,17 +57,15 @@ export async function GET(request: NextRequest) {
         success: false,
         detail: { reason: "invalid_token" },
       });
-      return NextResponse.json(
+      return resJson(
         { error: "invalid_token", error_description: "Access token 无效或已过期" },
-        {
-          status: 401,
-          headers: { "WWW-Authenticate": 'Bearer error="invalid_token"' },
-        }
+        401,
+        { "WWW-Authenticate": 'Bearer error="invalid_token"' }
       );
     }
 
     // 检查 access token 黑名单（封禁后 15 分钟窗口期内的 token）
-    const blacklisted = isTokenBlacklisted(payload.id);
+    const blacklisted = await isTokenBlacklisted(payload.id);
     if (blacklisted) {
       recordSsoEvent({
         event: "userinfo",
@@ -73,9 +75,9 @@ export async function GET(request: NextRequest) {
         success: false,
         detail: { reason: "blacklisted", blacklistReason: blacklisted.reason },
       });
-      return NextResponse.json(
+      return resJson(
         { error: "account_disabled", error_description: "账户已被限制" },
-        { status: 403 }
+        403
       );
     }
 
@@ -102,9 +104,9 @@ export async function GET(request: NextRequest) {
         success: false,
         detail: { reason: "account_disabled" },
       });
-      return NextResponse.json(
+      return resJson(
         { error: "account_disabled", error_description: "账户已被封禁或冻结" },
-        { status: 403 }
+        403
       );
     }
 
@@ -136,7 +138,7 @@ export async function GET(request: NextRequest) {
       success: true,
     });
 
-    return NextResponse.json(response);
+    return resJson(response);
   } catch (error) {
     apiConsole.error("[OAuth UserInfo] 异常:", error);
     return NextResponse.json(
@@ -144,4 +146,9 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const corsHeaders = await getOAuthCorsHeaders(request);
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }

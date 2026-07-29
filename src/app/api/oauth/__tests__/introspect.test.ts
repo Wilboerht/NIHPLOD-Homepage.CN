@@ -32,6 +32,11 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
+// === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris）===
+vi.mock("@/lib/oauth-cors", () => ({
+  getOAuthCorsHeaders: vi.fn().mockResolvedValue({}),
+}));
+
 import { POST } from "../introspect/route";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 
@@ -72,8 +77,10 @@ describe("POST /api/oauth/introspect", () => {
     vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
       id: "1", clientId: "test-client", name: "Test",
       redirectUris: ["https://example.com/cb"],
+      postLogoutRedirectUris: [],
       scopes: ["openid"], isActive: true,
       backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
+      isPublic: false,
     });
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
     const req = createFormBody({
@@ -91,8 +98,10 @@ describe("POST /api/oauth/introspect", () => {
     vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
       id: "1", clientId: "test-client", name: "Test",
       redirectUris: ["https://example.com/cb"],
+      postLogoutRedirectUris: [],
       scopes: ["openid"], isActive: true,
       backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
+      isPublic: false,
     });
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
@@ -115,8 +124,10 @@ describe("POST /api/oauth/introspect", () => {
     vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
       id: "1", clientId: "test-client", name: "Test",
       redirectUris: ["https://example.com/cb"],
+      postLogoutRedirectUris: [],
       scopes: ["openid"], isActive: true,
       backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
+      isPublic: false,
     });
     const now = Math.floor(Date.now() / 1000);
     mockVerifyOAuthAccessToken.mockResolvedValue({

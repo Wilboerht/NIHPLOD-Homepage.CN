@@ -65,6 +65,7 @@ export function CheckoutModal() {
     closeCheckout,
     openUserCenter,
     redirectToLogin,
+    setPendingCheckout,
     openPay,
   } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -180,10 +181,14 @@ export function CheckoutModal() {
   // 未登录时打开登录弹窗 — 必须放在 return null 之前，遵循 hooks 顺序规则
   useEffect(() => {
     if (checkoutOpen && !user) {
+      setPendingCheckout({
+        selectedProductIds: checkoutSelectedProductIds ?? undefined,
+        quantities: checkoutQuantities ?? undefined,
+      });
       redirectToLogin();
       closeCheckout();
     }
-  }, [checkoutOpen, user, redirectToLogin, closeCheckout]);
+  }, [checkoutOpen, user, redirectToLogin, closeCheckout, checkoutSelectedProductIds, checkoutQuantities, setPendingCheckout]);
 
   if (!mounted) return null;
 

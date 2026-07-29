@@ -42,7 +42,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const _isMobile = useIsMobile();
   const toast = useToast();
-  const { refreshUser } = useAuth();
+  const { refreshUser, restorePendingCheckout } = useAuth();
 
   const returnTo = searchParams.get("return_to");
   const rawMode = searchParams.get("mode");
@@ -92,13 +92,43 @@ function LoginPageContent() {
 
   const isMobile = useIsMobile();
 
-  const handleClose = useCallback(() => {
-    if (returnTo) {
-      router.push(decodeURIComponent(returnTo));
-    } else {
-      router.push("/");
+  const isSafeReturnTo = useCallback((url: string): boolean => {
+    if (!url) return false;
+    // 相对路径
+    if (url.startsWith("/") && !url.startsWith("//")) return true;
+
+    try {
+      const parsed = new URL(url, window.location.href);
+      // 拒绝危险 scheme
+      if (!["http:", "https:"].includes(parsed.protocol)) return false;
+      // 只允许同 origin
+      return parsed.origin === window.location.origin;
+    } catch {
+      return false;
     }
-  }, [router, returnTo]);
+  }, []);
+
+  const navigateToReturnTo = useCallback((rawReturnTo?: string | null) => {
+    if (!rawReturnTo) {
+      router.push("/");
+      return;
+    }
+    const decoded = decodeURIComponent(rawReturnTo);
+    if (!isSafeReturnTo(decoded)) {
+      router.push("/");
+      return;
+    }
+    // 授权端点必须使用完整页面导航，确保 Cookie / middleware 状态正确切换
+    if (decoded.startsWith("/api/oauth/authorize")) {
+      window.location.assign(decoded);
+      return;
+    }
+    router.push(decoded);
+  }, [router, isSafeReturnTo]);
+
+  const handleClose = useCallback(() => {
+    navigateToReturnTo(returnTo);
+  }, [navigateToReturnTo, returnTo]);
 
   const switchMode = useCallback(
     (nextMode: AuthMode) => {
@@ -177,11 +207,8 @@ function LoginPageContent() {
 
   const handleAuthSuccess = async () => {
     await refreshUser(true);
-    if (returnTo) {
-      router.push(decodeURIComponent(returnTo));
-    } else {
-      router.push("/");
-    }
+    restorePendingCheckout();
+    navigateToReturnTo(returnTo);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -459,7 +486,8 @@ function LoginPageContent() {
     }
     setLoading(true);
     try {
-      const redirect = returnTo ? decodeURIComponent(returnTo) : "/";
+      const decoded = returnTo ? decodeURIComponent(returnTo) : "/";
+      const redirect = isSafeReturnTo(decoded) ? decoded : "/";
       window.location.href = `/api/auth/wechat?redirect=${encodeURIComponent(redirect)}`;
     } catch {
       toast.error("网络错误，请重试");

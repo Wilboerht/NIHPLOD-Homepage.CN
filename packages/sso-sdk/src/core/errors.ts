@@ -21,7 +21,8 @@ export type SsoErrorCode =
   | "id_token_issuer_mismatch"
   | "id_token_audience_mismatch"
   | "id_token_expired"
-  | "id_token_missing_sub";
+  | "id_token_missing_sub"
+  | "id_token_at_hash_mismatch";
 
 /** OAuth 2.0 标准错误码 */
 export type OAuthErrorCode =

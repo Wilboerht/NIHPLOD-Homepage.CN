@@ -27,6 +27,11 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
+// === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris）===
+vi.mock("@/lib/oauth-cors", () => ({
+  getOAuthCorsHeaders: vi.fn().mockResolvedValue({}),
+}));
+
 import { GET } from "../userinfo/route";
 
 describe("GET /api/oauth/userinfo", () => {

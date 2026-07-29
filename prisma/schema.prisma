@@ -299,6 +299,7 @@ model OAuthClient {
   clientSecret        String               // 客户端密钥（bcrypt 哈希存储）
   name                String               // 应用名称
   redirectUris        String[]             // 允许的回调 URL 列表
+  postLogoutRedirectUris String[]            // 允许的 RP-Initiated Logout 返回地址
   scopes              String[]             // 允许的权限范围
   isActive            Boolean  @default(true)
   isPublic            Boolean  @default(false)  // Public Client (SPA/移动端/桌面端不传 client_secret)
@@ -764,4 +765,25 @@ model UserCoupon {
   @@index([userId, status])
   @@index([expiresAt])
   @@index([orderId])
+}
+
+// ============================================
+// Token 黑名单（多实例共享）
+// ============================================
+
+enum TokenBlacklistType {
+  access_token
+  user
+}
+
+model TokenBlacklist {
+  id        String              @id @default(cuid())
+  type      TokenBlacklistType  // access_token: 单条 token 撤销; user: 用户全局拉黑
+  key       String              @unique // jti 或 userId
+  reason    String?             // 拉黑原因（仅 user 类型使用）
+  expiresAt DateTime            // 自然过期时间，与 token 最大过期一致
+  createdAt DateTime            @default(now())
+
+  @@index([type])
+  @@index([expiresAt])
 }

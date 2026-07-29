@@ -16,6 +16,7 @@ import { getInternalApiKeys } from "./internal-api";
 const createClientSchema = z.object({
   name: z.string().min(1).max(100),
   redirectUris: z.array(z.string().url().max(500)).min(1),
+  postLogoutRedirectUris: z.array(z.string().url().max(500)).optional().default([]),
   scopes: z.array(z.string().min(1).max(50)).min(1),
   isPublic: z.boolean().optional().default(false),
   backchannelLogoutUri: z.string().url().max(500).optional(),
@@ -24,6 +25,7 @@ const createClientSchema = z.object({
 const updateClientSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   redirectUris: z.array(z.string().url().max(500)).min(1).optional(),
+  postLogoutRedirectUris: z.array(z.string().url().max(500)).optional(),
   scopes: z.array(z.string().min(1).max(50)).min(1).optional(),
   isActive: z.boolean().optional(),
   isPublic: z.boolean().optional(),
@@ -40,6 +42,7 @@ export interface OAuthClientData {
   clientSecret?: string; // 仅在创建时返回明文
   name: string;
   redirectUris: string[];
+  postLogoutRedirectUris: string[];
   scopes: string[];
   isActive: boolean;
   isPublic: boolean;
@@ -130,6 +133,7 @@ export async function createOAuthClient(
       clientSecret: secretHash,
       name: parsed.name,
       redirectUris: parsed.redirectUris,
+      postLogoutRedirectUris: parsed.postLogoutRedirectUris,
       scopes: parsed.scopes,
       isPublic: parsed.isPublic,
       backchannelLogoutUri: parsed.backchannelLogoutUri || null,
@@ -143,6 +147,7 @@ export async function createOAuthClient(
       clientSecret: plainSecret,
       name: client.name,
       redirectUris: client.redirectUris,
+      postLogoutRedirectUris: client.postLogoutRedirectUris,
       scopes: client.scopes,
       isActive: client.isActive,
       isPublic: client.isPublic,
@@ -169,6 +174,7 @@ export async function getOAuthClientByClientId(
     clientId: client.clientId,
     name: client.name,
     redirectUris: client.redirectUris,
+    postLogoutRedirectUris: client.postLogoutRedirectUris,
     scopes: client.scopes,
     isActive: client.isActive,
     isPublic: client.isPublic,
@@ -222,6 +228,7 @@ export async function verifyOAuthClientSecret(
     clientId: client.clientId,
     name: client.name,
     redirectUris: client.redirectUris,
+    postLogoutRedirectUris: client.postLogoutRedirectUris,
     scopes: client.scopes,
     isActive: client.isActive,
     isPublic: client.isPublic,
@@ -242,6 +249,7 @@ export async function getOAuthClientById(id: string): Promise<OAuthClientData | 
     clientId: client.clientId,
     name: client.name,
     redirectUris: client.redirectUris,
+    postLogoutRedirectUris: client.postLogoutRedirectUris,
     scopes: client.scopes,
     isActive: client.isActive,
     isPublic: client.isPublic,
@@ -269,6 +277,7 @@ export async function updateOAuthClient(
       clientId: client.clientId,
       name: client.name,
       redirectUris: client.redirectUris,
+      postLogoutRedirectUris: client.postLogoutRedirectUris,
       scopes: client.scopes,
       isActive: client.isActive,
       isPublic: client.isPublic,
@@ -346,6 +355,7 @@ export async function listOAuthClients(params?: {
       clientId: c.clientId,
       name: c.name,
       redirectUris: c.redirectUris,
+      postLogoutRedirectUris: c.postLogoutRedirectUris,
       scopes: c.scopes,
       isActive: c.isActive,
       isPublic: c.isPublic,
@@ -391,6 +401,7 @@ export async function findClientByName(name: string): Promise<OAuthClientData | 
     clientId: client.clientId,
     name: client.name,
     redirectUris: client.redirectUris,
+    postLogoutRedirectUris: client.postLogoutRedirectUris,
     scopes: client.scopes,
     isActive: client.isActive,
     isPublic: client.isPublic,

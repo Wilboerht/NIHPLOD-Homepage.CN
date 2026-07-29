@@ -1,64 +1,52 @@
 /**
- * Access Token 黑名单缓存
+ * Access Token 黑名单缓存（多实例安全版本）
  *
  * 当管理员封禁用户时，短期 access token（15 分钟 TTL）仍有效。
- * 通过此黑名单在 verifyUserAuth 时额外检查，消除 15 分钟窗口期。
+ * 通过此黑名单在 verifyUserAuth / verifyOAuthAccessToken 时额外检查，消除 15 分钟窗口期。
  *
- * 设计：
- * - 内存 LRU，只存被禁用户的 userId
- * - TTL 与 access token 保持一致（15 分钟），到期自动清除
- * - 最大容量 10000 条，防止内存泄漏
+ * 后端实现由 token-blacklist-store.ts 统一管理：
+ * - 默认 Memory（单实例 LRU），兼容旧行为。
+ * - 生产环境设置 TOKEN_BLACKLIST_STORAGE=database 使用 Prisma/PostgreSQL，
+ *   多实例/容器部署时共享撤销状态。
  */
-import { LRUCache } from "lru-cache";
-
-const TOKEN_BLACKLIST_TTL_MS = 15 * 60 * 1000; // 15 分钟
-
-const blacklistCache = new LRUCache<string, { reason: string; timestamp: number }>({
-  max: 10000,
-  ttl: TOKEN_BLACKLIST_TTL_MS,
-});
-
-// 单条 access_token 撤销（RFC 7009 token revocation）
-const revokedTokenCache = new LRUCache<string, { revokedAt: number }>({
-  max: 10000,
-  ttl: TOKEN_BLACKLIST_TTL_MS,
-});
+import { tokenBlacklistStore } from "./token-blacklist-store";
 
 /**
  * 将用户加入 access token 黑名单（封禁/冻结时调用）
  */
-export function blacklistUserTokens(userId: string, reason: string): void {
-  blacklistCache.set(userId, { reason, timestamp: Date.now() });
+export async function blacklistUserTokens(userId: string, reason: string): Promise<void> {
+  await tokenBlacklistStore.blacklistUser(userId, reason);
 }
 
 /**
  * 检查用户是否在黑名单中
  * @returns null 表示不在黑名单，否则返回封禁原因
  */
-export function isTokenBlacklisted(userId: string): { reason: string } | null {
-  const entry = blacklistCache.get(userId);
-  if (!entry) return null;
-  return { reason: entry.reason };
+export async function isTokenBlacklisted(userId: string): Promise<{ reason: string } | null> {
+  return tokenBlacklistStore.isUserBlacklisted(userId);
 }
 
 /**
  * 从黑名单中移除用户（解封时调用）
  */
-export function removeFromBlacklist(userId: string): void {
-  blacklistCache.delete(userId);
+export async function removeFromBlacklist(userId: string): Promise<void> {
+  await tokenBlacklistStore.removeUserBlacklist(userId);
 }
 
 /**
  * 撤销单条 access_token（RFC 7009）
  * key 为 token 的 jti claim
  */
-export function revokeAccessToken(jti: string): void {
-  revokedTokenCache.set(jti, { revokedAt: Date.now() });
+export async function revokeAccessToken(jti: string): Promise<void> {
+  await tokenBlacklistStore.revokeAccessToken(jti);
 }
 
 /**
  * 检查 access_token 是否被撤销
  */
-export function isAccessTokenRevoked(jti: string): boolean {
-  return revokedTokenCache.has(jti);
+export async function isAccessTokenRevoked(jti: string): Promise<boolean> {
+  return tokenBlacklistStore.isAccessTokenRevoked(jti);
 }
+
+// 同步兼容导出（仅在确认单实例内存模式时使用）
+export { tokenBlacklistStore };

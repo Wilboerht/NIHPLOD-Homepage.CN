@@ -21,17 +21,20 @@ import { recordSsoEvent } from "@/lib/sso-audit";
  */
 export async function sendBackchannelLogout(
   userId: string,
-  clientIds: string[]
+  clientIds: string[],
+  options?: { includeInactive?: boolean }
 ): Promise<void> {
   if (clientIds.length === 0) return;
 
   const uniqueClientIds = [...new Set(clientIds)];
 
-  // 查询已注册且配置了 backchannelLogoutUri 的活跃 client
+  // 查询已注册且配置了 backchannelLogoutUri 的 client
+  // 默认只通知活跃 client；停用 client 时传入 includeInactive=true 确保通知
+  const isActiveFilter = options?.includeInactive ? undefined : true;
   const clients = await prisma.oAuthClient.findMany({
     where: {
       clientId: { in: uniqueClientIds },
-      isActive: true,
+      ...(isActiveFilter !== undefined ? { isActive: isActiveFilter } : {}),
       backchannelLogoutUri: { not: null },
     },
     select: { clientId: true, backchannelLogoutUri: true },

@@ -292,7 +292,7 @@ export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPaylo
   }
 
   // 校验 access token 黑名单（封禁后 15 分钟窗口期内的 token）
-  const blacklisted = isTokenBlacklisted(payload.id);
+  const blacklisted = await isTokenBlacklisted(payload.id);
   if (blacklisted) {
     return null;
   }
@@ -333,7 +333,7 @@ export async function getCurrentLoginUser(): Promise<UserInfo | null> {
   }
 
   // 检查 access token 黑名单
-  const blacklisted = isTokenBlacklisted(payload.id);
+  const blacklisted = await isTokenBlacklisted(payload.id);
   if (blacklisted) {
     return null;
   }

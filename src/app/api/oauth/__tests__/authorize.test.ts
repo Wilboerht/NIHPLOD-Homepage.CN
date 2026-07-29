@@ -21,6 +21,18 @@ vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: vi.fn(),
 }));
 
+// === Mock Prisma（UserConsent 查询）===
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    userConsent: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      create: vi.fn().mockResolvedValue({}),
+    },
+  },
+}));
+
 // === Mock logger ===
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
@@ -55,8 +67,10 @@ function validClient() {
   return {
     id: "1", clientId: "test-client", name: "Test App",
     redirectUris: ["https://example.com/cb"],
+    postLogoutRedirectUris: [],
     scopes: ["openid", "phone", "profile"],
     isActive: true,
+    isPublic: false,
     backchannelLogoutUri: null,
     createdAt: new Date(),
     updatedAt: new Date(),

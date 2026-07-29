@@ -193,9 +193,6 @@ export interface DeviceInfo {
 }
 
 /**
- * 生成设备指纹，用于识别同一设备
- */
-/**
  * 从请求中提取设备信息
  */
 export function extractDeviceInfo(request: NextRequest): DeviceInfo {
@@ -230,10 +227,12 @@ export function extractDeviceInfo(request: NextRequest): DeviceInfo {
 
 function getDeviceFingerprint(info?: DeviceInfo): string {
   if (!info) return "unknown";
+  // 设备指纹不再包含 IP：
+  // IP 会随网络环境变化，导致同一设备被误判为多个设备；
+  // 同时避免将用户网络位置信息混入不可逆指纹。
   const ua = info.deviceInfo || info.userAgent || "";
-  const ip = info.ipAddress || "";
   const name = info.deviceName || "";
-  return createHash("sha256").update(`${name}|${ua}|${ip}`).digest("hex");
+  return createHash("sha256").update(`${name}|${ua}`).digest("hex");
 }
 
 export async function saveRefreshToken(

@@ -154,6 +154,19 @@ function createIntrospectCache(ttlMs: number) {
 }
 
 // ============================================
+// Logout Token jti 重放防护缓存
+// ============================================
+
+/**
+ * 已处理的 logout_token jti 缓存。
+ * TTL 10 分钟：logout token 本身有效期 5 分钟，留足时钟偏移余量。
+ */
+const processedLogoutJtis = new LRUCache<string, number>({
+  max: 10000,
+  ttl: 10 * 60 * 1000,
+});
+
+// ============================================
 // Token Verifier
 // ============================================
 
@@ -398,6 +411,16 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         ) {
           return null;
         }
+
+        // jti 重放检查
+        const jti = (payload as { jti?: string }).jti;
+        if (!jti || typeof jti !== "string") {
+          return null;
+        }
+        if (processedLogoutJtis.has(jti)) {
+          return null;
+        }
+        processedLogoutJtis.set(jti, Date.now());
 
         return payload as unknown as LogoutTokenPayload;
       } catch {

@@ -12,6 +12,9 @@ vi.mock("@/lib/prisma", () => ({
       updateMany: vi.fn(),
       findUnique: vi.fn(),
     },
+    oAuthClient: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     user: {
       findUnique: vi.fn(),
     },
@@ -88,8 +91,10 @@ function validClient() {
   return {
     id: "1", clientId: "test-client", name: "Test",
     redirectUris: ["https://example.com/cb"],
+    postLogoutRedirectUris: [],
     scopes: ["openid", "phone"],
     isActive: true,
+    isPublic: false,
     backchannelLogoutUri: null,
     createdAt: new Date(),
     updatedAt: new Date(),

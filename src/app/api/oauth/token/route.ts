@@ -10,9 +10,13 @@
  * - PKCE code_verifier 校验
  * - 授权码一次性使用（原子化消费）
  * - client_secret 认证（bcrypt）
+ * - client_secret_basic（Authorization: Basic ...）
  * - Refresh Token 原子化轮换（复用 atomicallyRotateRefreshToken）
+ * - CORS：仅允许已注册 redirect_uri 的 origin
  */
 import { NextRequest, NextResponse } from "next/server";
+import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
+import { getClientCredentials } from "@/lib/oauth-client-auth";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { consumeAuthorizationCode, verifyPKCE } from "@/lib/oauth-code";
 import {
@@ -40,6 +44,10 @@ export const dynamic = "force-dynamic";
 const ACCESS_TOKEN_EXPIRES_IN = 900;
 
 export async function POST(request: NextRequest) {
+  const corsHeaders = await getOAuthCorsHeaders(request);
+  const resJson = (body: unknown, status = 200) =>
+    NextResponse.json(body, { status, headers: corsHeaders });
+
   try {
     const ip = getClientIP(request);
 
@@ -47,9 +55,9 @@ export async function POST(request: NextRequest) {
     // 多租户：限流 key 应为 {tenantId}:oauth-token:{ip}，当前使用 "" 作为默认 tenantId
     const limitResult = await rateLimit(ip, "oauth-token");
     if (!limitResult.success) {
-      return NextResponse.json(
+      return resJson(
         { error: "rate_limited", error_description: "请求过于频繁" },
-        { status: 429 }
+        429
       );
     }
 
@@ -67,22 +75,21 @@ export async function POST(request: NextRequest) {
     }
 
     const grant_type = body.grant_type;
-    const client_id = body.client_id;
-    const client_secret = body.client_secret;
+    const { client_id, client_secret } = getClientCredentials(request, body);
 
     if (!client_id) {
-      return NextResponse.json(
+      return resJson(
         { error: "invalid_client", error_description: "缺少 client_id" },
-        { status: 401 }
+        401
       );
     }
 
     // client_id 级限流
     const clientLimitResult = await rateLimit(`client:${client_id}`, "oauth-token");
     if (!clientLimitResult.success) {
-      return NextResponse.json(
+      return resJson(
         { error: "rate_limited", error_description: "子项目请求过于频繁" },
-        { status: 429 }
+        429
       );
     }
 
@@ -96,9 +103,9 @@ export async function POST(request: NextRequest) {
         success: false,
         detail: { grant_type, reason: "invalid_client_secret" },
       });
-      return NextResponse.json(
+      return resJson(
         { error: "invalid_client", error_description: "Client 认证失败" },
-        { status: 401 }
+        401
       );
     }
 
@@ -112,9 +119,9 @@ export async function POST(request: NextRequest) {
         success: false,
         detail: { grant_type, reason: "missing_client_secret" },
       });
-      return NextResponse.json(
+      return resJson(
         { error: "invalid_client", error_description: "Confidential Client 必须提供 client_secret" },
-        { status: 401 }
+        401
       );
     }
 
@@ -124,9 +131,9 @@ export async function POST(request: NextRequest) {
       const code_verifier = body.code_verifier;
 
       if (!code) {
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "缺少 authorization code" },
-          { status: 400 }
+          400
         );
       }
 
@@ -142,9 +149,9 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "code_used_or_not_found" },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Authorization code 无效或已被使用" },
-          { status: 400 }
+          400
         );
       }
 
@@ -159,9 +166,9 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "code_expired" },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Authorization code expired" },
-          { status: 400 }
+          400
         );
       }
 
@@ -176,18 +183,18 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "client_id_mismatch", expected: codeData.clientId },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Client ID 不匹配" },
-          { status: 400 }
+          400
         );
       }
 
       // RFC 6749 §4.1.3: token 端点必须校验 redirect_uri 与授权请求一致
       const redirect_uri = body.redirect_uri;
       if (!redirect_uri) {
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "缺少 redirect_uri" },
-          { status: 400 }
+          400
         );
       }
       if (redirect_uri !== codeData.redirectUri) {
@@ -200,23 +207,23 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "redirect_uri_mismatch", expected: codeData.redirectUri, got: redirect_uri },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "redirect_uri 与授权请求不一致" },
-          { status: 400 }
+          400
         );
       }
 
       // PKCE 校验（强制）
       if (!codeData.codeChallenge) {
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Authorization code was issued without PKCE" },
-          { status: 400 }
+          400
         );
       }
       if (!code_verifier) {
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Missing code_verifier" },
-          { status: 400 }
+          400
         );
       }
       if (!verifyPKCE(code_verifier, codeData.codeChallenge, codeData.codeChallengeMethod || "S256")) {
@@ -229,9 +236,9 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "pkce_failed" },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Invalid code_verifier" },
-          { status: 400 }
+          400
         );
       }
 
@@ -251,9 +258,9 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "user_inactive" },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "用户账户不可用" },
-          { status: 400 }
+          400
         );
       }
 
@@ -327,33 +334,38 @@ export async function POST(request: NextRequest) {
 
       const expiresIn = getExpiresInFromToken(accessToken) ?? ACCESS_TOKEN_EXPIRES_IN;
 
-      return NextResponse.json({
+      const tokenResponse: Record<string, unknown> = {
         access_token: accessToken,
         token_type: "Bearer",
         expires_in: expiresIn,
         refresh_token: refreshToken,
         refresh_expires_in: 30 * 24 * 60 * 60,
         scope: scopeStr,
-        id_token: idToken,
-      });
+      };
+      // OIDC：仅当授权 scope 包含 openid 时才返回 id_token
+      if (codeData.scopes.includes("openid")) {
+        tokenResponse.id_token = idToken;
+      }
+
+      return resJson(tokenResponse);
     }
 
     // === grant_type: refresh_token ===
     if (grant_type === "refresh_token") {
       const refresh_token = body.refresh_token;
       if (!refresh_token) {
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "缺少 refresh_token" },
-          { status: 400 }
+          400
         );
       }
 
       // 先验证 JWT 签名
       const refreshPayload = await verifyRefreshToken(refresh_token);
       if (!refreshPayload) {
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Refresh token 无效" },
-          { status: 400 }
+          400
         );
       }
 
@@ -369,9 +381,9 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type: "refresh_token", reason: "missing_client_id" },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Refresh token 无效" },
-          { status: 400 }
+          400
         );
       }
       if (refreshPayload.client_id !== client_id) {
@@ -388,9 +400,9 @@ export async function POST(request: NextRequest) {
             expected: refreshPayload.client_id,
           },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Refresh token 与当前 client 不匹配" },
-          { status: 400 }
+          400
         );
       }
 
@@ -448,9 +460,9 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type: "refresh_token", reason: rotationResult },
         });
-        return NextResponse.json(
+        return resJson(
           { error: "invalid_grant", error_description: "Refresh token 轮换失败" },
-          { status: 400 }
+          400
         );
       }
 
@@ -494,27 +506,37 @@ export async function POST(request: NextRequest) {
       const refreshExpiresIn = 30 * 24 * 60 * 60;
       const newExpiresIn = getExpiresInFromToken(newAccessToken) ?? ACCESS_TOKEN_EXPIRES_IN;
 
-      return NextResponse.json({
+      const refreshResponse: Record<string, unknown> = {
         access_token: newAccessToken,
         token_type: "Bearer",
         expires_in: newExpiresIn,
         refresh_token: newRefreshToken,
         refresh_expires_in: refreshExpiresIn,
         scope: scopeStr,
-        id_token: idToken,
-      });
+      };
+      // OIDC：仅当原授权 scope 包含 openid 时才返回 id_token
+      if (scopeStr.split(" ").filter(Boolean).includes("openid")) {
+        refreshResponse.id_token = idToken;
+      }
+
+      return resJson(refreshResponse);
     }
 
     // 不支持的 grant_type
-    return NextResponse.json(
+    return resJson(
       { error: "unsupported_grant_type", error_description: "不支持的 grant_type" },
-      { status: 400 }
+      400
     );
   } catch (error) {
     apiConsole.error("[OAuth Token] 异常:", error);
-    return NextResponse.json(
+    return resJson(
       { error: "server_error", error_description: "服务器内部错误" },
-      { status: 500 }
+      500
     );
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const corsHeaders = await getOAuthCorsHeaders(request);
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }

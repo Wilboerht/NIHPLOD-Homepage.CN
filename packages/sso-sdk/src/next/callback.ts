@@ -96,6 +96,179 @@ function isTrustedReturnUrl(url: string, currentOrigin: string): boolean {
 }
 
 // ============================================
+// ID Token 预校验（写 Cookie 之前）
+// ============================================
+
+interface JwksKey {
+  kty: string;
+  kid?: string;
+  alg?: string;
+  use?: string;
+  n?: string;
+  e?: string;
+}
+
+interface Jwks {
+  keys: JwksKey[];
+}
+
+function base64UrlDecode(input: string): Uint8Array {
+  const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const json = new TextDecoder().decode(base64UrlDecode(parts[1]));
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function decodeJwtHeader(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const json = new TextDecoder().decode(base64UrlDecode(parts[0]));
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchJwks(baseUrl: string): Promise<Jwks | null> {
+  try {
+    const res = await fetch(`${baseUrl}/api/oauth/jwks`);
+    if (!res.ok) return null;
+    return (await res.json()) as Jwks;
+  } catch {
+    return null;
+  }
+}
+
+async function verifyRs256Signature(token: string, jwk: JwksKey): Promise<boolean> {
+  try {
+    const [headerB64, payloadB64, signature] = token.split(".");
+    if (!signature || !jwk.n || !jwk.e) return false;
+
+    const cryptoKey = await crypto.subtle.importKey(
+      "jwk",
+      { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RS256", ext: false },
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+
+    const signatureBytes = base64UrlDecode(signature);
+    const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    return await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      cryptoKey,
+      signatureBytes as unknown as BufferSource,
+      data as unknown as BufferSource
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function computeAtHash(accessToken: string): Promise<string> {
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(accessToken)
+  );
+  const bytes = new Uint8Array(hash);
+  const half = bytes.slice(0, bytes.length / 2);
+  let binary = "";
+  for (const b of half) {
+    binary += String.fromCharCode(b);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * 在设置 Cookie 前校验 ID Token 基本声明与签名。
+ * HS256 场景下无法验证签名（Confidential/BFF 应配置 RS256），仅校验声明与 at_hash。
+ */
+async function validateIdToken(
+  idToken: string,
+  accessToken: string,
+  expectedIssuer: string,
+  expectedClientId: string
+): Promise<void> {
+  const header = decodeJwtHeader(idToken);
+  if (!header) throw new Error("ID Token 格式错误");
+
+  const alg = header.alg;
+  if (typeof alg !== "string" || (alg !== "RS256" && alg !== "HS256")) {
+    throw new Error(`不支持的 ID Token 签名算法: ${alg}`);
+  }
+
+  if (alg === "RS256") {
+    const jwks = await fetchJwks(expectedIssuer);
+    if (!jwks) throw new Error("无法获取 JWKS");
+    const kid = typeof header.kid === "string" ? header.kid : undefined;
+    const key = jwks.keys.find(
+      (k) =>
+        k.kty === "RSA" &&
+        k.alg === "RS256" &&
+        k.use === "sig" &&
+        (kid ? k.kid === kid : true)
+    );
+    if (!key) throw new Error("JWKS 中未找到匹配公钥");
+    const valid = await verifyRs256Signature(idToken, key);
+    if (!valid) throw new Error("ID Token 签名验证失败");
+  }
+
+  // HS256：对称密钥不应通过 JWKS 暴露给 BFF，Confidential Client 应迁移到 RS256
+  if (alg === "HS256") {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[SSO SDK/Next] ID Token 使用 HS256 签名。建议主站启用 RS256 以获得完整签名验证。"
+    );
+  }
+
+  const payload = decodeJwtPayload(idToken);
+  if (!payload) throw new Error("ID Token payload 解析失败");
+
+  const normalizedIssuer = expectedIssuer.replace(/\/+$/, "");
+  const tokenIssuer =
+    typeof payload.iss === "string" ? payload.iss.replace(/\/+$/, "") : "";
+  if (tokenIssuer !== normalizedIssuer) {
+    throw new Error("ID Token issuer 不匹配");
+  }
+
+  const aud = payload.aud;
+  const audArr = Array.isArray(aud) ? aud : [aud];
+  if (!audArr.includes(expectedClientId)) {
+    throw new Error("ID Token audience 不匹配");
+  }
+
+  if (typeof payload.exp === "number" && Date.now() >= payload.exp * 1000) {
+    throw new Error("ID Token 已过期");
+  }
+  if (typeof payload.sub !== "string" || !payload.sub) {
+    throw new Error("ID Token 缺少 sub");
+  }
+
+  if (typeof payload.at_hash === "string" && payload.at_hash) {
+    const actual = await computeAtHash(accessToken);
+    if (actual !== payload.at_hash) {
+      throw new Error("ID Token at_hash 不匹配");
+    }
+  }
+}
+
+// ============================================
 // Route Handler 工厂函数
 // ============================================
 
@@ -245,6 +418,26 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       refresh_token: string;
       id_token?: string;
     } = await res.json();
+
+    // 在设置 Cookie 前预校验 ID Token：防止伪造 token 写入浏览器
+    if (tokenData.id_token) {
+      try {
+        await validateIdToken(
+          tokenData.id_token,
+          tokenData.access_token,
+          normalizedBase,
+          clientId
+        );
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: "id_token_invalid",
+            error_description: err instanceof Error ? err.message : "ID Token 验证失败",
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // 读取 return URL，并做开放重定向防护
     const rawReturnUrl =

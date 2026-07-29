@@ -162,6 +162,129 @@ function isTrustedReturnUrl(url, currentOrigin) {
     return false;
   }
 }
+function base64UrlDecode(input) {
+  const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+function decodeJwtPayload(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const json = new TextDecoder().decode(base64UrlDecode(parts[1]));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function decodeJwtHeader(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const json = new TextDecoder().decode(base64UrlDecode(parts[0]));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+async function fetchJwks(baseUrl) {
+  try {
+    const res = await fetch(`${baseUrl}/api/oauth/jwks`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+async function verifyRs256Signature(token, jwk) {
+  try {
+    const [headerB64, payloadB64, signature] = token.split(".");
+    if (!signature || !jwk.n || !jwk.e) return false;
+    const cryptoKey = await crypto.subtle.importKey(
+      "jwk",
+      { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RS256", ext: false },
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    const signatureBytes = base64UrlDecode(signature);
+    const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    return await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      cryptoKey,
+      signatureBytes,
+      data
+    );
+  } catch {
+    return false;
+  }
+}
+async function computeAtHash(accessToken) {
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(accessToken)
+  );
+  const bytes = new Uint8Array(hash);
+  const half = bytes.slice(0, bytes.length / 2);
+  let binary = "";
+  for (const b of half) {
+    binary += String.fromCharCode(b);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+async function validateIdToken(idToken, accessToken, expectedIssuer, expectedClientId) {
+  const header = decodeJwtHeader(idToken);
+  if (!header) throw new Error("ID Token \u683C\u5F0F\u9519\u8BEF");
+  const alg = header.alg;
+  if (typeof alg !== "string" || alg !== "RS256" && alg !== "HS256") {
+    throw new Error(`\u4E0D\u652F\u6301\u7684 ID Token \u7B7E\u540D\u7B97\u6CD5: ${alg}`);
+  }
+  if (alg === "RS256") {
+    const jwks = await fetchJwks(expectedIssuer);
+    if (!jwks) throw new Error("\u65E0\u6CD5\u83B7\u53D6 JWKS");
+    const kid = typeof header.kid === "string" ? header.kid : void 0;
+    const key = jwks.keys.find(
+      (k) => k.kty === "RSA" && k.alg === "RS256" && k.use === "sig" && (kid ? k.kid === kid : true)
+    );
+    if (!key) throw new Error("JWKS \u4E2D\u672A\u627E\u5230\u5339\u914D\u516C\u94A5");
+    const valid = await verifyRs256Signature(idToken, key);
+    if (!valid) throw new Error("ID Token \u7B7E\u540D\u9A8C\u8BC1\u5931\u8D25");
+  }
+  if (alg === "HS256") {
+    console.warn(
+      "[SSO SDK/Next] ID Token \u4F7F\u7528 HS256 \u7B7E\u540D\u3002\u5EFA\u8BAE\u4E3B\u7AD9\u542F\u7528 RS256 \u4EE5\u83B7\u5F97\u5B8C\u6574\u7B7E\u540D\u9A8C\u8BC1\u3002"
+    );
+  }
+  const payload = decodeJwtPayload(idToken);
+  if (!payload) throw new Error("ID Token payload \u89E3\u6790\u5931\u8D25");
+  const normalizedIssuer = expectedIssuer.replace(/\/+$/, "");
+  const tokenIssuer = typeof payload.iss === "string" ? payload.iss.replace(/\/+$/, "") : "";
+  if (tokenIssuer !== normalizedIssuer) {
+    throw new Error("ID Token issuer \u4E0D\u5339\u914D");
+  }
+  const aud = payload.aud;
+  const audArr = Array.isArray(aud) ? aud : [aud];
+  if (!audArr.includes(expectedClientId)) {
+    throw new Error("ID Token audience \u4E0D\u5339\u914D");
+  }
+  if (typeof payload.exp === "number" && Date.now() >= payload.exp * 1e3) {
+    throw new Error("ID Token \u5DF2\u8FC7\u671F");
+  }
+  if (typeof payload.sub !== "string" || !payload.sub) {
+    throw new Error("ID Token \u7F3A\u5C11 sub");
+  }
+  if (typeof payload.at_hash === "string" && payload.at_hash) {
+    const actual = await computeAtHash(accessToken);
+    if (actual !== payload.at_hash) {
+      throw new Error("ID Token at_hash \u4E0D\u5339\u914D");
+    }
+  }
+}
 function createCallbackRouteHandler(config) {
   const {
     clientId,
@@ -283,6 +406,24 @@ function createCallbackRouteHandler(config) {
       );
     }
     const tokenData = await res.json();
+    if (tokenData.id_token) {
+      try {
+        await validateIdToken(
+          tokenData.id_token,
+          tokenData.access_token,
+          normalizedBase,
+          clientId
+        );
+      } catch (err) {
+        return NextResponse2.json(
+          {
+            error: "id_token_invalid",
+            error_description: err instanceof Error ? err.message : "ID Token \u9A8C\u8BC1\u5931\u8D25"
+          },
+          { status: 400 }
+        );
+      }
+    }
     const rawReturnUrl = request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
     const returnUrl = isTrustedReturnUrl(rawReturnUrl, request.nextUrl.origin) ? rawReturnUrl : "/";
     const response = NextResponse2.redirect(new URL(returnUrl, request.url));

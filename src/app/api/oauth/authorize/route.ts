@@ -16,8 +16,56 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * 确保用户 consent 记录存在并包含请求的 scope。
+ * 已存在则合并 scope、清除撤销标记；不存在则新建。
+ */
+async function ensureUserConsent(
+  userId: string,
+  clientId: string,
+  scopes: string[]
+): Promise<void> {
+  const existing = await prisma.userConsent.findUnique({
+    where: { userId_clientId: { userId, clientId } },
+  });
+  if (existing) {
+    const merged = Array.from(new Set([...existing.scopes, ...scopes]));
+    await prisma.userConsent.update({
+      where: { id: existing.id },
+      data: {
+        scopes: merged,
+        revokedAt: null,
+        grantedAt: new Date(),
+      },
+    });
+  } else {
+    await prisma.userConsent.create({
+      data: { userId, clientId, scopes },
+    });
+  }
+}
+
+/**
+ * 用户拒绝授权时，撤销此前已授予的 consent（如存在）。
+ */
+async function revokeUserConsent(
+  userId: string,
+  clientId: string
+): Promise<void> {
+  const existing = await prisma.userConsent.findUnique({
+    where: { userId_clientId: { userId, clientId } },
+  });
+  if (existing && !existing.revokedAt) {
+    await prisma.userConsent.update({
+      where: { id: existing.id },
+      data: { revokedAt: new Date() },
+    });
+  }
+}
 
 /** 获取公网 origin（反向代理后 request.url 可能为 localhost） */
 function getPublicOrigin(request: NextRequest): string {
@@ -107,6 +155,16 @@ export async function GET(request: NextRequest) {
     // 自此 redirect_uri 已验证为合法，后续所有参数错误均通过 302 回传
     const safeRedirectUri = redirect_uri;
 
+    // Client 已停用：通过 302 回传错误
+    if (!client.isActive) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "unauthorized_client",
+        "Client 已停用",
+        state
+      );
+    }
+
     // 4. 其余参数校验与错误 302 回传
     const response_type = searchParams.get("response_type");
     const scope = searchParams.get("scope") || "";
@@ -184,7 +242,7 @@ export async function GET(request: NextRequest) {
       if (payload) {
         // 额外检查：token 黑名单和账号状态
         const statusCheck = await checkUserStatus(payload.id);
-        const blacklisted = isTokenBlacklisted(payload.id);
+        const blacklisted = await isTokenBlacklisted(payload.id);
         isLoggedIn = statusCheck.valid && !blacklisted;
       }
     }
@@ -199,8 +257,44 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // 8. 已登录 → 展示 consent 页
-    // 将原始 OAuth 参数整体传给 consent 页，便于用户确认后 POST 回授权端点
+    // 8. 已登录 → 查询用户是否已授权过该 client 且 scope 未扩大
+    const userPayload = (await verifyUserToken(userToken!))!;
+    const existingConsent = await prisma.userConsent.findUnique({
+      where: { userId_clientId: { userId: userPayload.id, clientId: client_id } },
+    });
+    const grantedScopes =
+      existingConsent && !existingConsent.revokedAt ? existingConsent.scopes : [];
+    const alreadyConsented = requestedScopes.every((s) => grantedScopes.includes(s));
+
+    if (alreadyConsented) {
+      // 已授权且 scope 未扩大：直接签发授权码并跳转回回调地址
+      const codeData = await createAuthorizationCode({
+        clientId: client_id,
+        userId: userPayload.id,
+        redirectUri: redirect_uri,
+        scopes: requestedScopes,
+        codeChallenge: code_challenge,
+        codeChallengeMethod: code_challenge_method,
+      });
+
+      const redirectUrl = new URL(redirect_uri);
+      redirectUrl.searchParams.set("code", codeData.code);
+      if (state) redirectUrl.searchParams.set("state", state);
+
+      recordSsoEvent({
+        event: "authorize",
+        userId: userPayload.id,
+        clientId: client_id,
+        clientName: client.name,
+        ip,
+        success: true,
+        detail: { scope, scopes: requestedScopes, auto_approved: true },
+      });
+
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // 否则展示 consent 页
     const consentUrl = new URL("/login", getPublicOrigin(request));
     consentUrl.searchParams.set("mode", "consent");
     consentUrl.searchParams.set("client_name", client.name);
@@ -262,7 +356,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查 access token 黑名单
-    if (isTokenBlacklisted(userPayload.id)) {
+    if (await isTokenBlacklisted(userPayload.id)) {
       return NextResponse.json(
         { error: "account_disabled", error_description: "账户已被限制" },
         { status: 403 }
@@ -313,6 +407,16 @@ export async function POST(request: NextRequest) {
     // 自此 redirect_uri 已验证为合法，后续所有参数错误均通过 302 回传
     const safeRedirectUri = redirect_uri;
 
+    // Client 已停用：通过 302 回传错误
+    if (!client.isActive) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "unauthorized_client",
+        "Client 已停用",
+        state
+      );
+    }
+
     // action 校验
     if (action !== "approve" && action !== "deny") {
       return buildErrorRedirect(
@@ -336,6 +440,9 @@ export async function POST(request: NextRequest) {
     if (action === "deny") {
       redirectUrl.searchParams.set("error", "access_denied");
       redirectUrl.searchParams.set("error_description", "用户拒绝了授权请求");
+
+      // 撤销此前对该 client 的 consent（如存在）
+      await revokeUserConsent(userPayload.id, client_id);
 
       recordSsoEvent({
         event: "consent",
@@ -390,6 +497,9 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+
+    // 持久化用户 consent：合并 scope、清除撤销标记
+    await ensureUserConsent(userPayload.id, client_id, requestedScopes);
 
     // 创建授权码
     const codeData = await createAuthorizationCode({

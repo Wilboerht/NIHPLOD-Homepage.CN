@@ -112,6 +112,21 @@ async function fetchJwks(baseUrl: string): Promise<Jwks | null> {
   }
 }
 
+/** 计算 OIDC at_hash（access_token SHA-256 前 128bit base64url） */
+async function computeAtHash(accessToken: string): Promise<string> {
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(accessToken)
+  );
+  const bytes = new Uint8Array(hash);
+  const half = bytes.slice(0, bytes.length / 2);
+  let binary = "";
+  for (const b of half) {
+    binary += String.fromCharCode(b);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 /** 使用 RS256 公钥验证 ID Token 签名 */
 async function verifyRs256(token: string, jwk: JwksKey): Promise<boolean> {
   try {
@@ -139,11 +154,12 @@ async function verifyRs256(token: string, jwk: JwksKey): Promise<boolean> {
   }
 }
 
-/** 验证 ID Token（iss、aud、exp、sub、签名） */
+/** 验证 ID Token（iss、aud、exp、sub、签名、at_hash） */
 async function validateIdToken(
   idToken: string,
   expectedIssuer: string,
-  expectedClientId: string
+  expectedClientId: string,
+  accessToken: string
 ) {
   const header = decodeJwtHeader(idToken);
   if (!header) {
@@ -209,6 +225,14 @@ async function validateIdToken(
   }
   if (typeof payload.sub !== "string" || !payload.sub) {
     throw new SsoError("id_token_missing_sub", "ID Token 缺少 sub");
+  }
+
+  // 校验 at_hash：确保 ID Token 与当前 access_token 绑定
+  if (typeof payload.at_hash === "string" && payload.at_hash) {
+    const actual = await computeAtHash(accessToken);
+    if (actual !== payload.at_hash) {
+      throw new SsoError("id_token_at_hash_mismatch", "ID Token at_hash 不匹配");
+    }
   }
 
   return { sub: payload.sub };
@@ -528,10 +552,15 @@ export class SsoClient {
 
     const data: TokenResponse = await res.json();
 
-    // OIDC：验证 ID Token 签名与基本声明
+    // OIDC：验证 ID Token 签名、基本声明及 at_hash
     if (data.id_token) {
       try {
-        await validateIdToken(data.id_token, this.config.ssoBaseUrl, this.config.clientId);
+        await validateIdToken(
+          data.id_token,
+          this.config.ssoBaseUrl,
+          this.config.clientId,
+          data.access_token
+        );
       } catch (err) {
         // 验证失败：不保存任何 token，防止伪造 ID Token
         removeTokenData(this.config.clientId);

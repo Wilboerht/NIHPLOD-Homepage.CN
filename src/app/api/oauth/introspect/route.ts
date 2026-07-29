@@ -6,10 +6,15 @@
  * 返回 RFC 7662 兼容的 introspection 响应。
  *
  * 认证方式：
- * - Confidential Client：client_id + client_secret
+ * - client_secret_basic: Authorization: Basic base64(client_id:client_secret)
+ * - client_secret_post: 请求体中 client_id + client_secret
  * - Public Client：仅 client_id（用于无 secret 的浏览器/移动端场景）
+ *
+ * CORS：仅允许已注册 redirect_uri 的 origin。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
+import { getClientCredentials } from "@/lib/oauth-client-auth";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { verifyOAuthAccessToken } from "@/lib/jwt";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
@@ -22,13 +27,16 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIP(request);
+    const corsHeaders = await getOAuthCorsHeaders(request);
+    const resJson = (body: unknown, status = 200) =>
+      NextResponse.json(body, { status, headers: corsHeaders });
 
     // 限流
     const limitResult = await rateLimit(ip, "oauth-introspect");
     if (!limitResult.success) {
-      return NextResponse.json(
+      return resJson(
         { error: "rate_limited", error_description: "请求过于频繁" },
-        { status: 429 }
+        429
       );
     }
 
@@ -44,14 +52,10 @@ export async function POST(request: NextRequest) {
       formData.forEach((v, k) => { body[k] = v.toString(); });
     }
 
-    const client_id = body.client_id;
-    const client_secret = body.client_secret;
+    const { client_id, client_secret } = getClientCredentials(request, body);
 
     if (!client_id) {
-      return NextResponse.json(
-        { error: "invalid_client" },
-        { status: 401 }
-      );
+      return resJson({ error: "invalid_client" }, 401);
     }
 
     // 验证 client：Public Client 允许不传 secret
@@ -64,15 +68,12 @@ export async function POST(request: NextRequest) {
         success: false,
         detail: { reason: "invalid_client" },
       });
-      return NextResponse.json(
-        { error: "invalid_client" },
-        { status: 401 }
-      );
+      return resJson({ error: "invalid_client" }, 401);
     }
 
     const token = body.token;
     if (!token) {
-      return NextResponse.json({ active: false });
+      return resJson({ active: false });
     }
 
     // 验证 token（仅接受 OAuth access_token 类型）
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
         detail: { active: false, reason: "invalid_token" },
       });
 
-      return NextResponse.json({ active: false });
+      return resJson({ active: false });
     }
 
     // Audience 校验：client 只能 introspect 颁发给自己的 token
@@ -102,11 +103,11 @@ export async function POST(request: NextRequest) {
         success: false,
         detail: { active: false, reason: "audience_mismatch", tokenAudience: payload.client_id },
       });
-      return NextResponse.json({ active: false });
+      return resJson({ active: false });
     }
 
     // 检查黑名单
-    const blacklisted = isTokenBlacklisted(payload.id);
+    const blacklisted = await isTokenBlacklisted(payload.id);
     if (blacklisted) {
       recordSsoEvent({
         event: "introspect",
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
         success: true,
         detail: { active: false, reason: "blacklisted" },
       });
-      return NextResponse.json({ active: false });
+      return resJson({ active: false });
     }
 
     recordSsoEvent({
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
       detail: { active: true },
     });
 
-    return NextResponse.json({
+    return resJson({
       active: true,
       token_type: "Bearer",
       sub: payload.id,
@@ -147,4 +148,9 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const corsHeaders = await getOAuthCorsHeaders(request);
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }

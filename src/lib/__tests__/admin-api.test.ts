@@ -493,7 +493,7 @@ describe("管理端 API 集成测试", () => {
         method: "PATCH",
         body: { status: "BANNED" },
       });
-      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "admin" }, req);
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({
         id: "user-1", phone: "13800138000", status: "ACTIVE",
       });
@@ -515,12 +515,25 @@ describe("管理端 API 集成测试", () => {
       );
     });
 
+    it("普通 admin 无权封禁用户", async () => {
+      const req = createRequest("/api/admin/users/user-1", {
+        method: "PATCH",
+        body: { status: "BANNED" },
+      });
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "admin" }, req);
+
+      const { PATCH } = await import("@/app/api/admin/users/[id]/route");
+      const res = await PATCH(req, { params: Promise.resolve({ id: "user-1" }) });
+
+      expect(res.status).toBe(403);
+    });
+
     it("状态未变化应直接返回原数据", async () => {
       const req = createRequest("/api/admin/users/user-1", {
         method: "PATCH",
         body: { status: "ACTIVE" },
       });
-      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "admin" }, req);
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({
         id: "user-1", phone: "13800138000", status: "ACTIVE",
       });

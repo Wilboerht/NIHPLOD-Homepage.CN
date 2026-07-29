@@ -67,21 +67,22 @@ var RETURN_URL_KEY = "return_url";
 function buildKey(base, clientId) {
   return clientId ? `${base}:${clientId}` : base;
 }
-var localStorageAdapter = {
-  get(key) {
-    if (typeof localStorage === "undefined") return null;
-    return localStorage.getItem(STORAGE_PREFIX + key);
-  },
-  set(key, value) {
-    if (typeof localStorage === "undefined") return;
-    localStorage.setItem(STORAGE_PREFIX + key, value);
-  },
-  remove(key) {
-    if (typeof localStorage === "undefined") return;
-    localStorage.removeItem(STORAGE_PREFIX + key);
-  }
-};
-var _storage = localStorageAdapter;
+function createMemoryStorageAdapter() {
+  const store = /* @__PURE__ */ new Map();
+  return {
+    get(key) {
+      return store.get(key) ?? null;
+    },
+    set(key, value) {
+      store.set(key, value);
+    },
+    remove(key) {
+      store.delete(key);
+    }
+  };
+}
+var memoryStorageAdapter = createMemoryStorageAdapter();
+var _storage = memoryStorageAdapter;
 function saveTokenData(data, clientId) {
   _storage.set(buildKey(TOKEN_KEY, clientId), JSON.stringify(data));
 }
@@ -197,6 +198,19 @@ async function fetchJwks(baseUrl) {
     return null;
   }
 }
+async function computeAtHash(accessToken) {
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(accessToken)
+  );
+  const bytes = new Uint8Array(hash);
+  const half = bytes.slice(0, bytes.length / 2);
+  let binary = "";
+  for (const b of half) {
+    binary += String.fromCharCode(b);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 async function verifyRs256(token, jwk) {
   try {
     const [headerB64, payloadB64, signature] = token.split(".");
@@ -220,7 +234,7 @@ async function verifyRs256(token, jwk) {
     return false;
   }
 }
-async function validateIdToken(idToken, expectedIssuer, expectedClientId) {
+async function validateIdToken(idToken, expectedIssuer, expectedClientId, accessToken) {
   const header = decodeJwtHeader(idToken);
   if (!header) {
     throw new SsoError("id_token_invalid", "ID Token \u683C\u5F0F\u9519\u8BEF");
@@ -268,6 +282,12 @@ async function validateIdToken(idToken, expectedIssuer, expectedClientId) {
   }
   if (typeof payload.sub !== "string" || !payload.sub) {
     throw new SsoError("id_token_missing_sub", "ID Token \u7F3A\u5C11 sub");
+  }
+  if (typeof payload.at_hash === "string" && payload.at_hash) {
+    const actual = await computeAtHash(accessToken);
+    if (actual !== payload.at_hash) {
+      throw new SsoError("id_token_at_hash_mismatch", "ID Token at_hash \u4E0D\u5339\u914D");
+    }
   }
   return { sub: payload.sub };
 }
@@ -466,7 +486,12 @@ var _SsoClient = class _SsoClient {
     const data = await res.json();
     if (data.id_token) {
       try {
-        await validateIdToken(data.id_token, this.config.ssoBaseUrl, this.config.clientId);
+        await validateIdToken(
+          data.id_token,
+          this.config.ssoBaseUrl,
+          this.config.clientId,
+          data.access_token
+        );
       } catch (err) {
         removeTokenData(this.config.clientId);
         throw err;

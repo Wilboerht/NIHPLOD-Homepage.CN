@@ -56,22 +56,25 @@ export async function POST(request: NextRequest) {
         ip: getClientIP(request),
       });
 
-      // === SLO: 先查询活跃的 OAuthSession（在撤销之前获取 clientId 列表）===
-      const activeSessions = await prisma.oAuthSession.findMany({
-        where: { userId: user.id, revokedAt: null },
-        select: { clientId: true },
-      });
+      // === SLO：仅当选择“退出所有设备”时才撤销 OAuth 子项目会话并触发 Backchannel Logout ===
+      if (allDevices) {
+        // 先查询活跃的 OAuthSession（在撤销之前获取 clientId 列表）
+        const activeSessions = await prisma.oAuthSession.findMany({
+          where: { userId: user.id, revokedAt: null },
+          select: { clientId: true },
+        });
 
-      // === SLO: 撤销所有 OAuthSession ===
-      await prisma.oAuthSession.updateMany({
-        where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
+        // 撤销所有 OAuthSession
+        await prisma.oAuthSession.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
 
-      // === SLO: Backchannel Logout（非阻塞）===
-      if (activeSessions.length > 0) {
-        const clientIds = activeSessions.map((s) => s.clientId);
-        await sendBackchannelLogout(user.id, clientIds);
+        // Backchannel Logout（非阻塞）
+        if (activeSessions.length > 0) {
+          const clientIds = activeSessions.map((s) => s.clientId);
+          await sendBackchannelLogout(user.id, clientIds);
+        }
       }
     }
 

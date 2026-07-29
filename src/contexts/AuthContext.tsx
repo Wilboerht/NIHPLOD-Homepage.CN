@@ -16,6 +16,12 @@ interface User {
 // 用户中心视图类型
 export type UserCenterView = "profile" | "orders" | "addresses" | "coupons" | "vip" | null;
 
+/** 登录前暂存的结算弹窗状态 */
+export interface PendingCheckout {
+  selectedProductIds?: string[];
+  quantities?: Record<string, number>;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -38,8 +44,13 @@ interface AuthContextType {
   payOrderId: string | null;
   openPay: (orderId: string) => void;
   closePay: () => void;
+  // 登录前暂存的结算状态
+  pendingCheckout: PendingCheckout | null;
+  setPendingCheckout: (pending: PendingCheckout | null) => void;
+  clearPendingCheckout: () => void;
+  restorePendingCheckout: () => void;
   // 登录/注册/找回/绑定入口（全部跳转到统一登录页）
-  redirectToLogin: (returnTo?: string | null) => void;
+  redirectToLogin: (returnTo?: string | null, pendingCheckout?: PendingCheckout) => void;
   redirectToRegister: (returnTo?: string | null) => void;
   redirectToForgotPassword: (returnTo?: string | null) => void;
   redirectToWechatBind: (returnTo?: string | null) => void;
@@ -49,6 +60,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** sessionStorage key for pending checkout state */
+const PENDING_CHECKOUT_KEY = "__nihplod_pending_checkout";
+
 function buildAuthUrl(mode: string, returnTo?: string | null) {
   const params = new URLSearchParams();
   params.set("mode", mode);
@@ -56,6 +70,44 @@ function buildAuthUrl(mode: string, returnTo?: string | null) {
     params.set("return_to", returnTo);
   }
   return `/login?${params.toString()}`;
+}
+
+function savePendingCheckout(pending: PendingCheckout | null) {
+  if (typeof window === "undefined") return;
+  if (pending && (pending.selectedProductIds?.length || Object.keys(pending.quantities || {}).length)) {
+    try {
+      window.sessionStorage.setItem(
+        PENDING_CHECKOUT_KEY,
+        JSON.stringify({ ...pending, timestamp: Date.now() })
+      );
+    } catch {
+      // ignore storage errors
+    }
+  } else {
+    window.sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+  }
+}
+
+function readPendingCheckout(): PendingCheckout | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(PENDING_CHECKOUT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PendingCheckout & { timestamp?: number };
+    // 30 分钟内有效
+    if (parsed.timestamp && Date.now() - parsed.timestamp > 30 * 60 * 1000) {
+      window.sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+      return null;
+    }
+    return { selectedProductIds: parsed.selectedProductIds, quantities: parsed.quantities };
+  } catch {
+    return null;
+  }
+}
+
+function clearStoredPendingCheckout() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -78,10 +130,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [payOpen, setPayOpen] = useState(false);
   const [payOrderId, setPayOrderId] = useState<string | null>(null);
 
+  // 登录前暂存的结算状态
+  const [pendingCheckout, setPendingCheckoutState] = useState<PendingCheckout | null>(null);
+
   // 统一登录页跳转（使用 window.location 确保在事件回调中也能立即触发）
-  const redirectToLogin = useCallback((returnTo?: string | null) => {
+  const redirectToLogin = useCallback((returnTo?: string | null, pending?: PendingCheckout) => {
     const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    savePendingCheckout(pending ?? null);
     window.location.href = buildAuthUrl("login", target);
+  }, []);
+
+  const setPendingCheckout = useCallback((pending: PendingCheckout | null) => {
+    setPendingCheckoutState(pending);
+    savePendingCheckout(pending);
+  }, []);
+
+  const clearPendingCheckout = useCallback(() => {
+    setPendingCheckoutState(null);
+    clearStoredPendingCheckout();
   }, []);
 
   const redirectToRegister = useCallback((returnTo?: string | null) => {
@@ -141,6 +207,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCheckoutSelectedProductIds(null);
     setCheckoutQuantities(null);
   }, []);
+
+  const restorePendingCheckout = useCallback(() => {
+    const stored = readPendingCheckout();
+    if (stored) {
+      setPendingCheckoutState(null);
+      clearStoredPendingCheckout();
+      openCheckout(stored.selectedProductIds, stored.quantities);
+    }
+  }, [openCheckout]);
 
   // 支付弹窗操作
   const openPay = useCallback((orderId: string) => {
@@ -254,6 +329,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       payOrderId,
       openPay,
       closePay,
+      // 登录前暂存的结算状态
+      pendingCheckout,
+      setPendingCheckout,
+      clearPendingCheckout,
+      restorePendingCheckout,
+      // 登录/注册/找回/绑定入口（全部跳转到统一登录页）
       redirectToLogin,
       redirectToRegister,
       redirectToForgotPassword,
@@ -280,6 +361,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       payOrderId,
       openPay,
       closePay,
+      pendingCheckout,
+      setPendingCheckout,
+      clearPendingCheckout,
+      restorePendingCheckout,
       redirectToLogin,
       redirectToRegister,
       redirectToForgotPassword,

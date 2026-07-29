@@ -22,21 +22,6 @@ function getCsrfTokenFromCookie(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-/**
- * 校验登出后的重定向地址是否可信。
- * 仅允许：空值、站内相对路径（且不以 // 开头）、或与当前 origin 完全一致。
- */
-function isTrustedRedirectUri(uri: string): boolean {
-  if (!uri) return true;
-  if (uri.startsWith("/") && !uri.startsWith("//")) return true;
-  try {
-    const url = new URL(uri);
-    return url.origin === window.location.origin;
-  } catch {
-    return false;
-  }
-}
-
 async function ensureCsrfToken(): Promise<string | null> {
   const existing = getCsrfTokenFromCookie();
   if (existing) return existing;
@@ -49,6 +34,25 @@ async function ensureCsrfToken(): Promise<string | null> {
   return null;
 }
 
+async function checkTrustedLogoutUri(
+  uri: string,
+  clientId: string | null
+): Promise<boolean> {
+  if (!uri) return true;
+  if (uri.startsWith("/") && !uri.startsWith("//")) return true;
+  try {
+    const url = new URL("/api/oauth/check-post-logout-uri", window.location.origin);
+    if (clientId) url.searchParams.set("client_id", clientId);
+    url.searchParams.set("post_logout_redirect_uri", uri);
+    const res = await fetch(url.toString());
+    if (!res.ok) return false;
+    const data = await res.json();
+    return !!data.trusted;
+  } catch {
+    return false;
+  }
+}
+
 function LogoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -59,10 +63,17 @@ function LogoutContent() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [trustedUri, setTrustedUri] = useState<string | null>(null);
 
   useEffect(() => {
     ensureCsrfToken().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    checkTrustedLogoutUri(postLogoutRedirectUri, clientId || null).then((trusted) => {
+      setTrustedUri(trusted ? postLogoutRedirectUri : null);
+    });
+  }, [postLogoutRedirectUri, clientId]);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -86,8 +97,8 @@ function LogoutContent() {
 
       // 跳转到 frontchannel logout 确认页（仅传递可信的重定向地址）
       const confirmUrl = new URL("/logout/confirm", window.location.origin);
-      if (postLogoutRedirectUri && isTrustedRedirectUri(postLogoutRedirectUri)) {
-        confirmUrl.searchParams.set("post_logout_redirect_uri", postLogoutRedirectUri);
+      if (trustedUri) {
+        confirmUrl.searchParams.set("post_logout_redirect_uri", trustedUri);
       }
       if (state) {
         confirmUrl.searchParams.set("state", state);
@@ -122,7 +133,7 @@ function LogoutContent() {
         <div className="flex gap-3 justify-center">
           <button
             onClick={() => {
-              const target = isTrustedRedirectUri(postLogoutRedirectUri) ? postLogoutRedirectUri : "/";
+              const target = trustedUri || "/";
               if (target) {
                 window.location.href = target;
               } else {

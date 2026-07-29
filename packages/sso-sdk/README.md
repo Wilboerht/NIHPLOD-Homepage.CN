@@ -317,6 +317,22 @@ export const GET = createLogoutRouteHandler({
 
 ---
 
+## 安全建议与 Token 存储
+
+SDK 默认将 token 保存在**内存**中，Public Client（SPA/移动端/桌面端）在浏览器中不应把 `refresh_token` 写入 `localStorage`，以防止 XSS 窃取长期凭证。
+
+如果子项目是 **Next.js BFF / Confidential Client**，可以将 token 保存在 `localStorage` 以便多 Tab 共享：
+
+```typescript
+import { setTokenStorage, createSecureStorage } from "@nihplod/sso-sdk";
+
+setTokenStorage(createSecureStorage({ persist: true }));
+```
+
+生产环境更推荐通过 Service Worker 或 HTTP-only Cookie 封装 refresh token，前端只持有 access token 短期凭证。
+
+---
+
 ## 工具函数
 
 ```typescript
@@ -325,6 +341,7 @@ import {
   generateCodeChallenge,
   generateState,
   setTokenStorage,
+  createSecureStorage,
   getTokenData,
   saveTokenData,
   removeTokenData,
@@ -338,10 +355,6 @@ const challenge = await generateCodeChallenge(verifier);
 // State
 const state = generateState();
 
-// 自定义 Token 存储
-setTokenStorage({
-  get: (k) => localStorage.getItem(k),
-  set: (k, v) => localStorage.setItem(k, v),
-  remove: (k) => localStorage.removeItem(k),
-});
+// 自定义 Token 存储（默认内存存储）
+setTokenStorage(createSecureStorage({ persist: false }));
 ```

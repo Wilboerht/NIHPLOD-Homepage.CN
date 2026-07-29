@@ -122,10 +122,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   try {
     const admin = await verifyAuth(request);
-    if (!admin) {
+    if (!admin || admin.role !== "owner") {
       return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
-        { status: 401 }
+        { success: false, error: { code: "FORBIDDEN", message: "只有超级管理员可操作" } },
+        { status: 403 }
       );
     }
 
@@ -179,7 +179,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
       // 加入 access token 黑名单，消除剩余 15 分钟窗口期
       const reason = status === "SUSPENDED" ? "账号已被临时冻结" : "账号已被永久封禁";
-      blacklistUserTokens(user.id, reason);
+      await blacklistUserTokens(user.id, reason);
 
       // 级联清理：清空购物车、过期未使用优惠券
       await prisma.cartItem.deleteMany({ where: { userId: id } });
@@ -189,7 +189,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       });
     } else {
       // 解封时从黑名单移除
-      removeFromBlacklist(user.id);
+      await removeFromBlacklist(user.id);
     }
 
     await createAuditLog({
@@ -266,10 +266,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
   try {
     const admin = await verifyAuth(request);
-    if (!admin) {
+    if (!admin || admin.role !== "owner") {
       return NextResponse.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
-        { status: 401 }
+        { success: false, error: { code: "FORBIDDEN", message: "只有超级管理员可操作" } },
+        { status: 403 }
       );
     }
 
@@ -312,7 +312,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       where: { userId: id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    blacklistUserTokens(user.id, "用户数据已被删除");
+    await blacklistUserTokens(user.id, "用户数据已被删除");
 
     // 级联清理
     await prisma.cartItem.deleteMany({ where: { userId: id } });

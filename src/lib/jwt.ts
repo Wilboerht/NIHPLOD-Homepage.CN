@@ -17,7 +17,7 @@
 import { createHash } from "crypto";
 import { SignJWT, jwtVerify, importPKCS8, importSPKI } from "jose";
 import { LRUCache } from "lru-cache";
-import { isAccessTokenRevoked } from "./token-blacklist";
+import { isAccessTokenRevoked, isTokenBlacklisted } from "./token-blacklist";
 import type { AdminJWTPayload, UserJWTPayload, RefreshTokenPayload, OAuthAccessTokenPayload, AdminRole } from "@/types/auth";
 
 const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
@@ -228,6 +228,13 @@ export async function verifyUserToken(
       if (!isActive) {
         return null;
       }
+    }
+
+    // 黑名单检查（封禁用户时消除 15 分钟 access token 窗口）
+    const userId = (payload as UserJWTPayload).id;
+    const blacklisted = await isTokenBlacklisted(userId);
+    if (blacklisted) {
+      return null;
     }
 
     return payload as UserJWTPayload;
@@ -570,13 +577,20 @@ export async function signOAuthAccessToken(payload: {
   clientId: string;
   scope: string;
 }): Promise<string> {
-  const jwt = new SignJWT({
+  const scopes = payload.scope.split(" ").filter(Boolean);
+  const claims: Record<string, unknown> = {
     id: payload.id,
-    phone: payload.phone,
     client_id: payload.clientId,
     scope: payload.scope,
     type: "access_token" as const,
-  })
+  };
+
+  // 按 scope 最小化：只有申请了 phone scope 才写入手机号
+  if (scopes.includes("phone")) {
+    claims.phone = payload.phone;
+  }
+
+  const jwt = new SignJWT(claims)
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience(payload.clientId)
@@ -644,7 +658,7 @@ export async function verifyOAuthAccessToken(
     }
     // RFC 7009 access_token 撤销检查
     const jti = (payload as { jti?: string }).jti;
-    if (jti && isAccessTokenRevoked(jti)) {
+    if (jti && (await isAccessTokenRevoked(jti))) {
       return null;
     }
     return payload as unknown as OAuthAccessTokenPayload;

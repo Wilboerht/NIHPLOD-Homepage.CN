@@ -15,6 +15,7 @@ import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/l
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCode, sendPasswordChangedNotification } from "@/lib/sms";
+import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 
 // 请求参数验证
 const resetPasswordSchema = z
@@ -194,6 +195,24 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+
+    // 撤销所有 OAuth Session 与关联 refresh token，并通知子项目登出
+    const activeSessions = await prisma.oAuthSession.findMany({
+      where: { userId: user.id, revokedAt: null },
+      select: { clientId: true },
+    });
+    if (activeSessions.length > 0) {
+      await prisma.oAuthSession.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await prisma.refreshToken.updateMany({
+        where: { userId: user.id, clientId: { not: null }, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
+      await sendBackchannelLogout(user.id, clientIds, { includeInactive: true });
+    }
 
     // 清除当前类型的失败记录
     await clearLoginAttempts(phone, "sms");

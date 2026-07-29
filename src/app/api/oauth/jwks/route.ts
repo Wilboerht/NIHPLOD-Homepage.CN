@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       return new NextResponse(cachedJWKS.body, {
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=3600",
+          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
         },
       });
     }
@@ -121,7 +121,7 @@ export async function GET(request: Request) {
     return new NextResponse(body, {
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
       },
     });
   } catch {

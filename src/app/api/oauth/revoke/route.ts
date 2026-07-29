@@ -7,10 +7,15 @@
  * 使其无法再用于刷新 access_token。
  *
  * 认证方式：
- * - Confidential Client：client_id + client_secret
+ * - client_secret_basic: Authorization: Basic base64(client_id:client_secret)
+ * - client_secret_post: 请求体中 client_id + client_secret
  * - Public Client：仅 client_id（RFC 7009 允许 Public Client 不携带 secret）
+ *
+ * CORS：仅允许已注册 redirect_uri 的 origin。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
+import { getClientCredentials } from "@/lib/oauth-client-auth";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { verifyRefreshToken, verifyOAuthAccessToken } from "@/lib/jwt";
 import { revokeRefreshToken } from "@/lib/auth-security";
@@ -24,13 +29,16 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIP(request);
+    const corsHeaders = await getOAuthCorsHeaders(request);
+    const resJson = (body: unknown, status = 200) =>
+      NextResponse.json(body, { status, headers: corsHeaders });
 
     // 限流
     const limitResult = await rateLimit(ip, "oauth-revoke");
     if (!limitResult.success) {
-      return NextResponse.json(
+      return resJson(
         { error: "rate_limited", error_description: "请求过于频繁" },
-        { status: 429 }
+        429
       );
     }
 
@@ -46,21 +54,20 @@ export async function POST(request: NextRequest) {
       formData.forEach((v, k) => { body[k] = v.toString(); });
     }
 
-    const client_id = body.client_id;
-    const client_secret = body.client_secret;
+    const { client_id, client_secret } = getClientCredentials(request, body);
     const token = body.token;
     const token_type_hint = body.token_type_hint;
 
     if (!client_id) {
-      return NextResponse.json(
+      return resJson(
         { error: "invalid_client", error_description: "缺少 client_id" },
-        { status: 401 }
+        401
       );
     }
 
     if (!token) {
       // RFC 7009: 即使 token 不存在也返回 200（防止信息泄漏）
-      return NextResponse.json({});
+      return resJson({});
     }
 
     // 验证 client：Public Client 允许不传 secret；Confidential Client 必须验证 secret
@@ -73,9 +80,9 @@ export async function POST(request: NextRequest) {
         success: false,
         detail: { reason: "invalid_client", action: "revoke" },
       });
-      return NextResponse.json(
+      return resJson(
         { error: "invalid_client", error_description: "Client 认证失败" },
-        { status: 401 }
+        401
       );
     }
 
@@ -96,7 +103,12 @@ export async function POST(request: NextRequest) {
             success: false,
             detail: { token_type: "refresh_token", action: "revoke", reason: "client_id_mismatch" },
           });
-          return NextResponse.json({});
+          return resJson({});
+        }
+
+        // 无 client_id 的内部 refresh token 不应在 OAuth revoke 端点处理
+        if (!refreshPayload.client_id) {
+          return resJson({});
         }
 
         // 使用 auth-security 的 revokeRefreshToken 撤销（自动处理 SHA-256 哈希比对）
@@ -129,10 +141,10 @@ export async function POST(request: NextRequest) {
             success: false,
             detail: { token_type: "access_token", action: "revoke", reason: "audience_mismatch" },
           });
-          return NextResponse.json({});
+          return resJson({});
         }
         if (accessPayload.jti) {
-          revokeAccessToken(accessPayload.jti);
+          await revokeAccessToken(accessPayload.jti);
         }
         recordSsoEvent({
           event: "logout",
@@ -147,10 +159,15 @@ export async function POST(request: NextRequest) {
     }
 
     // RFC 7009: 无论 token 是否有效，总是返回 200
-    return NextResponse.json({});
+    return resJson({});
   } catch (error) {
     apiConsole.error("[OAuth Revoke] 异常:", error);
     // RFC 7009: 即使出错也返回 200（除非是 client 认证失败）
     return NextResponse.json({});
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const corsHeaders = await getOAuthCorsHeaders(request);
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }

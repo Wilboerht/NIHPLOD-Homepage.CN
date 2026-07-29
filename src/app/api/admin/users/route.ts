@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 管理端用户列表 API
  * GET /api/admin/users
  */
@@ -8,6 +8,7 @@ import { verifyAuth } from "@/lib/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { maskPhone } from "@/lib/mask-phone";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -83,6 +84,7 @@ export async function GET(request: NextRequest) {
       data: {
         users: users.map((user) => ({
           ...user,
+          phone: maskPhone(user.phone),
           orderCount: user._count.orders,
           createdAt: user.createdAt.toISOString(),
         })),

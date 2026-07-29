@@ -235,7 +235,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
         "pendingProductDrawer",
         JSON.stringify({ productId, action })
       );
-      window.location.href = `/login?redirect=${encodeURIComponent(
+      window.location.href = `/login?return_to=${encodeURIComponent(
         "/guide?restoreProductDrawer=1"
       )}`;
     },

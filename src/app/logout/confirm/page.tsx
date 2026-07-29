@@ -5,7 +5,7 @@
  * 用户在主站登出后，展示登出成功并自动跳转回 post_logout_redirect_uri。
  *
  * Query 参数:
- * - post_logout_redirect_uri: 登出后跳转地址（可选）
+ * - post_logout_redirect_uri: 登出后跳转地址（可选，已由 /logout 校验为已注册 origin）
  * - state: OIDC state 参数（可选，透传回 redirect）
  *
  * 安全说明：
@@ -20,17 +20,12 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 
-/**
- * 校验登出后的重定向地址是否可信。
- * 仅允许：空值、站内相对路径（且不以 // 开头）、或与当前 origin 完全一致。
- */
-function isTrustedRedirectUri(uri: string | null): uri is string {
+function isSafeRedirectUri(uri: string | null): uri is string {
   if (!uri) return false;
   if (uri.startsWith("/") && !uri.startsWith("//")) return true;
-  if (typeof window === "undefined") return false;
   try {
     const url = new URL(uri);
-    return url.origin === window.location.origin;
+    return url.protocol === "http:" || url.protocol === "https:";
   } catch {
     return false;
   }
@@ -40,7 +35,7 @@ function LogoutConfirmContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const rawRedirectUri = searchParams.get("post_logout_redirect_uri");
-  const redirectUri = isTrustedRedirectUri(rawRedirectUri) ? rawRedirectUri : null;
+  const redirectUri = isSafeRedirectUri(rawRedirectUri) ? rawRedirectUri : null;
   const [done, setDone] = useState(false);
 
   useEffect(() => {

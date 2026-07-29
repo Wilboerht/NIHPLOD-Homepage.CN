@@ -46,7 +46,40 @@ function buildKey(base: string, clientId?: string): string {
 }
 
 /**
+ * 内存存储适配器（Public Client 浏览器默认）
+ *
+ * 安全优势：
+ * - refresh_token 不落盘，XSS 无法窃取长期凭证。
+ * - 页面刷新后用户需重新授权，符合纯前端 Public Client 的安全模型。
+ *
+ * 代价：多 Tab 间不会自动同步 token；SDK 内部已用锁机制避免并发刷新。
+ */
+function createMemoryStorageAdapter(): TokenStorage {
+  const store = new Map<string, string>();
+  return {
+    get(key: string) {
+      return store.get(key) ?? null;
+    },
+    set(key: string, value: string) {
+      store.set(key, value);
+    },
+    remove(key: string) {
+      store.delete(key);
+    },
+  };
+}
+
+const memoryStorageAdapter = createMemoryStorageAdapter();
+
+/**
  * 浏览器 localStorage 实现
+ *
+ * 适用于：
+ * - Next.js BFF / Confidential Client（refresh_token 不直接暴露给浏览器）。
+ * - 需要多 Tab 共享 token 的场景。
+ *
+ * 注意：Public Client 在浏览器中直接存储 refresh_token 会增加 XSS 风险，
+ * 建议改用内存存储或 Service Worker 封装。
  */
 const localStorageAdapter: TokenStorage = {
   get(key: string) {
@@ -63,7 +96,18 @@ const localStorageAdapter: TokenStorage = {
   },
 };
 
-let _storage: TokenStorage = localStorageAdapter;
+/**
+ * 创建安全存储实现
+ *
+ * @param options.persist 是否持久化到 localStorage。默认 false（内存存储）。
+ *   - Confidential/BFF 子项目可设为 true。
+ *   - Public Client 在浏览器中建议保持 false。
+ */
+export function createSecureStorage(options: { persist?: boolean } = {}): TokenStorage {
+  return options.persist ? localStorageAdapter : memoryStorageAdapter;
+}
+
+let _storage: TokenStorage = memoryStorageAdapter;
 
 /**
  * 设置自定义存储实现

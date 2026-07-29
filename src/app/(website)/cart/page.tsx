@@ -44,7 +44,7 @@ export default async function CartPage({ searchParams }: CartPageProps) {
   const user = await getCurrentLoginUser();
 
   if (!user) {
-    redirect("/login?redirect=/cart");
+    redirect("/login?return_to=/cart");
   }
 
   // 获取购物车数据

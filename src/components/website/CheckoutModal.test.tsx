@@ -64,6 +64,7 @@ vi.mock("@/contexts/AuthContext", () => ({
     closeCheckout: mockCloseCheckout,
     openUserCenter: mockOpenUserCenter,
     redirectToLogin: mockRedirectToLogin,
+    setPendingCheckout: vi.fn(),
     openPay: mockOpenPay,
   }),
 }));

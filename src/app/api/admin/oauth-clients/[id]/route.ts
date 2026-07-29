@@ -11,6 +11,8 @@ import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { prisma } from "@/lib/prisma";
+import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -72,6 +74,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const body = await request.json();
+
+    // 更新前获取原状态，用于判断是否需要级联撤销
+    const previousClient = await getOAuthClientById(id);
+    if (!previousClient) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
+        { status: 404 }
+      );
+    }
+
     const client = await updateOAuthClient(id, body);
 
     if (!client) {
@@ -79,6 +91,38 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
         { status: 404 }
       );
+    }
+
+    // Client 从活跃变为停用时：级联撤销 session/token 并通知 RP
+    if (previousClient.isActive && client.isActive === false) {
+      try {
+        const clientId = client.clientId;
+
+        // 撤销所有活跃 OAuthSession 与 RefreshToken
+        await prisma.$transaction(async (tx) => {
+          await tx.oAuthSession.updateMany({
+            where: { clientId, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+          await tx.refreshToken.updateMany({
+            where: { clientId, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+        });
+
+        // 通知所有受影响用户登出（按 userId 去重，减少请求）
+        const affectedSessions = await prisma.oAuthSession.findMany({
+          where: { clientId },
+          select: { userId: true },
+          distinct: ["userId"],
+        });
+
+        for (const { userId } of affectedSessions) {
+          await sendBackchannelLogout(userId, [clientId], { includeInactive: true });
+        }
+      } catch (err) {
+        apiConsole.error("[AdminOAuthClient PATCH] 停用 Client 级联撤销失败:", err);
+      }
     }
 
     await createAuditLog({
