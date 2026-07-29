@@ -219,9 +219,12 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
 
   /**
    * 调用主站 Introspection 端点验证 token
+   *
+   * Public Client 可省略 client_secret，仅传 client_id。
+   * Confidential Client 建议传入 client_secret 以通过端点认证。
    */
   async function introspect(token: string): Promise<IntrospectResponse | null> {
-    if (!introspectionEndpoint || !clientId || !clientSecret) {
+    if (!introspectionEndpoint || !clientId) {
       return null;
     }
 
@@ -231,14 +234,15 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     }
 
     try {
+      const params = new URLSearchParams({ token, client_id: clientId });
+      if (clientSecret) {
+        params.set("client_secret", clientSecret);
+      }
+
       const response = await fetch(introspectionEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          token,
-          client_id: clientId,
-          client_secret: clientSecret,
-        }),
+        body: params,
       });
 
       if (!response.ok) return null;

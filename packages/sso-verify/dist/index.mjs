@@ -54,7 +54,7 @@ function createTokenVerifier(options) {
     return _rs256PublicKey;
   }
   async function introspect(token) {
-    if (!introspectionEndpoint || !clientId || !clientSecret) {
+    if (!introspectionEndpoint || !clientId) {
       return null;
     }
     const cached = introspectCache.get(token);
@@ -62,14 +62,14 @@ function createTokenVerifier(options) {
       return { active: cached.active, ...cached.payload || {} };
     }
     try {
+      const params = new URLSearchParams({ token, client_id: clientId });
+      if (clientSecret) {
+        params.set("client_secret", clientSecret);
+      }
       const response = await fetch(introspectionEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          token,
-          client_id: clientId,
-          client_secret: clientSecret
-        })
+        body: params
       });
       if (!response.ok) return null;
       const data = await response.json();

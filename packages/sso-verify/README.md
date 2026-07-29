@@ -14,6 +14,8 @@ npm install @nihplod/sso-verify
 
 Suitable for all sub-projects; no signing keys required.
 
+#### Confidential Client (server-side or BFF)
+
 ```typescript
 import { createTokenVerifier } from "@nihplod/sso-verify";
 
@@ -29,6 +31,23 @@ const payload = await verifier.verify(token);
 if (payload) {
   console.log(payload.sub); // User ID
 }
+```
+
+#### Public Client (SPA / mobile / desktop)
+
+Public Clients have no `client_secret`. The introspection endpoint still accepts verification with `client_id` only.
+
+```typescript
+import { createTokenVerifier } from "@nihplod/sso-verify";
+
+const verifier = createTokenVerifier({
+  introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+  clientId: "your-public-client-id",
+  audience: "your-public-client-id",
+  issuer: "https://nihplod.cn",
+});
+
+const payload = await verifier.verify(token);
 ```
 
 ### Method 2: Local JWT Verification (Internal Confidential Clients Only)

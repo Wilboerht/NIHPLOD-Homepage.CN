@@ -268,10 +268,14 @@ export async function checkUserStatus(
 /**
  * 验证请求中的用户认证信息
  * 对非安全方法（POST/PUT/PATCH/DELETE）自动校验 CSRF Token。
+ * 使用 Bearer Token 的请求天然防 CSRF，因此豁免 CSRF 校验。
  */
 export async function verifyUserAuth(request: NextRequest): Promise<UserJWTPayload | null> {
   const method = request.method?.toUpperCase() ?? "";
-  if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
+  const authHeader = request.headers.get("authorization");
+  const isBearerAuth = authHeader?.startsWith("Bearer ") ?? false;
+
+  if (!CSRF_SAFE_METHODS.has(method) && !isBearerAuth && !validateCSRFToken(request)) {
     return null;
   }
 
