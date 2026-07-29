@@ -1,18 +1,18 @@
 # @nihplod/sso-verify
 
-NIHPLOD 一网通 SSO Token 验证工具包 — 供子项目在后端验证主站签发的 Access Token。
+NIHPLOD SSO token verification toolkit — for sub-projects to validate access tokens issued by the main site backend.
 
-## 安装
+## Install
 
 ```bash
 npm install @nihplod/sso-verify
 ```
 
-## 使用方式
+## Usage
 
-### 方式一：Introspection 验证（推荐）
+### Method 1: Introspection (Recommended)
 
-适用于所有子项目，无需接触签名密钥。
+Suitable for all sub-projects; no signing keys required.
 
 ```typescript
 import { createTokenVerifier } from "@nihplod/sso-verify";
@@ -27,13 +27,13 @@ const verifier = createTokenVerifier({
 
 const payload = await verifier.verify(token);
 if (payload) {
-  console.log(payload.sub); // 用户 ID
+  console.log(payload.sub); // User ID
 }
 ```
 
-### 方式二：本地 JWT 验证（仅内部 Confidential Client）
+### Method 2: Local JWT Verification (Internal Confidential Clients Only)
 
-仅当子项目与主站共享 `JWT_ACCESS_SECRET` 时使用。
+Only use this when the sub-project shares `JWT_ACCESS_SECRET` with the main site.
 
 ```typescript
 import { createTokenVerifier } from "@nihplod/sso-verify";
@@ -47,7 +47,7 @@ const verifier = createTokenVerifier({
 const payload = await verifier.verify(token);
 ```
 
-## Express / Connect 中间件
+## Express / Connect Middleware
 
 ```typescript
 import { ssoMiddleware } from "@nihplod/sso-verify";
@@ -63,10 +63,10 @@ app.use(
 );
 ```
 
-验证成功后，`req.user` 会挂载 token payload。
+After successful verification, the token payload is attached to `req.user`.
 
-## 注意事项
+## Notes
 
-- 当前主站默认使用 HS256 对称签名。对于外部子项目，推荐优先使用 **Introspection 模式** 验证 access_token。
-- 若你的子项目是内部服务且已与主站共享 RS256 公钥，可配置 `accessTokenPublicKey` 或 `jwksUri` 做本地 JWT 验证。
-- **不要将 `JWT_ACCESS_SECRET`（HS256 对称密钥）分发给外部子项目。**
+- The main site currently uses HS256 symmetric signing by default. For external sub-projects, we recommend verifying access tokens via **Introspection**.
+- If your sub-project is an internal service and already shares the RS256 public key with the main site, you can configure `accessTokenPublicKey` or `jwksUri` for local JWT verification.
+- **Never distribute `JWT_ACCESS_SECRET` (the HS256 symmetric key) to external sub-projects.**

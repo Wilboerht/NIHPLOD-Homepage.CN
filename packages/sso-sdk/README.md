@@ -1,14 +1,14 @@
 # @nihplod/sso-sdk
 
-NIHPLOD SSO 子项目接入 SDK — OAuth 2.0 授权码 + PKCE 客户端封装。
+NIHPLOD SSO client SDK — OAuth 2.0 Authorization Code + PKCE wrapper for sub-projects.
 
-## 安装
+## Install
 
 ```bash
 npm install @nihplod/sso-sdk
 ```
 
-## 快速开始
+## Quick Start
 
 ```typescript
 import { SsoClient } from "@nihplod/sso-sdk";
@@ -19,75 +19,75 @@ const sso = new SsoClient({
   ssoBaseUrl: "https://nihplod.cn",
 });
 
-// 1. 发起登录
+// 1. Initiate login
 await sso.login();
 
-// 2. 处理回调（在回调页面中）
+// 2. Handle callback (inside the callback page)
 const token = await sso.handleCallback(window.location.href);
 
-// 3. 获取用户信息
+// 3. Get user info
 const user = await sso.getUserInfo();
 
-// 4. 登出
+// 4. Logout
 await sso.logout();
 ```
 
 ---
 
-## API 参考
+## API Reference
 
 ### `new SsoClient(config)`
 
-创建 SSO 客户端实例。
+Create an SSO client instance.
 
-| 参数 | 类型 | 必填 | 说明 |
+| Parameter | Type | Required | Description |
 |------|------|------|------|
 | `clientId` | `string` | ✅ | OAuth Client ID |
-| `redirectUri` | `string` | ✅ | 回调 URL，须与注册时一致 |
-| `ssoBaseUrl` | `string` | ✅ | SSO 中心地址，如 `https://nihplod.cn` |
-| `scopes` | `string` | ❌ | 空格分隔的 scope，默认 `"openid profile"` |
-| `clientSecret` | `string` | ❌ | **仅 Confidential Client 需要**。浏览器端 SPA（Public Client）请勿传入，避免密钥泄露。BFF / Next.js Route Handler 可传入 |
+| `redirectUri` | `string` | ✅ | Callback URL, must match the one registered |
+| `ssoBaseUrl` | `string` | ✅ | SSO provider base URL, e.g. `https://nihplod.cn` |
+| `scopes` | `string` | ❌ | Space-separated scopes, default `"openid profile"` |
+| `clientSecret` | `string` | ❌ | **Only for Confidential Clients**. Do NOT pass this in browser SPA (Public Client) to avoid leaking secrets. BFF / Next.js Route Handlers may pass it. |
 
 ### `sso.login(returnUrl?)`
 
-发起 SSO 登录。生成 PKCE 参数后 302 跳转到 SSO 登录页。
+Initiate SSO login. Generates PKCE parameters and redirects to the SSO login page.
 
-| 参数 | 类型 | 说明 |
+| Parameter | Type | Description |
 |------|------|------|
-| `returnUrl` | `string` | 登录成功后的返回地址（可选） |
+| `returnUrl` | `string` | Optional URL to return to after login |
 
 ### `sso.getLoginUrl(returnUrl?)`
 
-构建登录 URL 字符串，不执行跳转。返回 `Promise<string>`。
+Build the login URL string without redirecting. Returns `Promise<string>`.
 
 ### `sso.handleCallback(callbackUrl)`
 
-处理 OAuth 回调。解析 URL 中的 `code` 和 `state`，校验 state 后用 code 换取 token。
+Handle the OAuth callback. Parses `code` and `state` from the URL, validates state, and exchanges the code for tokens.
 
-| 参数 | 类型 | 说明 |
+| Parameter | Type | Description |
 |------|------|------|
-| `callbackUrl` | `string` | 完整的回调 URL（`window.location.href`） |
+| `callbackUrl` | `string` | Full callback URL (`window.location.href`) |
 
-返回 `Promise<TokenData>`。
+Returns `Promise<TokenData>`.
 
 ### `sso.refreshToken()`
 
-使用 refresh_token 刷新 access_token。采用互斥锁防止并发刷新。
+Refresh the access_token using the refresh_token. Uses a mutex to prevent concurrent refresh requests.
 
-返回 `Promise<TokenData>`。
+Returns `Promise<TokenData>`.
 
 ### `sso.getUserInfo()`
 
-获取当前用户信息。若 access_token 已过期则自动刷新。
+Fetch current user info. Automatically refreshes the access_token if expired.
 
-返回 `Promise<SsoUser>`。
+Returns `Promise<SsoUser>`.
 
 ```typescript
 interface SsoUser {
   sub: string;
   nickname?: string;
   avatar?: string;
-  phone?: string;          // 脱敏手机号
+  phone?: string;          // Masked phone number
   membership_level?: string;
   total_points?: number;
 }
@@ -95,48 +95,47 @@ interface SsoUser {
 
 ### `sso.getAccessToken()`
 
-获取当前有效的 access_token。若已过期则自动刷新。
+Get the current valid access_token. Automatically refreshes if expired.
 
-返回 `Promise<string | null>`。
+Returns `Promise<string | null>`.
 
 ### `sso.isAuthenticated()`
 
-检查是否已认证（仅本地检查，不发起网络请求）。
+Check whether the user is authenticated (local check only, no network request).
 
-返回 `boolean`。
+Returns `boolean`.
 
 ### `sso.logout(redirectToSso?)`
 
-清除本地 token 数据，并尝试撤销服务端 refresh_token。
+Clear local token data and attempt to revoke the server-side refresh_token.
 
-| 参数 | 类型 | 默认 | 说明 |
+| Parameter | Type | Default | Description |
 |------|------|------|------|
-| `redirectToSso` | `boolean` | `false` | 是否重定向到 SSO 登出页（OIDC RP-Initiated Logout） |
+| `redirectToSso` | `boolean` | `false` | Whether to redirect to the SSO logout page (OIDC RP-Initiated Logout) |
 
-当 `redirectToSso=true` 时，会跳转到 `/logout?client_id=...&post_logout_redirect_uri=...`，
-由主站完成会话清除后回到子项目回调地址。
+When `redirectToSso=true`, the user is redirected to `/logout?client_id=...&post_logout_redirect_uri=...`. The main site clears the session and then returns to the sub-project callback address.
 
 ### `sso.getDiscovery()`
 
-获取 OIDC Discovery 文档。
+Fetch the OIDC Discovery document.
 
-返回 `Promise<OidcDiscovery>`。
+Returns `Promise<OidcDiscovery>`.
 
 ---
 
-## TypeScript 类型
+## TypeScript Types
 
 ```typescript
-// SsoClient 配置
+// SsoClient config
 interface SsoClientConfig {
   clientId: string;
   redirectUri: string;
   ssoBaseUrl: string;
   scopes?: string;
-  clientSecret?: string; // 仅 Confidential Client 需要
+  clientSecret?: string; // Only for Confidential Clients
 }
 
-// Token 数据
+// Token data
 interface TokenData {
   access_token: string;
   token_type: string;
@@ -147,7 +146,7 @@ interface TokenData {
   expires_at: number;
 }
 
-// 用户信息
+// User info
 interface SsoUser {
   sub: string;
   nickname?: string;
@@ -176,7 +175,7 @@ interface OidcDiscovery {
 
 ---
 
-## React 绑定
+## React Bindings
 
 ### `<SsoProvider>`
 
@@ -190,7 +189,7 @@ import { SsoProvider } from "@nihplod/sso-sdk/react";
     ssoBaseUrl: "...",
     scopes: "openid profile",
   }}
-  refreshThreshold={60}  // 过期前 60s 自动刷新
+  refreshThreshold={60}  // Auto-refresh 60s before expiry
 >
   <App />
 </SsoProvider>
@@ -209,7 +208,7 @@ const {
   logout,            // (redirectToSso?: boolean) => Promise<void>
   refreshUser,       // () => Promise<void>
   getAccessToken,    // () => Promise<string | null>
-  client,            // SsoClient 实例
+  client,            // SsoClient instance
 } = useSso();
 ```
 
@@ -237,7 +236,7 @@ export default withAuth(DashboardPage);
 ```tsx
 import { CallbackPage } from "@nihplod/sso-sdk/react";
 
-// 在回调路由中渲染此组件即可
+// Render this component in the callback route
 export default function AuthCallback() {
   return <CallbackPage />;
 }
@@ -245,10 +244,9 @@ export default function AuthCallback() {
 
 ---
 
-## Next.js 绑定
+## Next.js Bindings
 
-Next.js 推荐采用 **Middleware + Route Handler** 的 BFF 模式，token 存放在
-`httpOnly` Cookie 中，JavaScript 无法读取，安全性最高。
+For Next.js, the recommended approach is **Middleware + Route Handler** BFF pattern. Tokens are stored in `httpOnly` cookies so JavaScript cannot read them, providing the highest security.
 
 ```typescript
 // src/middleware.ts
@@ -260,7 +258,7 @@ export const middleware = createSsoMiddleware({
   redirectUri: "https://yourapp.com/api/auth/callback",
   scopes: "openid profile",
   publicPaths: ["/", "/public"],
-  // Confidential Client（BFF）可传入 clientSecret
+  // Confidential Client (BFF) can pass clientSecret
   // clientSecret: process.env.SSO_CLIENT_SECRET,
 });
 
@@ -278,7 +276,7 @@ export const GET = createCallbackRouteHandler({
   ssoBaseUrl: "https://nihplod.cn",
   redirectUri: "https://yourapp.com/api/auth/callback",
   defaultReturnPath: "/dashboard",
-  // 与 middleware 一致，Confidential Client 可传入 clientSecret
+  // Same as middleware; Confidential Client can pass clientSecret
 });
 ```
 
@@ -295,33 +293,33 @@ export const GET = createLogoutRouteHandler({
 });
 ```
 
-页面中使用标准 `<a>` 跳转登出端点即可：
+Use a standard `<a>` tag to trigger the logout endpoint:
 
 ```tsx
-<a href="/api/auth/logout">退出登录</a>
+<a href="/api/auth/logout">Logout</a>
 ```
 
-### Cookie 配置
+### Cookie Configuration
 
-默认 Cookie 名称：
+Default cookie names:
 
-| Cookie | 默认名称 | 说明 |
-|--------|----------|------|
-| access_token | `__Host-nihplod_sso_at` | 要求 Secure + Path=/ + 无 Domain |
-| refresh_token | `__Host-nihplod_sso_rt` | 要求 Secure + Path=/ + 无 Domain |
-| state | `__Host-nihplod_sso_state` | 要求 Secure + Path=/ + 无 Domain |
-| return_url | `__Host-nihplod_sso_return` | 要求 Secure + Path=/ + 无 Domain |
-| verifier | `__Secure-nihplod_sso_verifier` | 要求 Secure + 无 Domain；Path 为回调路径，因此使用 `__Secure-` 前缀 |
+| Cookie | Default Name | Description |
+|--------|--------------|-------------|
+| access_token | `__Host-nihplod_sso_at` | Requires Secure + Path=/ + no Domain |
+| refresh_token | `__Host-nihplod_sso_rt` | Requires Secure + Path=/ + no Domain |
+| state | `__Host-nihplod_sso_state` | Requires Secure + Path=/ + no Domain |
+| return_url | `__Host-nihplod_sso_return` | Requires Secure + Path=/ + no Domain |
+| verifier | `__Secure-nihplod_sso_verifier` | Requires Secure + no Domain; Path is the callback path, therefore uses `__Secure-` prefix |
 
-> 本地开发若使用 `http://localhost`，浏览器会拒绝 `Secure` Cookie。此时可仅在本地关闭 `secure`，生产环境必须启用 HTTPS。
+> For local development with `http://localhost`, the browser will reject `Secure` cookies. You may disable `secure` locally, but HTTPS is mandatory in production.
 
 ---
 
-## 安全建议与 Token 存储
+## Security Recommendations and Token Storage
 
-SDK 默认将 token 保存在**内存**中，Public Client（SPA/移动端/桌面端）在浏览器中不应把 `refresh_token` 写入 `localStorage`，以防止 XSS 窃取长期凭证。
+By default, the SDK stores tokens in **memory**. Public Clients (SPA / mobile / desktop) should **never** write the `refresh_token` to `localStorage` to prevent XSS from stealing long-lived credentials.
 
-如果子项目是 **Next.js BFF / Confidential Client**，可以将 token 保存在 `localStorage` 以便多 Tab 共享：
+If the sub-project is a **Next.js BFF / Confidential Client**, you can store tokens in `localStorage` for multi-tab sharing:
 
 ```typescript
 import { setTokenStorage, createSecureStorage } from "@nihplod/sso-sdk";
@@ -329,11 +327,11 @@ import { setTokenStorage, createSecureStorage } from "@nihplod/sso-sdk";
 setTokenStorage(createSecureStorage({ persist: true }));
 ```
 
-生产环境更推荐通过 Service Worker 或 HTTP-only Cookie 封装 refresh token，前端只持有 access token 短期凭证。
+In production, it is more secure to keep the refresh token in a Service Worker or HTTP-only cookie, exposing only the short-lived access token to the frontend.
 
 ---
 
-## 工具函数
+## Utility Functions
 
 ```typescript
 import {
@@ -355,6 +353,6 @@ const challenge = await generateCodeChallenge(verifier);
 // State
 const state = generateState();
 
-// 自定义 Token 存储（默认内存存储）
+// Custom token storage (default is memory storage)
 setTokenStorage(createSecureStorage({ persist: false }));
 ```
