@@ -323,7 +323,7 @@ export type RefreshTokenValidationResult =
   | { valid: true }
   | {
       valid: false;
-      reason: "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation";
+      reason: "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" | "error";
     };
 
 /**
