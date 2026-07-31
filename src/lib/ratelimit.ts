@@ -100,6 +100,10 @@ export const RATE_LIMIT_PRESETS = {
   "oauth-jwks": { maxRequests: 60, windowMs: 60 * 1000 },
   /** OAuth Token Revocation 端点 - 每分钟 30 次 */
   "oauth-revoke": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** 微信 OAuth 回调 - 每分钟 30 次 */
+  "wechat-callback": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** 健康检查 - 每分钟 10 次 */
+  "health": { maxRequests: 10, windowMs: 60 * 1000 },
 } as const;
 
 /**
