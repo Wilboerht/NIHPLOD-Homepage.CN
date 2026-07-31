@@ -14,16 +14,13 @@ const AUTH_TAG_LENGTH = 16;
 
 /**
  * 从专用密钥派生加密密钥。
- * 优先使用 TOTP_ENCRYPTION_KEY，回退到 JWT_ACCESS_SECRET（兼容旧数据）。
- * 使用独立密钥避免 JWT_ACCESS_SECRET 轮换导致已存储的 TOTP 密钥永久失效。
- *
- * 注意：若当前使用 JWT_ACCESS_SECRET 回退，建议尽早配置 TOTP_ENCRYPTION_KEY
- * 环境变量以避免密钥复用。TOTP_ENCRYPTION_KEY 应与 JWT_ACCESS_SECRET 独立生成。
+ * 使用独立于 JWT 的专用密钥，避免 JWT_ACCESS_SECRET 轮换导致已存储的 TOTP 密钥永久失效。
+ * 必须配置 TOTP_ENCRYPTION_KEY 环境变量，不再回退到其他密钥。
  */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.TOTP_ENCRYPTION_KEY || process.env.JWT_ACCESS_SECRET;
+  const secret = process.env.TOTP_ENCRYPTION_KEY;
   if (!secret) {
-    throw new Error("[TOTP] TOTP_ENCRYPTION_KEY 或 JWT_ACCESS_SECRET 环境变量未设置");
+    throw new Error("[TOTP] TOTP_ENCRYPTION_KEY 环境变量未设置。请使用 openssl rand -hex 32 生成专用密钥。");
   }
   return createHash("sha256").update(secret).digest();
 }

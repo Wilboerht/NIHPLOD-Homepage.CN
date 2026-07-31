@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Shield, ShieldCheck, AlertTriangle, Copy, Check, Loader2 } from "lucide-react";
+import { Shield, ShieldCheck, AlertTriangle, Copy, Check, Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost } from "@/lib/api-client";
 
@@ -21,6 +21,7 @@ export default function TOTPSettingsPage() {
   const [disablePassword, setDisablePassword] = useState("");
   const [processing, setProcessing] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [showTotpSecret, setShowTotpSecret] = useState(false);
   const toastRef = useRef(toast);
   toastRef.current = toast;
 
@@ -165,8 +166,15 @@ export default function TOTPSettingsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <code className="rounded bg-brand-charcoal/8 px-2 py-1 text-xs text-brand-charcoal/80">
-                  {setupData.secret}
+                  {showTotpSecret ? setupData.secret : "••••••••••••••••"}
                 </code>
+                <button
+                  onClick={() => setShowTotpSecret(!showTotpSecret)}
+                  className="text-brand-charcoal/50 hover:text-brand-charcoal"
+                  title={showTotpSecret ? "隐藏密钥" : "显示密钥"}
+                >
+                  {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
                 <button
                   onClick={() => copyToClipboard(setupData.secret, "secret")}
                   className="text-brand-charcoal/50 hover:text-brand-charcoal"

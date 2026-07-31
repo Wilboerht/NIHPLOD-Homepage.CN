@@ -53,6 +53,7 @@ export type AuditAction =
   | "oauth_client_update"
   | "oauth_client_delete"
   | "oauth_client_rotate_secret"
+  | "oauth_client_test"
   | "oauth_consent_revoke"
   | "oauth_session_terminate";
 

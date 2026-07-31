@@ -90,7 +90,7 @@ export default async function CareersPage() {
         dangerouslySetInnerHTML={{
           __html: `
             window._AMapSecurityConfig = {
-              securityJsCode: '${AMAP_SECRET}'
+              securityJsCode: '${(process.env.AMAP_SECRET || "").replace(/'/g, "\\'")}'
             };
           `,
         }}

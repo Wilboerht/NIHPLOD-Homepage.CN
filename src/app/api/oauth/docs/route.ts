@@ -438,7 +438,7 @@ export async function GET(request: NextRequest) {
             kid: { type: "string", description: "密钥标识符" },
             alg: { type: "string", description: "签名算法，当前为 HS256" },
           },
-          description: "⚠️ 当前使用 HS256 对称密钥，k 值不通过 JWKS 公开。子项目应使用 Introspection 端点验证 token。",
+          description: "密钥标识符及签名算法。k值不通过 JWKS 公开分发。",
         },
         OidcDiscovery: {
           type: "object",
@@ -461,7 +461,6 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(spec, {
     headers: {
       "Cache-Control": "public, max-age=3600",
-      "Access-Control-Allow-Origin": "*",
     },
   });
 }

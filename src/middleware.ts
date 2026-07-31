@@ -97,10 +97,6 @@ function addCorsHeaders(response: NextResponse, origin: string | null): NextResp
     "Content-Type, Authorization"
   );
   response.headers.set("Access-Control-Max-Age", "86400");
-  // 当回显具体 origin 时，允许携带凭据
-  if (origin) {
-    response.headers.set("Access-Control-Allow-Credentials", "true");
-  }
   return response;
 }
 

@@ -13,6 +13,7 @@ import {
   Clock,
   Search,
   Eye,
+  EyeOff,
   X,
   Shield,
   Smartphone,
@@ -126,6 +127,7 @@ function OAuthClientsPage() {
   // Rotated secret display modal
   const [showRotatedSecret, setShowRotatedSecret] = useState(false);
   const [rotatedSecret, setRotatedSecret] = useState<string | null>(null);
+  const [showRotatedSecretValue, setShowRotatedSecretValue] = useState(false);
 
   // Delete confirm modal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -145,6 +147,7 @@ function OAuthClientsPage() {
 
   // Newly created secret
   const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [showNewSecret, setShowNewSecret] = useState(false);
 
   // SDK config
   const [showSdkConfig, setShowSdkConfig] = useState(false);
@@ -601,9 +604,16 @@ if (!payload) {
               </p>
               <div className="flex items-center gap-2">
                 <Input
+                  type={showNewSecret ? "text" : "password"}
                   value={newSecret}
                   readOnly
                   className="font-mono text-sm flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNewSecret(!showNewSecret)}
+                  leftIcon={showNewSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 />
                 <Button
                   variant="outline"
@@ -759,9 +769,16 @@ if (!payload) {
             </p>
             <div className="flex items-center gap-2">
               <Input
+                type={showRotatedSecretValue ? "text" : "password"}
                 value={rotatedSecret || ""}
                 readOnly
                 className="font-mono text-sm flex-1"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRotatedSecretValue(!showRotatedSecretValue)}
+                leftIcon={showRotatedSecretValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               />
               <Button
                 variant="outline"
