@@ -220,7 +220,7 @@ export function KineticBackground() {
         </div>
 
         {/* Row 1, Col 2: 文字卡 */}
-        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect">
+        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect text-center">
           <div className="kinetic-title-sm">
             更少步骤
             <br />
